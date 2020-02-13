@@ -1,10 +1,8 @@
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
-  --> $DIR/issue-20711.rs:5:1
+error: expected item after attributes
+  --> $DIR/issue-20711.rs:4:5
    |
 LL |     #[stable(feature = "rust1", since = "1.0.0")]
-   |                                                  - expected one of 9 possible tokens
-LL | }
-   | ^ unexpected token
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

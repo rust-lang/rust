@@ -7,10 +7,10 @@ use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::{respan, BytePos, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::source_map::{BytePos, Span};
+use rustc_span::symbol::{kw, sym};
 use syntax::ast;
-use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
+use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use syntax::ptr::P;
 use syntax::token::{self, TokenKind};
@@ -55,21 +55,11 @@ impl<'a> Parser<'a> {
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
-        let mac_vis = respan(lo, VisibilityKind::Inherited);
-        if let Some(macro_def) = self.eat_macro_def(&attrs, &mac_vis, lo)? {
-            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))));
-        }
-
-        // Starts like a simple path, being careful to avoid contextual keywords
-        // such as a union items, item with `crate` visibility or auto trait items.
-        // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
-        // like a path (1 token), but it fact not a path.
-        if self.token.is_path_start()
-            && !self.token.is_qpath_start()
-            && !self.is_union_item() // `union::b::c` - path, `union U { ... }` - not a path.
-            && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
-            && !self.is_auto_trait_item()
-            && !self.is_async_fn()
+        // Starts like a simple path, being careful to avoid contextual keywords,
+        // e.g., `union`, items with `crate` visibility, or `auto trait` items.
+        // We aim to parse an arbitrary path `a::b` but not something that starts like a path
+        // (1 token), but it fact not a path. Also, we avoid stealing syntax from `parse_item_`.
+        if self.token.is_path_start() && !self.token.is_qpath_start() && !self.is_path_start_item()
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
@@ -199,10 +189,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
-    }
-
     fn recover_stmt_local(
         &mut self,
         lo: Span,
@@ -297,16 +283,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
-    }
-
-    fn is_auto_trait_item(&self) -> bool {
-        // auto trait
-        (self.token.is_keyword(kw::Auto) &&
-            self.is_keyword_ahead(1, &[kw::Trait]))
-        || // unsafe auto trait
-        (self.token.is_keyword(kw::Unsafe) &&
-         self.is_keyword_ahead(1, &[kw::Auto]) &&
-         self.is_keyword_ahead(2, &[kw::Trait]))
     }
 
     /// Parses a block. No inner attributes are allowed.

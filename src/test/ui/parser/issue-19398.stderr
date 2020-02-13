@@ -1,10 +1,11 @@
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found keyword `extern`
-  --> $DIR/issue-19398.rs:2:5
+error: missing `fn`, `type`, or `const` for associated-item declaration
+  --> $DIR/issue-19398.rs:1:10
    |
-LL | trait T {
-   |          - expected one of 10 possible tokens
-LL |     extern "Rust" unsafe fn foo();
-   |     ^^^^^^ unexpected token
+LL |   trait T {
+   |  __________^
+LL | |
+LL | |     extern "Rust" unsafe fn foo();
+   | |____^ missing `fn`, `type`, or `const`
 
 error: aborting due to previous error
 
