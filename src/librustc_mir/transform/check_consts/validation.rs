@@ -141,7 +141,7 @@ impl Validator<'a, 'mir, 'tcx> {
         let needs_drop = QualifCursor::new(NeedsDrop, item);
         let has_mut_interior = QualifCursor::new(HasMutInterior, item);
 
-        let indirectly_mutable = MaybeMutBorrowedLocals::new_mut_only(tcx, *body, param_env)
+        let indirectly_mutable = MaybeMutBorrowedLocals::mut_borrows_only(tcx, *body, param_env)
             .into_engine(tcx, *body, def_id)
             .iterate_to_fixpoint()
             .into_results_cursor(*body);

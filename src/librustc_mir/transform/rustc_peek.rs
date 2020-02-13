@@ -45,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
             .into_engine(tcx, body, def_id)
             .iterate_to_fixpoint();
-        let flow_mut_borrowed = MaybeMutBorrowedLocals::new_mut_only(tcx, body, param_env)
+        let flow_mut_borrowed = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
             .into_engine(tcx, body, def_id)
             .iterate_to_fixpoint();
 
