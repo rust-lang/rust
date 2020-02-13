@@ -95,6 +95,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         let mut start = START_BLOCK;
 
+        let mut merged_blocks = Vec::new();
         loop {
             let mut changed = false;
 
@@ -118,9 +119,22 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 while inner_changed {
                     inner_changed = false;
                     inner_changed |= self.simplify_branch(&mut terminator);
-                    inner_changed |= self.merge_successor(bb, &mut terminator);
+                    inner_changed |= self.merge_successor(&mut merged_blocks, &mut terminator);
                     changed |= inner_changed;
                 }
+
+                let merged_block_count =
+                    merged_blocks.iter().map(|&i| self.basic_blocks[i].statements.len()).sum();
+
+                if merged_block_count > 0 {
+                    let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
+                    statements.reserve(merged_block_count);
+                    for &from in &merged_blocks {
+                        statements.append(&mut self.basic_blocks[from].statements);
+                    }
+                    self.basic_blocks[bb].statements = statements;
+                }
+                merged_blocks.clear();
 
                 self.basic_blocks[bb].terminator = Some(terminator);
 
@@ -196,7 +210,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     // merge a block with 1 `goto` predecessor to its parent
     fn merge_successor(
         &mut self,
-        merge_into: BasicBlock,
+        merged_blocks: &mut Vec<BasicBlock>,
         terminator: &mut Terminator<'tcx>,
     ) -> bool {
         let target = match terminator.kind {
@@ -214,8 +228,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             }
         };
 
-        let (from, to) = self.basic_blocks.pick2_mut(target, merge_into);
-        to.statements.append(&mut from.statements);
+        merged_blocks.push(target);
         self.pred_count[target] = 0;
 
         true
