@@ -278,6 +278,17 @@ impl ItemCtxt<'tcx> {
     pub fn to_ty(&self, ast_ty: &'tcx hir::Ty<'tcx>) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
+
+    pub fn hir_id(&self) -> hir::HirId {
+        self.tcx
+            .hir()
+            .as_local_hir_id(self.item_def_id)
+            .expect("Non-local call to local provider is_const_fn")
+    }
+
+    pub fn node(&self) -> hir::Node<'tcx> {
+        self.tcx.hir().get(self.hir_id())
+    }
 }
 
 impl AstConv<'tcx> for ItemCtxt<'tcx> {
@@ -290,15 +301,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> ast::Constness {
-        // FIXME: refactor this into a method
-        let hir_id = self
-            .tcx
-            .hir()
-            .as_local_hir_id(self.item_def_id)
-            .expect("Non-local call to local provider is_const_fn");
-
-        let node = self.tcx.hir().get(hir_id);
-        if let Some(fn_like) = FnLikeNode::from_node(node) {
+        if let Some(fn_like) = FnLikeNode::from_node(self.node()) {
             fn_like.constness()
         } else {
             ast::Constness::NotConst
@@ -352,14 +355,80 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             self.tcx().mk_projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
-            struct_span_err!(
+            let mut err = struct_span_err!(
                 self.tcx().sess,
                 span,
                 E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context"
-            )
-            .emit();
+            );
+
+            match self.node() {
+                hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
+                    let item =
+                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                    match &item.kind {
+                        hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Union(_, generics) => {
+                            // FIXME: look for an appropriate lt name if `'a` is already used
+                            let (lt_sp, sugg) = match &generics.params[..] {
+                                [] => (generics.span, "<'a>".to_string()),
+                                [bound, ..] => (bound.span.shrink_to_lo(), "'a, ".to_string()),
+                            };
+                            let suggestions = vec![
+                                (lt_sp, sugg),
+                                (
+                                    span,
+                                    format!(
+                                        "{}::{}",
+                                        // Replace the existing lifetimes with a new named lifetime.
+                                        self.tcx
+                                            .replace_late_bound_regions(&poly_trait_ref, |_| {
+                                                self.tcx.mk_region(ty::ReEarlyBound(
+                                                    ty::EarlyBoundRegion {
+                                                        def_id: item_def_id,
+                                                        index: 0,
+                                                        name: Symbol::intern("'a"),
+                                                    },
+                                                ))
+                                            })
+                                            .0,
+                                        item_segment.ident
+                                    ),
+                                ),
+                            ];
+                            err.multipart_suggestion(
+                                "use a fully qualified path with explicit lifetimes",
+                                suggestions,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(..), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(..), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(..), .. }) => {}
+                hir::Node::Item(_)
+                | hir::Node::ForeignItem(_)
+                | hir::Node::TraitItem(_)
+                | hir::Node::ImplItem(_) => {
+                    err.span_suggestion(
+                        span,
+                        "use a fully qualified path with inferred lifetimes",
+                        format!(
+                            "{}::{}",
+                            // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
+                            self.tcx.anonymize_late_bound_regions(&poly_trait_ref).skip_binder(),
+                            item_segment.ident
+                        ),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            }
+            err.emit();
             self.tcx().types.err
         }
     }
