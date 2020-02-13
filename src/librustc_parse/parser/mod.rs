@@ -22,8 +22,9 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
-use syntax::ast::{self, AttrStyle, AttrVec, CrateSugar, Extern, Ident, Unsafety, DUMMY_NODE_ID};
-use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
+use syntax::ast::DUMMY_NODE_ID;
+use syntax::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use syntax::ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use syntax::ptr::P;
 use syntax::token::{self, DelimToken, Token, TokenKind};
 use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
@@ -953,17 +954,23 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> IsAsync {
+    fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            IsAsync::Async { closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+            let span = self.prev_span;
+            Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
-            IsAsync::NotAsync
+            Async::No
         }
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafety {
-        if self.eat_keyword(kw::Unsafe) { Unsafety::Unsafe } else { Unsafety::Normal }
+    fn parse_unsafety(&mut self) -> Unsafe {
+        if self.eat_keyword(kw::Unsafe) { Unsafe::Yes(self.prev_span) } else { Unsafe::No }
+    }
+
+    /// Parses constness: `const` or nothing.
+    fn parse_constness(&mut self) -> Const {
+        if self.eat_keyword(kw::Const) { Const::Yes(self.prev_span) } else { Const::No }
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1263,19 +1270,6 @@ impl<'a> Parser<'a> {
                 }
             },
             Err(None) => None,
-        }
-    }
-
-    /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
-    fn ban_async_in_2015(&self, async_span: Span) {
-        if async_span.rust_2015() {
-            struct_span_err!(
-                self.diagnostic(),
-                async_span,
-                E0670,
-                "`async fn` is not permitted in the 2015 edition",
-            )
-            .emit();
         }
     }
 

@@ -40,19 +40,19 @@ use crate::ty::fast_reject;
 use crate::ty::relate::TypeRelation;
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_hir::def_id::DefId;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
+use syntax::attr;
+
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
-use syntax::{ast, attr};
 
 pub use rustc::traits::types::select::*;
 
@@ -677,7 +677,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let cycle = cycle.map(|stack| {
-                ty::Predicate::Trait(stack.obligation.predicate, ast::Constness::NotConst)
+                ty::Predicate::Trait(stack.obligation.predicate, hir::Constness::NotConst)
             });
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack({:?}) --> recursive, coinductive", stack.fresh_trait_ref);

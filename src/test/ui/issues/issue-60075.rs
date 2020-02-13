@@ -6,6 +6,5 @@ trait T {
         });
 //~^ ERROR expected one of `async`
 //~| ERROR expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
-//~| ERROR expected identifier, found `;`
         Some(4)
     }

@@ -34,7 +34,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_span::source_map::{dummy_spanned, respan, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -1198,14 +1198,14 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
     ///
     /// The `NodeId` is the `NodeId` for the closure that results from
     /// desugaring an async block, just like the NodeId field in the
-    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// `Async::Yes` variant. This is necessary in order to create a def for the
     /// closure which can be used as a parent of any child defs. Defs
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
@@ -1863,7 +1863,7 @@ pub struct Ty {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
-    pub unsafety: Unsafety,
+    pub unsafety: Unsafe,
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
@@ -2101,70 +2101,38 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic
-)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            Unsafety::Unsafe => "unsafe ",
-            Unsafety::Normal => "",
-        }
-    }
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Unsafe {
+    Yes(Span),
+    No,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum IsAsync {
-    Async { closure_id: NodeId, return_impl_trait_id: NodeId },
-    NotAsync,
+pub enum Async {
+    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    No,
 }
 
-impl IsAsync {
+impl Async {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self { true } else { false }
+        if let Async::Yes { .. } = self { true } else { false }
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-            IsAsync::NotAsync => None,
+            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::No => None,
         }
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 #[derive(HashStable_Generic)]
-pub enum Constness {
-    Const,
-    NotConst,
+pub enum Const {
+    Yes(Span),
+    No,
 }
 
 /// Item defaultness.
@@ -2527,9 +2495,9 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
-    pub asyncness: Spanned<IsAsync>,
-    pub constness: Spanned<Constness>,
+    pub unsafety: Unsafe,
+    pub asyncness: Async,
+    pub constness: Const,
     pub ext: Extern,
 }
 
@@ -2537,9 +2505,9 @@ impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
         let Self { unsafety, asyncness, constness, ext } = self;
-        matches!(unsafety, Unsafety::Unsafe)
-            || asyncness.node.is_async()
-            || matches!(constness.node, Constness::Const)
+        matches!(unsafety, Unsafe::Yes(_))
+            || asyncness.is_async()
+            || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
 }
@@ -2547,9 +2515,9 @@ impl FnHeader {
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
-            unsafety: Unsafety::Normal,
-            asyncness: dummy_spanned(IsAsync::NotAsync),
-            constness: dummy_spanned(Constness::NotConst),
+            unsafety: Unsafe::No,
+            asyncness: Async::No,
+            constness: Const::No,
             ext: Extern::None,
         }
     }
@@ -2606,7 +2574,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<P<AssocItem>>),
+    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2615,10 +2583,10 @@ pub enum ItemKind {
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl {
-        unsafety: Unsafety,
+        unsafety: Unsafe,
         polarity: ImplPolarity,
         defaultness: Defaultness,
-        constness: Constness,
+        constness: Const,
         generics: Generics,
 
         /// The trait being implemented, if any.

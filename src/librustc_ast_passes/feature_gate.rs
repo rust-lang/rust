@@ -496,6 +496,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
             self.check_extern(header.ext);
+
+            if let (ast::Const::Yes(_), ast::Extern::Implicit)
+            | (ast::Const::Yes(_), ast::Extern::Explicit(_)) = (header.constness, header.ext)
+            {
+                gate_feature_post!(
+                    &self,
+                    const_extern_fn,
+                    span,
+                    "`const extern fn` definitions are unstable"
+                );
+            }
         }
 
         if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {
@@ -538,8 +549,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         match i.kind {
             ast::AssocItemKind::Fn(ref sig, _) => {
-                let constness = sig.header.constness.node;
-                if let (ast::Constness::Const, AssocCtxt::Trait) = (constness, ctxt) {
+                if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }
@@ -596,7 +606,6 @@ pub fn check_crate(
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
-    gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");

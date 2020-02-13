@@ -225,7 +225,7 @@ impl Sig for ast::Ty {
                     text.push('>');
                 }
 
-                if f.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = f.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, f.ext);
@@ -365,13 +365,13 @@ impl Sig for ast::Item {
             }
             ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
-                if header.constness.node == ast::Constness::Const {
+                if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
                 }
-                if header.asyncness.node.is_async() {
+                if header.asyncness.is_async() {
                     text.push_str("async ");
                 }
-                if header.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = header.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, header.ext);
@@ -453,7 +453,7 @@ impl Sig for ast::Item {
                     text.push_str("auto ");
                 }
 
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("trait ");
@@ -496,11 +496,11 @@ impl Sig for ast::Item {
                 if let ast::Defaultness::Default = defaultness {
                     text.push_str("default ");
                 }
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("impl");
-                if constness == ast::Constness::Const {
+                if let ast::Const::Yes(_) = constness {
                     text.push_str(" const");
                 }
 
@@ -884,13 +884,13 @@ fn make_method_signature(
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
-    if m.header.constness.node == ast::Constness::Const {
+    if let ast::Const::Yes(_) = m.header.constness {
         text.push_str("const ");
     }
-    if m.header.asyncness.node.is_async() {
+    if m.header.asyncness.is_async() {
         text.push_str("async ");
     }
-    if m.header.unsafety == ast::Unsafety::Unsafe {
+    if let ast::Unsafe::Yes(_) = m.header.unsafety {
         text.push_str("unsafe ");
     }
     push_extern(&mut text, m.header.ext);

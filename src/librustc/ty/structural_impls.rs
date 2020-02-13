@@ -7,6 +7,7 @@ use crate::mir::ProjectionKind;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
@@ -15,7 +16,6 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
-use syntax::ast;
 
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -236,7 +236,7 @@ impl fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref a, constness) => {
-                if let ast::Constness::Const = constness {
+                if let hir::Constness::Const = constness {
                     write!(f, "const ")?;
                 }
                 a.fmt(f)

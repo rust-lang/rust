@@ -1,20 +1,20 @@
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/feature-gate-const_fn.rs:6:5
    |
 LL |     const fn foo() -> u32;
-   |     ^^^^^ trait fns cannot be const
+   |     ^^^^^ functions in traits cannot be const
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/feature-gate-const_fn.rs:8:5
    |
 LL |     const fn bar() -> u32 { 0 }
-   |     ^^^^^ trait fns cannot be const
+   |     ^^^^^ functions in traits cannot be const
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/feature-gate-const_fn.rs:13:5
    |
 LL |     const fn foo() -> u32 { 0 }
-   |     ^^^^^ trait fns cannot be const
+   |     ^^^^^ functions in traits cannot be const
 
 error[E0658]: const fn is unstable
   --> $DIR/feature-gate-const_fn.rs:6:5

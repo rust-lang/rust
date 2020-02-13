@@ -258,13 +258,13 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
-            ast::ItemKind::Trait(_, ast::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Trait(_, ast::Unsafe::Yes(_), ..) => {
                 self.report_unsafe(cx, it.span, |lint| {
                     lint.build("declaration of an `unsafe` trait").emit()
                 })
             }
 
-            ast::ItemKind::Impl { unsafety: ast::Unsafety::Unsafe, .. } => {
+            ast::ItemKind::Impl { unsafety: ast::Unsafe::Yes(_), .. } => {
                 self.report_unsafe(cx, it.span, |lint| {
                     lint.build("implementation of an `unsafe` trait").emit()
                 })
@@ -278,7 +278,7 @@ impl EarlyLintPass for UnsafeCode {
         if let FnKind::Fn(
             ctxt,
             _,
-            ast::FnSig { header: ast::FnHeader { unsafety: ast::Unsafety::Unsafe, .. }, .. },
+            ast::FnSig { header: ast::FnHeader { unsafety: ast::Unsafe::Yes(_), .. }, .. },
             _,
             body,
         ) = fk

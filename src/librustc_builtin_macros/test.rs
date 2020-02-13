@@ -375,12 +375,16 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
     if let ast::ItemKind::Fn(ref sig, ref generics, _) = i.kind {
-        if sig.header.unsafety == ast::Unsafety::Unsafe {
-            sd.span_err(i.span, "unsafe functions cannot be used for tests");
+        if let ast::Unsafe::Yes(span) = sig.header.unsafety {
+            sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
+                .span_label(span, "`unsafe` because of this")
+                .emit();
             return false;
         }
-        if sig.header.asyncness.node.is_async() {
-            sd.span_err(i.span, "async functions cannot be used for tests");
+        if let ast::Async::Yes { span, .. } = sig.header.asyncness {
+            sd.struct_span_err(i.span, "async functions cannot be used for tests")
+                .span_label(span, "`async` because of this")
+                .emit();
             return false;
         }
 

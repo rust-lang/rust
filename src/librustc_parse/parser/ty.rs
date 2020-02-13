@@ -1,4 +1,3 @@
-use super::item::ParamCfg;
 use super::{Parser, PathStyle, TokenType};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -311,8 +310,7 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         let ext = self.parse_extern()?;
         self.expect_keyword(kw::Fn)?;
-        let cfg = ParamCfg { is_name_required: |_| false };
-        let decl = self.parse_fn_decl(&cfg, AllowPlus::No)?;
+        let decl = self.parse_fn_decl(|_| false, AllowPlus::No)?;
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params, decl })))
     }
 
