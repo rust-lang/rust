@@ -22,7 +22,7 @@ use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::span_bug;
 use rustc::ty::query::Providers;
-use rustc::ty::{self, DefIdTree, ResolverOutputs, TraitMap};
+use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
@@ -32,8 +32,8 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::GlobMap;
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
+use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -865,7 +865,7 @@ pub struct Resolver<'a> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: NodeMap<CrateNum>,
     export_map: ExportMap<NodeId>,
-    trait_map: TraitMap,
+    trait_map: TraitMap<NodeId>,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items

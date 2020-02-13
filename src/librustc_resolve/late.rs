@@ -11,13 +11,13 @@ use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
-use rustc::ty::TraitCandidate;
 use rustc::{bug, lint, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::TraitCandidate;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
@@ -2078,7 +2078,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-    ) -> Vec<TraitCandidate> {
+    ) -> Vec<TraitCandidate<NodeId>> {
         debug!("(getting traits containing item) looking for '{}'", ident.name);
 
         let mut found_traits = Vec::new();
@@ -2123,7 +2123,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         ns: Namespace,
         module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate>,
+        found_traits: &mut Vec<TraitCandidate<NodeId>>,
     ) {
         assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
