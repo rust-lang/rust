@@ -201,7 +201,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 match bin_op {
                     Rem => {
                         if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_int(0, size), true, left_layout.ty));
+                            return Ok((Scalar::from_uint(l, size), true, left_layout.ty));
                         }
                     }
                     _ => {}
