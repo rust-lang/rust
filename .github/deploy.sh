@@ -20,14 +20,10 @@ fi
 # Generate version index that is shown as root index page
 cp util/gh-pages/versions.html out/index.html
 
-cd out
-cat <<-EOF | python - > versions.json
-import os, json
-print json.dumps([
-    dir for dir in os.listdir(".") if not dir.startswith(".") and os.path.isdir(dir)
-])
-EOF
+echo "Making the versions.json file"
+python ./util/versions.py out
 
+cd out
 # Now let's go have some fun with the cloned repo
 git config user.name "GHA CI"
 git config user.email "gha@ci.invalid"
