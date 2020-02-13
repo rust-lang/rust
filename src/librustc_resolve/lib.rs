@@ -865,7 +865,7 @@ pub struct Resolver<'a> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: NodeMap<CrateNum>,
     export_map: ExportMap<NodeId>,
-    trait_map: TraitMap,
+    trait_map: TraitMap<NodeId>,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items

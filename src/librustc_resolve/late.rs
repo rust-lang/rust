@@ -2078,7 +2078,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-    ) -> Vec<TraitCandidate> {
+    ) -> Vec<TraitCandidate<NodeId>> {
         debug!("(getting traits containing item) looking for '{}'", ident.name);
 
         let mut found_traits = Vec::new();
@@ -2123,7 +2123,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         ns: Namespace,
         module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate>,
+        found_traits: &mut Vec<TraitCandidate<NodeId>>,
     ) {
         assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
