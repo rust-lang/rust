@@ -33,7 +33,7 @@ use rustc::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -369,10 +369,12 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
                         | hir::ItemKind::Union(_, generics) => {
-                            // FIXME: look for an appropriate lt name if `'a` is already used
+                            let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
                             let (lt_sp, sugg) = match &generics.params[..] {
-                                [] => (generics.span, "<'a>".to_string()),
-                                [bound, ..] => (bound.span.shrink_to_lo(), "'a, ".to_string()),
+                                [] => (generics.span, format!("<{}>", lt_name)),
+                                [bound, ..] => {
+                                    (bound.span.shrink_to_lo(), format!("{}, ", lt_name))
+                                }
                             };
                             let suggestions = vec![
                                 (lt_sp, sugg),
@@ -387,7 +389,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                                                     ty::EarlyBoundRegion {
                                                         def_id: item_def_id,
                                                         index: 0,
-                                                        name: Symbol::intern("'a"),
+                                                        name: Symbol::intern(&lt_name),
                                                     },
                                                 ))
                                             })
@@ -443,6 +445,43 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
         // There's no place to record types from signatures?
     }
+}
+
+/// Synthesize a new lifetime name that doesn't clash with any of the lifetimes already present.
+fn get_new_lifetime_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    poly_trait_ref: ty::PolyTraitRef<'tcx>,
+    generics: &hir::Generics<'tcx>,
+) -> String {
+    let existing_lifetimes = tcx
+        .collect_referenced_late_bound_regions(&poly_trait_ref)
+        .into_iter()
+        .filter_map(|lt| {
+            if let ty::BoundRegion::BrNamed(_, name) = lt {
+                Some(name.as_str().to_string())
+            } else {
+                None
+            }
+        })
+        .chain(generics.params.iter().filter_map(|param| {
+            if let hir::GenericParamKind::Lifetime { .. } = &param.kind {
+                Some(param.name.ident().as_str().to_string())
+            } else {
+                None
+            }
+        }))
+        .collect::<FxHashSet<String>>();
+
+    let a_to_z_repeat_n = |n| {
+        (b'a'..=b'z').map(move |c| {
+            let mut s = format!("'");
+            s.extend(std::iter::repeat(char::from(c)).take(n));
+            s
+        })
+    };
+
+    // If all single char lifetime names are present, we wrap around and double the chars.
+    (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
@@ -1588,7 +1627,6 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
 fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    use rustc_data_structures::fx::FxHashSet;
     use rustc_hir::*;
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
