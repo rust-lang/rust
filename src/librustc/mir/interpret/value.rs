@@ -7,7 +7,7 @@ use std::fmt;
 
 use crate::ty::{
     layout::{HasDataLayout, Size},
-    Ty,
+    ParamEnv, Ty, TyCtxt,
 };
 
 use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
@@ -65,6 +65,32 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::ByRef { .. } | ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
+    }
+
+    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
+        self.try_to_scalar()?.to_bits(size).ok()
+    }
+
+    pub fn try_to_bits_for_ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        self.try_to_bits(size)
+    }
+
+    pub fn from_bool(b: bool) -> Self {
+        ConstValue::Scalar(Scalar::from_bool(b))
+    }
+
+    pub fn from_u64(i: u64) -> Self {
+        ConstValue::Scalar(Scalar::from_u64(i))
+    }
+
+    pub fn from_machine_usize(cx: &impl HasDataLayout, i: u64) -> Self {
+        ConstValue::Scalar(Scalar::from_machine_usize(cx, i))
     }
 }
 
@@ -285,6 +311,11 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn from_u64(i: u64) -> Self {
         Scalar::Raw { data: i as u128, size: 8 }
+    }
+
+    #[inline]
+    pub fn from_machine_usize(cx: &impl HasDataLayout, i: u64) -> Self {
+        Self::from_uint(i, cx.data_layout().pointer_size)
     }
 
     #[inline]

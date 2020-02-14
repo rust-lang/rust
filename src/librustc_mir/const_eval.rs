@@ -40,7 +40,8 @@ pub(crate) fn const_field<'tcx>(
     let field = ecx.operand_field(down, field.index() as u64).unwrap();
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
-    op_to_const(&ecx, field)
+    let val = op_to_const(&ecx, field);
+    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
 }
 
 pub(crate) fn const_caller_location<'tcx>(
@@ -84,7 +85,8 @@ pub(crate) fn destructure_const<'tcx>(
     let down = ecx.operand_downcast(op, variant).unwrap();
     let fields_iter = (0..field_count).map(|i| {
         let field_op = ecx.operand_field(down, i).unwrap();
-        op_to_const(&ecx, field_op)
+        let val = op_to_const(&ecx, field_op);
+        tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: field_op.layout.ty })
     });
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 

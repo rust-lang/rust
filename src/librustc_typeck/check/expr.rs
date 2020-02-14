@@ -25,7 +25,7 @@ use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
-use rustc::ty::{AdtKind, Visibility};
+use rustc::ty::{AdtKind, ConstKind, Visibility};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
@@ -1011,7 +1011,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count = if self.const_param_def_id(count).is_some() {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
-            tcx.const_eval_poly(count_def_id)
+            tcx.const_eval_poly(count_def_id).map(|val| {
+                tcx.mk_const(ty::Const {
+                    val: ConstKind::Value(val),
+                    ty: tcx.type_of(count_def_id),
+                })
+            })
         };
 
         let uty = match expected {
