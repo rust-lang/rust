@@ -9,7 +9,7 @@ mod ast_src;
 
 use anyhow::Context;
 use std::{
-    env, fs,
+    env,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -17,7 +17,7 @@ use std::{
 
 use crate::{
     codegen::Mode,
-    not_bash::{pushd, run},
+    not_bash::{fs2, pushd, rm_rf, run},
 };
 
 pub use anyhow::Result;
@@ -139,7 +139,7 @@ pub fn run_pre_cache() -> Result<()> {
         }
     }
 
-    fs::remove_file("./target/.rustc_info.json")?;
+    fs2::remove_file("./target/.rustc_info.json")?;
     let to_delete = ["ra_", "heavy_test"];
     for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
         for entry in Path::new(dir).read_dir()? {
@@ -153,22 +153,20 @@ pub fn run_pre_cache() -> Result<()> {
     Ok(())
 }
 
-fn rm_rf(path: &Path) -> Result<()> {
-    if path.is_file() { fs::remove_file(path) } else { fs::remove_dir_all(path) }
-        .with_context(|| format!("failed to remove {:?}", path))
-}
+pub fn run_release(dry_run: bool) -> Result<()> {
+    if !dry_run {
+        run!("git switch release")?;
+        run!("git fetch upstream")?;
+        run!("git reset --hard upstream/master")?;
+        run!("git push")?;
+    }
 
-pub fn run_release() -> Result<()> {
-    run!("git switch release")?;
-    run!("git fetch upstream")?;
-    run!("git reset --hard upstream/master")?;
-    run!("git push")?;
-
-    let changelog_dir = project_root().join("../rust-analyzer.github.io/thisweek/_posts");
+    let website_root = project_root().join("../rust-analyzer.github.io");
+    let changelog_dir = website_root.join("./thisweek/_posts");
 
     let today = run!("date --iso")?;
     let commit = run!("git rev-parse HEAD")?;
-    let changelog_n = fs::read_dir(changelog_dir.as_path())?.count();
+    let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
 
     let contents = format!(
         "\
@@ -191,7 +189,9 @@ Release: release:{}[]
     );
 
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-    fs::write(&path, &contents)?;
+    fs2::write(&path, &contents)?;
+
+    fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
 
     Ok(())
 }

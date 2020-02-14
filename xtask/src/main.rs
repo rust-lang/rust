@@ -93,8 +93,9 @@ FLAGS:
             run_pre_cache()
         }
         "release" => {
+            let dry_run = args.contains("--dry-run");
             args.finish()?;
-            run_release()
+            run_release(dry_run)
         }
         _ => {
             eprintln!(
