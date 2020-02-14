@@ -109,11 +109,8 @@ fn install_clippy() -> Result<()> {
 
 pub fn run_fuzzer() -> Result<()> {
     let _d = pushd("./crates/ra_syntax");
-    match run!("cargo fuzz --help") {
-        Ok(_) => (),
-        _ => {
-            run!("cargo install cargo-fuzz")?;
-        }
+    if run!("cargo fuzz --help").is_err() {
+        run!("cargo install cargo-fuzz")?;
     };
 
     run!("rustup run nightly -- cargo fuzz run parser")?;
