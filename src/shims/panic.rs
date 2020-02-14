@@ -153,10 +153,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn assert_panic(
         &mut self,
         span: Span,
-        msg: &AssertMessage<'tcx>,
+        msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::interpret::PanicInfo::*;
+        use rustc::mir::AssertKind::*;
         let this = self.eval_context_mut();
 
         match msg {
