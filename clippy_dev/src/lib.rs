@@ -529,10 +529,11 @@ fn test_gen_lint_group_list() {
         Lint::new("abc", "group1", "abc", None, "module_name"),
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
         Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
-        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
+        Lint::new("internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
         "        LintId::of(&module_name::ABC),".to_string(),
+        "        LintId::of(&module_name::INTERNAL),".to_string(),
         "        LintId::of(&module_name::SHOULD_ASSERT_EQ),".to_string(),
     ];
     assert_eq!(expected, gen_lint_group_list(lints));
