@@ -317,10 +317,19 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn terminator_effect(
         &self,
-        _: &mut impl GenKill<Self::Idx>,
-        _: &mir::Terminator<'tcx>,
-        _: Location,
+        trans: &mut impl GenKill<Self::Idx>,
+        teminator: &mir::Terminator<'tcx>,
+        _location: Location,
     ) {
+        if let mir::TerminatorKind::InlineAsm { operands, .. } = &teminator.kind {
+            for op in operands {
+                if let mir::InlineAsmOperand::Out { place: Some(place), .. }
+                | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op
+                {
+                    self.kill_borrows_on_place(trans, place);
+                }
+            }
+        }
     }
 
     fn call_return_effect(

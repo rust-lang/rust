@@ -203,6 +203,7 @@ where
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }

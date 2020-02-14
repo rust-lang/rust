@@ -131,6 +131,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 "{:#?} should have been eliminated by MIR pass",
                 terminator.kind
             ),
+
+            // Inline assembly can't be interpreted.
+            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         Ok(())

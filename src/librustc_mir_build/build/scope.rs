@@ -1388,7 +1388,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. } => {
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::InlineAsm { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }

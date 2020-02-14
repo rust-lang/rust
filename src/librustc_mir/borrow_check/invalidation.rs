@@ -1,8 +1,8 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::TerminatorKind;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
+use rustc_middle::mir::{InlineAsmOperand, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -180,6 +180,29 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 for i in borrow_set.borrows.indices() {
                     if borrow_of_local_data(borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((start, i));
+                    }
+                }
+            }
+            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::In { reg: _, ref value }
+                        | InlineAsmOperand::Const { ref value } => {
+                            self.consume_operand(location, value);
+                        }
+                        InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
+                            if let Some(place) = place {
+                                self.mutate_place(location, place, Shallow(None), JustWrite);
+                            }
+                        }
+                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                            self.consume_operand(location, in_value);
+                            if let Some(out_place) = out_place {
+                                self.mutate_place(location, out_place, Shallow(None), JustWrite);
+                            }
+                        }
+                        InlineAsmOperand::SymFn { value: _ }
+                        | InlineAsmOperand::SymStatic { value: _ } => {}
                     }
                 }
             }

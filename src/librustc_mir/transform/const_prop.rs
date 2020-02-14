@@ -1014,7 +1014,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. } => {}
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::InlineAsm { .. } => {}
             // Every argument in our function calls can be const propagated.
             TerminatorKind::Call { ref mut args, .. } => {
                 let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;

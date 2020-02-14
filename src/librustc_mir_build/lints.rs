@@ -114,6 +114,10 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
+            // FIXME(Amanieu): I am not 100% sure about this, but it triggers
+            // a spurious warning otherwise.
+            TerminatorKind::InlineAsm { .. } => ControlFlow::Break(NonRecursive),
+
             // These do not.
             TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
