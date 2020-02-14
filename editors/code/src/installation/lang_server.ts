@@ -7,13 +7,13 @@ import { spawnSync } from "child_process";
 import { throttle } from "throttle-debounce";
 
 import { BinarySource } from "./interfaces";
-import { fetchLatestArtifactMetadata } from "./fetch_latest_artifact_metadata";
+import { fetchLatestArtifactReleaseInfo } from "./fetch_latest_artifact_release_info";
 import { downloadFile } from "./download_file";
 
-export async function downloadLatestLanguageServer(
+export async function downloadLatestLangServer(
     {file: artifactFileName, dir: installationDir, repo}: BinarySource.GithubRelease
 ) {
-    const { releaseName, downloadUrl } = (await fetchLatestArtifactMetadata(
+    const { releaseName, downloadUrl } = (await fetchLatestArtifactReleaseInfo(
         repo, artifactFileName
     ))!;
 
@@ -53,7 +53,7 @@ export async function downloadLatestLanguageServer(
     );
     console.timeEnd("Downloading ra_lsp_server");
 }
-export async function ensureLanguageServerBinary(
+export async function ensureLangServerBinary(
     langServerSource: null | BinarySource
 ): Promise<null | string> {
 
@@ -97,7 +97,7 @@ export async function ensureLanguageServerBinary(
             if (userResponse !== "Download now") return null;
 
             try {
-                await downloadLatestLanguageServer(langServerSource);
+                await downloadLatestLangServer(langServerSource);
             } catch (err) {
                 vscode.window.showErrorMessage(
                     `Failed to download language server from ${langServerSource.repo.name} ` +

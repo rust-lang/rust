@@ -6,7 +6,7 @@ export interface GithubRepo {
 /**
  * Metadata about particular artifact retrieved from GitHub releases.
  */
-export interface ArtifactMetadata {
+export interface ArtifactReleaseInfo {
     releaseName: string;
     downloadUrl: string;
 }

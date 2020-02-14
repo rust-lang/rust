@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { GithubRepo, ArtifactMetadata } from "./interfaces";
+import { GithubRepo, ArtifactReleaseInfo } from "./interfaces";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
@@ -7,9 +7,9 @@ const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
  * Fetches the latest release from GitHub `repo` and returns metadata about
  * `artifactFileName` shipped with this release or `null` if no such artifact was published.
  */
-export async function fetchLatestArtifactMetadata(
+export async function fetchLatestArtifactReleaseInfo(
     repo: GithubRepo, artifactFileName: string
-): Promise<null | ArtifactMetadata> {
+): Promise<null | ArtifactReleaseInfo> {
 
     const repoOwner = encodeURIComponent(repo.owner);
     const repoName  = encodeURIComponent(repo.name);
