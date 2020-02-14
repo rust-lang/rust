@@ -15,9 +15,8 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, HirId};
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_mir::dataflow::{
-    do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
-};
+use rustc_mir::dataflow::generic::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
+use rustc_mir::dataflow::BottomValue;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
@@ -83,16 +82,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let mir = cx.tcx.optimized_mir(def_id);
         let mir_read_only = mir.unwrap_read_only();
 
-        let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
-        let maybe_storage_live_result = do_dataflow(
-            cx.tcx,
-            mir,
-            def_id,
-            &[],
-            &dead_unwinds,
-            MaybeStorageLive::new(mir),
-            |bd, p| DebugFormatted::new(&bd.body.local_decls[p]),
-        );
+        let maybe_storage_live_result = MaybeStorageLive
+            .into_engine(cx.tcx, mir, def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(mir);
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
             vis.visit_body(mir_read_only);
@@ -377,34 +370,25 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
 
 /// Determines liveness of each local purely based on `StorageLive`/`Dead`.
 #[derive(Copy, Clone)]
-struct MaybeStorageLive<'a, 'tcx> {
-    body: &'a mir::Body<'tcx>,
-}
+struct MaybeStorageLive;
 
-impl<'a, 'tcx> MaybeStorageLive<'a, 'tcx> {
-    fn new(body: &'a mir::Body<'tcx>) -> Self {
-        MaybeStorageLive { body }
-    }
-}
-
-impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
     type Idx = mir::Local;
-    fn name() -> &'static str {
-        "maybe_storage_live"
-    }
-    fn bits_per_block(&self) -> usize {
-        self.body.local_decls.len()
+    const NAME: &'static str = "maybe_storage_live";
+
+    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
+        body.local_decls.len()
     }
 
-    fn start_block_effect(&self, on_entry: &mut BitSet<mir::Local>) {
-        for arg in self.body.args_iter() {
-            on_entry.insert(arg);
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+        for arg in body.args_iter() {
+            state.insert(arg);
         }
     }
+}
 
-    fn statement_effect(&self, trans: &mut GenKillSet<mir::Local>, loc: mir::Location) {
-        let stmt = &self.body[loc.block].statements[loc.statement_index];
-
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
+    fn statement_effect(&self, trans: &mut impl GenKill<Self::Idx>, stmt: &mir::Statement<'tcx>, _: mir::Location) {
         match stmt.kind {
             mir::StatementKind::StorageLive(l) => trans.gen(l),
             mir::StatementKind::StorageDead(l) => trans.kill(l),
@@ -412,20 +396,27 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         }
     }
 
-    fn terminator_effect(&self, _trans: &mut GenKillSet<mir::Local>, _loc: mir::Location) {}
-
-    fn propagate_call_return(
+    fn terminator_effect(
         &self,
-        _in_out: &mut BitSet<mir::Local>,
-        _call_bb: mir::BasicBlock,
-        _dest_bb: mir::BasicBlock,
-        _dest_place: &mir::Place<'tcx>,
+        _trans: &mut impl GenKill<Self::Idx>,
+        _terminator: &mir::Terminator<'tcx>,
+        _loc: mir::Location,
+    ) {
+    }
+
+    fn call_return_effect(
+        &self,
+        _in_out: &mut impl GenKill<Self::Idx>,
+        _block: mir::BasicBlock,
+        _func: &mir::Operand<'tcx>,
+        _args: &[mir::Operand<'tcx>],
+        _return_place: &mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
 }
 
-impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
+impl BottomValue for MaybeStorageLive {
     /// bottom = dead
     const BOTTOM_VALUE: bool = false;
 }
@@ -451,7 +442,7 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
     fn into_map(
         self,
         cx: &LateContext<'a, 'tcx>,
-        maybe_live: DataflowResults<'tcx, MaybeStorageLive<'a, 'tcx>>,
+        maybe_live: ResultsCursor<'tcx, 'tcx, MaybeStorageLive>,
     ) -> PossibleBorrowerMap<'a, 'tcx> {
         let mut map = FxHashMap::default();
         for row in (1..self.body.local_decls.len()).map(mir::Local::from_usize) {
@@ -477,7 +468,7 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
         let bs = BitSet::new_empty(self.body.local_decls.len());
         PossibleBorrowerMap {
             map,
-            maybe_live: DataflowResultsCursor::new(maybe_live, self.body),
+            maybe_live,
             bitset: (bs.clone(), bs),
         }
     }
@@ -560,7 +551,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 struct PossibleBorrowerMap<'a, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
     map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
-    maybe_live: DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>>,
+    maybe_live: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
     // Caches to avoid allocation of `BitSet` on every query
     bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
@@ -568,7 +559,7 @@ struct PossibleBorrowerMap<'a, 'tcx> {
 impl PossibleBorrowerMap<'_, '_> {
     /// Returns true if the set of borrowers of `borrowed` living at `at` matches with `borrowers`.
     fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
-        self.maybe_live.seek(at);
+        self.maybe_live.seek_after(at);
 
         self.bitset.0.clear();
         let maybe_live = &mut self.maybe_live;
