@@ -158,11 +158,13 @@ fn rm_rf(path: &Path) -> Result<()> {
         .with_context(|| format!("failed to remove {:?}", path))
 }
 
-pub fn run_release() -> Result<()> {
-    run!("git switch release")?;
-    run!("git fetch upstream")?;
-    run!("git reset --hard upstream/master")?;
-    run!("git push")?;
+pub fn run_release(dry_run: bool) -> Result<()> {
+    if !dry_run {
+        run!("git switch release")?;
+        run!("git fetch upstream")?;
+        run!("git reset --hard upstream/master")?;
+        run!("git push")?;
+    }
 
     let changelog_dir = project_root().join("../rust-analyzer.github.io/thisweek/_posts");
 
