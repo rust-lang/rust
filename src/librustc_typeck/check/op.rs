@@ -25,7 +25,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(lhs, lhs_ty, rhs, rhs_ty, op);
+                self.enforce_builtin_binop_types(&lhs.span, lhs_ty, &rhs.span, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
@@ -86,8 +86,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && !rhs_ty.is_ty_var()
                     && is_builtin_binop(lhs_ty, rhs_ty, op)
                 {
-                    let builtin_return_ty =
-                        self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+                    let builtin_return_ty = self.enforce_builtin_binop_types(
+                        &lhs_expr.span,
+                        lhs_ty,
+                        &rhs_expr.span,
+                        rhs_ty,
+                        op,
+                    );
                     self.demand_suptype(expr.span, builtin_return_ty, return_ty);
                 }
 
@@ -98,19 +103,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enforce_builtin_binop_types(
         &self,
-        lhs_expr: &'tcx hir::Expr<'tcx>,
+        lhs_span: &Span,
         lhs_ty: Ty<'tcx>,
-        rhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_span: &Span,
         rhs_ty: Ty<'tcx>,
         op: hir::BinOp,
     ) -> Ty<'tcx> {
         debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
+        // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
+        // (See https://github.com/rust-lang/rust/issues/57447.)
+        let (lhs_ty, rhs_ty) = (deref_ty_if_possible(lhs_ty), deref_ty_if_possible(rhs_ty));
+
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
-                self.demand_suptype(rhs_expr.span, tcx.mk_bool(), rhs_ty);
+                self.demand_suptype(*lhs_span, tcx.mk_bool(), lhs_ty);
+                self.demand_suptype(*rhs_span, tcx.mk_bool(), rhs_ty);
                 tcx.mk_bool()
             }
 
@@ -121,13 +130,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             BinOpCategory::Math | BinOpCategory::Bitwise => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
                 lhs_ty
             }
 
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
                 tcx.mk_bool()
             }
         }
@@ -862,6 +871,14 @@ enum Op {
     Unary(hir::UnOp, Span),
 }
 
+/// Dereferences a single level of immutable referencing.
+fn deref_ty_if_possible<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.kind {
+        ty::Ref(_, ty, hir::Mutability::Not) => ty,
+        _ => ty,
+    }
+}
+
 /// Returns `true` if this is a built-in arithmetic operation (e.g., u32
 /// + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
@@ -878,7 +895,11 @@ enum Op {
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/codegen after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
-fn is_builtin_binop(lhs: Ty<'_>, rhs: Ty<'_>, op: hir::BinOp) -> bool {
+fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool {
+    // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
+    // (See https://github.com/rust-lang/rust/issues/57447.)
+    let (lhs, rhs) = (deref_ty_if_possible(lhs), deref_ty_if_possible(rhs));
+
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => true,
 
