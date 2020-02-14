@@ -10,7 +10,7 @@ from lintlib import log
 def key(v):
     if v == 'master':
         return float('inf')
-    if v == 'current':
+    if v == 'stable':
         return sys.maxsize
 
     v = v.replace('v', '').replace('rust-', '')

@@ -11,10 +11,10 @@ cp util/gh-pages/index.html out/master
 python3 ./util/export.py out/master/lints.json
 
 if [[ -n $TAG_NAME ]]; then
-  echo "Save the doc for the current tag ($TAG_NAME) and point current/ to it"
+  echo "Save the doc for the current tag ($TAG_NAME) and point stable/ to it"
   cp -r out/master "out/$TAG_NAME"
-  rm -f out/current
-  ln -s "$TAG_NAME" out/current
+  rm -f out/stable
+  ln -s "$TAG_NAME" out/stable
 fi
 
 # Generate version index that is shown as root index page

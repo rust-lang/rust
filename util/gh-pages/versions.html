@@ -64,7 +64,7 @@
 
             $scope.versionOrder = function(v) {
                 if (v === 'master') { return Infinity; }
-                if (v === 'current') { return Number.MAX_VALUE; }
+                if (v === 'stable') { return Number.MAX_VALUE; }
 
                 return $scope.normalizeVersion(v)
                     .split('.')
