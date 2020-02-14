@@ -4,9 +4,9 @@ use std::fmt;
 use std::marker::PhantomData;
 
 impl<'a> super::ForestObligation for &'a str {
-    type Predicate = &'a str;
+    type CacheKey = &'a str;
 
-    fn as_predicate(&self) -> &Self::Predicate {
+    fn as_cache_key(&self) -> Self::CacheKey {
         self
     }
 }

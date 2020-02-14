@@ -18,10 +18,13 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
-    type Predicate = ty::Predicate<'tcx>;
+    /// Note that we include both the `ParamEnv` and the `Predicate`,
+    /// as the `ParamEnv` can influence whether fulfillment succeeds
+    /// or fails.
+    type CacheKey = ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>;
 
-    fn as_predicate(&self) -> &Self::Predicate {
-        &self.obligation.predicate
+    fn as_cache_key(&self) -> Self::CacheKey {
+        self.obligation.param_env.and(self.obligation.predicate)
     }
 }
 
