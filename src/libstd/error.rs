@@ -151,6 +151,110 @@ pub trait Error: Debug + Display {
     }
 }
 
+/// A trait providing a method to get an iterator over an Error and its sources.
+#[unstable(feature = "error_iter", issue = "58520")]
+pub trait ErrorChain {
+    /// Returns an iterator starting with the current error and continuing with
+    /// recursively calling `source`.
+    ///
+    /// If you want to omit the current error and only use its sources,
+    /// use `skip(1)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(error_iter)]
+    /// use std::error::Error;
+    /// use std::error::ErrorChain as _;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct ErrorA;
+    ///
+    /// #[derive(Debug)]
+    /// struct ErrorB(Option<Box<dyn Error + 'static>>);
+    ///
+    /// impl fmt::Display for ErrorA {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "A")
+    ///     }
+    /// }
+    ///
+    /// impl fmt::Display for ErrorB {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "B")
+    ///     }
+    /// }
+    ///
+    /// impl Error for ErrorA {}
+    ///
+    /// impl Error for ErrorB {
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    ///         self.0.as_ref().map(|e| e.as_ref())
+    ///     }
+    /// }
+    ///
+    /// let error_b = ErrorB(Some(Box::new(ErrorA)));
+    ///
+    /// let mut iter = error_b.chain();
+    /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
+    /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
+    /// assert!(iter.next().is_none());
+    /// assert!(iter.next().is_none());
+    ///
+    /// let mut iter = (&error_b as &(dyn Error + 'static)).chain();
+    /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
+    /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
+    /// assert!(iter.next().is_none());
+    /// assert!(iter.next().is_none());
+    /// ```
+    fn chain(&self) -> Chain<'_>;
+}
+
+#[unstable(feature = "error_iter", issue = "58520")]
+impl<T: Error + 'static + Sized> ErrorChain for T {
+    /// Returns an iterator starting with the current error and continuing with
+    /// recursively calling `source`.
+    #[inline]
+    fn chain(&self) -> Chain<'_> {
+        Chain { current: Some(self) }
+    }
+}
+
+#[unstable(feature = "error_iter", issue = "58520")]
+impl ErrorChain for dyn Error + 'static {
+    /// Returns an iterator starting with the current error and continuing with
+    /// recursively calling `source`.
+    #[inline]
+    fn chain(&self) -> Chain<'_> {
+        Chain { current: Some(self) }
+    }
+}
+
+/// An iterator over an [`Error`] and its sources.
+///
+/// If you want to omit the initial error and only process
+/// its sources, use `skip(1)`.
+///
+/// [`Error`]: ../error/trait.Error.html
+#[unstable(feature = "error_iter", issue = "58520")]
+#[derive(Clone, Debug)]
+pub struct Chain<'a> {
+    current: Option<&'a (dyn Error + 'static)>,
+}
+
+#[unstable(feature = "error_iter", issue = "58520")]
+impl<'a> Iterator for Chain<'a> {
+    type Item = &'a (dyn Error + 'static);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        self.current = self.current.and_then(Error::source);
+        current
+    }
+}
+
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
     // implementations, since that can enable unsound downcasting.
@@ -652,88 +756,6 @@ impl dyn Error {
         } else {
             Err(self)
         }
-    }
-
-    /// Returns an iterator starting with the current error and continuing with
-    /// recursively calling [`source`].
-    ///
-    /// If you want to omit the current error and only use its sources,
-    /// use `skip(1)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(error_iter)]
-    /// use std::error::Error;
-    /// use std::fmt;
-    ///
-    /// #[derive(Debug)]
-    /// struct A;
-    ///
-    /// #[derive(Debug)]
-    /// struct B(Option<Box<dyn Error + 'static>>);
-    ///
-    /// impl fmt::Display for A {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "A")
-    ///     }
-    /// }
-    ///
-    /// impl fmt::Display for B {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "B")
-    ///     }
-    /// }
-    ///
-    /// impl Error for A {}
-    ///
-    /// impl Error for B {
-    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
-    ///         self.0.as_ref().map(|e| e.as_ref())
-    ///     }
-    /// }
-    ///
-    /// let b = B(Some(Box::new(A)));
-    ///
-    /// // let err : Box<Error> = b.into(); // or
-    /// let err = &b as &(dyn Error);
-    ///
-    /// let mut iter = err.chain();
-    ///
-    /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
-    /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
-    /// assert!(iter.next().is_none());
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// [`source`]: trait.Error.html#method.source
-    #[unstable(feature = "error_iter", issue = "58520")]
-    #[inline]
-    pub fn chain(&self) -> Chain<'_> {
-        Chain { current: Some(self) }
-    }
-}
-
-/// An iterator over an [`Error`] and its sources.
-///
-/// If you want to omit the initial error and only process
-/// its sources, use `skip(1)`.
-///
-/// [`Error`]: trait.Error.html
-#[unstable(feature = "error_iter", issue = "58520")]
-#[derive(Clone, Debug)]
-pub struct Chain<'a> {
-    current: Option<&'a (dyn Error + 'static)>,
-}
-
-#[unstable(feature = "error_iter", issue = "58520")]
-impl<'a> Iterator for Chain<'a> {
-    type Item = &'a (dyn Error + 'static);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        self.current = self.current.and_then(Error::source);
-        current
     }
 }
 
