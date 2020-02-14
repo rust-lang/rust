@@ -62,10 +62,10 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
-            let ebb = bcx.create_ebb();
-            bcx.switch_to_block(ebb);
-            let arg_argc = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
-            let arg_argv = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
+            let block = bcx.create_block();
+            bcx.switch_to_block(block);
+            let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
+            let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
 
             crate::atomic_shim::init_global_lock(m, &mut bcx);
 

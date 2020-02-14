@@ -10,25 +10,25 @@
 
 use crate::prelude::*;
 
-pub(super) fn optimize_function(ctx: &mut Context, cold_ebbs: &EntitySet<Ebb>) {
-    // FIXME Move the ebb in place instead of remove and append once
+pub(super) fn optimize_function(ctx: &mut Context, cold_blocks: &EntitySet<Block>) {
+    // FIXME Move the block in place instead of remove and append once
     // bytecodealliance/cranelift#1339 is implemented.
 
-    let mut ebb_insts = HashMap::new();
-    for ebb in cold_ebbs.keys().filter(|&ebb| cold_ebbs.contains(ebb)) {
-        let insts = ctx.func.layout.ebb_insts(ebb).collect::<Vec<_>>();
+    let mut block_insts = HashMap::new();
+    for block in cold_blocks.keys().filter(|&block| cold_blocks.contains(block)) {
+        let insts = ctx.func.layout.block_insts(block).collect::<Vec<_>>();
         for &inst in &insts {
             ctx.func.layout.remove_inst(inst);
         }
-        ebb_insts.insert(ebb, insts);
-        ctx.func.layout.remove_ebb(ebb);
+        block_insts.insert(block, insts);
+        ctx.func.layout.remove_block(block);
     }
 
     // And then append them at the back again.
-    for ebb in cold_ebbs.keys().filter(|&ebb| cold_ebbs.contains(ebb)) {
-        ctx.func.layout.append_ebb(ebb);
-        for inst in ebb_insts.remove(&ebb).unwrap() {
-            ctx.func.layout.append_inst(inst, ebb);
+    for block in cold_blocks.keys().filter(|&block| cold_blocks.contains(block)) {
+        ctx.func.layout.append_block(block);
+        for inst in block_insts.remove(&block).unwrap() {
+            ctx.func.layout.append_inst(inst, block);
         }
     }
 }

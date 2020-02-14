@@ -29,9 +29,9 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx = FunctionBuilder::new(&mut context.func, &mut func_ctx);
 
-    // Predefine ebb's
-    let start_ebb = bcx.create_ebb();
-    let ebb_map: IndexVec<BasicBlock, Ebb> = (0..mir.basic_blocks().len()).map(|_| bcx.create_ebb()).collect();
+    // Predefine block's
+    let start_block = bcx.create_block();
+    let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
@@ -46,10 +46,10 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         mir,
 
         bcx,
-        ebb_map,
+        block_map,
         local_map: HashMap::new(),
         caller_location: None, // set by `codegen_fn_prelude`
-        cold_ebbs: EntitySet::new(),
+        cold_blocks: EntitySet::new(),
 
         clif_comments,
         constants_cx: &mut cx.constants_cx,
@@ -58,13 +58,13 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     };
 
     if fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited()) {
-        let entry_block = fx.bcx.create_ebb();
-        fx.bcx.append_ebb_params_for_function_params(entry_block);
+        let entry_block = fx.bcx.create_block();
+        fx.bcx.append_block_params_for_function_params(entry_block);
         fx.bcx.switch_to_block(entry_block);
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
     } else {
         tcx.sess.time("codegen clif ir", || {
-            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_ebb));
+            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
             codegen_fn_content(&mut fx);
         });
     }
@@ -74,7 +74,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
-    let cold_ebbs = fx.cold_ebbs;
+    let cold_blocks = fx.cold_blocks;
 
     #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &context.func, &clif_comments, None);
@@ -84,7 +84,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &cold_ebbs, &mut clif_comments);
+        crate::optimize::optimize_function(tcx, instance, context, &cold_blocks, &mut clif_comments);
     });
 
     // Define function
@@ -142,22 +142,22 @@ pub fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func
 
 fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
-        let ebb = fx.get_ebb(bb);
-        fx.bcx.switch_to_block(ebb);
+        let block = fx.get_block(bb);
+        fx.bcx.switch_to_block(block);
 
         if bb_data.is_cleanup {
             // Unwinding after panicking is not supported
             continue;
 
             // FIXME once unwinding is supported uncomment next lines
-            // // Unwinding is unlikely to happen, so mark cleanup ebb's as cold.
-            // fx.cold_ebbs.insert(ebb);
+            // // Unwinding is unlikely to happen, so mark cleanup block's as cold.
+            // fx.cold_blocks.insert(block);
         }
 
         fx.bcx.ins().nop();
         for stmt in &bb_data.statements {
             fx.set_debug_loc(stmt.source_info);
-            trans_stmt(fx, ebb, stmt);
+            trans_stmt(fx, block, stmt);
         }
 
         #[cfg(debug_assertions)]
@@ -168,7 +168,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 .kind
                 .fmt_head(&mut terminator_head)
                 .unwrap();
-            let inst = fx.bcx.func.layout.last_inst(ebb).unwrap();
+            let inst = fx.bcx.func.layout.last_inst(block).unwrap();
             fx.add_comment(inst, terminator_head);
         }
 
@@ -176,8 +176,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
-                let ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(ebb, &[]);
+                let block = fx.get_block(*target);
+                fx.bcx.ins().jump(block, &[]);
             }
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
@@ -191,16 +191,16 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             } => {
                 if !fx.tcx.sess.overflow_checks() {
                     if let mir::AssertKind::OverflowNeg = *msg {
-                        let target = fx.get_ebb(*target);
+                        let target = fx.get_block(*target);
                         fx.bcx.ins().jump(target, &[]);
                         continue;
                     }
                 }
                 let cond = trans_operand(fx, cond).load_scalar(fx);
 
-                let target = fx.get_ebb(*target);
-                let failure = fx.bcx.create_ebb();
-                fx.cold_ebbs.insert(failure);
+                let target = fx.get_block(*target);
+                let failure = fx.bcx.create_block();
+                fx.cold_blocks.insert(failure);
 
                 if *expected {
                     fx.bcx.ins().brz(cond, failure, &[]);
@@ -229,11 +229,11 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 let discr = trans_operand(fx, discr).load_scalar(fx);
                 let mut switch = ::cranelift_frontend::Switch::new();
                 for (i, value) in values.iter().enumerate() {
-                    let ebb = fx.get_ebb(targets[i]);
-                    switch.set_entry(*value as u64, ebb);
+                    let block = fx.get_block(targets[i]);
+                    switch.set_entry(*value as u64, block);
                 }
-                let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
-                switch.emit(&mut fx.bcx, discr, otherwise_ebb);
+                let otherwise_block = fx.get_block(targets[targets.len() - 1]);
+                switch.emit(&mut fx.bcx, discr, otherwise_block);
             }
             TerminatorKind::Call {
                 func,
@@ -271,8 +271,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 let drop_place = trans_place(fx, location);
                 crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
-                let target_ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(target_ebb, &[]);
+                let target_block = fx.get_block(*target);
+                fx.bcx.ins().jump(target_block, &[]);
             }
         };
     }
@@ -283,7 +283,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
 fn trans_stmt<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    cur_ebb: Ebb,
+    cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
     let _print_guard = PrintOnPanic(|| format!("stmt {:?}", stmt));
@@ -294,7 +294,7 @@ fn trans_stmt<'tcx>(
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
-            let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
+            let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
             fx.add_comment(inst, format!("{:?}", stmt));
         }
     }

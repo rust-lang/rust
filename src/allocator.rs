@@ -78,11 +78,11 @@ fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKin
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
-            let ebb = bcx.create_ebb();
-            bcx.switch_to_block(ebb);
+            let block = bcx.create_block();
+            bcx.switch_to_block(block);
             let args = arg_tys
                 .into_iter()
-                .map(|ty| bcx.append_ebb_param(ebb, ty))
+                .map(|ty| bcx.append_block_param(block, ty))
                 .collect::<Vec<Value>>();
 
             let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);

@@ -7,11 +7,11 @@ pub fn optimize_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     ctx: &mut Context,
-    cold_ebbs: &EntitySet<Ebb>,
+    cold_blocks: &EntitySet<Block>,
     clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     // The code_layout optimization is very cheap.
-    self::code_layout::optimize_function(ctx, cold_ebbs);
+    self::code_layout::optimize_function(ctx, cold_blocks);
 
     if tcx.sess.opts.optimize == rustc_session::config::OptLevel::No {
         return; // FIXME classify optimizations over opt levels

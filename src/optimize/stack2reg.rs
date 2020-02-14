@@ -116,7 +116,7 @@ impl<'a> OptimizeContext<'a> {
         let mut stack_slot_usage_map = BTreeMap::<OrdStackSlot, StackSlotUsage>::new();
 
         let mut cursor = FuncCursor::new(&mut ctx.func);
-        while let Some(_ebb) = cursor.next_ebb() {
+        while let Some(_block) = cursor.next_block() {
             while let Some(inst) = cursor.next_inst() {
                 match cursor.func.dfg[inst] {
                     InstructionData::StackLoad {
@@ -249,7 +249,7 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
 fn combine_stack_addr_with_load_store(func: &mut Function) {
     // Turn load and store into stack_load and stack_store when possible.
     let mut cursor = FuncCursor::new(func);
-    while let Some(_ebb) = cursor.next_ebb() {
+    while let Some(_block) = cursor.next_block() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
                 InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
@@ -284,7 +284,7 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext) {
     let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
 
     let mut cursor = FuncCursor::new(&mut opt_ctx.ctx.func);
-    while let Some(_ebb) = cursor.next_ebb() {
+    while let Some(_block) = cursor.next_block() {
         while let Some(inst) = cursor.next_inst() {
             for &arg in cursor.func.dfg.inst_args(inst) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {

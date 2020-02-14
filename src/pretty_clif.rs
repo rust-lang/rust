@@ -38,14 +38,14 @@ use crate::prelude::*;
 ///     sig1 = (i64, i64, i64) system_v
 ///     fn0 = colocated u0:6 sig1 ; Instance { def: Item(DefId(0/0:31 ~ example[8787]::{{impl}}[1]::call_mut[0])), substs: [ReErased, ReErased] }
 ///
-/// ebb0(v0: i64, v1: i64, v2: i64):
+/// block0(v0: i64, v1: i64, v2: i64):
 ///     v3 = stack_addr.i64 ss0
 ///     v4 = stack_addr.i64 ss1
 ///     store v2, v4
 ///     v5 = stack_addr.i64 ss2
-///     jump ebb1
+///     jump block1
 ///
-/// ebb1:
+/// block1:
 ///     nop
 /// ; _3 = &mut _1
 /// ; _4 = _2
@@ -55,9 +55,9 @@ use crate::prelude::*;
 /// ; _0 = const mini_core::FnMut::call_mut(move _3, move _4)
 ///     v7 = load.i64 v5
 ///     call fn0(v0, v3, v7)
-///     jump ebb2
+///     jump block2
 ///
-/// ebb2:
+/// block2:
 ///     nop
 /// ;
 /// ; return
@@ -136,15 +136,15 @@ impl FuncWriter for &'_ CommentWriter {
         }
     }
 
-    fn write_ebb_header(
+    fn write_block_header(
         &mut self,
         w: &mut dyn fmt::Write,
         func: &Function,
         isa: Option<&dyn isa::TargetIsa>,
-        ebb: Ebb,
+        block: Block,
         indent: usize,
     ) -> fmt::Result {
-        PlainWriter.write_ebb_header(w, func, isa, ebb, indent)
+        PlainWriter.write_block_header(w, func, isa, block, indent)
     }
 
     fn write_instruction(

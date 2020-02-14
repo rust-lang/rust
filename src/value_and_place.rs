@@ -382,12 +382,12 @@ impl<'tcx> CPlace<'tcx> {
         #[cfg(debug_assertions)]
         {
             use cranelift_codegen::cursor::{Cursor, CursorPosition};
-            let cur_ebb = match fx.bcx.cursor().position() {
-                CursorPosition::After(ebb) => ebb,
+            let cur_block = match fx.bcx.cursor().position() {
+                CursorPosition::After(block) => block,
                 _ => unreachable!(),
             };
             fx.add_comment(
-                fx.bcx.func.layout.last_inst(cur_ebb).unwrap(),
+                fx.bcx.func.layout.last_inst(cur_block).unwrap(),
                 format!("write_cvalue: {:?} <- {:?}",self, from),
             );
         }

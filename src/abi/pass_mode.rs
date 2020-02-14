@@ -129,7 +129,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    start_ebb: Ebb,
+    start_block: Block,
     local: Option<mir::Local>,
     local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
@@ -142,7 +142,7 @@ pub(super) fn cvalue_for_param<'tcx>(
     }
 
     let clif_types = pass_mode.get_param_ty(fx.tcx);
-    let ebb_params = clif_types.map(|t| fx.bcx.append_ebb_param(start_ebb, t));
+    let block_params = clif_types.map(|t| fx.bcx.append_block_param(start_block, t));
 
     #[cfg(debug_assertions)]
     crate::abi::comments::add_arg_comment(
@@ -150,21 +150,21 @@ pub(super) fn cvalue_for_param<'tcx>(
         "arg",
         local,
         local_field,
-        ebb_params,
+        block_params,
         pass_mode,
         arg_ty,
     );
 
     match pass_mode {
         PassMode::NoPass => unreachable!(),
-        PassMode::ByVal(_) => Some(CValue::by_val(ebb_params.assert_single(), layout)),
+        PassMode::ByVal(_) => Some(CValue::by_val(block_params.assert_single(), layout)),
         PassMode::ByValPair(_, _) => {
-            let (a, b) = ebb_params.assert_pair();
+            let (a, b) = block_params.assert_pair();
             Some(CValue::by_val_pair(a, b, layout))
         }
-        PassMode::ByRef { sized: true } => Some(CValue::by_ref(Pointer::new(ebb_params.assert_single()), layout)),
+        PassMode::ByRef { sized: true } => Some(CValue::by_ref(Pointer::new(block_params.assert_single()), layout)),
         PassMode::ByRef { sized: false } => {
-            let (ptr, meta) = ebb_params.assert_pair();
+            let (ptr, meta) = block_params.assert_pair();
             Some(CValue::by_ref_unsized(Pointer::new(ptr), meta, layout))
         }
     }

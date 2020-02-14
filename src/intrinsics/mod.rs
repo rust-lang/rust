@@ -87,8 +87,8 @@ macro call_intrinsic_match {
                         $ret.write_cvalue($fx, res);
 
                         if let Some((_, dest)) = $destination {
-                            let ret_ebb = $fx.get_ebb(dest);
-                            $fx.bcx.ins().jump(ret_ebb, &[]);
+                            let ret_block = $fx.get_block(dest);
+                            $fx.bcx.ins().jump(ret_block, &[]);
                             return;
                         } else {
                             unreachable!();
@@ -369,8 +369,8 @@ pub fn codegen_intrinsic_call<'tcx>(
 
     if intrinsic.starts_with("simd_") {
         self::simd::codegen_simd_intrinsic_call(fx, instance, args, ret, span);
-        let ret_ebb = fx.get_ebb(destination.expect("SIMD intrinsics don't diverge").1);
-        fx.bcx.ins().jump(ret_ebb, &[]);
+        let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
+        fx.bcx.ins().jump(ret_block, &[]);
         return;
     }
 
@@ -992,8 +992,8 @@ pub fn codegen_intrinsic_call<'tcx>(
     }
 
     if let Some((_, dest)) = destination {
-        let ret_ebb = fx.get_ebb(dest);
-        fx.bcx.ins().jump(ret_ebb, &[]);
+        let ret_block = fx.get_block(dest);
+        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
     }

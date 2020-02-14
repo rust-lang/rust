@@ -264,14 +264,14 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub mir: &'tcx Body<'tcx>,
 
     pub bcx: FunctionBuilder<'clif>,
-    pub ebb_map: IndexVec<BasicBlock, Ebb>,
+    pub block_map: IndexVec<BasicBlock, Block>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub caller_location: Option<CValue<'tcx>>,
 
     /// See [crate::optimize::code_layout] for more information.
-    pub cold_ebbs: EntitySet<Ebb>,
+    pub cold_blocks: EntitySet<Block>,
 
     pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants_cx: &'clif mut crate::constant::ConstantCx,
@@ -325,7 +325,7 @@ impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
 impl<'tcx, B: Backend> BackendTypes for FunctionCx<'_, 'tcx, B> {
     type Value = Value;
     type Function = Value;
-    type BasicBlock = Ebb;
+    type BasicBlock = Block;
     type Type = Type;
     type Funclet = !;
     type DIScope = !;
@@ -348,8 +348,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         clif_type_from_ty(self.tcx, ty)
     }
 
-    pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
-        *self.ebb_map.get(bb).unwrap()
+    pub fn get_block(&self, bb: BasicBlock) -> Block {
+        *self.block_map.get(bb).unwrap()
     }
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {

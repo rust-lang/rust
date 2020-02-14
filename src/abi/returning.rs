@@ -16,7 +16,7 @@ pub fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx
 pub(super) fn codegen_return_param(
     fx: &mut FunctionCx<impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
-    start_ebb: Ebb,
+    start_block: Block,
 ) {
     let ret_layout = return_layout(fx);
     let ret_pass_mode = get_pass_mode(fx.tcx, ret_layout);
@@ -34,7 +34,7 @@ pub(super) fn codegen_return_param(
             Empty
         }
         PassMode::ByRef { sized: true } => {
-            let ret_param = fx.bcx.append_ebb_param(start_ebb, fx.pointer_type);
+            let ret_param = fx.bcx.append_block_param(start_block, fx.pointer_type);
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::for_ptr(Pointer::new(ret_param), ret_layout));
 

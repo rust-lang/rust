@@ -118,8 +118,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         let encinfo = isa.encoding_info();
         let func = &context.func;
-        let mut ebbs = func.layout.ebbs().collect::<Vec<_>>();
-        ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
+        let mut blocks = func.layout.blocks().collect::<Vec<_>>();
+        blocks.sort_by_key(|block| func.offsets[*block]); // Ensure inst offsets always increase
 
         let line_strings = &mut self.debug_context.dwarf.line_strings;
         let mut last_file = None;
@@ -147,8 +147,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         };
 
         let mut end = 0;
-        for ebb in ebbs {
-            for (offset, inst, size) in func.inst_offsets(ebb, &encinfo) {
+        for block in blocks {
+            for (offset, inst, size) in func.inst_offsets(block, &encinfo) {
                 let srcloc = func.srclocs[inst];
                 line_program.row().address_offset = offset as u64;
                 if !srcloc.is_default() {

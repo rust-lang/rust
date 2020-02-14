@@ -288,13 +288,13 @@ fn local_place<'tcx>(
     fx.local_map[&local]
 }
 
-pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: Ebb) {
+pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block: Block) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
     self::comments::add_args_header_comment(fx);
 
-    self::returning::codegen_return_param(fx, &ssa_analyzed, start_ebb);
+    self::returning::codegen_return_param(fx, &ssa_analyzed, start_block);
 
     // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
@@ -322,13 +322,13 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
                 let mut params = Vec::new();
                 for (i, arg_ty) in tupled_arg_tys.types().enumerate() {
-                    let param = cvalue_for_param(fx, start_ebb, Some(local), Some(i), arg_ty);
+                    let param = cvalue_for_param(fx, start_block, Some(local), Some(i), arg_ty);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let param = cvalue_for_param(fx, start_ebb, Some(local), None, arg_ty);
+                let param = cvalue_for_param(fx, start_block, Some(local), None, arg_ty);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
@@ -337,10 +337,10 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
     assert!(fx.caller_location.is_none());
     if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
-        fx.caller_location = Some(cvalue_for_param(fx, start_ebb, None, None, fx.tcx.caller_location_ty()).unwrap());
+        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, fx.tcx.caller_location_ty()).unwrap());
     }
 
-    fx.bcx.switch_to_block(start_ebb);
+    fx.bcx.switch_to_block(start_block);
     fx.bcx.ins().nop();
 
     #[cfg(debug_assertions)]
@@ -416,7 +416,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
     fx.bcx
         .ins()
-        .jump(*fx.ebb_map.get(START_BLOCK).unwrap(), &[]);
+        .jump(*fx.block_map.get(START_BLOCK).unwrap(), &[]);
 }
 
 pub fn codegen_terminator_call<'tcx>(
@@ -458,8 +458,8 @@ pub fn codegen_terminator_call<'tcx>(
             InstanceDef::DropGlue(_, None) => {
                 // empty drop glue - a nop.
                 let (_, dest) = destination.expect("Non terminating drop_in_place_real???");
-                let ret_ebb = fx.get_ebb(dest);
-                fx.bcx.ins().jump(ret_ebb, &[]);
+                let ret_block = fx.get_block(dest);
+                fx.bcx.ins().jump(ret_block, &[]);
                 return;
             }
             _ => {}
@@ -498,8 +498,8 @@ pub fn codegen_terminator_call<'tcx>(
     );
 
     if let Some((_, dest)) = destination {
-        let ret_ebb = fx.get_ebb(dest);
-        fx.bcx.ins().jump(ret_ebb, &[]);
+        let ret_block = fx.get_block(dest);
+        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         trap_unreachable(fx, "[corruption] Diverging function returned");
     }
@@ -513,7 +513,7 @@ fn codegen_call_inner<'tcx>(
     args: Vec<CValue<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
 ) {
-    // FIXME mark the current ebb as cold when calling a `#[cold]` function.
+    // FIXME mark the current block as cold when calling a `#[cold]` function.
     let fn_sig = fx
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
