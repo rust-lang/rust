@@ -119,9 +119,12 @@ mod mut_ptr;
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `to_drop` must be [valid] for reads.
+/// * `to_drop` must be [valid] for both reads and writes.
 ///
 /// * `to_drop` must be properly aligned.
+///
+/// * The value `to_drop` points to must be valid for dropping, which may mean it must uphold
+///   additional invariants - this is type-dependent.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
