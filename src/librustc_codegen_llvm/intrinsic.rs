@@ -193,8 +193,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
-                let const_ = ty::Const { val: ty::ConstKind::Value(ty_name), ty: ret_ty };
-                OperandRef::from_const(self, &const_).immediate_or_packed_pair(self)
+                OperandRef::from_const(self, ty_name, ret_ty).immediate_or_packed_pair(self)
             }
             "init" => {
                 let ty = substs.type_at(0);
