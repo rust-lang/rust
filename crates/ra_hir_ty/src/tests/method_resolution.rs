@@ -964,6 +964,38 @@ fn test() { S2.into()<|>; }
 }
 
 #[test]
+fn method_resolution_overloaded_method() {
+    test_utils::covers!(impl_self_type_match_without_receiver);
+    let t = type_at(
+        r#"
+//- main.rs
+struct Wrapper<T>(T);
+struct Foo<T>(T);
+struct Bar<T>(T);
+
+impl<T> Wrapper<Foo<T>> {
+    pub fn new(foo_: T) -> Self {
+        Wrapper(Foo(foo_))
+    }
+}
+
+impl<T> Wrapper<Bar<T>> {
+    pub fn new(bar_: T) -> Self {
+        Wrapper(Bar(bar_))
+    }
+}
+
+fn main() {
+    let a = Wrapper::<Foo<f32>>::new(1.0);
+    let b = Wrapper::<Bar<f32>>::new(1.0);
+    (a, b)<|>;
+}
+"#,
+    );
+    assert_eq!(t, "(Wrapper<Foo<f32>>, Wrapper<Bar<f32>>)")
+}
+
+#[test]
 fn method_resolution_encountering_fn_type() {
     type_at(
         r#"
