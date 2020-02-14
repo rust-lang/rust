@@ -1,11 +1,10 @@
 //! Installs rust-analyzer language server and/or editor plugin.
 
-use std::{env, fs, path::PathBuf, str};
+use std::{env, path::PathBuf, str};
 
 use anyhow::{bail, format_err, Context, Result};
-use walkdir::WalkDir;
 
-use crate::not_bash::{pushd, run};
+use crate::not_bash::{ls, pushd, rm, run};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 41;
@@ -85,15 +84,6 @@ fn fix_path_for_mac() -> Result<()> {
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     let _dir = pushd("./editors/code");
 
-    let list_vsixes = || {
-        WalkDir::new("./editors/code")
-            .max_depth(1)
-            .into_iter()
-            .map(|it| it.unwrap())
-            .map(|it| it.path().to_owned())
-            .filter(|it| it.file_name().unwrap_or_default().to_string_lossy().ends_with(".vsix"))
-    };
-
     let find_code = |f: fn(&str) -> bool| -> Result<&'static str> {
         ["code", "code-insiders", "codium", "code-oss"]
             .iter()
@@ -110,13 +100,13 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
         run!("npm install")?;
 
         let vsix_pkg = {
-            list_vsixes().try_for_each(fs::remove_file)?;
+            rm("*.vsix")?;
             run!("npm run package --scripts-prepend-node-path")?;
-            list_vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string()
+            ls("*.vsix")?.pop().unwrap()
         };
 
         let code = find_code(|bin| run!("{} --version", bin).is_ok())?;
-        run!("{} --install-extension ./{} --force", code, vsix_pkg)?;
+        run!("{} --install-extension {} --force", code, vsix_pkg.display())?;
         installed_extensions = run!("{} --list-extensions", code; echo = false)?;
     } else {
         run!("cmd.exe /c npm --version")
@@ -124,13 +114,13 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
         run!("cmd.exe /c npm install")?;
 
         let vsix_pkg = {
-            list_vsixes().try_for_each(fs::remove_file)?;
+            rm("*.vsix")?;
             run!("cmd.exe /c npm run package")?;
-            list_vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string()
+            ls("*.vsix")?.pop().unwrap()
         };
 
         let code = find_code(|bin| run!("cmd.exe /c {}.cmd --version", bin).is_ok())?;
-        run!(r"cmd.exe /c {}.cmd --install-extension ./{} --force", code, vsix_pkg)?;
+        run!(r"cmd.exe /c {}.cmd --install-extension {} --force", code, vsix_pkg.display())?;
         installed_extensions = run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?;
     }
 
