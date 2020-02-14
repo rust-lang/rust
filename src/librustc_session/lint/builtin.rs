@@ -47,6 +47,18 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub OVERFLOW,
+    Deny,
+    "arithmetic operation overflows"
+}
+
+declare_lint! {
+    pub PANIC,
+    Deny,
+    "operation will cause a panic at runtime"
+}
+
+declare_lint! {
     pub CONST_ERR,
     Deny,
     "constant evaluation detected erroneous expression",
@@ -496,6 +508,8 @@ declare_lint_pass! {
     HardwiredLints => [
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         EXCEEDING_BITSHIFTS,
+        OVERFLOW,
+        PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
         UNUSED_QUALIFICATIONS,
