@@ -2,7 +2,7 @@
 
 use std::{env, path::PathBuf, str};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, format_err, Context, Result};
 
 use crate::cmd::{run, run_with_output, Cmd};
 
@@ -55,7 +55,7 @@ fn fix_path_for_mac() -> Result<()> {
         const ROOT_DIR: &str = "";
         let home_dir = match env::var("HOME") {
             Ok(home) => home,
-            Err(e) => anyhow::bail!("Failed getting HOME from environment with error: {}.", e),
+            Err(e) => bail!("Failed getting HOME from environment with error: {}.", e),
         };
 
         [ROOT_DIR, &home_dir]
@@ -69,7 +69,7 @@ fn fix_path_for_mac() -> Result<()> {
     if !vscode_path.is_empty() {
         let vars = match env::var_os("PATH") {
             Some(path) => path,
-            None => anyhow::bail!("Could not get PATH variable from env."),
+            None => bail!("Could not get PATH variable from env."),
         };
 
         let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
@@ -90,7 +90,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     .run();
 
     if npm_version.is_err() {
-        eprintln!("\nERROR: `npm --version` failed, `npm` is required to build the VS Code plugin")
+        bail!("`npm --version` failed, `npm` is required to build the VS Code plugin")
     }
 
     Cmd { unix: r"npm install", windows: r"cmd.exe /c npm install", work_dir: "./editors/code" }
@@ -102,20 +102,20 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     }
     .run()?;
 
-    let code_binary = ["code", "code-insiders", "codium", "code-oss"].iter().find(|bin| {
-        Cmd {
-            unix: &format!("{} --version", bin),
-            windows: &format!("cmd.exe /c {}.cmd --version", bin),
-            work_dir: "./editors/code",
-        }
-        .run()
-        .is_ok()
-    });
-
-    let code_binary = match code_binary {
-        Some(it) => it,
-        None => anyhow::bail!("Can't execute `code --version`. Perhaps it is not in $PATH?"),
-    };
+    let code_binary = ["code", "code-insiders", "codium", "code-oss"]
+        .iter()
+        .find(|bin| {
+            Cmd {
+                unix: &format!("{} --version", bin),
+                windows: &format!("cmd.exe /c {}.cmd --version", bin),
+                work_dir: "./editors/code",
+            }
+            .run()
+            .is_ok()
+        })
+        .ok_or_else(|| {
+            format_err!("Can't execute `code --version`. Perhaps it is not in $PATH?")
+        })?;
 
     Cmd {
         unix: &format!(r"{} --install-extension ./rust-analyzer-0.1.0.vsix --force", code_binary),
@@ -135,22 +135,10 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     .run_with_output()?;
 
     if !installed_extensions.contains("rust-analyzer") {
-        anyhow::bail!(
+        bail!(
             "Could not install the Visual Studio Code extension. \
              Please make sure you have at least NodeJS 10.x together with the latest version of VS Code installed and try again."
         );
-    }
-
-    if installed_extensions.contains("ra-lsp") {
-        Cmd {
-            unix: &format!(r"{} --uninstall-extension matklad.ra-lsp", code_binary),
-            windows: &format!(
-                r"cmd.exe /c {}.cmd --uninstall-extension matklad.ra-lsp",
-                code_binary
-            ),
-            work_dir: "./editors/code",
-        }
-        .run()?;
     }
 
     Ok(())
