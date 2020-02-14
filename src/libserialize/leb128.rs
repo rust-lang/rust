@@ -1,7 +1,31 @@
+#[cfg(target_pointer_width = "32")]
+const USIZE_LEB128_SIZE: usize = 5;
+#[cfg(target_pointer_width = "64")]
+const USIZE_LEB128_SIZE: usize = 10;
+
+macro_rules! leb128_size {
+    (u16) => {
+        3
+    };
+    (u32) => {
+        5
+    };
+    (u64) => {
+        10
+    };
+    (u128) => {
+        19
+    };
+    (usize) => {
+        USIZE_LEB128_SIZE
+    };
+}
+
 macro_rules! impl_write_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ident) => {
         #[inline]
         pub fn $fn_name(out: &mut Vec<u8>, mut value: $int_ty) {
+            // A `loop` is faster than a `for` loop for writing.
             loop {
                 if value < 0x80 {
                     out.push(value as u8);
@@ -28,17 +52,17 @@ macro_rules! impl_read_unsigned_leb128 {
             let mut result = 0;
             let mut shift = 0;
             let mut position = 0;
-            loop {
+            // A `for` loop is faster than a `loop` for reading.
+            for _ in 0..leb128_size!($int_ty) {
                 let byte = slice[position];
                 position += 1;
+                result |= ((byte & 0x7F) as $int_ty) << shift;
                 if (byte & 0x80) == 0 {
-                    result |= (byte as $int_ty) << shift;
-                    return (result, position);
-                } else {
-                    result |= ((byte & 0x7F) as $int_ty) << shift;
+                    break;
                 }
                 shift += 7;
             }
+            (result, position)
         }
     };
 }
