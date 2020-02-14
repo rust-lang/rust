@@ -127,7 +127,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     if !installed_extensions.contains("rust-analyzer") {
         bail!(
             "Could not install the Visual Studio Code extension. \
-             Please make sure you have at least NodeJS 10.x together with the latest version of VS Code installed and try again."
+             Please make sure you have at least NodeJS 12.x together with the latest version of VS Code installed and try again."
         );
     }
 
