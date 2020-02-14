@@ -191,9 +191,9 @@ fn generic_extension<'cx>(
     let mut best_failure: Option<(Token, &str)> = None;
 
     // We create a base parser that can be used for the "black box" parts.
-    // Every iteration needs a fresh copy of that base parser. However, the
-    // parser is not mutated on many of the iterations, particularly when
-    // dealing with macros like this:
+    // Every iteration needs a fresh copy of that parser. However, the parser
+    // is not mutated on many of the iterations, particularly when dealing with
+    // macros like this:
     //
     // macro_rules! foo {
     //     ("a") => (A);
@@ -209,11 +209,9 @@ fn generic_extension<'cx>(
     // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
-    let base_parser = base_parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
+    let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
 
     for (i, lhs) in lhses.iter().enumerate() {
-        let mut parser = Cow::Borrowed(&base_parser);
-
         // try each arm's matchers
         let lhs_tt = match *lhs {
             mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
@@ -224,13 +222,14 @@ fn generic_extension<'cx>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot =
+            mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
 
-        match parse_tt(&mut parser, lhs_tt) {
+        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
-                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+                cx.parse_sess.gated_spans.merge(gated_spans_snapshot);
 
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -291,9 +290,9 @@ fn generic_extension<'cx>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
     }
-    drop(base_parser);
+    drop(parser);
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
@@ -311,9 +310,8 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            let base_parser =
-                base_parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
-            match parse_tt(&mut Cow::Borrowed(&base_parser), lhs_tt) {
+            let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
+            match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
                 Success(_) => {
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
@@ -395,8 +393,8 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let base_parser = Parser::new(sess, body, None, true, true, rustc_parse::MACRO_ARGUMENTS);
-    let argument_map = match parse_tt(&mut Cow::Borrowed(&base_parser), &argument_gram) {
+    let parser = Parser::new(sess, body, None, true, true, rustc_parse::MACRO_ARGUMENTS);
+    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
@@ -1212,7 +1210,7 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn base_parser_from_cx<'cx>(
+fn parser_from_cx<'cx>(
     current_expansion: &'cx ExpansionData,
     sess: &'cx ParseSess,
     tts: TokenStream,
