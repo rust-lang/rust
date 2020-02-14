@@ -47,7 +47,7 @@ Alternatively, both the server and the plugin can be installed from source:
 
 [source]
 ----
-$ git clone https://github.com/rust-analyzer/rust-analyzer.git && cs rust-analyzer
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyzer
 $ cargo xtask install
 ----
 
