@@ -1612,7 +1612,7 @@ pub mod tls {
 
     use crate::dep_graph::TaskDeps;
     use crate::ty::query;
-    use rustc_data_structures::sync::{self, Lock, Lrc};
+    use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
     use rustc_data_structures::OnDrop;
     use rustc_errors::Diagnostic;
@@ -1637,7 +1637,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
         /// `ty::query::plumbing` when executing a query.
-        pub query: Option<Lrc<query::QueryJob<'tcx>>>,
+        pub query: Option<query::QueryJobId>,
 
         /// Where to store diagnostics for the current query job, if any.
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
