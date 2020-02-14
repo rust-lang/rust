@@ -26,6 +26,11 @@ fn main() {
                 .arg_from_usage(dir_message),
         )
         .subcommand(
+            SubCommand::with_name("test")
+                .about("Tests that a book's Rust code samples compile")
+                .arg_from_usage(dir_message),
+        )
+        .subcommand(
             SubCommand::with_name("linkcheck")
                 .about("Run linkcheck with mdBook 3")
                 .arg_from_usage(dir_message),
@@ -36,13 +41,12 @@ fn main() {
     match matches.subcommand() {
         ("build", Some(sub_matches)) => {
             if let Err(e) = build(sub_matches) {
-                eprintln!("Error: {}", e);
-
-                for cause in e.iter().skip(1) {
-                    eprintln!("\tCaused By: {}", cause);
-                }
-
-                ::std::process::exit(101);
+                handle_error(e);
+            }
+        }
+        ("test", Some(sub_matches)) => {
+            if let Err(e) = test(sub_matches) {
+                handle_error(e);
             }
         }
         ("linkcheck", Some(sub_matches)) => {
@@ -148,6 +152,12 @@ pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
     Ok(())
 }
 
+fn test(args: &ArgMatches<'_>) -> Result3<()> {
+    let book_dir = get_book_dir(args);
+    let mut book = MDBook::load(&book_dir)?;
+    book.test(vec![])
+}
+
 fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
     if let Some(dir) = args.value_of("dir") {
         // Check if path is relative from current dir, or absolute...
@@ -156,4 +166,14 @@ fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
     } else {
         env::current_dir().unwrap()
     }
+}
+
+fn handle_error(error: mdbook::errors::Error) -> ! {
+    eprintln!("Error: {}", error);
+
+    for cause in error.iter().skip(1) {
+        eprintln!("\tCaused By: {}", cause);
+    }
+
+    ::std::process::exit(101);
 }
