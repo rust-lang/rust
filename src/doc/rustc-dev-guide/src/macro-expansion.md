@@ -69,14 +69,13 @@ defined in [`src/librustc_expand/mbe/macro_parser.rs`][code_mp].
 The interface of the macro parser is as follows (this is slightly simplified):
 
 ```rust,ignore
-fn parse(
-    sess: ParserSession,
-    tts: TokenStream,
-    ms: &[TokenTree]
+fn parse_tt(
+    parser: &mut Cow<Parser>, 
+    ms: &[TokenTree],
 ) -> NamedParseResult
 ```
 
-In this interface:
+We use these items in macro parser:
 
 - `sess` is a "parsing session", which keeps track of some metadata. Most
   notably, this is used to keep track of errors that are generated so they can
