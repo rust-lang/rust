@@ -86,7 +86,7 @@ use sparse bitsets).
 
 The kinds of region elements are as follows:
 
-- Each **location** in the MIR control-flow graph: a location is just
+- Each **[`location`]** in the MIR control-flow graph: a location is just
   the pair of a basic block and an index. This identifies the point
   **on entry** to the statement with that index (or the terminator, if
   the index is equal to `statements.len()`).
@@ -219,6 +219,7 @@ Here are some of the fields of the struct:
 
 [`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.constraints
 [`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
+[`location`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/struct.Location.html
 [`universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_regions
 [`universal_region_relations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_region_relations
 [`type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.type_tests
