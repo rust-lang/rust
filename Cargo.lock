@@ -1564,7 +1564,7 @@ dependencies = [
  "rand_xoshiro",
  "sized-chunks",
  "typenum",
- "version_check 0.9.1",
+ "version_check",
 ]
 
 [[package]]
@@ -2014,9 +2014,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.2.0"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
+checksum = "53445de381a1f436797497c61d851644d0e8e88e6140f22872ad33a704933978"
 
 [[package]]
 name = "memmap"
@@ -2604,23 +2604,23 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77043da1282374688ee212dc44b3f37ff929431de9c9adc3053bd3cee5630357"
-dependencies = [
- "bitflags",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c205cc82214f3594e2d50686730314f817c67ffa80fe800cf0db78c3c2b9d9e"
 dependencies = [
  "bitflags",
  "getopts",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c2d7fd131800e0d63df52aff46201acaab70b431a4a1ec6f0343fe8e64f35a4"
+dependencies = [
+ "bitflags",
  "memchr",
  "unicase",
 ]
@@ -4160,7 +4160,7 @@ version = "0.0.0"
 dependencies = [
  "itertools 0.8.0",
  "minifier",
- "pulldown-cmark 0.5.3",
+ "pulldown-cmark 0.7.0",
  "rustc-rayon",
  "serde",
  "serde_json",
@@ -5160,11 +5160,11 @@ checksum = "535c204ee4d8434478593480b8f86ab45ec9aae0e83c568ca81abf0fd0e88f86"
 
 [[package]]
 name = "unicase"
-version = "2.5.1"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e2e6bd1e59e56598518beb94fd6db628ded570326f0a98c679a304bd9f00150"
+checksum = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
 dependencies = [
- "version_check 0.1.5",
+ "version_check",
 ]
 
 [[package]]
@@ -5333,12 +5333,6 @@ dependencies = [
  "chrono",
  "failure",
 ]
-
-[[package]]
-name = "version_check"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 
 [[package]]
 name = "version_check"
