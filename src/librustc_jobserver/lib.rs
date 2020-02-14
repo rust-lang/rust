@@ -261,8 +261,6 @@ struct JobserverNotification {
     jobserver_event: Event,
 }
 
-// Unlike releasing tokens, there's not really a "one size fits all" approach, as we have two
-// primary ways of acquiring a token: via the helper thread, and via the acquire_thread function.
 fn notify_acquiring_token() {
     if should_notify() {
         eprintln!("{}", as_json(&JobserverNotification { jobserver_event: Event::WillAcquire }));
