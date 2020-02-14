@@ -79,16 +79,16 @@ fn add_function_impl(
 ) {
     let display = FunctionSignature::from_hir(ctx.db, func.clone());
 
-    let func_name = func.name(ctx.db);
+    let fn_name = func.name(ctx.db).to_string();
 
     let label = if func.params(ctx.db).len() > 0 {
-        format!("fn {}(..)", func_name.to_string())
+        format!("fn {}(..)", fn_name)
     } else {
-        format!("fn {}()", func_name.to_string())
+        format!("fn {}()", fn_name)
     };
 
     let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label.clone())
-        .lookup_by(label)
+        .lookup_by(fn_name)
         .set_documentation(func.docs(ctx.db));
 
     let completion_kind = if func.has_self_param(ctx.db) {
@@ -111,10 +111,13 @@ fn add_type_alias_impl(
     ctx: &CompletionContext,
     type_alias: &hir::TypeAlias,
 ) {
-    let snippet = format!("type {} = ", type_alias.name(ctx.db).to_string());
+    let alias_name = type_alias.name(ctx.db).to_string();
+
+    let snippet = format!("type {} = ", alias_name);
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
         .text_edit(TextEdit::replace(type_def_node.text_range(), snippet))
+        .lookup_by(alias_name)
         .kind(CompletionItemKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db))
         .add_to(acc);
@@ -126,13 +129,18 @@ fn add_const_impl(
     ctx: &CompletionContext,
     const_: &hir::Const,
 ) {
-    let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
+    let const_name = const_.name(ctx.db).map(|n| n.to_string());
 
-    CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-        .text_edit(TextEdit::replace(const_def_node.text_range(), snippet))
-        .kind(CompletionItemKind::Const)
-        .set_documentation(const_.docs(ctx.db))
-        .add_to(acc);
+    if let Some(const_name) = const_name {
+        let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
+
+        CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
+            .text_edit(TextEdit::replace(const_def_node.text_range(), snippet))
+            .lookup_by(const_name)
+            .kind(CompletionItemKind::Const)
+            .set_documentation(const_.docs(ctx.db))
+            .add_to(acc);
+    }
 }
 
 fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
@@ -178,7 +186,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                fn<|>
+                fn f<|>
             }
             ",
         );
@@ -186,10 +194,11 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [140; 140),
-                delete: [138; 140),
+                source_range: [141; 142),
+                delete: [138; 142),
                 insert: "fn foo() {}",
                 kind: Function,
+                lookup: "foo",
             },
         ]
         "###);
@@ -201,7 +210,7 @@ mod tests {
             r"
             trait Test {
                 fn foo();
-                fn bar();
+                fn foo_bar();
             }
 
             struct T1;
@@ -209,18 +218,19 @@ mod tests {
             impl Test for T1 {
                 fn foo() {}
 
-                fn<|>
+                fn f<|>
             }
             ",
         );
         assert_debug_snapshot!(completions, @r###"
         [
             CompletionItem {
-                label: "fn bar()",
-                source_range: [195; 195),
-                delete: [193; 195),
-                insert: "fn bar() {}",
+                label: "fn foo_bar()",
+                source_range: [200; 201),
+                delete: [197; 201),
+                insert: "fn foo_bar() {}",
                 kind: Function,
+                lookup: "foo_bar",
             },
         ]
         "###);
@@ -237,7 +247,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                fn<|>
+                fn f<|>
             }
             ",
         );
@@ -245,10 +255,11 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [143; 143),
-                delete: [141; 143),
+                source_range: [144; 145),
+                delete: [141; 145),
                 insert: "fn foo<T>() {}",
                 kind: Function,
+                lookup: "foo",
             },
         ]
         "###);
@@ -265,7 +276,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                fn<|>
+                fn f<|>
             }
             ",
         );
@@ -273,10 +284,11 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [165; 165),
-                delete: [163; 165),
+                source_range: [166; 167),
+                delete: [163; 167),
                 insert: "fn foo<T>()\nwhere T: Into<String> {}",
                 kind: Function,
+                lookup: "foo",
             },
         ]
         "###);
@@ -291,7 +303,7 @@ mod tests {
             }
 
             impl Test for () {
-                type<|>
+                type S<|>
             }
             ",
         );
@@ -299,10 +311,11 @@ mod tests {
         [
             CompletionItem {
                 label: "type SomeType = ",
-                source_range: [123; 123),
-                delete: [119; 123),
+                source_range: [124; 125),
+                delete: [119; 125),
                 insert: "type SomeType = ",
                 kind: TypeAlias,
+                lookup: "SomeType",
             },
         ]
         "###);
@@ -329,6 +342,7 @@ mod tests {
                 delete: [127; 134),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
+                lookup: "SOME_CONST",
             },
         ]
         "###);
@@ -355,6 +369,7 @@ mod tests {
                 delete: [132; 139),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
+                lookup: "SOME_CONST",
             },
         ]
         "###);
