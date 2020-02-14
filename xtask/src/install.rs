@@ -5,7 +5,7 @@ use std::{env, fs, path::PathBuf, str};
 use anyhow::{bail, format_err, Context, Result};
 use walkdir::WalkDir;
 
-use crate::cmd::{run, run_with_output, Cmd};
+use crate::not_bash::{pushd, run};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 41;
@@ -83,21 +83,9 @@ fn fix_path_for_mac() -> Result<()> {
 }
 
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
-    let npm_version = Cmd {
-        unix: r"npm --version",
-        windows: r"cmd.exe /c npm --version",
-        work_dir: "./editors/code",
-    }
-    .run();
+    let _dir = pushd("./editors/code");
 
-    if npm_version.is_err() {
-        bail!("`npm --version` failed, `npm` is required to build the VS Code plugin")
-    }
-
-    Cmd { unix: r"npm install", windows: r"cmd.exe /c npm install", work_dir: "./editors/code" }
-        .run()?;
-
-    let vsixes = || {
+    let list_vsixes = || {
         WalkDir::new("./editors/code")
             .max_depth(1)
             .into_iter()
@@ -106,50 +94,45 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
             .filter(|it| it.file_name().unwrap_or_default().to_string_lossy().ends_with(".vsix"))
     };
 
-    for path in vsixes() {
-        fs::remove_file(path)?
+    let find_code = |f: fn(&str) -> bool| -> Result<&'static str> {
+        ["code", "code-insiders", "codium", "code-oss"]
+            .iter()
+            .copied()
+            .find(|bin| f(bin))
+            .ok_or_else(|| {
+                format_err!("Can't execute `code --version`. Perhaps it is not in $PATH?")
+            })
+    };
+
+    let installed_extensions;
+    if cfg!(unix) {
+        run!("npm --version").context("`npm` is required to build the VS Code plugin")?;
+        run!("npm install")?;
+
+        let vsix_pkg = {
+            list_vsixes().try_for_each(fs::remove_file)?;
+            run!("npm run package --scripts-prepend-node-path")?;
+            list_vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string()
+        };
+
+        let code = find_code(|bin| run!("{} --version", bin).is_ok())?;
+        run!("{} --install-extension ./{} --force", code, vsix_pkg)?;
+        installed_extensions = run!("{} --list-extensions", code; echo = false)?;
+    } else {
+        run!("cmd.exe /c npm --version")
+            .context("`npm` is required to build the VS Code plugin")?;
+        run!("cmd.exe /c npm install")?;
+
+        let vsix_pkg = {
+            list_vsixes().try_for_each(fs::remove_file)?;
+            run!("cmd.exe /c npm run package")?;
+            list_vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string()
+        };
+
+        let code = find_code(|bin| run!("cmd.exe /c {}.cmd --version", bin).is_ok())?;
+        run!(r"cmd.exe /c {}.cmd --install-extension ./{} --force", code, vsix_pkg)?;
+        installed_extensions = run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?;
     }
-
-    Cmd {
-        unix: r"npm run package --scripts-prepend-node-path",
-        windows: r"cmd.exe /c npm run package",
-        work_dir: "./editors/code",
-    }
-    .run()?;
-
-    let extension = vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string();
-
-    let code_binary = ["code", "code-insiders", "codium", "code-oss"]
-        .iter()
-        .find(|bin| {
-            Cmd {
-                unix: &format!("{} --version", bin),
-                windows: &format!("cmd.exe /c {}.cmd --version", bin),
-                work_dir: "./editors/code",
-            }
-            .run()
-            .is_ok()
-        })
-        .ok_or_else(|| {
-            format_err!("Can't execute `code --version`. Perhaps it is not in $PATH?")
-        })?;
-
-    Cmd {
-        unix: &format!(r"{} --install-extension ./{} --force", code_binary, extension),
-        windows: &format!(
-            r"cmd.exe /c {}.cmd --install-extension ./{} --force",
-            code_binary, extension
-        ),
-        work_dir: "./editors/code",
-    }
-    .run()?;
-
-    let installed_extensions = Cmd {
-        unix: &format!(r"{} --list-extensions", code_binary),
-        windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
-        work_dir: ".",
-    }
-    .run_with_output()?;
 
     if !installed_extensions.contains("rust-analyzer") {
         bail!(
@@ -163,8 +146,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
 fn install_server(opts: ServerOpt) -> Result<()> {
     let mut old_rust = false;
-    if let Ok(stdout) = run_with_output("cargo --version", ".") {
-        println!("{}", stdout);
+    if let Ok(stdout) = run!("cargo --version") {
         if !check_version(&stdout, REQUIRED_RUST_VERSION) {
             old_rust = true;
         }
@@ -177,20 +159,17 @@ fn install_server(opts: ServerOpt) -> Result<()> {
         )
     }
 
-    let res = if opts.jemalloc {
-        run("cargo install --path crates/ra_lsp_server --locked --force --features jemalloc", ".")
-    } else {
-        run("cargo install --path crates/ra_lsp_server --locked --force", ".")
-    };
+    let jemalloc = if opts.jemalloc { "--features jemalloc" } else { "" };
+    let res = run!("cargo install --path crates/ra_lsp_server --locked --force {}", jemalloc);
 
     if res.is_err() && old_rust {
         eprintln!(
             "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
             REQUIRED_RUST_VERSION,
-        )
+        );
     }
 
-    res
+    res.map(drop)
 }
 
 fn check_version(version_output: &str, min_minor_version: u32) -> bool {
