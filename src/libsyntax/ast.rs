@@ -2606,7 +2606,7 @@ pub type ForeignItem = Item<ForeignItemKind>;
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
     /// A static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability),
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A function.
     Fn(FnSig, Generics, Option<P<Block>>),
     /// A type.

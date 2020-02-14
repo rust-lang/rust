@@ -760,7 +760,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(sig)
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
+            ast::ForeignItemKind::Static(ref ty, m, _) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mut {
                     text.push_str("mut ");
