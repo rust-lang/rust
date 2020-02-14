@@ -10,6 +10,29 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 
+pub mod fs2 {
+    use std::{fs, path::Path};
+
+    use anyhow::{Context, Result};
+
+    pub fn read_dir<P: AsRef<Path>>(path: P) -> Result<fs::ReadDir> {
+        let path = path.as_ref();
+        fs::read_dir(path).with_context(|| format!("Failed to read {}", path.display()))
+    }
+
+    pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> Result<()> {
+        let path = path.as_ref();
+        fs::write(path, contents).with_context(|| format!("Failed to write {}", path.display()))
+    }
+
+    pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<u64> {
+        let from = from.as_ref();
+        let to = to.as_ref();
+        fs::copy(from, to)
+            .with_context(|| format!("Failed to copy {} to {}", from.display(), to.display()))
+    }
+}
+
 macro_rules! _run {
     ($($expr:expr),*) => {
         run!($($expr),*; echo = true)

@@ -17,7 +17,7 @@ use std::{
 
 use crate::{
     codegen::Mode,
-    not_bash::{pushd, run},
+    not_bash::{fs2, pushd, run},
 };
 
 pub use anyhow::Result;
@@ -167,11 +167,11 @@ pub fn run_release(dry_run: bool) -> Result<()> {
     }
 
     let website_root = project_root().join("../rust-analyzer.github.io");
-    let changelog_dir = website_root.join("/thisweek/_posts");
+    let changelog_dir = website_root.join("./thisweek/_posts");
 
     let today = run!("date --iso")?;
     let commit = run!("git rev-parse HEAD")?;
-    let changelog_n = fs::read_dir(changelog_dir.as_path())?.count();
+    let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
 
     let contents = format!(
         "\
@@ -194,9 +194,9 @@ Release: release:{}[]
     );
 
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-    fs::write(&path, &contents)?;
+    fs2::write(&path, &contents)?;
 
-    fs::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
+    fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
 
     Ok(())
 }
