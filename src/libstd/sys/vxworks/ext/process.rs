@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::ffi::OsStr;
 use crate::io;
 use crate::process;
 use crate::sys;
@@ -105,6 +106,15 @@ pub trait CommandExt {
     /// cross-platform `spawn` instead.
     #[stable(feature = "process_exec2", since = "1.9.0")]
     fn exec(&mut self) -> io::Error;
+
+    /// Set executable argument
+    ///
+    /// Set the first process argument, `argv[0]`, to something other than the
+    /// default executable path.
+    #[unstable(feature = "process_set_argv0", issue = "66510")]
+    fn arg0<S>(&mut self, arg: S) -> &mut process::Command
+    where
+        S: AsRef<OsStr>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -129,6 +139,14 @@ impl CommandExt for process::Command {
 
     fn exec(&mut self) -> io::Error {
         self.as_inner_mut().exec(sys::process::Stdio::Inherit)
+    }
+
+    fn arg0<S>(&mut self, arg: S) -> &mut process::Command
+    where
+        S: AsRef<OsStr>,
+    {
+        self.as_inner_mut().set_arg_0(arg.as_ref());
+        self
     }
 }
 

@@ -17,7 +17,6 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
@@ -28,6 +27,7 @@ use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -37,8 +37,6 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
-
-use rustc_error_codes::*;
 
 use std::fmt::Display;
 
@@ -167,10 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Hide the outer diverging and has_errors flags.
-        let old_diverges = self.diverges.get();
-        let old_has_errors = self.has_errors.get();
-        self.diverges.set(Diverges::Maybe);
-        self.has_errors.set(false);
+        let old_diverges = self.diverges.replace(Diverges::Maybe);
+        let old_has_errors = self.has_errors.replace(false);
 
         let ty = self.check_expr_kind(expr, expected, needs);
 
@@ -1590,7 +1586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &format!("a method `{}` also exists, call it with parentheses", field),
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         }
         err.emit();
@@ -1613,7 +1609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "use parentheses to call the method",
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         } else {
             err.help("methods are immutable and cannot be assigned to");
@@ -1800,9 +1796,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
-        match self.yield_ty {
-            Some(ty) => {
-                self.check_expr_coercable_to_type(&value, ty);
+        match self.resume_yield_tys {
+            Some((resume_ty, yield_ty)) => {
+                self.check_expr_coercable_to_type(&value, yield_ty);
+
+                resume_ty
             }
             // Given that this `yield` expression was generated as a result of lowering a `.await`,
             // we know that the yield type must be `()`; however, the context won't contain this
@@ -1810,6 +1808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // value's type against `()` (this check should always hold).
             None if src == &hir::YieldSource::Await => {
                 self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+                self.tcx.mk_unit()
             }
             _ => {
                 struct_span_err!(
@@ -1819,9 +1818,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "yield expression outside of generator literal"
                 )
                 .emit();
+                self.tcx.mk_unit()
             }
         }
-        self.tcx.mk_unit()
     }
 }
 

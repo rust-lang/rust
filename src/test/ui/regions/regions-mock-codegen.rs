@@ -6,7 +6,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{Alloc, Global, Layout, handle_alloc_error};
+use std::alloc::{AllocRef, Global, Layout, handle_alloc_error};
 use std::ptr::NonNull;
 
 struct arena(());

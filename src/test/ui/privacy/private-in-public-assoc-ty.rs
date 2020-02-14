@@ -17,6 +17,8 @@ mod m {
         //~^ WARN private trait `m::PrivTr` in public interface
         //~| WARN this was previously accepted
         //~| WARN private type `m::Priv` in public interface
+        //~| WARN private type `m::Priv` in public interface
+        //~| WARN this was previously accepted
         //~| WARN this was previously accepted
         type Alias1: PrivTr;
         type Alias2: PubTrAux1<Priv> = u8;
@@ -34,6 +36,7 @@ mod m {
 
         type Exist = impl PrivTr;
         //~^ ERROR private trait `m::PrivTr` in public interface
+        //~| ERROR private trait `m::PrivTr` in public interface
         fn infer_exist() -> Self::Exist { Priv }
     }
 }

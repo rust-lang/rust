@@ -1,4 +1,3 @@
-#![feature(slice_patterns)]
 #![feature(test)]
 
 extern crate test;

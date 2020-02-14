@@ -1,7 +1,5 @@
-use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
 
@@ -179,108 +177,6 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     } else {
         meta.modified().unwrap_or(UNIX_EPOCH) <= threshold
     }
-}
-
-#[must_use]
-pub struct NativeLibBoilerplate {
-    pub src_dir: PathBuf,
-    pub out_dir: PathBuf,
-}
-
-impl NativeLibBoilerplate {
-    /// On macOS we don't want to ship the exact filename that compiler-rt builds.
-    /// This conflicts with the system and ours is likely a wildly different
-    /// version, so they can't be substituted.
-    ///
-    /// As a result, we rename it here but we need to also use
-    /// `install_name_tool` on macOS to rename the commands listed inside of it to
-    /// ensure it's linked against correctly.
-    pub fn fixup_sanitizer_lib_name(&self, sanitizer_name: &str) {
-        if env::var("TARGET").unwrap() != "x86_64-apple-darwin" {
-            return;
-        }
-
-        let dir = self.out_dir.join("build/lib/darwin");
-        let name = format!("clang_rt.{}_osx_dynamic", sanitizer_name);
-        let src = dir.join(&format!("lib{}.dylib", name));
-        let new_name = format!("lib__rustc__{}.dylib", name);
-        let dst = dir.join(&new_name);
-
-        println!("{} => {}", src.display(), dst.display());
-        fs::rename(&src, &dst).unwrap();
-        let status = Command::new("install_name_tool")
-            .arg("-id")
-            .arg(format!("@rpath/{}", new_name))
-            .arg(&dst)
-            .status()
-            .expect("failed to execute `install_name_tool`");
-        assert!(status.success());
-    }
-}
-
-impl Drop for NativeLibBoilerplate {
-    fn drop(&mut self) {
-        if !thread::panicking() {
-            t!(File::create(self.out_dir.join("rustbuild.timestamp")));
-        }
-    }
-}
-
-// Perform standard preparations for native libraries that are build only once for all stages.
-// Emit rerun-if-changed and linking attributes for Cargo, check if any source files are
-// updated, calculate paths used later in actual build with CMake/make or C/C++ compiler.
-// If Err is returned, then everything is up-to-date and further build actions can be skipped.
-// Timestamps are created automatically when the result of `native_lib_boilerplate` goes out
-// of scope, so all the build actions should be completed until then.
-pub fn native_lib_boilerplate(
-    src_dir: &Path,
-    out_name: &str,
-    link_name: &str,
-    search_subdir: &str,
-) -> Result<NativeLibBoilerplate, ()> {
-    rerun_if_changed_anything_in_dir(src_dir);
-
-    let out_dir =
-        env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(|| env::var_os("OUT_DIR").unwrap());
-    let out_dir = PathBuf::from(out_dir).join(out_name);
-    t!(fs::create_dir_all(&out_dir));
-    if link_name.contains('=') {
-        println!("cargo:rustc-link-lib={}", link_name);
-    } else {
-        println!("cargo:rustc-link-lib=static={}", link_name);
-    }
-    println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
-
-    let timestamp = out_dir.join("rustbuild.timestamp");
-    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(src_dir, &timestamp) {
-        Ok(NativeLibBoilerplate { src_dir: src_dir.to_path_buf(), out_dir })
-    } else {
-        Err(())
-    }
-}
-
-pub fn sanitizer_lib_boilerplate(
-    sanitizer_name: &str,
-) -> Result<(NativeLibBoilerplate, String), ()> {
-    let (link_name, search_path, apple) = match &*env::var("TARGET").unwrap() {
-        "x86_64-unknown-linux-gnu" => {
-            (format!("clang_rt.{}-x86_64", sanitizer_name), "build/lib/linux", false)
-        }
-        "x86_64-apple-darwin" => {
-            (format!("clang_rt.{}_osx_dynamic", sanitizer_name), "build/lib/darwin", true)
-        }
-        _ => return Err(()),
-    };
-    let to_link = if apple {
-        format!("dylib=__rustc__{}", link_name)
-    } else {
-        format!("static={}", link_name)
-    };
-    // This env var is provided by rustbuild to tell us where `compiler-rt`
-    // lives.
-    let dir = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
-    let lib = native_lib_boilerplate(dir.as_ref(), sanitizer_name, &to_link, search_path)?;
-    Ok((lib, link_name))
 }
 
 fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {

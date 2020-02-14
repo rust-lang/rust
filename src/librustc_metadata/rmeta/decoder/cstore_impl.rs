@@ -161,7 +161,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
     has_panic_handler => { cdata.root.has_panic_handler }
-    is_sanitizer_runtime => { cdata.root.sanitizer_runtime }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
@@ -478,15 +477,19 @@ impl CStore {
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
         self.get_crate_data(cnum).source.clone()
     }
+
+    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
+        self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
+    }
+
+    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
+        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
+    }
 }
 
 impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
-    }
-
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index, sess)
     }
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol {

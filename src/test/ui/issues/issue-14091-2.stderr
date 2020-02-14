@@ -5,6 +5,7 @@ LL |     assert!(x, x);
    |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
    = note: an implementation of `std::ops::Not` might be missing for `BytePos`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

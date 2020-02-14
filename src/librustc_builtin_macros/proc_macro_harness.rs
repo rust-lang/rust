@@ -1,7 +1,9 @@
 use std::mem;
 
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
@@ -9,9 +11,7 @@ use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 use syntax::visit::{self, Visitor};
 
 struct ProcMacroDerive {
@@ -40,7 +40,7 @@ enum ProcMacro {
 struct CollectProcMacros<'a> {
     macros: Vec<ProcMacro>,
     in_root: bool,
-    handler: &'a errors::Handler,
+    handler: &'a rustc_errors::Handler,
     is_proc_macro_crate: bool,
     is_test_crate: bool,
 }
@@ -53,7 +53,7 @@ pub fn inject(
     has_proc_macro_decls: bool,
     is_test_crate: bool,
     num_crate_types: usize,
-    handler: &errors::Handler,
+    handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver);

@@ -93,3 +93,9 @@ pub fn empty_rust_with_whitespace() {}
 ///
 pub fn indent_after_fenced() {}
 //~^^^ WARNING could not parse code block as Rust code
+
+/// ```
+/// "invalid
+/// ```
+pub fn invalid() {}
+//~^^^^ WARNING could not parse code block as Rust code

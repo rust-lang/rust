@@ -2,251 +2,331 @@ error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:7:10
    |
 LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs + rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:5:11
+   |
+LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:8:10
    |
 LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs + rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:5:30
+   |
+LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:13:10
    |
 LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs - rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:11:11
+   |
+LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:14:10
    |
 LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs - rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:11:30
+   |
+LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:19:10
    |
 LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs * rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:17:11
+   |
+LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:20:10
    |
 LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs * rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:17:30
+   |
+LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:25:10
    |
 LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs / rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:23:11
+   |
+LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:26:10
    |
 LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs / rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:23:30
+   |
+LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:31:10
    |
 LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs % rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:29:11
+   |
+LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:32:10
    |
 LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs % rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:29:30
+   |
+LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:37:10
    |
 LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
-   |           --                          --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |           |
-   |           help: consider further restricting this bound: `A: Copy +`
+   |                                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs & rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:35:14
+   |
+LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
+   |              ^^^^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:38:10
    |
 LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                                    -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                                    |
-   |                                    help: consider restricting this bound: `B: Copy`
+   |                                               --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs & rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:35:36
+   |
+LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                                    ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:43:10
    |
 LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
-   |          --                         --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |          |
-   |          help: consider further restricting this bound: `A: Copy +`
+   |                                     --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs | rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:41:13
+   |
+LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:44:10
    |
 LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                                  -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                                  |
-   |                                  help: consider restricting this bound: `B: Copy`
+   |                                             --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs | rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:41:34
+   |
+LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                                  ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:49:10
    |
 LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
-   |           --                          --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |           |
-   |           help: consider further restricting this bound: `A: Copy +`
+   |                                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs ^ rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:47:14
+   |
+LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
+   |              ^^^^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:50:10
    |
 LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                                    -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                                    |
-   |                                    help: consider restricting this bound: `B: Copy`
+   |                                               --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs ^ rhs;
    |           --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:47:36
+   |
+LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                                    ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:55:10
    |
 LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs << rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:53:11
+   |
+LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:56:10
    |
 LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs << rhs;
    |            --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:53:30
+   |
+LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:61:10
    |
 LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
-   |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `A: Copy +`
+   |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs >> rhs;
    |     --- value moved here
 LL |     drop(lhs);
    |          ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/binop-consume-args.rs:59:11
+   |
+LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
+   |           ^^^^^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:62:10
    |
 LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
-   |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
-   |                              |
-   |                              help: consider restricting this bound: `B: Copy`
+   |                                         --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
 LL |     lhs >> rhs;
    |            --- value moved here
 LL |     drop(lhs);
 LL |     drop(rhs);
    |          ^^^ value used here after move
+   |
+help: consider restricting this type parameter with `B: Copy`
+  --> $DIR/binop-consume-args.rs:59:30
+   |
+LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
+   |                              ^
 
 error: aborting due to 20 previous errors
 

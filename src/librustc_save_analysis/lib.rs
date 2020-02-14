@@ -13,11 +13,17 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_ast_pretty::pprust::{self, param_to_string, ty_to_string};
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_span::source_map::Spanned;
+use rustc_span::*;
+use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
+use syntax::util::comments::strip_doc_comment_decoration;
+use syntax::visit::{self, Visitor};
 
 use std::cell::Cell;
 use std::default::Default;
@@ -25,14 +31,6 @@ use std::env;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-
-use rustc_span::source_map::Spanned;
-use rustc_span::*;
-use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
-use syntax::print::pprust;
-use syntax::print::pprust::{param_to_string, ty_to_string};
-use syntax::util::comments::strip_doc_comment_decoration;
-use syntax::visit::{self, Visitor};
 
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
@@ -135,7 +133,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
         );
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -144,7 +142,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: make_signature(&sig.decl, generics),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -305,8 +303,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {
-                if let ast::TyKind::Path(None, ref path) = typ.kind {
+            ast::ItemKind::Impl { ref of_trait, ref self_ty, ref items, .. } => {
+                if let ast::TyKind::Path(None, ref path) = self_ty.kind {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
                         return None;
@@ -317,14 +315,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let impl_id = self.next_impl_id();
                     let span = self.span_from_span(sub_span);
 
-                    let type_data = self.lookup_def_id(typ.id);
+                    let type_data = self.lookup_def_id(self_ty.id);
                     type_data.map(|type_data| {
                         Data::RelationData(
                             Relation {
                                 kind: RelationKind::Impl { id: impl_id },
                                 span: span.clone(),
                                 from: id_from_def_id(type_data),
-                                to: trait_ref
+                                to: of_trait
                                     .as_ref()
                                     .and_then(|t| self.lookup_def_id(t.ref_id))
                                     .map(id_from_def_id)
@@ -332,14 +330,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             },
                             Impl {
                                 id: impl_id,
-                                kind: match *trait_ref {
+                                kind: match *of_trait {
                                     Some(_) => ImplKind::Direct,
                                     None => ImplKind::Inherent,
                                 },
                                 span: span,
                                 value: String::new(),
                                 parent: None,
-                                children: impls
+                                children: items
                                     .iter()
                                     .map(|i| id_from_node_id(i.id, self))
                                     .collect(),
@@ -405,9 +403,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         {
             Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                 Some(Node::Item(item)) => match item.kind {
-                    hir::ItemKind::Impl(.., ref ty, _) => {
+                    hir::ItemKind::Impl { ref self_ty, .. } => {
                         let mut qualname = String::from("<");
-                        qualname.push_str(&self.tcx.hir().hir_to_pretty_string(ty.hir_id));
+                        qualname.push_str(&self.tcx.hir().hir_to_pretty_string(self_ty.hir_id));
 
                         let trait_id = self.tcx.trait_id_of_impl(impl_id);
                         let mut decl_id = None;
@@ -425,6 +423,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             qualname.push_str(&self.tcx.def_path_str(def_id));
                             self.tcx
                                 .associated_items(def_id)
+                                .iter()
                                 .find(|item| item.ident.name == ident.name)
                                 .map(|item| decl_id = Some(item.def_id));
                         }
@@ -719,6 +718,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx
                         .associated_items(ti.container.id())
+                        .iter()
                         .find(|item| {
                             item.ident.name == ti.ident.name && item.defaultness.has_value()
                         })
@@ -776,12 +776,19 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
 
-        // Ignore attribute macros, their spans are usually mangled
-        if let ExpnKind::Macro(MacroKind::Attr, _) | ExpnKind::Macro(MacroKind::Derive, _) =
-            callee.kind
-        {
-            return None;
-        }
+        let mac_name = match callee.kind {
+            ExpnKind::Macro(mac_kind, name) => match mac_kind {
+                MacroKind::Bang => name,
+
+                // Ignore attribute macros, their spans are usually mangled
+                // FIXME(eddyb) is this really the case anymore?
+                MacroKind::Attr | MacroKind::Derive => return None,
+            },
+
+            // These are not macros.
+            // FIXME(eddyb) maybe there is a way to handle them usefully?
+            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
+        };
 
         // If the callee is an imported macro from an external crate, need to get
         // the source span and name from the session, as their spans are localized
@@ -799,7 +806,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.kind.descr().to_string(), // FIXME: generate the real qualname
+            qualname: mac_name.to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }

@@ -1,0 +1,8 @@
+error: `?const` and `?` are mutually exclusive
+  --> $DIR/with-maybe-sized.rs:4:13
+   |
+LL | struct S<T: ?const ?Sized>(std::marker::PhantomData<T>);
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

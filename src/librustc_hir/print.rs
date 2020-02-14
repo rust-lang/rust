@@ -1,12 +1,11 @@
+use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
+use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::{self, Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::kw;
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pp::{self, Breaks};
-use syntax::print::pprust::{self, Comments, PrintState};
-use syntax::sess::ParseSess;
 use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;
@@ -142,13 +141,12 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
     cm: &'a SourceMap,
-    sess: &ParseSess,
     krate: &hir::Crate<'_>,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(cm, sess, filename, input, ann);
+    let mut s = State::new_from_input(cm, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -161,12 +159,11 @@ pub fn print_crate<'a>(
 impl<'a> State<'a> {
     pub fn new_from_input(
         cm: &'a SourceMap,
-        sess: &ParseSess,
         filename: FileName,
         input: String,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, sess, filename, input)), ann }
+        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, filename, input)), ann }
     }
 }
 
@@ -457,14 +454,17 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
+        generics: &hir::Generics<'_>,
         bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
     ) {
         self.word_space("type");
         self.print_ident(ident);
+        self.print_generic_params(&generics.params);
         if let Some(bounds) = bounds {
             self.print_bounds(":", bounds);
         }
+        self.print_where_clause(&generics.where_clause);
         if let Some(ty) = ty {
             self.s.space();
             self.word_space("=");
@@ -627,15 +627,16 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl(
+            hir::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 ref generics,
-                ref opt_trait,
-                ref ty,
-                impl_items,
-            ) => {
+                ref of_trait,
+                ref self_ty,
+                items,
+            } => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -647,23 +648,27 @@ impl<'a> State<'a> {
                     self.s.space();
                 }
 
+                if constness == hir::Constness::Const {
+                    self.word_nbsp("const");
+                }
+
                 if let hir::ImplPolarity::Negative = polarity {
                     self.s.word("!");
                 }
 
-                if let Some(ref t) = opt_trait {
+                if let Some(ref t) = of_trait {
                     self.print_trait_ref(t);
                     self.s.space();
                     self.word_space("for");
                 }
 
-                self.print_type(&ty);
+                self.print_type(&self_ty);
                 self.print_where_clause(&generics.where_clause);
 
                 self.s.space();
                 self.bopen();
                 self.print_inner_attributes(&item.attrs);
-                for impl_item in impl_items {
+                for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
                 self.bclose(item.span);
@@ -900,6 +905,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(
                     ti.ident,
+                    &ti.generics,
                     Some(bounds),
                     default.as_ref().map(|ty| &**ty),
                 );
@@ -928,7 +934,7 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
-                self.print_associated_type(ii.ident, None, Some(ty));
+                self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
             hir::ImplItemKind::OpaqueTy(bounds) => {
                 self.word_space("type");
@@ -1767,13 +1773,17 @@ impl<'a> State<'a> {
             }
             PatKind::Lit(ref e) => self.print_expr(&e),
             PatKind::Range(ref begin, ref end, ref end_kind) => {
-                self.print_expr(&begin);
-                self.s.space();
+                if let Some(expr) = begin {
+                    self.print_expr(expr);
+                    self.s.space();
+                }
                 match *end_kind {
                     RangeEnd::Included => self.s.word("..."),
                     RangeEnd::Excluded => self.s.word(".."),
                 }
-                self.print_expr(&end);
+                if let Some(expr) = end {
+                    self.print_expr(expr);
+                }
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
                 self.s.word("[");

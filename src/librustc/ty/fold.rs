@@ -32,6 +32,7 @@
 //! looking for, and does not need to visit anything else.
 
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -147,6 +148,15 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         }
 
         self.visit_with(&mut Visitor(visit))
+    }
+}
+
+impl TypeFoldable<'tcx> for hir::Constness {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
     }
 }
 

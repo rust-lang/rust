@@ -9,18 +9,16 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use crate::constrained_generic_params as cgp;
-use errors::struct_span_err;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_span::Span;
-
-use rustc_error_codes::*;
 
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self type (or are constrained by a
@@ -75,10 +73,10 @@ struct ImplWfCheck<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
+        if let hir::ItemKind::Impl { ref items, .. } = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
-            enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_item_refs);
-            enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
+            enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
+            enforce_impl_items_are_distinct(self.tcx, items);
         }
     }
 

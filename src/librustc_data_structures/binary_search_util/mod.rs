@@ -14,35 +14,55 @@ where
         Ok(mid) => mid,
         Err(_) => return &[],
     };
+    let size = data.len();
 
-    // We get back *some* element with the given key -- so
-    // search backwards to find the *first* one.
-    //
-    // (It'd be more efficient to use a "galloping" search
-    // here, but it's not really worth it for small-ish
-    // amounts of data.)
+    // We get back *some* element with the given key -- so do
+    // a galloping search backwards to find the *first* one.
     let mut start = mid;
-    while start > 0 {
-        if key_fn(&data[start - 1]) == *key {
-            start -= 1;
-        } else {
+    let mut previous = mid;
+    let mut step = 1;
+    loop {
+        start = start.saturating_sub(step);
+        if start == 0 || key_fn(&data[start]) != *key {
             break;
         }
+        previous = start;
+        step *= 2;
+    }
+    step = previous - start;
+    while step > 1 {
+        let half = step / 2;
+        let mid = start + half;
+        if key_fn(&data[mid]) != *key {
+            start = mid;
+        }
+        step -= half;
+    }
+    // adjust by one if we have overshot
+    if start < size && key_fn(&data[start]) != *key {
+        start += 1;
     }
 
     // Now search forward to find the *last* one.
-    //
-    // (It'd be more efficient to use a "galloping" search
-    // here, but it's not really worth it for small-ish
-    // amounts of data.)
-    let mut end = mid + 1;
-    let max = data.len();
-    while end < max {
-        if key_fn(&data[end]) == *key {
-            end += 1;
-        } else {
+    let mut end = mid;
+    let mut previous = mid;
+    let mut step = 1;
+    loop {
+        end = end.saturating_add(step).min(size);
+        if end == size || key_fn(&data[end]) != *key {
             break;
         }
+        previous = end;
+        step *= 2;
+    }
+    step = end - previous;
+    while step > 1 {
+        let half = step / 2;
+        let mid = end - half;
+        if key_fn(&data[mid]) != *key {
+            end = mid;
+        }
+        step -= half;
     }
 
     &data[start..end]

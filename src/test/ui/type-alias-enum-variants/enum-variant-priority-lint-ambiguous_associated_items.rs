@@ -32,6 +32,7 @@ impl Tr for E {
     fn f() -> Self::V { 0 }
     //~^ ERROR ambiguous associated item
     //~| WARN this was previously accepted
+    //~| HELP use fully-qualified syntax
 }
 
 fn main() {}

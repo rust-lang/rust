@@ -1,9 +1,9 @@
 use crate::session::{self, DataTypeKind};
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
+use rustc_attr as attr;
 use rustc_span::DUMMY_SP;
 use syntax::ast::{self, Ident, IntTy, UintTy};
-use syntax::attr;
 
 use std::cmp;
 use std::fmt;
@@ -356,12 +356,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
-            if let Some(mut niche) = field.largest_niche.clone() {
-                let available = niche.available(dl);
-                if available > largest_niche_available {
-                    largest_niche_available = available;
-                    niche.offset += offset;
-                    largest_niche = Some(niche);
+            if !repr.hide_niche() {
+                if let Some(mut niche) = field.largest_niche.clone() {
+                    let available = niche.available(dl);
+                    if available > largest_niche_available {
+                        largest_niche_available = available;
+                        niche.offset += offset;
+                        largest_niche = Some(niche);
+                    }
                 }
             }
 
@@ -838,7 +840,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
 
                             // Update `largest_niche` if we have introduced a larger niche.
-                            let niche = Niche::from_scalar(dl, Size::ZERO, scalar.clone());
+                            let niche = if def.repr.hide_niche() {
+                                None
+                            } else {
+                                Niche::from_scalar(dl, Size::ZERO, scalar.clone())
+                            };
                             if let Some(niche) = niche {
                                 match &st.largest_niche {
                                     Some(largest_niche) => {
@@ -862,6 +868,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     return Ok(tcx.intern_layout(st));
                 }
+
+                // At this point, we have handled all unions and
+                // structs. (We have also handled univariant enums
+                // that allow representation optimization.)
+                assert!(def.is_enum());
 
                 // The current code for niche-filling relies on variant indices
                 // instead of actual discriminants, so dataful enums with
@@ -2350,8 +2361,9 @@ impl<'tcx> ty::Instance<'tcx> {
                     ]);
                     let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-                    tcx.mk_fn_sig(iter::once(env_ty),
-                        ret_ty,
+                    tcx.mk_fn_sig(
+                        [env_ty, sig.resume_ty].iter(),
+                        &ret_ty,
                         false,
                         hir::Unsafety::Normal,
                         rustc_target::spec::abi::Abi::Rust
@@ -2650,6 +2662,7 @@ where
                 .map(|(i, ty)| arg_of(ty, Some(i)))
                 .collect(),
             c_variadic: sig.c_variadic,
+            fixed_count: inputs.len(),
             conv,
         };
         fn_abi.adjust_for_abi(cx, sig.abi);

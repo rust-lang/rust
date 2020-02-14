@@ -100,7 +100,7 @@ where
             };
 
             // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogeneous_aggregate(cx).unit().unwrap();
+            let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
             assert_eq!(unit.size, arg.layout.size);
             if unit.kind == RegKind::Float {
                 continue;

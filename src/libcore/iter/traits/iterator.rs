@@ -1,4 +1,6 @@
 // ignore-tidy-filelength
+// This file almost exclusively consists of the definition of `Iterator`. We
+// can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
@@ -7,7 +9,9 @@ use super::super::LoopState;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Product, Sum, Zip};
-use super::super::{Inspect, Map, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile};
+use super::super::{
+    Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
+};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -1024,6 +1028,102 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         TakeWhile::new(self, predicate)
+    }
+
+    /// Creates an iterator that both yields elements based on a predicate and maps.
+    ///
+    /// `map_while()` takes a closure as an argument. It will call this
+    /// closure on each element of the iterator, and yield elements
+    /// while it returns [`Some(_)`][`Some`].
+    ///
+    /// After [`None`] is returned, `map_while()`'s job is over, and the
+    /// rest of the elements are ignored.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    /// let a = [-1i32, 4, 0, 1];
+    ///
+    /// let mut iter = a.iter().map_while(|x| 16i32.checked_div(*x));
+    ///
+    /// assert_eq!(iter.next(), Some(-16));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Here's the same example, but with [`take_while`] and [`map`]:
+    ///
+    /// [`take_while`]: #method.take_while
+    /// [`map`]: #method.map
+    ///
+    /// ```
+    /// let a = [-1i32, 4, 0, 1];
+    ///
+    /// let mut iter = a.iter()
+    ///                 .map(|x| 16i32.checked_div(*x))
+    ///                 .take_while(|x| x.is_some())
+    ///                 .map(|x| x.unwrap());
+    ///
+    /// assert_eq!(iter.next(), Some(-16));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Stopping after an initial [`None`]:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    /// use std::convert::TryFrom;
+    ///
+    /// let a = [0, -1, 1, -2];
+    ///
+    /// let mut iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    ///
+    /// assert_eq!(iter.next(), Some(0u32));
+    ///
+    /// // We have more elements that are fit in u32, but since we already
+    /// // got a None, map_while() isn't used any more
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Because `map_while()` needs to look at the value in order to see if it
+    /// should be included or not, consuming iterators will see that it is
+    /// removed:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    /// use std::convert::TryFrom;
+    ///
+    /// let a = [1, 2, -3, 4];
+    /// let mut iter = a.iter();
+    ///
+    /// let result: Vec<u32> = iter.by_ref()
+    ///                            .map_while(|n| u32::try_from(*n).ok())
+    ///                            .collect();
+    ///
+    /// assert_eq!(result, &[1, 2]);
+    ///
+    /// let result: Vec<i32> = iter.cloned().collect();
+    ///
+    /// assert_eq!(result, &[4]);
+    /// ```
+    ///
+    /// The `-3` is no longer there, because it was consumed in order to see if
+    /// the iteration should stop, but wasn't placed back into the iterator.
+    ///
+    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    #[inline]
+    #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+    fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
+    where
+        Self: Sized,
+        P: FnMut(Self::Item) -> Option<B>,
+    {
+        MapWhile::new(self, predicate)
     }
 
     /// Creates an iterator that skips the first `n` elements.

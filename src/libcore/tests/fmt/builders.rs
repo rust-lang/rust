@@ -93,6 +93,91 @@ mod debug_struct {
             format!("{:#?}", Bar)
         );
     }
+
+    #[test]
+    fn test_only_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("Foo").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("Foo { .. }", format!("{:?}", Foo));
+        assert_eq!(
+            "Foo {
+    ..
+}",
+            format!("{:#?}", Foo)
+        );
+    }
+
+    #[test]
+    fn test_multiple_and_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("Foo")
+                    .field("bar", &true)
+                    .field("baz", &format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("Foo { bar: true, baz: 10/20, .. }", format!("{:?}", Foo));
+        assert_eq!(
+            "Foo {
+    bar: true,
+    baz: 10/20,
+    ..
+}",
+            format!("{:#?}", Foo)
+        );
+    }
+
+    #[test]
+    fn test_nested_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("Foo")
+                    .field("bar", &true)
+                    .field("baz", &format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("Bar")
+                    .field("foo", &Foo)
+                    .field("hello", &"world")
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(
+            "Bar { foo: Foo { bar: true, baz: 10/20, .. }, hello: \"world\", .. }",
+            format!("{:?}", Bar)
+        );
+        assert_eq!(
+            "Bar {
+    foo: Foo {
+        bar: true,
+        baz: 10/20,
+        ..
+    },
+    hello: \"world\",
+    ..
+}",
+            format!("{:#?}", Bar)
+        );
+    }
 }
 
 mod debug_tuple {

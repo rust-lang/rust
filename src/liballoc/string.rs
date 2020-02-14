@@ -319,7 +319,7 @@ pub struct String {
 /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FromUtf8Error {
     bytes: Vec<u8>,
     error: Utf8Error,
@@ -2204,6 +2204,14 @@ impl ToString for String {
 impl AsRef<str> for String {
     #[inline]
     fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+#[stable(feature = "string_as_mut", since = "1.43.0")]
+impl AsMut<str> for String {
+    #[inline]
+    fn as_mut(&mut self) -> &mut str {
         self
     }
 }

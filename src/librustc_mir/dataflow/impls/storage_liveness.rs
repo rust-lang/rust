@@ -31,10 +31,12 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         self.body.local_decls.len()
     }
 
-    fn start_block_effect(&self, _on_entry: &mut BitSet<Local>) {
-        // Nothing is live on function entry (generators only have a self
-        // argument, and we don't care about that)
-        assert_eq!(1, self.body.arg_count);
+    fn start_block_effect(&self, on_entry: &mut BitSet<Local>) {
+        // The resume argument is live on function entry (we don't care about
+        // the `self` argument)
+        for arg in self.body.args_iter().skip(1) {
+            on_entry.insert(arg);
+        }
     }
 
     fn statement_effect(&self, trans: &mut GenKillSet<Local>, loc: Location) {
@@ -100,10 +102,12 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         self.body.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
-        // Nothing is live on function entry (generators only have a self
-        // argument, and we don't care about that)
-        assert_eq!(1, self.body.arg_count);
+    fn start_block_effect(&self, on_entry: &mut BitSet<Local>) {
+        // The resume argument is live on function entry (we don't care about
+        // the `self` argument)
+        for arg in self.body.args_iter().skip(1) {
+            on_entry.insert(arg);
+        }
     }
 
     fn before_statement_effect(&self, sets: &mut GenKillSet<Self::Idx>, loc: Location) {
@@ -116,15 +120,11 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
             StatementKind::StorageDead(l) => sets.kill(l),
             StatementKind::Assign(box (ref place, _))
             | StatementKind::SetDiscriminant { box ref place, .. } => {
-                if let PlaceBase::Local(local) = place.base {
-                    sets.gen(local);
-                }
+                sets.gen(place.local);
             }
             StatementKind::InlineAsm(box InlineAsm { ref outputs, .. }) => {
-                for p in &**outputs {
-                    if let PlaceBase::Local(local) = p.base {
-                        sets.gen(local);
-                    }
+                for place in &**outputs {
+                    sets.gen(place.local);
                 }
             }
             _ => (),
@@ -140,10 +140,8 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     fn before_terminator_effect(&self, sets: &mut GenKillSet<Local>, loc: Location) {
         self.check_for_borrow(sets, loc);
 
-        if let TerminatorKind::Call {
-            destination: Some((Place { base: PlaceBase::Local(local), .. }, _)),
-            ..
-        } = self.body[loc.block].terminator().kind
+        if let TerminatorKind::Call { destination: Some((Place { local, .. }, _)), .. } =
+            self.body[loc.block].terminator().kind
         {
             sets.gen(local);
         }
@@ -171,9 +169,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         _dest_bb: mir::BasicBlock,
         dest_place: &mir::Place<'tcx>,
     ) {
-        if let PlaceBase::Local(local) = dest_place.base {
-            in_out.insert(local);
-        }
+        in_out.insert(dest_place.local);
     }
 }
 

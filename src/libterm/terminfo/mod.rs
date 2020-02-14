@@ -24,7 +24,7 @@ pub struct TermInfo {
     /// Map of capability name to boolean value
     pub bools: HashMap<String, bool>,
     /// Map of capability name to numeric value
-    pub numbers: HashMap<String, u16>,
+    pub numbers: HashMap<String, u32>,
     /// Map of capability name to raw (unexpanded) string
     pub strings: HashMap<String, Vec<u8>>,
 }
@@ -129,7 +129,7 @@ fn cap_for_attr(attr: Attr) -> &'static str {
 /// A Terminal that knows how many colors it supports, with a reference to its
 /// parsed Terminfo database record.
 pub struct TerminfoTerminal<T> {
-    num_colors: u16,
+    num_colors: u32,
     out: T,
     ti: TermInfo,
 }

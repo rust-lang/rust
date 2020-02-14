@@ -4,14 +4,14 @@ error: `extern` block uses type `U`, which is not FFI-safe
 LL |    fn uf(x: U);
    |             ^ not FFI-safe
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-ctypes-enum.rs:3:9
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
-note: type defined here
+note: the type is defined here
   --> $DIR/lint-ctypes-enum.rs:9:1
    |
 LL | enum U { A }
@@ -25,7 +25,7 @@ LL |    fn bf(x: B);
    |
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
-note: type defined here
+note: the type is defined here
   --> $DIR/lint-ctypes-enum.rs:10:1
    |
 LL | enum B { C, D }
@@ -39,7 +39,7 @@ LL |    fn tf(x: T);
    |
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
-note: type defined here
+note: the type is defined here
   --> $DIR/lint-ctypes-enum.rs:11:1
    |
 LL | enum T { E, F, G }

@@ -16,7 +16,7 @@ use rustc_span::symbol::{sym, Symbol};
 use std::hash::Hash;
 
 use super::{
-    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Scalar,
+    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     ValueVisitor,
 };
 
@@ -114,14 +114,11 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
-            Deref =>
-            // This does not match Rust syntax, but it is more readable for long paths -- and
+            // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
             // some of the other items here also are not Rust syntax.  Actually we can't
             // even use the usual syntax because we are just showing the projections,
             // not the root.
-            {
-                write!(out, ".<deref>")
-            }
+            Deref => write!(out, ".<deref>"),
             Tag => write!(out, ".<enum-tag>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
@@ -206,9 +203,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in*a variant.
                 match layout.variants {
-                    layout::Variants::Single { index } =>
-                    // Inside a variant
-                    {
+                    layout::Variants::Single { index } => {
+                        // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
                     _ => bug!(),
@@ -246,13 +242,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
     fn check_wide_ptr_meta(
         &mut self,
-        meta: Option<Scalar<M::PointerTag>>,
+        meta: MemPlaceMeta<M::PointerTag>,
         pointee: TyLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {
             ty::Dynamic(..) => {
-                let vtable = meta.unwrap();
+                let vtable = meta.unwrap_meta();
                 try_validation!(
                     self.ecx.memory.check_ptr_access(
                         vtable,
@@ -276,7 +272,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
-                    meta.unwrap().to_machine_usize(self.ecx),
+                    meta.unwrap_meta().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer",
                     self.path
                 );
@@ -571,7 +567,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind {
             ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are never immediate
+                let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 try_validation!(
                     self.ecx.read_str(mplace),
                     "uninitialized or non-UTF-8 data in str",
@@ -587,34 +583,24 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // padding.
                     match tys.kind {
                         ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
-                        ty::Tuple(tys) if tys.len() == 0 => true,
-                        ty::Adt(adt_def, _)
-                            if adt_def.is_struct() && adt_def.all_fields().next().is_none() =>
-                        {
-                            true
-                        }
                         _ => false,
                     }
                 } =>
             {
                 // Optimized handling for arrays of integer/float type.
 
-                // bailing out for zsts is ok, since the array element type can only be int/float
-                if op.layout.is_zst() {
-                    return Ok(());
-                }
-                // non-ZST array cannot be immediate, slices are never immediate
-                let mplace = op.assert_mem_place();
+                // Arrays cannot be immediate, slices are never immediate.
+                let mplace = op.assert_mem_place(self.ecx);
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
-                // zero length slices have nothing to be checked
+                // Zero length slices have nothing to be checked.
                 if len == 0 {
                     return Ok(());
                 }
                 // This is the element type size.
-                let ty_size = self.ecx.layout_of(tys)?.size;
+                let layout = self.ecx.layout_of(tys)?;
                 // This is the size in bytes of the whole array.
-                let size = ty_size * len;
+                let size = layout.size * len;
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
@@ -644,7 +630,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
-                                let i = (offset.bytes() / ty_size.bytes()) as usize;
+                                let i = (offset.bytes() / layout.size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!("undefined bytes", self.path)
@@ -654,6 +640,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         }
                     }
                 }
+            }
+            // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
+            // of an array and not all of them, because there's only a single value of a specific
+            // ZST type, so either validation fails for all elements or none.
+            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
+                // Validate just the first element
+                self.walk_aggregate(op, fields.take(1))?
             }
             _ => {
                 self.walk_aggregate(op, fields)? // default handler

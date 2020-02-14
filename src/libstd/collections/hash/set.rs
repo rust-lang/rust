@@ -110,7 +110,7 @@ pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>,
 }
 
-impl<T: Hash + Eq> HashSet<T, RandomState> {
+impl<T> HashSet<T, RandomState> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -261,13 +261,7 @@ impl<T, S> HashSet<T, S> {
     pub fn clear(&mut self) {
         self.map.clear()
     }
-}
 
-impl<T, S> HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
@@ -340,7 +334,13 @@ where
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
+}
 
+impl<T, S> HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -631,6 +631,38 @@ where
         self.map.raw_entry_mut().from_key(&value).or_insert(value, ()).0
     }
 
+    /// Inserts an owned copy of the given `value` into the set if it is not
+    /// present, then returns a reference to the value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
+    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    ///
+    /// assert_eq!(set.len(), 3);
+    /// for &pet in &["cat", "dog", "fish"] {
+    ///     let value = set.get_or_insert_owned(pet);
+    ///     assert_eq!(value, pet);
+    /// }
+    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq + ToOwned<Owned = T>,
+    {
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
+        self.map.raw_entry_mut().from_key(value).or_insert_with(|| (value.to_owned(), ())).0
+    }
+
     /// Inserts a value computed from `f` into the set if the given `value` is
     /// not present, then returns a reference to the value in the set.
     ///
@@ -896,8 +928,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> fmt::Debug for HashSet<T, S>
 where
-    T: Eq + Hash + fmt::Debug,
-    S: BuildHasher,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -945,8 +976,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Default for HashSet<T, S>
 where
-    T: Eq + Hash,
-    S: BuildHasher + Default,
+    S: Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]

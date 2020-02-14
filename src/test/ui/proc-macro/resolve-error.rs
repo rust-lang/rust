@@ -1,3 +1,7 @@
+// FIXME: missing sysroot spans (#53081)
+// ignore-i586-unknown-linux-gnu
+// ignore-i586-unknown-linux-musl
+// ignore-i686-unknown-linux-musl
 // aux-build:derive-foo.rs
 // aux-build:derive-clona.rs
 // aux-build:test-macros.rs
@@ -21,6 +25,7 @@ macro_rules! attr_proc_mac {
 
 #[derive(FooWithLongNan)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct Foo;
 
 // Interpreted as an unstable custom attribute
@@ -33,14 +38,17 @@ struct Asdf;
 
 #[derive(Dlone)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct A;
 
 #[derive(Dlona)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct B;
 
 #[derive(attr_proc_macra)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct C;
 
 fn main() {

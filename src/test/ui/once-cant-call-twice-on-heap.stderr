@@ -2,13 +2,17 @@ error[E0382]: use of moved value: `blk`
   --> $DIR/once-cant-call-twice-on-heap.rs:9:5
    |
 LL | fn foo<F:FnOnce()>(blk: F) {
-   |        --          --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
-   |        |
-   |        help: consider further restricting this bound: `F: Copy +`
+   |                    --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
 LL |     blk();
    |     --- value moved here
 LL |     blk();
    |     ^^^ value used here after move
+   |
+help: consider further restricting this bound with `+ Copy`
+  --> $DIR/once-cant-call-twice-on-heap.rs:7:10
+   |
+LL | fn foo<F:FnOnce()>(blk: F) {
+   |          ^^^^^^^^
 
 error: aborting due to previous error
 

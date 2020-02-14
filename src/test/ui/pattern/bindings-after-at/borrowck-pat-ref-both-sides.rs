@@ -4,7 +4,6 @@
 // of an `@` pattern according to NLL borrowck.
 
 #![feature(bindings_after_at)]
-#![feature(slice_patterns)]
 
 fn main() {
     struct U; // Not copy!

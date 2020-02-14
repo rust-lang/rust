@@ -9,6 +9,11 @@ LL |         Empty1() => ()
    |         |
    |         did you mean `Empty1 { /* fields */ }`?
    |         help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-pat-2.rs:18:9
@@ -18,6 +23,11 @@ LL |         XEmpty1() => ()
    |         |
    |         did you mean `XEmpty1 { /* fields */ }`?
    |         help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found struct `Empty1`
   --> $DIR/empty-struct-braces-pat-2.rs:21:9
@@ -30,6 +40,11 @@ LL |         Empty1(..) => ()
    |         |
    |         did you mean `Empty1 { /* fields */ }`?
    |         help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-pat-2.rs:24:9
@@ -39,6 +54,11 @@ LL |         XEmpty1(..) => ()
    |         |
    |         did you mean `XEmpty1 { /* fields */ }`?
    |         help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error: aborting due to 4 previous errors
 

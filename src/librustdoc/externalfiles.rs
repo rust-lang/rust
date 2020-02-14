@@ -1,6 +1,5 @@
 use crate::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
-use errors;
 use rustc_feature::UnstableFeatures;
 use std::fs;
 use std::path::Path;
@@ -26,7 +25,7 @@ impl ExternalHtml {
         after_content: &[String],
         md_before_content: &[String],
         md_after_content: &[String],
-        diag: &errors::Handler,
+        diag: &rustc_errors::Handler,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
@@ -58,7 +57,7 @@ pub enum LoadStringError {
 
 pub fn load_string<P: AsRef<Path>>(
     file_path: P,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
 ) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
     let contents = match fs::read(file_path) {
@@ -77,7 +76,7 @@ pub fn load_string<P: AsRef<Path>>(
     }
 }
 
-fn load_external_files(names: &[String], diag: &errors::Handler) -> Option<String> {
+fn load_external_files(names: &[String], diag: &rustc_errors::Handler) -> Option<String> {
     let mut out = String::new();
     for name in names {
         let s = match load_string(name, diag) {

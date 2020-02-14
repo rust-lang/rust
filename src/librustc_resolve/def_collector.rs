@@ -48,8 +48,8 @@ impl<'a> DefCollector<'a> {
         decl: &'a FnDecl,
         body: Option<&'a Block>,
     ) {
-        let (closure_id, return_impl_trait_id) = match header.asyncness.node {
-            IsAsync::Async { closure_id, return_impl_trait_id } => {
+        let (closure_id, return_impl_trait_id) = match header.asyncness {
+            Async::Yes { span: _, closure_id, return_impl_trait_id } => {
                 (closure_id, return_impl_trait_id)
             }
             _ => unreachable!(),
@@ -104,7 +104,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
         let def_data = match &i.kind {
-            ItemKind::Impl(..) => DefPathData::Impl,
+            ItemKind::Impl { .. } => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
             }
@@ -117,7 +117,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.node.is_async() => {
+            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -125,7 +125,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     &sig.header,
                     generics,
                     &sig.decl,
-                    Some(body),
+                    body.as_deref(),
                 );
             }
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) => {
@@ -213,39 +213,26 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
-        let def_data = match ti.kind {
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(ti.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ti.ident.name),
-            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
-        };
-
-        let def = self.create_def(ti.id, def_data, ti.span);
-        self.with_parent(def, |this| visit::walk_trait_item(this, ti));
-    }
-
-    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
-        let def_data = match ii.kind {
-            AssocItemKind::Fn(FnSig { ref header, ref decl }, ref body)
-                if header.asyncness.node.is_async() =>
-            {
+    fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
+        let def_data = match &i.kind {
+            AssocItemKind::Fn(FnSig { header, decl }, body) if header.asyncness.is_async() => {
                 return self.visit_async_fn(
-                    ii.id,
-                    ii.ident.name,
-                    ii.span,
+                    i.id,
+                    i.ident.name,
+                    i.span,
                     header,
-                    &ii.generics,
+                    &i.generics,
                     decl,
                     body.as_deref(),
                 );
             }
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
-            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
+            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
         };
 
-        let def = self.create_def(ii.id, def_data, ii.span);
-        self.with_parent(def, |this| visit::walk_impl_item(this, ii));
+        let def = self.create_def(i.id, def_data, i.span);
+        self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
@@ -268,10 +255,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
                 match asyncness {
-                    IsAsync::Async { closure_id, .. } => {
+                    Async::Yes { closure_id, .. } => {
                         self.create_def(closure_id, DefPathData::ClosureExpr, expr.span)
                     }
-                    IsAsync::NotAsync => closure_def,
+                    Async::No => closure_def,
                 }
             }
             ExprKind::Async(_, async_id, _) => {

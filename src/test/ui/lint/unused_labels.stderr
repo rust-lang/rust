@@ -4,7 +4,7 @@ warning: unused label
 LL |     'unused_while_label: while 0 == 0 {
    |     ^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused_labels.rs:8:9
    |
 LL | #![warn(unused_labels)]

@@ -61,7 +61,7 @@ pub fn on_mir_pass<'tcx>(
 
 pub fn emit_mir(tcx: TyCtxt<'_>, outputs: &OutputFilenames) -> io::Result<()> {
     let path = outputs.path(OutputType::Mir);
-    let mut f = File::create(&path)?;
+    let mut f = io::BufWriter::new(File::create(&path)?);
     mir_util::write_mir_pretty(tcx, None, &mut f)?;
     Ok(())
 }

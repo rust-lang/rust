@@ -1,12 +1,16 @@
 error[E0261]: use of undeclared lifetime name `'test`
   --> $DIR/no_in_band_in_struct.rs:5:9
    |
+LL | struct Foo {
+   |           - help: consider introducing lifetime `'test` here: `<'test>`
 LL |     x: &'test u32,
    |         ^^^^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'test`
   --> $DIR/no_in_band_in_struct.rs:9:10
    |
+LL | enum Bar {
+   |         - help: consider introducing lifetime `'test` here: `<'test>`
 LL |     Baz(&'test u32),
    |          ^^^^^ undeclared lifetime
 

@@ -16,21 +16,20 @@
 use rustc::session::config::Input;
 use rustc::span_bug;
 use rustc::ty::{self, DefIdTree, TyCtxt};
+use rustc_ast_pretty::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::DefId;
-
-use std::env;
-use std::path::Path;
-
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::*;
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::print::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
+
+use std::env;
+use std::path::Path;
 
 use crate::dumper::{Access, Dumper};
 use crate::sig;
@@ -291,8 +290,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // as an `impl Trait` existential type. Because of this, to match
                 // the definition paths when resolving nested types we need to
                 // start walking from the newly-created definition.
-                match sig.header.asyncness.node {
-                    ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                match sig.header.asyncness {
+                    ast::Async::Yes { return_impl_trait_id, .. } => {
                         v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
                     }
                     _ => v.visit_ty(ret_ty),
@@ -359,7 +358,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         decl: &'l ast::FnDecl,
         header: &'l ast::FnHeader,
         ty_params: &'l ast::Generics,
-        body: &'l ast::Block,
+        body: Option<&'l ast::Block>,
     ) {
         let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
@@ -384,8 +383,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     // as an `impl Trait` existential type. Because of this, to match
                     // the definition paths when resolving nested types we need to
                     // start walking from the newly-created definition.
-                    match header.asyncness.node {
-                        ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                    match header.asyncness {
+                        ast::Async::Yes { return_impl_trait_id, .. } => {
                             v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
                         }
                         _ => v.visit_ty(ret_ty),
@@ -393,7 +392,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
             }
 
-            v.visit_block(&body);
+            walk_list!(v, visit_block, body);
         });
     }
 
@@ -650,7 +649,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         generics: &'l ast::Generics,
         trait_ref: &'l Option<ast::TraitRef>,
         typ: &'l ast::Ty,
-        impl_items: &'l [ast::AssocItem],
+        impl_items: &'l [P<ast::AssocItem>],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             if !self.span.filter_generated(item.span) {
@@ -681,7 +680,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         item: &'l ast::Item,
         generics: &'l ast::Generics,
         trait_refs: &'l ast::GenericBounds,
-        methods: &'l [ast::AssocItem],
+        methods: &'l [P<ast::AssocItem>],
     ) {
         let name = item.ident.to_string();
         let qualname = format!(
@@ -867,8 +866,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // FIXME do something with _path?
                 let hir_id = self.tcx.hir().node_to_hir_id(p.id);
                 let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
-                    Some(ty) => ty.ty_adt_def().unwrap(),
-                    None => {
+                    Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
+                    _ => {
                         visit::walk_pat(self, p);
                         return;
                     }
@@ -1292,7 +1291,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 }
             }
             Fn(ref sig, ref ty_params, ref body) => {
-                self.process_fn(item, &sig.decl, &sig.header, ty_params, &body)
+                self.process_fn(item, &sig.decl, &sig.header, ty_params, body.as_deref())
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
@@ -1300,8 +1299,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.process_struct(item, def, ty_params)
             }
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            Impl(.., ref ty_params, ref trait_ref, ref typ, ref impl_items) => {
-                self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
+            Impl { ref generics, ref of_trait, ref self_ty, ref items, .. } => {
+                self.process_impl(item, generics, of_trait, &self_ty, items)
             }
             Trait(_, _, ref generics, ref trait_refs, ref methods) => {
                 self.process_trait(item, generics, trait_refs, methods)
@@ -1516,7 +1515,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         let access = access_from!(self.save_ctxt, item, hir_id);
 
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                let decl = &sig.decl;
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);
 

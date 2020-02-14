@@ -1,4 +1,4 @@
-error[E0599]: no variant or associated item named `A` found for type `SomeEnum` in the current scope
+error[E0599]: no variant or associated item named `A` found for enum `SomeEnum` in the current scope
   --> $DIR/issue-23217.rs:2:19
    |
 LL | pub enum SomeEnum {

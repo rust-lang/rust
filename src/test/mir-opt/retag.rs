@@ -113,8 +113,8 @@ fn main() {
 //     }
 // }
 // END rustc.main-{{closure}}.EraseRegions.after.mir
-// START rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir
-// fn  std::ptr::real_drop_in_place(_1: &mut Test) -> () {
+// START rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// fn  std::intrinsics::drop_in_place(_1: *mut Test) -> () {
 //     ...
 //     bb0: {
 //         Retag([raw] _1);
@@ -126,4 +126,4 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// END rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir

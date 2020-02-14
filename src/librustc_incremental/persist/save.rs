@@ -236,7 +236,7 @@ fn encode_work_product_index(
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
-            id: id.clone(),
+            id: *id,
             work_product: work_product.clone(),
         })
         .collect();

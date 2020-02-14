@@ -3,20 +3,14 @@
 
 use crate::hir::map::DefPathHash;
 use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use std::mem;
-use syntax::attr;
 
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
-    #[inline]
-    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
-        let hcx = self;
-        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
-    }
-
     #[inline]
     fn hash_hir_id(&mut self, hir_id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
@@ -40,37 +34,11 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         }
     }
 
-    // The following implementations of HashStable for `ItemId`, `TraitItemId`, and
-    // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
-    // the HIR, since they just signify a HIR nodes own path. But `ItemId` et al
-    // are used when another item in the HIR is *referenced* and we certainly
-    // want to pick up on a reference changing its target, so we hash the NodeIds
-    // in "DefPath Mode".
-
-    fn hash_item_id(&mut self, id: hir::ItemId, hasher: &mut StableHasher) {
+    fn hash_reference_to_item(&mut self, id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
-        let hir::ItemId { id } = id;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             id.hash_stable(hcx, hasher);
-        })
-    }
-
-    fn hash_impl_item_id(&mut self, id: hir::ImplItemId, hasher: &mut StableHasher) {
-        let hcx = self;
-        let hir::ImplItemId { hir_id } = id;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hir_id.hash_stable(hcx, hasher);
-        })
-    }
-
-    fn hash_trait_item_id(&mut self, id: hir::TraitItemId, hasher: &mut StableHasher) {
-        let hcx = self;
-        let hir::TraitItemId { hir_id } = id;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hir_id.hash_stable(hcx, hasher);
         })
     }
 
@@ -283,12 +251,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::def_id::DefIndex {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::lang_items::LangItem {
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -308,7 +270,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
 
         let import_keys = import_ids
             .iter()
-            .map(|node_id| hcx.node_to_hir_id(*node_id))
             .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner), hir_id.local_id))
             .collect();
         (hcx.def_path_hash(*def_id), import_keys)

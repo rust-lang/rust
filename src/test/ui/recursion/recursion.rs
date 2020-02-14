@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags:-C overflow-checks=off
 
 enum Nil {NilValue}
 struct Cons<T> {head:isize, tail:T}

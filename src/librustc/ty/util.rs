@@ -3,23 +3,25 @@
 use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
 use crate::mir::interpret::{sign_extend, truncate};
-use crate::ty::layout::{Integer, IntegerExt};
+use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use crate::util::common::ErrorReported;
+use rustc_apfloat::Float as _;
+use rustc_attr::{self as attr, SignedInt, UnsignedInt};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_span::Span;
+use rustc_target::abi::TargetDataLayout;
+use smallvec::SmallVec;
 use std::{cmp, fmt};
 use syntax::ast;
-use syntax::attr::{self, SignedInt, UnsignedInt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -43,26 +45,38 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
+fn signed_min(size: Size) -> i128 {
+    sign_extend(1_u128 << (size.bits() - 1), size) as i128
+}
+
+fn signed_max(size: Size) -> i128 {
+    i128::max_value() >> (128 - size.bits())
+}
+
+fn unsigned_max(size: Size) -> u128 {
+    u128::max_value() >> (128 - size.bits())
+}
+
+fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
+    let (int, signed) = match ty.kind {
+        Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
+        Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
+        _ => bug!("non integer discriminant"),
+    };
+    (int.size(), signed)
+}
+
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
     pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (int, signed) = match self.ty.kind {
-            Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
-            Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
-            _ => bug!("non integer discriminant"),
-        };
-
-        let size = int.size();
-        let bit_size = int.size().bits();
-        let shift = 128 - bit_size;
-        if signed {
-            let sext = |u| sign_extend(u, size) as i128;
-            let min = sext(1_u128 << (bit_size - 1));
-            let max = i128::max_value() >> shift;
-            let val = sext(self.val);
+        let (size, signed) = int_size_and_signed(tcx, self.ty);
+        let (val, oflo) = if signed {
+            let min = signed_min(size);
+            let max = signed_max(size);
+            let val = sign_extend(self.val, size) as i128;
             assert!(n < (i128::max_value() as u128));
             let n = n as i128;
             let oflo = val > max - n;
@@ -70,14 +84,15 @@ impl<'tcx> Discr<'tcx> {
             // zero the upper bits
             let val = val as u128;
             let val = truncate(val, size);
-            (Self { val: val as u128, ty: self.ty }, oflo)
+            (val, oflo)
         } else {
-            let max = u128::max_value() >> shift;
+            let max = unsigned_max(size);
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo { n - (max - val) - 1 } else { val + n };
-            (Self { val: val, ty: self.ty }, oflo)
-        }
+            (val, oflo)
+        };
+        (Self { val, ty: self.ty }, oflo)
     }
 }
 
@@ -342,7 +357,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
-            if let Some(item) = self.associated_items(impl_did).next() {
+            if let Some(item) = self.associated_items(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
                     dtor_did = Some(item.def_id);
                 }
@@ -621,6 +636,44 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
+    /// Returns the maximum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
+                Some(val)
+            }
+            ty::Char => Some(std::char::MAX as u128),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => ::rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ast::FloatTy::F64 => ::rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
+    /// Returns the minimum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { truncate(signed_min(size) as u128, size) } else { 0 };
+                Some(val)
+            }
+            ty::Char => Some(0),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
+                ast::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
     /// Checks whether values of this type `T` are *moved* or *copied*
     /// when referenced -- this amounts to a check for whether `T:
     /// Copy`, but note that we **don't** consider lifetimes when
@@ -673,7 +726,23 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Note that this method is used to check eligible types in unions.
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        tcx.needs_drop_raw(param_env.and(self)).0
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.needs_drop_raw(param_env.and(erased))
+            }
+        }
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
@@ -872,9 +941,6 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-#[derive(Clone, HashStable)]
-pub struct NeedsDrop(pub bool);
-
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
@@ -923,3 +989,72 @@ impl<'tcx> ExplicitSelf<'tcx> {
         }
     }
 }
+
+/// Returns a list of types such that the given type needs drop if and only if
+/// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
+/// this type always needs drop.
+pub fn needs_drop_components(
+    ty: Ty<'tcx>,
+    target_layout: &TargetDataLayout,
+) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
+    match ty.kind {
+        ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_))
+        | ty::Bool
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Never
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Char
+        | ty::GeneratorWitness(..)
+        | ty::RawPtr(_)
+        | ty::Ref(..)
+        | ty::Str => Ok(SmallVec::new()),
+
+        // Foreign types can never have destructors.
+        ty::Foreign(..) => Ok(SmallVec::new()),
+
+        // Pessimistically assume that all generators will require destructors
+        // as we don't know if a destructor is a noop or not until after the MIR
+        // state transformation pass.
+        ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+
+        ty::Slice(ty) => needs_drop_components(ty, target_layout),
+        ty::Array(elem_ty, size) => {
+            match needs_drop_components(elem_ty, target_layout) {
+                Ok(v) if v.is_empty() => Ok(v),
+                res => match size.val.try_to_bits(target_layout.pointer_size) {
+                    // Arrays of size zero don't need drop, even if their element
+                    // type does.
+                    Some(0) => Ok(SmallVec::new()),
+                    Some(_) => res,
+                    // We don't know which of the cases above we are in, so
+                    // return the whole type and let the caller decide what to
+                    // do.
+                    None => Ok(smallvec![ty]),
+                },
+            }
+        }
+        // If any field needs drop, then the whole tuple does.
+        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), move |mut acc, elem| {
+            acc.extend(needs_drop_components(elem, target_layout)?);
+            Ok(acc)
+        }),
+
+        // These require checking for `Copy` bounds or `Adt` destructors.
+        ty::Adt(..)
+        | ty::Projection(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(..)
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        | ty::Closure(..) => Ok(smallvec![ty]),
+    }
+}
+
+#[derive(Copy, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
+pub struct AlwaysRequiresDrop;

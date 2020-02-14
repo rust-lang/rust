@@ -1,4 +1,4 @@
-error[E0599]: no variant or associated item named `Hsl` found for type `Color` in the current scope
+error[E0599]: no variant or associated item named `Hsl` found for enum `Color` in the current scope
   --> $DIR/bogus-tag.rs:7:16
    |
 LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }

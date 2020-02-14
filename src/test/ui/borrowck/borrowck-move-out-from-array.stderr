@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a[..]`
-  --> $DIR/borrowck-move-out-from-array.rs:12:14
+  --> $DIR/borrowck-move-out-from-array.rs:10:14
    |
 LL |     let [_, _, _x] = a;
    |                -- value moved here
@@ -9,7 +9,7 @@ LL |     let [.., _y] = a;
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a[..]`
-  --> $DIR/borrowck-move-out-from-array.rs:18:14
+  --> $DIR/borrowck-move-out-from-array.rs:16:14
    |
 LL |     let [_, _, (_x, _)] = a;
    |                 -- value moved here
@@ -19,7 +19,7 @@ LL |     let [.., _y] = a;
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a[..].0`
-  --> $DIR/borrowck-move-out-from-array.rs:24:15
+  --> $DIR/borrowck-move-out-from-array.rs:22:15
    |
 LL |     let [_, _, (_x, _)] = a;
    |                 -- value moved here
@@ -29,7 +29,7 @@ LL |     let [.., (_y, _)] = a;
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array.rs:32:10
+  --> $DIR/borrowck-move-out-from-array.rs:30:10
    |
 LL |     let [_x, _, _] = a;
    |          -- value moved here
@@ -39,7 +39,7 @@ LL |     let [_y @ .., _, _] = a;
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array.rs:38:16
+  --> $DIR/borrowck-move-out-from-array.rs:36:16
    |
 LL |     let [.., _x] = a;
    |              -- value moved here
@@ -49,7 +49,7 @@ LL |     let [_, _, _y @ ..] = a;
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array.rs:44:10
+  --> $DIR/borrowck-move-out-from-array.rs:42:10
    |
 LL |     let [(_x, _), _, _] = a;
    |           -- value moved here
@@ -59,7 +59,7 @@ LL |     let [_y @ .., _, _] = a;
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array.rs:50:16
+  --> $DIR/borrowck-move-out-from-array.rs:48:16
    |
 LL |     let [.., (_x, _)] = a;
    |               -- value moved here
@@ -69,7 +69,7 @@ LL |     let [_, _, _y @ ..] = a;
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a[..].0`
-  --> $DIR/borrowck-move-out-from-array.rs:56:11
+  --> $DIR/borrowck-move-out-from-array.rs:54:11
    |
 LL |     let [_y @ .., _, _] = a;
    |          ------- value moved here
@@ -79,7 +79,7 @@ LL |     let [(_x, _), _, _] = a;
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a[..].0`
-  --> $DIR/borrowck-move-out-from-array.rs:62:15
+  --> $DIR/borrowck-move-out-from-array.rs:60:15
    |
 LL |     let [_, _, _y @ ..] = a;
    |                ------- value moved here
@@ -89,7 +89,7 @@ LL |     let [.., (_x, _)] = a;
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array.rs:70:13
+  --> $DIR/borrowck-move-out-from-array.rs:68:13
    |
 LL |     let [x @ .., _] = a;
    |          ------ value moved here

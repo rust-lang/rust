@@ -14,17 +14,19 @@ use rustc_span::{MultiSpan, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
-use crate::Level::Error;
 use crate::{
     pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
 };
 
+use log::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::io;
 use std::io::prelude::*;
+use std::iter;
 use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Buffer, Color, WriteColor};
@@ -52,19 +54,11 @@ impl HumanReadableErrorType {
         source_map: Option<Lrc<SourceMap>>,
         teach: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
-        EmitterWriter::new(
-            dst,
-            source_map,
-            short,
-            teach,
-            color,
-            terminal_width,
-            external_macro_backtrace,
-        )
+        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width, macro_backtrace)
     }
 }
 
@@ -278,10 +272,7 @@ pub trait Emitter {
         }
     }
 
-    // This does a small "fix" for multispans by looking to see if it can find any that
-    // point directly at <*macros>. Since these are often difficult to read, this
-    // will change the span to point at the use site.
-    fn fix_multispans_in_std_macros(
+    fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
@@ -289,128 +280,187 @@ pub trait Emitter {
         level: &Level,
         backtrace: bool,
     ) {
-        let mut spans_updated = self.fix_multispan_in_std_macros(source_map, span, backtrace);
-        for child in children.iter_mut() {
-            spans_updated |=
-                self.fix_multispan_in_std_macros(source_map, &mut child.span, backtrace);
-        }
-        let msg = if level == &Error {
-            "this error originates in a macro outside of the current crate \
-             (in Nightly builds, run with -Z external-macro-backtrace \
-              for more info)"
-                .to_string()
-        } else {
-            "this warning originates in a macro outside of the current crate \
-             (in Nightly builds, run with -Z external-macro-backtrace \
-              for more info)"
-                .to_string()
-        };
+        // Check for spans in macros, before `fix_multispans_in_extern_macros`
+        // has a chance to replace them.
+        let has_macro_spans = iter::once(&*span)
+            .chain(children.iter().map(|child| &child.span))
+            .flat_map(|span| span.primary_spans())
+            .copied()
+            .flat_map(|sp| {
+                sp.macro_backtrace().filter_map(|expn_data| {
+                    match expn_data.kind {
+                        ExpnKind::Root => None,
 
-        if spans_updated {
-            children.push(SubDiagnostic {
-                level: Level::Note,
-                message: vec![(msg, Style::NoStyle)],
-                span: MultiSpan::new(),
-                render_span: None,
-            });
+                        // Skip past non-macro entries, just in case there
+                        // are some which do actually involve macros.
+                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+
+                        ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                    }
+                })
+            })
+            .next();
+
+        if !backtrace {
+            self.fix_multispans_in_extern_macros(source_map, span, children);
+        }
+
+        self.render_multispans_macro_backtrace(span, children, backtrace);
+
+        if !backtrace {
+            if let Some(macro_kind) = has_macro_spans {
+                let msg = format!(
+                    "this {} originates in {} {} \
+                    (in Nightly builds, run with -Z macro-backtrace for more info)",
+                    level,
+                    macro_kind.article(),
+                    macro_kind.descr(),
+                );
+
+                children.push(SubDiagnostic {
+                    level: Level::Note,
+                    message: vec![(msg, Style::NoStyle)],
+                    span: MultiSpan::new(),
+                    render_span: None,
+                });
+            }
         }
     }
 
-    // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
-    // <*macros>. Since these locations are often difficult to read, we move these Spans from
-    // <*macros> to their corresponding use site.
-    fn fix_multispan_in_std_macros(
+    fn render_multispans_macro_backtrace(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
-        always_backtrace: bool,
-    ) -> bool {
-        let sm = match source_map {
-            Some(ref sm) => sm,
-            None => return false,
-        };
+        children: &mut Vec<SubDiagnostic>,
+        backtrace: bool,
+    ) {
+        for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
+            self.render_multispan_macro_backtrace(span, backtrace);
+        }
+    }
 
-        let mut before_after: Vec<(Span, Span)> = vec![];
+    fn render_multispan_macro_backtrace(&self, span: &mut MultiSpan, always_backtrace: bool) {
         let mut new_labels: Vec<(Span, String)> = vec![];
 
-        // First, find all the spans in <*macros> and point instead at their use site
-        for sp in span.primary_spans() {
+        for &sp in span.primary_spans() {
             if sp.is_dummy() {
                 continue;
             }
-            let call_sp = sm.call_span_if_macro(*sp);
-            if call_sp != *sp && !always_backtrace {
-                before_after.push((*sp, call_sp));
-            }
-            let backtrace_len = sp.macro_backtrace().len();
-            for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
-                // Only show macro locations that are local
-                // and display them like a span_note
-                if trace.def_site_span.is_dummy() {
+
+            // FIXME(eddyb) use `retain` on `macro_backtrace` to remove all the
+            // entries we don't want to print, to make sure the indices being
+            // printed are contiguous (or omitted if there's only one entry).
+            let macro_backtrace: Vec<_> = sp.macro_backtrace().collect();
+            for (i, trace) in macro_backtrace.iter().rev().enumerate() {
+                if trace.def_site.is_dummy() {
                     continue;
                 }
+
                 if always_backtrace {
                     new_labels.push((
-                        trace.def_site_span,
+                        trace.def_site,
                         format!(
                             "in this expansion of `{}`{}",
-                            trace.macro_decl_name,
-                            if backtrace_len > 2 {
-                                // if backtrace_len == 1 it'll be pointed
-                                // at by "in this macro invocation"
+                            trace.kind.descr(),
+                            if macro_backtrace.len() > 2 {
+                                // if macro_backtrace.len() == 1 it'll be
+                                // pointed at by "in this macro invocation"
                                 format!(" (#{})", i + 1)
                             } else {
                                 String::new()
-                            }
+                            },
                         ),
                     ));
                 }
-                // Check to make sure we're not in any <*macros>
-                if !sm.span_to_filename(trace.def_site_span).is_macros()
-                    && !trace.macro_decl_name.starts_with("desugaring of ")
-                    && !trace.macro_decl_name.starts_with("#[")
+
+                // Don't add a label on the call site if the diagnostic itself
+                // already points to (a part of) that call site, as the label
+                // is meant for showing the relevant invocation when the actual
+                // diagnostic is pointing to some part of macro definition.
+                //
+                // This also handles the case where an external span got replaced
+                // with the call site span by `fix_multispans_in_extern_macros`.
+                //
+                // NB: `-Zmacro-backtrace` overrides this, for uniformity, as the
+                // "in this expansion of" label above is always added in that mode,
+                // and it needs an "in this macro invocation" label to match that.
+                let redundant_span = trace.call_site.contains(sp);
+
+                if !redundant_span && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
                     || always_backtrace
                 {
                     new_labels.push((
                         trace.call_site,
                         format!(
                             "in this macro invocation{}",
-                            if backtrace_len > 2 && always_backtrace {
+                            if macro_backtrace.len() > 2 && always_backtrace {
                                 // only specify order when the macro
                                 // backtrace is multiple levels deep
                                 format!(" (#{})", i + 1)
                             } else {
                                 String::new()
-                            }
+                            },
                         ),
                     ));
-                    if !always_backtrace {
-                        break;
-                    }
+                }
+                if !always_backtrace {
+                    break;
                 }
             }
         }
+
         for (label_span, label_text) in new_labels {
             span.push_span_label(label_span, label_text);
         }
-        for sp_label in span.span_labels() {
-            if sp_label.span.is_dummy() {
-                continue;
-            }
-            if sm.span_to_filename(sp_label.span.clone()).is_macros() && !always_backtrace {
-                let v = sp_label.span.macro_backtrace();
-                if let Some(use_site) = v.last() {
-                    before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
-                }
-            }
-        }
-        // After we have them, make sure we replace these 'bad' def sites with their use sites
-        let spans_updated = !before_after.is_empty();
-        for (before, after) in before_after {
-            span.replace(before, after);
-        }
+    }
 
-        spans_updated
+    // This does a small "fix" for multispans by looking to see if it can find any that
+    // point directly at <*macros>. Since these are often difficult to read, this
+    // will change the span to point at the use site.
+    fn fix_multispans_in_extern_macros(
+        &self,
+        source_map: &Option<Lrc<SourceMap>>,
+        span: &mut MultiSpan,
+        children: &mut Vec<SubDiagnostic>,
+    ) {
+        for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
+            self.fix_multispan_in_extern_macros(source_map, span);
+        }
+    }
+
+    // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
+    // <*macros>. Since these locations are often difficult to read, we move these Spans from
+    // <*macros> to their corresponding use site.
+    fn fix_multispan_in_extern_macros(
+        &self,
+        source_map: &Option<Lrc<SourceMap>>,
+        span: &mut MultiSpan,
+    ) {
+        let sm = match source_map {
+            Some(ref sm) => sm,
+            None => return,
+        };
+
+        // First, find all the spans in <*macros> and point instead at their use site
+        let replacements: Vec<(Span, Span)> = span
+            .primary_spans()
+            .iter()
+            .copied()
+            .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
+            .filter_map(|sp| {
+                if !sp.is_dummy() && sm.span_to_filename(sp).is_macros() {
+                    let maybe_callsite = sp.source_callsite();
+                    if sp != maybe_callsite {
+                        return Some((sp, maybe_callsite));
+                    }
+                }
+                None
+            })
+            .collect();
+
+        // After we have them, make sure we replace these 'bad' def sites with their use sites
+        for (from, to) in replacements {
+            span.replace(from, to);
+        }
     }
 }
 
@@ -423,12 +473,12 @@ impl Emitter for EmitterWriter {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
-        self.fix_multispans_in_std_macros(
+        self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &self.sm,
             &mut primary_span,
             &mut children,
             &diag.level,
-            self.external_macro_backtrace,
+            self.macro_backtrace,
         );
 
         self.emit_messages_default(
@@ -456,9 +506,14 @@ impl Emitter for SilentEmitter {
     fn emit_diagnostic(&mut self, _: &Diagnostic) {}
 }
 
-/// maximum number of lines we will print for each error; arbitrary.
+/// Maximum number of lines we will print for each error; arbitrary.
 pub const MAX_HIGHLIGHT_LINES: usize = 6;
-/// maximum number of suggestions to be shown
+/// Maximum number of lines we will print for a multiline suggestion; arbitrary.
+///
+/// This should be replaced with a more involved mechanism to output multiline suggestions that
+/// more closely mimmics the regular diagnostic output, where irrelevant code lines are elided.
+pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 6;
+/// Maximum number of suggestions to be shown
 ///
 /// Arbitrary, but taken from trait import suggestion limit
 pub const MAX_SUGGESTIONS: usize = 4;
@@ -502,7 +557,7 @@ pub struct EmitterWriter {
     ui_testing: bool,
     terminal_width: Option<usize>,
 
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 #[derive(Debug)]
@@ -519,7 +574,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -529,7 +584,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -540,7 +595,7 @@ impl EmitterWriter {
         teach: bool,
         colored: bool,
         terminal_width: Option<usize>,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -549,7 +604,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -1179,13 +1234,13 @@ impl EmitterWriter {
             let level_str = level.to_string();
             // The failure note level itself does not provide any useful diagnostic information
             if *level != Level::FailureNote && !level_str.is_empty() {
-                buffer.append(0, &level_str, Style::Level(level.clone()));
+                buffer.append(0, &level_str, Style::Level(*level));
             }
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
-                buffer.append(0, "[", Style::Level(level.clone()));
-                buffer.append(0, &code, Style::Level(level.clone()));
-                buffer.append(0, "]", Style::Level(level.clone()));
+                buffer.append(0, "[", Style::Level(*level));
+                buffer.append(0, &code, Style::Level(*level));
+                buffer.append(0, "]", Style::Level(*level));
             }
             if *level != Level::FailureNote && !level_str.is_empty() {
                 buffer.append(0, ": ", header_style);
@@ -1361,7 +1416,7 @@ impl EmitterWriter {
                 } else if self.ui_testing {
                     140
                 } else {
-                    term_size::dimensions()
+                    termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
                         .unwrap_or(std::usize::MAX)
                 };
@@ -1476,12 +1531,21 @@ impl EmitterWriter {
             None => return Ok(()),
         };
 
+        // Render the replacements for each suggestion
+        let suggestions = suggestion.splice_lines(&**sm);
+
+        if suggestions.is_empty() {
+            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // approach to avoid ICEs by ignoring the suggestion outright.
+            return Ok(());
+        }
+
         let mut buffer = StyledBuffer::new();
 
         // Render the suggestion message
         let level_str = level.to_string();
         if !level_str.is_empty() {
-            buffer.append(0, &level_str, Style::Level(level.clone()));
+            buffer.append(0, &level_str, Style::Level(*level));
             buffer.append(0, ": ", Style::HeaderMsg);
         }
         self.msg_to_buffer(
@@ -1491,9 +1555,6 @@ impl EmitterWriter {
             "suggestion",
             Some(Style::HeaderMsg),
         );
-
-        // Render the replacements for each suggestion
-        let suggestions = suggestion.splice_lines(&**sm);
 
         let mut row_num = 2;
         let mut notice_capitalization = false;
@@ -1505,7 +1566,9 @@ impl EmitterWriter {
             let show_underline = !(parts.len() == 1 && parts[0].snippet.trim() == complete.trim())
                 && complete.lines().count() == 1;
 
-            let lines = sm.span_to_lines(parts[0].span).unwrap();
+            let lines = sm
+                .span_to_lines(parts[0].span)
+                .expect("span_to_lines failed when emitting suggestion");
 
             assert!(!lines.lines.is_empty());
 
@@ -1513,7 +1576,7 @@ impl EmitterWriter {
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
             let mut line_pos = 0;
             let mut lines = complete.lines();
-            for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
+            for line in lines.by_ref().take(MAX_SUGGESTION_HIGHLIGHT_LINES) {
                 // Print the span column to avoid confusion
                 buffer.puts(
                     row_num,
@@ -2095,7 +2158,13 @@ impl<'a> Drop for WritableDst<'a> {
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.
 pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
-    let found = sm.span_to_snippet(sp).unwrap();
+    let found = match sm.span_to_snippet(sp) {
+        Ok(snippet) => snippet,
+        Err(e) => {
+            warn!("Invalid span {:?}. Err={:?}", sp, e);
+            return false;
+        }
+    };
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
     // All the chars that differ in capitalization are confusable (above):
     let confusable = found

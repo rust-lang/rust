@@ -497,7 +497,7 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(diagnostic: &::rustc_errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
@@ -1290,6 +1290,19 @@ impl From<ast::FloatTy> for PrimitiveType {
     }
 }
 
+impl From<hir::PrimTy> for PrimitiveType {
+    fn from(prim_ty: hir::PrimTy) -> PrimitiveType {
+        match prim_ty {
+            hir::PrimTy::Int(int_ty) => int_ty.into(),
+            hir::PrimTy::Uint(uint_ty) => uint_ty.into(),
+            hir::PrimTy::Float(float_ty) => float_ty.into(),
+            hir::PrimTy::Str => PrimitiveType::Str,
+            hir::PrimTy::Bool => PrimitiveType::Bool,
+            hir::PrimTy::Char => PrimitiveType::Char,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Visibility {
     Public,
@@ -1406,6 +1419,14 @@ pub struct PathSegment {
 pub struct Typedef {
     pub type_: Type,
     pub generics: Generics,
+    // Type of target item.
+    pub item_type: Option<Type>,
+}
+
+impl GetDefId for Typedef {
+    fn def_id(&self) -> Option<DefId> {
+        self.type_.def_id()
+    }
 }
 
 #[derive(Clone, Debug)]

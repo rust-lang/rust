@@ -1,7 +1,6 @@
 -include ../../run-make-fulldeps/tools.mk
 
-# only-thumbv7m-none-eabi
-# only-thumbv6m-none-eabi
+# only-thumb
 
 # How to run this
 # $ ./x.py clean

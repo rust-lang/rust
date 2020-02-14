@@ -3,7 +3,6 @@
 //! `ExprUseVisitor` determines how expressions are being used.
 
 pub use self::ConsumeMode::*;
-use self::OverloadedCallType::*;
 
 // Export these here so that Clippy can use them.
 pub use mc::{Place, PlaceBase, Projection};
@@ -46,35 +45,6 @@ pub enum MutateMode {
     Init,
     JustWrite,    // x = y
     WriteAndRead, // x += y
-}
-
-#[derive(Copy, Clone)]
-enum OverloadedCallType {
-    FnOverloadedCall,
-    FnMutOverloadedCall,
-    FnOnceOverloadedCall,
-}
-
-impl OverloadedCallType {
-    fn from_trait_id(tcx: TyCtxt<'_>, trait_id: DefId) -> OverloadedCallType {
-        for &(maybe_function_trait, overloaded_call_type) in &[
-            (tcx.lang_items().fn_once_trait(), FnOnceOverloadedCall),
-            (tcx.lang_items().fn_mut_trait(), FnMutOverloadedCall),
-            (tcx.lang_items().fn_trait(), FnOverloadedCall),
-        ] {
-            match maybe_function_trait {
-                Some(function_trait) if function_trait == trait_id => return overloaded_call_type,
-                _ => continue,
-            }
-        }
-
-        bug!("overloaded call didn't map to known function trait")
-    }
-
-    fn from_method_id(tcx: TyCtxt<'_>, method_id: DefId) -> OverloadedCallType {
-        let method = tcx.associated_item(method_id);
-        OverloadedCallType::from_trait_id(tcx, method.container.id())
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -211,7 +181,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Call(ref callee, ref args) => {
                 // callee(args)
-                self.walk_callee(expr, callee);
+                self.consume_expr(callee);
                 self.consume_exprs(args);
             }
 
@@ -322,34 +292,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Yield(ref value, _) => {
                 self.consume_expr(value);
-            }
-        }
-    }
-
-    fn walk_callee(&mut self, call: &hir::Expr<'_>, callee: &hir::Expr<'_>) {
-        let callee_ty = return_if_err!(self.mc.expr_ty_adjusted(callee));
-        debug!("walk_callee: callee={:?} callee_ty={:?}", callee, callee_ty);
-        match callee_ty.kind {
-            ty::FnDef(..) | ty::FnPtr(_) => {
-                self.consume_expr(callee);
-            }
-            ty::Error => {}
-            _ => {
-                if let Some(def_id) = self.mc.tables.type_dependent_def_id(call.hir_id) {
-                    match OverloadedCallType::from_method_id(self.tcx(), def_id) {
-                        FnMutOverloadedCall => {
-                            self.borrow_expr(callee, ty::MutBorrow);
-                        }
-                        FnOverloadedCall => {
-                            self.borrow_expr(callee, ty::ImmBorrow);
-                        }
-                        FnOnceOverloadedCall => self.consume_expr(callee),
-                    }
-                } else {
-                    self.tcx()
-                        .sess
-                        .delay_span_bug(call.span, "no type-dependent def for overloaded call");
-                }
             }
         }
     }

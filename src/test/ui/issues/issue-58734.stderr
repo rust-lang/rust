@@ -1,4 +1,4 @@
-error[E0599]: no function or associated item named `nonexistent` found for type `dyn Trait` in the current scope
+error[E0599]: no function or associated item named `nonexistent` found for trait object `dyn Trait` in the current scope
   --> $DIR/issue-58734.rs:20:12
    |
 LL |     Trait::nonexistent(());

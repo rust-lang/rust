@@ -16,8 +16,8 @@ use rustc::mir::{self, interpret, BodyAndCache, Promoted};
 use rustc::session::Session;
 use rustc::ty::codec::TyDecoder;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::captures::Captures;
 use rustc::util::common::record_time;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -34,6 +34,7 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
@@ -41,7 +42,6 @@ use rustc_span::source_map::{self, respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 use syntax::ast::{self, Ident};
-use syntax::attr;
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -840,7 +840,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
         match self.is_proc_macro(id) {
-            true => self.root.proc_macro_stability.clone(),
+            true => self.root.proc_macro_stability,
             false => self.root.per_def.stability.get(self, id).map(|stab| stab.decode(self)),
         }
     }
@@ -1585,10 +1585,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn is_panic_runtime(&self) -> bool {
         self.root.panic_runtime
-    }
-
-    crate fn is_sanitizer_runtime(&self) -> bool {
-        self.root.sanitizer_runtime
     }
 
     crate fn is_profiler_runtime(&self) -> bool {

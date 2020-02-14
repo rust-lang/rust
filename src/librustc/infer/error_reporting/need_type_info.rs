@@ -3,7 +3,7 @@ use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use crate::ty::print::Print;
 use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
-use errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -12,8 +12,6 @@ use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
-
-use rustc_error_codes::*;
 
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
@@ -49,9 +47,12 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
                 if ty.walk().any(|inner_ty| {
                     inner_ty == self.target_ty
                         || match (&inner_ty.kind, &self.target_ty.kind) {
-                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                                self.infcx.type_variables.borrow_mut().sub_unified(a_vid, b_vid)
-                            }
+                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                .infcx
+                                .inner
+                                .borrow_mut()
+                                .type_variables
+                                .sub_unified(a_vid, b_vid),
                             _ => false,
                         }
                 }) {
@@ -151,12 +152,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> errors::DiagnosticId {
+impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
+    fn into(self) -> rustc_errors::DiagnosticId {
         match self {
-            Self::E0282 => errors::error_code!(E0282),
-            Self::E0283 => errors::error_code!(E0283),
-            Self::E0284 => errors::error_code!(E0284),
+            Self::E0282 => rustc_errors::error_code!(E0282),
+            Self::E0283 => rustc_errors::error_code!(E0283),
+            Self::E0284 => rustc_errors::error_code!(E0284),
         }
     }
 }
@@ -168,7 +169,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         highlight: Option<ty::print::RegionHighlightMode>,
     ) -> (String, Option<Span>, Cow<'static, str>, Option<String>, Option<&'static str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind {
                 let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
@@ -226,7 +227,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let getter = move |ty_vid| {
                 let var_origin = ty_vars.var_origin(ty_vid);
                 if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {

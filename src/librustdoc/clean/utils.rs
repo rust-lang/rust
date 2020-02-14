@@ -16,7 +16,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -139,7 +138,7 @@ pub fn external_generic_args(
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() => {
             assert!(ty_kind.is_some());
             let inputs = match ty_kind {
                 Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
@@ -319,7 +318,7 @@ pub fn strip_path(path: &Path) -> Path {
         })
         .collect();
 
-    Path { global: path.global, res: path.res.clone(), segments }
+    Path { global: path.global, res: path.res, segments }
 }
 
 pub fn qpath_to_string(p: &hir::QPath) -> String {
@@ -460,12 +459,16 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 
 pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     match n.val {
-        ty::ConstKind::Unevaluated(def_id, _) => {
-            if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+        ty::ConstKind::Unevaluated(def_id, _, promoted) => {
+            let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
+            };
+            if let Some(promoted) = promoted {
+                s.push_str(&format!("::{:?}", promoted))
             }
+            s
         }
         _ => {
             let mut s = n.to_string();
@@ -566,14 +569,7 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
     }
 
     let is_generic = match path.res {
-        Res::PrimTy(p) => match p {
-            hir::PrimTy::Str => return Primitive(PrimitiveType::Str),
-            hir::PrimTy::Bool => return Primitive(PrimitiveType::Bool),
-            hir::PrimTy::Char => return Primitive(PrimitiveType::Char),
-            hir::PrimTy::Int(int_ty) => return Primitive(int_ty.into()),
-            hir::PrimTy::Uint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::PrimTy::Float(float_ty) => return Primitive(float_ty.into()),
-        },
+        Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
         Res::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(kw::SelfUpper.to_string());
         }

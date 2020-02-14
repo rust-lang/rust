@@ -25,7 +25,7 @@ fn main() {
     //~|items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1u32)).method();
     //~^items from traits can only be used if the trait is in scope
-    //~| ERROR no method named `method` found for type
+    //~| ERROR no method named `method` found for struct
 
     'a'.method();
     //~^ ERROR no method named

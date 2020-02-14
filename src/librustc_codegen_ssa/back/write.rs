@@ -2,7 +2,8 @@ use super::command::Command;
 use super::link::{self, get_linker, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
-use super::symbol_export::ExportedSymbols;
+use super::symbol_export::symbol_name_for_instance_in_crate;
+
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
     RLIB_BYTECODE_EXTENSION,
@@ -12,6 +13,7 @@ use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
 };
@@ -19,6 +21,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -85,6 +88,7 @@ pub struct ModuleConfig {
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
+    pub new_llvm_pass_manager: Option<bool>,
     // Instead of creating an object file by doing LLVM codegen, just
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
@@ -129,6 +133,7 @@ impl ModuleConfig {
             vectorize_slp: false,
             merge_functions: false,
             inline_threshold: None,
+            new_llvm_pass_manager: None,
         }
     }
 
@@ -137,6 +142,7 @@ impl ModuleConfig {
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode =
@@ -204,6 +210,8 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
         TargetMachineFactory(self.0.clone())
     }
 }
+
+pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
@@ -479,6 +487,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         return work_products;
     }
 
+    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
+
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = vec![];
 
@@ -685,11 +695,17 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    fn profiling_event_id(&self) -> &'static str {
+    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
         match *self {
-            WorkItem::Optimize(_) => "codegen_module_optimize",
-            WorkItem::CopyPostLtoArtifacts(_) => "codegen_copy_artifacts_from_incr_cache",
-            WorkItem::LTO(_) => "codegen_module_perform_lto",
+            WorkItem::Optimize(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &m.name[..])
+            }
+            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
+                .prof
+                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &m.name[..]),
+            WorkItem::LTO(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
+            }
         }
     }
 }
@@ -900,7 +916,7 @@ pub enum Message<B: WriteBackendMethods> {
         worker_id: usize,
     },
     Done {
-        result: Result<CompiledModule, ()>,
+        result: Result<CompiledModule, Option<WorkerFatalError>>,
         worker_id: usize,
     },
     CodegenDone {
@@ -954,7 +970,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             let symbols = tcx
                 .exported_symbols(cnum)
                 .iter()
-                .map(|&(s, lvl)| (s.symbol_name(tcx).to_string(), lvl))
+                .map(|&(s, lvl)| (symbol_name_for_instance_in_crate(tcx, s, cnum), lvl))
                 .collect();
             Arc::new(symbols)
         };
@@ -1472,8 +1488,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
                 // If the thread failed that means it panicked, so we abort immediately.
-                Message::Done { result: Err(()), worker_id: _ } => {
+                Message::Done { result: Err(None), worker_id: _ } => {
                     bug!("worker thread panicked");
+                }
+                Message::Done { result: Err(Some(WorkerFatalError)), worker_id: _ } => {
+                    return Err(());
                 }
                 Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
@@ -1511,12 +1530,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
         llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     ) {
         if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes"));
+            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes", "crate"));
         }
     }
 }
 
 pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
+
+/// `FatalError` is explicitly not `Send`.
+#[must_use]
+pub struct WorkerFatalError;
 
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
     thread::spawn(move || {
@@ -1524,23 +1547,26 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // we exit.
         struct Bomb<B: ExtraBackendMethods> {
             coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<WorkItemResult<B>>,
+            result: Option<Result<WorkItemResult<B>, FatalError>>,
             worker_id: usize,
         }
         impl<B: ExtraBackendMethods> Drop for Bomb<B> {
             fn drop(&mut self) {
                 let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(WorkItemResult::Compiled(m)) => {
+                    Some(Ok(WorkItemResult::Compiled(m))) => {
                         Message::Done::<B> { result: Ok(m), worker_id }
                     }
-                    Some(WorkItemResult::NeedsFatLTO(m)) => {
+                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
                         Message::NeedsFatLTO::<B> { result: m, worker_id }
                     }
-                    Some(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
                         Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
                     }
-                    None => Message::Done::<B> { result: Err(()), worker_id },
+                    Some(Err(FatalError)) => {
+                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                    }
+                    None => Message::Done::<B> { result: Err(None), worker_id },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
@@ -1559,8 +1585,8 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
-            execute_work_item(&cgcx, work).ok()
+            let _prof_timer = work.start_profiling(&cgcx);
+            Some(execute_work_item(&cgcx, work))
         };
     });
 }
@@ -1714,8 +1740,11 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
+        let _timer = sess.timer("finish_ongoing_codegen");
+
         self.shared_emitter_main.check(sess, true);
-        let compiled_modules = match self.future.join() {
+        let future = self.future;
+        let compiled_modules = sess.time("join_worker_thread", || match future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
             Ok(Err(())) => {
                 sess.abort_if_errors();
@@ -1724,7 +1753,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             Err(_) => {
                 bug!("panic during codegen/LLVM phase");
             }
-        };
+        });
 
         sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 

@@ -35,84 +35,16 @@ use std::io;
 use std::mem;
 use std::ptr;
 
-type HANDLE = *mut u8;
-type BOOL = i32;
-type DWORD = u32;
-type LPHANDLE = *mut HANDLE;
-type LPVOID = *mut u8;
-type JOBOBJECTINFOCLASS = i32;
-type SIZE_T = usize;
-type LARGE_INTEGER = i64;
-type UINT = u32;
-type ULONG_PTR = usize;
-type ULONGLONG = u64;
-
-const FALSE: BOOL = 0;
-const DUPLICATE_SAME_ACCESS: DWORD = 0x2;
-const PROCESS_DUP_HANDLE: DWORD = 0x40;
-const JobObjectExtendedLimitInformation: JOBOBJECTINFOCLASS = 9;
-const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
-const JOB_OBJECT_LIMIT_PRIORITY_CLASS: DWORD = 0x00000020;
-const SEM_FAILCRITICALERRORS: UINT = 0x0001;
-const SEM_NOGPFAULTERRORBOX: UINT = 0x0002;
-const BELOW_NORMAL_PRIORITY_CLASS: DWORD = 0x00004000;
-
-extern "system" {
-    fn CreateJobObjectW(lpJobAttributes: *mut u8, lpName: *const u8) -> HANDLE;
-    fn CloseHandle(hObject: HANDLE) -> BOOL;
-    fn GetCurrentProcess() -> HANDLE;
-    fn OpenProcess(dwDesiredAccess: DWORD, bInheritHandle: BOOL, dwProcessId: DWORD) -> HANDLE;
-    fn DuplicateHandle(
-        hSourceProcessHandle: HANDLE,
-        hSourceHandle: HANDLE,
-        hTargetProcessHandle: HANDLE,
-        lpTargetHandle: LPHANDLE,
-        dwDesiredAccess: DWORD,
-        bInheritHandle: BOOL,
-        dwOptions: DWORD,
-    ) -> BOOL;
-    fn AssignProcessToJobObject(hJob: HANDLE, hProcess: HANDLE) -> BOOL;
-    fn SetInformationJobObject(
-        hJob: HANDLE,
-        JobObjectInformationClass: JOBOBJECTINFOCLASS,
-        lpJobObjectInformation: LPVOID,
-        cbJobObjectInformationLength: DWORD,
-    ) -> BOOL;
-    fn SetErrorMode(mode: UINT) -> UINT;
-}
-
-#[repr(C)]
-struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
-    BasicLimitInformation: JOBOBJECT_BASIC_LIMIT_INFORMATION,
-    IoInfo: IO_COUNTERS,
-    ProcessMemoryLimit: SIZE_T,
-    JobMemoryLimit: SIZE_T,
-    PeakProcessMemoryUsed: SIZE_T,
-    PeakJobMemoryUsed: SIZE_T,
-}
-
-#[repr(C)]
-struct IO_COUNTERS {
-    ReadOperationCount: ULONGLONG,
-    WriteOperationCount: ULONGLONG,
-    OtherOperationCount: ULONGLONG,
-    ReadTransferCount: ULONGLONG,
-    WriteTransferCount: ULONGLONG,
-    OtherTransferCount: ULONGLONG,
-}
-
-#[repr(C)]
-struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
-    PerProcessUserTimeLimit: LARGE_INTEGER,
-    PerJobUserTimeLimit: LARGE_INTEGER,
-    LimitFlags: DWORD,
-    MinimumWorkingsetSize: SIZE_T,
-    MaximumWorkingsetSize: SIZE_T,
-    ActiveProcessLimit: DWORD,
-    Affinity: ULONG_PTR,
-    PriorityClass: DWORD,
-    SchedulingClass: DWORD,
-}
+use winapi::shared::minwindef::{DWORD, FALSE, LPVOID};
+use winapi::um::errhandlingapi::SetErrorMode;
+use winapi::um::handleapi::{CloseHandle, DuplicateHandle};
+use winapi::um::jobapi2::{AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject};
+use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcess};
+use winapi::um::winbase::{BELOW_NORMAL_PRIORITY_CLASS, SEM_NOGPFAULTERRORBOX};
+use winapi::um::winnt::{
+    JobObjectExtendedLimitInformation, DUPLICATE_SAME_ACCESS, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
+};
 
 pub unsafe fn setup(build: &mut Build) {
     // Enable the Windows Error Reporting dialog which msys disables,

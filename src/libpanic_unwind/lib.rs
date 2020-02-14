@@ -26,6 +26,7 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(unwind_attributes)]
+#![feature(abi_thiscall)]
 #![panic_runtime]
 #![feature(panic_runtime)]
 
@@ -58,6 +59,12 @@ cfg_if::cfg_if! {
         #[path = "gcc.rs"]
         mod imp;
     }
+}
+
+extern "C" {
+    /// Handler in libstd called when a panic object is dropped outside of
+    /// `catch_unwind`.
+    fn __rust_drop_panic() -> !;
 }
 
 mod dwarf;

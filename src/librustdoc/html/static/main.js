@@ -1895,6 +1895,24 @@ function getSearchElement() {
         var implementors = document.getElementById("implementors-list");
         var synthetic_implementors = document.getElementById("synthetic-implementors-list");
 
+        if (synthetic_implementors) {
+            // This `inlined_types` variable is used to avoid having the same implementation
+            // showing up twice. For example "String" in the "Sync" doc page.
+            //
+            // By the way, this is only used by and useful for traits implemented automatically
+            // (like "Send" and "Sync").
+            var inlined_types = new Set();
+            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
+                var aliases = el.getAttribute("aliases");
+                if (!aliases) {
+                    return;
+                }
+                aliases.split(",").forEach(function(alias) {
+                    inlined_types.add(alias);
+                });
+            });
+        }
+
         var libs = Object.getOwnPropertyNames(imp);
         var llength = libs.length;
         for (var i = 0; i < llength; ++i) {
@@ -1911,10 +1929,10 @@ function getSearchElement() {
                 if (struct.synthetic) {
                     var stlength = struct.types.length;
                     for (var k = 0; k < stlength; k++) {
-                        if (window.inlined_types.has(struct.types[k])) {
+                        if (inlined_types.has(struct.types[k])) {
                             continue struct_loop;
                         }
-                        window.inlined_types.add(struct.types[k]);
+                        inlined_types.add(struct.types[k]);
                     }
                 }
 
@@ -2663,8 +2681,8 @@ function getSearchElement() {
             "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
-            "Search functions by type signature (e.g., <code>vec -> usize</code> or \
-             <code>* -> vec</code>)",
+            "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
+             <code>* -&gt; vec</code>)",
             "Search multiple things at once by splitting your query with comma (e.g., \
              <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
             "You can look for items with an exact name by putting double quotes around \

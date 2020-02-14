@@ -1,16 +1,17 @@
+use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_error_codes::*;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 use syntax::ast::{
     self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
 };
 use syntax::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, token_can_begin_expr, TokenKind};
 use syntax::util::parser::AssocOp;
@@ -51,7 +52,6 @@ pub enum Error {
         secondary_path: String,
     },
     UselessDocComment,
-    InclusiveRangeWithNoEnd,
 }
 
 impl Error {
@@ -100,11 +100,6 @@ impl Error {
                     "doc comments must come before what they document, maybe a comment was \
                           intended with `//`?",
                 );
-                err
-            }
-            Error::InclusiveRangeWithNoEnd => {
-                let mut err = struct_span_err!(handler, sp, E0586, "inclusive range with no end",);
-                err.help("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)");
                 err
             }
         }
@@ -265,10 +260,7 @@ impl<'a> Parser<'a> {
             };
             (
                 format!("expected one of {}, found {}", expect, actual),
-                (
-                    self.sess.source_map().next_point(self.prev_span),
-                    format!("expected one of {}", short_expect),
-                ),
+                (self.prev_span.shrink_to_hi(), format!("expected one of {}", short_expect)),
             )
         } else if expected.is_empty() {
             (
@@ -278,7 +270,7 @@ impl<'a> Parser<'a> {
         } else {
             (
                 format!("expected {}, found {}", expect, actual),
-                (self.sess.source_map().next_point(self.prev_span), format!("expected {}", expect)),
+                (self.prev_span.shrink_to_hi(), format!("expected {}", expect)),
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
@@ -374,8 +366,8 @@ impl<'a> Parser<'a> {
                           type: `<expr>: <type>`",
                 );
                 err.note(
-                    "for more information, see \
-                          https://github.com/rust-lang/rust/issues/23416",
+                    "see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
+                     for more information",
                 );
             }
         }
@@ -500,6 +492,58 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
+    /// e.g. `1 < x <= 3`. If so, suggest either splitting the comparison into two, or
+    /// parenthesising the leftmost comparison.
+    fn attempt_chained_comparison_suggestion(
+        &mut self,
+        err: &mut DiagnosticBuilder<'_>,
+        inner_op: &Expr,
+        outer_op: &Spanned<AssocOp>,
+    ) {
+        if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
+            match (op.node, &outer_op.node) {
+                // `x < y < z` and friends.
+                (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
+                (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
+                // `x > y > z` and friends.
+                (BinOpKind::Gt, AssocOp::Greater) | (BinOpKind::Gt, AssocOp::GreaterEqual) |
+                (BinOpKind::Ge, AssocOp::GreaterEqual) | (BinOpKind::Ge, AssocOp::Greater) => {
+                    let expr_to_str = |e: &Expr| {
+                        self.span_to_snippet(e.span)
+                            .unwrap_or_else(|_| pprust::expr_to_string(&e))
+                    };
+                    err.span_suggestion(
+                        inner_op.span.to(outer_op.span),
+                        "split the comparison into two...",
+                        format!(
+                            "{} {} {} && {} {}",
+                            expr_to_str(&l1),
+                            op.node.to_string(),
+                            expr_to_str(&r1),
+                            expr_to_str(&r1),
+                            outer_op.node.to_ast_binop().unwrap().to_string(),
+                        ),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.span_suggestion(
+                        inner_op.span.to(outer_op.span),
+                        "...or parenthesize one of the comparisons",
+                        format!(
+                            "({} {} {}) {}",
+                            expr_to_str(&l1),
+                            op.node.to_string(),
+                            expr_to_str(&r1),
+                            outer_op.node.to_ast_binop().unwrap().to_string(),
+                        ),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Produces an error if comparison operators are chained (RFC #558).
     /// We only need to check the LHS, not the RHS, because all comparison ops have same
     /// precedence (see `fn precedence`) and are left-associative (see `fn fixity`).
@@ -515,27 +559,31 @@ impl<'a> Parser<'a> {
     ///           /   \
     ///     inner_op   r2
     ///        /  \
-    ///     l1    r1
+    ///      l1    r1
     pub(super) fn check_no_chained_comparison(
         &mut self,
-        lhs: &Expr,
-        outer_op: &AssocOp,
+        inner_op: &Expr,
+        outer_op: &Spanned<AssocOp>,
     ) -> PResult<'a, Option<P<Expr>>> {
         debug_assert!(
-            outer_op.is_comparison(),
+            outer_op.node.is_comparison(),
             "check_no_chained_comparison: {:?} is not comparison",
-            outer_op,
+            outer_op.node,
         );
 
         let mk_err_expr =
             |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
 
-        match lhs.kind {
+        match inner_op.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
                 let op_span = op.span.to(self.prev_span);
-                let mut err = self
-                    .struct_span_err(op_span, "chained comparison operators require parentheses");
+                let mut err =
+                    self.struct_span_err(op_span, "comparison operators cannot be chained");
+
+                // If it looks like a genuine attempt to chain operators (as opposed to a
+                // misformatted turbofish, for instance), suggest a correct form.
+                self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
 
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
                     err.span_suggestion_verbose(
@@ -547,12 +595,12 @@ impl<'a> Parser<'a> {
                 };
 
                 if op.node == BinOpKind::Lt &&
-                    *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
-                    *outer_op == AssocOp::Greater
+                    outer_op.node == AssocOp::Less ||  // Include `<` to provide this recommendation
+                    outer_op.node == AssocOp::Greater
                 // even in a case like the following:
                 {
                     //     Foo<Bar<Baz<Qux, ()>>>
-                    if *outer_op == AssocOp::Less {
+                    if outer_op.node == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
@@ -584,7 +632,7 @@ impl<'a> Parser<'a> {
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_span))
                             }
                             Err(mut expr_err) => {
                                 expr_err.cancel();
@@ -606,7 +654,7 @@ impl<'a> Parser<'a> {
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_span))
                             }
                         }
                     } else {
@@ -646,11 +694,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         impl_dyn_multi: bool,
         ty: &Ty,
     ) {
-        if !allow_plus && impl_dyn_multi {
+        if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
             let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
             self.struct_span_err(ty.span, "ambiguous `+` in a type")
                 .span_suggestion(
@@ -665,11 +713,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_recover_from_bad_type_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         ty: &Ty,
     ) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if !allow_plus || !self.token.is_like_plus() {
+        if matches!(allow_plus, AllowPlus::No) || !self.token.is_like_plus() {
             return Ok(());
         }
 
@@ -809,7 +857,7 @@ impl<'a> Parser<'a> {
             _ if self.prev_span == DUMMY_SP => (self.token.span, self.token.span),
             // EOF, don't want to point at the following char, but rather the last token.
             (token::Eof, None) => (self.prev_span, self.token.span),
-            _ => (self.sess.source_map().next_point(self.prev_span), self.token.span),
+            _ => (self.prev_span.shrink_to_hi(), self.token.span),
         };
         let msg = format!(
             "expected `{}`, found {}",
@@ -890,47 +938,6 @@ impl<'a> Parser<'a> {
         self.expect(&token::Semi).map(drop) // Error unconditionally
     }
 
-    pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
-        &mut self,
-        ident: &Ident,
-        extern_sp: Span,
-    ) -> PResult<'a, ()> {
-        if self.token != token::Semi {
-            // This might be an incorrect fn definition (#62109).
-            let parser_snapshot = self.clone();
-            match self.parse_inner_attrs_and_block() {
-                Ok((_, body)) => {
-                    self.struct_span_err(ident.span, "incorrect `fn` inside `extern` block")
-                        .span_label(ident.span, "can't have a body")
-                        .span_label(body.span, "this body is invalid here")
-                        .span_label(
-                            extern_sp,
-                            "`extern` blocks define existing foreign functions and `fn`s \
-                             inside of them cannot have a body",
-                        )
-                        .help(
-                            "you might have meant to write a function accessible through ffi, \
-                               which can be done by writing `extern fn` outside of the \
-                               `extern` block",
-                        )
-                        .note(
-                            "for more information, visit \
-                               https://doc.rust-lang.org/std/keyword.extern.html",
-                        )
-                        .emit();
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    mem::replace(self, parser_snapshot);
-                    self.expect_semi()?;
-                }
-            }
-        } else {
-            self.bump();
-        }
-        Ok(())
-    }
-
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     pub(super) fn recover_incorrect_await_syntax(
@@ -1007,7 +1014,7 @@ impl<'a> Parser<'a> {
                     String::new(),
                     Applicability::MachineApplicable,
                 )
-                .emit()
+                .emit();
         }
     }
 
@@ -1132,7 +1139,7 @@ impl<'a> Parser<'a> {
                     err.span_label(sp, "unclosed delimiter");
                 }
                 err.span_suggestion_short(
-                    self.sess.source_map().next_point(self.prev_span),
+                    self.prev_span.shrink_to_hi(),
                     &format!("{} may belong here", delim.to_string()),
                     delim.to_string(),
                     Applicability::MaybeIncorrect,
@@ -1289,8 +1296,7 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
-        is_self_allowed: bool,
-        is_trait_item: bool,
+        first_param: bool,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
@@ -1310,13 +1316,12 @@ impl<'a> Parser<'a> {
             return Some(ident);
         } else if let PatKind::Ident(_, ident, _) = pat.kind {
             if require_name
-                && (is_trait_item
-                    || self.token == token::Comma
+                && (self.token == token::Comma
                     || self.token == token::Lt
                     || self.token == token::CloseDelim(token::Paren))
             {
                 // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
-                if is_self_allowed {
+                if first_param {
                     err.span_suggestion(
                         pat.span,
                         "if this is a `self` type, give it a parameter name",
@@ -1373,21 +1378,12 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    pub(super) fn recover_bad_self_param(
-        &mut self,
-        mut param: ast::Param,
-        is_trait_item: bool,
-    ) -> PResult<'a, ast::Param> {
+    pub(super) fn recover_bad_self_param(&mut self, mut param: Param) -> PResult<'a, Param> {
         let sp = param.pat.span;
         param.ty.kind = TyKind::Err;
-        let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
-        if is_trait_item {
-            err.span_label(sp, "must be the first associated function parameter");
-        } else {
-            err.span_label(sp, "not valid as function parameter");
-            err.note("`self` is only valid as the first parameter of an associated function");
-        }
-        err.emit();
+        self.struct_span_err(sp, "unexpected `self` parameter in function")
+            .span_label(sp, "must be the first parameter of an associated function")
+            .emit();
         Ok(param)
     }
 

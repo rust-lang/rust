@@ -10,7 +10,7 @@ note: the implementor must specify the same requirement
 LL | union Union<T: Copy> { f: T }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: `Drop` impl requires `'adds_bnd : 'al` but the struct it is implemented for does not
+error[E0367]: `Drop` impl requires `'adds_bnd: 'al` but the struct it is implemented for does not
   --> $DIR/reject-specialized-drops-8142.rs:23:20
    |
 LL | impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
@@ -22,7 +22,7 @@ note: the implementor must specify the same requirement
 LL | struct K<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: `Drop` impl requires `'adds_bnd : 'al` but the struct it is implemented for does not
+error[E0367]: `Drop` impl requires `'adds_bnd: 'al` but the struct it is implemented for does not
   --> $DIR/reject-specialized-drops-8142.rs:27:67
    |
 LL | impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
@@ -73,7 +73,7 @@ note: the implementor must specify the same requirement
 LL | struct Q<Tq> { x: *const Tq }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: `Drop` impl requires `AddsRBnd : 'rbnd` but the struct it is implemented for does not
+error[E0367]: `Drop` impl requires `AddsRBnd: 'rbnd` but the struct it is implemented for does not
   --> $DIR/reject-specialized-drops-8142.rs:46:21
    |
 LL | impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT

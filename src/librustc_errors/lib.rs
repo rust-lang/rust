@@ -4,12 +4,11 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 
 pub use emitter::ColorConfig;
 
+use log::debug;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -174,17 +173,27 @@ impl CodeSuggestion {
 
         self.substitutions
             .iter()
+            .filter(|subst| {
+                // Suggestions coming from macros can have malformed spans. This is a heavy
+                // handed approach to avoid ICEs by ignoring the suggestion outright.
+                let invalid = subst.parts.iter().any(|item| cm.is_valid_span(item.span).is_err());
+                if invalid {
+                    debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
+                }
+                !invalid
+            })
             .cloned()
-            .map(|mut substitution| {
+            .filter_map(|mut substitution| {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
 
                 // Find the bounding span.
-                let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-                let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+                let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
+                let hi = substitution.parts.iter().map(|part| part.span.hi()).max()?;
                 let bounding_span = Span::with_root_ctxt(lo, hi);
-                let lines = cm.span_to_lines(bounding_span).unwrap();
+                // The different spans might belong to different contexts, if so ignore suggestion.
+                let lines = cm.span_to_lines(bounding_span).ok()?;
                 assert!(!lines.lines.is_empty());
 
                 // To build up the result, we do this for each span:
@@ -234,7 +243,7 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                (buf, substitution.parts, only_capitalization)
+                Some((buf, substitution.parts, only_capitalization))
             })
             .collect()
     }
@@ -325,9 +334,9 @@ pub struct HandlerFlags {
     /// If true, immediately print bugs registered with `delay_span_bug`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
-    /// show macro backtraces even for non-local macros.
-    /// (rustc: see `-Z external-macro-backtrace`)
-    pub external_macro_backtrace: bool,
+    /// Show macro backtraces.
+    /// (rustc: see `-Z macro-backtrace`)
+    pub macro_backtrace: bool,
     /// If true, identical diagnostics are reported only once.
     pub deduplicate_diagnostics: bool,
 }
@@ -374,7 +383,7 @@ impl Handler {
             false,
             false,
             None,
-            flags.external_macro_backtrace,
+            flags.macro_backtrace,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }

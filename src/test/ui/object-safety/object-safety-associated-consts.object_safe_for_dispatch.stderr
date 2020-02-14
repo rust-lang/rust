@@ -1,12 +1,15 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-associated-consts.rs:14:5
    |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
 LL |     const X: usize;
-   |           - the trait cannot contain associated consts like `X`
+   |           - ...because it contains this associated `const`
 ...
 LL |     t
    |     ^ the trait `Bar` cannot be made into an object
    |
+   = help: consider moving `X` to another trait
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Bar>` for `&T`
    = note: required by cast to type `&dyn Bar`
 

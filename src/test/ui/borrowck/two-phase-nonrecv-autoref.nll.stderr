@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:58:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:51:11
    |
 LL |         f(f(10));
    |         - ^ second mutable borrow occurs here
@@ -8,7 +8,7 @@ LL |         f(f(10));
    |         first borrow later used by call
 
 error[E0382]: use of moved value: `f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:66:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:59:11
    |
 LL |     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
    |                                            - move occurs because `f` has type `std::boxed::Box<F>`, which does not implement the `Copy` trait
@@ -18,7 +18,7 @@ LL |         f(f(10));
    |         value moved here
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:72:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:65:11
    |
 LL |         f(f(10));
    |         - ^ second mutable borrow occurs here
@@ -27,7 +27,7 @@ LL |         f(f(10));
    |         first borrow later used by call
 
 error[E0382]: use of moved value: `f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:80:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:73:11
    |
 LL |     fn twice_ten_oo(f: Box<dyn FnOnce(i32) -> i32>) {
    |                     - move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
@@ -37,7 +37,7 @@ LL |         f(f(10));
    |         value moved here
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:119:27
+  --> $DIR/two-phase-nonrecv-autoref.rs:112:27
    |
 LL |     double_access(&mut a, &a);
    |     ------------- ------  ^^ immutable borrow occurs here
@@ -46,7 +46,7 @@ LL |     double_access(&mut a, &a);
    |     mutable borrow later used by call
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:145:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:138:7
    |
 LL |     i[i[3]] = 4;
    |     --^----
@@ -56,7 +56,7 @@ LL |     i[i[3]] = 4;
    |     mutable borrow later used here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:150:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:143:7
    |
 LL |     i[i[3]] = i[4];
    |     --^----

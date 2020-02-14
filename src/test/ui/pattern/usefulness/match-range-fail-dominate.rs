@@ -34,11 +34,15 @@ fn main() {
       //~^ WARNING floating-point types cannot be used in patterns
       //~| WARNING floating-point types cannot be used in patterns
       //~| WARNING floating-point types cannot be used in patterns
+      //~| WARNING floating-point types cannot be used in patterns
+      //~| WARNING this was previously accepted by the compiler
       //~| WARNING this was previously accepted by the compiler
       //~| WARNING this was previously accepted by the compiler
       //~| WARNING this was previously accepted by the compiler
       0.02f64 => {} //~ ERROR unreachable pattern
       //~^ WARNING floating-point types cannot be used in patterns
+      //~| WARNING floating-point types cannot be used in patterns
+      //~| WARNING this was previously accepted by the compiler
       //~| WARNING this was previously accepted by the compiler
       _ => {}
     };

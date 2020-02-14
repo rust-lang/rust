@@ -191,7 +191,7 @@ pub fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind)
 
 pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let auto_trait = cx.tcx.trait_def(did).has_auto_impl;
-    let trait_items = cx.tcx.associated_items(did).map(|item| item.clean(cx)).collect();
+    let trait_items = cx.tcx.associated_items(did).iter().map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
@@ -273,6 +273,22 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
     clean::Typedef {
         type_: cx.tcx.type_of(did).clean(cx),
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
+        item_type: build_type_alias_type(cx, did),
+    }
+}
+
+fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
+    let type_ = cx.tcx.type_of(did).clean(cx);
+    type_.def_id().and_then(|did| build_ty(cx, did))
+}
+
+pub fn build_ty(cx: &DocContext, did: DefId) -> Option<clean::Type> {
+    match cx.tcx.def_kind(did)? {
+        DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
+            Some(cx.tcx.type_of(did).clean(cx))
+        }
+        DefKind::TyAlias => build_type_alias_type(cx, did),
+        _ => None,
     }
 }
 
@@ -331,7 +347,7 @@ pub fn build_impl(
 
     let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
         match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl(.., ref t, _) => t.clean(cx),
+            hir::ItemKind::Impl { self_ty, .. } => self_ty.clean(cx),
             _ => panic!("did given to build_impl was not an impl"),
         }
     } else {
@@ -351,15 +367,16 @@ pub fn build_impl(
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
         match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => (
-                item_ids.iter().map(|ii| tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>(),
-                gen.clean(cx),
+            hir::ItemKind::Impl { ref generics, ref items, .. } => (
+                items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
+                generics.clean(cx),
             ),
             _ => panic!("did given to build_impl was not an impl"),
         }
     } else {
         (
             tcx.associated_items(did)
+                .iter()
                 .filter_map(|item| {
                     if associated_trait.is_some() || item.vis == ty::Visibility::Public {
                         Some(item.clean(cx))
@@ -385,9 +402,7 @@ pub fn build_impl(
 
     let provided = trait_
         .def_id()
-        .map(|did| {
-            tcx.provided_trait_methods(did).into_iter().map(|meth| meth.ident.to_string()).collect()
-        })
+        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
         .unwrap_or_default();
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
@@ -429,12 +444,41 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         for &item in cx.tcx.item_children(did).iter() {
-            let def_id = item.res.def_id();
             if item.vis == ty::Visibility::Public {
-                if did == def_id || !visited.insert(def_id) {
-                    continue;
+                if let Some(def_id) = item.res.mod_def_id() {
+                    if did == def_id || !visited.insert(def_id) {
+                        continue;
+                    }
                 }
-                if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
+                if let Res::PrimTy(p) = item.res {
+                    // Primitive types can't be inlined so generate an import instead.
+                    items.push(clean::Item {
+                        name: None,
+                        attrs: clean::Attributes::default(),
+                        source: clean::Span::empty(),
+                        def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+                        visibility: clean::Public,
+                        stability: None,
+                        deprecation: None,
+                        inner: clean::ImportItem(clean::Import::Simple(
+                            item.ident.to_string(),
+                            clean::ImportSource {
+                                path: clean::Path {
+                                    global: false,
+                                    res: item.res,
+                                    segments: vec![clean::PathSegment {
+                                        name: clean::PrimitiveType::from(p).as_str().to_string(),
+                                        args: clean::GenericArgs::AngleBracketed {
+                                            args: Vec::new(),
+                                            bindings: Vec::new(),
+                                        },
+                                    }],
+                                },
+                                did: None,
+                            },
+                        )),
+                    });
+                } else if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
                     items.extend(i)
                 }
             }

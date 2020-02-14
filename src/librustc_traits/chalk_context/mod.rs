@@ -400,7 +400,7 @@ impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
         &mut self,
         value: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
     ) -> (Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>, UniverseMap) {
-        (value.clone(), UniverseMap)
+        (*value, UniverseMap)
     }
 
     fn invert_goal(

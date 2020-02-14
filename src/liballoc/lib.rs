@@ -60,6 +60,7 @@
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
@@ -104,7 +105,6 @@
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
-#![feature(slice_from_raw_parts)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]

@@ -4,6 +4,8 @@
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
 //!
+//! Vectors ensure they never allocate more than `isize::MAX` bytes.
+//!
 //! # Examples
 //!
 //! You can explicitly create a [`Vec<T>`] with [`new`]:
@@ -176,7 +178,7 @@ use crate::raw_vec::RawVec;
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
-/// when you just want to provide a read access. The same goes for [`String`] and
+/// when you just want to provide read access. The same goes for [`String`] and
 /// [`&str`].
 ///
 /// # Capacity and reallocation
@@ -1696,13 +1698,14 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(vec_remove_item)]
     /// let mut vec = vec![1, 2, 3, 1];
     ///
     /// vec.remove_item(&1);
     ///
     /// assert_eq!(vec, vec![2, 3, 1]);
     /// ```
-    #[stable(feature = "vec_remove_item", since = "1.42.0")]
+    #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
     pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
     where
         T: PartialEq<V>,

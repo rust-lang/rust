@@ -1,13 +1,11 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use errors::struct_span_err;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-
-use rustc_error_codes::*;
 
 pub fn check(tcx: TyCtxt<'_>) {
     let mut orphan = OrphanChecker { tcx };
@@ -27,7 +25,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
-        if let hir::ItemKind::Impl(.., generics, Some(tr), impl_ty, _) = &item.kind {
+        if let hir::ItemKind::Impl { generics, of_trait: Some(ref tr), self_ty, .. } = &item.kind {
             debug!(
                 "coherence2::orphan check: trait impl {}",
                 self.tcx.hir().node_to_string(item.hir_id)
@@ -72,7 +70,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                         let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                         if *is_target_ty {
                             // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
-                            err.span_label(impl_ty.span, &msg);
+                            err.span_label(self_ty.span, &msg);
                         } else {
                             // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
                             err.span_label(tr.path.span, &msg);

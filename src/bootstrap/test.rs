@@ -596,7 +596,7 @@ impl Step for RustdocTheme {
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTDOC_CRATE_VERSION", builder.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
+        if let Some(linker) = builder.linker(self.compiler.host, true) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         try_run(builder, &mut cmd);
@@ -957,14 +957,6 @@ impl Step for Compiletest {
         }
 
         if suite == "debuginfo" {
-            let msvc = builder.config.build.contains("msvc");
-            if mode == "debuginfo" {
-                return builder.ensure(Compiletest {
-                    mode: if msvc { "debuginfo-cdb" } else { "debuginfo-gdb+lldb" },
-                    ..self
-                });
-            }
-
             builder
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
@@ -1043,7 +1035,8 @@ impl Step for Compiletest {
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
-        if let Some(linker) = builder.linker(target) {
+        // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
+        if let Some(linker) = builder.linker(target, false) {
             cmd.arg("--linker").arg(linker);
         }
 
@@ -1157,7 +1150,6 @@ impl Step for Compiletest {
             // requires that a C++ compiler was configured which isn't always the case.
             if !builder.config.dry_run && suite == "run-make-fulldeps" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
-                let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc")
                     .arg(builder.cc(target))
                     .arg("--cxx")
@@ -1165,9 +1157,7 @@ impl Step for Compiletest {
                     .arg("--cflags")
                     .arg(builder.cflags(target, GitRepo::Rustc).join(" "))
                     .arg("--llvm-components")
-                    .arg(llvm_components.trim())
-                    .arg("--llvm-cxxflags")
-                    .arg(llvm_cxxflags.trim());
+                    .arg(llvm_components.trim());
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
@@ -1205,8 +1195,6 @@ impl Step for Compiletest {
                 .arg("--cflags")
                 .arg("")
                 .arg("--llvm-components")
-                .arg("")
-                .arg("--llvm-cxxflags")
                 .arg("");
         }
 
@@ -1437,13 +1425,10 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
-    match fs::read_to_string(markdown) {
-        Ok(contents) => {
-            if !contents.contains("```") {
-                return true;
-            }
+    if let Ok(contents) = fs::read_to_string(markdown) {
+        if !contents.contains("```") {
+            return true;
         }
-        Err(_) => {}
     }
 
     builder.info(&format!("doc tests for: {}", markdown.display()));
@@ -1659,7 +1644,7 @@ impl Step for Crate {
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, &compiler, target, &mut cargo);
+                compile::std_cargo(builder, target, &mut cargo);
             }
             Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });

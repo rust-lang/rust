@@ -164,10 +164,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_place_base(&mut self,
-                                base: & $($mutability)? PlaceBase<'tcx>,
+                                local: & $($mutability)? Local,
                                 context: PlaceContext,
                                 location: Location) {
-                self.super_place_base(base, context, location);
+                self.super_place_base(local, context, location);
             }
 
             visit_place_fns!($($mutability)?);
@@ -516,8 +516,14 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Yield {
                         value,
                         resume: _,
+                        resume_arg,
                         drop: _,
                     } => {
+                        self.visit_place(
+                            resume_arg,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            source_location,
+                        );
                         self.visit_operand(value, source_location);
                     }
 
@@ -527,13 +533,13 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
-                use crate::mir::interpret::PanicInfo::*;
+                use crate::mir::AssertKind::*;
                 match msg {
                     BoundsCheck { len, index } => {
                         self.visit_operand(len, location);
                         self.visit_operand(index, location);
                     }
-                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }
@@ -705,17 +711,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_place_base(&mut self,
-                                place_base: & $($mutability)? PlaceBase<'tcx>,
+                                local: & $($mutability)? Local,
                                 context: PlaceContext,
                                 location: Location) {
-                match place_base {
-                    PlaceBase::Local(local) => {
-                        self.visit_local(local, context, location);
-                    }
-                    PlaceBase::Static(box Static { kind: _, ty, def_id: _ }) => {
-                        self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
-                    }
-                }
+                self.visit_local(local, context, location);
             }
 
             fn super_local_decl(&mut self,
@@ -848,7 +847,7 @@ macro_rules! visit_place_fns {
             context: PlaceContext,
             location: Location,
         ) {
-            self.visit_place_base(&mut place.base, context, location);
+            self.visit_place_base(&mut place.local, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection) {
                 place.projection = self.tcx().intern_place_elems(&new_projection);
@@ -889,23 +888,23 @@ macro_rules! visit_place_fns {
     () => (
         fn visit_projection(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            local: &Local,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection(base, projection, context, location);
+            self.super_projection(local, projection, context, location);
         }
 
         fn visit_projection_elem(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            local: &Local,
             proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection_elem(base, proj_base, elem, context, location);
+            self.super_projection_elem(local, proj_base, elem, context, location);
         }
 
         fn super_place(
@@ -924,9 +923,9 @@ macro_rules! visit_place_fns {
                 };
             }
 
-            self.visit_place_base(&place.base, context, location);
+            self.visit_place_base(&place.local, context, location);
 
-            self.visit_projection(&place.base,
+            self.visit_projection(&place.local,
                                   &place.projection,
                                   context,
                                   location);
@@ -934,7 +933,7 @@ macro_rules! visit_place_fns {
 
         fn super_projection(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            local: &Local,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
@@ -942,13 +941,13 @@ macro_rules! visit_place_fns {
             let mut cursor = projection;
             while let [proj_base @ .., elem] = cursor {
                 cursor = proj_base;
-                self.visit_projection_elem(base, cursor, elem, context, location);
+                self.visit_projection_elem(local, cursor, elem, context, location);
             }
         }
 
         fn super_projection_elem(
             &mut self,
-            _base: &PlaceBase<'tcx>,
+            _local: &Local,
             _proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             _context: PlaceContext,

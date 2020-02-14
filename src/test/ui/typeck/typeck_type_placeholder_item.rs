@@ -1,3 +1,4 @@
+#![feature(type_alias_impl_trait)] // Needed for single test `type Y = impl Trait<_>`
 // This test checks that it is not possible to enable global type
 // inference by using the `_` type placeholder.
 
@@ -42,6 +43,16 @@ impl Test9 {
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
 
+fn test11(x: &usize) -> &_ {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    &x
+}
+
+unsafe fn test12(x: *const usize) -> *const *const _ {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    &x
+}
+
 impl Clone for Test9 {
     fn clone(&self) -> _ { Test9 }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
@@ -57,6 +68,13 @@ struct Test10 {
 }
 
 pub fn main() {
+    static A = 42;
+    //~^ ERROR missing type for `static` item
+    static B: _ = 42;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    static C: Option<_> = Some(42);
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
     fn fn_test() -> _ { 5 }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
@@ -130,4 +148,38 @@ trait T {
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
     fn assoc_fn_test3() -> _;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+}
+
+struct BadStruct<_>(_);
+//~^ ERROR expected identifier, found reserved identifier `_`
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+trait BadTrait<_> {}
+//~^ ERROR expected identifier, found reserved identifier `_`
+impl BadTrait<_> for BadStruct<_> {}
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+fn impl_trait() -> impl BadTrait<_> {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    unimplemented!()
+}
+
+struct BadStruct1<_, _>(_);
+//~^ ERROR expected identifier, found reserved identifier `_`
+//~| ERROR expected identifier, found reserved identifier `_`
+//~| ERROR the name `_` is already used
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+struct BadStruct2<_, T>(_, T);
+//~^ ERROR expected identifier, found reserved identifier `_`
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+
+type X = Box<_>;
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+struct Struct;
+trait Trait<T> {}
+impl Trait<usize> for Struct {}
+type Y = impl Trait<_>;
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+fn foo() -> Y {
+    Struct
 }

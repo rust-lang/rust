@@ -7,7 +7,7 @@ impl Obj {
         return 1+1 == 2
     }
     pub fn chirp(&self) {
-        self.boom(); //~ ERROR no method named `boom` found for type `&Obj` in the current scope
+        self.boom(); //~ ERROR no method named `boom` found
     }
 }
 

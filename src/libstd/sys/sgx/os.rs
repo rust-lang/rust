@@ -19,7 +19,7 @@ pub fn errno() -> i32 {
 
 pub fn error_string(errno: i32) -> String {
     if errno == RESULT_SUCCESS {
-        "operation succesful".into()
+        "operation successful".into()
     } else if ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&errno) {
         format!("user-specified error {:08x}", errno)
     } else {

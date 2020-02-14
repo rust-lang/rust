@@ -7,16 +7,14 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use errors::struct_span_err;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc_span::Span;
 use syntax::ast;
-
-use rustc_error_codes::*;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateInherentImpls {
@@ -47,7 +45,7 @@ struct InherentCollect<'tcx> {
 impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let ty = match item.kind {
-            hir::ItemKind::Impl(.., None, ref ty, _) => ty,
+            hir::ItemKind::Impl { of_trait: None, ref self_ty, .. } => self_ty,
             _ => return,
         };
 

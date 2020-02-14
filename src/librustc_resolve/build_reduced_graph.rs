@@ -20,18 +20,14 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
+use rustc_attr as attr;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{struct_span_err, Applicability};
+use rustc_expand::base::SyntaxExtension;
+use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_metadata::creader::LoadedMacro;
-
-use rustc_data_structures::sync::Lrc;
-use std::cell::Cell;
-use std::ptr;
-
-use errors::{struct_span_err, Applicability};
-
-use rustc_expand::base::SyntaxExtension;
-use rustc_expand::expand::AstFragment;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym};
@@ -39,13 +35,12 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
-use syntax::attr;
 use syntax::token::{self, Token};
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
-
-use rustc_error_codes::*;
+use std::cell::Cell;
+use std::ptr;
 
 type Res = def::Res<NodeId>;
 
@@ -819,7 +814,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(..) | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
@@ -967,7 +962,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             .session
                             .struct_span_err(
                                 attr.span,
-                                "`macro_use` is not supported on `extern crate self`",
+                                "`#[macro_use]` is not supported on `extern crate self`",
                             )
                             .emit();
                     }
@@ -1058,10 +1053,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name(sym::macro_escape) {
-                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("consider an outer attribute, `#[macro_use]` mod ...").emit();
+                    err.help("try an outer attribute: `#[macro_use]`").emit();
                 } else {
                     err.emit();
                 }
@@ -1070,7 +1065,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             if !attr.is_word() {
-                self.r.session.span_err(attr.span, "arguments to macro_use are not allowed here");
+                self.r.session.span_err(attr.span, "arguments to `macro_use` are not allowed here");
             }
             return true;
         }
@@ -1239,11 +1234,17 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.parent_scope.legacy = orig_current_legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &'b AssocItem) {
+    fn visit_assoc_item(&mut self, item: &'b AssocItem, ctxt: AssocCtxt) {
         let parent = self.parent_scope.module;
 
         if let AssocItemKind::Macro(_) = item.kind {
             self.visit_invoc(item.id);
+            return;
+        }
+
+        if let AssocCtxt::Impl = ctxt {
+            self.resolve_visibility(&item.vis);
+            visit::walk_assoc_item(self, item, ctxt);
             return;
         }
 
@@ -1265,16 +1266,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let expansion = self.parent_scope.expansion;
         self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
 
-        visit::walk_trait_item(self, item);
-    }
-
-    fn visit_impl_item(&mut self, item: &'b ast::AssocItem) {
-        if let ast::AssocItemKind::Macro(..) = item.kind {
-            self.visit_invoc(item.id);
-        } else {
-            self.resolve_visibility(&item.vis);
-            visit::walk_impl_item(self, item);
-        }
+        visit::walk_assoc_item(self, item, ctxt);
     }
 
     fn visit_token(&mut self, t: Token) {

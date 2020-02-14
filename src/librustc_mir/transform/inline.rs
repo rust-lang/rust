@@ -8,6 +8,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
+use rustc::session::config::Sanitizer;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 
@@ -16,8 +17,8 @@ use crate::transform::{MirPass, MirSource};
 use std::collections::VecDeque;
 use std::iter;
 
+use rustc_attr as attr;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;
@@ -228,6 +229,28 @@ impl Inliner<'tcx> {
             return false;
         }
 
+        // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
+        // since instrumentation might be enabled and performed on the caller.
+        match self.tcx.sess.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Memory) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Thread) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Leak) => {}
+            None => {}
+        }
+
         let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
@@ -354,7 +377,7 @@ impl Inliner<'tcx> {
             let ty = v.ty.subst(tcx, callsite.substs);
             // Cost of the var is the size in machine-words, if we know
             // it.
-            if let Some(size) = type_size_of(tcx, param_env.clone(), ty) {
+            if let Some(size) = type_size_of(tcx, param_env, ty) {
                 cost += (size / ptr_size) as usize;
             } else {
                 cost += UNKNOWN_SIZE_COST;
@@ -430,12 +453,7 @@ impl Inliner<'tcx> {
                         }
                     }
 
-                    match place.base {
-                        // Static variables need a borrow because the callee
-                        // might modify the same static.
-                        PlaceBase::Static(_) => true,
-                        _ => false,
-                    }
+                    false
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
@@ -455,7 +473,7 @@ impl Inliner<'tcx> {
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(box (tmp.clone(), dest)),
+                        kind: StatementKind::Assign(box (tmp, dest)),
                     };
                     caller_body[callsite.bb].statements.push(stmt);
                     self.tcx.mk_place_deref(tmp)
@@ -645,12 +663,9 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         new
     }
 
-    fn make_integrate_local(&self, local: &Local) -> Local {
-        if *local == RETURN_PLACE {
-            match self.destination.base {
-                PlaceBase::Local(l) => return l,
-                PlaceBase::Static(ref s) => bug!("Return place is {:?}, not local", s),
-            }
+    fn make_integrate_local(&self, local: Local) -> Local {
+        if local == RETURN_PLACE {
+            return self.destination.local;
         }
 
         let idx = local.index() - 1;
@@ -668,23 +683,18 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _ctxt: PlaceContext, _location: Location) {
-        *local = self.make_integrate_local(local);
+        *local = self.make_integrate_local(*local);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        match &mut place.base {
-            PlaceBase::Static(_) => {}
-            PlaceBase::Local(l) => {
-                // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
-                let dest_proj_len = self.destination.projection.len();
-                if *l == RETURN_PLACE && dest_proj_len > 0 {
-                    let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
-                    projs.extend(self.destination.projection);
-                    projs.extend(place.projection);
+        // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
+        let dest_proj_len = self.destination.projection.len();
+        if place.local == RETURN_PLACE && dest_proj_len > 0 {
+            let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
+            projs.extend(self.destination.projection);
+            projs.extend(place.projection);
 
-                    place.projection = self.tcx.intern_place_elems(&*projs);
-                }
-            }
+            place.projection = self.tcx.intern_place_elems(&*projs);
         }
         // Handles integrating any locals that occur in the base
         // or projections
@@ -693,7 +703,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Index(local) = elem {
-            let new_local = self.make_integrate_local(local);
+            let new_local = self.make_integrate_local(*local);
 
             if new_local != *local {
                 return Some(PlaceElem::Index(new_local));

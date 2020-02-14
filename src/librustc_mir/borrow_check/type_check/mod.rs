@@ -9,9 +9,9 @@ use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::mir::interpret::PanicInfo;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::mir::AssertKind;
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
@@ -27,15 +27,14 @@ use rustc::ty::{
     TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 
@@ -114,7 +113,7 @@ mod relate_tys;
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
-pub(crate) fn type_check<'tcx>(
+pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
@@ -124,7 +123,7 @@ pub(crate) fn type_check<'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
 ) -> MirTypeckResults<'tcx> {
@@ -310,17 +309,54 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
-            if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
-                if let Err(terr) = self.cx.fully_perform_op(
-                    location.to_locations(),
-                    ConstraintCategory::Boring,
-                    self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        constant.literal.ty,
-                        def_id,
-                        UserSubsts { substs, user_self_ty: None },
-                    )),
-                ) {
-                    span_mirbug!(self, constant, "bad constant type {:?} ({:?})", constant, terr);
+            if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
+                if let Some(promoted) = promoted {
+                    let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
+                                     promoted: &ReadOnlyBodyAndCache<'_, 'tcx>,
+                                     ty,
+                                     san_ty| {
+                        if let Err(terr) = verifier.cx.eq_types(
+                            san_ty,
+                            ty,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                                verifier,
+                                promoted,
+                                "bad promoted type ({:?}: {:?}): {:?}",
+                                ty,
+                                san_ty,
+                                terr
+                            );
+                        };
+                    };
+
+                    if !self.errors_reported {
+                        let promoted_body = self.promoted[promoted];
+                        self.sanitize_promoted(promoted_body, location);
+
+                        let promoted_ty = promoted_body.return_ty();
+                        check_err(self, &promoted_body, ty, promoted_ty);
+                    }
+                } else {
+                    if let Err(terr) = self.cx.fully_perform_op(
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                            constant.literal.ty,
+                            def_id,
+                            UserSubsts { substs, user_self_ty: None },
+                        )),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            constant,
+                            "bad constant type {:?} ({:?})",
+                            constant,
+                            terr
+                        );
+                    }
                 }
             }
             if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
@@ -428,83 +464,32 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
 
-        let mut place_ty = match &place.base {
-            PlaceBase::Local(index) => PlaceTy::from_ty(self.body.local_decls[*index].ty),
-            PlaceBase::Static(box Static { kind, ty, def_id }) => {
-                let san_ty = self.sanitize_type(place, ty);
-                let check_err =
-                    |verifier: &mut TypeVerifier<'a, 'b, 'tcx>, place: &Place<'tcx>, ty, san_ty| {
-                        if let Err(terr) = verifier.cx.eq_types(
-                            san_ty,
-                            ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                verifier,
-                                place,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                san_ty,
-                                terr
-                            );
-                        };
-                    };
-                match kind {
-                    StaticKind::Promoted(promoted, _) => {
-                        if !self.errors_reported {
-                            let promoted_body_cache = self.promoted[*promoted];
-                            self.sanitize_promoted(promoted_body_cache, location);
-
-                            let promoted_ty = promoted_body_cache.return_ty();
-                            check_err(self, place, promoted_ty, san_ty);
-                        }
-                    }
-                    StaticKind::Static => {
-                        let ty = self.tcx().type_of(*def_id);
-                        let ty = self.cx.normalize(ty, location);
-
-                        check_err(self, place, ty, san_ty);
-                    }
-                }
-                PlaceTy::from_ty(san_ty)
-            }
-        };
+        let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
         if place.projection.is_empty() {
             if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let is_promoted = match place.as_ref() {
-                    PlaceRef {
-                        base: &PlaceBase::Static(box Static { kind: StaticKind::Promoted(..), .. }),
-                        projection: &[],
-                    } => true,
-                    _ => false,
+                let tcx = self.tcx();
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().copy_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
                 };
 
-                if !is_promoted {
-                    let tcx = self.tcx();
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.lang_items().copy_trait().unwrap(),
-                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                    };
-
-                    // To have a `Copy` operand, the type `T` of the
-                    // value must be `Copy`. Note that we prove that `T: Copy`,
-                    // rather than using the `is_copy_modulo_regions`
-                    // test. This is important because
-                    // `is_copy_modulo_regions` ignores the resulting region
-                    // obligations and assumes they pass. This can result in
-                    // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                    // #29149). Note that we decide to use `Copy` before knowing
-                    // whether the bounds fully apply: in effect, the rule is
-                    // that if a value of some type could implement `Copy`, then
-                    // it must.
-                    self.cx.prove_trait_ref(
-                        trait_ref,
-                        location.to_locations(),
-                        ConstraintCategory::CopyBound,
-                    );
-                }
+                // To have a `Copy` operand, the type `T` of the
+                // value must be `Copy`. Note that we prove that `T: Copy`,
+                // rather than using the `is_copy_modulo_regions`
+                // test. This is important because
+                // `is_copy_modulo_regions` ignores the resulting region
+                // obligations and assumes they pass. This can result in
+                // bounds from `Copy` impls being unsoundly ignored (e.g.,
+                // #29149). Note that we decide to use `Copy` before knowing
+                // whether the bounds fully apply: in effect, the rule is
+                // that if a value of some type could implement `Copy`, then
+                // it must.
+                self.cx.prove_trait_ref(
+                    trait_ref,
+                    location.to_locations(),
+                    ConstraintCategory::CopyBound,
+                );
             }
         }
 
@@ -1577,7 +1562,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
@@ -1945,12 +1930,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,
-                                    ty::Predicate::Trait(ty::Binder::bind(ty::TraitPredicate {
-                                        trait_ref: ty::TraitRef::new(
-                                            self.tcx().lang_items().copy_trait().unwrap(),
-                                            tcx.mk_substs_trait(ty, &[]),
-                                        ),
-                                    })),
+                                    ty::Predicate::Trait(
+                                        ty::Binder::bind(ty::TraitPredicate {
+                                            trait_ref: ty::TraitRef::new(
+                                                self.tcx().lang_items().copy_trait().unwrap(),
+                                                tcx.mk_substs_trait(ty, &[]),
+                                            ),
+                                        }),
+                                        hir::Constness::NotConst,
+                                    ),
                                 ),
                                 &traits::SelectionError::Unimplemented,
                                 false,
@@ -2401,7 +2389,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&borrowed_place.base, proj_base, body, tcx).ty;
+                    let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind {
@@ -2588,7 +2576,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) {
         self.prove_predicates(
-            Some(ty::Predicate::Trait(trait_ref.to_poly_trait_ref().to_poly_trait_predicate())),
+            Some(ty::Predicate::Trait(
+                trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
+                hir::Constness::NotConst,
+            )),
             locations,
             category,
         );

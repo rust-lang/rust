@@ -3,8 +3,6 @@
 //! For more details, see the traits [`Pattern`], [`Searcher`],
 //! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
 
-// ignore-tidy-undocumented-unsafe
-
 #![unstable(
     feature = "pattern",
     reason = "API not fully fleshed out and ready to be stabilized",
@@ -271,6 +269,14 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next(&mut self) -> SearchStep {
         let old_finger = self.finger;
+        // SAFETY: 1-4 guarantee safety of `get_unchecked`
+        // 1. `self.finger` and `self.finger_back` are kept on unicode boundaries
+        //    (this is invariant)
+        // 2. `self.finger >= 0` since it starts at 0 and only increases
+        // 3. `self.finger < self.finger_back` because otherwise the char `iter`
+        //    would return `SearchStep::Done`
+        // 4. `self.finger` comes before the end of the haystack because `self.finger_back`
+        //    starts at the end and only decreases
         let slice = unsafe { self.haystack.get_unchecked(old_finger..self.finger_back) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
@@ -293,6 +299,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
             // get the haystack after the last character found
             let bytes = self.haystack.as_bytes().get(self.finger..self.finger_back)?;
             // the last byte of the utf8 encoded needle
+            // SAFETY: we have an invariant that `utf8_size < 5`
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
             if let Some(index) = memchr::memchr(last_byte, bytes) {
                 // The new finger is the index of the byte we found,
@@ -336,6 +343,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
+        // SAFETY: see the comment for next() above
         let slice = unsafe { self.haystack.get_unchecked(self.finger..old_finger) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
@@ -363,6 +371,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
                 return None;
             };
             // the last byte of the utf8 encoded needle
+            // SAFETY: we have an invariant that `utf8_size < 5`
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
             if let Some(index) = memchr::memrchr(last_byte, bytes) {
                 // we searched a slice that was offset by self.finger,

@@ -6,7 +6,7 @@ LL | |         pub field: i32
 LL | |     }
    | |_____^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-missing-copy-implementations.rs:3:9
    |
 LL | #![deny(missing_copy_implementations)]

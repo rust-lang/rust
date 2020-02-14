@@ -47,7 +47,7 @@ where
         debug_assert!(!place.is_indirect());
 
         match (value, place.as_ref()) {
-            (true, mir::PlaceRef { base: &mir::PlaceBase::Local(local), .. }) => {
+            (true, mir::PlaceRef { local, .. }) => {
                 self.qualifs_per_local.insert(local);
             }
 
@@ -55,7 +55,7 @@ where
             // an unqualified rvalue (e.g. `y = 5`). This is to be consistent
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
-            (false, mir::PlaceRef { base: &mir::PlaceBase::Local(_local), projection: &[] }) => {
+            (false, mir::PlaceRef { local: _, projection: &[] }) => {
                 // self.qualifs_per_local.remove(*local);
             }
 
@@ -71,8 +71,13 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
-        let qualif =
-            Q::in_call(self.item, &|l| self.qualifs_per_local.contains(l), func, args, return_ty);
+        let qualif = Q::in_call(
+            self.item,
+            &mut |l| self.qualifs_per_local.contains(l),
+            func,
+            args,
+            return_ty,
+        );
         if !return_place.is_indirect() {
             self.assign_qualif_direct(return_place, qualif);
         }
@@ -105,7 +110,7 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif = Q::in_rvalue(self.item, &|l| self.qualifs_per_local.contains(l), rvalue);
+        let qualif = Q::in_rvalue(self.item, &mut |l| self.qualifs_per_local.contains(l), rvalue);
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -120,7 +125,8 @@ where
         // here; that occurs in `apply_call_return_effect`.
 
         if let mir::TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
-            let qualif = Q::in_operand(self.item, &|l| self.qualifs_per_local.contains(l), value);
+            let qualif =
+                Q::in_operand(self.item, &mut |l| self.qualifs_per_local.contains(l), value);
             if !dest.is_indirect() {
                 self.assign_qualif_direct(dest, qualif);
             }
@@ -158,7 +164,7 @@ impl<Q> old_dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
     const BOTTOM_VALUE: bool = false;
 }
 
-impl<Q> dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -173,7 +179,12 @@ where
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
         self.transfer_function(state).initialize_state();
     }
+}
 
+impl<Q> dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+where
+    Q: Qualif,
+{
     fn apply_statement_effect(
         &self,
         state: &mut BitSet<Self::Idx>,

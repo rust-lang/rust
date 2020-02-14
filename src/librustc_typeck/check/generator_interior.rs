@@ -7,7 +7,7 @@ use super::FnCtxt;
 use rustc::hir::map::Map;
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -97,6 +97,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
+                        expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);
             }
@@ -159,24 +160,38 @@ pub fn resolve_interior<'a, 'tcx>(
 
     debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
-    // Replace all regions inside the generator interior with late bound regions
-    // Note that each region slot in the types gets a new fresh late bound region,
-    // which means that none of the regions inside relate to any other, even if
-    // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let types = fcx.tcx.fold_regions(&types, &mut false, |_, current_depth| {
-        counter += 1;
-        fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
-    });
+    let mut captured_tys = FxHashSet::default();
+    let type_causes: Vec<_> = types
+        .into_iter()
+        .filter_map(|(mut cause, _)| {
+            // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
+            // can.
+            let erased = fcx.tcx.erase_regions(&cause.ty);
+            if captured_tys.insert(erased) {
+                // Replace all regions inside the generator interior with late bound regions.
+                // Note that each region slot in the types gets a new fresh late bound region,
+                // which means that none of the regions inside relate to any other, even if
+                // typeck had previously found constraints that would cause them to be related.
+                let folded = fcx.tcx.fold_regions(&erased, &mut false, |_, current_depth| {
+                    counter += 1;
+                    fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
+                });
+
+                cause.ty = folded;
+                Some(cause)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Extract type components to build the witness type.
+    let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
+    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
     // Store the generator types and spans into the tables for this generator.
-    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
-    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
-
-    // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
-
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = type_causes;
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",
@@ -213,8 +228,6 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-
         match &expr.kind {
             ExprKind::Call(callee, args) => match &callee.kind {
                 ExprKind::Path(qpath) => {
@@ -240,19 +253,12 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
                 _ => intravisit::walk_expr(self, expr),
             },
-            ExprKind::Path(qpath) => {
-                let res = self.fcx.tables.borrow().qpath_res(qpath, expr.hir_id);
-                if let Res::Def(DefKind::Static, def_id) = res {
-                    // Statics are lowered to temporary references or
-                    // pointers in MIR, so record that type.
-                    let ptr_ty = self.fcx.tcx.static_ptr_ty(def_id);
-                    self.record(ptr_ty, scope, Some(expr), expr.span);
-                }
-            }
             _ => intravisit::walk_expr(self, expr),
         }
 
         self.expr_count += 1;
+
+        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.

@@ -16,56 +16,14 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
-use crate::util::common::FN_OUTPUT_NAME;
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use syntax::ast::Ident;
 
-/// Depending on the stage of compilation, we want projection to be
-/// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-pub enum Reveal {
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let <() as Assoc>::Output = true;
-    /// }
-    UserFacing,
-
-    /// At codegen time, all monomorphic projections will succeed.
-    /// Also, `impl Trait` is normalized to the concrete type,
-    /// which has to be already collected by type-checking.
-    ///
-    /// NOTE: as `impl Trait`'s concrete type should *never*
-    /// be observable directly by the user, `Reveal::All`
-    /// should not be used by checks which may expose
-    /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around OIBITS and
-    /// transmute-checking, which expose some details, but
-    /// not the whole concrete type of the `impl Trait`.
-    All,
-}
+pub use rustc::traits::Reveal;
 
 pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
@@ -258,7 +216,22 @@ pub fn normalize<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
-    normalize_with_depth(selcx, param_env, cause, 0, value)
+    let mut obligations = Vec::new();
+    let value = normalize_to(selcx, param_env, cause, value, &mut obligations);
+    Normalized { value, obligations }
+}
+
+pub fn normalize_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    value: &T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    normalize_with_depth_to(selcx, param_env, cause, 0, value, obligations)
 }
 
 /// As `normalize`, but with a custom depth.
@@ -272,8 +245,24 @@ pub fn normalize_with_depth<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
+    let mut obligations = Vec::new();
+    let value = normalize_with_depth_to(selcx, param_env, cause, depth, value, &mut obligations);
+    Normalized { value, obligations }
+}
+
+pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    value: &T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
     debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
-    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth);
+    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
     let result = normalizer.fold(value);
     debug!(
         "normalize_with_depth: depth={} result={:?} with {} obligations",
@@ -282,14 +271,14 @@ where
         normalizer.obligations.len()
     );
     debug!("normalize_with_depth: depth={} obligations={:?}", depth, normalizer.obligations);
-    Normalized { value: result, obligations: normalizer.obligations }
+    result
 }
 
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     depth: usize,
 }
 
@@ -299,8 +288,9 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cause: ObligationCause<'tcx>,
         depth: usize,
+        obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
-        AssocTypeNormalizer { selcx, param_env, cause, obligations: vec![], depth }
+        AssocTypeNormalizer { selcx, param_env, cause, obligations, depth }
     }
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
@@ -378,14 +368,14 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let normalized_ty = normalize_projection_type(
                     self.selcx,
                     self.param_env,
-                    data.clone(),
+                    *data,
                     self.cause.clone(),
                     self.depth,
                     &mut self.obligations,
                 );
                 debug!(
                     "AssocTypeNormalizer: depth={} normalized {:?} to {:?}, \
-                        now with {} obligations",
+                     now with {} obligations",
                     self.depth,
                     ty,
                     normalized_ty,
@@ -434,7 +424,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
     opt_normalize_projection_type(
         selcx,
         param_env,
-        projection_ty.clone(),
+        projection_ty,
         cause.clone(),
         depth,
         obligations,
@@ -483,8 +473,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
     debug!(
         "opt_normalize_projection_type(\
-           projection_ty={:?}, \
-           depth={})",
+         projection_ty={:?}, \
+         depth={})",
         projection_ty, depth
     );
 
@@ -496,7 +486,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    let cache_result = infcx.projection_cache.borrow_mut().try_start(cache_key);
+    let cache_result = infcx.inner.borrow_mut().projection_cache.try_start(cache_key);
     match cache_result {
         Ok(()) => {}
         Err(ProjectionCacheEntry::Ambiguous) => {
@@ -511,7 +501,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // changes
             debug!(
                 "opt_normalize_projection_type: \
-                    found cache entry: ambiguous"
+                 found cache entry: ambiguous"
             );
             if !projection_ty.has_closure_types() {
                 return None;
@@ -540,7 +530,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!(
                 "opt_normalize_projection_type: \
-                    found cache entry: in-progress"
+                 found cache entry: in-progress"
             );
 
             // But for now, let's classify this as an overflow:
@@ -563,14 +553,14 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // evaluations can causes ICEs (e.g., #43132).
             debug!(
                 "opt_normalize_projection_type: \
-                    found normalized ty `{:?}`",
+                 found normalized ty `{:?}`",
                 ty
             );
 
             // Once we have inferred everything we need to know, we
             // can ignore the `obligations` from that point on.
             if infcx.unresolved_type_vars(&ty.value).is_none() {
-                infcx.projection_cache.borrow_mut().complete_normalized(cache_key, &ty);
+                infcx.inner.borrow_mut().projection_cache.complete_normalized(cache_key, &ty);
             // No need to extend `obligations`.
             } else {
                 obligations.extend(ty.obligations);
@@ -588,7 +578,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Err(ProjectionCacheEntry::Error) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    found error"
+                 found error"
             );
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
             obligations.extend(result.obligations);
@@ -609,50 +599,55 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!(
                 "opt_normalize_projection_type: \
-                    projected_ty={:?} \
-                    depth={} \
-                    projected_obligations={:?}",
+                 projected_ty={:?} \
+                 depth={} \
+                 projected_obligations={:?}",
                 projected_ty, depth, projected_obligations
             );
 
             let result = if projected_ty.has_projections() {
-                let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth + 1);
+                let mut normalizer = AssocTypeNormalizer::new(
+                    selcx,
+                    param_env,
+                    cause,
+                    depth + 1,
+                    &mut projected_obligations,
+                );
                 let normalized_ty = normalizer.fold(&projected_ty);
 
                 debug!(
                     "opt_normalize_projection_type: \
-                        normalized_ty={:?} depth={}",
+                     normalized_ty={:?} depth={}",
                     normalized_ty, depth
                 );
 
-                projected_obligations.extend(normalizer.obligations);
                 Normalized { value: normalized_ty, obligations: projected_obligations }
             } else {
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
             let cache_value = prune_cache_value_obligations(infcx, &result);
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value);
+            infcx.inner.borrow_mut().projection_cache.insert_ty(cache_key, cache_value);
             obligations.extend(result.obligations);
             Some(result.value)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    projected_ty={:?} no progress",
+                 projected_ty={:?} no progress",
                 projected_ty
             );
             let result = Normalized { value: projected_ty, obligations: vec![] };
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone());
+            infcx.inner.borrow_mut().projection_cache.insert_ty(cache_key, result.clone());
             // No need to extend `obligations`.
             Some(result.value)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    too many candidates"
+                 too many candidates"
             );
-            infcx.projection_cache.borrow_mut().ambiguous(cache_key);
+            infcx.inner.borrow_mut().projection_cache.ambiguous(cache_key);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -662,7 +657,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
-            infcx.projection_cache.borrow_mut().error(cache_key);
+            infcx.inner.borrow_mut().projection_cache.error(cache_key);
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
             obligations.extend(result.obligations);
             Some(result.value)
@@ -739,7 +734,12 @@ fn get_paranoid_cache_value_obligation<'a, 'tcx>(
     depth: usize,
 ) -> PredicateObligation<'tcx> {
     let trait_ref = projection_ty.trait_ref(infcx.tcx).to_poly_trait_ref();
-    Obligation { cause, recursion_depth: depth, param_env, predicate: trait_ref.to_predicate() }
+    Obligation {
+        cause,
+        recursion_depth: depth,
+        param_env,
+        predicate: trait_ref.without_const().to_predicate(),
+    }
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
@@ -773,7 +773,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(),
     };
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;
@@ -967,7 +967,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx, I>(
 
             debug!(
                 "assemble_candidates_from_predicates: candidate={:?} \
-                    is_match={} same_def_id={}",
+                 is_match={} same_def_id={}",
                 data, is_match, same_def_id
             );
 
@@ -1229,7 +1229,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
             None => {
                 debug!(
                     "confirm_object_candidate: no env-predicate \
-                        found in object type `{:?}`; ill-formed",
+                     found in object type `{:?}`; ill-formed",
                     object_ty
                 );
                 return Progress::error(selcx.tcx());
@@ -1364,7 +1364,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         projection_ty: ty::ProjectionTy::from_ref_and_name(
             tcx,
             trait_ref,
-            Ident::with_dummy_span(FN_OUTPUT_NAME),
+            Ident::with_dummy_span(rustc_hir::FN_OUTPUT_NAME),
         ),
         ty: ret_type,
     });
@@ -1468,12 +1468,12 @@ fn assoc_ty_def(
     // cycle error if the specialization graph is currently being built.
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
-        if item.kind == ty::AssocKind::Type
+        if matches!(item.kind, ty::AssocKind::Type | ty::AssocKind::OpaqueTy)
             && tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id)
         {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
-                item,
+                item: *item,
             };
         }
     }

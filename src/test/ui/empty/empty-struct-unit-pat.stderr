@@ -3,24 +3,44 @@ error[E0532]: expected tuple struct or tuple variant, found unit struct `Empty2`
    |
 LL |         Empty2() => ()
    |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:24:9
    |
 LL |         XEmpty2() => ()
    |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Empty2`
   --> $DIR/empty-struct-unit-pat.rs:28:9
    |
 LL |         Empty2(..) => ()
    |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:32:9
    |
 LL |         XEmpty2(..) => ()
    |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | --------------------- similarly named tuple struct `XEmpty6` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:37:9
@@ -35,6 +55,11 @@ LL |         XE::XEmpty4() => (),
    |         ^^^^-------
    |             |
    |             help: a tuple variant with a similar name exists: `XEmpty5`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     --------- similarly named tuple variant `XEmpty5` defined here
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:46:9
@@ -49,6 +74,11 @@ LL |         XE::XEmpty4(..) => (),
    |         ^^^^-------
    |             |
    |             help: a tuple variant with a similar name exists: `XEmpty5`
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     --------- similarly named tuple variant `XEmpty5` defined here
 
 error: aborting due to 8 previous errors
 

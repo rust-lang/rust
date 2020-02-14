@@ -200,17 +200,15 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 region,
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: borrowed_place.clone(),
-                assigned_place: assigned_place.clone(),
+                borrowed_place: *borrowed_place,
+                assigned_place: *assigned_place,
             };
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            if let mir::PlaceBase::Local(local) = borrowed_place.base {
-                self.local_map.entry(local).or_default().insert(idx);
-            }
+            self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }
 
         self.super_assign(assigned_place, rvalue, location)

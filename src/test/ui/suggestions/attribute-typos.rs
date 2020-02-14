@@ -1,3 +1,7 @@
+// FIXME: missing sysroot spans (#53081)
+// ignore-i586-unknown-linux-gnu
+// ignore-i586-unknown-linux-musl
+// ignore-i686-unknown-linux-musl
 #[deprcated] //~ ERROR cannot find attribute `deprcated` in this scope
 fn foo() {}
 

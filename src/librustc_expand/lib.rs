@@ -1,3 +1,4 @@
+#![feature(cow_is_borrowed)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(proc_macro_diagnostic)]
@@ -13,7 +14,7 @@ extern crate proc_macro as pm;
 #[macro_export]
 macro_rules! panictry {
     ($e:expr) => {{
-        use errors::FatalError;
+        use rustc_errors::FatalError;
         use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,

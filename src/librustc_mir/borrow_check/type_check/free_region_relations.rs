@@ -5,7 +5,7 @@ use rustc::mir::ConstraintCategory;
 use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc::traits::query::type_op::{self, TypeOp};
 use rustc::ty::free_region_map::FreeRegionRelations;
-use rustc::ty::{self, RegionVid, Ty};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_span::DUMMY_SP;
 use std::rc::Rc;
@@ -333,7 +333,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                     // `where Type:` is lowered to `where Type: 'empty` so that
                     // we check `Type` is well formed, but there's no use for
                     // this bound here.
-                    if let ty::ReEmpty = r1 {
+                    if let ty::ReEmpty(_) = r1 {
                         return;
                     }
 
@@ -359,7 +359,12 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
 /// over the `FreeRegionMap` from lexical regions and
 /// `UniversalRegions` (from NLL)`.
 impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegionRelations<'tcx> {
-    fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
+    fn sub_free_regions(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        shorter: ty::Region<'tcx>,
+        longer: ty::Region<'tcx>,
+    ) -> bool {
         let shorter = shorter.to_region_vid();
         assert!(self.universal_regions.is_universal_region(shorter));
         let longer = longer.to_region_vid();

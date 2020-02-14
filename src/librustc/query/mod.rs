@@ -1,6 +1,6 @@
 use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
 use crate::mir;
-use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -43,6 +43,18 @@ rustc_queries! {
     }
 
     Other {
+        // Represents crate as a whole (as distinct from the top-level crate module).
+        // If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+        // we will have to assume that any change means that you need to be recompiled.
+        // This is because the `hir_crate` query gives you access to all other items.
+        // To avoid this fate, do not call `tcx.hir().krate()`; instead,
+        // prefer wrappers like `tcx.visit_all_items_in_krate()`.
+        query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
+            eval_always
+            no_hash
+            desc { "get the crate HIR" }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }
@@ -82,7 +94,7 @@ rustc_queries! {
             desc { "looking up the native libraries of a linked crate" }
         }
 
-        query lint_levels(_: CrateNum) -> &'tcx lint::LintLevelMap {
+        query lint_levels(_: CrateNum) -> &'tcx LintLevelMap {
             eval_always
             desc { "computing the lint levels for items in this crate" }
         }
@@ -310,6 +322,11 @@ rustc_queries! {
         /// Maps from a trait item to the trait item "descriptor".
         query associated_item(_: DefId) -> ty::AssocItem {}
 
+        /// Collects the associated items defined on a trait or impl.
+        query associated_items(key: DefId) -> &'tcx [ty::AssocItem] {
+            desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
+        }
+
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
         query impl_polarity(_: DefId) -> ty::ImplPolarity {}
 
@@ -505,9 +522,25 @@ rustc_queries! {
             desc { "extract field of const" }
         }
 
+        /// Destructure a constant ADT or array into its variant indent and its
+        /// field values.
+        query destructure_const(
+            key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        ) -> mir::DestructuredConst<'tcx> {
+            no_force
+            desc { "destructure constant" }
+        }
+
         query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
+        }
+
+        query lit_to_const(
+            key: LitToConstInput<'tcx>
+        ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+            no_force
+            desc { "converting literal to const" }
         }
     }
 
@@ -541,6 +574,9 @@ rustc_queries! {
             desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
         }
 
+        /// The `symbol_name` query provides the symbol name for calling a
+        /// given instance from the local crate. In particular, it will also
+        /// look up the correct symbol name of instances from upstream crates.
         query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
             no_force
             desc { "computing the symbol for `{}`", key }
@@ -611,7 +647,8 @@ rustc_queries! {
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
-        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {
+        query specialization_graph_of(key: DefId) -> &'tcx specialization_graph::Graph {
+            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
         query is_object_safe(key: DefId) -> bool {
@@ -632,24 +669,27 @@ rustc_queries! {
             no_force
             desc { "computing whether `{}` is `Copy`", env.value }
         }
+        /// Query backing `TyS::is_sized`.
         query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` is `Sized`", env.value }
         }
+        /// Query backing `TyS::is_freeze`.
         query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` is freeze", env.value }
         }
-
-        // The cycle error here should be reported as an error by `check_representable`.
-        // We consider the type as not needing drop in the meanwhile to avoid
-        // further errors (done in impl Value for NeedsDrop).
-        // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
-        // in case we accidentally otherwise don't emit an error.
-        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
-            cycle_delay_bug
+        /// Query backing `TyS::needs_drop`.
+        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` needs drop", env.value }
+        }
+
+        /// A list of types where the ADT requires drop if and only if any of
+        /// those types require drop. If the ADT is known to always need drop
+        /// then `Err(AlwaysRequiresDrop)` is returned.
+        query adt_drop_tys(_: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+            cache_on_disk_if { true }
         }
 
         query layout_raw(
@@ -685,10 +725,6 @@ rustc_queries! {
         query has_panic_handler(_: CrateNum) -> bool {
             fatal_cycle
             desc { "checking if the crate has_panic_handler" }
-        }
-        query is_sanitizer_runtime(_: CrateNum) -> bool {
-            fatal_cycle
-            desc { "query a crate is `#![sanitizer_runtime]`" }
         }
         query is_profiler_runtime(_: CrateNum) -> bool {
             fatal_cycle
@@ -761,13 +797,47 @@ rustc_queries! {
     }
 
     Codegen {
+        /// The entire set of monomorphizations the local crate can safely link
+        /// to because they are exported from upstream crates. Do not depend on
+        /// this directly, as its value changes anytime a monomorphization gets
+        /// added or removed in any upstream crate. Instead use the narrower
+        /// `upstream_monomorphizations_for`, `upstream_drop_glue_for`, or, even
+        /// better, `Instance::upstream_monomorphization()`.
         query upstream_monomorphizations(
             k: CrateNum
         ) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
             desc { "collecting available upstream monomorphizations `{:?}`", k }
         }
+
+        /// Returns the set of upstream monomorphizations available for the
+        /// generic function identified by the given `def_id`. The query makes
+        /// sure to make a stable selection if the same monomorphization is
+        /// available in multiple upstream crates.
+        ///
+        /// You likely want to call `Instance::upstream_monomorphization()`
+        /// instead of invoking this query directly.
         query upstream_monomorphizations_for(_: DefId)
             -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {}
+
+        /// Returns the upstream crate that exports drop-glue for the given
+        /// type (`substs` is expected to be a single-item list containing the
+        /// type one wants drop-glue for).
+        ///
+        /// This is a subset of `upstream_monomorphizations_for` in order to
+        /// increase dep-tracking granularity. Otherwise adding or removing any
+        /// type with drop-glue in any upstream crate would invalidate all
+        /// functions calling drop-glue of an upstream type.
+        ///
+        /// You likely want to call `Instance::upstream_monomorphization()`
+        /// instead of invoking this query directly.
+        ///
+        /// NOTE: This query could easily be extended to also support other
+        ///       common functions that have are large set of monomorphizations
+        ///       (like `Clone::clone` for example).
+        query upstream_drop_glue_for(substs: SubstsRef<'tcx>) -> Option<CrateNum> {
+            desc { "available upstream drop-glue for `{:?}`", substs }
+            no_force
+        }
     }
 
     Other {
@@ -959,6 +1029,11 @@ rustc_queries! {
     }
 
     Linking {
+        /// The list of symbols exported from the given crate.
+        ///
+        /// - All names contained in `exported_symbols(cnum)` are guaranteed to
+        ///   correspond to a publicly visible symbol in `cnum` machine code.
+        /// - The `exported_symbols` sets of different crates do not intersect.
         query exported_symbols(_: CrateNum)
             -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>> {
             desc { "exported_symbols" }

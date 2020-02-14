@@ -1,4 +1,4 @@
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-argument-callee.rs:26:38
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
@@ -18,7 +18,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       |  has type `&'1 i32`
    |                                       has type `&'_#2r mut &'2 i32`
 
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-argument-callee.rs:20:1
    |
 LL | / fn test() {

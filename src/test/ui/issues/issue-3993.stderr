@@ -2,7 +2,13 @@ error[E0603]: function `fly` is private
   --> $DIR/issue-3993.rs:1:10
    |
 LL | use zoo::fly;
-   |          ^^^
+   |          ^^^ this function is private
+   |
+note: the function `fly` is defined here
+  --> $DIR/issue-3993.rs:4:5
+   |
+LL |     fn fly() {}
+   |     ^^^^^^^^
 
 error: aborting due to previous error
 

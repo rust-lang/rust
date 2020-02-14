@@ -1,4 +1,3 @@
-// ignore-license
 void args_check();
 
 int main() {

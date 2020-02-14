@@ -54,6 +54,33 @@ macro_rules! uint_module {
             }
 
             #[test]
+            fn test_leading_trailing_ones() {
+                let bits = (mem::size_of::<$T>() * 8) as u32;
+
+                let a: $T = 0b0101_1111;
+                assert_eq!(a.trailing_ones(), 5);
+                assert_eq!((!a).leading_ones(), bits - 7);
+
+                assert_eq!(a.reverse_bits().leading_ones(), 5);
+
+                assert_eq!(_1.leading_ones(), bits);
+                assert_eq!(_1.trailing_ones(), bits);
+
+                assert_eq!((_1 << 1).trailing_ones(), 0);
+                assert_eq!((_1 >> 1).leading_ones(), 0);
+
+                assert_eq!((_1 << 1).leading_ones(), bits - 1);
+                assert_eq!((_1 >> 1).trailing_ones(), bits - 1);
+
+                assert_eq!(_0.leading_ones(), 0);
+                assert_eq!(_0.trailing_ones(), 0);
+
+                let x: $T = 0b0010_1100;
+                assert_eq!(x.leading_ones(), 0);
+                assert_eq!(x.trailing_ones(), 0);
+            }
+
+            #[test]
             fn test_rotate() {
                 assert_eq!(A.rotate_left(6).rotate_right(2).rotate_right(4), A);
                 assert_eq!(B.rotate_left(3).rotate_left(2).rotate_right(5), B);

@@ -3,9 +3,7 @@ use crate::infer::{self, InferCtxt, SubregionOrigin};
 use crate::middle::region;
 use crate::ty::error::TypeError;
 use crate::ty::{self, Region};
-use errors::{struct_span_err, DiagnosticBuilder};
-
-use rustc_error_codes::*;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(

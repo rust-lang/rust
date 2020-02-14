@@ -10,7 +10,7 @@ error[E0658]: use of unstable library feature 'rustc_private': this crate is bei
 LL |     extern crate libc;
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/27812
+   = note: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

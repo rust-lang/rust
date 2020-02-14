@@ -51,7 +51,7 @@ pub fn placeholder(
             kind: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         })]),
-        AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::AssocItem {
+        AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
             id,
             span,
             ident,
@@ -61,8 +61,8 @@ pub fn placeholder(
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
-        }]),
-        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::AssocItem {
+        })]),
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
             id,
             span,
             ident,
@@ -72,16 +72,18 @@ pub fn placeholder(
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
-        }]),
-        AstFragmentKind::ForeignItems => AstFragment::ForeignItems(smallvec![ast::ForeignItem {
-            id,
-            span,
-            ident,
-            vis,
-            attrs,
-            kind: ast::ForeignItemKind::Macro(mac_placeholder()),
-            tokens: None,
-        }]),
+        })]),
+        AstFragmentKind::ForeignItems => {
+            AstFragment::ForeignItems(smallvec![P(ast::ForeignItem {
+                id,
+                span,
+                ident,
+                vis,
+                attrs,
+                kind: ast::ForeignItemKind::Macro(mac_placeholder()),
+                tokens: None,
+            })])
+        }
         AstFragmentKind::Pat => {
             AstFragment::Pat(P(ast::Pat { id, span, kind: ast::PatKind::Mac(mac_placeholder()) }))
         }
@@ -250,21 +252,24 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         noop_flat_map_item(item, self)
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match item.kind {
             ast::AssocItemKind::Macro(_) => self.remove(item.id).make_trait_items(),
             _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match item.kind {
             ast::AssocItemKind::Macro(_) => self.remove(item.id).make_impl_items(),
             _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
-    fn flat_map_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
+    fn flat_map_foreign_item(
+        &mut self,
+        item: P<ast::ForeignItem>,
+    ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
             _ => noop_flat_map_foreign_item(item, self),

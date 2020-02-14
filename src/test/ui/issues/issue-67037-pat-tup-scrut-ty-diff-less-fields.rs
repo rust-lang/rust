@@ -10,7 +10,7 @@
 // However, we did not account for the expected type being different than the tuple pattern type.
 // This caused an issue when the tuple pattern type (`P<T>`) was generic.
 // Specifically, we tried deriving the 0th field's type using the `substs` of the expected type.
-// When attempting to substitute `T`, there was no such substitution, so "out of range" occured.
+// When attempting to substitute `T`, there was no such substitution, so "out of range" occurred.
 
 struct U {} // 0 type parameters offered
 struct P<T>(T); // 1 type parameter wanted

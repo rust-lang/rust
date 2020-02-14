@@ -38,6 +38,8 @@ pub struct Flags {
     //
     // true => deny, false => warn
     pub deny_warnings: Option<bool>,
+
+    pub llvm_skip_rebuild: Option<bool>,
 }
 
 pub enum Subcommand {
@@ -102,7 +104,7 @@ Usage: x.py <subcommand> [options] [<paths>...]
 Subcommands:
     build       Compile either the compiler or libraries
     check       Compile either the compiler or libraries, using cargo check
-    clippy      Run clippy
+    clippy      Run clippy (uses rustup/cargo-installed clippy binary)
     fix         Run cargo fix
     fmt         Run rustfmt
     test        Build and run some test suites
@@ -150,6 +152,14 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "VALUE",
         );
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
+        opts.optopt(
+            "",
+            "llvm-skip-rebuild",
+            "whether rebuilding llvm should be skipped \
+             a VALUE of TRUE indicates that llvm will not be rebuilt \
+             VALUE overrides the skip-rebuild option in config.toml.",
+            "VALUE",
+        );
 
         // fn usage()
         let usage =
@@ -487,6 +497,9 @@ Arguments:
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
             deny_warnings: parse_deny_warnings(&matches),
+            llvm_skip_rebuild: matches.opt_str("llvm-skip-rebuild").map(|s| s.to_lowercase()).map(
+                |s| s.parse::<bool>().expect("`llvm-skip-rebuild` should be either true or false"),
+            ),
         }
     }
 }
@@ -558,7 +571,7 @@ fn split(s: &[String]) -> Vec<String> {
 }
 
 fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
-    match matches.opt_str("warnings").as_ref().map(|v| v.as_str()) {
+    match matches.opt_str("warnings").as_deref() {
         Some("deny") => Some(true),
         Some("warn") => Some(false),
         Some(value) => {

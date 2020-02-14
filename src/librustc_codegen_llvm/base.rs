@@ -13,8 +13,9 @@
 //!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
-use super::{LlvmCodegenBackend, ModuleLlvm};
+use super::ModuleLlvm;
 
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common;
 use crate::context::CodegenCx;
@@ -23,13 +24,12 @@ use crate::metadata;
 use crate::value::Value;
 
 use rustc::dep_graph;
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::session::config::DebugInfo;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
@@ -100,8 +100,7 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
 pub fn compile_codegen_unit(
     tcx: TyCtxt<'tcx>,
     cgu_name: Symbol,
-    tx_to_llvm_workers: &std::sync::mpsc::Sender<Box<dyn std::any::Any + Send>>,
-) {
+) -> (ModuleCodegen<ModuleLlvm>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -114,8 +113,6 @@ pub fn compile_codegen_unit(
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
-
-    submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tx_to_llvm_workers, module, cost);
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
@@ -135,7 +132,9 @@ pub fn compile_codegen_unit(
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx);
+            if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
+                attributes::sanitize(&cx, CodegenFnAttrFlags::empty(), entry);
+            }
 
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
@@ -164,6 +163,8 @@ pub fn compile_codegen_unit(
             kind: ModuleKind::Regular,
         }
     }
+
+    (module, cost)
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {

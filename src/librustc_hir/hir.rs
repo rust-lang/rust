@@ -12,20 +12,21 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
-use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name};
+use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
+pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
+pub use syntax::ast::{CaptureBy, Movability, Mutability};
+use syntax::node_id::NodeMap;
+use syntax::tokenstream::TokenStream;
+use syntax::util::parser::ExprPrecedence;
+
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name, NodeId};
-use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
-pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
-pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
-use syntax::tokenstream::TokenStream;
-use syntax::util::parser::ExprPrecedence;
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct Lifetime {
@@ -364,6 +365,7 @@ impl GenericArgs<'_> {
 pub enum TraitBoundModifier {
     None,
     Maybe,
+    MaybeConst,
 }
 
 /// The AST represents all type param bounds as types.
@@ -377,6 +379,13 @@ pub enum GenericBound<'hir> {
 }
 
 impl GenericBound<'_> {
+    pub fn trait_def_id(&self) -> Option<DefId> {
+        match self {
+            GenericBound::Trait(data, _) => Some(data.trait_ref.trait_def_id()),
+            _ => None,
+        }
+    }
+
     pub fn span(&self) -> Span {
         match self {
             &GenericBound::Trait(ref t, ..) => t.span,
@@ -430,6 +439,16 @@ pub struct GenericParam<'hir> {
     pub span: Span,
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
+}
+
+impl GenericParam<'hir> {
+    pub fn bounds_span(&self) -> Option<Span> {
+        self.bounds.iter().fold(None, |span, bound| {
+            let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
+
+            Some(span)
+        })
+    }
 }
 
 #[derive(Default)]
@@ -504,7 +523,7 @@ pub enum SyntheticTyParamKind {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct WhereClause<'hir> {
     pub predicates: &'hir [WherePredicate<'hir>],
-    // Only valid if predicates isn't empty.
+    // Only valid if predicates aren't empty.
     pub span: Span,
 }
 
@@ -905,7 +924,7 @@ pub enum PatKind<'hir> {
     Lit(&'hir Expr<'hir>),
 
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(&'hir Expr<'hir>, &'hir Expr<'hir>, RangeEnd),
+    Range(Option<&'hir Expr<'hir>>, Option<&'hir Expr<'hir>>, RangeEnd),
 
     /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
     ///
@@ -1875,6 +1894,9 @@ pub enum ImplItemKind<'hir> {
     OpaqueTy(GenericBounds<'hir>),
 }
 
+// The name of the associated type for `Fn` return types.
+pub const FN_OUTPUT_NAME: Symbol = sym::Output;
+
 /// Bind a type to an associated type (i.e., `A = Foo`).
 ///
 /// Bindings like `A: Debug` are represented as a special type `A =
@@ -2087,18 +2109,8 @@ impl ImplicitSelfKind {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    HashStable_Generic,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum IsAsync {
     Async,
     NotAsync,
@@ -2248,10 +2260,10 @@ impl TraitRef<'_> {
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
-    /// The `'a` in `<'a> Foo<&'a T>`.
+    /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
 
-    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
+    /// The `Foo<&'a T>` in `for<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef<'hir>,
 
     pub span: Span,
@@ -2367,6 +2379,38 @@ pub struct Item<'hir> {
     pub span: Span,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum Unsafety {
+    Unsafe,
+    Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Self::Unsafe => "unsafe ",
+            Self::Normal => "",
+        }
+    }
+}
+
+impl fmt::Display for Unsafety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Self::Unsafe => "unsafe",
+            Self::Normal => "normal",
+        })
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum Constness {
+    Const,
+    NotConst,
+}
+
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
@@ -2426,15 +2470,19 @@ pub enum ItemKind<'hir> {
     TraitAlias(Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(
-        Unsafety,
-        ImplPolarity,
-        Defaultness,
-        Generics<'hir>,
-        Option<TraitRef<'hir>>, // (optional) trait this impl implements
-        &'hir Ty<'hir>,         // self
-        &'hir [ImplItemRef<'hir>],
-    ),
+    Impl {
+        unsafety: Unsafety,
+        polarity: ImplPolarity,
+        defaultness: Defaultness,
+        constness: Constness,
+        generics: Generics<'hir>,
+
+        /// The trait being implemented, if any.
+        of_trait: Option<TraitRef<'hir>>,
+
+        self_ty: &'hir Ty<'hir>,
+        items: &'hir [ImplItemRef<'hir>],
+    },
 }
 
 impl ItemKind<'_> {
@@ -2455,7 +2503,7 @@ impl ItemKind<'_> {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl(..) => "impl",
+            ItemKind::Impl { .. } => "impl",
         }
     }
 
@@ -2468,7 +2516,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::Impl(_, _, _, ref generics, _, _, _) => generics,
+            | ItemKind::Impl { ref generics, .. } => generics,
             _ => return None,
         })
     }
@@ -2560,13 +2608,24 @@ pub type CaptureModeMap = NodeMap<CaptureBy>;
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
 #[derive(Clone, Debug)]
-pub struct TraitCandidate {
+pub struct TraitCandidate<ID = HirId> {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[NodeId; 1]>,
+    pub import_ids: SmallVec<[ID; 1]>,
+}
+
+impl<ID> TraitCandidate<ID> {
+    pub fn map_import_ids<F, T>(self, f: F) -> TraitCandidate<T>
+    where
+        F: Fn(ID) -> T,
+    {
+        let TraitCandidate { def_id, import_ids } = self;
+        let import_ids = import_ids.into_iter().map(f).collect();
+        TraitCandidate { def_id, import_ids }
+    }
 }
 
 // Trait method resolution
-pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
+pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
@@ -2612,6 +2671,27 @@ impl Node<'_> {
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
             | Node::Item(Item { ident, .. }) => Some(*ident),
+            _ => None,
+        }
+    }
+
+    pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
+        match self {
+            Node::TraitItem(TraitItem { kind: TraitItemKind::Method(fn_sig, _), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Method(fn_sig, _), .. })
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
+            Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
+                Some(fn_decl)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn generics(&self) -> Option<&Generics<'_>> {
+        match self {
+            Node::TraitItem(TraitItem { generics, .. })
+            | Node::ImplItem(ImplItem { generics, .. })
+            | Node::Item(Item { kind: ItemKind::Fn(_, generics, _), .. }) => Some(generics),
             _ => None,
         }
     }

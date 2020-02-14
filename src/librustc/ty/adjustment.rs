@@ -81,6 +81,15 @@ pub struct Adjustment<'tcx> {
     pub target: Ty<'tcx>,
 }
 
+impl Adjustment<'tcx> {
+    pub fn is_region_borrow(&self) -> bool {
+        match self.kind {
+            Adjust::Borrow(AutoBorrow::Ref(..)) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum Adjust<'tcx> {
     /// Go from ! to any type.
@@ -113,6 +122,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
         };
         let method_def_id = tcx
             .associated_items(trait_def_id.unwrap())
+            .iter()
             .find(|m| m.kind == ty::AssocKind::Method)
             .unwrap()
             .def_id;

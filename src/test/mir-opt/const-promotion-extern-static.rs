@@ -14,7 +14,7 @@ fn main() {}
 // START rustc.FOO.PromoteTemps.before.mir
 // bb0: {
 // ...
-//     _5 = const Scalar(AllocId(1).0x0) : &i32;
+//     _5 = const Scalar(alloc1+0) : &i32;
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
@@ -31,7 +31,7 @@ fn main() {}
 // START rustc.BAR.PromoteTemps.before.mir
 // bb0: {
 // ...
-//     _5 = const Scalar(AllocId(0).0x0) : &i32;
+//     _5 = const Scalar(alloc0+0) : &i32;
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
@@ -48,7 +48,8 @@ fn main() {}
 // START rustc.BAR.PromoteTemps.after.mir
 // bb0: {
 // ...
-//     _2 = &(promoted[0]: [&'static i32; 1]);
+//     _6 = const BAR::promoted[0];
+//     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
 //     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
@@ -60,7 +61,8 @@ fn main() {}
 // START rustc.FOO.PromoteTemps.after.mir
 // bb0: {
 // ...
-//     _2 = &(promoted[0]: [&'static i32; 1]);
+//     _6 = const FOO::promoted[0];
+//     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
 //     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }

@@ -1,11 +1,11 @@
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 /// Whether the `def_id` counts as const fn in your current crate, considering all active
 /// feature gates
@@ -86,6 +86,10 @@ pub fn provide(providers: &mut Providers<'_>) {
     /// Const evaluability whitelist is here to check evaluability at the
     /// top level beforehand.
     fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
+        if tcx.is_closure(def_id) {
+            return None;
+        }
+
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
                 Some(tcx.lookup_const_stability(def_id).is_some())

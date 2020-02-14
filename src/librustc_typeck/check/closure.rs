@@ -92,8 +92,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into(),
             GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
         });
-        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
+        if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
+        {
             let generator_substs = substs.as_generator();
+            self.demand_eqtype(
+                expr.span,
+                resume_ty,
+                generator_substs.resume_ty(expr_def_id, self.tcx),
+            );
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
@@ -170,12 +176,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .next();
                 let kind = object_type
                     .principal_def_id()
-                    .and_then(|did| self.tcx.lang_items().fn_trait_kind(did));
+                    .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
             ty::FnPtr(sig) => {
-                let expected_sig = ExpectedSig { cause_span: None, sig: sig.skip_binder().clone() };
+                let expected_sig = ExpectedSig { cause_span: None, sig: *sig.skip_binder() };
                 (Some(expected_sig), Some(ty::ClosureKind::Fn))
             }
             _ => (None, None),
@@ -208,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // many viable options, so pick the most restrictive.
         let expected_kind = self
             .obligations_for_self_ty(expected_vid)
-            .filter_map(|(tr, _)| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
+            .filter_map(|(tr, _)| self.tcx.fn_trait_kind_from_lang_item(tr.def_id()))
             .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
 
         (expected_sig, expected_kind)
@@ -231,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
-        let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
+        let is_fn = tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some();
         let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
@@ -242,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if is_gen {
             // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
             // associated item and not yield.
-            let return_assoc_item = self.tcx.associated_items(gen_trait).nth(1).unwrap().def_id;
+            let return_assoc_item = self.tcx.associated_items(gen_trait)[1].def_id;
             if return_assoc_item != projection.projection_def_id() {
                 debug!("deduce_sig_from_projection: not return assoc item of generator");
                 return None;
@@ -259,8 +265,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return None,
             }
         } else {
-            // Generators cannot have explicit arguments.
-            vec![]
+            // Generators with a `()` resume type may be defined with 0 or 1 explicit arguments,
+            // else they must have exactly 1 argument. For now though, just give up in this case.
+            return None;
         };
 
         let ret_param_ty = projection.skip_binder().ty;
@@ -666,7 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item = self.tcx.associated_items(future_trait).nth(0).unwrap().def_id;
+        let output_assoc_item = self.tcx.associated_items(future_trait)[0].def_id;
         if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,

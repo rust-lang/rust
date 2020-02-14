@@ -58,13 +58,10 @@ This API is completely unstable and subject to change.
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![allow(non_camel_case_types)]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(exhaustive_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(slice_patterns)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
@@ -91,7 +88,6 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use errors::struct_span_err;
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
@@ -103,13 +99,12 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-
-use rustc_error_codes::*;
 
 use std::iter;
 
@@ -382,6 +377,7 @@ pub fn hir_trait_to_predicates<'tcx>(
         &item_cx,
         hir_trait,
         DUMMY_SP,
+        hir::Constness::NotConst,
         tcx.types.err,
         &mut bounds,
         true,

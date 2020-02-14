@@ -5,15 +5,10 @@ use rustc_data_structures::sync::Lock;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
-use rustc_span::symbol::{sym, Symbol};
-
 #[cfg(test)]
 mod tests;
 
-// The name of the associated type for `Fn` return types.
-pub const FN_OUTPUT_NAME: Symbol = sym::Output;
-
-pub use errors::ErrorReported;
+pub use rustc_errors::ErrorReported;
 
 pub fn to_readable_str(mut val: usize) -> String {
     let mut groups = vec![];

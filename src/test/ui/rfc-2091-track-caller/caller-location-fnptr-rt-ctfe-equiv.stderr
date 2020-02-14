@@ -1,0 +1,6 @@
+warning: skipping const checks
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:21:5
+   |
+LL |     ptr()
+   |     ^^^^^
+

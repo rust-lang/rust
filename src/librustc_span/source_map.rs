@@ -473,20 +473,23 @@ impl SourceMap {
         lo.line != hi.line
     }
 
-    pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
-        debug!("span_to_lines(sp={:?})", sp);
-
+    pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {
         let lo = self.lookup_char_pos(sp.lo());
         debug!("span_to_lines: lo={:?}", lo);
         let hi = self.lookup_char_pos(sp.hi());
         debug!("span_to_lines: hi={:?}", hi);
-
         if lo.file.start_pos != hi.file.start_pos {
             return Err(SpanLinesError::DistinctSources(DistinctSources {
                 begin: (lo.file.name.clone(), lo.file.start_pos),
                 end: (hi.file.name.clone(), hi.file.start_pos),
             }));
         }
+        Ok((lo, hi))
+    }
+
+    pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
+        debug!("span_to_lines(sp={:?})", sp);
+        let (lo, hi) = self.is_valid_span(sp)?;
         assert!(hi.line >= lo.line);
 
         let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
@@ -710,7 +713,7 @@ impl SourceMap {
     pub fn next_point(&self, sp: Span) -> Span {
         let start_of_next_point = sp.hi().0;
 
-        let width = self.find_width_of_character_at_span(sp, true);
+        let width = self.find_width_of_character_at_span(sp.shrink_to_hi(), true);
         // If the width is 1, then the next span should point to the same `lo` and `hi`. However,
         // in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.
@@ -771,10 +774,10 @@ impl SourceMap {
         // searching forwards for boundaries we've got somewhere to search.
         let snippet = if let Some(ref src) = local_begin.sf.src {
             let len = src.len();
-            (&src[start_index..len])
+            &src[start_index..len]
         } else if let Some(src) = src.get_source() {
             let len = src.len();
-            (&src[start_index..len])
+            &src[start_index..len]
         } else {
             return 1;
         };
@@ -941,15 +944,6 @@ impl SourceMap {
             FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
             _ => None,
         })
-    }
-    pub fn call_span_if_macro(&self, sp: Span) -> Span {
-        if self.span_to_filename(sp.clone()).is_macros() {
-            let v = sp.macro_backtrace();
-            if let Some(use_site) = v.last() {
-                return use_site.call_site;
-            }
-        }
-        sp
     }
 }
 

@@ -4,7 +4,7 @@ warning: unused attribute
 LL | #[macro_use()]
    | ^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/macro-use-all-and-none.rs:4:9
    |
 LL | #![warn(unused_attributes)]

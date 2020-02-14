@@ -2,7 +2,6 @@ use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericAr
 
 use rustc::bug;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -107,7 +106,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref body,
                 fn_decl_span,
             ) => {
-                if let IsAsync::Async { closure_id, .. } = asyncness {
+                if let Async::Yes { closure_id, .. } = asyncness {
                     self.lower_expr_async_closure(
                         capture_clause,
                         closure_id,
@@ -202,7 +201,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: e.span, attrs: e.attrs.clone() }
+        hir::Expr {
+            hir_id: self.lower_node_id(e.id),
+            kind,
+            span: e.span,
+            attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
+        }
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
@@ -684,12 +688,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<hir::Movability> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
-                if !decl.inputs.is_empty() {
+                if decl.inputs.len() > 1 {
                     struct_span_err!(
                         self.sess,
                         fn_decl_span,
                         E0628,
-                        "generators cannot have explicit parameters"
+                        "too many parameters for a generator (expected 0 or 1 parameters)"
                     )
                     .emit();
                 }
@@ -844,10 +848,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_catch_scope<T>(&mut self, catch_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let len = self.catch_scopes.len();
         self.catch_scopes.push(catch_id);
 
@@ -863,10 +864,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_loop_scope<T>(&mut self, loop_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         // We're no longer in the base loop's condition; we're in another loop.
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -888,10 +886,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_loop_condition_scope<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = true;
 
@@ -904,18 +899,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind<'hir> {
         let inner = hir::InlineAsmInner {
-            inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
+            inputs: asm.inputs.iter().map(|&(c, _)| c).collect(),
             outputs: asm
                 .outputs
                 .iter()
                 .map(|out| hir::InlineAsmOutput {
-                    constraint: out.constraint.clone(),
+                    constraint: out.constraint,
                     is_rw: out.is_rw,
                     is_indirect: out.is_indirect,
                     span: out.expr.span,
                 })
                 .collect(),
-            asm: asm.asm.clone(),
+            asm: asm.asm,
             asm_str_style: asm.asm_str_style,
             clobbers: asm.clobbers.clone().into(),
             volatile: asm.volatile,

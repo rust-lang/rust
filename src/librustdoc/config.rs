@@ -3,8 +3,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use errors;
-use getopts;
 use rustc::lint::Level;
 use rustc::session;
 use rustc::session::config::{
@@ -14,7 +12,6 @@ use rustc::session::config::{
 use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::search_paths::SearchPath;
-use rustc_driver;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
 
@@ -566,14 +563,17 @@ impl Options {
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
+fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
     let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
             let mut err =
                 diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn("please see https://github.com/rust-lang/rust/issues/44136");
+            err.warn(
+                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                 for more information",
+            );
 
             if *flag == "no-defaults" {
                 err.help("you may want to use --document-private-items");

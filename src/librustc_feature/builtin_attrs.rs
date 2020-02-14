@@ -261,6 +261,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(cold, Whitelisted, template!(Word)),
     ungated!(no_builtins, Whitelisted, template!(Word)),
     ungated!(target_feature, Whitelisted, template!(List: r#"enable = "name""#)),
+    gated!(
+        no_sanitize, Whitelisted,
+        template!(List: "address, memory, thread"),
+        experimental!(no_sanitize)
+    ),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ungated!(doc, Whitelisted, template!(List: "hidden|inline|...", NameValueStr: "string")),
@@ -408,11 +413,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         compiler_builtins, Whitelisted, template!(Word),
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
-    ),
-    gated!(
-        sanitizer_runtime, Whitelisted, template!(Word),
-        "the `#[sanitizer_runtime]` attribute is used to identify crates that contain the runtime \
-        of a sanitizer and will never be stable",
     ),
     gated!(
         profiler_runtime, Whitelisted, template!(Word),

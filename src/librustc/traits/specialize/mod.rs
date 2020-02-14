@@ -12,20 +12,20 @@
 pub mod specialization_graph;
 
 use crate::infer::{InferCtxt, InferOk};
-use crate::lint;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use errors::struct_span_err;
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
+use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::DUMMY_SP;
 
 use super::util::impl_trait_ref_and_oblig;
 use super::{FulfillmentContext, SelectionContext};
-
-use rustc_error_codes::*;
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
@@ -99,7 +99,7 @@ pub fn translate_substs<'a, 'tcx>(
                 |_| {
                     bug!(
                         "When translating substitutions for specialization, the expected \
-                          specialization failed to hold"
+                         specialization failed to hold"
                     )
                 },
             )
@@ -270,7 +270,7 @@ fn fulfill_implication<'a, 'tcx>(
                 // no dice!
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
-                        could not fulfill: {:?} given {:?}",
+                     could not fulfill: {:?} given {:?}",
                     source_trait_ref, target_trait_ref, errors, param_env.caller_bounds
                 );
                 Err(())
@@ -318,78 +318,85 @@ pub(super) fn specialization_graph_provider(
             };
 
             if let Some(overlap) = overlap {
-                let msg = format!(
-                    "conflicting implementations of trait `{}`{}:{}",
-                    overlap.trait_desc,
-                    overlap
-                        .self_desc
-                        .clone()
-                        .map_or(String::new(), |ty| { format!(" for type `{}`", ty) }),
-                    match used_to_be_allowed {
-                        Some(FutureCompatOverlapErrorKind::Issue33140) => " (E0119)",
-                        _ => "",
-                    }
-                );
                 let impl_span =
                     tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
-                let mut err = match used_to_be_allowed {
-                    Some(FutureCompatOverlapErrorKind::Issue43355) | None => {
-                        struct_span_err!(tcx.sess, impl_span, E0119, "{}", msg)
+
+                // Work to be done after we've built the DiagnosticBuilder. We have to define it
+                // now because the struct_lint methods don't return back the DiagnosticBuilder
+                // that's passed in.
+                let decorate = |err: LintDiagnosticBuilder<'_>| {
+                    let msg = format!(
+                        "conflicting implementations of trait `{}`{}:{}",
+                        overlap.trait_desc,
+                        overlap
+                            .self_desc
+                            .clone()
+                            .map_or(String::new(), |ty| { format!(" for type `{}`", ty) }),
+                        match used_to_be_allowed {
+                            Some(FutureCompatOverlapErrorKind::Issue33140) => " (E0119)",
+                            _ => "",
+                        }
+                    );
+                    let mut err = err.build(&msg);
+                    match tcx.span_of_impl(overlap.with_impl) {
+                        Ok(span) => {
+                            err.span_label(
+                                tcx.sess.source_map().def_span(span),
+                                "first implementation here".to_string(),
+                            );
+
+                            err.span_label(
+                                impl_span,
+                                format!(
+                                    "conflicting implementation{}",
+                                    overlap
+                                        .self_desc
+                                        .map_or(String::new(), |ty| format!(" for `{}`", ty))
+                                ),
+                            );
+                        }
+                        Err(cname) => {
+                            let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
+                                Some(s) => format!(
+                                    "conflicting implementation in crate `{}`:\n- {}",
+                                    cname, s
+                                ),
+                                None => format!("conflicting implementation in crate `{}`", cname),
+                            };
+                            err.note(&msg);
+                        }
+                    }
+
+                    for cause in &overlap.intercrate_ambiguity_causes {
+                        cause.add_intercrate_ambiguity_hint(&mut err);
+                    }
+
+                    if overlap.involves_placeholder {
+                        coherence::add_placeholder_note(&mut err);
+                    }
+                    err.emit()
+                };
+
+                match used_to_be_allowed {
+                    None => {
+                        let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
+                        decorate(LintDiagnosticBuilder::new(err));
                     }
                     Some(kind) => {
                         let lint = match kind {
-                            FutureCompatOverlapErrorKind::Issue43355 => {
-                                unreachable!("converted to hard error above")
-                            }
                             FutureCompatOverlapErrorKind::Issue33140 => {
-                                lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS
+                                ORDER_DEPENDENT_TRAIT_OBJECTS
                             }
+                            FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
                         };
                         tcx.struct_span_lint_hir(
                             lint,
                             tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
                             impl_span,
-                            &msg,
+                            decorate,
                         )
                     }
                 };
-
-                match tcx.span_of_impl(overlap.with_impl) {
-                    Ok(span) => {
-                        err.span_label(
-                            tcx.sess.source_map().def_span(span),
-                            "first implementation here".to_string(),
-                        );
-                        err.span_label(
-                            impl_span,
-                            format!(
-                                "conflicting implementation{}",
-                                overlap
-                                    .self_desc
-                                    .map_or(String::new(), |ty| format!(" for `{}`", ty))
-                            ),
-                        );
-                    }
-                    Err(cname) => {
-                        let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
-                            Some(s) => {
-                                format!("conflicting implementation in crate `{}`:\n- {}", cname, s)
-                            }
-                            None => format!("conflicting implementation in crate `{}`", cname),
-                        };
-                        err.note(&msg);
-                    }
-                }
-
-                for cause in &overlap.intercrate_ambiguity_causes {
-                    cause.add_intercrate_ambiguity_hint(&mut err);
-                }
-
-                if overlap.involves_placeholder {
-                    coherence::add_placeholder_note(&mut err);
-                }
-
-                err.emit();
             }
         } else {
             let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);

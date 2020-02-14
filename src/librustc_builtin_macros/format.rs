@@ -3,10 +3,8 @@ use Position::*;
 
 use fmt_macros as parse;
 
-use errors::pluralize;
-use errors::Applicability;
-use errors::DiagnosticBuilder;
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
@@ -15,7 +13,6 @@ use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -593,17 +590,6 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::NextArgument(ref arg) => {
                 // Build the position
                 let pos = {
-                    let pos = |c, arg| {
-                        let mut path = Context::rtpath(self.ecx, "Position");
-                        path.push(self.ecx.ident_of(c, sp));
-                        match arg {
-                            Some(i) => {
-                                let arg = self.ecx.expr_usize(sp, i);
-                                self.ecx.expr_call_global(sp, path, vec![arg])
-                            }
-                            None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
-                        }
-                    };
                     match arg.position {
                         parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => {
                             // Map to index in final generated argument array
@@ -618,7 +604,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                     arg_idx
                                 }
                             };
-                            pos("At", Some(arg_idx))
+                            self.ecx.expr_usize(sp, arg_idx)
                         }
 
                         // should never be the case, because names are already
@@ -722,7 +708,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Before consuming the expressions, we have to remember spans for
         // count arguments as they are now generated separate from other
         // arguments, hence have no access to the `P<ast::Expr>`'s.
-        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span.clone()).collect();
+        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span).collect();
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))

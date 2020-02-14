@@ -46,7 +46,7 @@ fn require_inited() {
 }
 
 unsafe fn configure_llvm(sess: &Session) {
-    let n_args = sess.opts.cg.llvm_args.len();
+    let n_args = sess.opts.cg.llvm_args.len() + sess.target.target.options.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
@@ -56,14 +56,12 @@ unsafe fn configure_llvm(sess: &Session) {
         full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")
     }
 
-    let user_specified_args: FxHashSet<_> = sess
-        .opts
-        .cg
-        .llvm_args
-        .iter()
-        .map(|s| llvm_arg_to_arg_name(s))
-        .filter(|s| s.len() > 0)
-        .collect();
+    let cg_opts = sess.opts.cg.llvm_args.iter();
+    let tg_opts = sess.target.target.options.llvm_args.iter();
+    let sess_args = cg_opts.chain(tg_opts);
+
+    let user_specified_args: FxHashSet<_> =
+        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -110,9 +108,18 @@ unsafe fn configure_llvm(sess: &Session) {
         // during inlining. Unfortunately these may block other optimizations.
         add("-preserve-alignment-assumptions-during-inlining=false", false);
 
-        for arg in &sess.opts.cg.llvm_args {
+        for arg in sess_args {
             add(&(*arg), true);
         }
+    }
+
+    if sess.opts.debugging_opts.llvm_time_trace && get_major_version() >= 9 {
+        // time-trace is not thread safe and running it in parallel will cause seg faults.
+        if !sess.opts.debugging_opts.no_parallel_llvm {
+            bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
+        }
+
+        llvm::LLVMTimeTraceProfilerInitialize();
     }
 
     llvm::LLVMInitializePasses();
@@ -120,6 +127,15 @@ unsafe fn configure_llvm(sess: &Session) {
     ::rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+}
+
+pub fn time_trace_profiler_finish(file_name: &str) {
+    unsafe {
+        if get_major_version() >= 9 {
+            let file_name = CString::new(file_name).unwrap();
+            llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
+        }
+    }
 }
 
 // WARNING: the features after applying `to_llvm_feature` must be known

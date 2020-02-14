@@ -922,6 +922,9 @@ fn codegen_msvc_try(
         //      #include <stdint.h>
         //
         //      struct rust_panic {
+        //          rust_panic(const rust_panic&);
+        //          ~rust_panic();
+        //
         //          uint64_t x[2];
         //      }
         //
@@ -929,17 +932,19 @@ fn codegen_msvc_try(
         //          try {
         //              foo();
         //              return 0;
-        //          } catch(rust_panic a) {
+        //          } catch(rust_panic& a) {
         //              ret[0] = a.x[0];
         //              ret[1] = a.x[1];
+        //              a.x[0] = 0;
         //              return 1;
         //          }
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
         let i64_2 = bx.type_array(bx.type_i64(), 2);
-        let i64_align = bx.tcx().data_layout.i64_align.abi;
-        let slot = bx.alloca(i64_2, i64_align);
+        let i64_2_ptr = bx.type_ptr_to(i64_2);
+        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let slot = bx.alloca(i64_2_ptr, ptr_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(bx.const_i32(0));
@@ -947,15 +952,31 @@ fn codegen_msvc_try(
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
+        // The flag value of 8 indicates that we are catching the exception by
+        // reference instead of by value. We can't use catch by value because
+        // that requires copying the exception object, which we don't support
+        // since our exception object effectively contains a Box.
+        //
+        // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
+        let flags = bx.const_i32(8);
         let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
             Some(did) => bx.get_static(did),
             None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
         };
-        let funclet = catchpad.catch_pad(cs, &[tydesc, bx.const_i32(0), slot]);
+        let funclet = catchpad.catch_pad(cs, &[tydesc, flags, slot]);
 
-        let payload = catchpad.load(slot, i64_align);
+        let i64_align = bx.tcx().data_layout.i64_align.abi;
+        let payload_ptr = catchpad.load(slot, ptr_align);
+        let payload = catchpad.load(payload_ptr, i64_align);
         let local_ptr = catchpad.bitcast(local_ptr, bx.type_ptr_to(i64_2));
         catchpad.store(payload, local_ptr, i64_align);
+
+        // Clear the first word of the exception so avoid double-dropping it.
+        // This will be read by the destructor which is implicitly called at the
+        // end of the catch block by the runtime.
+        let payload_0_ptr = catchpad.inbounds_gep(payload_ptr, &[bx.const_i32(0), bx.const_i32(0)]);
+        catchpad.store(bx.const_u64(0), payload_0_ptr, i64_align);
+
         catchpad.catch_ret(&funclet, caught.llbb());
 
         caught.ret(bx.const_i32(1));

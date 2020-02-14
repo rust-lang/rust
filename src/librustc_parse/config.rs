@@ -9,18 +9,21 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::{parse_in, validate_attr};
-use rustc_errors::Applicability;
-use rustc_feature::Features;
-use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
+use rustc_feature::{Feature, Features, State as FeatureState};
+use rustc_feature::{
+    ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
+};
+use rustc_session::parse::{feature_err, ParseSess};
+use rustc_span::edition::{Edition, ALL_EDITIONS};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, AttrItem, Attribute, MetaItem};
-use syntax::attr;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::{feature_err, get_features};
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
 
 use smallvec::SmallVec;
@@ -31,6 +34,172 @@ pub struct StripUnconfigured<'a> {
     pub features: Option<&'a Features>,
 }
 
+fn get_features(
+    span_handler: &Handler,
+    krate_attrs: &[ast::Attribute],
+    crate_edition: Edition,
+    allow_features: &Option<Vec<String>>,
+) -> Features {
+    fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
+        let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
+        err.span_label(span, "feature has been removed");
+        if let Some(reason) = reason {
+            err.note(reason);
+        }
+        err.emit();
+    }
+
+    fn active_features_up_to(edition: Edition) -> impl Iterator<Item = &'static Feature> {
+        ACTIVE_FEATURES.iter().filter(move |feature| {
+            if let Some(feature_edition) = feature.edition {
+                feature_edition <= edition
+            } else {
+                false
+            }
+        })
+    }
+
+    let mut features = Features::default();
+    let mut edition_enabled_features = FxHashMap::default();
+
+    for &edition in ALL_EDITIONS {
+        if edition <= crate_edition {
+            // The `crate_edition` implies its respective umbrella feature-gate
+            // (i.e., `#![feature(rust_20XX_preview)]` isn't needed on edition 20XX).
+            edition_enabled_features.insert(edition.feature_name(), edition);
+        }
+    }
+
+    for feature in active_features_up_to(crate_edition) {
+        feature.set(&mut features, DUMMY_SP);
+        edition_enabled_features.insert(feature.name, crate_edition);
+    }
+
+    // Process the edition umbrella feature-gates first, to ensure
+    // `edition_enabled_features` is completed before it's queried.
+    for attr in krate_attrs {
+        if !attr.check_name(sym::feature) {
+            continue;
+        }
+
+        let list = match attr.meta_item_list() {
+            Some(list) => list,
+            None => continue,
+        };
+
+        for mi in list {
+            if !mi.is_word() {
+                continue;
+            }
+
+            let name = mi.name_or_empty();
+
+            let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
+            if let Some(edition) = edition {
+                if edition <= crate_edition {
+                    continue;
+                }
+
+                for feature in active_features_up_to(edition) {
+                    // FIXME(Manishearth) there is currently no way to set
+                    // lib features by edition
+                    feature.set(&mut features, DUMMY_SP);
+                    edition_enabled_features.insert(feature.name, edition);
+                }
+            }
+        }
+    }
+
+    for attr in krate_attrs {
+        if !attr.check_name(sym::feature) {
+            continue;
+        }
+
+        let list = match attr.meta_item_list() {
+            Some(list) => list,
+            None => continue,
+        };
+
+        let bad_input = |span| {
+            struct_span_err!(span_handler, span, E0556, "malformed `feature` attribute input")
+        };
+
+        for mi in list {
+            let name = match mi.ident() {
+                Some(ident) if mi.is_word() => ident.name,
+                Some(ident) => {
+                    bad_input(mi.span())
+                        .span_suggestion(
+                            mi.span(),
+                            "expected just one word",
+                            format!("{}", ident.name),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                    continue;
+                }
+                None => {
+                    bad_input(mi.span()).span_label(mi.span(), "expected just one word").emit();
+                    continue;
+                }
+            };
+
+            if let Some(edition) = edition_enabled_features.get(&name) {
+                let msg =
+                    &format!("the feature `{}` is included in the Rust {} edition", name, edition);
+                span_handler.struct_span_warn_with_code(mi.span(), msg, error_code!(E0705)).emit();
+                continue;
+            }
+
+            if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
+                // Handled in the separate loop above.
+                continue;
+            }
+
+            let removed = REMOVED_FEATURES.iter().find(|f| name == f.name);
+            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.name);
+            if let Some(Feature { state, .. }) = removed.or(stable_removed) {
+                if let FeatureState::Removed { reason } | FeatureState::Stabilized { reason } =
+                    state
+                {
+                    feature_removed(span_handler, mi.span(), *reason);
+                    continue;
+                }
+            }
+
+            if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
+                let since = Some(Symbol::intern(since));
+                features.declared_lang_features.push((name, mi.span(), since));
+                continue;
+            }
+
+            if let Some(allowed) = allow_features.as_ref() {
+                if allowed.iter().find(|&f| name.as_str() == *f).is_none() {
+                    struct_span_err!(
+                        span_handler,
+                        mi.span(),
+                        E0725,
+                        "the feature `{}` is not in the list of allowed features",
+                        name
+                    )
+                    .emit();
+                    continue;
+                }
+            }
+
+            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
+                f.set(&mut features, mi.span());
+                features.declared_lang_features.push((name, mi.span(), None));
+                continue;
+            }
+
+            features.declared_lib_features.push((name, mi.span()));
+        }
+    }
+
+    features
+}
+
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
 pub fn features(
     mut krate: ast::Crate,
@@ -38,30 +207,29 @@ pub fn features(
     edition: Edition,
     allow_features: &Option<Vec<String>>,
 ) -> (ast::Crate, Features) {
-    let features;
-    {
-        let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
 
-        let unconfigured_attrs = krate.attrs.clone();
-        let err_count = sess.span_diagnostic.err_count();
-        if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
-            krate.attrs = attrs;
-        } else {
-            // the entire crate is unconfigured
+    let unconfigured_attrs = krate.attrs.clone();
+    let diag = &sess.span_diagnostic;
+    let err_count = diag.err_count();
+    let features = match strip_unconfigured.configure(krate.attrs) {
+        None => {
+            // The entire crate is unconfigured.
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::default());
+            Features::default()
         }
-
-        features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
-
-        // Avoid reconfiguring malformed `cfg_attr`s
-        if err_count == sess.span_diagnostic.err_count() {
-            strip_unconfigured.features = Some(&features);
-            strip_unconfigured.configure(unconfigured_attrs);
+        Some(attrs) => {
+            krate.attrs = attrs;
+            let features = get_features(diag, &krate.attrs, edition, allow_features);
+            if err_count == diag.err_count() {
+                // Avoid reconfiguring malformed `cfg_attr`s.
+                strip_unconfigured.features = Some(&features);
+                strip_unconfigured.configure(unconfigured_attrs);
+            }
+            features
         }
-    }
-
+    };
     (krate, features)
 }
 
@@ -146,10 +314,11 @@ impl<'a> StripUnconfigured<'a> {
                 validate_attr::check_meta_bad_delim(self.sess, dspan, delim, msg);
                 match parse_in(self.sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                     Ok(r) => return Some(r),
-                    Err(mut e) => e
-                        .help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
-                        .note(CFG_ATTR_NOTE_REF)
-                        .emit(),
+                    Err(mut e) => {
+                        e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                            .note(CFG_ATTR_NOTE_REF)
+                            .emit();
+                    }
                 }
             }
             _ => self.error_malformed_cfg_attr_missing(attr.span),
@@ -177,7 +346,13 @@ impl<'a> StripUnconfigured<'a> {
             if !is_cfg(attr) {
                 return true;
             }
-
+            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
+                Ok(meta_item) => meta_item,
+                Err(mut err) => {
+                    err.emit();
+                    return true;
+                }
+            };
             let error = |span, msg, suggestion: &str| {
                 let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
                 if !suggestion.is_empty() {
@@ -191,41 +366,15 @@ impl<'a> StripUnconfigured<'a> {
                 err.emit();
                 true
             };
-
-            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
-                Ok(meta_item) => meta_item,
-                Err(mut err) => {
-                    err.emit();
-                    return true;
-                }
-            };
-            let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
-                nested_meta_items
-            } else {
-                return error(
-                    meta_item.span,
-                    "`cfg` is not followed by parentheses",
-                    "cfg(/* predicate */)",
-                );
-            };
-
-            if nested_meta_items.is_empty() {
-                return error(meta_item.span, "`cfg` predicate is not specified", "");
-            } else if nested_meta_items.len() > 1 {
-                return error(
-                    nested_meta_items.last().unwrap().span(),
-                    "multiple `cfg` predicates are specified",
-                    "",
-                );
-            }
-
-            match nested_meta_items[0].meta_item() {
-                Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
-                None => error(
-                    nested_meta_items[0].span(),
-                    "`cfg` predicate key cannot be a literal",
-                    "",
-                ),
+            let span = meta_item.span;
+            match meta_item.meta_item_list() {
+                None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
+                Some([]) => error(span, "`cfg` predicate is not specified", ""),
+                Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
+                Some([single]) => match single.meta_item() {
+                    Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
+                    None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
+                },
             }
         })
     }
@@ -362,11 +511,11 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
         noop_flat_map_item(configure!(self, item), self)
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         noop_flat_map_assoc_item(configure!(self, item), self)
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         noop_flat_map_assoc_item(configure!(self, item), self)
     }
 
@@ -392,14 +541,9 @@ fn is_cfg(attr: &Attribute) -> bool {
 
 /// Process the potential `cfg` attributes on a module.
 /// Also determine if the module should be included in this configuration.
-pub fn process_configure_mod(
-    sess: &ParseSess,
-    cfg_mods: bool,
-    attrs: &[Attribute],
-) -> (bool, Vec<Attribute>) {
+pub fn process_configure_mod(sess: &ParseSess, cfg_mods: bool, attrs: &mut Vec<Attribute>) -> bool {
     // Don't perform gated feature checking.
     let mut strip_unconfigured = StripUnconfigured { sess, features: None };
-    let mut attrs = attrs.to_owned();
-    strip_unconfigured.process_cfg_attrs(&mut attrs);
-    (!cfg_mods || strip_unconfigured.in_cfg(&attrs), attrs)
+    strip_unconfigured.process_cfg_attrs(attrs);
+    !cfg_mods || strip_unconfigured.in_cfg(&attrs)
 }

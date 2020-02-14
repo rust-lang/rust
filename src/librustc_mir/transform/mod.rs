@@ -1,4 +1,4 @@
-use crate::{build, shim};
+use crate::{shim, util};
 use rustc::hir::map::Map;
 use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
@@ -36,12 +36,12 @@ pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
+pub mod unreachable_prop;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
-        mir_built,
         mir_const,
         mir_const_qualif,
         mir_validated,
@@ -96,11 +96,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
         .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     tcx.arena.alloc(set)
-}
-
-fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
-    let mir = build::mir_build(tcx, def_id);
-    tcx.alloc_steal_mir(mir)
 }
 
 /// Where a specific `mir::Body` comes from.
@@ -222,6 +217,9 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
+
+    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id), &body, |_, _| Ok(()));
+
     run_passes(
         tcx,
         &mut body,
@@ -302,6 +300,7 @@ fn run_optimization_passes<'tcx>(
             // From here on out, regions are gone.
             &erase_regions::EraseRegions,
             // Optimizations begin.
+            &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
             &inline::Inline,

@@ -14,10 +14,9 @@
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}}, align 4
+// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}} getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* @2, i32 0, i32 0, i32 0), {{.*}},
 
 #[derive(Copy, Clone)]
-
 // repr(i16) is required for the {low,high}_align_const test
 #[repr(i16)]
 pub enum E<A, B> {
@@ -31,7 +30,7 @@ pub static STATIC: E<i16, i32> = E::A(0);
 // CHECK-LABEL: @static_enum_const
 #[no_mangle]
 pub fn static_enum_const() -> E<i16, i32> {
-   STATIC
+    STATIC
 }
 
 // CHECK-LABEL: @inline_enum_const
@@ -43,15 +42,15 @@ pub fn inline_enum_const() -> E<i8, i16> {
 // CHECK-LABEL: @low_align_const
 #[no_mangle]
 pub fn low_align_const() -> E<i16, [i16; 3]> {
-// Check that low_align_const and high_align_const use the same constant
-// CHECK: i8* align 2 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
+    // Check that low_align_const and high_align_const use the same constant
+    // CHECK: load %"E<i16, [i16; 3]>"*, %"E<i16, [i16; 3]>"** bitcast (<{ i8*, [0 x i8] }>* [[LOW_HIGH]] to %"E<i16, [i16; 3]>"**),
     *&E::A(0)
 }
 
 // CHECK-LABEL: @high_align_const
 #[no_mangle]
 pub fn high_align_const() -> E<i16, i32> {
-// Check that low_align_const and high_align_const use the same constant
-// CHECK: i8* align 4 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
+    // Check that low_align_const and high_align_const use the same constant
+    // CHECK: load %"E<i16, i32>"*, %"E<i16, i32>"** bitcast (<{ i8*, [0 x i8] }>* [[LOW_HIGH]] to %"E<i16, i32>"**),
     *&E::A(0)
 }

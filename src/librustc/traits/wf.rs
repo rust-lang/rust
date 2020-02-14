@@ -3,12 +3,11 @@ use crate::infer::InferCtxt;
 use crate::middle::lang_items;
 use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use std::iter::once;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -26,6 +25,7 @@ pub fn obligations<'a, 'tcx>(
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
     if wf.compute(ty) {
         debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
+
         let result = wf.normalize();
         debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
         Some(result)
@@ -62,7 +62,7 @@ pub fn predicate_obligations<'a, 'tcx>(
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
-        ty::Predicate::Trait(ref t) => {
+        ty::Predicate::Trait(ref t, _) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
         }
         ty::Predicate::RegionOutlives(..) => {}
@@ -143,15 +143,16 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let cause = self.cause(traits::MiscObligation);
         let infcx = &mut self.infcx;
         let param_env = self.param_env;
-        self.out
-            .iter()
-            .inspect(|pred| assert!(!pred.has_escaping_bound_vars()))
-            .flat_map(|pred| {
-                let mut selcx = traits::SelectionContext::new(infcx);
-                let pred = traits::normalize(&mut selcx, param_env, cause.clone(), pred);
-                once(pred.value).chain(pred.obligations)
-            })
-            .collect()
+        let mut obligations = Vec::with_capacity(self.out.len());
+        for pred in &self.out {
+            assert!(!pred.has_escaping_bound_vars());
+            let mut selcx = traits::SelectionContext::new(infcx);
+            let i = obligations.len();
+            let value =
+                traits::normalize_to(&mut selcx, param_env, cause.clone(), pred, &mut obligations);
+            obligations.insert(i, value);
+        }
+        obligations
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
@@ -166,7 +167,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let extend_cause_with_original_assoc_item_obligation =
             |cause: &mut traits::ObligationCause<'_>,
              pred: &ty::Predicate<'_>,
-             trait_assoc_items: ty::AssocItemsIterator<'_>| {
+             trait_assoc_items: &[ty::AssocItem]| {
                 let trait_item = tcx
                     .hir()
                     .as_local_hir_id(trait_ref.def_id)
@@ -229,9 +230,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         //      |
                         //      = note: expected type `u32`
                         //                 found type `()`
-                        if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
+                        if let Some(hir::ItemKind::Impl { items, .. }) = item.map(|i| &i.kind) {
                             let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
-                            if let Some(impl_item) = impl_items
+                            if let Some(impl_item) = items
                                 .iter()
                                 .filter(|item| item.ident == trait_assoc_item.ident)
                                 .next()
@@ -245,7 +246,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             }
                         }
                     }
-                    ty::Predicate::Trait(proj) => {
+                    ty::Predicate::Trait(proj, _) => {
                         // An associated item obligation born out of the `trait` failed to be met.
                         // Point at the `impl` that failed the obligation, the associated item that
                         // needed to meet the obligation, and the definition of that associated item,
@@ -279,14 +280,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
                         if let (
                             ty::Projection(ty::ProjectionTy { item_def_id, .. }),
-                            Some(hir::ItemKind::Impl(.., impl_items)),
+                            Some(hir::ItemKind::Impl { items, .. }),
                         ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind))
                         {
                             if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
+                                .iter()
                                 .filter(|i| i.def_id == *item_def_id)
                                 .next()
                                 .and_then(|trait_assoc_item| {
-                                    impl_items
+                                    items
                                         .iter()
                                         .filter(|i| i.ident == trait_assoc_item.ident)
                                         .next()
@@ -318,15 +320,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         if let Elaborate::All = elaborate {
             let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
 
-            let predicates =
-                obligations.iter().map(|obligation| obligation.predicate.clone()).collect();
+            let predicates = obligations.iter().map(|obligation| obligation.predicate).collect();
             let implied_obligations = traits::elaborate_predicates(tcx, predicates);
             let implied_obligations = implied_obligations.map(|pred| {
                 let mut cause = cause.clone();
                 extend_cause_with_original_assoc_item_obligation(
                     &mut cause,
                     &pred,
-                    trait_assoc_items.clone(),
+                    trait_assoc_items,
                 );
                 traits::Obligation::new(cause, param_env, pred)
             });
@@ -350,7 +351,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.compute_trait_ref(&trait_ref, Elaborate::None);
 
         if !data.has_escaping_bound_vars() {
-            let predicate = trait_ref.to_predicate();
+            let predicate = trait_ref.without_const().to_predicate();
             let cause = self.cause(traits::ProjectionWf(data));
             self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
@@ -359,7 +360,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
     fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
-        if let ty::ConstKind::Unevaluated(def_id, substs) = constant.val {
+        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.val {
+            assert!(promoted.is_none());
+
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 
@@ -376,7 +379,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                 substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
             };
-            self.out.push(traits::Obligation::new(cause, self.param_env, trait_ref.to_predicate()));
+            self.out.push(traits::Obligation::new(
+                cause,
+                self.param_env,
+                trait_ref.without_const().to_predicate(),
+            ));
         }
     }
 

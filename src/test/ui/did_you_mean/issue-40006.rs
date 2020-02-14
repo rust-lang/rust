@@ -35,5 +35,5 @@ impl S {
 }
 
 fn main() {
-    S.hello_method(); //~ no method named `hello_method` found for type `S` in the current scope
+    S.hello_method(); //~ no method named `hello_method` found
 }

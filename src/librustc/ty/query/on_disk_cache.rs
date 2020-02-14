@@ -7,10 +7,10 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
@@ -1053,8 +1053,10 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results_for_{}", ::std::any::type_name::<Q>());
-    let _timer = tcx.sess.prof.extra_verbose_generic_activity(desc);
+    let _timer = tcx
+        .sess
+        .prof
+        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
     let shards = Q::query_cache(tcx).lock_shards();
     assert!(shards.iter().all(|shard| shard.active.is_empty()));

@@ -6,6 +6,8 @@ LL |         #[derive_Clone]
 ...
 LL | foo!();
    | ------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find attribute `derive_Clone` in this scope
   --> $DIR/issue-32655.rs:15:7

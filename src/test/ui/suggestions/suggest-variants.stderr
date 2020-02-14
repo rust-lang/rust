@@ -1,4 +1,4 @@
-error: no variant `Squareee` in enum `Shape`
+error[E0599]: no variant named `Squareee` found for enum `Shape`
   --> $DIR/suggest-variants.rs:12:41
    |
 LL | enum Shape {
@@ -7,7 +7,7 @@ LL | enum Shape {
 LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});
    |                                         ^^^^^^^^ help: there is a variant with a similar name: `Square`
 
-error: no variant `Circl` in enum `Shape`
+error[E0599]: no variant named `Circl` found for enum `Shape`
   --> $DIR/suggest-variants.rs:13:41
    |
 LL | enum Shape {
@@ -16,7 +16,7 @@ LL | enum Shape {
 LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
    |                                         ^^^^^ help: there is a variant with a similar name: `Circle`
 
-error: no variant `Rombus` in enum `Shape`
+error[E0599]: no variant named `Rombus` found for enum `Shape`
   --> $DIR/suggest-variants.rs:14:41
    |
 LL | enum Shape {
@@ -25,7 +25,7 @@ LL | enum Shape {
 LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
    |                                         ^^^^^^ variant not found in `Shape`
 
-error[E0599]: no variant or associated item named `Squareee` found for type `Shape` in the current scope
+error[E0599]: no variant or associated item named `Squareee` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:15:12
    |
 LL | enum Shape {
@@ -37,7 +37,7 @@ LL |     Shape::Squareee;
    |            variant or associated item not found in `Shape`
    |            help: there is a variant with a similar name: `Square`
 
-error[E0599]: no variant or associated item named `Circl` found for type `Shape` in the current scope
+error[E0599]: no variant or associated item named `Circl` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:16:12
    |
 LL | enum Shape {
@@ -49,7 +49,7 @@ LL |     Shape::Circl;
    |            variant or associated item not found in `Shape`
    |            help: there is a variant with a similar name: `Circle`
 
-error[E0599]: no variant or associated item named `Rombus` found for type `Shape` in the current scope
+error[E0599]: no variant or associated item named `Rombus` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:17:12
    |
 LL | enum Shape {

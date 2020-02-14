@@ -1,13 +1,11 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use errors::struct_span_err;
 use rustc::ty::TyCtxt;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Unsafety;
-
-use rustc_error_codes::*;
 
 pub fn check(tcx: TyCtxt<'_>) {
     let mut unsafety = UnsafetyChecker { tcx };
@@ -88,7 +86,7 @@ impl UnsafetyChecker<'tcx> {
 
 impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item<'v>) {
-        if let hir::ItemKind::Impl(unsafety, polarity, _, ref generics, ..) = item.kind {
+        if let hir::ItemKind::Impl { unsafety, polarity, ref generics, .. } = item.kind {
             self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
         }
     }

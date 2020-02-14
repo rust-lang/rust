@@ -3,7 +3,7 @@
 // we don't even propagate constraints from the closures to the callers.
 
 // compile-flags:-Zborrowck=mir -Zverbose
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

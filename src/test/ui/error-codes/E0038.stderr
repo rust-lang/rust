@@ -1,11 +1,15 @@
 error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/E0038.rs:5:1
+  --> $DIR/E0038.rs:5:16
    |
+LL | trait Trait {
+   |       ----- this trait cannot be made into an object...
 LL |     fn foo(&self) -> Self;
-   |        --- method `foo` references the `Self` type in its parameters or return type
+   |                      ---- ...because method `foo` references the `Self` type in its return type
 ...
 LL | fn call_foo(x: Box<dyn Trait>) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |                ^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = help: consider moving `foo` to another trait
 
 error: aborting due to previous error
 

@@ -6,16 +6,14 @@ use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::free_region_map::FreeRegionRelations;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
-use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::Node;
 use rustc_span::Span;
-
-use rustc_error_codes::*;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -386,9 +384,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match least_region {
                 None => least_region = Some(subst_arg),
                 Some(lr) => {
-                    if free_region_relations.sub_free_regions(lr, subst_arg) {
+                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_arg) {
                         // keep the current least region
-                    } else if free_region_relations.sub_free_regions(subst_arg, lr) {
+                    } else if free_region_relations.sub_free_regions(self.tcx, subst_arg, lr) {
                         // switch to `subst_arg`
                         least_region = Some(subst_arg);
                     } else {
@@ -613,7 +611,7 @@ pub fn unexpected_hidden_region_diagnostic(
     );
 
     // Explain the region we are capturing.
-    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty = hidden_region {
+    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) = hidden_region {
         // Assuming regionck succeeded (*), we ought to always be
         // capturing *some* region from the fn header, and hence it
         // ought to be free. So under normal circumstances, we will go
@@ -746,6 +744,7 @@ where
 
                 substs.as_generator().return_ty(def_id, self.tcx).visit_with(self);
                 substs.as_generator().yield_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().resume_ty(def_id, self.tcx).visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
@@ -845,7 +844,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         .emit();
                     }
                 }
-                self.tcx.lifetimes.re_empty
+                self.tcx.lifetimes.re_root_empty
             }
             None => {
                 self.tcx
@@ -1219,7 +1218,7 @@ pub fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: DefId, opaque_hir_id: hir
     let res = hir_id == scope;
     trace!(
         "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir().get(hir_id),
+        tcx.hir().find(hir_id),
         tcx.hir().get(opaque_hir_id),
         res
     );

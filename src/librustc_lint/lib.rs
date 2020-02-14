@@ -1,9 +1,25 @@
-//! # Lints in the Rust compiler
+//! Lints, aka compiler warnings.
 //!
-//! This currently only contains the definitions and implementations
-//! of most of the lints that `rustc` supports directly, it does not
-//! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc_driver::plugin` respectively.
+//! A 'lint' check is a kind of miscellaneous constraint that a user _might_
+//! want to enforce, but might reasonably want to permit as well, on a
+//! module-by-module basis. They contrast with static constraints enforced by
+//! other phases of the compiler, which are generally required to hold in order
+//! to compile the program at all.
+//!
+//! Most lints can be written as `LintPass` instances. These run after
+//! all other analyses. The `LintPass`es built into rustc are defined
+//! within `rustc_session::lint::builtin`,
+//! which has further comments on how to add such a lint.
+//! rustc can also load user-defined lint plugins via the plugin mechanism.
+//!
+//! Some of rustc's lints are defined elsewhere in the compiler and work by
+//! calling `add_lint()` on the overall `Session` object. This works when
+//! it happens before the main lint pass, which emits the lints stored by
+//! `add_lint()`. To emit lints after the main lint pass (from codegen, for
+//! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
+//! in `context.rs`.
+//!
+//! Some code also exists in `rustc_session::lint`, `rustc::lint`.
 //!
 //! ## Note
 //!
@@ -12,8 +28,9 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(test, feature(test))]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(crate_visibility_modifier)]
+#![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 
@@ -24,44 +41,47 @@ extern crate rustc_session;
 
 mod array_into_iter;
 pub mod builtin;
+mod context;
 mod early;
+mod internal;
 mod late;
 mod levels;
 mod non_ascii_idents;
 mod nonstandard_style;
+mod passes;
 mod redundant_semicolon;
 mod types;
 mod unused;
 
-use rustc::lint;
-use rustc::lint::builtin::{
-    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-    INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
-};
-use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-
+use rustc_session::lint::builtin::{
+    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
+    INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
+};
 use rustc_span::Span;
 use syntax::ast;
 
-use lint::LintId;
-
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use internal::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
-use rustc::lint::internal::*;
 use types::*;
 use unused::*;
 
-/// Useful for other parts of the compiler.
+/// Useful for other parts of the compiler / Clippy.
 pub use builtin::SoftLints;
+pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
 pub use early::check_ast_crate;
 pub use late::check_crate;
+pub use passes::{EarlyLintPass, LateLintPass};
+pub use rustc_session::lint::Level::{self, *};
+pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
+pub use rustc_session::lint::{LintArray, LintPass};
 
 pub fn provide(providers: &mut Providers<'_>) {
     levels::provide(providers);
@@ -178,8 +198,8 @@ late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass])
 
 late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
 
-pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> lint::LintStore {
-    let mut lint_store = lint::LintStore::new();
+pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintStore {
+    let mut lint_store = LintStore::new();
 
     register_builtins(&mut lint_store, no_interleave_lints);
     if internal_lints {
@@ -192,7 +212,7 @@ pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> lint::
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
-fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
+fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
@@ -303,47 +323,58 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
     );
     store.register_removed(
         "hr_lifetime_in_assoc_type",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/33685",
+        "converted into hard error, see issue #33685 \
+         <https://github.com/rust-lang/rust/issues/33685> for more information",
     );
     store.register_removed(
         "inaccessible_extern_crate",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36886",
+        "converted into hard error, see issue #36886 \
+         <https://github.com/rust-lang/rust/issues/36886> for more information",
     );
     store.register_removed(
         "super_or_self_in_global_path",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36888",
+        "converted into hard error, see issue #36888 \
+         <https://github.com/rust-lang/rust/issues/36888> for more information",
     );
     store.register_removed(
         "overlapping_inherent_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36889",
+        "converted into hard error, see issue #36889 \
+         <https://github.com/rust-lang/rust/issues/36889> for more information",
     );
     store.register_removed(
         "illegal_floating_point_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36890",
+        "converted into hard error, see issue #36890 \
+         <https://github.com/rust-lang/rust/issues/36890> for more information",
     );
     store.register_removed(
         "illegal_struct_or_enum_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36891",
+        "converted into hard error, see issue #36891 \
+         <https://github.com/rust-lang/rust/issues/36891> for more information",
     );
     store.register_removed(
         "lifetime_underscore",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36892",
+        "converted into hard error, see issue #36892 \
+         <https://github.com/rust-lang/rust/issues/36892> for more information",
     );
     store.register_removed(
         "extra_requirement_in_impl",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/37166",
+        "converted into hard error, see issue #37166 \
+         <https://github.com/rust-lang/rust/issues/37166> for more information",
     );
     store.register_removed(
         "legacy_imports",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/38260",
+        "converted into hard error, see issue #38260 \
+         <https://github.com/rust-lang/rust/issues/38260> for more information",
     );
     store.register_removed(
         "coerce_never",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950",
+        "converted into hard error, see issue #48950 \
+         <https://github.com/rust-lang/rust/issues/48950> for more information",
     );
     store.register_removed(
         "resolve_trait_on_defaulted_unit",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950",
+        "converted into hard error, see issue #48950 \
+         <https://github.com/rust-lang/rust/issues/48950> for more information",
     );
     store.register_removed(
         "private_no_mangle_fns",
@@ -356,40 +387,48 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
     store.register_removed("bad_repr", "replaced with a generic attribute input check");
     store.register_removed(
         "duplicate_matcher_binding_name",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/57742",
+        "converted into hard error, see issue #57742 \
+         <https://github.com/rust-lang/rust/issues/57742> for more information",
     );
     store.register_removed(
         "incoherent_fundamental_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/46205",
+        "converted into hard error, see issue #46205 \
+         <https://github.com/rust-lang/rust/issues/46205> for more information",
     );
     store.register_removed(
         "legacy_constructor_visibility",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/39207",
+        "converted into hard error, see issue #39207 \
+         <https://github.com/rust-lang/rust/issues/39207> for more information",
     );
     store.register_removed(
         "legacy_directory_ownership",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/37872",
+        "converted into hard error, see issue #37872 \
+         <https://github.com/rust-lang/rust/issues/37872> for more information",
     );
     store.register_removed(
         "safe_extern_statics",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36247",
+        "converted into hard error, see issue #36247 \
+         <https://github.com/rust-lang/rust/issues/36247> for more information",
     );
     store.register_removed(
         "parenthesized_params_in_types_and_modules",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/42238",
+        "converted into hard error, see issue #42238 \
+         <https://github.com/rust-lang/rust/issues/42238> for more information",
     );
     store.register_removed(
         "duplicate_macro_exports",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/35896",
+        "converted into hard error, see issue #35896 \
+         <https://github.com/rust-lang/rust/issues/35896> for more information",
     );
     store.register_removed(
         "nested_impl_trait",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/59014",
+        "converted into hard error, see issue #59014 \
+         <https://github.com/rust-lang/rust/issues/59014> for more information",
     );
     store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
 }
 
-fn register_internals(store: &mut lint::LintStore) {
+fn register_internals(store: &mut LintStore) {
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());

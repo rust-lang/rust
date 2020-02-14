@@ -4,7 +4,7 @@ error: function is never used: `dead_fn`
 LL | fn dead_fn() {}
    |    ^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-dead-code-2.rs:2:9
    |
 LL | #![deny(dead_code)]

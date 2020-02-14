@@ -11,25 +11,23 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use errors::{pluralize, struct_span_err, Applicability};
 use rustc::hir::exports::Export;
-use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
-use rustc::session::DiagnosticMessageId;
 use rustc::ty;
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
+use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::{Ident, Name, NodeId};
 use syntax::unwrap_or;
 use syntax::util::lev_distance::find_best_match_for_name;
-
-use rustc_error_codes::*;
 
 use log::*;
 
@@ -319,7 +317,11 @@ impl<'a> Resolver<'a> {
                        // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                        !(self.last_import_segment && binding.is_extern_crate())
                         {
-                            self.privacy_errors.push(PrivacyError(path_span, ident, binding));
+                            self.privacy_errors.push(PrivacyError {
+                                ident,
+                                binding,
+                                dedup_span: path_span,
+                            });
                         }
 
                         Ok(binding)
@@ -718,7 +720,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         if !errors.is_empty() {
-            self.throw_unresolved_import_error(errors.clone(), None);
+            self.throw_unresolved_import_error(errors, None);
         }
     }
 

@@ -1,8 +1,6 @@
 // This test ensures that or patterns require binding mode consistency across arms.
 
 #![feature(or_patterns)]
-//~^ WARN the feature `or_patterns` is incomplete
-
 #![allow(non_camel_case_types)]
 fn main() {
     // One level:

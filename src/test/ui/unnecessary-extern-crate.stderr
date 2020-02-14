@@ -4,7 +4,7 @@ error: unused extern crate
 LL | extern crate libc;
    | ^^^^^^^^^^^^^^^^^^ help: remove it
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unnecessary-extern-crate.rs:3:9
    |
 LL | #![deny(unused_extern_crates)]

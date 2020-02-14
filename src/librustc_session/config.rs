@@ -22,8 +22,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, FatalError, Handler, HandlerFlags};
 
-use getopts;
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -68,6 +66,19 @@ impl FromStr for Sanitizer {
             _ => Err(()),
         }
     }
+}
+
+/// The different settings that the `-Z control_flow_guard` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CFGuard {
+    /// Do not emit Control Flow Guard metadata or checks.
+    Disabled,
+
+    /// Emit Control Flow Guard metadata but no checks.
+    NoChecks,
+
+    /// Emit Control Flow Guard metadata and checks.
+    Checks,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -447,17 +458,32 @@ impl Input {
 #[derive(Clone, Hash)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
-    pub out_filestem: String,
+    filestem: String,
     pub single_output_file: Option<PathBuf>,
-    pub extra: String,
     pub outputs: OutputTypes,
 }
 
 impl_stable_hash_via_hash!(OutputFilenames);
 
+pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
+    pub fn new(
+        out_directory: PathBuf,
+        out_filestem: String,
+        single_output_file: Option<PathBuf>,
+        extra: String,
+        outputs: OutputTypes,
+    ) -> Self {
+        OutputFilenames {
+            out_directory,
+            single_output_file,
+            outputs,
+            filestem: format!("{}{}", out_filestem, extra),
+        }
+    }
+
     pub fn path(&self, flavor: OutputType) -> PathBuf {
         self.outputs
             .get(&flavor)
@@ -477,8 +503,6 @@ impl OutputFilenames {
     /// Like temp_path, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
-        let base = self.out_directory.join(&self.filestem());
-
         let mut extension = String::new();
 
         if let Some(codegen_unit_name) = codegen_unit_name {
@@ -495,16 +519,13 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        let path = base.with_extension(&extension[..]);
-        path
+        self.with_extension(&extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.out_directory.join(&self.filestem()).with_extension(extension)
-    }
-
-    pub fn filestem(&self) -> String {
-        format!("{}{}", self.out_filestem, self.extra)
+        let mut path = self.out_directory.join(&self.filestem);
+        path.set_extension(extension);
+        path
     }
 }
 
@@ -604,7 +625,7 @@ impl DebuggingOptions {
             treat_err_as_bug: self.treat_err_as_bug,
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
-            external_macro_backtrace: self.external_macro_backtrace,
+            macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
         }
     }
@@ -619,7 +640,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -794,7 +815,6 @@ mod opt {
     #![allow(dead_code)]
 
     use super::RustcOptGroup;
-    use getopts;
 
     pub type R = RustcOptGroup;
     pub type S = &'static str;
@@ -1840,7 +1860,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 pub mod nightly_options {
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use crate::early_error;
-    use getopts;
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -1971,8 +1990,8 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel, OutputTypes,
-        Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
+        OutputTypes, Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
     };
     use crate::lint;
     use crate::utils::NativeLibraryKind;
@@ -2044,6 +2063,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(CFGuard);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);

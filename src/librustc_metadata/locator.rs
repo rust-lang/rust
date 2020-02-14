@@ -215,7 +215,6 @@
 use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
-use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::middle::cstore::{CrateSource, MetadataLoader};
 use rustc::session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc::session::search_paths::PathKind;
@@ -223,6 +222,7 @@ use rustc::session::{config, CrateDisambiguator, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
@@ -240,8 +240,6 @@ use flate2::read::DeflateDecoder;
 use rustc_data_structures::owning_ref::OwningRef;
 
 use log::{debug, info, warn};
-
-use rustc_error_codes::*;
 
 #[derive(Clone)]
 struct CrateMismatch {
@@ -656,12 +654,34 @@ impl<'a> CrateLocator<'a> {
         dylibs: FxHashMap<PathBuf, PathKind>,
     ) -> Option<(Svh, Library)> {
         let mut slot = None;
+        // Order here matters, rmeta should come first. See comment in
+        // `extract_one` below.
         let source = CrateSource {
-            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot),
             rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot),
+            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot),
             dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot),
         };
         slot.map(|(svh, metadata)| (svh, Library { source, metadata }))
+    }
+
+    fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
+        if flavor == CrateFlavor::Dylib && self.is_proc_macro == Some(true) {
+            return true;
+        }
+
+        // The all loop is because `--crate-type=rlib --crate-type=rlib` is
+        // legal and produces both inside this type.
+        let is_rlib = self.sess.crate_types.borrow().iter().all(|c| *c == config::CrateType::Rlib);
+        let needs_object_code = self.sess.opts.output_types.should_codegen();
+        // If we're producing an rlib, then we don't need object code.
+        // Or, if we're not producing object code, then we don't need it either
+        // (e.g., if we're a cdylib but emitting just metadata).
+        if is_rlib || !needs_object_code {
+            flavor == CrateFlavor::Rmeta
+        } else {
+            // we need all flavors (perhaps not true, but what we do for now)
+            true
+        }
     }
 
     // Attempts to extract *one* library from the set `m`. If the set has no
@@ -681,12 +701,22 @@ impl<'a> CrateLocator<'a> {
         let mut ret: Option<(PathBuf, PathKind)> = None;
         let mut error = 0;
 
+        // If we are producing an rlib, and we've already loaded metadata, then
+        // we should not attempt to discover further crate sources (unless we're
+        // locating a proc macro; exact logic is in needs_crate_flavor). This means
+        // that under -Zbinary-dep-depinfo we will not emit a dependency edge on
+        // the *unused* rlib, and by returning `None` here immediately we
+        // guarantee that we do indeed not use it.
+        //
+        // See also #68149 which provides more detail on why emitting the
+        // dependency on the rlib is a bad thing.
+        //
+        // We currenty do not verify that these other sources are even in sync,
+        // and this is arguably a bug (see #10786), but because reading metadata
+        // is quite slow (especially from dylibs) we currently do not read it
+        // from the other crate sources.
         if slot.is_some() {
-            // FIXME(#10786): for an optimization, we only read one of the
-            //                libraries' metadata sections. In theory we should
-            //                read both, but reading dylib metadata is quite
-            //                slow.
-            if m.is_empty() {
+            if m.is_empty() || !self.needs_crate_flavor(flavor) {
                 return None;
             } else if m.len() == 1 {
                 return Some(m.into_iter().next().unwrap());

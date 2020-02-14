@@ -4,7 +4,7 @@ error[E0658]: exclusive range pattern syntax is experimental
 LL |         0 .. 3 => {}
    |         ^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/37854
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
 
 error: aborting due to previous error

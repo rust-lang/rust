@@ -1,6 +1,6 @@
 // extra unused mut lint tests for #51918
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![feature(generators, nll)]
 #![deny(unused_mut)]

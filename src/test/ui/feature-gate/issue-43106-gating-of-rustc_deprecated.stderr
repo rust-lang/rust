@@ -29,17 +29,23 @@ LL |     #[rustc_deprecated()] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:22:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:19:5
+   |
+LL |     #[rustc_deprecated()] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:23:5
    |
 LL |     #[rustc_deprecated()] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:25:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
    |
 LL |     #[rustc_deprecated()] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0734`.

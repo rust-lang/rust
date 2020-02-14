@@ -402,12 +402,14 @@ impl Token {
 
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
+    ///
+    /// Keep this in sync with `Lit::from_token`.
     pub fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match **nt {
-                NtLiteral(..) => true,
+            Interpolated(ref nt) => match &**nt {
+                NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
                 _ => false,
             },
             _ => false,
@@ -530,7 +532,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
-    fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
+    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
         match self.ident() {
             Some((id, false)) => pred(id),
             _ => false,
@@ -673,17 +675,21 @@ pub enum Nonterminal {
     NtLifetime(ast::Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
-    NtMeta(ast::AttrItem),
+    NtMeta(P<ast::AttrItem>),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
     // Used only for passing items to proc macro attributes (they are not
     // strictly necessary for that, `Annotatable` can be converted into
     // tokens directly, but doing that naively regresses pretty-printing).
-    NtTraitItem(ast::AssocItem),
-    NtImplItem(ast::AssocItem),
-    NtForeignItem(ast::ForeignItem),
+    NtTraitItem(P<ast::AssocItem>),
+    NtImplItem(P<ast::AssocItem>),
+    NtForeignItem(P<ast::ForeignItem>),
 }
+
+// `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Nonterminal, 40);
 
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {

@@ -566,12 +566,21 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_enum_def(enum_definition, generics, item.hir_id, item.span)
         }
-        ItemKind::Impl(.., ref generics, ref opt_trait_reference, ref typ, impl_item_refs) => {
+        ItemKind::Impl {
+            unsafety: _,
+            defaultness: _,
+            polarity: _,
+            constness: _,
+            ref generics,
+            ref of_trait,
+            ref self_ty,
+            items,
+        } => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
-            walk_list!(visitor, visit_trait_ref, opt_trait_reference);
-            visitor.visit_ty(typ);
-            walk_list!(visitor, visit_impl_item_ref, impl_item_refs);
+            walk_list!(visitor, visit_trait_ref, of_trait);
+            visitor.visit_ty(self_ty);
+            walk_list!(visitor, visit_impl_item_ref, items);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
@@ -766,8 +775,8 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
         PatKind::Range(ref lower_bound, ref upper_bound, _) => {
-            visitor.visit_expr(lower_bound);
-            visitor.visit_expr(upper_bound)
+            walk_list!(visitor, visit_expr, lower_bound);
+            walk_list!(visitor, visit_expr, upper_bound);
         }
         PatKind::Wild => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {

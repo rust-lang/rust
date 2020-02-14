@@ -7,18 +7,18 @@
 //! errors. We still look for those primitives in the MIR const-checker to ensure nothing slips
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
-use errors::struct_span_err;
 use rustc::hir::map::Map;
+use rustc::hir::Hir;
 use rustc::session::config::nightly_options;
+use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
-use syntax::feature_gate::feature_err;
 
 use std::fmt;
 
@@ -75,7 +75,7 @@ enum ConstKind {
 }
 
 impl ConstKind {
-    fn for_body(body: &hir::Body<'_>, hir_map: &Map<'_>) -> Option<Self> {
+    fn for_body(body: &hir::Body<'_>, hir_map: Hir<'_>) -> Option<Self> {
         let is_const_fn = |id| hir_map.fn_sig_by_hir_id(id).unwrap().header.is_const();
 
         let owner = hir_map.body_owner(body.id());

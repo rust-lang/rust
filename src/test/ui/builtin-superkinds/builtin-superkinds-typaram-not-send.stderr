@@ -2,11 +2,14 @@ error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/builtin-superkinds-typaram-not-send.rs:5:24
    |
 LL | impl <T: Sync+'static> Foo for T { }
-   |       --               ^^^ `T` cannot be sent between threads safely
-   |       |
-   |       help: consider further restricting this bound: `T: std::marker::Send +`
+   |                        ^^^ `T` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `T`
+help: consider further restricting this bound with `+ std::marker::Send`
+  --> $DIR/builtin-superkinds-typaram-not-send.rs:5:10
+   |
+LL | impl <T: Sync+'static> Foo for T { }
+   |          ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

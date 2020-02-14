@@ -1,4 +1,4 @@
-error: no variant `B` in enum `S`
+error[E0599]: no variant named `B` found for enum `S`
   --> $DIR/issue-34209.rs:7:12
    |
 LL | enum S {
@@ -9,3 +9,4 @@ LL |         S::B {} => {},
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

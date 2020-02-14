@@ -19,3 +19,4 @@ rustc_span = { path = "../librustc_span" }
 rustc_index = { path = "../librustc_index" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 num_cpus = "1.0"
+syntax = { path = "../libsyntax" }

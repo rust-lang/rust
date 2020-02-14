@@ -252,7 +252,7 @@ use core::ptr::{self, NonNull};
 use core::slice::{self, from_raw_parts_mut};
 use core::usize;
 
-use crate::alloc::{box_free, handle_alloc_error, Alloc, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -565,9 +565,19 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr: *const T = &*this;
+        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
+        let fake_ptr = ptr as *mut T;
         mem::forget(this);
-        ptr
+
+        // SAFETY: This cannot go through Deref::deref.
+        // Instead, we manually offset the pointer rather than manifesting a reference.
+        // This is so that the returned pointer retains the same provenance as our pointer.
+        // This is required so that e.g. `get_mut` can write through the pointer
+        // after the Rc is recovered through `from_raw`.
+        unsafe {
+            let offset = data_offset(&(*ptr).value);
+            set_data_ptr(fake_ptr, (ptr as *mut u8).offset(offset))
+        }
     }
 
     /// Constructs an `Rc` from a raw pointer.

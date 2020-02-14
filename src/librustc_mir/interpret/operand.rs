@@ -153,30 +153,6 @@ pub enum Operand<Tag = (), Id = AllocId> {
     Indirect(MemPlace<Tag, Id>),
 }
 
-impl<Tag> Operand<Tag> {
-    #[inline]
-    pub fn assert_mem_place(self) -> MemPlace<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Indirect(mplace) => mplace,
-            _ => bug!("assert_mem_place: expected Operand::Indirect, got {:?}", self),
-        }
-    }
-
-    #[inline]
-    pub fn assert_immediate(self) -> Immediate<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Immediate(imm) => imm,
-            _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
@@ -267,7 +243,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        match op.try_as_mplace() {
+        match op.try_as_mplace(self) {
             Ok(mplace) => Ok(self.force_mplace_ptr(mplace)?.into()),
             Err(imm) => Ok(imm.into()), // Nothing to cast/force
         }
@@ -335,7 +311,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         src: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
-        Ok(match src.try_as_mplace() {
+        Ok(match src.try_as_mplace(self) {
             Ok(mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
                     Ok(val)
@@ -383,7 +359,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: OpTy<'tcx, M::PointerTag>,
         field: u64,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base = match op.try_as_mplace() {
+        let base = match op.try_as_mplace(self) {
             Ok(mplace) => {
                 // The easy case
                 let field = self.mplace_field(mplace, field)?;
@@ -420,7 +396,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        Ok(match op.try_as_mplace() {
+        Ok(match op.try_as_mplace(self) {
             Ok(mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
                 let layout = op.layout.for_variant(self, variant);
@@ -439,30 +415,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
-            ConstantIndex { .. } | Index(_) if base.layout.is_zst() => {
-                OpTy {
-                    op: Operand::Immediate(Scalar::zst().into()),
-                    // the actual index doesn't matter, so we just pick a convenient one like 0
-                    layout: base.layout.field(self, 0)?,
-                }
-            }
-            Subslice { from, to, from_end } if base.layout.is_zst() => {
-                let elem_ty = if let ty::Array(elem_ty, _) = base.layout.ty.kind {
-                    elem_ty
-                } else {
-                    bug!("slices shouldn't be zero-sized");
-                };
-                assert!(!from_end, "arrays shouldn't be subsliced from the end");
-
-                OpTy {
-                    op: Operand::Immediate(Scalar::zst().into()),
-                    layout: self.layout_of(self.tcx.mk_array(elem_ty, (to - from) as u64))?,
-                }
-            }
             Subslice { .. } | ConstantIndex { .. } | Index(_) => {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
-                let mplace = base.assert_mem_place();
+                let mplace = base.assert_mem_place(self);
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
         })
@@ -506,19 +462,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::PlaceBase;
-
-        let base_op = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => throw_unsup!(ReadFromReturnPointer),
-            PlaceBase::Local(local) => {
+        let base_op = match place.local {
+            mir::RETURN_PLACE => throw_unsup!(ReadFromReturnPointer),
+            local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.
-                // FIXME use place_projection.is_empty() when is available
                 let layout = if place.projection.is_empty() { layout } else { None };
 
-                self.access_local(self.frame(), *local, layout)?
+                self.access_local(self.frame(), local, layout)?
             }
-            PlaceBase::Static(place_static) => self.eval_static_to_mplace(&place_static)?.into(),
         };
 
         let op = place
@@ -576,7 +528,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Early-return cases.
         let val_val = match val.val {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
-            ty::ConstKind::Unevaluated(def_id, substs) => {
+            ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
                 let instance = self.resolve(def_id, substs)?;
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
                 // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
@@ -584,9 +536,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
-                // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
-                // `StaticKind` once and for all.
-                return self.const_eval(GlobalId { instance, promoted: None });
+                return Ok(OpTy::from(self.const_eval(GlobalId { instance, promoted })?));
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
@@ -734,16 +684,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
                                 .expect("oveflow computing absolute variant idx");
-                            assert!(
-                                (variant_index as usize)
-                                    < rval
-                                        .layout
-                                        .ty
-                                        .ty_adt_def()
-                                        .expect("tagged layout for non adt")
-                                        .variants
-                                        .len()
-                            );
+                            let variants_len = rval
+                                .layout
+                                .ty
+                                .ty_adt_def()
+                                .expect("tagged layout for non adt")
+                                .variants
+                                .len();
+                            assert!((variant_index as usize) < variants_len);
                             (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
                             (u128::from(dataful_variant.as_u32()), dataful_variant)

@@ -4,7 +4,7 @@ error: trait objects without an explicit `dyn` are deprecated
 LL |     bar: Box<Bar>,
    |              ^^^ help: use `dyn`: `dyn Bar`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-61963.rs:3:9
    |
 LL | #![deny(bare_trait_objects)]

@@ -1,0 +1,220 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:8:11
+   |
+LL |     fn f1(self) {}
+   |           ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:10:11
+   |
+LL |     fn f2(mut self) {}
+   |           ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:12:11
+   |
+LL |     fn f3(&self) {}
+   |           ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:14:11
+   |
+LL |     fn f4(&mut self) {}
+   |           ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:16:15
+   |
+LL |     fn f5<'a>(&'a self) {}
+   |               ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:18:15
+   |
+LL |     fn f6<'a>(&'a mut self) {}
+   |               ^^^^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:20:11
+   |
+LL |     fn f7(self: u8) {}
+   |           ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:22:11
+   |
+LL |     fn f8(mut self: u8) {}
+   |           ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:27:11
+   |
+LL |     fn f1(self);
+   |           ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:29:11
+   |
+LL |     fn f2(mut self);
+   |           ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/self-param-semantic-fail.rs:29:11
+   |
+LL |     fn f2(mut self);
+   |           ^^^^^^^^ pattern not allowed in foreign function
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:32:11
+   |
+LL |     fn f3(&self);
+   |           ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:34:11
+   |
+LL |     fn f4(&mut self);
+   |           ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:36:15
+   |
+LL |     fn f5<'a>(&'a self);
+   |               ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:38:15
+   |
+LL |     fn f6<'a>(&'a mut self);
+   |               ^^^^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:40:11
+   |
+LL |     fn f7(self: u8);
+   |           ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:42:11
+   |
+LL |     fn f8(mut self: u8);
+   |           ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/self-param-semantic-fail.rs:42:11
+   |
+LL |     fn f8(mut self: u8);
+   |           ^^^^^^^^ pattern not allowed in foreign function
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:47:14
+   |
+LL | type X1 = fn(self);
+   |              ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:49:14
+   |
+LL | type X2 = fn(mut self);
+   |              ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/self-param-semantic-fail.rs:49:14
+   |
+LL | type X2 = fn(mut self);
+   |              ^^^^^^^^
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:52:14
+   |
+LL | type X3 = fn(&self);
+   |              ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:54:14
+   |
+LL | type X4 = fn(&mut self);
+   |              ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:56:22
+   |
+LL | type X5 = for<'a> fn(&'a self);
+   |                      ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:58:22
+   |
+LL | type X6 = for<'a> fn(&'a mut self);
+   |                      ^^^^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:60:14
+   |
+LL | type X7 = fn(self: u8);
+   |              ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-semantic-fail.rs:62:14
+   |
+LL | type X8 = fn(mut self: u8);
+   |              ^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/self-param-semantic-fail.rs:62:14
+   |
+LL | type X8 = fn(mut self: u8);
+   |              ^^^^^^^^
+
+error: aborting due to 28 previous errors
+
+Some errors have detailed explanations: E0130, E0561.
+For more information about an error, try `rustc --explain E0130`.

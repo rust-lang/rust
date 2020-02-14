@@ -64,13 +64,13 @@ use crate::ty::{
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
-
-use errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use rustc_error_codes::*;
-use rustc_span::{Pos, Span};
+use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
 
@@ -138,7 +138,10 @@ pub(super) fn note_and_explain_region(
             msg_span_from_free_region(tcx, region)
         }
 
-        ty::ReEmpty => ("the empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), None),
+
+        // uh oh, hope no user ever sees THIS
+        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
 
         ty::RePlaceholder(_) => (format!("any other region"), None),
 
@@ -181,7 +184,8 @@ fn msg_span_from_free_region(
             msg_span_from_early_bound_and_free_regions(tcx, region)
         }
         ty::ReStatic => ("the static lifetime".to_owned(), None),
-        ty::ReEmpty => ("an empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), None),
+        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), None),
         _ => bug!("{:?}", region),
     }
 }
@@ -253,7 +257,7 @@ fn emit_msg_span(
 
 fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
     match item.kind {
-        hir::ItemKind::Impl(..) => "impl",
+        hir::ItemKind::Impl { .. } => "impl",
         hir::ItemKind::Struct(..) => "struct",
         hir::ItemKind::Union(..) => "union",
         hir::ItemKind::Enum(..) => "enum",
@@ -375,6 +379,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
                     }
 
+                    RegionResolutionError::UpperBoundUniverseConflict(
+                        _,
+                        _,
+                        var_universe,
+                        sup_origin,
+                        sup_r,
+                    ) => {
+                        assert!(sup_r.is_placeholder());
+
+                        // Make a dummy value for the "sub region" --
+                        // this is the initial value of the
+                        // placeholder. In practice, we expect more
+                        // tailored errors that don't really use this
+                        // value.
+                        let sub_r = self.tcx.mk_region(ty::ReEmpty(var_universe));
+
+                        self.report_placeholder_failure(
+                            region_scope_tree,
+                            sup_origin,
+                            sub_r,
+                            sup_r,
+                        )
+                        .emit();
+                    }
+
                     RegionResolutionError::MemberConstraintFailure {
                         opaque_type_def_id,
                         hidden_ty,
@@ -429,6 +458,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
+            | RegionResolutionError::UpperBoundUniverseConflict(..)
             | RegionResolutionError::MemberConstraintFailure { .. } => false,
         };
 
@@ -443,6 +473,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
             RegionResolutionError::MemberConstraintFailure { span, .. } => span,
         });
         errors
@@ -1289,6 +1320,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
     ) {
+        let span = cause.span(self.tcx);
+
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         match terr {
@@ -1296,6 +1329,100 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values = None;
             }
             _ => {}
+        }
+
+        struct OpaqueTypesVisitor<'tcx> {
+            types: FxHashMap<TyCategory, FxHashSet<Span>>,
+            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
+            found: FxHashMap<TyCategory, FxHashSet<Span>>,
+            ignore_span: Span,
+            tcx: TyCtxt<'tcx>,
+        }
+
+        impl<'tcx> OpaqueTypesVisitor<'tcx> {
+            fn visit_expected_found(
+                tcx: TyCtxt<'tcx>,
+                expected: Ty<'tcx>,
+                found: Ty<'tcx>,
+                ignore_span: Span,
+            ) -> Self {
+                let mut types_visitor = OpaqueTypesVisitor {
+                    types: Default::default(),
+                    expected: Default::default(),
+                    found: Default::default(),
+                    ignore_span,
+                    tcx,
+                };
+                // The visitor puts all the relevant encountered types in `self.types`, but in
+                // here we want to visit two separate types with no relation to each other, so we
+                // move the results from `types` to `expected` or `found` as appropriate.
+                expected.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.expected, &mut types_visitor.types);
+                found.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.found, &mut types_visitor.types);
+                types_visitor
+            }
+
+            fn report(&self, err: &mut DiagnosticBuilder<'_>) {
+                self.add_labels_for_types(err, "expected", &self.expected);
+                self.add_labels_for_types(err, "found", &self.found);
+            }
+
+            fn add_labels_for_types(
+                &self,
+                err: &mut DiagnosticBuilder<'_>,
+                target: &str,
+                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
+            ) {
+                for (key, values) in types.iter() {
+                    let count = values.len();
+                    let kind = key.descr();
+                    for sp in values {
+                        err.span_label(
+                            *sp,
+                            format!(
+                                "{}{}{} {}{}",
+                                if sp.is_desugaring(DesugaringKind::Async) {
+                                    "the `Output` of this `async fn`'s "
+                                } else if count == 1 {
+                                    "the "
+                                } else {
+                                    ""
+                                },
+                                if count > 1 { "one of the " } else { "" },
+                                target,
+                                kind,
+                                pluralize!(count),
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                if let Some((kind, def_id)) = TyCategory::from_ty(t) {
+                    let span = self.tcx.def_span(def_id);
+                    // Avoid cluttering the output when the "found" and error span overlap:
+                    //
+                    // error[E0308]: mismatched types
+                    //   --> $DIR/issue-20862.rs:2:5
+                    //    |
+                    // LL |     |y| x + y
+                    //    |     ^^^^^^^^^
+                    //    |     |
+                    //    |     the found closure
+                    //    |     expected `()`, found closure
+                    //    |
+                    //    = note: expected unit type `()`
+                    //                 found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
+                    if !self.ignore_span.overlaps(span) {
+                        self.types.entry(kind).or_default().insert(span);
+                    }
+                }
+                t.super_visit_with(self)
+            }
         }
 
         debug!("note_type_err(diag={:?})", diag);
@@ -1306,6 +1433,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ValuePairs::Types(exp_found) => {
                         let is_simple_err =
                             exp_found.expected.is_simple_text() && exp_found.found.is_simple_text();
+                        OpaqueTypesVisitor::visit_expected_found(
+                            self.tcx,
+                            exp_found.expected,
+                            exp_found.found,
+                            span,
+                        )
+                        .report(diag);
 
                         (is_simple_err, Some(exp_found))
                     }
@@ -1323,8 +1457,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        let span = cause.span(self.tcx);
-
         // Ignore msg for object safe coercion
         // since E0038 message will be printed
         match terr {
@@ -1336,7 +1468,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         };
-
         if let Some((expected, found)) = expected_found {
             let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
             let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
@@ -1570,7 +1701,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sub: Region<'tcx>,
     ) {
         self.construct_generic_bound_failure(region_scope_tree, span, origin, bound_kind, sub)
-            .emit()
+            .emit();
     }
 
     pub fn construct_generic_bound_failure(
@@ -1678,8 +1809,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let mut err = match *sub {
-            ty::ReEarlyBound(_)
-            | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(..), .. }) => {
+            ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
+            | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -1688,7 +1819,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                binding_suggestion(&mut err, type_param_span, bound_kind, sub);
+                // Explicitely use the name instead of `sub`'s `Display` impl. The `Display` impl
+                // for the bound is not suitable for suggestions when `-Zverbose` is set because it
+                // uses `Debug` output, so we handle it specially here so that suggestions are
+                // always correct.
+                binding_suggestion(&mut err, type_param_span, bound_kind, name);
                 err
             }
 
@@ -1907,7 +2042,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 TypeError::IntrinsicCast => {
                     Error0308("cannot coerce intrinsics to function pointers")
                 }
-                TypeError::ObjectUnsafeCoercion(did) => Error0038(did.clone()),
+                TypeError::ObjectUnsafeCoercion(did) => Error0038(*did),
                 _ => Error0308("mismatched types"),
             },
         }
@@ -1930,6 +2065,37 @@ impl<'tcx> ObligationCause<'tcx> {
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
+        }
+    }
+}
+
+/// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
+/// extra information about each type, but we only care about the category.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+crate enum TyCategory {
+    Closure,
+    Opaque,
+    Generator,
+    Foreign,
+}
+
+impl TyCategory {
+    fn descr(&self) -> &'static str {
+        match self {
+            Self::Closure => "closure",
+            Self::Opaque => "opaque type",
+            Self::Generator => "generator",
+            Self::Foreign => "foreign type",
+        }
+    }
+
+    pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+        match ty.kind {
+            ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
+            ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+            ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+            ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
+            _ => None,
         }
     }
 }

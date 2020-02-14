@@ -86,10 +86,7 @@ struct BorrowedLocalsVisitor<'gk> {
 }
 
 fn find_local(place: &Place<'_>) -> Option<Local> {
-    match place.base {
-        PlaceBase::Local(local) if !place.is_indirect() => Some(local),
-        _ => None,
-    }
+    if !place.is_indirect() { Some(place.local) } else { None }
 }
 
 impl<'tcx> Visitor<'tcx> for BorrowedLocalsVisitor<'_> {

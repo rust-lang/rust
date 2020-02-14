@@ -1,6 +1,8 @@
 error[E0261]: use of undeclared lifetime name `'test`
   --> $DIR/no_introducing_in_band_in_locals.rs:5:13
    |
+LL | fn foo(x: &u32) {
+   |       - help: consider introducing lifetime `'test` here: `<'test>`
 LL |     let y: &'test u32 = x;
    |             ^^^^^ undeclared lifetime
 
@@ -9,6 +11,16 @@ error[E0261]: use of undeclared lifetime name `'test`
    |
 LL |     let y: fn(&'test u32) = foo2;
    |                ^^^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider introducing lifetime `'test` here
+   |
+LL | fn bar<'test>() {
+   |       ^^^^^^^
+help: consider making the type lifetime-generic with a new `'test` lifetime
+   |
+LL |     let y: for<'test> fn(&'test u32) = foo2;
+   |            ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

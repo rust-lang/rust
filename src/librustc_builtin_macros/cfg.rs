@@ -1,12 +1,12 @@
-/// The compiler code necessary to support the cfg! extension, which expands to
-/// a literal `true` or `false` based on whether the given cfg matches the
-/// current compilation environment.
-use errors::DiagnosticBuilder;
+//! The compiler code necessary to support the cfg! extension, which expands to
+//! a literal `true` or `false` based on whether the given cfg matches the
+//! current compilation environment.
 
+use rustc_attr as attr;
+use rustc_errors::DiagnosticBuilder;
 use rustc_expand::base::{self, *};
 use rustc_span::Span;
 use syntax::ast;
-use syntax::attr;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 

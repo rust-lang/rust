@@ -1,4 +1,4 @@
-error[E0599]: no method named `foo` found for type `A` in the current scope
+error[E0599]: no method named `foo` found for struct `A` in the current scope
   --> $DIR/point-at-arbitrary-self-type-trait-method.rs:9:7
    |
 LL | trait B { fn foo(self: Box<Self>); }

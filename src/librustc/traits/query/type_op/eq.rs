@@ -1,18 +1,8 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{ParamEnvAnd, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
-pub struct Eq<'tcx> {
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
-
-impl<'tcx> Eq<'tcx> {
-    pub fn new(a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
-        Self { a, b }
-    }
-}
+pub use rustc::traits::query::type_op::Eq;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for Eq<'tcx> {
     type QueryResponse = ();

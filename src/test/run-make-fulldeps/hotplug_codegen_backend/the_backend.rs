@@ -71,18 +71,28 @@ impl CodegenBackend for TheBackend {
         Box::new(tcx.crate_name(LOCAL_CRATE) as Symbol)
     }
 
-    fn join_codegen_and_link(
+    fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
+        _sess: &Session,
         _dep_graph: &DepGraph,
+    ) -> Result<Box<dyn Any>, ErrorReported> {
+        let crate_name = ongoing_codegen.downcast::<Symbol>()
+            .expect("in join_codegen: ongoing_codegen is not a Symbol");
+        Ok(crate_name)
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: Box<dyn Any>,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
         use std::io::Write;
         use rustc::session::config::CrateType;
         use rustc_codegen_utils::link::out_filename;
-        let crate_name = ongoing_codegen.downcast::<Symbol>()
-            .expect("in join_codegen_and_link: ongoing_codegen is not a Symbol");
+        let crate_name = codegen_results.downcast::<Symbol>()
+            .expect("in link: codegen_results is not a Symbol");
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));

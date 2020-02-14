@@ -306,7 +306,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         (
             range.start.vid..range.end.vid,
             (range.start.vid.index..range.end.vid.index)
-                .map(|index| self.values.get(index as usize).origin.clone())
+                .map(|index| self.values.get(index as usize).origin)
                 .collect(),
         )
     }
@@ -451,20 +451,5 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
                 Ok(TypeVariableValue::Unknown { universe })
             }
         }
-    }
-}
-
-/// Raw `TyVid` are used as the unification key for `sub_relations`;
-/// they carry no values.
-impl ut::UnifyKey for ty::TyVid {
-    type Value = ();
-    fn index(&self) -> u32 {
-        self.index
-    }
-    fn from_index(i: u32) -> ty::TyVid {
-        ty::TyVid { index: i }
-    }
-    fn tag() -> &'static str {
-        "TyVid"
     }
 }

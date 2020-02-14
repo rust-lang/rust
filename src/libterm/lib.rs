@@ -91,7 +91,7 @@ pub fn stderr() -> Option<Box<StderrTerminal>> {
 #[allow(missing_docs)]
 pub mod color {
     /// Number for a terminal color
-    pub type Color = u16;
+    pub type Color = u32;
 
     pub const BLACK: Color = 0;
     pub const RED: Color = 1;

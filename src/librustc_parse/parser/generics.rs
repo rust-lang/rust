@@ -156,7 +156,7 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             (params, span_lo.to(self.prev_span))
         } else {
-            (vec![], self.prev_span.between(self.token.span))
+            (vec![], self.prev_span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,
@@ -172,7 +172,7 @@ impl<'a> Parser<'a> {
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         let mut where_clause =
-            WhereClause { predicates: Vec::new(), span: self.prev_span.to(self.prev_span) };
+            WhereClause { predicates: Vec::new(), span: self.prev_span.shrink_to_hi() };
 
         if !self.eat_keyword(kw::Where) {
             return Ok(where_clause);

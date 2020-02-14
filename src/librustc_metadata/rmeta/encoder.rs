@@ -504,7 +504,7 @@ impl<'tcx> EncodeContext<'tcx> {
             },
             proc_macro_data,
             proc_macro_stability: if is_proc_macro {
-                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| stab.clone())
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| *stab)
             } else {
                 None
             },
@@ -514,7 +514,6 @@ impl<'tcx> EncodeContext<'tcx> {
             no_builtins: attr::contains_name(&attrs, sym::no_builtins),
             panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
             profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
-            sanitizer_runtime: attr::contains_name(&attrs, sym::sanitizer_runtime),
             symbol_mangling_version: tcx.sess.opts.debugging_opts.symbol_mangling_version,
 
             crate_deps,
@@ -797,7 +796,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- match trait_item.kind {
             ty::AssocKind::Const => {
                 let rendered =
-                    hir::print::to_string(self.tcx.hir(), |s| s.print_trait_item(ast_item));
+                    hir::print::to_string(&self.tcx.hir(), |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
                 EntryKind::AssocConst(
@@ -1010,7 +1009,7 @@ impl EncodeContext<'tcx> {
 
     fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> Lazy<RenderedConst> {
         let body = self.tcx.hir().body(body_id);
-        let rendered = hir::print::to_string(self.tcx.hir(), |s| s.print_expr(&body.value));
+        let rendered = hir::print::to_string(&self.tcx.hir(), |s| s.print_expr(&body.value));
         let rendered_const = &RenderedConst(rendered);
         self.lazy(rendered_const)
     }
@@ -1074,7 +1073,7 @@ impl EncodeContext<'tcx> {
                     ctor: None,
                 }), adt_def.repr)
             }
-            hir::ItemKind::Impl(_, _, defaultness, ..) => {
+            hir::ItemKind::Impl { defaultness, .. } => {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
@@ -1150,7 +1149,7 @@ impl EncodeContext<'tcx> {
                     })
                 )
             }
-            hir::ItemKind::Impl(..) | hir::ItemKind::Trait(..) => {
+            hir::ItemKind::Impl { .. } | hir::ItemKind::Trait(..) => {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record!(self.per_def.children[def_id] <-
                     associated_item_def_ids.iter().map(|&def_id| {
@@ -1173,13 +1172,13 @@ impl EncodeContext<'tcx> {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::Impl(..) => self.encode_item_type(def_id),
+            | hir::ItemKind::Impl { .. } => self.encode_item_type(def_id),
             _ => {}
         }
         if let hir::ItemKind::Fn(..) = item.kind {
             record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        if let hir::ItemKind::Impl(..) = item.kind {
+        if let hir::ItemKind::Impl { .. } = item.kind {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
                 record!(self.per_def.impl_trait_ref[def_id] <- trait_ref);
             }
@@ -1200,7 +1199,7 @@ impl EncodeContext<'tcx> {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::Impl(..)
+            | hir::ItemKind::Impl { .. }
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
@@ -1237,7 +1236,7 @@ impl EncodeContext<'tcx> {
 
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
-        use syntax::print::pprust;
+        use rustc_ast_pretty::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(MacroDef {
             body: pprust::tts_to_string(macro_def.body.clone()),
@@ -1646,7 +1645,7 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Union(..) => {
                 self.encode_fields(def_id);
             }
-            hir::ItemKind::Impl(..) => {
+            hir::ItemKind::Impl { .. } => {
                 for &trait_item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.encode_info_for_impl_item(trait_item_def_id);
                 }
@@ -1667,7 +1666,7 @@ struct ImplVisitor<'tcx> {
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if let hir::ItemKind::Impl(..) = item.kind {
+        if let hir::ItemKind::Impl { .. } = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
                 self.impls.entry(trait_ref.def_id).or_default().push(impl_id.index);

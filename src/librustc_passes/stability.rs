@@ -1,16 +1,18 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use errors::struct_span_err;
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability::{DeprecationEntry, Index};
+use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_attr::{self as attr, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -19,14 +21,10 @@ use rustc_hir::{Generics, HirId, Item, StructField, Variant};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::Attribute;
-use syntax::attr::{self, Stability};
-use syntax::feature_gate::feature_err;
 
 use std::cmp::Ordering;
 use std::mem::replace;
 use std::num::NonZeroU32;
-
-use rustc_error_codes::*;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -91,7 +89,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 // deprecated_since and its reason.
                 if let Some(parent_stab) = self.parent_stab {
                     if parent_stab.rustc_depr.is_some() && stab.rustc_depr.is_none() {
-                        stab.rustc_depr = parent_stab.rustc_depr.clone()
+                        stab.rustc_depr = parent_stab.rustc_depr
                     }
                 }
 
@@ -219,11 +217,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemKind::Impl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl { of_trait: Some(_), .. } => {
                 self.in_trait_impl = true;
             }
             hir::ItemKind::Struct(ref sd, _) => {
@@ -308,7 +306,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
 
             _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant()),
         }
@@ -368,8 +366,8 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
     // Put the active features into a map for quick lookup.
     index.active_features = active_lib_features
         .iter()
-        .map(|&(ref s, ..)| s.clone())
-        .chain(active_lang_features.iter().map(|&(ref s, ..)| s.clone()))
+        .map(|&(s, ..)| s)
+        .chain(active_lang_features.iter().map(|&(s, ..)| s))
         .collect();
 
     {
@@ -463,13 +461,14 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(.., Some(ref t), _, impl_item_refs) => {
+            hir::ItemKind::Impl { of_trait: Some(ref t), items, .. } => {
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
-                    for impl_item_ref in impl_item_refs {
+                    for impl_item_ref in items {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         let trait_item_def_id = self
                             .tcx
                             .associated_items(trait_did)
+                            .iter()
                             .find(|item| item.ident.name == impl_item.ident.name)
                             .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
@@ -605,16 +604,14 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 }
 
 fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {
-    tcx.lint_hir(
-        lint::builtin::STABLE_FEATURES,
-        hir::CRATE_HIR_ID,
-        span,
-        &format!(
+    tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
+        lint.build(&format!(
             "the feature `{}` has been stable since {} and no longer requires \
-                  an attribute to enable",
+                      an attribute to enable",
             feature, since
-        ),
-    );
+        ))
+        .emit();
+    });
 }
 
 fn duplicate_feature_err(sess: &Session, span: Span, feature: Symbol) {

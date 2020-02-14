@@ -4,7 +4,7 @@ error: `async` is a keyword in the 2018 edition
 LL | fn async() {}
    |    ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/async-ident.rs:2:9
    |
 LL | #![deny(keyword_idents)]

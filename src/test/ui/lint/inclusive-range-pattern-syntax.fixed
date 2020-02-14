@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // run-rustfix
 
 #![warn(ellipsis_inclusive_range_patterns)]

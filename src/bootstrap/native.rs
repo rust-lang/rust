@@ -15,8 +15,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::{output, t};
-use cc;
-use cmake;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
@@ -205,7 +203,7 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
         }
 
-        if enabled_llvm_projects.len() > 0 {
+        if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();
             enabled_llvm_projects.dedup();
             cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
@@ -230,6 +228,8 @@ impl Step for Llvm {
                 cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
             } else if target.contains("freebsd") {
                 cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+            } else if target.contains("windows") {
+                cfg.define("CMAKE_SYSTEM_NAME", "Windows");
             }
 
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
@@ -262,7 +262,7 @@ impl Step for Llvm {
             cfg.define("PYTHON_EXECUTABLE", python);
         }
 
-        configure_cmake(builder, target, &mut cfg);
+        configure_cmake(builder, target, &mut cfg, true);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
@@ -301,7 +301,12 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=7.0\n\n", version)
 }
 
-fn configure_cmake(builder: &Builder<'_>, target: Interned<String>, cfg: &mut cmake::Config) {
+fn configure_cmake(
+    builder: &Builder<'_>,
+    target: Interned<String>,
+    cfg: &mut cmake::Config,
+    use_compiler_launcher: bool,
+) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
@@ -372,9 +377,11 @@ fn configure_cmake(builder: &Builder<'_>, target: Interned<String>, cfg: &mut cm
     } else {
         // If ccache is configured we inform the build a little differently how
         // to invoke ccache while also invoking our compilers.
-        if let Some(ref ccache) = builder.config.ccache {
-            cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
-                .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+        if use_compiler_launcher {
+            if let Some(ref ccache) = builder.config.ccache {
+                cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+                    .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+            }
         }
         cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
             .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
@@ -458,7 +465,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg);
+        configure_cmake(builder, target, &mut cfg, true);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -545,4 +552,144 @@ impl Step for TestHelpers {
             .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
             .compile("rust_test_helpers");
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Sanitizers {
+    pub target: Interned<String>,
+}
+
+impl Step for Sanitizers {
+    type Output = Vec<SanitizerRuntime>;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/compiler-rt").path("src/sanitizers")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Sanitizers { target: run.target });
+    }
+
+    /// Builds sanitizer runtime libraries.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_rt_dir.exists() {
+            return Vec::new();
+        }
+
+        let out_dir = builder.native_dir(self.target).join("sanitizers");
+        let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
+        if runtimes.is_empty() {
+            return runtimes;
+        }
+
+        let llvm_config = builder.ensure(Llvm { target: builder.config.build });
+        if builder.config.dry_run {
+            return runtimes;
+        }
+
+        let done_stamp = out_dir.join("sanitizers-finished-building");
+        if done_stamp.exists() {
+            builder.info(&format!(
+                "Assuming that sanitizers rebuild is not necessary. \
+                To force a rebuild, remove the file `{}`",
+                done_stamp.display()
+            ));
+            return runtimes;
+        }
+
+        builder.info(&format!("Building sanitizers for {}", self.target));
+        let _time = util::timeit(&builder);
+
+        let mut cfg = cmake::Config::new(&compiler_rt_dir);
+        cfg.profile("Release");
+        cfg.define("CMAKE_C_COMPILER_TARGET", self.target);
+        cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
+        cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
+        cfg.define("COMPILER_RT_BUILD_LIBFUZZER", "OFF");
+        cfg.define("COMPILER_RT_BUILD_PROFILE", "OFF");
+        cfg.define("COMPILER_RT_BUILD_SANITIZERS", "ON");
+        cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
+        cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
+        cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
+        cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        // On Darwin targets the sanitizer runtimes are build as universal binaries.
+        // Unfortunately sccache currently lacks support to build them successfully.
+        // Disable compiler launcher on Darwin targets to avoid potential issues.
+        let use_compiler_launcher = !self.target.contains("apple-darwin");
+        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher);
+
+        t!(fs::create_dir_all(&out_dir));
+        cfg.out_dir(out_dir);
+
+        for runtime in &runtimes {
+            cfg.build_target(&runtime.cmake_target);
+            cfg.build();
+        }
+
+        t!(fs::write(&done_stamp, b""));
+
+        runtimes
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SanitizerRuntime {
+    /// CMake target used to build the runtime.
+    pub cmake_target: String,
+    /// Path to the built runtime library.
+    pub path: PathBuf,
+    /// Library filename that will be used rustc.
+    pub name: String,
+}
+
+/// Returns sanitizers available on a given target.
+fn supported_sanitizers(
+    out_dir: &Path,
+    target: Interned<String>,
+    channel: &str,
+) -> Vec<SanitizerRuntime> {
+    let mut result = Vec::new();
+    match &*target {
+        "x86_64-apple-darwin" => {
+            for s in &["asan", "lsan", "tsan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}_osx_dynamic", s),
+                    path: out_dir
+                        .join(&format!("build/lib/darwin/libclang_rt.{}_osx_dynamic.dylib", s)),
+                    name: format!("librustc-{}_rt.{}.dylib", channel, s),
+                });
+            }
+        }
+        "x86_64-unknown-linux-gnu" => {
+            for s in &["asan", "lsan", "msan", "tsan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-x86_64", s),
+                    path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-x86_64.a", s)),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
+                });
+            }
+        }
+        "x86_64-fuchsia" => {
+            for s in &["asan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-x86_64", s),
+                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-x86_64.a", s)),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
+                });
+            }
+        }
+        "aarch64-fuchsia" => {
+            for s in &["asan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-aarch64", s),
+                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-aarch64.a", s)),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
+                });
+            }
+        }
+        _ => {}
+    }
+    result
 }

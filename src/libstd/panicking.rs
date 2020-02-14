@@ -55,6 +55,15 @@ extern "C" {
     fn __rust_start_panic(payload: usize) -> u32;
 }
 
+/// This function is called by the panic runtime if FFI code catches a Rust
+/// panic but doesn't rethrow it. We don't support this case since it messes
+/// with our panic count.
+#[cfg(not(test))]
+#[rustc_std_internal_symbol]
+extern "C" fn __rust_drop_panic() -> ! {
+    rtabort!("Rust panics must be rethrown");
+}
+
 #[derive(Copy, Clone)]
 enum Hook {
     Default,
@@ -199,7 +208,7 @@ fn default_hook(info: &PanicInfo<'_>) {
                     let _ = writeln!(
                         err,
                         "note: run with `RUST_BACKTRACE=1` \
-                                           environment variable to display a backtrace."
+                                           environment variable to display a backtrace"
                     );
                 }
             }
@@ -277,11 +286,9 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     );
 
     return if r == 0 {
-        debug_assert!(update_panic_count(0) == 0);
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
         update_panic_count(-1);
-        debug_assert!(update_panic_count(0) == 0);
         Err(mem::transmute(raw::TraitObject {
             data: any_data as *mut _,
             vtable: any_vtable as *mut _,
@@ -382,7 +389,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cold]
 #[track_caller]
-pub fn begin_panic<M: Any + Send>(msg: M, #[cfg(bootstrap)] _: &(&str, u32, u32)) -> ! {
+pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { intrinsics::abort() }
     }

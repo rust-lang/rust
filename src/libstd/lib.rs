@@ -163,11 +163,11 @@
 //! [`Iterator`]: iter/trait.Iterator.html
 //! [`Mutex`]: sync/struct.Mutex.html
 //! [`Option<T>`]: option/enum.Option.html
-//! [`Rc`]: rc/index.html
+//! [`Rc`]: rc/struct.Rc.html
 //! [`RefCell`]: cell/struct.RefCell.html
 //! [`Result<T, E>`]: result/enum.Result.html
 //! [`String`]: string/struct.String.html
-//! [`Vec<T>`]: vec/index.html
+//! [`Vec<T>`]: vec/struct.Vec.html
 //! [array]: primitive.array.html
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
@@ -237,6 +237,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(assoc_int_consts)]
 #![feature(associated_type_bounds)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
@@ -275,7 +276,6 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(log_syntax)]
-#![feature(manually_drop_take)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
@@ -294,7 +294,6 @@
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
-#![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
@@ -334,12 +333,6 @@ extern crate libc;
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
-
-// Only needed for now for the `std_detect` module until that crate changes to
-// use `cfg_if::cfg_if!`
-#[macro_use]
-#[cfg(not(test))]
-extern crate cfg_if;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source

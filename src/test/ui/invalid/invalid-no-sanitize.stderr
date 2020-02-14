@@ -1,0 +1,10 @@
+error: invalid argument for `no_sanitize`
+  --> $DIR/invalid-no-sanitize.rs:3:15
+   |
+LL | #[no_sanitize(brontosaurus)]
+   |               ^^^^^^^^^^^^
+   |
+   = note: expected one of: `address`, `memory` or `thread`
+
+error: aborting due to previous error
+

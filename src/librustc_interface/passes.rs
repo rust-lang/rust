@@ -15,9 +15,8 @@ use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::steal::Steal;
-use rustc::ty::{self, AllArenas, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
@@ -26,20 +25,18 @@ use rustc_data_structures::{box_region_allow_access, declare_box_region_type, pa
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_incremental;
+use rustc_hir::Crate;
+use rustc_lint::LintStore;
 use rustc_mir as mir;
+use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
-use rustc_passes::{self, ast_validation, hir_stats, layout_test};
+use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
-use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::mut_visit::MutVisitor;
-use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
 
 use rustc_serialize::json;
@@ -48,7 +45,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
@@ -71,7 +68,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
-        syntax::show_span::run(sess.diagnostic(), s, &krate);
+        rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
     }
 
     if sess.opts.debugging_opts.hir_stats {
@@ -82,7 +79,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
-    let mut counter = NodeCounter::new();
+    let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
     visit::walk_crate(&mut counter, krate);
     counter.count
 }
@@ -101,7 +98,7 @@ declare_box_region_type!(
 /// Returns `None` if we're aborting after handling -W help.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
-    lint_store: Lrc<lint::LintStore>,
+    lint_store: Lrc<LintStore>,
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: ast::Crate,
     crate_name: &str,
@@ -151,10 +148,10 @@ impl BoxedResolver {
 pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
-    register_lints: impl Fn(&Session, &mut lint::LintStore),
+    register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, Lrc<lint::LintStore>)> {
+) -> Result<(ast::Crate, Lrc<LintStore>)> {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
@@ -215,7 +212,7 @@ pub fn register_plugins<'a>(
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
-    lint_store: &'a lint::LintStore,
+    lint_store: &'a LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
@@ -345,7 +342,7 @@ fn configure_and_expand_inner<'a>(
     }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
-        ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
+        rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
     let crate_types = sess.crate_types.borrow();
@@ -400,7 +397,7 @@ fn configure_and_expand_inner<'a>(
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        syntax::feature_gate::check_crate(
+        rustc_ast_passes::feature_gate::check_crate(
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),
@@ -411,8 +408,8 @@ fn configure_and_expand_inner<'a>(
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint { id, span, msg, lint_id } in buffered_lints.drain(..) {
-            resolver.lint_buffer().buffer_lint(lint_id, id, span, &msg);
+        for early_lint in buffered_lints.drain(..) {
+            resolver.lint_buffer().add_early_lint(early_lint);
         }
     });
 
@@ -421,12 +418,12 @@ fn configure_and_expand_inner<'a>(
 
 pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
-    lint_store: &lint::LintStore,
+    lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
     dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
     arena: &'tcx Arena<'tcx>,
-) -> Result<map::Forest<'tcx>> {
+) -> Crate<'tcx> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
@@ -440,8 +437,6 @@ pub fn lower_to_hir<'res, 'tcx>(
     if sess.opts.debugging_opts.hir_stats {
         hir_stats::print_hir_stats(&hir_crate);
     }
-
-    let hir_forest = map::Forest::new(hir_crate, &dep_graph);
 
     sess.time("early_lint_checks", || {
         rustc_lint::check_ast_crate(
@@ -459,7 +454,7 @@ pub fn lower_to_hir<'res, 'tcx>(
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
-    Ok(hir_forest)
+    hir_crate
 }
 
 // Returns all the paths that correspond to generated files.
@@ -574,7 +569,7 @@ fn write_out_deps(
             });
         }
 
-        let mut file = fs::File::create(&deps_filename)?;
+        let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
         for path in out_filenames {
             writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
         }
@@ -611,6 +606,8 @@ pub fn prepare_outputs(
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
+    let _timer = sess.timer("prepare_outputs");
+
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(
         &compiler.input,
@@ -669,6 +666,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     plugin::build::provide(providers);
     rustc::hir::provide(providers);
     mir::provide(providers);
+    mir_build::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);
@@ -676,6 +674,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_passes::provide(providers);
     rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
+    rustc_ty::provide(providers);
     rustc_metadata::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
@@ -704,20 +703,20 @@ impl<'tcx> QueryContext<'tcx> {
 
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
-    lint_store: Lrc<lint::LintStore>,
-    hir_forest: &'tcx map::Forest<'tcx>,
+    lint_store: Lrc<LintStore>,
+    krate: &'tcx Crate<'tcx>,
+    dep_graph: DepGraph,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
-    all_arenas: &'tcx AllArenas,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
 
     // Construct the HIR map.
-    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs);
+    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, krate, dep_graph, defs);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -734,20 +733,21 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let gcx = global_ctxt.init_locking(|| {
-        TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &all_arenas,
-            arena,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs,
-        )
+    let gcx = sess.time("setup_global_ctxt", || {
+        global_ctxt.init_locking(|| {
+            TyCtxt::create_global_ctxt(
+                sess,
+                lint_store,
+                local_providers,
+                extern_providers,
+                arena,
+                resolver_outputs,
+                hir_map,
+                query_result_on_disk_cache,
+                &crate_name,
+                &outputs,
+            )
+        })
     });
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.

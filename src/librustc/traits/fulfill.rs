@@ -311,7 +311,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         match obligation.predicate {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(data.clone());
 
                 if data.is_global() {
@@ -515,6 +515,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             obligation.param_env,
                             def_id,
                             substs,
+                            None,
                             Some(obligation.cause.span),
                         ) {
                             Ok(_) => ProcessResult::Changed(vec![]),

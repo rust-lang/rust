@@ -24,6 +24,11 @@ error[E0423]: expected value, found type alias `xm1::S`
    |
 LL |     check(xm1::S);
    |           ^^^^^^
+   | 
+  ::: $DIR/auxiliary/namespace-mix.rs:3:5
+   |
+LL |     pub struct TS();
+   |     ---------------- similarly named tuple struct `TS` defined here
    |
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
@@ -64,6 +69,11 @@ error[E0423]: expected value, found struct variant `xm7::V`
    |
 LL |     check(xm7::V);
    |           ^^^^^^ did you mean `xm7::V { /* fields */ }`?
+   | 
+  ::: $DIR/auxiliary/namespace-mix.rs:7:9
+   |
+LL |         TV(),
+   |         ---- similarly named tuple variant `TV` defined here
    |
 help: a tuple variant with a similar name exists
    |

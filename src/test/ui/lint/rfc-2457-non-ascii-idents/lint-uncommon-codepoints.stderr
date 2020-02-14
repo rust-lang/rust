@@ -4,7 +4,7 @@ error: identifier contains uncommon Unicode codepoints
 LL | const µ: f64 = 0.000001;
    |       ^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-uncommon-codepoints.rs:2:9
    |
 LL | #![deny(uncommon_codepoints)]

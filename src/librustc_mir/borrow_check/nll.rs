@@ -20,8 +20,8 @@ use std::str::FromStr;
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
 use crate::util as mir_util;
@@ -149,7 +149,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) -> NllOutput<'tcx> {
@@ -231,7 +231,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     constraint_generation::generate_constraints(
         infcx,
-        param_env,
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
@@ -253,14 +252,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     );
 
     // Generate various additional constraints.
-    invalidation::generate_invalidates(
-        infcx.tcx,
-        param_env,
-        &mut all_facts,
-        location_table,
-        body,
-        borrow_set,
-    );
+    invalidation::generate_invalidates(infcx.tcx, &mut all_facts, location_table, body, borrow_set);
 
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
@@ -368,7 +360,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // better.
 
     if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "External requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -387,7 +379,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
 
         err.buffer(errors_buffer);
     } else {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "No external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err.buffer(errors_buffer);

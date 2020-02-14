@@ -1,12 +1,10 @@
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-
-use errors::{Applicability, DiagnosticBuilder};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast;
-use syntax::errors::pluralize;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -15,6 +13,16 @@ use std::fmt;
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
+}
+
+impl<T> ExpectedFound<T> {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound { expected: a, found: b }
+        } else {
+            ExpectedFound { expected: b, found: a }
+        }
+    }
 }
 
 // Data structures used in type unification
@@ -246,9 +254,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
                 if let Some(principal) = inner.principal() {
-                    format!("trait `{}`", tcx.def_path_str(principal.def_id())).into()
+                    format!("trait object `dyn {}`", tcx.def_path_str(principal.def_id())).into()
                 } else {
-                    "trait".into()
+                    "trait object".into()
                 }
             }
             ty::Closure(..) => "closure".into(),
@@ -475,8 +483,9 @@ impl Trait for X {
                 if ty.is_closure() || ty.is_generator() {
                     db.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
-                             this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details",
+                         this error may be the result of a recent compiler bug-fix,\n\
+                         see issue #46062 <https://github.com/rust-lang/rust/issues/46062>\n\
+                         for more information",
                     );
                 }
             }

@@ -3,27 +3,25 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
-#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(set_stdio)]
 #![feature(test)]
+#![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
-#![feature(const_fn)]
-#![feature(drain_filter)]
 #![feature(never_type)]
-#![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
 extern crate env_logger;
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_ast_pretty;
+extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
-extern crate rustc_error_codes;
+extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
@@ -35,6 +33,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
+extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;
@@ -42,7 +41,6 @@ extern crate syntax;
 extern crate test as testing;
 #[macro_use]
 extern crate log;
-extern crate rustc_errors as errors;
 
 use std::default::Default;
 use std::env;
@@ -518,6 +516,6 @@ where
 
     match result {
         Ok(output) => output,
-        Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
+        Err(_) => panic::resume_unwind(Box::new(rustc_errors::FatalErrorMarker)),
     }
 }

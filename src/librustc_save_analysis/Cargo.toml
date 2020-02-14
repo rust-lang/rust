@@ -11,6 +11,7 @@ path = "lib.rs"
 [dependencies]
 log = "0.4"
 rustc = { path = "../librustc" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_hir = { path = "../librustc_hir" }

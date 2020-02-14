@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::session::config;
+use rustc::session::config::{self, Sanitizer};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
@@ -57,6 +57,7 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
 
     type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
+    type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
 }
 
 impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
@@ -780,13 +781,18 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         align: Align,
         flags: MemFlags,
     ) {
-        let ptr_width = &self.sess().target.target.target_pointer_width;
-        let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-        let llintrinsicfn = self.get_intrinsic(&intrinsic_key);
+        let is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
-        let align = self.const_u32(align.bytes() as u32);
-        let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
-        self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
+        unsafe {
+            llvm::LLVMRustBuildMemSet(
+                self.llbuilder,
+                ptr,
+                align.bytes() as c_uint,
+                fill_byte,
+                size,
+                is_volatile,
+            );
+        }
     }
 
     fn select(
@@ -984,11 +990,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.start", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.start.p0i8", ptr, size);
     }
 
     fn lifetime_end(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.end", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
     fn call(
@@ -1232,12 +1238,19 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
-        if self.cx.sess().opts.optimize == config::OptLevel::No {
+        let size = size.bytes();
+        if size == 0 {
             return;
         }
 
-        let size = size.bytes();
-        if size == 0 {
+        let opts = &self.cx.sess().opts;
+        let emit = match opts.debugging_opts.sanitizer {
+            // Some sanitizer use lifetime intrinsics. When they are in use,
+            // emit lifetime intrinsics regardless of optimization level.
+            Some(Sanitizer::Address) | Some(Sanitizer::Memory) => true,
+            _ => opts.optimize != config::OptLevel::No,
+        };
+        if !emit {
             return;
         }
 

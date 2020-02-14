@@ -2,7 +2,6 @@ use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::util::common::ErrorReported;
-use errors::struct_span_err;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{InferOk, SuppressRegionErrors};
 use rustc::middle::region;
@@ -11,10 +10,9 @@ use rustc::ty::error::TypeError;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Predicate, Ty, TyCtxt};
+use rustc_errors::struct_span_err;
 
 use rustc_span::Span;
-
-use rustc_error_codes::*;
 
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -234,7 +232,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         let predicate_matches_closure = |p: &'_ Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
             match (predicate, p) {
-                (Predicate::Trait(a), Predicate::Trait(b)) => relator.relate(a, b).is_ok(),
+                (Predicate::Trait(a, _), Predicate::Trait(b, _)) => relator.relate(a, b).is_ok(),
                 (Predicate::Projection(a), Predicate::Projection(b)) => {
                     relator.relate(a, b).is_ok()
                 }

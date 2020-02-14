@@ -12,14 +12,14 @@ pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
 use crate::namespace::Namespace;
-use errors::{Applicability, DiagnosticBuilder};
 use rustc::infer::{self, InferOk};
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable, WithConstness};
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::DefId;
@@ -58,7 +58,7 @@ pub enum MethodError<'tcx> {
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
-    IllegalSizedBound(Vec<DefId>, bool),
+    IllegalSizedBound(Vec<DefId>, bool, Span),
 
     // Found a match, but the return type is wrong
     BadReturnType,
@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         msg: &str,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr_id: hir::HirId,
+        call_expr: &hir::Expr<'_>,
     ) {
         let has_params = self
             .probe_for_name(
@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name,
                 IsSuggestion(false),
                 self_ty,
-                call_expr_id,
+                call_expr.hir_id,
                 ProbeScope::TraitsInScope,
             )
             .and_then(|pick| {
@@ -152,13 +152,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(sig.inputs().skip_binder().len() > 1)
             });
 
+        // Account for `foo.bar<T>`;
+        let sugg_span = method_name.span.with_hi(call_expr.span.hi());
+        let snippet = self
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(sugg_span)
+            .unwrap_or_else(|_| method_name.to_string());
         let (suggestion, applicability) = if has_params.unwrap_or_default() {
-            (format!("{}(...)", method_name), Applicability::HasPlaceholders)
+            (format!("{}(...)", snippet), Applicability::HasPlaceholders)
         } else {
-            (format!("{}()", method_name), Applicability::MaybeIncorrect)
+            (format!("{}()", snippet), Applicability::MaybeIncorrect)
         };
 
-        err.span_suggestion(method_name.span, msg, suggestion, applicability);
+        err.span_suggestion(sugg_span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee
@@ -204,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
 
-        if result.illegal_sized_bound {
+        if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind {
                 let trait_type = self
@@ -249,7 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => Vec::new(),
             };
 
-            return Err(IllegalSizedBound(candidates, needs_mut));
+            return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
 
         Ok(result.callee)
@@ -322,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             self.body_id,
             self.param_env,
-            poly_trait_ref.to_predicate(),
+            poly_trait_ref.without_const().to_predicate(),
         );
 
         // Now we want to know if this can be matched
@@ -474,8 +482,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: ast::Ident,
         ns: Namespace,
     ) -> Option<ty::AssocItem> {
-        self.tcx.associated_items(def_id).find(|item| {
-            Namespace::from(item.kind) == ns && self.tcx.hygienic_eq(item_name, item.ident, def_id)
-        })
+        self.tcx
+            .associated_items(def_id)
+            .iter()
+            .find(|item| {
+                Namespace::from(item.kind) == ns
+                    && self.tcx.hygienic_eq(item_name, item.ident, def_id)
+            })
+            .copied()
     }
 }

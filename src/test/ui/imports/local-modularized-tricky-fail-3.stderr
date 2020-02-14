@@ -17,6 +17,7 @@ LL | |     }
 ...
 LL |   define_exported!();
    |   ------------------- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
   --> $DIR/local-modularized-tricky-fail-3.rs:19:5
@@ -36,6 +37,7 @@ LL | |     }
 ...
 LL |   define_exported!();
    |   ------------------- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

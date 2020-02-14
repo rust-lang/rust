@@ -38,7 +38,7 @@ impl FromStr for Version {
 
         let parts = [part()?, part()?, part()?];
 
-        if let Some(_) = iter.next() {
+        if iter.next().is_some() {
             // Ensure we don't have more than 3 parts.
             return Err(ParseVersionError::WrongNumberOfParts);
         }

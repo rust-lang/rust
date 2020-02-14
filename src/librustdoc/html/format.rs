@@ -361,6 +361,7 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
+                    hir::TraitBoundModifier::MaybeConst => "?const",
                 };
                 if f.alternate() {
                     write!(f, "{}{:#}", modifier_str, ty.print())
@@ -1170,11 +1171,14 @@ impl clean::ImportSource {
         display_fn(move |f| match self.did {
             Some(did) => resolved_path(f, did, &self.path, true, false),
             _ => {
-                for (i, seg) in self.path.segments.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, "::")?
-                    }
-                    write!(f, "{}", seg.name)?;
+                for seg in &self.path.segments[..self.path.segments.len() - 1] {
+                    write!(f, "{}::", seg.name)?;
+                }
+                let name = self.path.last_name();
+                if let hir::def::Res::PrimTy(p) = self.path.res {
+                    primitive_link(f, PrimitiveType::from(p), name)?;
+                } else {
+                    write!(f, "{}", name)?;
                 }
                 Ok(())
             }

@@ -1,8 +1,8 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
+use rustc_ast_pretty::pprust;
 use syntax::ast::{self, Ident};
 use syntax::mut_visit::{self, MutVisitor};
-use syntax::print::pprust;
 use syntax::with_default_globals;
 
 // This version doesn't care about getting comments or doc-strings in.

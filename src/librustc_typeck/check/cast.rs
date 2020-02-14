@@ -34,7 +34,6 @@ use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
-use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::traits;
@@ -45,11 +44,10 @@ use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast;
-
-use rustc_error_codes::*;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -381,7 +379,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if unknown_cast_to { "to" } else { "from" }
                 );
                 err.note(
-                    "The type information given here is insufficient to check whether \
+                    "the type information given here is insufficient to check whether \
                           the pointer cast is valid",
                 );
                 if unknown_cast_to {
@@ -470,23 +468,20 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        let mut err = fcx.tcx.struct_span_lint_hir(
-            lint,
-            self.expr.hir_id,
-            self.span,
-            &format!(
+        fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span, |err| {
+            err.build(&format!(
                 "trivial {}cast: `{}` as `{}`",
                 adjective,
                 fcx.ty_to_string(t_expr),
                 fcx.ty_to_string(t_cast)
-            ),
-        );
-        err.help(&format!(
-            "cast can be replaced by coercion; this might \
-                           require {}a temporary variable",
-            type_asc_or
-        ));
-        err.emit();
+            ))
+            .help(&format!(
+                "cast can be replaced by coercion; this might \
+                                   require {}a temporary variable",
+                type_asc_or
+            ))
+            .emit();
+        });
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {

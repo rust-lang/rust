@@ -1,17 +1,19 @@
 use crate::ty::{self, TyCtxt};
-use errors::Diagnostic;
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_errors::Diagnostic;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::env;
 use std::hash::Hash;
 use std::mem;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::Ordering::Relaxed;
 
 use crate::ich::{Fingerprint, StableHashingContext, StableHashingContextProvider};
 
@@ -25,6 +27,12 @@ use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Lrc<DepGraphData>>,
+
+    /// This field is used for assigning DepNodeIndices when running in
+    /// non-incremental mode. Even in non-incremental mode we make sure that
+    /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
+    /// ID is used for self-profiling.
+    virtual_dep_node_index: Lrc<AtomicU32>,
 }
 
 rustc_index::newtype_index! {
@@ -33,6 +41,13 @@ rustc_index::newtype_index! {
 
 impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
+}
+
+impl std::convert::From<DepNodeIndex> for QueryInvocationId {
+    #[inline]
+    fn from(dep_node_index: DepNodeIndex) -> Self {
+        QueryInvocationId(dep_node_index.as_u32())
+    }
 }
 
 #[derive(PartialEq)]
@@ -105,11 +120,12 @@ impl DepGraph {
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
             })),
+            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
-        DepGraph { data: None }
+        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -322,7 +338,7 @@ impl DepGraph {
 
             (result, dep_node_index)
         } else {
-            (task(cx, arg), DepNodeIndex::INVALID)
+            (task(cx, arg), self.next_virtual_depnode_index())
         }
     }
 
@@ -352,7 +368,7 @@ impl DepGraph {
             let dep_node_index = data.current.complete_anon_task(dep_kind, task_deps);
             (result, dep_node_index)
         } else {
-            (op(), DepNodeIndex::INVALID)
+            (op(), self.next_virtual_depnode_index())
         }
     }
 
@@ -478,8 +494,8 @@ impl DepGraph {
             let current_dep_graph = &self.data.as_ref().unwrap().current;
 
             Some((
-                current_dep_graph.total_read_count.load(SeqCst),
-                current_dep_graph.total_duplicate_read_count.load(SeqCst),
+                current_dep_graph.total_read_count.load(Relaxed),
+                current_dep_graph.total_duplicate_read_count.load(Relaxed),
             ))
         } else {
             None
@@ -662,18 +678,33 @@ impl DepGraph {
                     } else {
                         match dep_dep_node.kind {
                             DepKind::Hir | DepKind::HirBody | DepKind::CrateMetadata => {
-                                if dep_dep_node.extract_def_id(tcx).is_none() {
+                                if let Some(def_id) = dep_dep_node.extract_def_id(tcx) {
+                                    if def_id_corresponds_to_hir_dep_node(tcx, def_id) {
+                                        // The `DefPath` has corresponding node,
+                                        // and that node should have been marked
+                                        // either red or green in `data.colors`.
+                                        bug!(
+                                            "DepNode {:?} should have been \
+                                             pre-marked as red or green but wasn't.",
+                                            dep_dep_node
+                                        );
+                                    } else {
+                                        // This `DefPath` does not have a
+                                        // corresponding `DepNode` (e.g. a
+                                        // struct field), and the ` DefPath`
+                                        // collided with the `DefPath` of a
+                                        // proper item that existed in the
+                                        // previous compilation session.
+                                        //
+                                        // Since the given `DefPath` does not
+                                        // denote the item that previously
+                                        // existed, we just fail to mark green.
+                                        return None;
+                                    }
+                                } else {
                                     // If the node does not exist anymore, we
                                     // just fail to mark green.
                                     return None;
-                                } else {
-                                    // If the node does exist, it should have
-                                    // been pre-allocated.
-                                    bug!(
-                                        "DepNode {:?} should have been \
-                                          pre-allocated but wasn't.",
-                                        dep_dep_node
-                                    )
                                 }
                             }
                             _ => {
@@ -877,6 +908,16 @@ impl DepGraph {
             }
         }
     }
+
+    fn next_virtual_depnode_index(&self) -> DepNodeIndex {
+        let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
+        DepNodeIndex::from_u32(index)
+    }
+}
+
+fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    def_id.index == hir_id.owner
 }
 
 /// A "work product" is an intermediate result that we save into the
@@ -1087,7 +1128,7 @@ impl DepGraphData {
             if let Some(task_deps) = icx.task_deps {
                 let mut task_deps = task_deps.lock();
                 if cfg!(debug_assertions) {
-                    self.current.total_read_count.fetch_add(1, SeqCst);
+                    self.current.total_read_count.fetch_add(1, Relaxed);
                 }
                 if task_deps.read_set.insert(source) {
                     task_deps.reads.push(source);
@@ -1105,7 +1146,7 @@ impl DepGraphData {
                         }
                     }
                 } else if cfg!(debug_assertions) {
-                    self.current.total_duplicate_read_count.fetch_add(1, SeqCst);
+                    self.current.total_duplicate_read_count.fetch_add(1, Relaxed);
                 }
             }
         })

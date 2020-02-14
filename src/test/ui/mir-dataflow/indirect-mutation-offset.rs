@@ -1,5 +1,7 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
+// ignore-test Temporarily ignored while this analysis is migrated to the new framework.
+
 #![feature(core_intrinsics, rustc_attrs, const_raw_ptr_deref)]
 
 use std::cell::UnsafeCell;

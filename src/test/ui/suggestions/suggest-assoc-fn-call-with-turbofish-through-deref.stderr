@@ -1,4 +1,4 @@
-error[E0599]: no method named `hello` found for type `std::cell::RefMut<'_, HasAssocMethod>` in the current scope
+error[E0599]: no method named `hello` found for struct `std::cell::RefMut<'_, HasAssocMethod>` in the current scope
   --> $DIR/suggest-assoc-fn-call-with-turbofish-through-deref.rs:11:11
    |
 LL |     state.hello();

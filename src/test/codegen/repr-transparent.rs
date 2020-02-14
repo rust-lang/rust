@@ -1,7 +1,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type="lib"]
-#![feature(repr_simd, transparent_enums, transparent_unions)]
+#![feature(repr_simd, transparent_unions)]
 
 use std::marker::PhantomData;
 

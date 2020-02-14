@@ -11,7 +11,6 @@
 
 use rustc::ty::tls;
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
-use rustc_span;
 use std::fmt;
 
 /// This is a callback from libsyntax as it cannot access the implicit state

@@ -16,6 +16,7 @@ LL |       three_equals!(==);
    |       ------------------ in this macro invocation
    |
    = help: input must be: `===`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected EOF, found `=`.
   --> $DIR/three-equals.rs:18:21

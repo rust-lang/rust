@@ -7,4 +7,4 @@
 fn main() {
 }
 
-// CHECK: define i32 @main(i32, i8**)
+// CHECK: define i32 @main(i32{{( %0)?}}, i8**{{( %1)?}})
