@@ -103,7 +103,7 @@ fn find_dead_unwinds<'tcx>(
 
         debug!("find_dead_unwinds @ {:?}: path({:?})={:?}", bb, location, path);
 
-        flow_inits.seek_after(body.terminator_loc(bb));
+        flow_inits.seek_before(body.terminator_loc(bb));
         let mut maybe_live = false;
         on_all_drop_children_bits(tcx, body, &env, path, |child| {
             maybe_live |= flow_inits.contains(child);
@@ -124,9 +124,9 @@ struct InitializationData<'mir, 'tcx> {
 }
 
 impl InitializationData<'_, '_> {
-    fn seek_after(&mut self, loc: Location) {
-        self.inits.seek_after(loc);
-        self.uninits.seek_after(loc);
+    fn seek_before(&mut self, loc: Location) {
+        self.inits.seek_before(loc);
+        self.uninits.seek_before(loc);
     }
 
     fn state(&self, path: MovePathIndex) -> (bool, bool) {
@@ -294,7 +294,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 _ => continue,
             };
 
-            self.init_data.seek_after(self.body.terminator_loc(bb));
+            self.init_data.seek_before(self.body.terminator_loc(bb));
 
             let path = self.move_data().rev_lookup.find(location.as_ref());
             debug!("collect_drop_flags: {:?}, place {:?} ({:?})", bb, location, path);
@@ -341,7 +341,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let resume_block = self.patch.resume_block();
             match terminator.kind {
                 TerminatorKind::Drop { ref location, target, unwind } => {
-                    self.init_data.seek_after(loc);
+                    self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(location.as_ref()) {
                         LookupResult::Exact(path) => elaborate_drop(
                             &mut Elaborator { ctxt: self },
@@ -424,7 +424,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         match self.move_data().rev_lookup.find(location.as_ref()) {
             LookupResult::Exact(path) => {
                 debug!("elaborate_drop_and_replace({:?}) - tracked {:?}", terminator, path);
-                self.init_data.seek_after(loc);
+                self.init_data.seek_before(loc);
                 elaborate_drop(
                     &mut Elaborator { ctxt: self },
                     terminator.source_info,
