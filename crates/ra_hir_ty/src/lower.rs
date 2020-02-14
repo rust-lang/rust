@@ -152,7 +152,7 @@ impl Ty {
                                     data.provenance == TypeParamProvenance::ArgumentImplTrait
                                 })
                                 .nth(idx as usize)
-                                .map_or(Ty::Unknown, |(id, _)| Ty::Param(id));
+                                .map_or(Ty::Unknown, |(id, _)| Ty::Placeholder(id));
                             param
                         } else {
                             Ty::Unknown
@@ -270,7 +270,7 @@ impl Ty {
                 let generics =
                     generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
                         Ty::Bound(idx)
@@ -339,7 +339,7 @@ impl Ty {
             None => return Ty::Unknown, // this can't actually happen
         };
         let param_id = match self_ty {
-            Ty::Param(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
+            Ty::Placeholder(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
             Ty::Bound(idx) if ctx.type_param_mode == TypeParamLoweringMode::Variable => {
                 let generics = generics(ctx.db, def);
                 let param_id = if let Some((id, _)) = generics.iter().nth(idx as usize) {
@@ -544,7 +544,7 @@ impl GenericPredicate {
                 let generics = generics(ctx.db, generic_def);
                 let param_id = hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
                         Ty::Bound(idx)

@@ -142,7 +142,7 @@ impl ToChalk for Ty {
                 let substitution = proj_ty.parameters.to_chalk(db);
                 chalk_ir::AliasTy { associated_ty_id, substitution }.cast().intern()
             }
-            Ty::Param(id) => {
+            Ty::Placeholder(id) => {
                 let interned_id = db.intern_type_param_id(id);
                 PlaceholderIndex {
                     ui: UniverseIndex::ROOT,
@@ -184,7 +184,7 @@ impl ToChalk for Ty {
                 let interned_id = crate::db::GlobalTypeParamId::from_intern_id(
                     crate::salsa::InternId::from(idx.idx),
                 );
-                Ty::Param(db.lookup_intern_type_param_id(interned_id))
+                Ty::Placeholder(db.lookup_intern_type_param_id(interned_id))
             }
             chalk_ir::TyData::Alias(proj) => {
                 let associated_ty = from_chalk(db, proj.associated_ty_id);

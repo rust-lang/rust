@@ -291,7 +291,7 @@ pub enum Ty {
     /// {}` when we're type-checking the body of that function. In this
     /// situation, we know this stands for *some* type, but don't know the exact
     /// type.
-    Param(TypeParamId),
+    Placeholder(TypeParamId),
 
     /// A bound type variable. This is used in various places: when representing
     /// some polymorphic type like the type of function `fn f<T>`, the type
@@ -365,7 +365,7 @@ impl Substs {
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub(crate) fn type_params_for_generics(generic_params: &Generics) -> Substs {
-        Substs(generic_params.iter().map(|(id, _)| Ty::Param(id)).collect())
+        Substs(generic_params.iter().map(|(id, _)| Ty::Placeholder(id)).collect())
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
@@ -813,7 +813,7 @@ impl TypeWalk for Ty {
                     p.walk(f);
                 }
             }
-            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -831,7 +831,7 @@ impl TypeWalk for Ty {
                     p.walk_mut_binders(f, binders + 1);
                 }
             }
-            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self, binders);
     }
@@ -1032,7 +1032,7 @@ impl HirDisplay for Ty {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
-            Ty::Param(id) => {
+            Ty::Placeholder(id) => {
                 let generics = generics(f.db, id.parent);
                 let param_data = &generics.params.types[id.local_id];
                 match param_data.provenance {
