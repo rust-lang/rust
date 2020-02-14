@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{remove_file, File, OpenOptions};
+use std::fs::{remove_file, rename, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -581,6 +581,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ebadf = this.eval_libc("EBADF")?;
         this.set_last_error(ebadf)?;
         Ok((-1).into())
+    }
+
+    fn rename(
+        &mut self,
+        oldpath_op: OpTy<'tcx, Tag>,
+        newpath_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("rename")?;
+
+        let oldpath_scalar = this.read_scalar(oldpath_op)?.not_undef()?;
+        let newpath_scalar = this.read_scalar(newpath_op)?.not_undef()?;
+
+        if this.is_null(oldpath_scalar)? || this.is_null(newpath_scalar)? {
+            let efault = this.eval_libc("EFAULT")?;
+            this.set_last_error(efault)?;
+            return Ok(-1);
+        }
+
+        let oldpath = this.read_os_str_from_c_str(oldpath_scalar)?;
+        let newpath = this.read_os_str_from_c_str(newpath_scalar)?;
+
+        let result = rename(oldpath, newpath).map(|_| 0);
+
+        this.try_unwrap_io_result(result)
     }
 }
 

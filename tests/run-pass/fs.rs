@@ -1,7 +1,7 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
-use std::fs::{File, remove_file};
+use std::fs::{File, remove_file, rename};
 use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
@@ -81,6 +81,19 @@ fn main() {
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
+
+    // Renaming a file should succeed.
+    let path1 = tmp.join("rename_source.txt");
+    let path2 = tmp.join("rename_destination.txt");
+    // Clean files for robustness.
+    remove_file(&path1).ok();
+    remove_file(&path2).ok();
+    let file = File::create(&path1).unwrap();
+    drop(file);
+    rename(&path1, &path2).unwrap();
+    assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
+    assert!(path2.metadata().unwrap().is_file());
+    remove_file(&path2).unwrap();
 
     // The two following tests also check that the `__errno_location()` shim is working properly.
     // Opening a non-existing file should fail with a "not found" error.
