@@ -3,7 +3,7 @@
 // build-fail
 // ignore-emscripten
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 extern "C" {
     fn foo(a: usize);
@@ -19,7 +19,7 @@ fn main() {
 fn bad_register_constraint() {
     let rax: u64;
     unsafe {
-        asm!("" :"={rax"(rax)) //~ ERROR E0668
+        llvm_asm!("" :"={rax"(rax)) //~ ERROR E0668
     };
     println!("Accumulator is: {}", rax);
 }
@@ -27,14 +27,14 @@ fn bad_register_constraint() {
 // Issue #54376
 fn bad_input() {
     unsafe {
-        asm!("callq $0" : : "0"(foo)) //~ ERROR E0668
+        llvm_asm!("callq $0" : : "0"(foo)) //~ ERROR E0668
     };
 }
 
 fn wrong_size_output() {
     let rax: u64 = 0;
     unsafe {
-        asm!("addb $1, $0" : "={rax}"((0i32, rax))); //~ ERROR E0668
+        llvm_asm!("addb $1, $0" : "={rax}"((0i32, rax))); //~ ERROR E0668
     }
     println!("rax: {}", rax);
 }

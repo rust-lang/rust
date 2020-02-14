@@ -1,11 +1,11 @@
 // build-fail
 // ignore-emscripten no asm! support
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn main() {
     unsafe {
-        asm!("nop" : "+r"("r15"));
+        llvm_asm!("nop" : "+r"("r15"));
         //~^ malformed inline assembly
     }
 }

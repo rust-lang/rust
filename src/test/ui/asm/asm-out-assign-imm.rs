@@ -8,7 +8,7 @@
 // ignore-mips
 // ignore-mips64
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn foo(x: isize) { println!("{}", x); }
 
@@ -21,7 +21,7 @@ pub fn main() {
     x = 1;
     foo(x);
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "r"(5));
+        llvm_asm!("mov $1, $0" : "=r"(x) : "r"(5));
         //~^ ERROR cannot assign twice to immutable variable `x`
     }
     foo(x);

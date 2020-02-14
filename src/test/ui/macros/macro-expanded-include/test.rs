@@ -1,6 +1,6 @@
-// ignore-emscripten no asm! support
+// ignore-emscripten no llvm_asm! support
 // build-pass (FIXME(62277): could be check-pass?)
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![allow(unused)]
 
 #[macro_use]

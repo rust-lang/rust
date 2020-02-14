@@ -7,10 +7,10 @@ LL | #[derive(Default)]
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: inline assembly must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:13:10
+  --> $DIR/macros-nonfatal-errors.rs:13:15
    |
-LL |     asm!(invalid);
-   |          ^^^^^^^
+LL |     llvm_asm!(invalid);
+   |               ^^^^^^^
 
 error: concat_idents! requires ident args.
   --> $DIR/macros-nonfatal-errors.rs:15:5

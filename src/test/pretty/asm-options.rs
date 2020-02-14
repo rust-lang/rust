@@ -1,11 +1,11 @@
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 // pp-exact
 
 pub fn main() {
     unsafe {
-        asm!("" : : : : "volatile");
-        asm!("" : : : : "alignstack");
-        asm!("" : : : : "intel");
+        llvm_asm!("" : : : : "volatile");
+        llvm_asm!("" : : : : "alignstack");
+        llvm_asm!("" : : : : "intel");
     }
 }
