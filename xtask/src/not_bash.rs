@@ -113,7 +113,7 @@ fn run_process_inner(cmd: &str, echo: bool) -> Result<String> {
         bail!("{}", output.status)
     }
 
-    Ok(stdout)
+    Ok(stdout.trim().to_string())
 }
 
 // FIXME: some real shell lexing here
