@@ -464,19 +464,22 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_foreign_ty_bodyless(&self, ident: Ident, body: Option<&Ty>) {
+    fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
         let body = match body {
             None => return,
             Some(body) => body,
         };
         self.err_handler()
-            .struct_span_err(ident.span, "incorrect `type` inside `extern` block")
+            .struct_span_err(ident.span, &format!("incorrect `{}` inside `extern` block", kind))
             .span_label(ident.span, "cannot have a body")
-            .span_label(body.span, "the invalid body")
+            .span_label(body, "the invalid body")
             .span_label(
                 self.current_extern_span(),
-                "`extern` blocks define existing foreign types and types \
-                inside of them cannot have a body",
+                format!(
+                    "`extern` blocks define existing foreign {0}s and {0}s \
+                    inside of them cannot have a body",
+                    kind
+                ),
             )
             .note(MORE_EXTERN)
             .emit();
@@ -578,6 +581,16 @@ impl<'a> AstValidator<'a> {
                 }
             }
         }
+    }
+
+    fn check_item_named(&self, ident: Ident, kind: &str) {
+        if ident.name != kw::Underscore {
+            return;
+        }
+        self.err_handler()
+            .struct_span_err(ident.span, &format!("`{}` items in this context need a name", kind))
+            .span_label(ident.span, format!("`_` is not a valid name for this `{}` item", kind))
+            .emit();
     }
 }
 
@@ -969,11 +982,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
             ForeignItemKind::TyAlias(generics, bounds, body) => {
-                self.check_foreign_ty_bodyless(fi.ident, body.as_deref());
+                self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
             }
-            ForeignItemKind::Static(..) | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::Static(_, _, body) => {
+                self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+            }
+            ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)
@@ -1232,6 +1248,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }
+        }
+
+        if let AssocItemKind::Const(..) = item.kind {
+            self.check_item_named(item.ident, "const");
         }
 
         self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));

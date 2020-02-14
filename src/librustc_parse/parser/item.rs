@@ -670,7 +670,7 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
             (ident, AssocItemKind::Fn(sig, generics, body))
-        } else if self.check_keyword(kw::Const) {
+        } else if self.eat_keyword(kw::Const) {
             self.parse_assoc_const()?
         } else if self.isnt_macro_invocation() {
             return Err(self.missing_assoc_item_kind_err("associated", self.prev_span));
@@ -693,11 +693,7 @@ impl<'a> Parser<'a> {
     ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
     fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
         self.expect_keyword(kw::Const)?;
-        let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
-        self.expect_semi()?;
+        let (ident, ty, expr) = self.parse_item_const_common(None)?;
         Ok((ident, AssocItemKind::Const(ty, expr)))
     }
 
@@ -916,11 +912,8 @@ impl<'a> Parser<'a> {
     /// Assumes that the `static` keyword is already parsed.
     fn parse_item_foreign_static(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
         let mutbl = self.parse_mutability();
-        let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        self.expect_semi()?;
-        Ok((ident, ForeignItemKind::Static(ty, mutbl)))
+        let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
+        Ok((ident, ForeignItemKind::Static(ty, mutbl, expr)))
     }
 
     /// Parses a type from a foreign module.
@@ -971,6 +964,22 @@ impl<'a> Parser<'a> {
     ///
     /// When `m` is `"const"`, `$ident` may also be `"_"`.
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
+        let (id, ty, expr) = self.parse_item_const_common(m)?;
+        let item = match m {
+            Some(m) => ItemKind::Static(ty, m, expr),
+            None => ItemKind::Const(ty, expr),
+        };
+        Ok((id, item))
+    }
+
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
+    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
+    ///
+    /// When `m` is `"const"`, `$ident` may also be `"_"`.
+    fn parse_item_const_common(
+        &mut self,
+        m: Option<Mutability>,
+    ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
         let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
 
         // Parse the type of a `const` or `static mut?` item.
@@ -983,11 +992,7 @@ impl<'a> Parser<'a> {
 
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
         self.expect_semi()?;
-        let item = match m {
-            Some(m) => ItemKind::Static(ty, m, expr),
-            None => ItemKind::Const(ty, expr),
-        };
-        Ok((id, item))
+        Ok((id, ty, expr))
     }
 
     /// We were supposed to parse `:` but the `:` was missing.
