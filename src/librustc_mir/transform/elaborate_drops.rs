@@ -129,7 +129,7 @@ impl InitializationData<'_, '_> {
         self.uninits.seek_before(loc);
     }
 
-    fn state(&self, path: MovePathIndex) -> (bool, bool) {
+    fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {
         (self.inits.contains(path), self.uninits.contains(path))
     }
 }
@@ -165,13 +165,13 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
         let ((maybe_live, maybe_dead), multipart) = match mode {
-            DropFlagMode::Shallow => (self.ctxt.init_data.state(path), false),
+            DropFlagMode::Shallow => (self.ctxt.init_data.maybe_live_dead(path), false),
             DropFlagMode::Deep => {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
                 on_all_drop_children_bits(self.tcx(), self.body(), self.ctxt.env, path, |child| {
-                    let (live, dead) = self.ctxt.init_data.state(child);
+                    let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
                     debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
                     some_live |= live;
                     some_dead |= dead;
@@ -303,7 +303,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 LookupResult::Exact(e) => e,
                 LookupResult::Parent(None) => continue,
                 LookupResult::Parent(Some(parent)) => {
-                    let (_maybe_live, maybe_dead) = self.init_data.state(parent);
+                    let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
                     if maybe_dead {
                         span_bug!(
                             terminator.source_info.span,
@@ -318,7 +318,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             };
 
             on_all_drop_children_bits(self.tcx, self.body, self.env, path, |child| {
-                let (maybe_live, maybe_dead) = self.init_data.state(child);
+                let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
                 debug!(
                     "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
                     child,
