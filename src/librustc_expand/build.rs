@@ -634,7 +634,7 @@ impl<'a> ExtCtxt<'a> {
         mutbl: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, expr))
+        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
     }
 
     pub fn item_const(
@@ -644,7 +644,7 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, expr))
+        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, Some(expr)))
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

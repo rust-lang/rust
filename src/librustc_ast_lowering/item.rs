@@ -269,26 +269,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
-                let ty = self.lower_ty(
-                    t,
-                    if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
-                    } else {
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                    },
-                );
-                hir::ItemKind::Static(ty, m, self.lower_const_body(span, Some(e)))
+                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                hir::ItemKind::Static(ty, m, body_id)
             }
             ItemKind::Const(ref t, ref e) => {
-                let ty = self.lower_ty(
-                    t,
-                    if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
-                    } else {
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                    },
-                );
-                hir::ItemKind::Const(ty, self.lower_const_body(span, Some(e)))
+                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                hir::ItemKind::Const(ty, body_id)
             }
             ItemKind::Fn(FnSig { ref decl, header }, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
@@ -455,6 +441,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
         //     not cause an assertion failure inside the `lower_defaultness` function.
+    }
+
+    fn lower_const_item(
+        &mut self,
+        ty: &Ty,
+        span: Span,
+        body: Option<&Expr>,
+    ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
+        let itctx = if self.sess.features_untracked().impl_trait_in_bindings {
+            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
+        } else {
+            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
+        };
+        let ty = self.lower_ty(ty, itctx);
+        (ty, self.lower_const_body(span, body))
     }
 
     fn lower_use_tree(

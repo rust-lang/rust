@@ -186,81 +186,85 @@ pub fn expand_test_or_bench(
         ast::ItemKind::Const(
             cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
             // test::TestDescAndFn {
-            cx.expr_struct(
-                sp,
-                test_path("TestDescAndFn"),
-                vec![
-                    // desc: test::TestDesc {
-                    field(
-                        "desc",
-                        cx.expr_struct(
-                            sp,
-                            test_path("TestDesc"),
-                            vec![
-                                // name: "path::to::test"
-                                field(
-                                    "name",
-                                    cx.expr_call(
-                                        sp,
-                                        cx.expr_path(test_path("StaticTestName")),
-                                        vec![cx.expr_str(
+            Some(
+                cx.expr_struct(
+                    sp,
+                    test_path("TestDescAndFn"),
+                    vec![
+                        // desc: test::TestDesc {
+                        field(
+                            "desc",
+                            cx.expr_struct(
+                                sp,
+                                test_path("TestDesc"),
+                                vec![
+                                    // name: "path::to::test"
+                                    field(
+                                        "name",
+                                        cx.expr_call(
                                             sp,
-                                            Symbol::intern(&item_path(
-                                                // skip the name of the root module
-                                                &cx.current_expansion.module.mod_path[1..],
-                                                &item.ident,
-                                            )),
-                                        )],
-                                    ),
-                                ),
-                                // ignore: true | false
-                                field("ignore", cx.expr_bool(sp, should_ignore(&item))),
-                                // allow_fail: true | false
-                                field("allow_fail", cx.expr_bool(sp, should_fail(&item))),
-                                // should_panic: ...
-                                field(
-                                    "should_panic",
-                                    match should_panic(cx, &item) {
-                                        // test::ShouldPanic::No
-                                        ShouldPanic::No => cx.expr_path(should_panic_path("No")),
-                                        // test::ShouldPanic::Yes
-                                        ShouldPanic::Yes(None) => {
-                                            cx.expr_path(should_panic_path("Yes"))
-                                        }
-                                        // test::ShouldPanic::YesWithMessage("...")
-                                        ShouldPanic::Yes(Some(sym)) => cx.expr_call(
-                                            sp,
-                                            cx.expr_path(should_panic_path("YesWithMessage")),
-                                            vec![cx.expr_str(sp, sym)],
+                                            cx.expr_path(test_path("StaticTestName")),
+                                            vec![cx.expr_str(
+                                                sp,
+                                                Symbol::intern(&item_path(
+                                                    // skip the name of the root module
+                                                    &cx.current_expansion.module.mod_path[1..],
+                                                    &item.ident,
+                                                )),
+                                            )],
                                         ),
-                                    },
-                                ),
-                                // test_type: ...
-                                field(
-                                    "test_type",
-                                    match test_type(cx) {
-                                        // test::TestType::UnitTest
-                                        TestType::UnitTest => {
-                                            cx.expr_path(test_type_path("UnitTest"))
-                                        }
-                                        // test::TestType::IntegrationTest
-                                        TestType::IntegrationTest => {
-                                            cx.expr_path(test_type_path("IntegrationTest"))
-                                        }
-                                        // test::TestPath::Unknown
-                                        TestType::Unknown => {
-                                            cx.expr_path(test_type_path("Unknown"))
-                                        }
-                                    },
-                                ),
-                                // },
-                            ],
+                                    ),
+                                    // ignore: true | false
+                                    field("ignore", cx.expr_bool(sp, should_ignore(&item))),
+                                    // allow_fail: true | false
+                                    field("allow_fail", cx.expr_bool(sp, should_fail(&item))),
+                                    // should_panic: ...
+                                    field(
+                                        "should_panic",
+                                        match should_panic(cx, &item) {
+                                            // test::ShouldPanic::No
+                                            ShouldPanic::No => {
+                                                cx.expr_path(should_panic_path("No"))
+                                            }
+                                            // test::ShouldPanic::Yes
+                                            ShouldPanic::Yes(None) => {
+                                                cx.expr_path(should_panic_path("Yes"))
+                                            }
+                                            // test::ShouldPanic::YesWithMessage("...")
+                                            ShouldPanic::Yes(Some(sym)) => cx.expr_call(
+                                                sp,
+                                                cx.expr_path(should_panic_path("YesWithMessage")),
+                                                vec![cx.expr_str(sp, sym)],
+                                            ),
+                                        },
+                                    ),
+                                    // test_type: ...
+                                    field(
+                                        "test_type",
+                                        match test_type(cx) {
+                                            // test::TestType::UnitTest
+                                            TestType::UnitTest => {
+                                                cx.expr_path(test_type_path("UnitTest"))
+                                            }
+                                            // test::TestType::IntegrationTest
+                                            TestType::IntegrationTest => {
+                                                cx.expr_path(test_type_path("IntegrationTest"))
+                                            }
+                                            // test::TestPath::Unknown
+                                            TestType::Unknown => {
+                                                cx.expr_path(test_type_path("Unknown"))
+                                            }
+                                        },
+                                    ),
+                                    // },
+                                ],
+                            ),
                         ),
-                    ),
-                    // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
-                    field("testfn", test_fn), // }
-                ],
-            ), // }
+                        // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
+                        field("testfn", test_fn), // }
+                    ],
+                ), // }
+            ),
         ),
     );
     test_const = test_const.map(|mut tc| {

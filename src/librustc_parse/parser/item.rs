@@ -966,7 +966,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty = $expr` with
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
     /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
     ///
     /// When `m` is `"const"`, `$ident` may also be `"_"`.
@@ -975,25 +975,22 @@ impl<'a> Parser<'a> {
 
         // Parse the type of a `const` or `static mut?` item.
         // That is, the `":" $ty` fragment.
-        let ty = if self.token == token::Eq {
-            self.recover_missing_const_type(id, m)
-        } else {
-            // Not `=` so expect `":"" $ty` as usual.
-            self.expect(&token::Colon)?;
+        let ty = if self.eat(&token::Colon) {
             self.parse_ty()?
+        } else {
+            self.recover_missing_const_type(id, m)
         };
 
-        self.expect(&token::Eq)?;
-        let e = self.parse_expr()?;
+        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
         self.expect_semi()?;
         let item = match m {
-            Some(m) => ItemKind::Static(ty, m, e),
-            None => ItemKind::Const(ty, e),
+            Some(m) => ItemKind::Static(ty, m, expr),
+            None => ItemKind::Const(ty, expr),
         };
         Ok((id, item))
     }
 
-    /// We were supposed to parse `:` but instead, we're already at `=`.
+    /// We were supposed to parse `:` but the `:` was missing.
     /// This means that the type is missing.
     fn recover_missing_const_type(&mut self, id: Ident, m: Option<Mutability>) -> P<Ty> {
         // Construct the error and stash it away with the hope

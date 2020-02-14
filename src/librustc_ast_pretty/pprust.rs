@@ -1124,9 +1124,10 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.s.space();
                 self.end(); // end the head-ibox
-
-                self.word_space("=");
-                self.print_expr(expr);
+                if let Some(expr) = expr {
+                    self.word_space("=");
+                    self.print_expr(expr);
+                }
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
@@ -1137,9 +1138,10 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.s.space();
                 self.end(); // end the head-ibox
-
-                self.word_space("=");
-                self.print_expr(expr);
+                if let Some(expr) = expr {
+                    self.word_space("=");
+                    self.print_expr(expr);
+                }
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }

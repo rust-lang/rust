@@ -300,7 +300,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::Use(ref use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
         ItemKind::Static(ref typ, _, ref expr) | ItemKind::Const(ref typ, ref expr) => {
             visitor.visit_ty(typ);
-            visitor.visit_expr(expr);
+            walk_list!(visitor, visit_expr, expr);
         }
         ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
