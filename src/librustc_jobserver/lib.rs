@@ -154,17 +154,20 @@ impl Helper {
             .clone()
             .into_helper_thread(move |token| {
                 log::trace!("Helper thread token sending into channel");
-                // We've acquired a token, but we need to not use it as we have our own
-                // custom release-on-drop struct since we'll want different logic than
-                // just normally releasing the token in this case.
-                //
-                // On unix this unfortunately means that we lose the specific byte that
-                // was in the pipe (i.e., we just write back the same byte all the time)
-                // but that's not expected to be a problem.
-                token.expect("acquire token").drop_without_releasing();
                 if let Some(sender) = requests2.lock().unwrap().pop_front() {
+                    // We've acquired a token, but we need to not use it as we have our own
+                    // custom release-on-drop struct since we'll want different logic than
+                    // just normally releasing the token in this case.
+                    //
+                    // On unix this unfortunately means that we lose the specific byte that
+                    // was in the pipe (i.e., we just write back the same byte all the time)
+                    // but that's not expected to be a problem.
+                    token.expect("acquire token").drop_without_releasing();
                     sender(Acquired::new());
                 }
+
+                // If we didn't manage to send the token off, just drop it on
+                // the ground; it'll get released automatically.
             })
             .expect("spawned helper");
         Helper { helper, tokens: 1, requests }
