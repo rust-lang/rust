@@ -211,7 +211,7 @@ TODO: maybe something about macros 2.0?
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
 [code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
 [code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
-[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse.html
+[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_tt.html
 [parsing]: ./the-parser.html
 
 
