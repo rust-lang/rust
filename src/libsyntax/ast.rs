@@ -2496,11 +2496,11 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, P<Expr>),
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(P<Ty>, P<Expr>),
+    Const(P<Ty>, Option<P<Expr>>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.

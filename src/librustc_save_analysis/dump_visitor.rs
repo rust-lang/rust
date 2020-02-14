@@ -400,7 +400,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         &mut self,
         item: &'l ast::Item,
         typ: &'l ast::Ty,
-        expr: &'l ast::Expr,
+        expr: Option<&'l ast::Expr>,
     ) {
         let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
@@ -409,7 +409,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), var_data);
             }
             v.visit_ty(&typ);
-            v.visit_expr(expr);
+            walk_list!(v, visit_expr, expr);
         });
     }
 
@@ -1293,8 +1293,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
             Fn(ref sig, ref ty_params, ref body) => {
                 self.process_fn(item, &sig.decl, &sig.header, ty_params, body.as_deref())
             }
-            Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
-            Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
+            Static(ref typ, _, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
+            Const(ref typ, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
             Struct(ref def, ref ty_params) | Union(ref def, ref ty_params) => {
                 self.process_struct(item, def, ty_params)
             }

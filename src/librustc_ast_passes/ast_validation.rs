@@ -948,6 +948,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
+            ItemKind::Const(.., None) => {
+                let msg = "free constant item without body";
+                self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
+            }
+            ItemKind::Static(.., None) => {
+                let msg = "free static item without body";
+                self.error_item_without_body(item.span, "static", msg, " = <expr>;");
+            }
             _ => {}
         }
 

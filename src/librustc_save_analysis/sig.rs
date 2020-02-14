@@ -334,10 +334,13 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
@@ -355,10 +358,13 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))

@@ -890,13 +890,9 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _mut, expr) => {
+        ItemKind::Static(ty, _, expr) | ItemKind::Const(ty, expr) => {
             vis.visit_ty(ty);
-            vis.visit_expr(expr);
-        }
-        ItemKind::Const(ty, expr) => {
-            vis.visit_ty(ty);
-            vis.visit_expr(expr);
+            visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ItemKind::Fn(sig, generics, body) => {
             visit_fn_sig(sig, vis);

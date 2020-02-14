@@ -881,9 +881,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
-                    this.with_constant_rib(|this| {
-                        this.visit_expr(expr);
-                    });
+                    if let Some(expr) = expr {
+                        this.with_constant_rib(|this| this.visit_expr(expr));
+                    }
                 });
             }
 
