@@ -30,7 +30,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => {
                 let val = self.eval_mir_constant(constant)?;
-                Ok(OperandRef::from_const(bx, val))
+                Ok(OperandRef::from_const(bx, &val))
             }
         }
     }
@@ -45,6 +45,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.cx
                     .tcx()
                     .const_eval_resolve(ty::ParamEnv::reveal_all(), def_id, substs, promoted, None)
+                    .map(|val| {
+                        self.cx.tcx().mk_const(ty::Const {
+                            val: ty::ConstKind::Value(val),
+                            ty: constant.literal.ty,
+                        })
+                    })
                     .map_err(|err| {
                         if promoted.is_none() {
                             self.cx

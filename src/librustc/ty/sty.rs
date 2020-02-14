@@ -2473,7 +2473,9 @@ impl<'tcx> Const<'tcx> {
 
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            tcx.const_eval_resolve(param_env, did, substs, promoted, None).ok()
+            tcx.const_eval_resolve(param_env, did, substs, promoted, None)
+                .ok()
+                .map(|val| tcx.mk_const(Const { val: ConstKind::Value(val), ty: self.ty }))
         };
 
         match self.val {

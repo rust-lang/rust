@@ -2,6 +2,7 @@ use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
+use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, Ty};
@@ -40,7 +41,7 @@ CloneTypeFoldableImpls! {
 }
 
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
-pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
+pub type ConstEvalResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
 #[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {

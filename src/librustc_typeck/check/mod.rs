@@ -1832,18 +1832,17 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    if let Ok(static_) = tcx.const_eval_poly(id) {
-        let alloc = if let ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) = static_.val {
-            alloc
-        } else {
-            bug!("Matching on non-ByRef static")
-        };
-        if alloc.relocations().len() != 0 {
-            let msg = "statics with a custom `#[link_section]` must be a \
+    match tcx.const_eval_poly(id) {
+        Ok(ConstValue::ByRef { alloc, .. }) => {
+            if alloc.relocations().len() != 0 {
+                let msg = "statics with a custom `#[link_section]` must be a \
                        simple list of bytes on the wasm target with no \
                        extra levels of indirection such as references";
-            tcx.sess.span_err(span, msg);
+                tcx.sess.span_err(span, msg);
+            }
         }
+        Ok(_) => bug!("Matching on non-ByRef static"),
+        Err(_) => {}
     }
 }
 

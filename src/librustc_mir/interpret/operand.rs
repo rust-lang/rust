@@ -518,7 +518,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// "universe" (param_env).
     crate fn eval_const_to_op(
         &self,
-        val: &'tcx ty::Const<'tcx>,
+        val: &ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
@@ -536,7 +536,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
-                return Ok(OpTy::from(self.const_eval(GlobalId { instance, promoted })?));
+                return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
