@@ -91,7 +91,7 @@ fn find_dead_unwinds<'tcx>(
             _ => continue,
         };
 
-        debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}", bb, bb_data, flow_inits.get());
+        debug!("find_dead_unwinds @ {:?}: {:?}", bb, bb_data);
 
         let path = match env.move_data.rev_lookup.find(location.as_ref()) {
             LookupResult::Exact(e) => e,
@@ -101,9 +101,15 @@ fn find_dead_unwinds<'tcx>(
             }
         };
 
-        debug!("find_dead_unwinds @ {:?}: path({:?})={:?}", bb, location, path);
-
         flow_inits.seek_before(body.terminator_loc(bb));
+        debug!(
+            "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
+            bb,
+            location,
+            path,
+            flow_inits.get()
+        );
+
         let mut maybe_live = false;
         on_all_drop_children_bits(tcx, body, &env, path, |child| {
             maybe_live |= flow_inits.contains(child);
