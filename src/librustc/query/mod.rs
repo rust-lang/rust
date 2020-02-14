@@ -519,7 +519,7 @@ rustc_queries! {
         /// Extracts a field of a (variant of a) const.
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
-        ) -> &'tcx ty::Const<'tcx> {
+        ) -> ConstValue<'tcx> {
             no_force
             desc { "extract field of const" }
         }
@@ -533,7 +533,7 @@ rustc_queries! {
             desc { "destructure constant" }
         }
 
-        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }

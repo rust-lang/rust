@@ -26,7 +26,7 @@ pub(crate) fn const_field<'tcx>(
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstValue<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     // get the operand again
@@ -40,26 +40,19 @@ pub(crate) fn const_field<'tcx>(
     let field = ecx.operand_field(down, field.index() as u64).unwrap();
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
-    let val = op_to_const(&ecx, field);
-    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
+    op_to_const(&ecx, field)
 }
 
 pub(crate) fn const_caller_location<'tcx>(
     tcx: TyCtxt<'tcx>,
     (file, line, col): (Symbol, u32, u32),
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstValue<'tcx> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
-    let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
-    let loc_const = ty::Const {
-        ty: loc_ty,
-        val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),
-    };
-
-    tcx.mk_const(loc_const)
+    ConstValue::Scalar(loc_place.ptr.into())
 }
 
 // this function uses `unwrap` copiously, because an already validated constant
