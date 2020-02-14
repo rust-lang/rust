@@ -11,6 +11,9 @@ This manual focuses on a specific usage of the library -- the implementation of
 https://microsoft.github.io/language-server-protocol/[Language Server Protocol].
 LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic feature like completion or goto definition by talking to an external language server process.
 
+To improve this document, send a pull request against
+https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
+
 == Installation
 
 In theory, one should be able to just install the server binary and have it automatically work with any editor.
