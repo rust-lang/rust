@@ -22,12 +22,12 @@ export function activateInlayHints(ctx: Ctx) {
     );
 
     vscode.workspace.onDidChangeConfiguration(
-        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints()),
+        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints),
         null,
         ctx.subscriptions
     );
 
-    ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints()));
+    ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints));
 }
 
 interface InlayHintsParams {
@@ -59,7 +59,7 @@ class HintsUpdater {
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
-        this.enabled = ctx.config.displayInlayHints();
+        this.enabled = ctx.config.displayInlayHints;
     }
 
     async setEnabled(enabled: boolean) {

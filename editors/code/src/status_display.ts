@@ -7,7 +7,7 @@ import { Ctx } from './ctx';
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 export function activateStatusDisplay(ctx: Ctx) {
-    const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions().command);
+    const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(statusDisplay);
     ctx.onDidRestart(client => ctx.pushCleanup(client.onProgress(
         WorkDoneProgress.type,

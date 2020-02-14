@@ -11,7 +11,7 @@ export function activateHighlighting(ctx: Ctx) {
         client.onNotification(
             'rust-analyzer/publishDecorations',
             (params: PublishDecorationsParams) => {
-                if (!ctx.config.highlightingOn()) return;
+                if (!ctx.config.highlightingOn) return;
 
                 const targetEditor = vscode.window.visibleTextEditors.find(
                     editor => {
@@ -39,7 +39,7 @@ export function activateHighlighting(ctx: Ctx) {
     vscode.window.onDidChangeActiveTextEditor(
         async (editor: vscode.TextEditor | undefined) => {
             if (!editor || editor.document.languageId !== 'rust') return;
-            if (!ctx.config.highlightingOn()) return;
+            if (!ctx.config.highlightingOn) return;
             const client = ctx.client;
             if (!client) return;
 
@@ -122,7 +122,7 @@ class Highlighter {
             string,
             [vscode.Range[], boolean]
         > = new Map();
-        const rainbowTime = this.ctx.config.rainbowHighlightingOn();
+        const rainbowTime = this.ctx.config.rainbowHighlightingOn;
 
         for (const tag of this.decorations.keys()) {
             byTag.set(tag, []);

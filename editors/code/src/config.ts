@@ -68,17 +68,14 @@ export class Config {
      * `platform` on GitHub releases. (It is also stored under the same name when
      * downloaded by the extension).
      */
-    private static prebuiltLangServerFileName(
-        platform: NodeJS.Platform,
-        arch: string
-    ): null | string {
+    get prebuiltLangServerFileName(): null | string {
         // See possible `arch` values here:
         // https://nodejs.org/api/process.html#process_process_arch
 
-        switch (platform) {
+        switch (process.platform) {
 
             case "linux": {
-                switch (arch) {
+                switch (process.arch) {
                     case "arm":
                     case "arm64": return null;
 
@@ -101,7 +98,7 @@ export class Config {
         }
     }
 
-    langServerBinarySource(): null | BinarySource {
+    get langServerBinarySource(): null | BinarySource {
         const langServerPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
 
         if (langServerPath) {
@@ -111,9 +108,7 @@ export class Config {
             };
         }
 
-        const prebuiltBinaryName = Config.prebuiltLangServerFileName(
-            process.platform, process.arch
-        );
+        const prebuiltBinaryName = this.prebuiltLangServerFileName;
 
         if (!prebuiltBinaryName) return null;
 
@@ -131,17 +126,16 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    // FIXME: add codegen for primitive configurations
-    highlightingOn()        { return this.cfg.get("highlightingOn") as boolean; }
-    rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
-    lruCapacity()           { return this.cfg.get("lruCapacity") as null | number; }
-    displayInlayHints()     { return this.cfg.get("displayInlayHints") as boolean; }
-    maxInlayHintLength()    { return this.cfg.get("maxInlayHintLength") as number; }
-    excludeGlobs()          { return this.cfg.get("excludeGlobs") as string[]; }
-    useClientWatching()     { return this.cfg.get("useClientWatching") as boolean; }
-    featureFlags()          { return this.cfg.get("featureFlags") as Record<string, boolean>; }
+    get highlightingOn()        { return this.cfg.get("highlightingOn") as boolean; }
+    get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
+    get lruCapacity()           { return this.cfg.get("lruCapacity") as null | number; }
+    get displayInlayHints()     { return this.cfg.get("displayInlayHints") as boolean; }
+    get maxInlayHintLength()    { return this.cfg.get("maxInlayHintLength") as number; }
+    get excludeGlobs()          { return this.cfg.get("excludeGlobs") as string[]; }
+    get useClientWatching()     { return this.cfg.get("useClientWatching") as boolean; }
+    get featureFlags()          { return this.cfg.get("featureFlags") as Record<string, boolean>; }
 
-    cargoWatchOptions(): CargoWatchOptions {
+    get cargoWatchOptions(): CargoWatchOptions {
         return {
             enable:     this.cfg.get("cargo-watch.enable") as boolean,
             arguments:  this.cfg.get("cargo-watch.arguments") as string[],
@@ -150,7 +144,7 @@ export class Config {
         };
     }
 
-    cargoFeatures(): CargoFeatures {
+    get cargoFeatures(): CargoFeatures {
         return {
             noDefaultFeatures: this.cfg.get("cargoFeatures.noDefaultFeatures") as boolean,
             allFeatures:       this.cfg.get("cargoFeatures.allFeatures") as boolean,
@@ -159,5 +153,5 @@ export class Config {
     }
 
     // for internal use
-    withSysroot() { return this.cfg.get("withSysroot", false); }
+    get withSysroot() { return this.cfg.get("withSysroot", false); }
 }

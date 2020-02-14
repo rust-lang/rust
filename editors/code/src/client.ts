@@ -10,7 +10,7 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const langServerPath = await ensureLanguageServerBinary(config.langServerBinarySource());
+    const langServerPath = await ensureLanguageServerBinary(config.langServerBinarySource);
     if (!langServerPath) return null;
 
     const run: lc.Executable = {
@@ -24,23 +24,23 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     const traceOutputChannel = vscode.window.createOutputChannel(
         'Rust Analyzer Language Server Trace',
     );
-    const cargoWatchOpts = config.cargoWatchOptions();
+    const cargoWatchOpts = config.cargoWatchOptions;
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
         initializationOptions: {
             publishDecorations: true,
-            lruCapacity: config.lruCapacity(),
-            maxInlayHintLength: config.maxInlayHintLength(),
+            lruCapacity: config.lruCapacity,
+            maxInlayHintLength: config.maxInlayHintLength,
             cargoWatchEnable: cargoWatchOpts.enable,
             cargoWatchArgs: cargoWatchOpts.arguments,
             cargoWatchCommand: cargoWatchOpts.command,
             cargoWatchAllTargets: cargoWatchOpts.allTargets,
-            excludeGlobs: config.excludeGlobs(),
-            useClientWatching: config.useClientWatching(),
-            featureFlags: config.featureFlags(),
-            withSysroot: config.withSysroot(),
-            cargoFeatures: config.cargoFeatures(),
+            excludeGlobs: config.excludeGlobs,
+            useClientWatching: config.useClientWatching,
+            featureFlags: config.featureFlags,
+            withSysroot: config.withSysroot,
+            cargoFeatures: config.cargoFeatures,
         },
         traceOutputChannel,
     };
