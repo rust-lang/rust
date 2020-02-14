@@ -397,7 +397,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
             ast::ForeignItemKind::Macro(..) => {}

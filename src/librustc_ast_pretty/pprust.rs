@@ -1019,13 +1019,13 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref gen, ref body) => {
+        match &item.kind {
+            ast::ForeignItemKind::Fn(sig, gen, body) => {
                 self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
             }
-            ast::ForeignItemKind::Static(ref t, m) => {
+            ast::ForeignItemKind::Static(t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == ast::Mutability::Mut {
+                if *m == ast::Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -1035,14 +1035,10 @@ impl<'a> State<'a> {
                 self.end(); // end the head-ibox
                 self.end(); // end the outer cbox
             }
-            ast::ForeignItemKind::Ty => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.s.word(";");
-                self.end(); // end the head-ibox
-                self.end(); // end the outer cbox
+            ast::ForeignItemKind::TyAlias(generics, bounds, ty) => {
+                self.print_associated_type(item.ident, generics, bounds, ty.as_deref());
             }
-            ast::ForeignItemKind::Macro(ref m) => {
+            ast::ForeignItemKind::Macro(m) => {
                 self.print_mac(m);
                 if m.args.need_semicolon() {
                     self.s.word(";");

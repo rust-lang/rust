@@ -535,7 +535,11 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
             visitor.visit_fn(kind, item.span, item.id);
         }
         ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
-        ForeignItemKind::Ty => (),
+        ForeignItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_param_bound, bounds);
+            walk_list!(visitor, visit_ty, ty);
+        }
         ForeignItemKind::Macro(ref mac) => visitor.visit_mac(mac),
     }
 

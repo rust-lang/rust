@@ -1540,7 +1540,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
 
                 self.visit_ty(ty);
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);

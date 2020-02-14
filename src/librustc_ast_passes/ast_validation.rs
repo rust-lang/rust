@@ -22,6 +22,9 @@ use syntax::expand::is_proc_macro_attr;
 use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use syntax::walk_list;
 
+const MORE_EXTERN: &str =
+    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
+
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
     Yes,
@@ -423,14 +426,59 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_impl_assoc_type_no_bounds(&self, bounds: &[GenericBound]) {
+    fn check_type_no_bounds(&self, bounds: &[GenericBound], ctx: &str) {
         let span = match bounds {
             [] => return,
             [b0] => b0.span(),
             [b0, .., bl] => b0.span().to(bl.span()),
         };
         self.err_handler()
-            .struct_span_err(span, "bounds on associated `type`s in `impl`s have no effect")
+            .struct_span_err(span, &format!("bounds on `type`s in {} have no effect", ctx))
+            .emit();
+    }
+
+    fn check_foreign_ty_genericless(&self, generics: &Generics) {
+        let cannot_have = |span, descr, remove_descr| {
+            self.err_handler()
+                .struct_span_err(
+                    span,
+                    &format!("`type`s inside `extern` blocks cannot have {}", descr),
+                )
+                .span_suggestion(
+                    span,
+                    &format!("remove the {}", remove_descr),
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                )
+                .span_label(self.current_extern_span(), "`extern` block begins here")
+                .note(MORE_EXTERN)
+                .emit();
+        };
+
+        if !generics.params.is_empty() {
+            cannot_have(generics.span, "generic parameters", "generic parameters");
+        }
+
+        if !generics.where_clause.predicates.is_empty() {
+            cannot_have(generics.where_clause.span, "`where` clauses", "`where` clause");
+        }
+    }
+
+    fn check_foreign_ty_bodyless(&self, ident: Ident, body: Option<&Ty>) {
+        let body = match body {
+            None => return,
+            Some(body) => body,
+        };
+        self.err_handler()
+            .struct_span_err(ident.span, "incorrect `type` inside `extern` block")
+            .span_label(ident.span, "cannot have a body")
+            .span_label(body.span, "the invalid body")
+            .span_label(
+                self.current_extern_span(),
+                "`extern` blocks define existing foreign types and types \
+                inside of them cannot have a body",
+            )
+            .note(MORE_EXTERN)
             .emit();
     }
 
@@ -458,7 +506,7 @@ impl<'a> AstValidator<'a> {
                 "`extern` blocks define existing foreign functions and functions \
                 inside of them cannot have a body",
             )
-            .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
+            .note(MORE_EXTERN)
             .emit();
     }
 
@@ -912,7 +960,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
-            ForeignItemKind::Static(..) | ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::TyAlias(generics, bounds, body) => {
+                self.check_foreign_ty_bodyless(fi.ident, body.as_deref());
+                self.check_type_no_bounds(bounds, "`extern` blocks");
+                self.check_foreign_ty_genericless(generics);
+            }
+            ForeignItemKind::Static(..) | ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)
@@ -1159,7 +1212,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 AssocItemKind::TyAlias(_, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
-                    self.check_impl_assoc_type_no_bounds(bounds);
+                    self.check_type_no_bounds(bounds, "`impl`s");
                 }
                 _ => {}
             }

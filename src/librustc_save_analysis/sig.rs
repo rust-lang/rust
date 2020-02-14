@@ -773,7 +773,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
