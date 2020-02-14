@@ -66,9 +66,9 @@ class StatusDisplay implements Disposable {
 
     refreshLabel() {
         if (this.packageName) {
-            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command} [${this.packageName}]`;
+            this.statusBarItem.text = `${spinnerFrames[this.i]} cargo ${this.command} [${this.packageName}]`;
         } else {
-            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command}`;
+            this.statusBarItem.text = `${spinnerFrames[this.i]} cargo ${this.command}`;
         }
     }
 
