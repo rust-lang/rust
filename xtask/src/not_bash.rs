@@ -87,7 +87,7 @@ fn run_process_inner(cmd: &str, echo: bool) -> Result<String> {
     }
 
     if !output.status.success() {
-        bail!("returned non-zero status: {}", output.status)
+        bail!("{}", output.status)
     }
 
     Ok(stdout)
