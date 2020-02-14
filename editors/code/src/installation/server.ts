@@ -7,13 +7,13 @@ import { spawnSync } from "child_process";
 import { throttle } from "throttle-debounce";
 
 import { BinarySource } from "./interfaces";
-import { fetchLatestArtifactMetadata } from "./fetch_latest_artifact_metadata";
+import { fetchLatestArtifactReleaseInfo } from "./fetch_latest_artifact_release_info";
 import { downloadFile } from "./download_file";
 
-export async function downloadLatestLanguageServer(
+export async function downloadLatestServer(
     {file: artifactFileName, dir: installationDir, repo}: BinarySource.GithubRelease
 ) {
-    const { releaseName, downloadUrl } = (await fetchLatestArtifactMetadata(
+    const { releaseName, downloadUrl } = (await fetchLatestArtifactReleaseInfo(
         repo, artifactFileName
     ))!;
 
@@ -53,11 +53,11 @@ export async function downloadLatestLanguageServer(
     );
     console.timeEnd("Downloading ra_lsp_server");
 }
-export async function ensureLanguageServerBinary(
-    langServerSource: null | BinarySource
+export async function ensureServerBinary(
+    serverSource: null | BinarySource
 ): Promise<null | string> {
 
-    if (!langServerSource) {
+    if (!serverSource) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
@@ -69,21 +69,21 @@ export async function ensureLanguageServerBinary(
         return null;
     }
 
-    switch (langServerSource.type) {
+    switch (serverSource.type) {
         case BinarySource.Type.ExplicitPath: {
-            if (isBinaryAvailable(langServerSource.path)) {
-                return langServerSource.path;
+            if (isBinaryAvailable(serverSource.path)) {
+                return serverSource.path;
             }
 
             vscode.window.showErrorMessage(
-                `Unable to run ${langServerSource.path} binary. ` +
+                `Unable to run ${serverSource.path} binary. ` +
                 `To use the pre-built language server, set "rust-analyzer.raLspServerPath" ` +
                 "value to `null` or remove it from the settings to use it by default."
             );
             return null;
         }
         case BinarySource.Type.GithubRelease: {
-            const prebuiltBinaryPath = path.join(langServerSource.dir, langServerSource.file);
+            const prebuiltBinaryPath = path.join(serverSource.dir, serverSource.file);
 
             if (isBinaryAvailable(prebuiltBinaryPath)) {
                 return prebuiltBinaryPath;
@@ -97,10 +97,10 @@ export async function ensureLanguageServerBinary(
             if (userResponse !== "Download now") return null;
 
             try {
-                await downloadLatestLanguageServer(langServerSource);
+                await downloadLatestServer(serverSource);
             } catch (err) {
                 vscode.window.showErrorMessage(
-                    `Failed to download language server from ${langServerSource.repo.name} ` +
+                    `Failed to download language server from ${serverSource.repo.name} ` +
                     `GitHub repository: ${err.message}`
                 );
 
@@ -122,7 +122,7 @@ export async function ensureLanguageServerBinary(
 
             if (!isBinaryAvailable(prebuiltBinaryPath)) assert(false,
                 `Downloaded language server binary is not functional.` +
-                `Downloaded from: ${JSON.stringify(langServerSource)}`
+                `Downloaded from: ${JSON.stringify(serverSource)}`
             );
 
 

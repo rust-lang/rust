@@ -68,7 +68,7 @@ export class Config {
      * `platform` on GitHub releases. (It is also stored under the same name when
      * downloaded by the extension).
      */
-    get prebuiltLangServerFileName(): null | string {
+    get prebuiltServerFileName(): null | string {
         // See possible `arch` values here:
         // https://nodejs.org/api/process.html#process_process_arch
 
@@ -98,17 +98,17 @@ export class Config {
         }
     }
 
-    get langServerBinarySource(): null | BinarySource {
-        const langServerPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
+    get serverBinarySource(): null | BinarySource {
+        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
 
-        if (langServerPath) {
+        if (serverPath) {
             return {
                 type: BinarySource.Type.ExplicitPath,
-                path: Config.replaceTildeWithHomeDir(langServerPath)
+                path: Config.replaceTildeWithHomeDir(serverPath)
             };
         }
 
-        const prebuiltBinaryName = this.prebuiltLangServerFileName;
+        const prebuiltBinaryName = this.prebuiltServerFileName;
 
         if (!prebuiltBinaryName) return null;
 
