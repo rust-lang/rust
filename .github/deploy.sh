@@ -8,26 +8,22 @@ rm -rf out/master/ || exit 0
 echo "Making the docs for master"
 mkdir out/master/
 cp util/gh-pages/index.html out/master
-python ./util/export.py out/master/lints.json
+python3 ./util/export.py out/master/lints.json
 
 if [[ -n $TAG_NAME ]]; then
-  echo "Save the doc for the current tag ($TAG_NAME) and point current/ to it"
+  echo "Save the doc for the current tag ($TAG_NAME) and point stable/ to it"
   cp -r out/master "out/$TAG_NAME"
-  rm -f out/current
-  ln -s "$TAG_NAME" out/current
+  rm -f out/stable
+  ln -s "$TAG_NAME" out/stable
 fi
 
 # Generate version index that is shown as root index page
 cp util/gh-pages/versions.html out/index.html
 
-cd out
-cat <<-EOF | python - > versions.json
-import os, json
-print json.dumps([
-    dir for dir in os.listdir(".") if not dir.startswith(".") and os.path.isdir(dir)
-])
-EOF
+echo "Making the versions.json file"
+python3 ./util/versions.py out
 
+cd out
 # Now let's go have some fun with the cloned repo
 git config user.name "GHA CI"
 git config user.email "gha@ci.invalid"

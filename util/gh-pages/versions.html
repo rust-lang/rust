@@ -36,7 +36,7 @@
                 <ul class="list-group">
                     <a class="list-group-item" ng-repeat="version in data | orderBy:versionOrder:true"
                        href="./{{version}}/index.html">
-                        {{normalizeVersion(version)}}
+                        {{normalizeVersionDisplay(version)}}
                     </a>
                 </ul>
             </article>
@@ -54,13 +54,17 @@
         .controller('docVersions', function ($scope, $http) {
             $scope.loading = true;
 
-            $scope.normalizeVersion = function(v) {
+            $scope.normalizeVersionDisplay = function(v) {
                 return v.replace(/^v/, '');
+            };
+
+            $scope.normalizeVersion = function(v) {
+                return v.replace(/^v/, '').replace(/^rust-/, '');
             };
 
             $scope.versionOrder = function(v) {
                 if (v === 'master') { return Infinity; }
-                if (v === 'current') { return Number.MAX_VALUE; }
+                if (v === 'stable') { return Number.MAX_VALUE; }
 
                 return $scope.normalizeVersion(v)
                     .split('.')
