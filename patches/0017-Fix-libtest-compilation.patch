@@ -17,9 +17,9 @@ index 8b76080..9e65de2 100644
      io::prelude::Write,
 -    panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
 +    panic::{self, PanicInfo},
-     process,
-     process::{Command, Termination},
+     process::{self, Command, Termination},
      sync::mpsc::{channel, Sender},
+     sync::{Arc, Mutex},
 @@ -1493,7 +1493,7 @@ pub fn run_test(
      fn run_test_inner(
          desc: TestDesc,

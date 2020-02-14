@@ -7,7 +7,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{layout::Align, Const, ConstKind};
 use rustc_mir::interpret::{
-    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PanicInfo, PlaceTy, Pointer,
+    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
     StackPopCleanup, StackPopInfo,
 };
 
@@ -525,7 +525,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     fn assert_panic(
         _: &mut InterpCx<'mir, 'tcx, Self>,
         _: Span,
-        _: &PanicInfo<Operand<'tcx>>,
+        _: &mir::AssertKind<Operand<'tcx>>,
         _: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
         unreachable!()

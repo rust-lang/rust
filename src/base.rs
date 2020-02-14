@@ -190,7 +190,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 cleanup: _,
             } => {
                 if !fx.tcx.sess.overflow_checks() {
-                    if let mir::interpret::PanicInfo::OverflowNeg = *msg {
+                    if let mir::AssertKind::OverflowNeg = *msg {
                         let target = fx.get_ebb(*target);
                         fx.bcx.ins().jump(target, &[]);
                         continue;
