@@ -4,7 +4,7 @@ use std::{
     env,
     ffi::OsStr,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -30,6 +30,16 @@ pub mod fs2 {
         let to = to.as_ref();
         fs::copy(from, to)
             .with_context(|| format!("Failed to copy {} to {}", from.display(), to.display()))
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(path: P) -> Result<()> {
+        let path = path.as_ref();
+        fs::remove_file(path).with_context(|| format!("Failed to remove file {}", path.display()))
+    }
+
+    pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
+        let path = path.as_ref();
+        fs::remove_dir_all(path).with_context(|| format!("Failed to remove dir {}", path.display()))
     }
 }
 
@@ -62,6 +72,15 @@ pub fn rm(glob: &str) -> Result<()> {
     let cwd = Env::with(|env| env.cwd());
     ls(glob)?.into_iter().try_for_each(|it| fs::remove_file(cwd.join(it)))?;
     Ok(())
+}
+
+pub fn rm_rf(path: impl AsRef<Path>) -> Result<()> {
+    let path = path.as_ref();
+    if path.is_file() {
+        fs2::remove_file(path)
+    } else {
+        fs2::remove_dir_all(path)
+    }
 }
 
 pub fn ls(glob: &str) -> Result<Vec<PathBuf>> {

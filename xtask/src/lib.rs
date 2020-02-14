@@ -9,7 +9,7 @@ mod ast_src;
 
 use anyhow::Context;
 use std::{
-    env, fs,
+    env,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -17,7 +17,7 @@ use std::{
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, run},
+    not_bash::{fs2, pushd, rm_rf, run},
 };
 
 pub use anyhow::Result;
@@ -139,7 +139,7 @@ pub fn run_pre_cache() -> Result<()> {
         }
     }
 
-    fs::remove_file("./target/.rustc_info.json")?;
+    fs2::remove_file("./target/.rustc_info.json")?;
     let to_delete = ["ra_", "heavy_test"];
     for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
         for entry in Path::new(dir).read_dir()? {
@@ -151,11 +151,6 @@ pub fn run_pre_cache() -> Result<()> {
     }
 
     Ok(())
-}
-
-fn rm_rf(path: &Path) -> Result<()> {
-    if path.is_file() { fs::remove_file(path) } else { fs::remove_dir_all(path) }
-        .with_context(|| format!("failed to remove {:?}", path))
 }
 
 pub fn run_release(dry_run: bool) -> Result<()> {
