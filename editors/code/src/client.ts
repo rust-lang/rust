@@ -3,6 +3,7 @@ import * as lc from 'vscode-languageclient';
 import { window, workspace } from 'vscode';
 import { Config } from './config';
 import { ensureLanguageServerBinary } from './installation/language_server';
+import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 
 export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
@@ -78,6 +79,10 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
             }
         },
     };
-    res.registerProposedFeatures();
+
+    // To turn on all proposed features use: res.registerProposedFeatures();
+    // Here we want to just enable CallHierarchyFeature since it is available on stable.
+    // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
+    res.registerFeature(new CallHierarchyFeature(res));
     return res;
 }
