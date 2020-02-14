@@ -37,7 +37,7 @@ export class Config {
         console.log("Using configuration:", this.cfg);
     }
 
-    async onConfigChange(event: vscode.ConfigurationChangeEvent) {
+    private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
         this.refreshConfig();
 
         const requiresReloadOpt = Config.requiresReloadOpts.find(
