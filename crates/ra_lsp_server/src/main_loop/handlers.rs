@@ -918,9 +918,9 @@ fn to_lsp_runnable(
     let args = runnable_args(world, file_id, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
-        RunnableKind::Test { name } => format!("test {}", name),
+        RunnableKind::Test { test_id } => format!("test {}", test_id),
         RunnableKind::TestMod { path } => format!("test-mod {}", path),
-        RunnableKind::Bench { name } => format!("bench {}", name),
+        RunnableKind::Bench { test_id } => format!("bench {}", test_id),
         RunnableKind::Bin => "run binary".to_string(),
     };
     Ok(req::Runnable {

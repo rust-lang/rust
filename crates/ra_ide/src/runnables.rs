@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::InFile;
+use hir::{InFile, SourceBinder};
 use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
@@ -10,6 +10,7 @@ use ra_syntax::{
 };
 
 use crate::FileId;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Runnable {
@@ -18,38 +19,86 @@ pub struct Runnable {
 }
 
 #[derive(Debug)]
+pub enum TestId {
+    Name(String),
+    Path(String),
+}
+
+impl Display for TestId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TestId::Name(name) => write!(f, "{}", name),
+            TestId::Path(path) => write!(f, "{}", path),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum RunnableKind {
-    Test { name: String },
+    Test { test_id: TestId },
     TestMod { path: String },
-    Bench { name: String },
+    Bench { test_id: TestId },
     Bin,
 }
 
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let parse = db.parse(file_id);
-    parse.tree().syntax().descendants().filter_map(|i| runnable(db, file_id, i)).collect()
+    let mut sb = SourceBinder::new(db);
+    parse.tree().syntax().descendants().filter_map(|i| runnable(db, &mut sb, file_id, i)).collect()
 }
 
-fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNode) -> Option<Runnable> {
+fn runnable(
+    db: &RootDatabase,
+    source_binder: &mut SourceBinder<RootDatabase>,
+    file_id: FileId,
+    item: SyntaxNode,
+) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => { runnable_fn(it) },
-            ast::Module(it) => { runnable_mod(db, file_id, it) },
+            ast::FnDef(it) => { runnable_fn(db, source_binder, file_id, it) },
+            ast::Module(it) => { runnable_mod(db, source_binder, file_id, it) },
             _ => { None },
         }
     }
 }
 
-fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
-    let name = fn_def.name()?.text().clone();
-    let kind = if name == "main" {
+fn runnable_fn(
+    db: &RootDatabase,
+    source_binder: &mut SourceBinder<RootDatabase>,
+    file_id: FileId,
+    fn_def: ast::FnDef,
+) -> Option<Runnable> {
+    let name_string = fn_def.name()?.text().to_string();
+
+    let kind = if name_string == "main" {
         RunnableKind::Bin
-    } else if has_test_related_attribute(&fn_def) {
-        RunnableKind::Test { name: name.to_string() }
-    } else if fn_def.has_atom_attr("bench") {
-        RunnableKind::Bench { name: name.to_string() }
     } else {
-        return None;
+        let test_id = if let Some(module) = fn_def
+            .syntax()
+            .ancestors()
+            .find_map(ast::Module::cast)
+            .and_then(|module| source_binder.to_def(InFile::new(file_id.into(), module)))
+        {
+            let path = module
+                .path_to_root(db)
+                .into_iter()
+                .rev()
+                .filter_map(|it| it.name(db))
+                .map(|name| name.to_string())
+                .chain(std::iter::once(name_string))
+                .join("::");
+            TestId::Path(path)
+        } else {
+            TestId::Name(name_string)
+        };
+
+        if has_test_related_attribute(&fn_def) {
+            RunnableKind::Test { test_id }
+        } else if fn_def.has_atom_attr("bench") {
+            RunnableKind::Bench { test_id }
+        } else {
+            return None;
+        }
     };
     Some(Runnable { range: fn_def.syntax().text_range(), kind })
 }
@@ -68,7 +117,12 @@ fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
         .any(|attribute_text| attribute_text.contains("test"))
 }
 
-fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
+fn runnable_mod(
+    db: &RootDatabase,
+    source_binder: &mut SourceBinder<RootDatabase>,
+    file_id: FileId,
+    module: ast::Module,
+) -> Option<Runnable> {
     let has_test_function = module
         .item_list()?
         .items()
@@ -76,13 +130,12 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
             ast::ModuleItem::FnDef(it) => Some(it),
             _ => None,
         })
-        .any(|f| f.has_atom_attr("test"));
+        .any(|f| has_test_related_attribute(&f));
     if !has_test_function {
         return None;
     }
     let range = module.syntax().text_range();
-    let mut sb = hir::SourceBinder::new(db);
-    let module = sb.to_def(InFile::new(file_id.into(), module))?;
+    let module = source_binder.to_def(InFile::new(file_id.into(), module))?;
 
     let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");
     Some(Runnable { range, kind: RunnableKind::TestMod { path } })
@@ -121,13 +174,17 @@ mod tests {
             Runnable {
                 range: [22; 46),
                 kind: Test {
-                    name: "test_foo",
+                    test_id: Name(
+                        "test_foo",
+                    ),
                 },
             },
             Runnable {
                 range: [47; 81),
                 kind: Test {
-                    name: "test_foo",
+                    test_id: Name(
+                        "test_foo",
+                    ),
                 },
             },
         ]
@@ -160,7 +217,9 @@ mod tests {
             Runnable {
                 range: [28; 57),
                 kind: Test {
-                    name: "test_foo1",
+                    test_id: Path(
+                        "test_mod::test_foo1",
+                    ),
                 },
             },
         ]
@@ -195,7 +254,9 @@ mod tests {
             Runnable {
                 range: [46; 79),
                 kind: Test {
-                    name: "test_foo1",
+                    test_id: Path(
+                        "foo::test_mod::test_foo1",
+                    ),
                 },
             },
         ]
@@ -232,7 +293,9 @@ mod tests {
             Runnable {
                 range: [68; 105),
                 kind: Test {
-                    name: "test_foo1",
+                    test_id: Path(
+                        "foo::bar::test_mod::test_foo1",
+                    ),
                 },
             },
         ]
