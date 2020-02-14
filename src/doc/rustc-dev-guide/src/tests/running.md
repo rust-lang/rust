@@ -89,8 +89,7 @@ tests for components you did not change at all.
 
 **Warning:** Note that bors only runs the tests with the full stage 2
 build; therefore, while the tests **usually** work fine with stage 1,
-there are some limitations. In particular, the stage1 compiler doesn't
-work well with procedural macros or custom derive tests.
+there are some limitations.
 
 ## Running an individual test
 
