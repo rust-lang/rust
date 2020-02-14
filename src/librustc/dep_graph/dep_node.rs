@@ -99,17 +99,17 @@ macro_rules! is_eval_always_attr {
 }
 
 macro_rules! contains_anon_attr {
-    ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
+    ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_anon_attr!($attr) | )* false});
 }
 
 macro_rules! contains_eval_always_attr {
-    ($($attr:ident),*) => ({$(is_eval_always_attr!($attr) | )* false});
+    ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
-        [$($attr:ident),* ]
+        [$($attrs:tt)*]
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
@@ -126,7 +126,7 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => {
-                            if contains_anon_attr!($($attr),*) {
+                            if contains_anon_attr!($($attrs)*) {
                                 return false;
                             }
 
@@ -152,7 +152,7 @@ macro_rules! define_dep_nodes {
             pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
-                        DepKind :: $variant => { contains_anon_attr!($($attr),*) }
+                        DepKind :: $variant => { contains_anon_attr!($($attrs)*) }
                     )*
                 }
             }
@@ -160,7 +160,7 @@ macro_rules! define_dep_nodes {
             pub fn is_eval_always(&self) -> bool {
                 match *self {
                     $(
-                        DepKind :: $variant => { contains_eval_always_attr!($($attr), *) }
+                        DepKind :: $variant => { contains_eval_always_attr!($($attrs)*) }
                     )*
                 }
             }
