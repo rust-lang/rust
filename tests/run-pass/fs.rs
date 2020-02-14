@@ -93,7 +93,7 @@ fn main() {
     rename(&path1, &path2).unwrap();
     assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
     assert!(path2.metadata().unwrap().is_file());
-    remove_file(&path2).ok();
+    remove_file(&path2).unwrap();
 
     // The two following tests also check that the `__errno_location()` shim is working properly.
     // Opening a non-existing file should fail with a "not found" error.
