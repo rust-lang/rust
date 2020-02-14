@@ -542,11 +542,7 @@ impl Resolver {
 
     fn push_generic_params_scope(self, db: &impl DefDatabase, def: GenericDefId) -> Resolver {
         let params = db.generic_params(def);
-        if params.types.is_empty() {
-            self
-        } else {
-            self.push_scope(Scope::GenericParams { def, params })
-        }
+        self.push_scope(Scope::GenericParams { def, params })
     }
 
     fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {

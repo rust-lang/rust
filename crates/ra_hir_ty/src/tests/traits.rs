@@ -300,6 +300,54 @@ fn test() {
 }
 
 #[test]
+fn trait_default_method_self_bound_implements_trait() {
+    test_utils::covers!(trait_self_implements_self);
+    assert_snapshot!(
+        infer(r#"
+trait Trait {
+    fn foo(&self) -> i64;
+    fn bar(&self) -> {
+        let x = self.foo();
+    }
+}
+"#),
+        @r###"
+    [27; 31) 'self': &Self
+    [53; 57) 'self': &Self
+    [62; 97) '{     ...     }': ()
+    [76; 77) 'x': i64
+    [80; 84) 'self': &Self
+    [80; 90) 'self.foo()': i64
+    "###
+    );
+}
+
+#[test]
+fn trait_default_method_self_bound_implements_super_trait() {
+    test_utils::covers!(trait_self_implements_self);
+    assert_snapshot!(
+        infer(r#"
+trait SuperTrait {
+    fn foo(&self) -> i64;
+}
+trait Trait: SuperTrait {
+    fn bar(&self) -> {
+        let x = self.foo();
+    }
+}
+"#),
+        @r###"
+    [32; 36) 'self': &Self
+    [86; 90) 'self': &Self
+    [95; 130) '{     ...     }': ()
+    [109; 110) 'x': i64
+    [113; 117) 'self': &Self
+    [113; 123) 'self.foo()': i64
+    "###
+    );
+}
+
+#[test]
 fn infer_project_associated_type() {
     // y, z, a don't yet work because of https://github.com/rust-lang/chalk/issues/234
     assert_snapshot!(
