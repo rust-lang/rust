@@ -452,7 +452,7 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
         self,
         cx: &LateContext<'a, 'tcx>,
         maybe_live: DataflowResults<'tcx, MaybeStorageLive<'a, 'tcx>>,
-    ) -> PossibleBorrower<'a, 'tcx> {
+    ) -> PossibleBorrowerMap<'a, 'tcx> {
         let mut map = FxHashMap::default();
         for row in (1..self.body.local_decls.len()).map(mir::Local::from_usize) {
             if is_copy(cx, self.body.local_decls[row].ty) {
@@ -475,7 +475,7 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
         }
 
         let bs = BitSet::new_empty(self.body.local_decls.len());
-        PossibleBorrower {
+        PossibleBorrowerMap {
             map,
             maybe_live: DataflowResultsCursor::new(maybe_live, self.body),
             bitset: (bs.clone(), bs),
@@ -557,7 +557,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 }
 
 /// Result of `PossibleBorrowerVisitor`.
-struct PossibleBorrower<'a, 'tcx> {
+struct PossibleBorrowerMap<'a, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
     map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
     maybe_live: DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>>,
@@ -565,7 +565,7 @@ struct PossibleBorrower<'a, 'tcx> {
     bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
 
-impl PossibleBorrower<'_, '_> {
+impl PossibleBorrowerMap<'_, '_> {
     /// Returns true if the set of borrowers of `borrowed` living at `at` matches with `borrowers`.
     fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek(at);
