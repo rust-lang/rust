@@ -41,7 +41,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             lib_search_paths: archive_search_paths(sess),
             use_native_ar: false,
             // FIXME test for linux and System V derivatives instead
-            use_gnu_style_archive: !sess.target.target.options.is_like_osx,
+            use_gnu_style_archive: sess.target.target.options.archive_format == "gnu",
         };
 
         let (src_archives, entries) = if let Some(input) = input {
