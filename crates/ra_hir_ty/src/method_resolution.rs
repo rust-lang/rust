@@ -425,6 +425,15 @@ fn iterate_inherent_methods<T>(
                 if !is_valid_candidate(db, name, receiver_ty, item, self_ty) {
                     continue;
                 }
+                // we have to check whether the self type unifies with the type
+                // that the impl is for. If we have a receiver type, this
+                // already happens in `is_valid_candidate` above; if not, we
+                // check it here
+                if receiver_ty.is_none() && inherent_impl_substs(db, impl_block, self_ty).is_none()
+                {
+                    test_utils::tested_by!(impl_self_type_match_without_receiver);
+                    continue;
+                }
                 if let Some(result) = callback(&self_ty.value, item) {
                     return Some(result);
                 }
