@@ -528,6 +528,7 @@ fn on_request(
         .on::<req::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)?
         .on::<req::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)?
         .on::<req::Ssr>(handlers::handle_ssr)?
+        .on::<req::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
         .finish();
     Ok(())
 }

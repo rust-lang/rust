@@ -1,12 +1,15 @@
 //! Advertizes the capabilities of the LSP Server.
 
+use crate::semantic_tokens;
+
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionProviderCapability, CodeLensOptions,
     CompletionOptions, DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
-    SelectionRangeProviderCapability, ServerCapabilities, SignatureHelpOptions,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
+    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -57,7 +60,20 @@ pub fn server_capabilities() -> ServerCapabilities {
         execute_command_provider: None,
         workspace: None,
         call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
-        semantic_tokens_provider: None,
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+            SemanticTokensOptions {
+                legend: SemanticTokensLegend {
+                    token_types: semantic_tokens::supported_token_types().iter().cloned().collect(),
+                    token_modifiers: semantic_tokens::supported_token_modifiers()
+                        .iter()
+                        .cloned()
+                        .collect(),
+                },
+
+                document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
+                ..SemanticTokensOptions::default()
+            },
+        )),
         experimental: Default::default(),
     }
 }
