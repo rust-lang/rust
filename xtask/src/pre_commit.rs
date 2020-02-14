@@ -4,18 +4,18 @@ use std::{fs, path::PathBuf};
 
 use anyhow::{bail, Result};
 
-use crate::{cmd::run_with_output, project_root, run, run_rustfmt, Mode};
+use crate::{not_bash::run, project_root, run_rustfmt, Mode};
 
 // FIXME: if there are changed `.ts` files, also reformat TypeScript (by
 // shelling out to `npm fmt`).
 pub fn run_hook() -> Result<()> {
     run_rustfmt(Mode::Overwrite)?;
 
-    let diff = run_with_output("git diff --diff-filter=MAR --name-only --cached", ".")?;
+    let diff = run!("git diff --diff-filter=MAR --name-only --cached")?;
 
     let root = project_root();
     for line in diff.lines() {
-        run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;
+        run!("git update-index --add {}", root.join(line).display())?;
     }
 
     Ok(())
