@@ -2,7 +2,7 @@ import * as lc from 'vscode-languageclient';
 import * as vscode from 'vscode';
 
 import { Config } from './config';
-import { ensureLangServerBinary } from './installation/lang_server';
+import { ensureServerBinary } from './installation/server';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 
 export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
@@ -11,11 +11,11 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const langServerPath = await ensureLangServerBinary(config.langServerBinarySource);
-    if (!langServerPath) return null;
+    const serverPath = await ensureServerBinary(config.serverBinarySource);
+    if (!serverPath) return null;
 
     const run: lc.Executable = {
-        command: langServerPath,
+        command: serverPath,
         options: { cwd: workspaceFolderPath },
     };
     const serverOptions: lc.ServerOptions = {
