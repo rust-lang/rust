@@ -200,6 +200,7 @@ crate struct SharedContext {
     /// The default edition used to parse doctests.
     pub edition: Edition,
     pub codes: ErrorCodes,
+    pub source_code_external_url: Option<String>,
     playground: Option<markdown::Playground>,
 }
 
@@ -409,6 +410,7 @@ pub fn run(
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        source_code_external_url,
         ..
     } = options;
 
@@ -467,6 +469,7 @@ pub fn run(
         collapsed: krate.collapsed,
         src_root,
         include_sources,
+        source_code_external_url,
         local_sources: Default::default(),
         issue_tracker_base_url,
         layout,
@@ -1602,13 +1605,23 @@ impl Context {
         } else {
             format!("{}-{}", item.source.loline, item.source.hiline)
         };
-        Some(format!(
-            "{root}src/{krate}/{path}#{lines}",
-            root = Escape(&root),
-            krate = krate,
-            path = path,
-            lines = lines
-        ))
+        if let Some(ref source_code_external_url) = self.shared.source_code_external_url {
+            Some(format!(
+                "{root}{krate}/{path}#{lines}",
+                root = source_code_external_url,
+                krate = krate,
+                path = path,
+                lines = lines
+            ))
+        } else {
+            Some(format!(
+                "{root}src/{krate}/{path}#{lines}",
+                root = Escape(&root),
+                krate = krate,
+                path = path,
+                lines = lines
+            ))
+        }
     }
 }
 

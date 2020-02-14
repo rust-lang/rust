@@ -74,17 +74,6 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let contents = match fs::read_to_string(&p) {
-            Ok(contents) => contents,
-            Err(e) => {
-                return Err(Error::new(e, &p));
-            }
-        };
-
-        // Remove the utf-8 BOM if any
-        let contents =
-            if contents.starts_with("\u{feff}") { &contents[3..] } else { &contents[..] };
-
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
@@ -101,30 +90,44 @@ impl<'a> SourceCollector<'a> {
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let title = format!(
-            "{} -- source",
-            cur.file_name().expect("failed to get file name").to_string_lossy()
-        );
-        let desc = format!("Source to the Rust file `{}`.", filename);
-        let page = layout::Page {
-            title: &title,
-            css_class: "source",
-            root_path: &root_path,
-            static_root_path: self.scx.static_root_path.as_deref(),
-            description: &desc,
-            keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.scx.resource_suffix,
-            extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
-            static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
-        };
-        let v = layout::render(
-            &self.scx.layout,
-            &page,
-            "",
-            |buf: &mut _| print_src(buf, &contents),
-            &self.scx.themes,
-        );
-        self.scx.fs.write(&cur, v.as_bytes())?;
+        // we don't emit source if we have an external location for it
+        if self.scx.source_code_external_url.is_none() {
+            let contents = match fs::read_to_string(&p) {
+                Ok(contents) => contents,
+                Err(e) => {
+                    return Err(Error::new(e, &p));
+                }
+            };
+
+            // Remove the utf-8 BOM if any
+            let contents =
+                if contents.starts_with("\u{feff}") { &contents[3..] } else { &contents[..] };
+
+            let title = format!(
+                "{} -- source",
+                cur.file_name().expect("failed to get file name").to_string_lossy()
+            );
+            let desc = format!("Source to the Rust file `{}`.", filename);
+            let page = layout::Page {
+                title: &title,
+                css_class: "source",
+                root_path: &root_path,
+                static_root_path: self.scx.static_root_path.as_deref(),
+                description: &desc,
+                keywords: BASIC_KEYWORDS,
+                resource_suffix: &self.scx.resource_suffix,
+                extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
+                static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
+            };
+            let v = layout::render(
+                &self.scx.layout,
+                &page,
+                "",
+                |buf: &mut _| print_src(buf, &contents),
+                &self.scx.themes,
+            );
+            self.scx.fs.write(&cur, v.as_bytes())?;
+        }
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
     }

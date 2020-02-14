@@ -418,6 +418,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 "specified the rustc-like binary to use as the test builder",
             )
         }),
+        unstable("source-code-external-url", |o| {
+            o.optopt(
+                "",
+                "source-code-external-url",
+                "Base URL for external source code linking",
+                "URL",
+            )
+        }),
     ]
 }
 

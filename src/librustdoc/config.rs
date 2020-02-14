@@ -220,6 +220,8 @@ pub struct RenderOptions {
     pub generate_search_filter: bool,
     /// Option (disabled by default) to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// Base URL to use for source code linking.
+    pub source_code_external_url: Option<String>,
 }
 
 impl Options {
@@ -496,6 +498,21 @@ impl Options {
         let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
+        let source_code_external_url = matches.opt_str("source-code-external-url").map(|mut h| {
+            if !h.ends_with('/') {
+                h.push('/');
+            }
+            h
+        });
+        if let Some(ref source_code_external_url) = source_code_external_url {
+            if !source_code_external_url.starts_with("http://")
+                && !source_code_external_url.starts_with("https://")
+            {
+                diag.struct_err("option `--source-code-external-url` argument must be an URL")
+                    .emit();
+                return Err(1);
+            }
+        }
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -552,6 +569,7 @@ impl Options {
                 markdown_playground_url,
                 generate_search_filter,
                 generate_redirect_pages,
+                source_code_external_url,
             },
         })
     }
