@@ -746,17 +746,17 @@ macro_rules! handle_cycle_error {
         $tcx.report_cycle($error).emit();
         Value::from_cycle_error($tcx)
     }};
-    ([fatal_cycle$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+    ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).emit();
         $tcx.sess.abort_if_errors();
         unreachable!()
     }};
-    ([cycle_delay_bug$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+    ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).delay_as_bug();
         Value::from_cycle_error($tcx)
     }};
-    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
-        handle_cycle_error!([$($modifiers),*][$($args)*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        handle_cycle_error!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -764,11 +764,11 @@ macro_rules! is_anon {
     ([]) => {{
         false
     }};
-    ([anon$(, $modifiers:ident)*]) => {{
+    ([anon $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident$(, $modifiers:ident)*]) => {
-        is_anon!([$($modifiers),*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+        is_anon!([$($($modifiers)*)*])
     };
 }
 
@@ -776,11 +776,23 @@ macro_rules! is_eval_always {
     ([]) => {{
         false
     }};
-    ([eval_always$(, $modifiers:ident)*]) => {{
+    ([eval_always $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident$(, $modifiers:ident)*]) => {
-        is_eval_always!([$($modifiers),*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+        is_eval_always!([$($($modifiers)*)*])
+    };
+}
+
+macro_rules! query_storage {
+    ([][$K:ty, $V:ty]) => {
+        <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache
+    };
+    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
+        $ty
+    };
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        query_storage!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -788,11 +800,11 @@ macro_rules! hash_result {
     ([][$hcx:expr, $result:expr]) => {{
         dep_graph::hash_result($hcx, &$result)
     }};
-    ([no_hash$(, $modifiers:ident)*][$hcx:expr, $result:expr]) => {{
+    ([no_hash $($rest:tt)*][$hcx:expr, $result:expr]) => {{
         None
     }};
-    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
-        hash_result!([$($modifiers),*][$($args)*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        hash_result!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -1049,7 +1061,7 @@ macro_rules! define_queries_inner {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
 
-            type Cache = <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache;
+            type Cache = query_storage!([$($modifiers)*][$K, $V]);
 
             #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
