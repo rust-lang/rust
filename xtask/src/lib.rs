@@ -166,7 +166,8 @@ pub fn run_release(dry_run: bool) -> Result<()> {
         run!("git push")?;
     }
 
-    let changelog_dir = project_root().join("../rust-analyzer.github.io/thisweek/_posts");
+    let website_root = project_root().join("../rust-analyzer.github.io");
+    let changelog_dir = website_root.join("/thisweek/_posts");
 
     let today = run!("date --iso")?;
     let commit = run!("git rev-parse HEAD")?;
@@ -194,6 +195,8 @@ Release: release:{}[]
 
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
     fs::write(&path, &contents)?;
+
+    fs::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
 
     Ok(())
 }
