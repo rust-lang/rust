@@ -146,7 +146,7 @@ where
                 ReachedFixedPoint::Yes => break,
                 ReachedFixedPoint::No => i += 1,
             }
-            if i == 1000 {
+            if i == 10000 {
                 log::error!("name resolution is stuck");
                 break;
             }
