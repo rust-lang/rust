@@ -876,7 +876,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
 
-        let (ident, kind) = if self.check_keyword(kw::Type) {
+        let (ident, kind) = if self.eat_keyword(kw::Type) {
             // FOREIGN TYPE ITEM
             self.parse_item_foreign_type()?
         } else if self.check_fn_front_matter() {
@@ -925,10 +925,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a type from a foreign module.
     fn parse_item_foreign_type(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
-        self.expect_keyword(kw::Type)?;
-        let ident = self.parse_ident()?;
-        self.expect_semi()?;
-        Ok((ident, ForeignItemKind::Ty))
+        let (ident, kind) = self.parse_assoc_ty()?;
+        let kind = match kind {
+            AssocItemKind::TyAlias(g, b, d) => ForeignItemKind::TyAlias(g, b, d),
+            _ => unreachable!(),
+        };
+        Ok((ident, kind))
     }
 
     fn is_static_global(&mut self) -> bool {

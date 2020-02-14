@@ -2610,7 +2610,7 @@ pub enum ForeignItemKind {
     /// A function.
     Fn(FnSig, Generics, Option<P<Block>>),
     /// A type.
-    Ty,
+    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
     /// A macro expanding to an item.
     Macro(Mac),
 }
@@ -2620,7 +2620,7 @@ impl ForeignItemKind {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
             ForeignItemKind::Static(..) => "foreign static item",
-            ForeignItemKind::Ty => "foreign type",
+            ForeignItemKind::TyAlias(..) => "foreign type",
             ForeignItemKind::Macro(..) => "macro in foreign module",
         }
     }

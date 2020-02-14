@@ -1051,7 +1051,11 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visit_opt(body, |body| visitor.visit_block(body));
         }
         ForeignItemKind::Static(t, _m) => visitor.visit_ty(t),
-        ForeignItemKind::Ty => {}
+        ForeignItemKind::TyAlias(generics, bounds, ty) => {
+            visitor.visit_generics(generics);
+            visit_bounds(bounds, visitor);
+            visit_opt(ty, |ty| visitor.visit_ty(ty));
+        }
         ForeignItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_id(id);

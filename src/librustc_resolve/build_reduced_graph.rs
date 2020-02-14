@@ -829,7 +829,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ForeignItemKind::Static(..) => {
                 (Res::Def(DefKind::Static, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Ty => {
+            ForeignItemKind::TyAlias(..) => {
                 (Res::Def(DefKind::ForeignTy, self.r.definitions.local_def_id(item.id)), TypeNS)
             }
             ForeignItemKind::Macro(_) => unreachable!(),

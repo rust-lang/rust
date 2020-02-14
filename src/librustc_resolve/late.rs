@@ -437,7 +437,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(_, ref generics, _) => {
+            ForeignItemKind::Fn(_, ref generics, _)
+            | ForeignItemKind::TyAlias(ref generics, ..) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -447,7 +448,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {
+            ForeignItemKind::Macro(..) => {
                 visit::walk_foreign_item(self, foreign_item);
             }
         }
