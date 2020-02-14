@@ -16,7 +16,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.41.0"
+        "vscode": "^1.42.0"
     },
     "scripts": {
         "vscode:prepublish": "tsc && rollup -c",
@@ -36,13 +36,13 @@
         "@types/node": "^12.12.25",
         "@types/node-fetch": "^2.5.4",
         "@types/throttle-debounce": "^2.1.0",
-        "@types/vscode": "^1.41.0",
+        "@types/vscode": "^1.42.0",
         "rollup": "^1.31.0",
         "tslib": "^1.10.0",
         "tslint": "^5.20.1",
         "typescript": "^3.7.5",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.71.0"
+        "vsce": "^1.73.0"
     },
     "activationEvents": [
         "onLanguage:rust",
