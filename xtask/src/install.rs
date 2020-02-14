@@ -1,8 +1,9 @@
 //! Installs rust-analyzer language server and/or editor plugin.
 
-use std::{env, path::PathBuf, str};
+use std::{env, fs, path::PathBuf, str};
 
 use anyhow::{bail, format_err, Context, Result};
+use walkdir::WalkDir;
 
 use crate::cmd::{run, run_with_output, Cmd};
 
@@ -95,12 +96,28 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
     Cmd { unix: r"npm install", windows: r"cmd.exe /c npm install", work_dir: "./editors/code" }
         .run()?;
+
+    let vsixes = || {
+        WalkDir::new("./editors/code")
+            .max_depth(1)
+            .into_iter()
+            .map(|it| it.unwrap())
+            .map(|it| it.path().to_owned())
+            .filter(|it| it.file_name().unwrap_or_default().to_string_lossy().ends_with(".vsix"))
+    };
+
+    for path in vsixes() {
+        fs::remove_file(path)?
+    }
+
     Cmd {
         unix: r"npm run package --scripts-prepend-node-path",
         windows: r"cmd.exe /c npm run package",
         work_dir: "./editors/code",
     }
     .run()?;
+
+    let extension = vsixes().next().unwrap().file_name().unwrap().to_string_lossy().to_string();
 
     let code_binary = ["code", "code-insiders", "codium", "code-oss"]
         .iter()
@@ -118,10 +135,10 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
         })?;
 
     Cmd {
-        unix: &format!(r"{} --install-extension ./rust-analyzer-0.1.0.vsix --force", code_binary),
+        unix: &format!(r"{} --install-extension ./{} --force", code_binary, extension),
         windows: &format!(
-            r"cmd.exe /c {}.cmd --install-extension ./rust-analyzer-0.1.0.vsix --force",
-            code_binary
+            r"cmd.exe /c {}.cmd --install-extension ./{} --force",
+            code_binary, extension
         ),
         work_dir: "./editors/code",
     }
