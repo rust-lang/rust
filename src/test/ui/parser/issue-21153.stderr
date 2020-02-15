@@ -1,10 +1,11 @@
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-21153.rs:1:29
    |
 LL |   trait MyTrait<T>: Iterator {
    |  _____________________________^
+LL | |
 LL | |     Item = T;
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
 error: aborting due to previous error
 
