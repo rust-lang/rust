@@ -7,13 +7,13 @@ fn black_box<T>(_: T) {
 
 fn main() {
     let b = 200u8 + 200u8 + 200u8;
-    //~^ ERROR const_err
+    //~^ ERROR overflow
     let c = 200u8 * 4;
-    //~^ ERROR const_err
+    //~^ ERROR overflow
     let d = 42u8 - (42u8 + 1);
-    //~^ ERROR const_err
+    //~^ ERROR overflow
     let _e = [5u8][1];
-    //~^ ERROR const_err
+    //~^ ERROR panic
     black_box(b);
     black_box(c);
     black_box(d);
