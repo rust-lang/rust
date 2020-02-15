@@ -1067,9 +1067,9 @@ impl<'a> State<'a> {
         vis: &ast::Visibility,
     ) {
         let leading = match mutbl {
-            None => "const ",
-            Some(ast::Mutability::Not) => "static ",
-            Some(ast::Mutability::Mut) => "static mut ",
+            None => "const",
+            Some(ast::Mutability::Not) => "static",
+            Some(ast::Mutability::Mut) => "static mut",
         };
         self.head(visibility_qualified(vis, leading));
         self.print_ident(ident);
