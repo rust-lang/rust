@@ -457,7 +457,7 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
+pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
             let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
@@ -493,8 +493,8 @@ pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<Strin
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-                Some(print_const_with_custom_print_scalar(cx, &const_))
+                let const_ = ty::Const::from_value(cx.tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(cx, const_))
             }
             _ => None,
         }
@@ -513,7 +513,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &ty::Const<'tcx>) -> String {
+fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, &ct.ty.kind) {

@@ -2418,8 +2418,13 @@ static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
+    pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
+        tcx.mk_const(Self { val: ConstKind::Value(val), ty })
+    }
+
+    #[inline]
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
-        tcx.mk_const(Self { val: ConstKind::Value(ConstValue::Scalar(val)), ty })
+        Self::from_value(tcx, ConstValue::Scalar(val), ty)
     }
 
     #[inline]
@@ -2475,7 +2480,7 @@ impl<'tcx> Const<'tcx> {
             // evaluate the const.
             tcx.const_eval_resolve(param_env, did, substs, promoted, None)
                 .ok()
-                .map(|val| tcx.mk_const(Const { val: ConstKind::Value(val), ty: self.ty }))
+                .map(|val| Const::from_value(tcx, val, self.ty))
         };
 
         match self.val {

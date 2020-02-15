@@ -89,8 +89,8 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_u64(i))
     }
 
-    pub fn from_machine_usize(cx: &impl HasDataLayout, i: u64) -> Self {
-        ConstValue::Scalar(Scalar::from_machine_usize(cx, i))
+    pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
+        ConstValue::Scalar(Scalar::from_machine_usize(i, cx))
     }
 }
 
@@ -314,7 +314,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn from_machine_usize(cx: &impl HasDataLayout, i: u64) -> Self {
+    pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         Self::from_uint(i, cx.data_layout().pointer_size)
     }
 
@@ -335,6 +335,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         Self::try_from_int(i, size)
             .unwrap_or_else(|| bug!("Signed value {:#x} does not fit in {} bits", i, size.bits()))
+    }
+
+    #[inline]
+    pub fn from_machine_isize(i: i64, cx: &impl HasDataLayout) -> Self {
+        Self::from_int(i, cx.data_layout().pointer_size)
     }
 
     #[inline]
