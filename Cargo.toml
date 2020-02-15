@@ -31,3 +31,8 @@ opt-level = 0
 
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
+
+[patch.'https://github.com/rust-lang/chalk.git']
+# chalk-solve = { path = "../chalk/chalk-solve" }
+# chalk-rust-ir = { path = "../chalk/chalk-rust-ir" }
+# chalk-ir = { path = "../chalk/chalk-ir" }

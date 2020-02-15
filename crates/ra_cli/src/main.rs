@@ -16,6 +16,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
+    Spammy,
     Verbose,
     Normal,
     Quiet,
@@ -24,7 +25,13 @@ pub enum Verbosity {
 impl Verbosity {
     fn is_verbose(self) -> bool {
         match self {
-            Verbosity::Verbose => true,
+            Verbosity::Verbose | Verbosity::Spammy => true,
+            _ => false,
+        }
+    }
+    fn is_spammy(self) -> bool {
+        match self {
+            Verbosity::Spammy => true,
             _ => false,
         }
     }
@@ -86,14 +93,18 @@ fn main() -> Result<()> {
                 return Ok(());
             }
             let verbosity = match (
+                matches.contains(["-vv", "--spammy"]),
                 matches.contains(["-v", "--verbose"]),
                 matches.contains(["-q", "--quiet"]),
             ) {
-                (false, false) => Verbosity::Normal,
-                (false, true) => Verbosity::Quiet,
-                (true, false) => Verbosity::Verbose,
-                (true, true) => Err("Invalid flags: -q conflicts with -v")?,
+                (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
+                (true, _, false) => Verbosity::Spammy,
+                (false, false, false) => Verbosity::Normal,
+                (false, false, true) => Verbosity::Quiet,
+                (false, true, false) => Verbosity::Verbose,
+                (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
             };
+            let randomize = matches.contains("--randomize");
             let memory_usage = matches.contains("--memory-usage");
             let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
             let with_deps: bool = matches.contains("--with-deps");
@@ -111,6 +122,7 @@ fn main() -> Result<()> {
                 path.as_ref(),
                 only.as_ref().map(String::as_ref),
                 with_deps,
+                randomize,
             )?;
         }
         "analysis-bench" => {
