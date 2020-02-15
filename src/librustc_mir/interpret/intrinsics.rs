@@ -110,7 +110,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::type_id
             | sym::type_name => {
                 let gid = GlobalId { instance, promoted: None };
-                let val = self.const_eval(gid, dest.layout.ty)?;
+                let ty = match intrinsic_name {
+                    sym::min_align_of | sym::pref_align_of | sym::size_of => self.tcx.types.usize,
+                    sym::needs_drop => self.tcx.types.bool,
+                    sym::type_id => self.tcx.types.u64,
+                    sym::type_name => self.tcx.mk_static_str(),
+                    _ => span_bug!(span, "Already checked for nullary intrinsics"),
+                };
+                let val = self.const_eval(gid, ty)?;
                 self.copy_op(val, dest)?;
             }
 
