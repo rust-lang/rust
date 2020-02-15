@@ -6,6 +6,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 
 use std::any::type_name;
 use std::mem;
+#[cfg(debug_assertions)]
+use std::sync::atomic::Ordering;
 
 trait KeyStats {
     fn key_stats(&self, stats: &mut QueryStats);
@@ -42,7 +44,7 @@ fn stats<'tcx, Q: QueryAccessors<'tcx>>(
     let mut stats = QueryStats {
         name,
         #[cfg(debug_assertions)]
-        cache_hits: map.cache_hits,
+        cache_hits: map.cache_hits.load(Ordering::Relaxed),
         #[cfg(not(debug_assertions))]
         cache_hits: 0,
         key_size: mem::size_of::<Q::Key>(),
@@ -108,8 +110,10 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
         queries.iter().filter(|q| q.local_def_id_keys.is_some()).collect();
     def_id_density.sort_by_key(|q| q.local_def_id_keys.unwrap());
     println!("\nLocal DefId density:");
+    let total = tcx.hir().definitions().def_index_count() as f64;
     for q in def_id_density.iter().rev() {
-        println!("   {} - {}", q.name, q.local_def_id_keys.unwrap());
+        let local = q.local_def_id_keys.unwrap();
+        println!("   {} - {} = ({}%)", q.name, local, (local as f64 * 100.0) / total);
     }
 }
 
