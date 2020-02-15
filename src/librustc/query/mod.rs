@@ -75,6 +75,7 @@ rustc_queries! {
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
         query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
+            storage(caches::LocalDenseDefIdCacheSelector<&'tcx HirOwner<'tcx>>)
             eval_always
         }
 
@@ -83,6 +84,7 @@ rustc_queries! {
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
         query hir_owner_items(key: DefId) -> &'tcx HirOwnerItems<'tcx> {
+            storage(caches::LocalDenseDefIdCacheSelector<&'tcx HirOwnerItems<'tcx>>)
             eval_always
         }
 
