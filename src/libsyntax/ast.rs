@@ -2600,35 +2600,8 @@ impl ItemKind {
     }
 }
 
-pub type ForeignItem = Item<ForeignItemKind>;
-
-/// An item within an `extern` block.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ForeignItemKind {
-    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
-    /// If `def` is parsed, then the constant is provided, and otherwise required.
-    Const(P<Ty>, Option<P<Expr>>),
-    /// A static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
-    /// A function.
-    Fn(FnSig, Generics, Option<P<Block>>),
-    /// A type.
-    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
-    /// A macro expanding to an item.
-    Macro(Mac),
-}
-
-impl ForeignItemKind {
-    pub fn descriptive_variant(&self) -> &str {
-        match *self {
-            ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Const(..) => "foreign const item",
-            ForeignItemKind::Static(..) => "foreign static item",
-            ForeignItemKind::TyAlias(..) => "foreign type",
-            ForeignItemKind::Macro(..) => "macro in foreign module",
-        }
-    }
-}
+pub type ForeignItem = Item<AssocItemKind>;
+pub type ForeignItemKind = AssocItemKind;
 
 /// Represents associated items.
 /// These include items in `impl` and `trait` definitions.
@@ -2646,7 +2619,7 @@ pub struct AssocItem {
     pub tokens: Option<TokenStream>,
 }
 
-/// Represents various kinds of content within an `impl`.
+/// Represents non-free item kinds.
 ///
 /// The term "provided" in the variants below refers to the item having a default
 /// definition / body. Meanwhile, a "required" item lacks a definition / body.
