@@ -1105,10 +1105,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
+        LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
         LintId::of(&utils::internal_lints::PRODUCE_ICE),
-        LintId::of(&utils::internal_lints::DEFAULT_LINT),
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
