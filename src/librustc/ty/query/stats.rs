@@ -2,9 +2,26 @@ use crate::ty::query::config::QueryAccessors;
 use crate::ty::query::plumbing::QueryState;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 
 use std::any::type_name;
 use std::mem;
+
+trait KeyStats {
+    fn key_stats(&self, stats: &mut QueryStats);
+}
+
+impl<T> KeyStats for T {
+    default fn key_stats(&self, _: &mut QueryStats) {}
+}
+
+impl KeyStats for DefId {
+    fn key_stats(&self, stats: &mut QueryStats) {
+        if self.krate == LOCAL_CRATE {
+            stats.local_def_id_keys = Some(stats.local_def_id_keys.unwrap_or(0) + 1);
+        }
+    }
+}
 
 #[derive(Clone)]
 struct QueryStats {
@@ -15,13 +32,14 @@ struct QueryStats {
     value_size: usize,
     value_type: &'static str,
     entry_count: usize,
+    local_def_id_keys: Option<usize>,
 }
 
 fn stats<'tcx, Q: QueryAccessors<'tcx>>(
     name: &'static str,
     map: &QueryState<'tcx, Q>,
 ) -> QueryStats {
-    QueryStats {
+    let mut stats = QueryStats {
         name,
         #[cfg(debug_assertions)]
         cache_hits: map.cache_hits,
@@ -32,7 +50,14 @@ fn stats<'tcx, Q: QueryAccessors<'tcx>>(
         value_size: mem::size_of::<Q::Value>(),
         value_type: type_name::<Q::Value>(),
         entry_count: map.iter_results(|results| results.count()),
-    }
+        local_def_id_keys: None,
+    };
+    map.iter_results(|results| {
+        for (key, _, _) in results {
+            key.key_stats(&mut stats)
+        }
+    });
+    stats
 }
 
 pub fn print_stats(tcx: TyCtxt<'_>) {
@@ -77,6 +102,14 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
     println!("\nQuery value count:");
     for q in query_value_count.iter().rev() {
         println!("   {} - {}", q.name, q.entry_count);
+    }
+
+    let mut def_id_density: Vec<_> =
+        queries.iter().filter(|q| q.local_def_id_keys.is_some()).collect();
+    def_id_density.sort_by_key(|q| q.local_def_id_keys.unwrap());
+    println!("\nLocal DefId density:");
+    for q in def_id_density.iter().rev() {
+        println!("   {} - {}", q.name, q.local_def_id_keys.unwrap());
     }
 }
 
