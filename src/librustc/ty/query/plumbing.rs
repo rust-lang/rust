@@ -24,6 +24,8 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
 use std::ptr;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(crate) struct QueryStateShard<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
     pub(super) cache: <<D as QueryAccessors<'tcx>>::Cache as QueryCache<D::Key, D::Value>>::Sharded,
@@ -51,7 +53,7 @@ pub(crate) struct QueryState<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
     pub(super) cache: D::Cache,
     pub(super) shards: Sharded<QueryStateShard<'tcx, D>>,
     #[cfg(debug_assertions)]
-    pub(super) cache_hits: usize,
+    pub(super) cache_hits: AtomicUsize,
 }
 
 impl<'tcx, Q: QueryAccessors<'tcx>> QueryState<'tcx, Q> {
@@ -100,7 +102,7 @@ impl<'tcx, M: QueryAccessors<'tcx>> Default for QueryState<'tcx, M> {
             cache: M::Cache::default(),
             shards: Default::default(),
             #[cfg(debug_assertions)]
-            cache_hits: 0,
+            cache_hits: AtomicUsize::new(0),
         }
     }
 }
@@ -438,6 +440,10 @@ impl<'tcx> TyCtxt<'tcx> {
             |value, index| {
                 if unlikely!(self.prof.enabled()) {
                     self.prof.query_cache_hit(index.into());
+                }
+                #[cfg(debug_assertions)]
+                {
+                    state.cache_hits.fetch_add(1, Ordering::Relaxed);
                 }
                 on_hit(value, index)
             },
