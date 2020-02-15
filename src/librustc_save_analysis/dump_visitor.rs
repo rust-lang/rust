@@ -285,7 +285,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 v.visit_ty(&arg.ty);
             }
 
-            if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
+            if let ast::FnRetTy::Ty(ref ret_ty) = sig.decl.output {
                 // In async functions, return types are desugared and redefined
                 // as an `impl Trait` existential type. Because of this, to match
                 // the definition paths when resolving nested types we need to
@@ -374,7 +374,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 v.visit_ty(&arg.ty)
             }
 
-            if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+            if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
                 if let ast::TyKind::ImplTrait(..) = ret_ty.kind {
                     // FIXME: Opaque type desugaring prevents us from easily
                     // processing trait bounds. See `visit_ty` for more details.
@@ -792,7 +792,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         for t in &data.inputs {
                             self.visit_ty(t);
                         }
-                        if let ast::FunctionRetTy::Ty(ty) = &data.output {
+                        if let ast::FnRetTy::Ty(ty) = &data.output {
                             self.visit_ty(ty);
                         }
                     }
@@ -1449,7 +1449,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     self.visit_ty(&arg.ty);
                 }
 
-                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+                if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
                     self.visit_ty(&ret_ty);
                 }
 
@@ -1528,7 +1528,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     self.visit_ty(&arg.ty);
                 }
 
-                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+                if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
                     self.visit_ty(&ret_ty);
                 }
             }

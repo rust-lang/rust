@@ -5,9 +5,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{
-    self, BareFnTy, FunctionRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind,
-};
+use syntax::ast::{self, BareFnTy, FnRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind};
 use syntax::ast::{
     GenericBound, GenericBounds, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax,
 };
@@ -91,13 +89,13 @@ impl<'a> Parser<'a> {
         &mut self,
         allow_plus: AllowPlus,
         recover_qpath: RecoverQPath,
-    ) -> PResult<'a, FunctionRetTy> {
+    ) -> PResult<'a, FnRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
             let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
-            FunctionRetTy::Ty(ty)
+            FnRetTy::Ty(ty)
         } else {
-            FunctionRetTy::Default(self.token.span.shrink_to_lo())
+            FnRetTy::Default(self.token.span.shrink_to_lo())
         })
     }
 

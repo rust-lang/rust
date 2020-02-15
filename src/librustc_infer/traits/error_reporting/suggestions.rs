@@ -594,7 +594,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        let ret_ty = if let hir::FunctionRetTy::Return(ret_ty) = sig.decl.output {
+        let ret_ty = if let hir::FnRetTy::Return(ret_ty) = sig.decl.output {
             ret_ty
         } else {
             return false;
