@@ -13,7 +13,7 @@ use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind
 use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, Unsafe};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
+use syntax::ast::{FnHeader, ForeignItem, Mutability, Visibility, VisibilityKind};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -333,29 +333,19 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
-    fn missing_assoc_item_kind_err(
-        &self,
-        item_type: &str,
-        prev_span: Span,
-    ) -> DiagnosticBuilder<'a> {
-        let expected_kinds = if item_type == "extern" {
-            "missing `fn`, `type`, or `static`"
-        } else {
-            "missing `fn`, `type`, or `const`"
-        };
-
-        // Given this code `path(`, it seems like this is not
-        // setting the visibility of a macro invocation, but rather
-        // a mistyped method declaration.
-        // Create a diagnostic pointing out that `fn` is missing.
-        //
-        // x |     pub path(&self) {
-        //   |        ^ missing `fn`, `type`, or `const`
-        //     pub  path(
-        //        ^^ `sp` below will point to this
+    /// Given this code `path(`, it seems like this is not
+    /// setting the visibility of a macro invocation,
+    /// but rather a mistyped method declaration.
+    /// Create a diagnostic pointing out that `fn` is missing.
+    ///
+    /// ```
+    /// x |     pub   path(&self) {
+    ///   |         ^ missing `fn`, `type`, `const`, or `static`
+    /// ```
+    fn missing_nested_item_kind_err(&self, prev_span: Span) -> DiagnosticBuilder<'a> {
         let sp = prev_span.between(self.token.span);
-        let mut err = self
-            .struct_span_err(sp, &format!("{} for {}-item declaration", expected_kinds, item_type));
+        let expected_kinds = "missing `fn`, `type`, `const`, or `static`";
+        let mut err = self.struct_span_err(sp, &format!("{} for item declaration", expected_kinds));
         err.span_label(sp, expected_kinds);
         err
     }
@@ -639,7 +629,7 @@ impl<'a> Parser<'a> {
     fn parse_assoc_item(
         &mut self,
         at_end: &mut bool,
-        req_name: fn(&token::Token) -> bool,
+        req_name: ReqName,
     ) -> PResult<'a, P<AssocItem>> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
@@ -660,39 +650,47 @@ impl<'a> Parser<'a> {
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
-        req_name: fn(&token::Token) -> bool,
+        req_name: ReqName,
     ) -> PResult<'a, AssocItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
+        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, req_name, &vis)?;
+        let span = lo.to(self.prev_span);
+        let id = DUMMY_NODE_ID;
+        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
+    }
 
-        let (ident, kind) = if self.eat_keyword(kw::Type) {
-            self.parse_assoc_ty()?
+    fn parse_assoc_item_kind(
+        &mut self,
+        at_end: &mut bool,
+        attrs: &mut Vec<Attribute>,
+        req_name: ReqName,
+        vis: &Visibility,
+    ) -> PResult<'a, (Ident, AssocItemKind)> {
+        if self.eat_keyword(kw::Type) {
+            self.parse_assoc_ty()
         } else if self.check_fn_front_matter() {
-            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
-            (ident, AssocItemKind::Fn(sig, generics, body))
+            let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, req_name)?;
+            Ok((ident, AssocItemKind::Fn(sig, generics, body)))
         } else if self.is_static_global() {
             self.bump(); // `static`
             let mutbl = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
-            (ident, AssocItemKind::Static(ty, mutbl, expr))
+            Ok((ident, AssocItemKind::Static(ty, mutbl, expr)))
         } else if self.eat_keyword(kw::Const) {
             let (ident, ty, expr) = self.parse_item_const_common(None)?;
-            (ident, AssocItemKind::Const(ty, expr))
+            Ok((ident, AssocItemKind::Const(ty, expr)))
         } else if self.isnt_macro_invocation() {
-            return Err(self.missing_assoc_item_kind_err("associated", self.prev_span));
+            Err(self.missing_nested_item_kind_err(self.prev_span))
         } else if self.token.is_path_start() {
             let mac = self.parse_item_macro(&vis)?;
             *at_end = true;
-            (Ident::invalid(), AssocItemKind::Macro(mac))
+            Ok((Ident::invalid(), AssocItemKind::Macro(mac)))
         } else {
-            self.recover_attrs_no_item(&attrs)?;
-            self.unexpected()?
-        };
-
-        let span = lo.to(self.prev_span);
-        let id = DUMMY_NODE_ID;
-        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
+            self.recover_attrs_no_item(attrs)?;
+            self.unexpected()
+        }
     }
 
     /// Parses the following grammar:
@@ -869,44 +867,8 @@ impl<'a> Parser<'a> {
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
-
-        let (ident, kind) = if self.eat_keyword(kw::Type) {
-            // FOREIGN TYPE ITEM
-            self.parse_item_foreign_type()?
-        } else if self.check_fn_front_matter() {
-            // FOREIGN FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, |_| true)?;
-            (ident, ForeignItemKind::Fn(sig, generics, body))
-        } else if self.is_static_global() {
-            // FOREIGN STATIC ITEM
-            self.bump(); // `static`
-            let mutbl = self.parse_mutability();
-            let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
-            (ident, ForeignItemKind::Static(ty, mutbl, expr))
-        } else if self.eat_keyword(kw::Const) {
-            let (ident, ty, expr) = self.parse_item_const_common(None)?;
-            (ident, ForeignItemKind::Const(ty, expr))
-        } else if self.isnt_macro_invocation() {
-            return Err(self.missing_assoc_item_kind_err("extern", self.prev_span));
-        } else if self.token.is_path_start() {
-            let mac = self.parse_item_macro(&vis)?;
-            *at_end = true;
-            (Ident::invalid(), ForeignItemKind::Macro(mac))
-        } else {
-            self.recover_attrs_no_item(&attrs)?;
-            self.unexpected()?
-        };
+        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, |_| true, &vis)?;
         Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
-    }
-
-    /// Parses a type from a foreign module.
-    fn parse_item_foreign_type(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
-        let (ident, kind) = self.parse_assoc_ty()?;
-        let kind = match kind {
-            AssocItemKind::TyAlias(g, b, d) => ForeignItemKind::TyAlias(g, b, d),
-            _ => unreachable!(),
-        };
-        Ok((ident, kind))
     }
 
     fn is_static_global(&mut self) -> bool {

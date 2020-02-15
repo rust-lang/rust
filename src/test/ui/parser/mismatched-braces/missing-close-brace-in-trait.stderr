@@ -7,11 +7,11 @@ LL | trait T {
 LL | fn main() {}
    |                                                                 ^
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/missing-close-brace-in-trait.rs:5:11
    |
 LL | pub(crate) struct Bar<T>();
-   |           ^ missing `fn`, `type`, or `const`
+   |           ^ missing `fn`, `type`, `const`, or `static`
 
 error[E0601]: `main` function not found in crate `missing_close_brace_in_trait`
   --> $DIR/missing-close-brace-in-trait.rs:1:1
