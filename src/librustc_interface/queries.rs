@@ -340,7 +340,7 @@ impl Compiler {
 
         if self.session().opts.debugging_opts.query_stats {
             if let Ok(gcx) = queries.global_ctxt() {
-                gcx.peek().print_stats();
+                gcx.peek_mut().print_stats();
             }
         }
 

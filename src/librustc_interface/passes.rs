@@ -696,8 +696,8 @@ impl<'tcx> QueryContext<'tcx> {
         ty::tls::enter_global(self.0, |tcx| f(tcx))
     }
 
-    pub fn print_stats(&self) {
-        self.0.queries.print_stats()
+    pub fn print_stats(&mut self) {
+        self.enter(|tcx| ty::query::print_stats(tcx))
     }
 }
 
