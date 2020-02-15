@@ -1,4 +1,4 @@
-#![allow(const_err)]
+#![allow(panic, const_err)]
 
 // error-pattern: attempt to divide by zero
 

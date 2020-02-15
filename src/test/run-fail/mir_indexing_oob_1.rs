@@ -2,7 +2,7 @@
 
 const C: [u32; 5] = [0; 5];
 
-#[allow(const_err)]
+#[allow(panic, const_err)]
 fn test() -> u32 {
     C[10]
 }
