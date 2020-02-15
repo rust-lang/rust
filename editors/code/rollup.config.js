@@ -18,6 +18,7 @@ export default {
     external: [...nodeBuiltins, 'vscode'],
     output: {
         file: './out/main.js',
-        format: 'cjs'
+        format: 'cjs',
+        exports: 'named'
     }
 };
