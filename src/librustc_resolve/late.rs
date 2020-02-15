@@ -443,7 +443,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Static(..) => {
+            ForeignItemKind::Const(..) | ForeignItemKind::Static(..) => {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });

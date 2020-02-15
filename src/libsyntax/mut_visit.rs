@@ -1046,7 +1046,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visitor.visit_generics(generics);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        ForeignItemKind::Static(ty, _, body) => {
+        ForeignItemKind::Const(ty, body) | ForeignItemKind::Static(ty, _, body) => {
             visitor.visit_ty(ty);
             visit_opt(body, |body| visitor.visit_expr(body));
         }

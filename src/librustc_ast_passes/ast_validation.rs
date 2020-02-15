@@ -533,6 +533,20 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn error_foreign_const(&self, ident: Ident, span: Span) {
+        self.err_handler()
+            .struct_span_err(ident.span, "extern items cannot be `const`")
+            .span_suggestion(
+                span.with_hi(ident.span.lo()),
+                "try using a static value",
+                "static ".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .span_label(self.current_extern_span(), "in this `extern` block")
+            .note(MORE_EXTERN)
+            .emit();
+    }
+
     /// Reject C-varadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
     fn check_c_varadic_type(&self, fk: FnKind<'a>) {
@@ -988,6 +1002,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ForeignItemKind::Static(_, _, body) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+            }
+            ForeignItemKind::Const(..) => {
+                self.error_foreign_const(fi.ident, fi.span);
             }
             ForeignItemKind::Macro(..) => {}
         }

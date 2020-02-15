@@ -880,19 +880,12 @@ impl<'a> Parser<'a> {
         } else if self.is_static_global() {
             // FOREIGN STATIC ITEM
             self.bump(); // `static`
-            self.parse_item_foreign_static()?
-        } else if self.token.is_keyword(kw::Const) {
-            // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
-            self.bump(); // `const`
-            self.struct_span_err(self.prev_span, "extern items cannot be `const`")
-                .span_suggestion(
-                    self.prev_span,
-                    "try using a static value",
-                    "static".to_owned(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
-            self.parse_item_foreign_static()?
+            let mutbl = self.parse_mutability();
+            let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
+            (ident, ForeignItemKind::Static(ty, mutbl, expr))
+        } else if self.eat_keyword(kw::Const) {
+            let (ident, ty, expr) = self.parse_item_const_common(None)?;
+            (ident, ForeignItemKind::Const(ty, expr))
         } else if self.isnt_macro_invocation() {
             return Err(self.missing_assoc_item_kind_err("extern", self.prev_span));
         } else if self.token.is_path_start() {
@@ -904,14 +897,6 @@ impl<'a> Parser<'a> {
             self.unexpected()?
         };
         Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
-    }
-
-    /// Parses a static item from a foreign module.
-    /// Assumes that the `static` keyword is already parsed.
-    fn parse_item_foreign_static(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
-        let mutbl = self.parse_mutability();
-        let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
-        Ok((ident, ForeignItemKind::Static(ty, mutbl, expr)))
     }
 
     /// Parses a type from a foreign module.

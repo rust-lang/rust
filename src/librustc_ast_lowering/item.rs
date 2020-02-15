@@ -683,6 +683,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ty = self.lower_ty(t, ImplTraitContext::disallowed());
                     hir::ForeignItemKind::Static(ty, m)
                 }
+                ForeignItemKind::Const(ref t, _) => {
+                    // For recovery purposes.
+                    let ty = self.lower_ty(t, ImplTraitContext::disallowed());
+                    hir::ForeignItemKind::Static(ty, Mutability::Not)
+                }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
             },

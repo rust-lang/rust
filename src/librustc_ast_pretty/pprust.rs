@@ -1023,6 +1023,9 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(sig, gen, body) => {
                 self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
             }
+            ast::ForeignItemKind::Const(ty, body) => {
+                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis);
+            }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
                 self.print_item_const(item.ident, Some(*mutbl), ty, body.as_deref(), &item.vis);
             }

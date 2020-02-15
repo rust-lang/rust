@@ -826,7 +826,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Static(..) => {
+            ForeignItemKind::Static(..) | ForeignItemKind::Const(..) => {
                 (Res::Def(DefKind::Static, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::TyAlias(..) => {

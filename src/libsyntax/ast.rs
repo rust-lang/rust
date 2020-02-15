@@ -2605,6 +2605,9 @@ pub type ForeignItem = Item<ForeignItemKind>;
 /// An item within an `extern` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
+    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the constant is provided, and otherwise required.
+    Const(P<Ty>, Option<P<Expr>>),
     /// A static item (`static FOO: u8`).
     Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A function.
@@ -2619,6 +2622,7 @@ impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
+            ForeignItemKind::Const(..) => "foreign const item",
             ForeignItemKind::Static(..) => "foreign static item",
             ForeignItemKind::TyAlias(..) => "foreign type",
             ForeignItemKind::Macro(..) => "macro in foreign module",
