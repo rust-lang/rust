@@ -2637,6 +2637,6 @@ pub enum AssocItemKind {
     Fn(FnSig, Generics, Option<P<Block>>),
     /// A type.
     TyAlias(Generics, GenericBounds, Option<P<Ty>>),
-    /// A macro expanding to an item.
+    /// A macro expanding to items.
     Macro(Mac),
 }
