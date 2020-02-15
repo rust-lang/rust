@@ -219,12 +219,9 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
-    type KeyType = Self;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self {
-        *self
+impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 
