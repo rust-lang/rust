@@ -912,7 +912,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
+    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
             self.print_foreign_item(item);
@@ -1016,21 +1016,37 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+        let ast::ForeignItem { id, span, ident, attrs, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, ast::Defaultness::Final, kind, vis);
+    }
+
+    fn print_nested_item_kind(
+        &mut self,
+        id: ast::NodeId,
+        span: Span,
+        ident: ast::Ident,
+        attrs: &[Attribute],
+        defaultness: ast::Defaultness,
+        kind: &ast::AssocItemKind,
+        vis: &ast::Visibility,
+    ) {
+        self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
-        match &item.kind {
+        self.maybe_print_comment(span.lo());
+        self.print_outer_attributes(attrs);
+        self.print_defaultness(defaultness);
+        match kind {
             ast::ForeignItemKind::Fn(sig, gen, body) => {
-                self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
+                self.print_fn_full(sig, ident, gen, vis, body.as_deref(), attrs);
             }
             ast::ForeignItemKind::Const(ty, body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis);
+                self.print_item_const(ident, None, ty, body.as_deref(), vis);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
-                self.print_item_const(item.ident, Some(*mutbl), ty, body.as_deref(), &item.vis);
+                self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis);
             }
             ast::ForeignItemKind::TyAlias(generics, bounds, ty) => {
-                self.print_associated_type(item.ident, generics, bounds, ty.as_deref());
+                self.print_associated_type(ident, generics, bounds, ty.as_deref());
             }
             ast::ForeignItemKind::Macro(m) => {
                 self.print_mac(m);
@@ -1039,6 +1055,7 @@ impl<'a> State<'a> {
                 }
             }
         }
+        self.ann.post(self, AnnNode::SubItem(id))
     }
 
     fn print_item_const(
@@ -1438,33 +1455,8 @@ impl<'a> State<'a> {
     }
 
     crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
-        self.ann.pre(self, AnnNode::SubItem(item.id));
-        self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
-        self.print_defaultness(item.defaultness);
-        match &item.kind {
-            ast::AssocItemKind::Static(ty, mutbl, expr) => {
-                self.print_item_const(item.ident, Some(*mutbl), ty, expr.as_deref(), &item.vis);
-            }
-            ast::AssocItemKind::Const(ty, expr) => {
-                self.print_item_const(item.ident, None, ty, expr.as_deref(), &item.vis);
-            }
-            ast::AssocItemKind::Fn(sig, generics, body) => {
-                let body = body.as_deref();
-                self.print_fn_full(sig, item.ident, generics, &item.vis, body, &item.attrs);
-            }
-            ast::AssocItemKind::TyAlias(generics, bounds, ty) => {
-                self.print_associated_type(item.ident, generics, bounds, ty.as_deref());
-            }
-            ast::AssocItemKind::Macro(mac) => {
-                self.print_mac(mac);
-                if mac.args.need_semicolon() {
-                    self.s.word(";");
-                }
-            }
-        }
-        self.ann.post(self, AnnNode::SubItem(item.id))
+        let ast::AssocItem { id, span, ident, attrs, defaultness, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, *defaultness, kind, vis);
     }
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {
