@@ -1,10 +1,8 @@
-use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decoder, Encoder};
 use rustc_span::ExpnId;
 use std::fmt;
 
 rustc_index::newtype_index! {
-    #[derive(HashStable_Generic)]
     pub struct NodeId {
         ENCODABLE = custom
         DEBUG_FORMAT = "NodeId({})"
