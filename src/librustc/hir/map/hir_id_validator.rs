@@ -4,7 +4,7 @@ use crate::hir::{self, intravisit, HirId, ItemLocalId};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 
-pub fn check_crate(hir_map: &hir::map::Map<'_>) {
+pub fn check_crate(hir_map: &hir::map::Map<'_>, sess: &rustc_session::Session) {
     hir_map.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());
@@ -21,7 +21,7 @@ pub fn check_crate(hir_map: &hir::map::Map<'_>) {
 
     if !errors.is_empty() {
         let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        bug!("{}", message);
+        sess.delay_span_bug(syntax_pos::DUMMY_SP, &message);
     }
 }
 

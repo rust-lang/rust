@@ -1245,7 +1245,7 @@ pub fn map_crate<'hir>(
     };
 
     time(sess, "validate HIR map", || {
-        hir_id_validator::check_crate(&map);
+        hir_id_validator::check_crate(&map, sess);
     });
 
     map
