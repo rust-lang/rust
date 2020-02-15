@@ -49,7 +49,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
-use crate::infer::{self, SuppressRegionErrors};
+use crate::infer;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -372,17 +372,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         region_scope_tree: &region::ScopeTree,
         errors: &Vec<RegionResolutionError<'tcx>>,
-        suppress: SuppressRegionErrors,
     ) {
-        debug!(
-            "report_region_errors(): {} errors to start, suppress = {:?}",
-            errors.len(),
-            suppress
-        );
-
-        if suppress.suppressed() {
-            return;
-        }
+        debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
         // together into a `ProcessedErrors` group:

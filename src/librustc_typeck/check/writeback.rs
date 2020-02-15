@@ -124,7 +124,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
-        assert!(!ty.needs_infer() && !ty.has_placeholders());
+        assert!(!ty.needs_infer() && !ty.has_placeholders() && !ty.has_free_regions());
         self.tables.node_types_mut().insert(hir_id, ty);
     }
 
@@ -326,9 +326,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
-                    let r = upvar_borrow.region;
-                    let r = self.resolve(&r, &upvar_id.var_path.hir_id);
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
+                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                        kind: upvar_borrow.kind,
+                        region: self.tcx().lifetimes.re_erased,
+                    })
                 }
             };
             debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
@@ -421,8 +422,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
-            let instantiated_ty =
-                self.tcx().erase_regions(&self.resolve(&opaque_defn.concrete_ty, &hir_id));
+            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
@@ -611,10 +611,8 @@ impl Locatable for hir::HirId {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-// The Resolver. This is the type folding engine that detects
-// unresolved types and so forth.
-
+/// The Resolver. This is the type folding engine that detects
+/// unresolved types and so forth.
 struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
@@ -647,7 +645,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match self.infcx.fully_resolve(&t) {
-            Ok(t) => t,
+            Ok(t) => self.infcx.tcx.erase_regions(&t),
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_error(t);
@@ -656,15 +654,14 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         }
     }
 
-    // FIXME This should be carefully checked
-    // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        self.infcx.fully_resolve(&r).unwrap_or(self.tcx.lifetimes.re_static)
+        debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
+        self.tcx.lifetimes.re_erased
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match self.infcx.fully_resolve(&ct) {
-            Ok(ct) => ct,
+            Ok(ct) => self.infcx.tcx.erase_regions(&ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
