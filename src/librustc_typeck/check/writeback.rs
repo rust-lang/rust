@@ -426,7 +426,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
-            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
+            let instantiated_ty =
+                self.tcx().erase_regions(&self.resolve(&opaque_defn.concrete_ty, &hir_id));
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
@@ -444,7 +445,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id,
-                opaque_defn,
+                opaque_defn.substs,
                 instantiated_ty,
                 span,
             );

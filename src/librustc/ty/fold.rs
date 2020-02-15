@@ -78,6 +78,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
+    fn has_opaque_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+    }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_ERR)
     }
@@ -118,6 +121,10 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// that is not (a) erased or (b) late-bound.
     fn has_free_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
+    fn has_erased_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
     }
 
     /// True if there are any un-erased free regions.

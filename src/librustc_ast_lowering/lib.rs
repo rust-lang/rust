@@ -222,7 +222,7 @@ enum ImplTraitContext<'b, 'a> {
     /// We optionally store a `DefId` for the parent item here so we can look up necessary
     /// information later. It is `None` when no information about the context should be stored
     /// (e.g., for consts and statics).
-    OpaqueTy(Option<DefId> /* fn def-ID */),
+    OpaqueTy(Option<DefId> /* fn def-ID */, hir::OpaqueTyOrigin),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
@@ -248,7 +248,7 @@ impl<'a> ImplTraitContext<'_, 'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(params) => Universal(params),
-            OpaqueTy(fn_def_id) => OpaqueTy(*fn_def_id),
+            OpaqueTy(fn_def_id, origin) => OpaqueTy(*fn_def_id, *origin),
             Disallowed(pos) => Disallowed(*pos),
         }
     }
@@ -1010,7 +1010,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo() -> impl Iterator<Item = impl Debug>
-                    ImplTraitContext::OpaqueTy(_) => (true, itctx),
+                    ImplTraitContext::OpaqueTy(..) => (true, itctx),
 
                     // We are in the argument position, but within a dyn type:
                     //
@@ -1019,7 +1019,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal(_) if self.is_in_dyn_type => (true, itctx),
+                    ImplTraitContext::Universal(..) if self.is_in_dyn_type => (true, itctx),
 
                     // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
                     // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
@@ -1028,7 +1028,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     //
                     // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
                     ImplTraitContext::Disallowed(_) if self.is_in_dyn_type => {
-                        (true, ImplTraitContext::OpaqueTy(None))
+                        (true, ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc))
                     }
 
                     // We are in the parameter position, but not within a dyn type:
@@ -1269,8 +1269,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::OpaqueTy(fn_def_id) => {
-                        self.lower_opaque_impl_trait(span, fn_def_id, def_node_id, |this| {
+                    ImplTraitContext::OpaqueTy(fn_def_id, origin) => {
+                        self.lower_opaque_impl_trait(span, fn_def_id, origin, def_node_id, |this| {
                             this.lower_param_bounds(bounds, itctx)
                         })
                     }
@@ -1349,6 +1349,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         fn_def_id: Option<DefId>,
+        origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
         lower_bounds: impl FnOnce(&mut Self) -> hir::GenericBounds<'hir>,
     ) -> hir::TyKind<'hir> {
@@ -1390,7 +1391,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 },
                 bounds: hir_bounds,
                 impl_trait_fn: fn_def_id,
-                origin: hir::OpaqueTyOrigin::FnReturn,
+                origin,
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_index);
@@ -1622,7 +1623,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty(
                 t,
                 if self.sess.features_untracked().impl_trait_in_bindings {
-                    ImplTraitContext::OpaqueTy(Some(parent_def_id))
+                    ImplTraitContext::OpaqueTy(Some(parent_def_id), hir::OpaqueTyOrigin::Misc)
                 } else {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                 },
@@ -1722,14 +1723,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         } else {
             match decl.output {
-                FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
-                    Some((def_id, _)) if impl_trait_return_allow => hir::FunctionRetTy::Return(
-                        self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))),
-                    ),
-                    _ => hir::FunctionRetTy::Return(
-                        self.lower_ty(ty, ImplTraitContext::disallowed()),
-                    ),
-                },
+                FunctionRetTy::Ty(ref ty) => {
+                    let context = match in_band_ty_params {
+                        Some((def_id, _)) if impl_trait_return_allow => {
+                            ImplTraitContext::OpaqueTy(Some(def_id), hir::OpaqueTyOrigin::FnReturn)
+                        }
+                        _ => ImplTraitContext::disallowed(),
+                    };
+                    hir::FunctionRetTy::Return(self.lower_ty(ty, context))
+                }
                 FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
             }
         };
@@ -1957,7 +1959,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id))),
+            FunctionRetTy::Ty(ty) => {
+                // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
+                // `impl Future` opaque type that `async fn` implicitly
+                // generates.
+                let context =
+                    ImplTraitContext::OpaqueTy(Some(fn_def_id), hir::OpaqueTyOrigin::FnReturn);
+                self.lower_ty(ty, context)
+            }
             FunctionRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
@@ -2102,9 +2111,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
 
                 let kind = hir::GenericParamKind::Type {
-                    default: default
-                        .as_ref()
-                        .map(|x| self.lower_ty(x, ImplTraitContext::OpaqueTy(None))),
+                    default: default.as_ref().map(|x| {
+                        self.lower_ty(
+                            x,
+                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
+                        )
+                    }),
                     synthetic: param
                         .attrs
                         .iter()

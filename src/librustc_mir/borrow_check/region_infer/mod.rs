@@ -12,8 +12,6 @@ use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_data_structures::graph::WithSuccessors;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -26,6 +24,7 @@ use crate::borrow_check::{
     diagnostics::{RegionErrorKind, RegionErrors},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
     nll::{PoloniusOutput, ToRegionVid},
+    region_infer::reverse_sccs::ReverseSccGraph,
     region_infer::values::{
         LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
         ToElementIndex,
@@ -36,6 +35,8 @@ use crate::borrow_check::{
 
 mod dump_mir;
 mod graphviz;
+mod opaque_types;
+mod reverse_sccs;
 
 pub mod values;
 
@@ -65,9 +66,10 @@ pub struct RegionInferenceContext<'tcx> {
     /// compute the values of each region.
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
-    /// Reverse of the SCC constraint graph -- i.e., an edge `A -> B`
-    /// exists if `B: A`. Computed lazilly.
-    rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
+    /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
+    /// `B: A`. This is used to compute the universal regions that are required
+    /// to outlive a given SCC. Computed lazily.
+    rev_scc_graph: Option<Rc<ReverseSccGraph>>,
 
     /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
     member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
@@ -287,7 +289,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints,
             constraint_graph,
             constraint_sccs,
-            rev_constraint_graph: None,
+            rev_scc_graph: None,
             member_constraints,
             member_constraints_applied: Vec::new(),
             closure_bounds_mapping,
@@ -510,7 +512,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_universal_regions(body, outlives_requirements.as_mut(), &mut errors_buffer);
         }
 
-        self.check_member_constraints(infcx, &mut errors_buffer);
+        if errors_buffer.is_empty() {
+            self.check_member_constraints(infcx, &mut errors_buffer);
+        }
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -677,15 +681,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // free region that must outlive the member region `R0` (`UB:
         // R0`). Therefore, we need only keep an option `O` if `UB: O`
         // for all UB.
-        if choice_regions.len() > 1 {
-            let universal_region_relations = self.universal_region_relations.clone();
-            let rev_constraint_graph = self.rev_constraint_graph();
-            for ub in self.upper_bounds(scc, &rev_constraint_graph) {
-                debug!("apply_member_constraint: ub={:?}", ub);
-                choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
-            }
-            debug!("apply_member_constraint: after ub, choice_regions={:?}", choice_regions);
+        let rev_scc_graph = self.reverse_scc_graph();
+        let universal_region_relations = &self.universal_region_relations;
+        for ub in rev_scc_graph.upper_bounds(scc) {
+            debug!("apply_member_constraint: ub={:?}", ub);
+            choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
         }
+        debug!("apply_member_constraint: after ub, choice_regions={:?}", choice_regions);
 
         // If we ruled everything out, we're done.
         if choice_regions.is_empty() {
@@ -739,32 +741,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         } else {
             false
         }
-    }
-
-    /// Compute and return the reverse SCC-based constraint graph (lazilly).
-    fn upper_bounds(
-        &'a mut self,
-        scc0: ConstraintSccIndex,
-        rev_constraint_graph: &'a VecGraph<ConstraintSccIndex>,
-    ) -> impl Iterator<Item = RegionVid> + 'a {
-        let scc_values = &self.scc_values;
-        let mut duplicates = FxHashSet::default();
-        rev_constraint_graph
-            .depth_first_search(scc0)
-            .skip(1)
-            .flat_map(move |scc1| scc_values.universal_regions_outlived_by(scc1))
-            .filter(move |&r| duplicates.insert(r))
-    }
-
-    /// Compute and return the reverse SCC-based constraint graph (lazilly).
-    fn rev_constraint_graph(&mut self) -> Rc<VecGraph<ConstraintSccIndex>> {
-        if let Some(g) = &self.rev_constraint_graph {
-            return g.clone();
-        }
-
-        let rev_graph = Rc::new(self.constraint_sccs.reverse());
-        self.rev_constraint_graph = Some(rev_graph.clone());
-        rev_graph
     }
 
     /// Returns `true` if all the elements in the value of `scc_b` are nameable
@@ -1603,7 +1579,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // If not, report an error.
             let member_region = infcx.tcx.mk_region(ty::ReVar(member_region_vid));
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
-                opaque_type_def_id: m_c.opaque_type_def_id,
+                span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,
                 member_region,
             });

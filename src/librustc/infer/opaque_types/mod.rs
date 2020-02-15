@@ -93,6 +93,18 @@ pub struct OpaqueTypeDecl<'tcx> {
     pub origin: hir::OpaqueTyOrigin,
 }
 
+/// Whether member constraints should be generated for all opaque types
+pub enum GenerateMemberConstraints {
+    /// The default, used by typeck
+    WhenRequired,
+    /// The borrow checker needs member constraints in any case where we don't
+    /// have a `'static` bound. This is because the borrow checker has more
+    /// flexibility in the values of regions. For example, given `f<'a, 'b>`
+    /// the borrow checker can have an inference variable outlive `'a` and `'b`,
+    /// but not be equal to `'static`.
+    IfNoStaticBound,
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Replaces all opaque types in `value` with fresh inference variables
     /// and creates appropriate obligations. For example, given the input:
@@ -315,7 +327,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("constrain_opaque_types()");
 
         for (&def_id, opaque_defn) in opaque_types {
-            self.constrain_opaque_type(def_id, opaque_defn, free_region_relations);
+            self.constrain_opaque_type(
+                def_id,
+                opaque_defn,
+                GenerateMemberConstraints::WhenRequired,
+                free_region_relations,
+            );
         }
     }
 
@@ -324,6 +341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         def_id: DefId,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
+        mode: GenerateMemberConstraints,
         free_region_relations: &FRR,
     ) {
         debug!("constrain_opaque_type()");
@@ -357,6 +375,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     tcx: self.tcx,
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
+            }
+            if let GenerateMemberConstraints::IfNoStaticBound = mode {
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_type_generics,
+                    opaque_defn,
+                    def_id,
+                );
             }
             return;
         }
@@ -398,13 +424,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // we will create a "in bound" like `'r in
                         // ['a, 'b, 'c]`, where `'a..'c` are the
                         // regions that appear in the impl trait.
+
+                        // For now, enforce a feature gate outside of async functions.
+                        self.member_constraint_feature_gate(opaque_defn, def_id, lr, subst_arg);
+
                         return self.generate_member_constraint(
                             concrete_ty,
                             opaque_type_generics,
                             opaque_defn,
                             def_id,
-                            lr,
-                            subst_arg,
                         );
                     }
                 }
@@ -414,6 +442,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
+        if let GenerateMemberConstraints::IfNoStaticBound = mode {
+            if least_region != tcx.lifetimes.re_static {
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_type_generics,
+                    opaque_defn,
+                    def_id,
+                );
+            }
+        }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
@@ -434,19 +472,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         opaque_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
-        conflict1: ty::Region<'tcx>,
-        conflict2: ty::Region<'tcx>,
     ) {
-        // For now, enforce a feature gate outside of async functions.
-        if self.member_constraint_feature_gate(
-            opaque_defn,
-            opaque_type_def_id,
-            conflict1,
-            conflict2,
-        ) {
-            return;
-        }
-
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
@@ -500,8 +526,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::OpaqueTyOrigin::TypeAlias => "impl Trait",
-            hir::OpaqueTyOrigin::FnReturn => "impl Trait",
+            hir::OpaqueTyOrigin::TypeAlias
+            | hir::OpaqueTyOrigin::FnReturn
+            | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
@@ -549,13 +576,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `opaque_defn`, the opaque definition created in `instantiate_opaque_types`
+    /// - `substs`, the substs  used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     pub fn infer_opaque_definition_from_instantiation(
         &self,
         def_id: DefId,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        substs: SubstsRef<'tcx>,
         instantiated_ty: Ty<'tcx>,
         span: Span,
     ) -> Ty<'tcx> {
@@ -571,12 +598,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // `impl Trait` return type, resulting in the parameters
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
-        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
-            .substs
-            .iter()
-            .enumerate()
-            .map(|(index, subst)| (*subst, id_substs[index]))
-            .collect();
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
+            substs.iter().enumerate().map(|(index, subst)| (*subst, id_substs[index])).collect();
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
@@ -598,11 +621,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 pub fn unexpected_hidden_region_diagnostic(
     tcx: TyCtxt<'tcx>,
     region_scope_tree: Option<&region::ScopeTree>,
-    opaque_type_def_id: DefId,
+    span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
 ) -> DiagnosticBuilder<'tcx> {
-    let span = tcx.def_span(opaque_type_def_id);
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -817,32 +839,48 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r {
-            // ignore bound regions that appear in the type (e.g., this
-            // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..) |
+            // Ignore bound regions and `'static` regions that appear in the
+            // type, we only need to remap regions that reference lifetimes
+            // from the function declaraion.
+            // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
+            ty::ReLateBound(..) | ty::ReStatic => return r,
 
-            // ignore `'static`, as that can appear anywhere
-            ty::ReStatic => return r,
+            // If regions have been erased (by writeback), don't try to unerase
+            // them.
+            ty::ReErased => return r,
 
-            _ => { }
+            // The regions that we expect from borrow checking.
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
+
+            ty::ReEmpty(_)
+            | ty::RePlaceholder(_)
+            | ty::ReVar(_)
+            | ty::ReScope(_)
+            | ty::ReClosureBound(_) => {
+                // All of the regions in the type should either have been
+                // erased by writeback, or mapped back to named regions by
+                // borrow checking.
+                bug!("unexpected region kind in opaque type: {:?}", r);
+            }
         }
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
+            None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
+                self.tcx.lifetimes.re_root_empty
+            }
             None if generics.parent.is_some() => {
-                if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
-                    if let Some(hidden_ty) = self.hidden_ty.take() {
-                        unexpected_hidden_region_diagnostic(
-                            self.tcx,
-                            None,
-                            self.opaque_type_def_id,
-                            hidden_ty,
-                            r,
-                        )
-                        .emit();
-                    }
+                if let Some(hidden_ty) = self.hidden_ty.take() {
+                    unexpected_hidden_region_diagnostic(
+                        self.tcx,
+                        None,
+                        self.tcx.def_span(self.opaque_type_def_id),
+                        hidden_ty,
+                        r,
+                    )
+                    .emit();
                 }
                 self.tcx.lifetimes.re_root_empty
             }
@@ -860,7 +898,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().mk_region(ty::ReStatic)
+                self.tcx().lifetimes.re_static
             }
         }
     }

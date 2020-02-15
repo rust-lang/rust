@@ -6,6 +6,7 @@ use rustc::mir::{
     Location, Promoted, ReadOnlyBodyAndCache,
 };
 use rustc::ty::{self, RegionKind, RegionVid};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
@@ -46,6 +47,7 @@ crate type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 crate struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
+    pub opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
@@ -160,20 +162,21 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults { constraints, universal_region_relations } = type_check::type_check(
-        infcx,
-        param_env,
-        body,
-        promoted,
-        def_id,
-        &universal_regions,
-        location_table,
-        borrow_set,
-        &mut all_facts,
-        flow_inits,
-        move_data,
-        elements,
-    );
+    let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
+        type_check::type_check(
+            infcx,
+            param_env,
+            body,
+            promoted,
+            def_id,
+            &universal_regions,
+            location_table,
+            borrow_set,
+            &mut all_facts,
+            flow_inits,
+            move_data,
+            elements,
+        );
 
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
@@ -279,8 +282,16 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, &body, def_id, polonius_output.clone());
 
+    if !nll_errors.is_empty() {
+        // Suppress unhelpful extra errors in `infer_opaque_types`.
+        infcx.set_tainted_by_errors();
+    }
+
+    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values, body.span);
+
     NllOutput {
         regioncx,
+        opaque_type_values: remapped_opaque_tys,
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
@@ -344,6 +355,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
+    opaque_type_values: &FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
@@ -359,7 +371,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.
 
-    if let Some(closure_region_requirements) = closure_region_requirements {
+    let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
@@ -377,13 +389,19 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         })
         .unwrap();
 
-        err.buffer(errors_buffer);
+        err
     } else {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
-        err.buffer(errors_buffer);
+        err
+    };
+
+    if !opaque_type_values.is_empty() {
+        err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
+
+    err.buffer(errors_buffer);
 }
 
 fn for_each_region_constraint(

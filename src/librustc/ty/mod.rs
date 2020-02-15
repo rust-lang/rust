@@ -474,10 +474,15 @@ bitflags! {
         /// if a global bound is safe to evaluate.
         const HAS_RE_LATE_BOUND  = 1 << 11;
 
-        const HAS_TY_PLACEHOLDER = 1 << 12;
+        /// Does this have any `ReErased` regions?
+        const HAS_RE_ERASED  = 1 << 12;
 
-        const HAS_CT_INFER       = 1 << 13;
-        const HAS_CT_PLACEHOLDER = 1 << 14;
+        const HAS_TY_PLACEHOLDER = 1 << 13;
+
+        const HAS_CT_INFER       = 1 << 14;
+        const HAS_CT_PLACEHOLDER = 1 << 15;
+        /// Does this have any [Opaque] types.
+        const HAS_TY_OPAQUE      = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -497,9 +502,11 @@ bitflags! {
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
+                                  TypeFlags::HAS_RE_ERASED.bits |
                                   TypeFlags::HAS_TY_PLACEHOLDER.bits |
                                   TypeFlags::HAS_CT_INFER.bits |
-                                  TypeFlags::HAS_CT_PLACEHOLDER.bits;
+                                  TypeFlags::HAS_CT_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_TY_OPAQUE.bits;
     }
 }
 

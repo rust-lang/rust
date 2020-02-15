@@ -90,7 +90,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
 
@@ -101,7 +101,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
     });
     debug!("mir_borrowck done");
 
-    opt_closure_req
+    tcx.arena.alloc(opt_closure_req)
 }
 
 fn do_mir_borrowck<'a, 'tcx>(
@@ -136,6 +136,9 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_tables_of(def_id);
+    if tables.tainted_by_errors {
+        infcx.set_tainted_by_errors();
+    }
     let upvars: Vec<_> = tables
         .upvar_list
         .get(&def_id)
@@ -195,27 +198,40 @@ fn do_mir_borrowck<'a, 'tcx>(
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // Compute non-lexical lifetimes.
-    let nll::NllOutput { regioncx, polonius_output, opt_closure_req, nll_errors } =
-        nll::compute_regions(
-            infcx,
-            def_id,
-            free_regions,
-            body,
-            &promoted,
-            location_table,
-            param_env,
-            &mut flow_inits,
-            &mdpe.move_data,
-            &borrow_set,
-        );
+    let nll::NllOutput {
+        regioncx,
+        opaque_type_values,
+        polonius_output,
+        opt_closure_req,
+        nll_errors,
+    } = nll::compute_regions(
+        infcx,
+        def_id,
+        free_regions,
+        body,
+        &promoted,
+        location_table,
+        param_env,
+        &mut flow_inits,
+        &mdpe.move_data,
+        &borrow_set,
+    );
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
     nll::dump_mir_results(infcx, MirSource::item(def_id), &body, &regioncx, &opt_closure_req);
 
-    // We also have a `#[rustc_nll]` annotation that causes us to dump
+    // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(infcx, &body, def_id, &regioncx, &opt_closure_req, &mut errors_buffer);
+    nll::dump_annotation(
+        infcx,
+        &body,
+        def_id,
+        &regioncx,
+        &opt_closure_req,
+        &opaque_type_values,
+        &mut errors_buffer,
+    );
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
     // so it doesn't overlap with the others below. This reduces peak memory
@@ -389,6 +405,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     let result = BorrowCheckResult {
+        concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };

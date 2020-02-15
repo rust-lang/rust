@@ -125,7 +125,9 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {}
+        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {
+            desc { "building MIR for" }
+        }
 
         /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
@@ -345,6 +347,7 @@ rustc_queries! {
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
         query unsafety_check_result(key: DefId) -> mir::UnsafetyCheckResult {
+            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
@@ -414,14 +417,8 @@ rustc_queries! {
         }
 
         query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
-            load_cached(tcx, id) {
-                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
-                    .queries.on_disk_cache
-                    .try_load_query_result(tcx, id);
-
-                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
-            }
         }
         query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
             cache_on_disk_if { key.is_local() }
@@ -452,8 +449,13 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {
-            cache_on_disk_if(tcx, _) { key.is_local() && tcx.is_closure(key) }
+        query mir_borrowck(key: DefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
+            cache_on_disk_if(tcx, opt_result) {
+                key.is_local()
+                    && (tcx.is_closure(key)
+                        || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty()))
+            }
         }
     }
 
