@@ -97,6 +97,7 @@ symbols! {
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
+        MacroRules:         "macro_rules",
         Raw:                "raw",
         Union:              "union",
     }
@@ -429,7 +430,6 @@ symbols! {
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_reexport,
-        macro_rules,
         macros_in_extern,
         macro_use,
         macro_vis_matcher,
@@ -1070,6 +1070,9 @@ pub mod sym {
     use std::convert::TryInto;
 
     symbols!();
+
+    // Used from a macro in `librustc_feature/accepted.rs`
+    pub use super::kw::MacroRules as macro_rules;
 
     // Get the symbol for an integer. The first few non-negative integers each
     // have a static symbol and therefore are fast.

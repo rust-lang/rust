@@ -1343,14 +1343,14 @@ impl<'a> Parser<'a> {
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
     fn is_macro_rules_item(&mut self) -> bool {
-        self.check_keyword(sym::macro_rules)
+        self.check_keyword(kw::MacroRules)
             && self.look_ahead(1, |t| *t == token::Not)
             && self.look_ahead(2, |t| t.is_ident())
     }
 
     /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
-        self.expect_keyword(sym::macro_rules)?; // `macro_rules`
+        self.expect_keyword(kw::MacroRules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`
 
         let ident = self.parse_ident()?;
