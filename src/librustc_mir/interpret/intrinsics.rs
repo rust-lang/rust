@@ -110,8 +110,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::type_id
             | sym::type_name => {
                 let gid = GlobalId { instance, promoted: None };
-                let ty = instance.ty_env(*self.tcx, self.param_env);
-                let val = self.const_eval(gid, ty)?;
+                let val = self.const_eval(gid, dest.layout.ty)?;
                 self.copy_op(val, dest)?;
             }
 
