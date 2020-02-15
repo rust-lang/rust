@@ -1,20 +1,19 @@
 //! FIXME: write short doc here
 
+use hir::{self, Docs, HasSource};
+use ra_assists::utils::get_missing_impl_items;
+use ra_syntax::{
+    ast::{self, edit},
+    AstNode, SyntaxKind, SyntaxNode, TextRange,
+};
+use ra_text_edit::TextEdit;
+
 use crate::{
     completion::{
         CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
     },
     display::FunctionSignature,
 };
-
-use hir::{self, Docs, HasSource};
-use ra_syntax::{
-    ast::{self, edit},
-    AstNode, SyntaxKind, SyntaxNode, TextRange,
-};
-
-use ra_assists::utils::get_missing_impl_items;
-use ra_text_edit::TextEdit;
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let trigger = ctx.token.ancestors().find(|p| match p.kind() {
