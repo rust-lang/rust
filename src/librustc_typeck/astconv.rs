@@ -2827,11 +2827,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
-            hir::FunctionRetTy::Return(ref output) => {
+            hir::FnRetTy::Return(ref output) => {
                 visitor.visit_ty(output);
                 self.ast_ty_to_ty(output)
             }
-            hir::FunctionRetTy::DefaultReturn(..) => tcx.mk_unit(),
+            hir::FnRetTy::DefaultReturn(..) => tcx.mk_unit(),
         };
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);

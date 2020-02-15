@@ -7,7 +7,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
+use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -108,7 +108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
 fn closure_return_type_suggestion(
     span: Span,
     err: &mut DiagnosticBuilder<'_>,
-    output: &FunctionRetTy<'_>,
+    output: &FnRetTy<'_>,
     body: &Body<'_>,
     descr: &str,
     name: &str,
@@ -117,7 +117,7 @@ fn closure_return_type_suggestion(
     parent_descr: Option<&str>,
 ) {
     let (arrow, post) = match output {
-        FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
+        FnRetTy::DefaultReturn(_) => ("-> ", " "),
         _ => ("", ""),
     };
     let suggestion = match body.value.kind {

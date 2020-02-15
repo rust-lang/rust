@@ -1725,16 +1725,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         } else {
             match decl.output {
-                FunctionRetTy::Ty(ref ty) => {
+                FnRetTy::Ty(ref ty) => {
                     let context = match in_band_ty_params {
                         Some((def_id, _)) if impl_trait_return_allow => {
                             ImplTraitContext::OpaqueTy(Some(def_id), hir::OpaqueTyOrigin::FnReturn)
                         }
                         _ => ImplTraitContext::disallowed(),
                     };
-                    hir::FunctionRetTy::Return(self.lower_ty(ty, context))
+                    hir::FnRetTy::Return(self.lower_ty(ty, context))
                 }
-                FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
+                FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(span),
             }
         };
 
@@ -1781,10 +1781,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `elided_lt_replacement`: replacement for elided lifetimes in the return type
     fn lower_async_fn_ret_ty(
         &mut self,
-        output: &FunctionRetTy,
+        output: &FnRetTy,
         fn_def_id: DefId,
         opaque_ty_node_id: NodeId,
-    ) -> hir::FunctionRetTy<'hir> {
+    ) -> hir::FnRetTy<'hir> {
         debug!(
             "lower_async_fn_ret_ty(\
              output={:?}, \
@@ -1949,19 +1949,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
-        hir::FunctionRetTy::Return(self.arena.alloc(opaque_ty))
+        hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
     /// Transforms `-> T` into `Future<Output = T>`
     fn lower_async_fn_output_type_to_future_bound(
         &mut self,
-        output: &FunctionRetTy,
+        output: &FnRetTy,
         fn_def_id: DefId,
         span: Span,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => {
+            FnRetTy::Ty(ty) => {
                 // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
                 // `impl Future` opaque type that `async fn` implicitly
                 // generates.
@@ -1969,7 +1969,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::OpaqueTy(Some(fn_def_id), hir::OpaqueTyOrigin::FnReturn);
                 self.lower_ty(ty, context)
             }
-            FunctionRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
+            FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
         // "<Output = T>"

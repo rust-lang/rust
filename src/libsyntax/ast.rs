@@ -243,7 +243,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -2043,7 +2043,7 @@ impl Param {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Param>,
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl FnDecl {
@@ -2128,8 +2128,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum FunctionRetTy {
-    // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
+pub enum FnRetTy {
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
@@ -2139,11 +2138,11 @@ pub enum FunctionRetTy {
     Ty(P<Ty>),
 }
 
-impl FunctionRetTy {
+impl FnRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            FunctionRetTy::Default(span) => span,
-            FunctionRetTy::Ty(ref ty) => ty.span,
+            FnRetTy::Default(span) => span,
+            FnRetTy::Ty(ref ty) => ty.span,
         }
     }
 }

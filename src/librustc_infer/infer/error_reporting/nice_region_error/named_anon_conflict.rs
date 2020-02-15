@@ -3,7 +3,7 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::ty;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_hir::{FunctionRetTy, TyKind};
+use rustc_hir::{FnRetTy, TyKind};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
@@ -79,7 +79,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             {
                 return None;
             }
-            if let FunctionRetTy::Return(ty) = &fndecl.output {
+            if let FnRetTy::Return(ty) = &fndecl.output {
                 if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.kind, sub) {
                     // This is an impl Trait return that evaluates de need of 'static.
                     // We handle this case better in `static_impl_trait`.

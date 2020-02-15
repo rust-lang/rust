@@ -43,7 +43,7 @@ use utils::*;
 
 pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub use self::types::FunctionRetTy::*;
+pub use self::types::FnRetTy::*;
 pub use self::types::ItemEnum::*;
 pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
@@ -1001,8 +1001,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
+impl Clean<FnRetTy> for hir::FnRetTy<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> FnRetTy {
         match *self {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,

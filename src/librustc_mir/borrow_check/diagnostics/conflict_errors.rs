@@ -1885,7 +1885,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // as the HIR doesn't have full types for closure arguments.
                 let return_ty = *sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
-                if let hir::FunctionRetTy::Return(ty) = &fn_decl.output {
+                if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
                         return_span = lifetime.span;
                     }

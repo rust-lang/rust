@@ -397,8 +397,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 inputs.iter().map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed())),
             );
             let output_ty = match output {
-                FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
-                FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
+                FnRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
+                FnRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
             };
             let args = smallvec![GenericArg::Type(this.ty_tup(span, inputs))];
             let binding = this.output_ty_binding(output_ty.span, output_ty);

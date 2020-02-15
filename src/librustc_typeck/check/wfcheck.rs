@@ -214,7 +214,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
                 }
             }
             match sig.decl.output {
-                hir::FunctionRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
+                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
                     trait_should_be_self.push(ty.span);
                 }
                 _ => {}
