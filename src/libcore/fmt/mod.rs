@@ -238,16 +238,8 @@ pub struct Formatter<'a> {
 // NB. Argument is essentially an optimized partially applied formatting function,
 // equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
 
-struct Void {
-    _priv: (),
-    /// Erases all oibits, because `Void` erases the type of the object that
-    /// will be used to produce formatted output. Since we do not know what
-    /// oibits the real types have (and they can have any or none), we need to
-    /// take the most conservative approach and forbid all oibits.
-    ///
-    /// It was added after #45197 showed that one could share a `!Sync`
-    /// object across threads by passing it into `format_args!`.
-    _oibit_remover: PhantomData<*mut dyn Fn()>,
+extern "C" {
+    type Opaque;
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
@@ -259,8 +251,8 @@ struct Void {
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
-    value: &'a Void,
-    formatter: fn(&Void, &mut Formatter<'_>) -> Result,
+    value: &'a Opaque,
+    formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
 }
 
 impl<'a> ArgumentV1<'a> {
