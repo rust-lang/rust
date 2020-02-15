@@ -84,8 +84,8 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, typeck_tables_of")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "hir_owner_items, typeck_tables_of")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
     let _: u32 = closure(1);

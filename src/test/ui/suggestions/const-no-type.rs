@@ -43,4 +43,4 @@ static S = Vec::<String>::new();
 static mut SM = "abc";
 //~^ ERROR missing type for `static mut` item
 //~| HELP provide a type for the item
-//~| SUGGESTION &'static str
+//~| SUGGESTION &str

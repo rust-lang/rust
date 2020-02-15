@@ -4,8 +4,8 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |     let new: T::B = unsafe { std::mem::transmute(value) };
    |                              ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `<T as Trait<'a>>::A` (size can vary because of <T as Trait>::A)
-   = note: target type: `<T as Trait<'a>>::B` (size can vary because of <T as Trait>::B)
+   = note: source type: `<T as Trait>::A` (this type does not have a fixed size)
+   = note: target type: `<T as Trait>::B` (this type does not have a fixed size)
 
 error: aborting due to previous error
 
