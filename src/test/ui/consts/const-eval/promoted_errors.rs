@@ -1,5 +1,5 @@
-// revisions: debug opt opt_with_overflow_checks
-//[debug]compile-flags: -C opt-level=0
+// revisions: default noopt opt opt_with_overflow_checks
+//[noopt]compile-flags: -C opt-level=0
 //[opt]compile-flags: -O
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
@@ -10,7 +10,7 @@
 
 fn main() {
     println!("{}", 0u32 - 1);
-    //[opt_with_overflow_checks,debug]~^ WARN [overflow]
+    //[opt_with_overflow_checks,noopt]~^ WARN [overflow]
     let _x = 0u32 - 1;
     //~^ WARN [overflow]
     println!("{}", 1 / (1 - 1));
