@@ -14,7 +14,7 @@ error: missing type for `static mut` item
   --> $DIR/const-no-type.rs:43:12
    |
 LL | static mut SM = "abc";
-   |            ^^ help: provide a type for the item: `SM: &'static str`
+   |            ^^ help: provide a type for the item: `SM: &str`
 
 error: missing type for `const` item
   --> $DIR/const-no-type.rs:14:7
