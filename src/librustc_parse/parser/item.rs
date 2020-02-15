@@ -643,7 +643,14 @@ impl<'a> Parser<'a> {
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
         }
+        self.error_on_assoc_static(&item);
         Ok(P(item))
+    }
+
+    fn error_on_assoc_static(&self, item: &AssocItem) {
+        if let AssocItemKind::Static(..) = item.kind {
+            self.struct_span_err(item.span, "associated `static` items are not allowed").emit();
+        }
     }
 
     fn parse_assoc_item_(
@@ -868,7 +875,25 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, |_| true, &vis)?;
-        Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
+        let item = self.mk_item(lo, ident, kind, vis, attrs);
+        self.error_on_foreign_const(&item);
+        Ok(P(item))
+    }
+
+    fn error_on_foreign_const(&self, item: &ForeignItem) {
+        if let AssocItemKind::Const(..) = item.kind {
+            self.struct_span_err(item.ident.span, "extern items cannot be `const`")
+                .span_suggestion(
+                    item.span.with_hi(item.ident.span.lo()),
+                    "try using a static value",
+                    "static ".to_string(),
+                    Applicability::MachineApplicable,
+                )
+                .note(
+                    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html",
+                )
+                .emit();
+        }
     }
 
     fn is_static_global(&mut self) -> bool {
