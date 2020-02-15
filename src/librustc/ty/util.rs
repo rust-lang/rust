@@ -697,7 +697,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
     pub fn is_sized(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        tcx_at.is_sized_raw(param_env.and(self))
+        self.is_trivially_sized(tcx_at.tcx) || tcx_at.is_sized_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` implement the `Freeze`
@@ -713,7 +713,43 @@ impl<'tcx> ty::TyS<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
     ) -> bool {
-        tcx.at(span).is_freeze_raw(param_env.and(self))
+        self.is_trivially_freeze() || tcx.at(span).is_freeze_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type is `Freeze`.
+    ///
+    /// Returning true means the type is known to be `Freeze`. Returning
+    /// `false` means nothing -- could be `Freeze`, might not be.
+    fn is_trivially_freeze(&self) -> bool {
+        match self.kind {
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Never
+            | ty::Ref(..)
+            | ty::RawPtr(_)
+            | ty::FnDef(..)
+            | ty::Error
+            | ty::FnPtr(_) => true,
+            ty::Tuple(_) => self.tuple_fields().all(Self::is_trivially_freeze),
+            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
+            ty::Adt(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Dynamic(..)
+            | ty::Foreign(_)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(_)
+            | ty::Infer(_)
+            | ty::Opaque(..)
+            | ty::Param(_)
+            | ty::Placeholder(_)
+            | ty::Projection(_)
+            | ty::UnnormalizedProjection(_) => false,
+        }
     }
 
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
