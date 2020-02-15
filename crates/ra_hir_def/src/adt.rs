@@ -140,6 +140,13 @@ impl VariantData {
         self.fields().iter().find_map(|(id, data)| if &data.name == name { Some(id) } else { None })
     }
 
+    pub fn kind(&self) -> StructKind {
+        match self {
+            VariantData::Record(_) => StructKind::Record,
+            VariantData::Tuple(_) => StructKind::Tuple,
+            VariantData::Unit => StructKind::Unit,
+        }
+    }
     pub fn is_unit(&self) -> bool {
         match self {
             VariantData::Unit => true,
@@ -173,7 +180,7 @@ impl HasChildSource for VariantId {
     }
 }
 
-enum StructKind {
+pub enum StructKind {
     Tuple,
     Record,
     Unit,

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use either::Either;
 use hir_def::{
+    adt::StructKind,
     adt::VariantData,
     builtin_type::BuiltinType,
     docs::Documentation,
@@ -422,6 +423,10 @@ impl EnumVariant {
             .iter()
             .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
+    }
+
+    pub fn kind(self, db: &impl HirDatabase) -> StructKind {
+        self.variant_data(db).kind()
     }
 
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {

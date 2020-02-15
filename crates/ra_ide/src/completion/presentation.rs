@@ -1,6 +1,6 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, Type};
+use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, StructKind, Type};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -268,11 +268,22 @@ impl Completions {
     pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
         let is_deprecated = is_deprecated(variant, ctx.db);
         let name = variant.name(ctx.db);
-        let detail_types = variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
-        let detail = join(detail_types.map(|t| t.display(ctx.db).to_string()))
-            .separator(", ")
-            .surround_with("(", ")")
-            .to_string();
+        let detail_types =
+            variant.fields(ctx.db).into_iter().map(|field| (field.name(ctx.db), field.ty(ctx.db)));
+        let detail = match variant.kind(ctx.db) {
+            StructKind::Tuple | StructKind::Unit => {
+                join(detail_types.map(|(_, t)| t.display(ctx.db).to_string()))
+                    .separator(", ")
+                    .surround_with("(", ")")
+                    .to_string()
+            }
+            StructKind::Record => {
+                join(detail_types.map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string())))
+                    .separator(", ")
+                    .surround_with("{", "}")
+                    .to_string()
+            }
+        };
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
             .kind(CompletionItemKind::EnumVariant)
             .set_documentation(variant.docs(ctx.db))
@@ -295,6 +306,84 @@ mod tests {
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn enum_detail_includes_names_for_record() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+            r#"
+                enum Foo {
+                    Foo {x: i32, y: i32}
+                }
+
+                fn main() { Foo::Fo<|> }
+                "#,
+        ),
+        @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [121; 123),
+                delete: [121; 123),
+                insert: "Foo",
+                kind: EnumVariant,
+                detail: "{x: i32, y: i32}",
+            },
+        ]"###
+        );
+    }
+
+    #[test]
+    fn enum_detail_doesnt_include_names_for_tuple() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+            r#"
+                enum Foo {
+                    Foo (i32, i32)
+                }
+
+                fn main() { Foo::Fo<|> }
+                "#,
+        ),
+        @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [115; 117),
+                delete: [115; 117),
+                insert: "Foo",
+                kind: EnumVariant,
+                detail: "(i32, i32)",
+            },
+        ]"###
+        );
+    }
+
+    #[test]
+    fn enum_detail_just_parentheses_for_unit() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+            r#"
+                enum Foo {
+                    Foo
+                }
+
+                fn main() { Foo::Fo<|> }
+                "#,
+        ),
+        @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [104; 106),
+                delete: [104; 106),
+                insert: "Foo",
+                kind: EnumVariant,
+                detail: "()",
+            },
+        ]"###
+        );
     }
 
     #[test]
