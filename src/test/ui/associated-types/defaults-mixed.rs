@@ -1,5 +1,3 @@
-// compile-fail
-
 #![feature(associated_type_defaults)]
 
 // Tests that a trait with one defaulted and one non-defaulted assoc. type behaves properly.

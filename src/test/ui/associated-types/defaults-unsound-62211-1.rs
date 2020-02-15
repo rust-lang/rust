@@ -7,8 +7,6 @@
 //! Note that the underlying cause of this is still not yet fixed.
 //! See: https://github.com/rust-lang/rust/issues/33017
 
-// compile-fail
-
 #![feature(associated_type_defaults)]
 
 use std::{

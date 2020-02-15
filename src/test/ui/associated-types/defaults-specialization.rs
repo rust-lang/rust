@@ -1,7 +1,5 @@
 //! Tests the interaction of associated type defaults and specialization.
 
-// compile-fail
-
 #![feature(associated_type_defaults, specialization)]
 
 trait Tr {

@@ -32,6 +32,7 @@ fn main() {
     assert_eq!(<() as Tr>::A, 255);
     assert_eq!(<() as Tr>::B, 0);    // causes the error above
     //~^ ERROR evaluation of constant expression failed
+    //~| ERROR erroneous constant used
 
     assert_eq!(<u8 as Tr>::A, 254);
     assert_eq!(<u8 as Tr>::B, 255);

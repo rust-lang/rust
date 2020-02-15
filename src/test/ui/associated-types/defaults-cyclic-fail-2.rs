@@ -1,5 +1,3 @@
-// compile-fail
-
 #![feature(associated_type_defaults)]
 
 // A more complex version of `defaults-cyclic-fail-1.rs`, with non-trivial defaults.

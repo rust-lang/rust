@@ -443,6 +443,7 @@ fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
     // `<Self as Trait<...>>::Assoc` to the default type.
     let map = tcx
         .associated_items(trait_def_id)
+        .iter()
         .filter_map(|item| {
             if item.kind == ty::AssocKind::Type && item.defaultness.has_value() {
                 // `<Self as Trait<...>>::Assoc`

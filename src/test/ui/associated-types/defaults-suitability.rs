@@ -6,8 +6,6 @@
 //!   (eg. `type Assoc: Clone = NotClone`), and also against where clauses on
 //!   the trait itself when possible
 
-// compile-fail
-
 #![feature(associated_type_defaults)]
 
 struct NotClone;
