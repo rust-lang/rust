@@ -147,12 +147,6 @@ impl VariantData {
             VariantData::Unit => StructKind::Unit,
         }
     }
-    pub fn is_unit(&self) -> bool {
-        match self {
-            VariantData::Unit => true,
-            _ => false,
-        }
-    }
 }
 
 impl HasChildSource for VariantId {
