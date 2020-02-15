@@ -504,7 +504,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         &self,
         lint: &'static lint::Lint,
         source_info: SourceInfo,
-        message: &str,
+        message: &'static str,
         panic: AssertKind<u64>,
     ) -> Option<()> {
         let lint_root = self.lint_root(source_info)?;
