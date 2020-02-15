@@ -1015,6 +1015,7 @@ name = "ra_cli"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "itertools",
  "pico-args",
  "ra_batch",
  "ra_db",
@@ -1024,6 +1025,7 @@ dependencies = [
  "ra_ide",
  "ra_prof",
  "ra_syntax",
+ "rand 0.7.3",
 ]
 
 [[package]]

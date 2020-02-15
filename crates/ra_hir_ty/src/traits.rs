@@ -60,6 +60,9 @@ impl TraitSolver {
                     context.0.db.check_canceled();
                     let remaining = fuel.get();
                     fuel.set(remaining - 1);
+                    if remaining == 0 {
+                        log::debug!("fuel exhausted");
+                    }
                     remaining > 0
                 })
             }

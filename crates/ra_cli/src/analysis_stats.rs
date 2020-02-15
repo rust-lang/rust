@@ -2,6 +2,9 @@
 
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
+use itertools::Itertools;
+use rand::{seq::SliceRandom, thread_rng};
+
 use hir::{
     db::{DefDatabase, HirDatabase},
     AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
@@ -19,6 +22,7 @@ pub fn run(
     path: &Path,
     only: Option<&str>,
     with_deps: bool,
+    randomize: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
     let (mut host, roots) = ra_batch::load_cargo(path)?;
@@ -41,13 +45,21 @@ pub fn run(
             })
             .collect::<HashSet<_>>();
 
-    for krate in Crate::all(db) {
+    let mut krates = Crate::all(db);
+    if randomize {
+        krates.shuffle(&mut thread_rng());
+    }
+    for krate in krates {
         let module = krate.root_module(db).expect("crate without root module");
         let file_id = module.definition_source(db).file_id;
         if members.contains(&db.file_source_root(file_id.original_file(db))) {
             num_crates += 1;
             visit_queue.push(module);
         }
+    }
+
+    if randomize {
+        visit_queue.shuffle(&mut thread_rng());
     }
 
     println!("Crates in this dir: {}", num_crates);
@@ -79,10 +91,14 @@ pub fn run(
     println!("Total functions: {}", funcs.len());
     println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
+    if randomize {
+        funcs.shuffle(&mut thread_rng());
+    }
+
     let inference_time = Instant::now();
     let mut bar = match verbosity {
-        Verbosity::Verbose | Verbosity::Normal => ProgressReport::new(funcs.len() as u64),
-        Verbosity::Quiet => ProgressReport::hidden(),
+        Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+        _ => ProgressReport::new(funcs.len() as u64),
     };
 
     bar.tick();
@@ -92,7 +108,20 @@ pub fn run(
     let mut num_type_mismatches = 0;
     for f in funcs {
         let name = f.name(db);
-        let mut msg = format!("processing: {}", name);
+        let full_name = f
+            .module(db)
+            .path_to_root(db)
+            .into_iter()
+            .rev()
+            .filter_map(|it| it.name(db))
+            .chain(Some(f.name(db)))
+            .join("::");
+        if let Some(only_name) = only {
+            if name.to_string() != only_name && full_name != only_name {
+                continue;
+            }
+        }
+        let mut msg = format!("processing: {}", full_name);
         if verbosity.is_verbose() {
             let src = f.source(db);
             let original_file = src.file_id.original_file(db);
@@ -100,15 +129,15 @@ pub fn run(
             let syntax_range = src.value.syntax().text_range();
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
-        bar.set_message(&msg);
-        if let Some(only_name) = only {
-            if name.to_string() != only_name {
-                continue;
-            }
+        if verbosity.is_spammy() {
+            bar.println(format!("{}", msg));
         }
+        bar.set_message(&msg);
         let f_id = FunctionId::from(f);
         let body = db.body(f_id.into());
         let inference_result = db.infer(f_id.into());
+        let (previous_exprs, previous_unknown, previous_partially_unknown) =
+            (num_exprs, num_exprs_unknown, num_exprs_partially_unknown);
         for (expr_id, _) in body.exprs.iter() {
             let ty = &inference_result[expr_id];
             num_exprs += 1;
@@ -123,6 +152,33 @@ pub fn run(
                 });
                 if is_partially_unknown {
                     num_exprs_partially_unknown += 1;
+                }
+            }
+            if only.is_some() && verbosity.is_spammy() {
+                // in super-verbose mode for just one function, we print every single expression
+                let (_, sm) = db.body_with_source_map(f_id.into());
+                let src = sm.expr_syntax(expr_id);
+                if let Some(src) = src {
+                    let original_file = src.file_id.original_file(db);
+                    let line_index = host.analysis().file_line_index(original_file).unwrap();
+                    let text_range = src.value.either(
+                        |it| it.syntax_node_ptr().range(),
+                        |it| it.syntax_node_ptr().range(),
+                    );
+                    let (start, end) = (
+                        line_index.line_col(text_range.start()),
+                        line_index.line_col(text_range.end()),
+                    );
+                    bar.println(format!(
+                        "{}:{}-{}:{}: {}",
+                        start.line + 1,
+                        start.col_utf16,
+                        end.line + 1,
+                        end.col_utf16,
+                        ty.display(db)
+                    ));
+                } else {
+                    bar.println(format!("unknown location: {}", ty.display(db)));
                 }
             }
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
@@ -163,6 +219,15 @@ pub fn run(
                     }
                 }
             }
+        }
+        if verbosity.is_spammy() {
+            bar.println(format!(
+                "In {}: {} exprs, {} unknown, {} partial",
+                full_name,
+                num_exprs - previous_exprs,
+                num_exprs_unknown - previous_unknown,
+                num_exprs_partially_unknown - previous_partially_unknown
+            ));
         }
         bar.inc(1);
     }
