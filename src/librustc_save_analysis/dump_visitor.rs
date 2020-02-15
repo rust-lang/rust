@@ -1004,7 +1004,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Static(ref ty, _, ref expr)
+            | ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     trait_item.id,
                     trait_item.ident,
@@ -1074,7 +1075,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_impl_item(&mut self, impl_item: &'l ast::AssocItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
         match impl_item.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Static(ref ty, _, ref expr)
+            | ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     impl_item.id,
                     impl_item.ident,

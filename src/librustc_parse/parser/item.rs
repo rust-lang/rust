@@ -546,6 +546,7 @@ impl<'a> Parser<'a> {
                 1,
                 &[
                     kw::Impl,
+                    kw::Static,
                     kw::Const,
                     kw::Async,
                     kw::Fn,
@@ -670,8 +671,14 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
             (ident, AssocItemKind::Fn(sig, generics, body))
+        } else if self.is_static_global() {
+            self.bump(); // `static`
+            let mutbl = self.parse_mutability();
+            let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
+            (ident, AssocItemKind::Static(ty, mutbl, expr))
         } else if self.eat_keyword(kw::Const) {
-            self.parse_assoc_const()?
+            let (ident, ty, expr) = self.parse_item_const_common(None)?;
+            (ident, AssocItemKind::Const(ty, expr))
         } else if self.isnt_macro_invocation() {
             return Err(self.missing_assoc_item_kind_err("associated", self.prev_span));
         } else if self.token.is_path_start() {
@@ -686,15 +693,6 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_span);
         let id = DUMMY_NODE_ID;
         Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
-    }
-
-    /// This parses the grammar:
-    ///
-    ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
-    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
-        self.expect_keyword(kw::Const)?;
-        let (ident, ty, expr) = self.parse_item_const_common(None)?;
-        Ok((ident, AssocItemKind::Const(ty, expr)))
     }
 
     /// Parses the following grammar:

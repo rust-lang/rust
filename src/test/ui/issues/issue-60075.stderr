@@ -4,7 +4,7 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
 LL |         });
    |          ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, `}`, or identifier, found `;`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `static`, `type`, `unsafe`, `}`, or identifier, found `;`
   --> $DIR/issue-60075.rs:6:11
    |
 LL |     fn qux() -> Option<usize> {

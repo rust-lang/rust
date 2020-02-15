@@ -1441,6 +1441,9 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs);
         self.print_defaultness(item.defaultness);
         match &item.kind {
+            ast::AssocItemKind::Static(ty, mutbl, expr) => {
+                self.print_item_const(item.ident, Some(*mutbl), ty, expr.as_deref(), &item.vis);
+            }
             ast::AssocItemKind::Const(ty, expr) => {
                 self.print_item_const(item.ident, None, ty, expr.as_deref(), &item.vis);
             }

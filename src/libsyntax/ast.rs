@@ -2654,6 +2654,8 @@ pub enum AssocItemKind {
     /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
     /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(P<Ty>, Option<P<Expr>>),
+    /// A static item (`static FOO: u8`).
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A function.
     Fn(FnSig, Generics, Option<P<Block>>),
     /// A type.
