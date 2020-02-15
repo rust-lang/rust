@@ -80,31 +80,50 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<'tcx, T> = Result<T, FixupError<'tcx>>; // "fixup result"
 
-/// A flag that is used to suppress region errors. This is normally
-/// false, but sometimes -- when we are doing region checks that the
-/// NLL borrow checker will also do -- it might be set to true.
-#[derive(Copy, Clone, Default, Debug)]
-pub struct SuppressRegionErrors {
-    suppressed: bool,
+/// How we should handle region solving.
+///
+/// This is used so that the region values inferred by HIR region solving are
+/// not exposed, and so that we can avoid doing work in HIR typeck that MIR
+/// typeck will also do.
+#[derive(Copy, Clone, Debug)]
+pub enum RegionckMode {
+    /// The default mode: report region errors, don't erase regions.
+    Solve,
+    /// Erase the results of region after solving.
+    Erase {
+        /// A flag that is used to suppress region errors, when we are doing
+        /// region checks that the NLL borrow checker will also do -- it might
+        /// be set to true.
+        suppress_errors: bool,
+    },
 }
 
-impl SuppressRegionErrors {
+impl Default for RegionckMode {
+    fn default() -> Self {
+        RegionckMode::Solve
+    }
+}
+
+impl RegionckMode {
     pub fn suppressed(self) -> bool {
-        self.suppressed
+        match self {
+            Self::Solve => false,
+            Self::Erase { suppress_errors } => suppress_errors,
+        }
     }
 
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+    pub fn for_item_body(tcx: TyCtxt<'_>) -> Self {
         // FIXME(Centril): Once we actually remove `::Migrate` also make
         // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
-            BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
+            BorrowckMode::Migrate => RegionckMode::Erase { suppress_errors: false },
 
             // If we're on MIR, don't report AST region errors as they should be reported by NLL
-            BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
+            BorrowckMode::Mir => RegionckMode::Erase { suppress_errors: true },
         }
     }
 }
@@ -1208,19 +1227,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         region_context: DefId,
         region_map: &region::ScopeTree,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        suppress: SuppressRegionErrors,
+        mode: RegionckMode,
     ) {
         assert!(
             self.is_tainted_by_errors() || self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
             self.inner.borrow().region_obligations
-        );
-
-        let region_rels = &RegionRelations::new(
-            self.tcx,
-            region_context,
-            region_map,
-            outlives_env.free_region_map(),
         );
         let (var_infos, data) = self
             .inner
@@ -1229,8 +1241,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .take()
             .expect("regions already resolved")
             .into_infos_and_data();
+
+        let region_rels = &RegionRelations::new(
+            self.tcx,
+            region_context,
+            region_map,
+            outlives_env.free_region_map(),
+        );
+
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data);
+            lexical_region_resolve::resolve(region_rels, var_infos, data, mode);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1241,7 +1261,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors, suppress);
+            self.report_region_errors(region_map, &errors);
         }
     }
 
