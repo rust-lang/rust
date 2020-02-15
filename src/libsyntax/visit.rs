@@ -534,7 +534,8 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
             let kind = FnKind::Fn(FnCtxt::Foreign, item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id);
         }
-        ForeignItemKind::Static(ref typ, _, ref body) => {
+        ForeignItemKind::Const(ref typ, ref body)
+        | ForeignItemKind::Static(ref typ, _, ref body) => {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_expr, body);
         }
