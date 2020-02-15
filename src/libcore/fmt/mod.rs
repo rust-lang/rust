@@ -1356,11 +1356,11 @@ impl<'a> Formatter<'a> {
             let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
-                let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
+                let sign = formatted.sign;
                 self.buf.write_str(sign)?;
 
                 // remove the sign from the formatted parts
-                formatted.sign = b"";
+                formatted.sign = "";
                 width = width.saturating_sub(sign.len());
                 align = rt::v1::Alignment::Right;
                 self.fill = '0';
@@ -1392,7 +1392,7 @@ impl<'a> Formatter<'a> {
         }
 
         if !formatted.sign.is_empty() {
-            write_bytes(self.buf, formatted.sign)?;
+            self.buf.write_str(formatted.sign)?;
         }
         for part in formatted.parts {
             match *part {
