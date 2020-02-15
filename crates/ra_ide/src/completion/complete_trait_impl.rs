@@ -1,4 +1,35 @@
-//! FIXME: write short doc here
+//! Completion for associated items in a trait implementation.
+//!
+//! This module adds the completion items related to implementing associated
+//! items within a `impl Trait for Struct` block. The current context node
+//! must be within either a `FN_DEF`, `TYPE_ALIAS_DEF`, or `CONST_DEF` node
+//! and an direct child of an `IMPL_BLOCK`.
+//!
+//! # Examples
+//!
+//! Considering the following trait `impl`:
+//!
+//! ```ignore
+//! trait SomeTrait {
+//!     fn foo();
+//! }
+//!
+//! impl SomeTrait for () {
+//!     fn f<|>
+//! }
+//! ```
+//!
+//! may result in the completion of the following method:
+//!
+//! ```ignore
+//! # trait SomeTrait {
+//! #    fn foo();
+//! # }
+//!
+//! impl SomeTrait for () {
+//!     fn foo() {}<|>
+//! }
+//! ```
 
 use hir::{self, Docs, HasSource};
 use ra_assists::utils::get_missing_impl_items;
