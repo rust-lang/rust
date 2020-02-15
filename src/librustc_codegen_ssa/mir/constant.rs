@@ -62,7 +62,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let ty::ConstKind::Value(value) = const_.val {
                     Ok(value)
                 } else {
-                    bug!("encountered bad ConstKind in codegen");
+                    span_bug!(constant.span, "encountered bad ConstKind in codegen: {:?}", const_);
                 }
             }
         }
@@ -83,7 +83,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
                     _ => bug!("invalid simd shuffle type: {}", ty),
                 };
-                let c = bx.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(val), ty });
+                let c = ty::Const::from_value(bx.tcx(), val, ty);
                 let values: Vec<_> = (0..fields)
                     .map(|field| {
                         let field = bx.tcx().const_field(

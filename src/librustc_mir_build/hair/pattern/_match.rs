@@ -343,12 +343,11 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
                         ty: rty,
                         span: pat.span,
                         kind: box PatKind::Constant {
-                            value: self.tcx.mk_const(Const {
-                                val: ty::ConstKind::Value(
-                                    self.fold_const_value_deref(*val, rty, crty),
-                                ),
-                                ty: rty,
-                            }),
+                            value: Const::from_value(
+                                self.tcx,
+                                self.fold_const_value_deref(*val, rty, crty),
+                                rty,
+                            ),
                         },
                     },
                 },

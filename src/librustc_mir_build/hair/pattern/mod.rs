@@ -769,10 +769,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     Some(span),
                 ) {
                     Ok(value) => {
-                        let const_ = self.tcx.mk_const(ty::Const {
-                            val: ty::ConstKind::Value(value),
-                            ty: self.tables.node_type(id),
-                        });
+                        let const_ =
+                            ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
 
                         let pattern = self.const_to_pat(&const_, id, span);
                         if !is_associated_const {

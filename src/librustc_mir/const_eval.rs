@@ -79,7 +79,7 @@ pub(crate) fn destructure_const<'tcx>(
     let fields_iter = (0..field_count).map(|i| {
         let field_op = ecx.operand_field(down, i).unwrap();
         let val = op_to_const(&ecx, field_op);
-        tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: field_op.layout.ty })
+        ty::Const::from_value(tcx, val, field_op.layout.ty)
     });
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
