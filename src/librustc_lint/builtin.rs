@@ -738,15 +738,18 @@ impl EarlyLintPass for DeprecatedAttr {
     }
 }
 
-declare_lint! {
-    pub UNUSED_DOC_COMMENTS,
-    Warn,
-    "detects doc comments that aren't used by rustdoc"
+trait UnusedDocCommentExt {
+    fn warn_if_doc(
+        &self,
+        cx: &EarlyContext<'_>,
+        node_span: Span,
+        node_kind: &str,
+        is_macro_expansion: bool,
+        attrs: &[ast::Attribute],
+    );
 }
 
-declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
-
-impl UnusedDocComment {
+impl UnusedDocCommentExt for UnusedDocComment {
     fn warn_if_doc(
         &self,
         cx: &EarlyContext<'_>,
