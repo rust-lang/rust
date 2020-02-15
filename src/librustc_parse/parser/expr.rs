@@ -1832,10 +1832,16 @@ impl<'a> Parser<'a> {
                     }
                 }
                 Err(mut e) => {
+                    e.span_label(struct_sp, "while parsing this struct");
                     if let Some(f) = recovery_field {
                         fields.push(f);
+                        e.span_suggestion(
+                            self.prev_span.shrink_to_hi(),
+                            "try adding a comma",
+                            ",".into(),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     self.eat(&token::Comma);

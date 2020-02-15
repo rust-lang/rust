@@ -2280,7 +2280,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.check_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.check_name(sym::track_caller) {
-            if tcx.fn_sig(id).abi() != abi::Abi::Rust {
+            if tcx.is_closure(id) || tcx.fn_sig(id).abi() != abi::Abi::Rust {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
             }
@@ -2301,7 +2301,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if attr.check_name(sym::target_feature) {
-            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
+            if tcx.is_closure(id) || tcx.fn_sig(id).unsafety() == Unsafety::Normal {
                 let msg = "`#[target_feature(..)]` can only be applied to `unsafe` functions";
                 tcx.sess
                     .struct_span_err(attr.span, msg)

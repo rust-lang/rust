@@ -288,7 +288,10 @@ pub fn const_eval_raw_provider<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if def_id.is_local() && tcx.typeck_tables_of(def_id).tainted_by_errors {
+    if def_id.is_local()
+        && tcx.has_typeck_tables(def_id)
+        && tcx.typeck_tables_of(def_id).tainted_by_errors
+    {
         return Err(ErrorHandled::Reported);
     }
 
