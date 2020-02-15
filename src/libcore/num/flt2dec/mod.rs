@@ -462,7 +462,6 @@ pub fn to_shortest_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    _upper: bool,
     buf: &'a mut [u8],
     parts: &'a mut [Part<'a>],
 ) -> Formatted<'a>
@@ -679,7 +678,6 @@ pub fn to_exact_fixed_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    _upper: bool,
     buf: &'a mut [u8],
     parts: &'a mut [Part<'a>],
 ) -> Formatted<'a>
