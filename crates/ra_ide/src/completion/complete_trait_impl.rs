@@ -17,7 +17,10 @@ use crate::{
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let trigger = ctx.token.ancestors().find(|p| match p.kind() {
-        SyntaxKind::FN_DEF | SyntaxKind::TYPE_ALIAS_DEF | SyntaxKind::CONST_DEF => true,
+        SyntaxKind::FN_DEF
+        | SyntaxKind::TYPE_ALIAS_DEF
+        | SyntaxKind::CONST_DEF
+        | SyntaxKind::BLOCK_EXPR => true,
         _ => false,
     });
 
@@ -98,10 +101,9 @@ fn add_function_impl(
 
     let snippet = format!("{} {{}}", display);
 
-    builder
-        .text_edit(TextEdit::replace(fn_def_node.text_range(), snippet))
-        .kind(completion_kind)
-        .add_to(acc);
+    let range = TextRange::from_to(fn_def_node.text_range().start(), ctx.source_range().end());
+
+    builder.text_edit(TextEdit::replace(range, snippet)).kind(completion_kind).add_to(acc);
 }
 
 fn add_type_alias_impl(
@@ -114,8 +116,10 @@ fn add_type_alias_impl(
 
     let snippet = format!("type {} = ", alias_name);
 
+    let range = TextRange::from_to(type_def_node.text_range().start(), ctx.source_range().end());
+
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-        .text_edit(TextEdit::replace(type_def_node.text_range(), snippet))
+        .text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
         .kind(CompletionItemKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db))
@@ -133,8 +137,11 @@ fn add_const_impl(
     if let Some(const_name) = const_name {
         let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
 
+        let range =
+            TextRange::from_to(const_def_node.text_range().start(), ctx.source_range().end());
+
         CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-            .text_edit(TextEdit::replace(const_def_node.text_range(), snippet))
+            .text_edit(TextEdit::replace(range, snippet))
             .lookup_by(const_name)
             .kind(CompletionItemKind::Const)
             .set_documentation(const_.docs(ctx.db))
@@ -233,6 +240,28 @@ mod tests {
             },
         ]
         "###);
+    }
+
+    #[test]
+    fn completes_only_on_top_level() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn foo();
+
+                fn foo_bar();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                fn foo() {
+                    <|>
+                }
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"[]"###);
     }
 
     #[test]
