@@ -225,8 +225,7 @@ pub fn size_and_align_of_dst<'tcx>(
             //   `(size + (align-1)) & -align`
             let addend = fx.bcx.ins().iadd_imm(align, -1);
             let add = fx.bcx.ins().iadd(size, addend);
-            let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            let neg = fx.bcx.ins().isub(zero, align);
+            let neg = fx.bcx.ins().ineg(align);
             let size = fx.bcx.ins().band(add, neg);
 
             (size, align)

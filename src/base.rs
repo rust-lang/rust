@@ -360,9 +360,13 @@ fn trans_stmt<'tcx>(
                             }
                         }
                         UnOp::Neg => match layout.ty.kind {
-                            ty::Int(_) => {
+                            ty::Int(IntTy::I128) => {
+                                // FIXME remove this case once ineg.i128 works
                                 let zero = CValue::const_val(fx, layout, 0);
                                 crate::num::trans_int_binop(fx, BinOp::Sub, zero, operand)
+                            }
+                            ty::Int(_) => {
+                                CValue::by_val(fx.bcx.ins().ineg(val), layout)
                             }
                             ty::Float(_) => {
                                 CValue::by_val(fx.bcx.ins().fneg(val), layout)
