@@ -8,7 +8,7 @@ LL |     let _ = Cstring::new("hello").unwrap();
    |             help: a struct with a similar name exists (notice the capitalization): `CString`
 
 error[E0433]: failed to resolve: use of undeclared type or module `foO`
-  --> $DIR/suggest-type.rs:11:13
+  --> $DIR/suggest-type.rs:13:13
    |
 LL |     let _ = foO::bar();
    |             ^^^
