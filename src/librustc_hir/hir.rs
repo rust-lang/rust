@@ -2610,24 +2610,13 @@ pub type CaptureModeMap = NodeMap<CaptureBy>;
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
 #[derive(Clone, Debug)]
-pub struct TraitCandidate<ID = HirId> {
+pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[ID; 1]>,
-}
-
-impl<ID> TraitCandidate<ID> {
-    pub fn map_import_ids<F, T>(self, f: F) -> TraitCandidate<T>
-    where
-        F: Fn(ID) -> T,
-    {
-        let TraitCandidate { def_id, import_ids } = self;
-        let import_ids = import_ids.into_iter().map(f).collect();
-        TraitCandidate { def_id, import_ids }
-    }
+    pub import_ids: SmallVec<[HirId; 1]>,
 }
 
 // Trait method resolution
-pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
+pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
