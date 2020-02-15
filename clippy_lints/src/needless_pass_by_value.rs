@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::traits;
 use rustc::traits::misc::can_type_implement_copy;
-use rustc::ty::{self, RegionKind, TypeFoldable};
+use rustc::ty::{self, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
@@ -171,7 +171,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
                     !preds.is_empty() && {
-                        let ty_empty_region = cx.tcx.mk_imm_ref(&RegionKind::ReEmpty(ty::UniverseIndex::ROOT), ty);
+                        let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
                         preds.iter().all(|t| {
                             let ty_params = &t
                                 .skip_binder()
