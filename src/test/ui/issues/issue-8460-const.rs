@@ -1,5 +1,5 @@
-// revisions: debug opt opt_with_overflow_checks
-//[debug]compile-flags: -C opt-level=0
+// revisions: default noopt opt opt_with_overflow_checks
+//[noopt]compile-flags: -C opt-level=0
 //[opt]compile-flags: -O
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
