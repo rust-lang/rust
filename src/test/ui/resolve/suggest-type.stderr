@@ -5,7 +5,7 @@ LL |     let _ = Cstring::new("hello").unwrap();
    |             ^^^^^^^
    |             |
    |             use of undeclared type or module `Cstring`
-   |             help: did you mean (notice the capitalization): `CString`
+   |             help: a struct with a similar name exists (notice the capitalization): `CString`
 
 error[E0433]: failed to resolve: use of undeclared type or module `foO`
   --> $DIR/suggest-type.rs:11:13
@@ -14,7 +14,7 @@ LL |     let _ = foO::bar();
    |             ^^^
    |             |
    |             use of undeclared type or module `foO`
-   |             help: did you mean (notice the capitalization): `foo`
+   |             help: a module with a similar name exists (notice the capitalization): `foo`
 
 error: aborting due to 2 previous errors
 

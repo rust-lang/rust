@@ -797,6 +797,14 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn typo_suggestion_text(&self, suggestion: &TypoSuggestion) -> String {
+        format!(
+            "{} {} with a similar name exists",
+            suggestion.res.article(),
+            suggestion.res.descr()
+        )
+    }
+
     crate fn add_typo_suggestion(
         &self,
         err: &mut DiagnosticBuilder<'_>,
@@ -809,14 +817,9 @@ impl<'a> Resolver<'a> {
                 return false;
             }
 
-            let msg = format!(
-                "{} {} with a similar name exists",
-                suggestion.res.article(),
-                suggestion.res.descr()
-            );
             err.span_suggestion(
                 span,
-                &msg,
+                &self.typo_suggestion_text(&suggestion),
                 suggestion.candidate.to_string(),
                 Applicability::MaybeIncorrect,
             );
@@ -1016,7 +1019,7 @@ impl<'a> Resolver<'a> {
                 format!("use of undeclared type or module `{}`", ident),
                 Some((
                     vec![(ident.span, format!("{}", typo_suggestion.candidate.as_str()))],
-                    String::from("did you mean"),
+                    self.typo_suggestion_text(&typo_suggestion),
                     Applicability::MaybeIncorrect,
                 )),
             )

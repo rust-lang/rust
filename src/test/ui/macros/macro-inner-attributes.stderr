@@ -5,7 +5,7 @@ LL |     a::bar();
    |     ^
    |     |
    |     use of undeclared type or module `a`
-   |     help: did you mean: `b`
+   |     help: a module with a similar name exists: `b`
 
 error: aborting due to previous error
 
