@@ -1250,8 +1250,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        if let AssocItemKind::Const(..) = item.kind {
-            self.check_item_named(item.ident, "const");
+        match item.kind {
+            AssocItemKind::Const(..) => self.check_item_named(item.ident, "const"),
+            AssocItemKind::Static(..) => self
+                .err_handler()
+                .struct_span_err(item.span, "associated `static` items are not allowed")
+                .emit(),
+            _ => {}
         }
 
         self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));

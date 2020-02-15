@@ -633,7 +633,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_ident(item.ident);
     walk_list!(visitor, visit_attribute, &item.attrs);
     match item.kind {
-        AssocItemKind::Const(ref ty, ref expr) => {
+        AssocItemKind::Const(ref ty, ref expr) | AssocItemKind::Static(ref ty, _, ref expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
