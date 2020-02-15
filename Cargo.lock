@@ -1174,7 +1174,6 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "ra_text_edit",
- "rand 0.7.3",
  "rayon",
  "rustc-hash",
  "superslice",
