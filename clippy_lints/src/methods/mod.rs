@@ -1721,12 +1721,47 @@ fn lint_expect_fun_call(
         if match_type(cx, arg_ty, &paths::STRING) {
             return false;
         }
-        if let ty::Ref(ty::ReStatic, ty, ..) = arg_ty.kind {
-            if ty.kind == ty::Str {
+        if let ty::Ref(_, ty, ..) = arg_ty.kind {
+            if ty.kind == ty::Str && can_be_static_str(cx, arg) {
                 return false;
             }
         };
         true
+    }
+
+    // Check if an expression could have type `&'static str`, knowing that it
+    // has type `&str` for some lifetime.
+    fn can_be_static_str(cx: &LateContext<'_, '_>, arg: &hir::Expr<'_>) -> bool {
+        match arg.kind {
+            hir::ExprKind::Lit(_) => true,
+            hir::ExprKind::Call(fun, _) => {
+                if let hir::ExprKind::Path(ref p) = fun.kind {
+                    match cx.tables.qpath_res(p, fun.hir_id) {
+                        hir::def::Res::Def(hir::def::DefKind::Fn, def_id)
+                        | hir::def::Res::Def(hir::def::DefKind::Method, def_id) => matches!(
+                            cx.tcx.fn_sig(def_id).output().skip_binder().kind,
+                            ty::Ref(ty::ReStatic, ..)
+                        ),
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            },
+            hir::ExprKind::MethodCall(..) => cx.tables.type_dependent_def_id(arg.hir_id).map_or(false, |method_id| {
+                matches!(
+                    cx.tcx.fn_sig(method_id).output().skip_binder().kind,
+                    ty::Ref(ty::ReStatic, ..)
+                )
+            }),
+            hir::ExprKind::Path(ref p) => match cx.tables.qpath_res(p, arg.hir_id) {
+                hir::def::Res::Def(hir::def::DefKind::Const, _) | hir::def::Res::Def(hir::def::DefKind::Static, _) => {
+                    true
+                },
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
     fn generate_format_arg_snippet(
