@@ -94,7 +94,7 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
 
 macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => {
-        $macro!($args, [KeywordIdents: KeywordIdents, UnusedDocComment: UnusedDocComment,]);
+        $macro!($args, [KeywordIdents: KeywordIdents,]);
     };
 }
 
@@ -114,6 +114,7 @@ macro_rules! early_lint_passes {
                 NonAsciiIdents: NonAsciiIdents,
                 IncompleteFeatures: IncompleteFeatures,
                 RedundantSemicolon: RedundantSemicolon,
+                UnusedDocComment: UnusedDocComment,
             ]
         );
     };

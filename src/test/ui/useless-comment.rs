@@ -6,7 +6,7 @@ macro_rules! mac {
     () => {}
 }
 
-/// foo //~ ERROR unused doc comment
+/// foo //FIXME ERROR unused doc comment
 mac!();
 
 fn foo() {
@@ -29,7 +29,7 @@ fn foo() {
     #[doc = "bar"] //~ ERROR unused doc comment
     3;
 
-    /// bar //~ ERROR unused doc comment
+    /// bar //FIXME ERROR unused doc comment
     mac!();
 
     let x = /** comment */ 47; //~ ERROR unused doc comment
