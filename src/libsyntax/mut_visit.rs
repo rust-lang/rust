@@ -949,6 +949,19 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
 ) -> SmallVec<[P<AssocItem>; 1]> {
     let AssocItem { id, ident, vis, defaultness: _, attrs, kind, span, tokens: _ } =
         item.deref_mut();
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
+    smallvec![item]
+}
+
+pub fn walk_nested_item(
+    visitor: &mut impl MutVisitor,
+    id: &mut NodeId,
+    span: &mut Span,
+    ident: &mut Ident,
+    vis: &mut Visibility,
+    attrs: &mut Vec<Attribute>,
+    kind: &mut AssocItemKind,
+) {
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -971,8 +984,6 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
         AssocItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
-
-    smallvec![item]
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
@@ -1038,29 +1049,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
     let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
-    visitor.visit_ident(ident);
-    visit_attrs(attrs, visitor);
-    match kind {
-        ForeignItemKind::Fn(sig, generics, body) => {
-            visit_fn_sig(sig, visitor);
-            visitor.visit_generics(generics);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        ForeignItemKind::Const(ty, body) | ForeignItemKind::Static(ty, _, body) => {
-            visitor.visit_ty(ty);
-            visit_opt(body, |body| visitor.visit_expr(body));
-        }
-        ForeignItemKind::TyAlias(generics, bounds, ty) => {
-            visitor.visit_generics(generics);
-            visit_bounds(bounds, visitor);
-            visit_opt(ty, |ty| visitor.visit_ty(ty));
-        }
-        ForeignItemKind::Macro(mac) => visitor.visit_mac(mac),
-    }
-    visitor.visit_id(id);
-    visitor.visit_span(span);
-    visitor.visit_vis(vis);
-
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
     smallvec![item]
 }
 
