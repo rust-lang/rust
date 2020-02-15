@@ -6,6 +6,7 @@ use crate::fmt::{self, Write};
 use crate::io;
 use crate::mem;
 use crate::memchr;
+use crate::num::NonZeroU8;
 use crate::ops;
 use crate::os::raw::c_char;
 use crate::ptr;
@@ -738,6 +739,32 @@ impl From<Box<CStr>> for CString {
     #[inline]
     fn from(s: Box<CStr>) -> CString {
         s.into_c_string()
+    }
+}
+
+#[stable(feature = "cstring_from_vec_of_nonzerou8", since = "1.43.0")]
+impl From<Vec<NonZeroU8>> for CString {
+    /// Converts a [`Vec`]`<`[`NonZeroU8`]`>` into a [`CString`] without
+    /// copying nor checking for inner null bytes.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`NonZeroU8`]: ../num/struct.NonZeroU8.html
+    /// [`Vec`]: ../vec/struct.Vec.html
+    #[inline]
+    fn from(v: Vec<NonZeroU8>) -> CString {
+        unsafe {
+            // Transmute `Vec<NonZeroU8>` to `Vec<u8>`.
+            let v: Vec<u8> = {
+                // Safety:
+                //   - transmuting between `NonZeroU8` and `u8` is sound;
+                //   - `alloc::Layout<NonZeroU8> == alloc::Layout<u8>`.
+                let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
+                Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
+            };
+            // Safety: `v` cannot contain null bytes, given the type-level
+            // invariant of `NonZeroU8`.
+            CString::from_vec_unchecked(v)
+        }
     }
 }
 
