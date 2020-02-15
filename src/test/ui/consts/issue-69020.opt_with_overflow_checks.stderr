@@ -1,0 +1,10 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020.rs:15:20
+   |
+LL |     const N: i32 = -i32::MIN + T::N;
+   |                    ^^^^^^^^^ attempt to negate with overflow
+   |
+   = note: `#[deny(overflow)]` on by default
+
+error: aborting due to previous error
+
