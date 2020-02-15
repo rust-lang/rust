@@ -1,3 +1,21 @@
+error: yep, it's unused
+  --> $DIR/useless-comment.rs:9:1
+   |
+LL | /// foo
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/useless-comment.rs:3:9
+   |
+LL | #![deny(unused_doc_comments)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: yep, it's unused
+  --> $DIR/useless-comment.rs:32:5
+   |
+LL |     /// bar
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: unused doc comment
   --> $DIR/useless-comment.rs:13:5
    |
@@ -5,12 +23,6 @@ LL |     /// a
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
-   |
-note: the lint level is defined here
-  --> $DIR/useless-comment.rs:3:9
-   |
-LL | #![deny(unused_doc_comments)]
-   |         ^^^^^^^^^^^^^^^^^^^
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:16:5
@@ -75,5 +87,5 @@ LL | |
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
