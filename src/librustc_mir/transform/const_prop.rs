@@ -547,16 +547,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
         source_info: SourceInfo,
-        place_layout: TyLayout<'tcx>,
     ) -> Option<()> {
         let r =
             self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
-            let left_bits = place_layout.size.bits();
+            // We need the type of the LHS. We cannot use `place_layout` as that is the type
+            // of the result, which for checked binops is not the same!
+            let left_ty = left.ty(&self.local_decls, self.tcx);
+            let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-            if r_bits.map_or(false, |b| b >= left_bits as u128) {
+            if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
                 self.report_assert_as_lint(
                     lint::builtin::EXCEEDING_BITSHIFTS,
                     source_info,
@@ -618,7 +620,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
             Rvalue::BinaryOp(op, left, right) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right, source_info, place_layout)?;
+                self.check_binary_op(*op, left, right, source_info)?;
             }
             Rvalue::CheckedBinaryOp(op, left, right) => {
                 trace!(
@@ -627,7 +629,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     left,
                     right
                 );
-                self.check_binary_op(*op, left, right, source_info, place_layout)?;
+                self.check_binary_op(*op, left, right, source_info)?;
             }
 
             // Do not try creating references (#67862)
