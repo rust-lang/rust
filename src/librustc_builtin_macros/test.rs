@@ -391,8 +391,8 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
         // If the termination trait is active, the compiler will check that the output
         // type implements the `Termination` trait as `libtest` enforces that.
         let has_output = match sig.decl.output {
-            ast::FunctionRetTy::Default(..) => false,
-            ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
+            ast::FnRetTy::Default(..) => false,
+            ast::FnRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true,
         };
 

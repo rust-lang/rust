@@ -1363,7 +1363,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         fcx: &FnCtxt<'a, 'tcx>,
         expected: Ty<'tcx>,
         sp: Span,
-        fn_output: &hir::FunctionRetTy<'_>,
+        fn_output: &hir::FnRetTy<'_>,
     ) {
         let return_sp = fn_output.span();
         err.span_label(return_sp, "expected because this return type...");
@@ -1389,7 +1389,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
         // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
         let mut is_object_safe = false;
-        if let hir::FunctionRetTy::Return(ty) = fn_output {
+        if let hir::FnRetTy::Return(ty) = fn_output {
             // Get the return type.
             if let hir::TyKind::Def(..) = ty.kind {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
@@ -1430,7 +1430,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
-            if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
+            if let hir::FnRetTy::Return(ty) = fn_decl.output {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
                 if let ty::Dynamic(..) = ty.kind {
                     return true;
