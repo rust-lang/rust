@@ -10,8 +10,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
 use rustc_infer::traits;
+use rustc_hir::{ItemKind, Node, CRATE_HIR_ID};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -22,6 +22,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+
+    // We just checked that `DefId` is crate-local
+    if tcx.has_lifetime_error(def_id.index) {
+        debug!("type_of: item {:?} has a lifetime-related error, bailing out", def_id);
+        assert!(tcx.sess.has_errors()); // Sanity check: compilation should be going to fail
+        return tcx.types.err;
+    }
 
     let icx = ItemCtxt::new(tcx, def_id);
 
@@ -357,6 +364,26 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 
     debug!("find_opaque_ty_constraints({:?})", def_id);
+
+    // It's possible for one opaque type to be nested inside another
+    // (e.g. `impl Foo<MyType = impl Bar<A>>`)
+    // We don't explicitly depend on the type of the parent - however,
+    // we do depend on its generics. We propagate any errors that occur
+    // during type-checking of the parent, to ensure that we don't create
+    // an invalid 'child' opaque type.
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let parent_id = tcx.hir().get_parent_item(hir_id);
+    // Type-alias-impl-trait types may have no parent
+    if parent_id != hir_id && parent_id != CRATE_HIR_ID {
+        // We only care about checking the parent if it's an opaque type
+        if let Node::Item(hir::Item { kind: ItemKind::OpaqueTy(..), .. }) = tcx.hir().get(parent_id)
+        {
+            if tcx.type_of(tcx.hir().local_def_id(parent_id)) == tcx.types.err {
+                debug!("find_opaque_ty_constraints: parent opaque type has error, bailing out");
+                return tcx.types.err;
+            }
+        }
+    }
 
     struct ConstraintLocator<'tcx> {
         tcx: TyCtxt<'tcx>,

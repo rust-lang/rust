@@ -83,4 +83,8 @@ pub struct ResolveLifetimes {
     /// to the trait object lifetime defaults computed from them.
     pub object_lifetime_defaults:
         FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>,
+
+    /// Contains the ids all HIR items for which we encountered an error
+    /// when resolving lifetimes.
+    pub has_lifetime_error: FxHashSet<LocalDefId>,
 }

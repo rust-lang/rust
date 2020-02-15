@@ -927,6 +927,14 @@ rustc_queries! {
             -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
             desc { "looking up lifetime defaults for a region" }
         }
+        /// Determiens if any eccors occured when resolving lifetimes
+        /// for the specified item. A return value of 'true' means
+        /// that compilation will eventually fail, and it's safe
+        /// to create and propagate a TyKind::Error or skip
+        /// running checks on the affected item.
+        query has_lifetime_error(_: DefIndex) -> bool {
+            desc { "determining if a lifetime error was emitted" }
+        }
     }
 
     TypeChecking {

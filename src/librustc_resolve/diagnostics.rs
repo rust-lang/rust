@@ -1507,7 +1507,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         )
     }
 
-    crate fn emit_undeclared_lifetime_error(&self, lifetime_ref: &hir::Lifetime) {
+    crate fn emit_undeclared_lifetime_error(&mut self, lifetime_ref: &hir::Lifetime) {
+        self.map.has_lifetime_error.insert(lifetime_ref.hir_id.owner_local_def_id());
         let mut err = struct_span_err!(
             self.tcx.sess,
             lifetime_ref.span,

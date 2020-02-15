@@ -136,7 +136,7 @@ impl RegionExt for Region {
 /// actual use. It has the same data, but indexed by `DefIndex`.  This
 /// is silly.
 #[derive(Default)]
-struct NamedRegionMap {
+crate struct NamedRegionMap {
     // maps from every use of a named (not anonymous) lifetime to a
     // `Region` describing how that region is bound
     defs: HirIdMap<Region>,
@@ -149,11 +149,15 @@ struct NamedRegionMap {
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
     object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
+
+    /// Contains the ids all HIR items for which we encountered an error
+    /// when resolving lifetimes.
+    crate has_lifetime_error: FxHashSet<LocalDefId>,
 }
 
 crate struct LifetimeContext<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
-    map: &'a mut NamedRegionMap,
+    crate map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
     /// This is slightly complicated. Our representation for poly-trait-refs contains a single
@@ -295,6 +299,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
             tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults.get(&id)
         },
 
+        has_lifetime_error: |tcx, id| {
+            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
+            tcx.resolve_lifetimes(LOCAL_CRATE).has_lifetime_error.contains(&id)
+        },
+
         ..*providers
     };
 
@@ -324,6 +333,7 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> &ResolveLifetimes 
         let map = rl.object_lifetime_defaults.entry(hir_id.owner_local_def_id()).or_default();
         map.insert(hir_id.local_id, v);
     }
+    rl.has_lifetime_error = named_region_map.has_lifetime_error;
 
     tcx.arena.alloc(rl)
 }
@@ -334,6 +344,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
         defs: Default::default(),
         late_bound: Default::default(),
         object_lifetime_defaults: compute_object_lifetime_defaults(tcx),
+        has_lifetime_error: Default::default(),
     };
     {
         let mut visitor = LifetimeContext {
