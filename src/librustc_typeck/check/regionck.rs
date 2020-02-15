@@ -85,7 +85,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{self, RegionObligation, SuppressRegionErrors};
+use rustc_infer::infer::{self, RegionObligation, RegionckMode};
 use rustc_span::Span;
 use rustc_trait_selection::infer::OutlivesEnvironmentExt;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
-        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
+        rcx.resolve_regions_and_report_errors(RegionckMode::for_item_body(self.tcx));
     }
 
     /// Region checking during the WF phase for items. `wf_tys` are the
@@ -142,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
         rcx.outlives_environment.save_implied_bounds(item_id);
         rcx.visit_region_obligations(item_id);
-        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::default());
+        rcx.resolve_regions_and_report_errors(RegionckMode::default());
     }
 
     /// Region check a function body. Not invoked on closures, but
@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
 
-        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
+        rcx.resolve_regions_and_report_errors(RegionckMode::for_item_body(self.tcx));
     }
 }
 
@@ -346,7 +346,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.select_all_obligations_or_error();
     }
 
-    fn resolve_regions_and_report_errors(&self, suppress: SuppressRegionErrors) {
+    fn resolve_regions_and_report_errors(&self, mode: RegionckMode) {
         self.infcx.process_registered_region_obligations(
             self.outlives_environment.region_bound_pairs_map(),
             self.implicit_region_bound,
@@ -357,7 +357,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             self.subject_def_id,
             &self.region_scope_tree,
             &self.outlives_environment,
-            suppress,
+            mode,
         );
     }
 
