@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23
    |
 LL |     with_signature(x, |y| y)
@@ -11,7 +11,7 @@ LL |     with_signature(x, |y| y)
    = note: number of external vids: 3
    = note: where T: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:15:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
@@ -31,7 +31,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     with_signature(x, |y| y)
    |                       ^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:41:5
@@ -39,7 +39,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     x
    |     ^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to 2 previous errors
 

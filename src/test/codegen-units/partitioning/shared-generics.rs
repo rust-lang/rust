@@ -1,6 +1,8 @@
 // ignore-tidy-linelength
 // no-prefer-dynamic
-// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
+// NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
+//       prevent drop-glue from participating in share-generics.
+// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe -Copt-level=0
 
 #![crate_type="rlib"]
 
@@ -16,6 +18,10 @@ pub fn foo() {
     // This should not generate a monomorphization because it's already
     // available in `shared_generics_aux`.
     let _ = shared_generics_aux::generic_fn(0.0f32, 3.0f32);
-}
 
-// MONO_ITEM drop-glue i8
+    // The following line will drop an instance of `Foo`, generating a call to
+    // Foo's drop-glue function. However, share-generics should take care of
+    // reusing the drop-glue from the upstream crate, so we do not expect a
+    // mono item for the drop-glue
+    let _ = shared_generics_aux::Foo(1);
+}

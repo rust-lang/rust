@@ -1,4 +1,4 @@
-error[E0599]: no method named `hello` found for type `impl Foo` in the current scope
+error[E0599]: no method named `hello` found for type parameter `impl Foo` in the current scope
   --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:15:9
    |
 LL |     foo.hello();

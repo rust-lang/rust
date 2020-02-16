@@ -1,15 +1,16 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::{self, Node};
 use rustc::middle::privacy::AccessLevel;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::Node;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Span};
 use syntax::ast;
 
@@ -513,16 +514,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.statics.push(s);
             }
             hir::ItemKind::Const(type_, expr) => {
-                let s = Constant {
-                    type_,
-                    expr,
-                    id: item.hir_id,
-                    name: ident.name,
-                    attrs: &item.attrs,
-                    whence: item.span,
-                    vis: &item.vis,
-                };
-                om.constants.push(s);
+                // Underscore constants do not correspond to a nameable item and
+                // so are never useful in documentation.
+                if ident.name != kw::Underscore {
+                    let s = Constant {
+                        type_,
+                        expr,
+                        id: item.hir_id,
+                        name: ident.name,
+                        attrs: &item.attrs,
+                        whence: item.span,
+                        vis: &item.vis,
+                    };
+                    om.constants.push(s);
+                }
             }
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
                 let items = item_ids.iter().map(|ti| self.cx.tcx.hir().trait_item(ti.id)).collect();
@@ -553,27 +558,29 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.trait_aliases.push(t);
             }
 
-            hir::ItemKind::Impl(
+            hir::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 ref generics,
-                ref trait_,
-                for_,
-                ref item_ids,
-            ) => {
+                ref of_trait,
+                self_ty,
+                ref items,
+            } => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
-                if !self.inlining && trait_.is_none() {
+                if !self.inlining && of_trait.is_none() {
                     let items =
-                        item_ids.iter().map(|ii| self.cx.tcx.hir().impl_item(ii.id)).collect();
+                        items.iter().map(|item| self.cx.tcx.hir().impl_item(item.id)).collect();
                     let i = Impl {
                         unsafety,
                         polarity,
                         defaultness,
+                        constness,
                         generics,
-                        trait_,
-                        for_,
+                        trait_: of_trait,
+                        for_: self_ty,
                         items,
                         attrs: &item.attrs,
                         id: item.hir_id,

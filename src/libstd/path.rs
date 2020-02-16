@@ -224,18 +224,12 @@ impl<'a> Prefix<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
-        match *self {
-            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..) => true,
-            _ => false,
-        }
+        matches!(*self, Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..))
     }
 
     #[inline]
     fn is_drive(&self) -> bool {
-        match *self {
-            Prefix::Disk(_) => true,
-            _ => false,
-        }
+        matches!(*self, Prefix::Disk(_))
     }
 
     #[inline]
@@ -1481,6 +1475,7 @@ impl From<OsString> for PathBuf {
     /// Converts a `OsString` into a `PathBuf`
     ///
     /// This conversion does not allocate or copy memory.
+    #[inline]
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
     }
@@ -1541,7 +1536,7 @@ impl fmt::Debug for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for PathBuf {
     type Target = Path;
-
+    #[inline]
     fn deref(&self) -> &Path {
         Path::new(&self.inner)
     }
@@ -2661,6 +2656,7 @@ impl AsRef<Path> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for str {
+    #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
@@ -2675,6 +2671,7 @@ impl AsRef<Path> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for PathBuf {
+    #[inline]
     fn as_ref(&self) -> &Path {
         self
     }

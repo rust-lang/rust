@@ -2,17 +2,16 @@
 
 use rustc::session::Session;
 use rustc::ty::{Ty, TyCtxt};
+use rustc_errors::struct_span_err;
 use rustc_span::Span;
 
 use crate::base;
 use crate::traits::*;
-use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
+use rustc_hir::def_id::DefId;
 
 use crate::traits::BuilderMethods;
-use rustc::hir;
-
-use rustc_error_codes::*;
+use rustc_hir as hir;
 
 pub enum IntPredicate {
     IntEQ,
@@ -196,5 +195,5 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    span_err!(a, b, E0511, "{}", c);
+    struct_span_err!(a, b, E0511, "{}", c).emit();
 }

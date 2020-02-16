@@ -12,7 +12,7 @@ warning: unnecessary parentheses around assigned value
 LL |         let mut registry_no = (format!("NX-{}", 74205));
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/suggestions.rs:3:21
    |
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
@@ -34,7 +34,7 @@ LL |         let mut registry_no = (format!("NX-{}", 74205));
    |             |
    |             help: remove this `mut`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/suggestions.rs:3:9
    |
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896

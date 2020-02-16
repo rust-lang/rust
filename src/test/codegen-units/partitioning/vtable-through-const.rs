@@ -66,7 +66,7 @@ mod mod1 {
 //~ MONO_ITEM fn vtable_through_const::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<u32> @@ vtable_through_const[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<u32> @@ vtable_through_const[Internal]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
     // it is considered a generic and is instantiated here only because it is

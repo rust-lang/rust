@@ -1,8 +1,5 @@
 use log::info;
 use rustc::lint;
-use rustc::session::config::{ErrorOutputType, Input, OutputFilenames};
-use rustc::session::CrateDisambiguator;
-use rustc::session::{self, config, early_error, filesearch, DiagnosticOutput, Session};
 use rustc::ty;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -14,6 +11,12 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
+use rustc_session as session;
+use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::parse::CrateConfig;
+use rustc_session::CrateDisambiguator;
+use rustc_session::{config, early_error, filesearch, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
@@ -30,7 +33,7 @@ use syntax::ast::{AttrVec, BlockCheckMode};
 use syntax::mut_visit::{visit_clobber, MutVisitor, *};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::{self, ast, attr};
+use syntax::{self, ast};
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -38,7 +41,7 @@ use syntax::{self, ast, attr};
 /// This is performed by checking whether a whitelisted set of
 /// features is available on the target machine, by querying LLVM.
 pub fn add_configuration(
-    cfg: &mut ast::CrateConfig,
+    cfg: &mut CrateConfig,
     sess: &Session,
     codegen_backend: &dyn CodegenBackend,
 ) {
@@ -70,10 +73,6 @@ pub fn create_session(
         diagnostic_output,
         lint_caps,
     );
-
-    sess.prof.register_queries(|profiler| {
-        rustc::ty::query::QueryName::register_with_profiler(&profiler);
-    });
 
     let codegen_backend = get_codegen_backend(&sess);
 
@@ -342,19 +341,17 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     fn current_dll_path() -> Option<PathBuf> {
         use std::ffi::OsString;
         use std::os::windows::prelude::*;
+        use std::ptr;
 
-        extern "system" {
-            fn GetModuleHandleExW(dwFlags: u32, lpModuleName: usize, phModule: *mut usize) -> i32;
-            fn GetModuleFileNameW(hModule: usize, lpFilename: *mut u16, nSize: u32) -> u32;
-        }
-
-        const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 0x00000004;
+        use winapi::um::libloaderapi::{
+            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        };
 
         unsafe {
-            let mut module = 0;
+            let mut module = ptr::null_mut();
             let r = GetModuleHandleExW(
                 GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                current_dll_path as usize,
+                current_dll_path as usize as *mut _,
                 &mut module,
             );
             if r == 0 {
@@ -424,7 +421,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
-pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut lint::LintBuffer) {
+pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut LintBuffer) {
     // Unconditionally collect crate types from attributes to make them used
     for a in attrs.iter() {
         if a.check_name(sym::crate_type) {
@@ -446,7 +443,7 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
                             ast::CRATE_NODE_ID,
                             span,
                             "invalid `crate_type` value",
-                            lint::builtin::BuiltinLintDiagnostics::UnknownCrateTypes(
+                            BuiltinLintDiagnostics::UnknownCrateTypes(
                                 span,
                                 "did you mean".to_string(),
                                 format!("\"{}\"", candidate),
@@ -551,16 +548,16 @@ pub fn build_output_filenames(
                 .opts
                 .crate_name
                 .clone()
-                .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
+                .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()))
                 .unwrap_or_else(|| input.filestem().to_owned());
 
-            OutputFilenames {
-                out_directory: dirpath,
-                out_filestem: stem,
-                single_output_file: None,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
+            OutputFilenames::new(
+                dirpath,
+                stem,
+                None,
+                sess.opts.cg.extra_filename.clone(),
+                sess.opts.output_types.clone(),
+            )
         }
 
         Some(ref out_file) => {
@@ -582,18 +579,13 @@ pub fn build_output_filenames(
                 sess.warn("ignoring --out-dir flag due to -o flag");
             }
 
-            OutputFilenames {
-                out_directory: out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_filestem: out_file
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-                single_output_file: ofile,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
+            OutputFilenames::new(
+                out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
+                out_file.file_stem().unwrap_or_default().to_str().unwrap().to_string(),
+                ofile,
+                sess.opts.cg.extra_filename.clone(),
+                sess.opts.output_types.clone(),
+            )
         }
     }
 }
@@ -676,7 +668,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
-        sig.header.constness.node == ast::Constness::Const
+        matches!(sig.header.constness, ast::Const::Yes(_))
             || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }
@@ -691,7 +683,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         self.run(is_const, |s| noop_visit_item_kind(i, s))
     }
 
-    fn flat_map_trait_item(&mut self, i: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let is_const = match i.kind {
             ast::AssocItemKind::Const(..) => true,
             ast::AssocItemKind::Fn(ref sig, _) => Self::is_sig_const(sig),
@@ -700,7 +692,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
     }
 
-    fn flat_map_impl_item(&mut self, i: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_impl_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         self.flat_map_trait_item(i)
     }
 

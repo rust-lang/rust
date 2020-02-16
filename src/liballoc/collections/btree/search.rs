@@ -10,6 +10,10 @@ pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
     GoDown(Handle<NodeRef<BorrowType, K, V, GoDownType>, marker::Edge>),
 }
 
+/// Looks up a given key in a (sub)tree headed by the given node, recursively.
+/// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
+/// returns a `GoDown` with the handle of the possible leaf edge where the key
+/// belongs.
 pub fn search_tree<BorrowType, K, V, Q: ?Sized>(
     mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     key: &Q,
@@ -32,6 +36,10 @@ where
     }
 }
 
+/// Looks up a given key in a given node, without recursion.
+/// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
+/// returns a `GoDown` with the handle of the edge where the key might be found.
+/// If the node is a leaf, a `GoDown` edge is not an actual edge but a possible edge.
 pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
     node: NodeRef<BorrowType, K, V, Type>,
     key: &Q,
@@ -41,12 +49,17 @@ where
     K: Borrow<Q>,
 {
     match search_linear(&node, key) {
-        (idx, true) => Found(Handle::new_kv(node, idx)),
-        (idx, false) => SearchResult::GoDown(Handle::new_edge(node, idx)),
+        (idx, true) => Found(unsafe { Handle::new_kv(node, idx) }),
+        (idx, false) => SearchResult::GoDown(unsafe { Handle::new_edge(node, idx) }),
     }
 }
 
-pub fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
+/// Returns the index in the node at which the key (or an equivalent) exists
+/// or could exist, and whether it exists in the node itself. If it doesn't
+/// exist in the node itself, it may exist in the subtree with that index
+/// (if the node has subtrees). If the key doesn't exist in node or subtree,
+/// the returned index is the position or subtree where the key belongs.
+fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q,
 ) -> (usize, bool)
@@ -54,12 +67,20 @@ where
     Q: Ord,
     K: Borrow<Q>,
 {
-    for (i, k) in node.keys().iter().enumerate() {
-        match key.cmp(k.borrow()) {
-            Ordering::Greater => {}
-            Ordering::Equal => return (i, true),
-            Ordering::Less => return (i, false),
+    // This function is defined over all borrow types (immutable, mutable, owned),
+    // and may be called on the shared root in each case.
+    // Using `keys()` is fine here even if BorrowType is mutable, as all we return
+    // is an index -- not a reference.
+    let len = node.len();
+    if len > 0 {
+        let keys = unsafe { node.keys() }; // safe because a non-empty node cannot be the shared root
+        for (i, k) in keys.iter().enumerate() {
+            match key.cmp(k.borrow()) {
+                Ordering::Greater => {}
+                Ordering::Equal => return (i, true),
+                Ordering::Less => return (i, false),
+            }
         }
     }
-    (node.keys().len(), false)
+    (len, false)
 }

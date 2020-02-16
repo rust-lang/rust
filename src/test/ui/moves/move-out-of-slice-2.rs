@@ -1,4 +1,4 @@
-#![feature(slice_patterns, unsized_locals)]
+#![feature(unsized_locals)]
 
 struct A;
 #[derive(Clone, Copy)]

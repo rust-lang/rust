@@ -230,7 +230,12 @@ mod arch {
     }
 }
 
-#[cfg(any(target_arch = "mips64", target_arch = "s390x", target_arch = "sparc64"))]
+#[cfg(any(
+    target_arch = "mips64",
+    target_arch = "s390x",
+    target_arch = "sparc64",
+    target_arch = "riscv64"
+))]
 mod arch {
     pub use libc::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 }

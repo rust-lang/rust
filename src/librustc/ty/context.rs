@@ -3,15 +3,12 @@
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor, DepNode};
-use crate::hir::def::{DefKind, Export, Res};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
-use crate::hir::{self, HirId, ItemKind, ItemLocalId, Node, TraitCandidate};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::infer::outlives::free_region_map::FreeRegionMap;
-use crate::lint::{self, Lint};
+use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
@@ -23,11 +20,9 @@ use crate::mir::interpret::{Allocation, ConstValue, Scalar};
 use crate::mir::{
     interpret, BodyAndCache, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
-use crate::session::config::CrateType;
-use crate::session::config::{BorrowckMode, OutputFilenames};
-use crate::session::Session;
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
+use crate::ty::free_region_map::FreeRegionMap;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
@@ -46,23 +41,34 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
-
-use arena::SyncDroplessArena;
-use errors::DiagnosticBuilder;
+use rustc::lint::LintDiagnosticBuilder;
+use rustc_attr as attr;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
-use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
+use rustc_hir::{HirId, Node, TraitCandidate};
+use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_session::config::CrateType;
+use rustc_session::config::{BorrowckMode, OutputFilenames};
+use rustc_session::lint::{Level, Lint};
+use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
+use syntax::ast;
+use syntax::expand::allocator::AllocatorKind;
+use syntax::node_id::NodeMap;
+
 use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
@@ -74,25 +80,12 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
-use syntax::ast;
-use syntax::attr;
-use syntax::expand::allocator::AllocatorKind;
-
-pub struct AllArenas {
-    pub interner: SyncDroplessArena,
-}
-
-impl AllArenas {
-    pub fn new() -> Self {
-        AllArenas { interner: SyncDroplessArena::default() }
-    }
-}
 
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
-    arena: &'tcx SyncDroplessArena,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     /// Specifically use a speedy hash algorithm for these hash sets, since
     /// they're accessed quite often.
@@ -112,7 +105,7 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx SyncDroplessArena) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
@@ -180,8 +173,13 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct CommonLifetimes<'tcx> {
-    pub re_empty: Region<'tcx>,
+    /// `ReEmpty` in the root universe.
+    pub re_root_empty: Region<'tcx>,
+
+    /// `ReStatic`
     pub re_static: Region<'tcx>,
+
+    /// Erased region, used after type-checking
     pub re_erased: Region<'tcx>,
 }
 
@@ -310,8 +308,7 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
 /// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -319,6 +316,8 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
+    /// Expr which the type evaluated from.
+    pub expr: Option<hir::HirId>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
@@ -431,7 +430,7 @@ pub struct TypeckTables<'tcx> {
     /// entire variable.
     pub upvar_list: ty::UpvarListMap,
 
-    /// Stores the type, span and optional scope span of all types
+    /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
 }
@@ -882,7 +881,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let mk = |r| interners.region.intern(r, |r| Interned(interners.arena.alloc(r))).0;
 
         CommonLifetimes {
-            re_empty: mk(RegionKind::ReEmpty),
+            re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
             re_static: mk(RegionKind::ReStatic),
             re_erased: mk(RegionKind::ReErased),
         }
@@ -943,7 +942,11 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-    pub lint_store: Lrc<lint::LintStore>,
+    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
+    ///
+    /// FIXME(Centril): consider `dyn LintStoreMarker` once
+    /// we can upcast to `Any` for some additional type safety.
+    pub lint_store: Lrc<dyn Any + sync::Sync + sync::Send>,
 
     pub dep_graph: DepGraph,
 
@@ -968,7 +971,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    hir_map: hir_map::Map<'tcx>,
+    /// This should usually be accessed with the `tcx.hir()` method.
+    pub(crate) hir_map: hir_map::Map<'tcx>,
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1021,11 +1025,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        &self.hir_map
-    }
-
     pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
@@ -1112,10 +1111,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<lint::LintStore>,
+        lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
-        arenas: &'tcx AllArenas,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
@@ -1126,7 +1124,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
-        let interners = CtxtInterners::new(&arenas.interner);
+        let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
@@ -1163,6 +1161,10 @@ impl<'tcx> TyCtxt<'tcx> {
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
+            let v = v
+                .into_iter()
+                .map(|tc| tc.map_import_ids(|id| hir.definitions().node_to_hir_id(id)))
+                .collect();
             map.insert(hir_id.local_id, StableVec::new(v));
         }
 
@@ -1296,7 +1298,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, crate_disambiguator) = if def_id.is_local() {
-            (self.crate_name.clone(), self.sess.local_crate_disambiguator())
+            (self.crate_name, self.sess.local_crate_disambiguator())
         } else {
             (
                 self.cstore.crate_name_untracked(def_id.krate),
@@ -1331,7 +1333,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.hir_map.forest.untracked_krate();
+        let krate = self.gcx.hir_map.untracked_krate();
 
         StableHashingContext::new(self.sess, krate, self.hir().definitions(), &*self.cstore)
     }
@@ -1557,11 +1559,11 @@ pub trait Lift<'tcx>: fmt::Debug {
 }
 
 macro_rules! nop_lift {
-    ($ty:ty => $lifted:ty) => {
+    ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.arena.in_arena(*self as *const _) {
+                if tcx.interners.$set.contains_pointer_to(&Interned(*self)) {
                     Some(unsafe { mem::transmute(*self) })
                 } else {
                     None
@@ -1572,14 +1574,14 @@ macro_rules! nop_lift {
 }
 
 macro_rules! nop_list_lift {
-    ($ty:ty => $lifted:ty) => {
+    ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
             fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 if self.is_empty() {
                     return Some(List::empty());
                 }
-                if tcx.interners.arena.in_arena(*self as *const _) {
+                if tcx.interners.$set.contains_pointer_to(&Interned(*self)) {
                     Some(unsafe { mem::transmute(*self) })
                 } else {
                     None
@@ -1589,31 +1591,31 @@ macro_rules! nop_list_lift {
     };
 }
 
-nop_lift! {Ty<'a> => Ty<'tcx>}
-nop_lift! {Region<'a> => Region<'tcx>}
-nop_lift! {Goal<'a> => Goal<'tcx>}
-nop_lift! {&'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift! {type_; Ty<'a> => Ty<'tcx>}
+nop_lift! {region; Region<'a> => Region<'tcx>}
+nop_lift! {goal; Goal<'a> => Goal<'tcx>}
+nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 
-nop_list_lift! {Goal<'a> => Goal<'tcx>}
-nop_list_lift! {Clause<'a> => Clause<'tcx>}
-nop_list_lift! {Ty<'a> => Ty<'tcx>}
-nop_list_lift! {ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
-nop_list_lift! {Predicate<'a> => Predicate<'tcx>}
-nop_list_lift! {CanonicalVarInfo => CanonicalVarInfo}
-nop_list_lift! {ProjectionKind => ProjectionKind}
+nop_list_lift! {goal_list; Goal<'a> => Goal<'tcx>}
+nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
+nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
+nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
+nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
+nop_list_lift! {canonical_var_infos; CanonicalVarInfo => CanonicalVarInfo}
+nop_list_lift! {projs; ProjectionKind => ProjectionKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
-nop_list_lift! {GenericArg<'a> => GenericArg<'tcx>}
+nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
 
     use crate::dep_graph::TaskDeps;
     use crate::ty::query;
-    use errors::Diagnostic;
-    use rustc_data_structures::sync::{self, Lock, Lrc};
+    use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
     use rustc_data_structures::OnDrop;
+    use rustc_errors::Diagnostic;
     use std::mem;
 
     #[cfg(not(parallel_compiler))]
@@ -1635,7 +1637,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
         /// `ty::query::plumbing` when executing a query.
-        pub query: Option<Lrc<query::QueryJob<'tcx>>>,
+        pub query: Option<query::QueryJobId>,
 
         /// Where to store diagnostics for the current query job, if any.
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
@@ -1927,6 +1929,11 @@ impl<'tcx, T: 'tcx + ?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx + ?Sized> Copy for Interned<'tcx, T> {}
 
+impl<'tcx, T: 'tcx + ?Sized> IntoPointer for Interned<'tcx, T> {
+    fn into_pointer(&self) -> *const () {
+        self.0 as *const _ as *const ()
+    }
+}
 // N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
@@ -2079,7 +2086,7 @@ macro_rules! slice_interners {
         $(impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
-                    Interned(List::from_arena(&self.interners.arena, v))
+                    Interned(List::from_arena(&*self.arena, v))
                 }).0
             }
         })+
@@ -2431,7 +2438,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut projection = place.projection.to_vec();
         projection.push(elem);
 
-        Place { base: place.base, projection: self.intern_place_elems(&projection) }
+        Place { local: place.local, projection: self.intern_place_elems(&projection) }
     }
 
     pub fn intern_existential_predicates(
@@ -2548,57 +2555,19 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 
-    pub fn lint_hir<S: Into<MultiSpan>>(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: S,
-        msg: &str,
-    ) {
-        self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
-    }
-
-    pub fn lint_hir_note<S: Into<MultiSpan>>(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: S,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
-    pub fn lint_node_note<S: Into<MultiSpan>>(
-        self,
-        lint: &'static Lint,
-        id: hir::HirId,
-        span: S,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
-    pub fn maybe_lint_level_root_bounded(
-        self,
-        mut id: hir::HirId,
-        bound: hir::HirId,
-    ) -> hir::HirId {
+    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.hir();
         loop {
             if id == bound {
                 return bound;
             }
-            if lint::maybe_lint_level_root(self, id) {
+
+            if hir.attrs(id).iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some()) {
                 return id;
             }
-            let next = self.hir().get_parent_node(id);
+            let next = hir.get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
@@ -2610,7 +2579,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         mut id: hir::HirId,
-    ) -> (lint::Level, lint::LintSource) {
+    ) -> (Level, LintSource) {
         let sets = self.lint_levels(LOCAL_CRATE);
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
@@ -2624,25 +2593,25 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn struct_span_lint_hir<S: Into<MultiSpan>>(
+    pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,
         hir_id: HirId,
-        span: S,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        span: impl Into<MultiSpan>,
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
     }
 
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        lint::struct_lint_level(self.sess, lint, level, src, None, msg)
+        struct_lint_level(self.sess, lint, level, src, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {
@@ -2750,10 +2719,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
-    };
-    providers.get_lang_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
     providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
     providers.maybe_unused_extern_crates = |tcx, cnum| {

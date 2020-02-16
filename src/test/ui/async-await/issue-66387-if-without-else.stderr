@@ -1,4 +1,4 @@
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/issue-66387-if-without-else.rs:3:5
    |
 LL | /     if true {

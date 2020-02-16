@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-27942.rs:5:5
+  --> $DIR/issue-27942.rs:5:25
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |                         ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Resources<'_>`
               found type `Resources<'a>`
@@ -18,10 +18,10 @@ LL | pub trait Buffer<'a, R: Resources<'a>> {
    |                  ^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-27942.rs:5:5
+  --> $DIR/issue-27942.rs:5:25
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |                         ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Resources<'_>`
               found type `Resources<'a>`

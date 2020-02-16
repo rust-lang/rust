@@ -1,8 +1,13 @@
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/arbitrary-self-types-not-object-safe.rs:33:32
    |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
 LL |     fn foo(self: &Rc<Self>) -> usize;
-   |        --- method `foo`'s `self` parameter cannot be dispatched on
+   |                  ---------
+   |                  |
+   |                  ...because method `foo`'s `self` parameter cannot be dispatched on
+   |                  help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
 ...
 LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
    |                                ^^^^^^^^^^^ the trait `Foo` cannot be made into an object
@@ -10,8 +15,13 @@ LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/arbitrary-self-types-not-object-safe.rs:33:13
    |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
 LL |     fn foo(self: &Rc<Self>) -> usize;
-   |        --- method `foo`'s `self` parameter cannot be dispatched on
+   |                  ---------
+   |                  |
+   |                  ...because method `foo`'s `self` parameter cannot be dispatched on
+   |                  help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
 ...
 LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
    |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object

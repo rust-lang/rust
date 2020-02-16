@@ -4,9 +4,7 @@ use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
-use rustc::hir;
-use rustc::hir::def;
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
@@ -16,8 +14,9 @@ use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::query::QueryConfig;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_parse::parser::emit_unclosed_delims;
 use rustc_parse::source_file_to_stream;
 
@@ -162,7 +161,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
     has_panic_handler => { cdata.root.has_panic_handler }
-    is_sanitizer_runtime => { cdata.root.sanitizer_runtime }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
@@ -343,29 +341,28 @@ pub fn provide(providers: &mut Providers<'_>) {
             // (restrict scope of mutable-borrow of `visible_parent_map`)
             {
                 let visible_parent_map = &mut visible_parent_map;
-                let mut add_child = |bfs_queue: &mut VecDeque<_>,
-                                     child: &def::Export<hir::HirId>,
-                                     parent: DefId| {
-                    if child.vis != ty::Visibility::Public {
-                        return;
-                    }
+                let mut add_child =
+                    |bfs_queue: &mut VecDeque<_>, child: &Export<hir::HirId>, parent: DefId| {
+                        if child.vis != ty::Visibility::Public {
+                            return;
+                        }
 
-                    if let Some(child) = child.res.opt_def_id() {
-                        match visible_parent_map.entry(child) {
-                            Entry::Occupied(mut entry) => {
-                                // If `child` is defined in crate `cnum`, ensure
-                                // that it is mapped to a parent in `cnum`.
-                                if child.krate == cnum && entry.get().krate != cnum {
+                        if let Some(child) = child.res.opt_def_id() {
+                            match visible_parent_map.entry(child) {
+                                Entry::Occupied(mut entry) => {
+                                    // If `child` is defined in crate `cnum`, ensure
+                                    // that it is mapped to a parent in `cnum`.
+                                    if child.krate == cnum && entry.get().krate != cnum {
+                                        entry.insert(parent);
+                                    }
+                                }
+                                Entry::Vacant(entry) => {
                                     entry.insert(parent);
+                                    bfs_queue.push_back(child);
                                 }
                             }
-                            Entry::Vacant(entry) => {
-                                entry.insert(parent);
-                                bfs_queue.push_back(child);
-                            }
                         }
-                    }
-                };
+                    };
 
                 while let Some(def) = bfs_queue.pop_front() {
                     for child in tcx.item_children(def).iter() {
@@ -411,7 +408,7 @@ impl CStore {
         &self,
         def_id: DefId,
         sess: &Session,
-    ) -> Vec<def::Export<hir::HirId>> {
+    ) -> Vec<Export<hir::HirId>> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate).each_child_of_item(
             def_id.index,
@@ -480,15 +477,19 @@ impl CStore {
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
         self.get_crate_data(cnum).source.clone()
     }
+
+    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
+        self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
+    }
+
+    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
+        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
+    }
 }
 
 impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
-    }
-
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index, sess)
     }
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol {

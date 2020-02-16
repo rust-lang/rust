@@ -31,10 +31,11 @@
 //! These methods return true to indicate that the visitor has found what it is
 //! looking for, and does not need to visit anything else.
 
-use crate::hir::def_id::DefId;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
-use crate::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -76,6 +77,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    }
+    fn has_opaque_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_ERR)
@@ -119,6 +123,10 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
+    fn has_erased_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
+    }
+
     /// True if there are any un-erased free regions.
     fn has_erasable_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
@@ -147,6 +155,15 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         }
 
         self.visit_with(&mut Visitor(visit))
+    }
+}
+
+impl TypeFoldable<'tcx> for hir::Constness {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
     }
 }
 

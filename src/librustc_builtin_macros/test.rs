@@ -2,13 +2,13 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 
 use std::iter;
 
@@ -325,7 +325,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                              `expected = \"error message\"`",
                         )
                         .note(
-                            "Errors in this attribute were erroneously \
+                            "errors in this attribute were erroneously \
                                 allowed and will become a hard error in a \
                                 future release.",
                         )
@@ -375,12 +375,16 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
     if let ast::ItemKind::Fn(ref sig, ref generics, _) = i.kind {
-        if sig.header.unsafety == ast::Unsafety::Unsafe {
-            sd.span_err(i.span, "unsafe functions cannot be used for tests");
+        if let ast::Unsafe::Yes(span) = sig.header.unsafety {
+            sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
+                .span_label(span, "`unsafe` because of this")
+                .emit();
             return false;
         }
-        if sig.header.asyncness.node.is_async() {
-            sd.span_err(i.span, "async functions cannot be used for tests");
+        if let ast::Async::Yes { span, .. } = sig.header.asyncness {
+            sd.struct_span_err(i.span, "async functions cannot be used for tests")
+                .span_label(span, "`async` because of this")
+                .emit();
             return false;
         }
 

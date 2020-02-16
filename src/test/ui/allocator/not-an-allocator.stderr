@@ -5,6 +5,7 @@ LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
    |
    = note: required by `std::alloc::GlobalAlloc::alloc`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
   --> $DIR/not-an-allocator.rs:2:1
@@ -13,6 +14,7 @@ LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
    |
    = note: required by `std::alloc::GlobalAlloc::dealloc`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
   --> $DIR/not-an-allocator.rs:2:1
@@ -21,6 +23,7 @@ LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
    |
    = note: required by `std::alloc::GlobalAlloc::realloc`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
   --> $DIR/not-an-allocator.rs:2:1
@@ -29,6 +32,7 @@ LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
    |
    = note: required by `std::alloc::GlobalAlloc::alloc_zeroed`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

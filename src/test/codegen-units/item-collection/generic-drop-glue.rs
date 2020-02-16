@@ -37,7 +37,7 @@ enum EnumNoDrop<T1, T2> {
 struct NonGenericNoDrop(i32);
 
 struct NonGenericWithDrop(i32);
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::NonGenericWithDrop[0]> @@ generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::NonGenericWithDrop[0]> @@ generic_drop_glue-cgu.0[Internal]
 
 impl Drop for NonGenericWithDrop {
     //~ MONO_ITEM fn generic_drop_glue::{{impl}}[2]::drop[0]
@@ -47,11 +47,11 @@ impl Drop for NonGenericWithDrop {
 //~ MONO_ITEM fn generic_drop_glue::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<i8, char>> @@ generic_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<i8, char>> @@ generic_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn generic_drop_glue::{{impl}}[0]::drop[0]<i8, char>
     let _ = StructWithDrop { x: 0i8, y: 'a' }.x;
 
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<&str, generic_drop_glue::NonGenericNoDrop[0]>> @@ generic_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<&str, generic_drop_glue::NonGenericNoDrop[0]>> @@ generic_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn generic_drop_glue::{{impl}}[0]::drop[0]<&str, generic_drop_glue::NonGenericNoDrop[0]>
     let _ = StructWithDrop { x: "&str", y: NonGenericNoDrop(0) }.y;
 
@@ -60,17 +60,17 @@ fn start(_: isize, _: *const *const u8) -> isize {
 
     // This is supposed to generate drop-glue because it contains a field that
     // needs to be dropped.
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::StructNoDrop[0]<generic_drop_glue::NonGenericWithDrop[0], f64>> @@ generic_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::StructNoDrop[0]<generic_drop_glue::NonGenericWithDrop[0], f64>> @@ generic_drop_glue-cgu.0[Internal]
     let _ = StructNoDrop { x: NonGenericWithDrop(0), y: 0f64 }.y;
 
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::EnumWithDrop[0]<i32, i64>> @@ generic_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::EnumWithDrop[0]<i32, i64>> @@ generic_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn generic_drop_glue::{{impl}}[1]::drop[0]<i32, i64>
     let _ = match EnumWithDrop::A::<i32, i64>(0) {
         EnumWithDrop::A(x) => x,
         EnumWithDrop::B(x) => x as i32
     };
 
-    //~MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<generic_drop_glue::EnumWithDrop[0]<f64, f32>> @@ generic_drop_glue-cgu.0[Internal]
+    //~MONO_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::EnumWithDrop[0]<f64, f32>> @@ generic_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn generic_drop_glue::{{impl}}[1]::drop[0]<f64, f32>
     let _ = match EnumWithDrop::B::<f64, f32>(1.0) {
         EnumWithDrop::A(x) => x,

@@ -1,37 +1,45 @@
-error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:12:23
+error: cannot move out of value because it is borrowed
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:15:14
    |
-LL |         Some(ref _y @ _z) => { },
-   |              ---------^^
+LL |         Some(ref _y @ _z) => {}
+   |              ------^^^--
    |              |        |
-   |              |        by-move pattern here
-   |              by-ref pattern here
+   |              |        value moved into `_z` here
+   |              value borrowed, by `_y`, here
 
-error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:18:14
+error: borrow of moved value
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:14
    |
-LL |         Some(_z @ ref _y) => { },
-   |              ^^^^^^^^^^^ binds an already bound by-move value by moving it
+LL |         Some(_z @ ref _y) => {}
+   |              --^^^------
+   |              |    |
+   |              |    value borrowed here after move
+   |              value moved into `_z` here
+   |              move occurs because `_z` has type `X` which does implement the `Copy` trait
 
-error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:25:27
+error: cannot move out of value because it is borrowed
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:29:14
    |
-LL |         Some(ref mut _y @ _z) => { },
-   |              -------------^^
+LL |         Some(ref mut _y @ _z) => {}
+   |              ----------^^^--
    |              |            |
-   |              |            by-move pattern here
-   |              by-ref pattern here
+   |              |            value moved into `_z` here
+   |              value borrowed, by `_y`, here
 
-error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:31:14
+error: borrow of moved value
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:35:14
    |
-LL |         Some(_z @ ref mut _y) => { },
-   |              ^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
+LL |         Some(_z @ ref mut _y) => {}
+   |              --^^^----------
+   |              |    |
+   |              |    value borrowed here after move
+   |              value moved into `_z` here
+   |              move occurs because `_z` has type `X` which does implement the `Copy` trait
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:18:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:19
    |
-LL |         Some(_z @ ref _y) => { },
+LL |         Some(_z @ ref _y) => {}
    |              -----^^^^^^
    |              |    |
    |              |    value borrowed here after move
@@ -40,9 +48,9 @@ LL |         Some(_z @ ref _y) => { },
    = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:31:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:35:19
    |
-LL |         Some(_z @ ref mut _y) => { },
+LL |         Some(_z @ ref mut _y) => {}
    |              -----^^^^^^^^^^
    |              |    |
    |              |    value borrowed here after move
@@ -52,5 +60,4 @@ LL |         Some(_z @ ref mut _y) => { },
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0007, E0009, E0382.
-For more information about an error, try `rustc --explain E0007`.
+For more information about this error, try `rustc --explain E0382`.

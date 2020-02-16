@@ -6,6 +6,7 @@ LL |     format!("{:X}", "3");
    |
    = note: required because of the requirements on the impl of `std::fmt::UpperHex` for `&str`
    = note: required by `std::fmt::UpperHex::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

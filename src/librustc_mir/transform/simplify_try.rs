@@ -52,6 +52,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 Some(x) => x,
             };
             if local_tmp_s0 != local_tmp_s1
+                // Avoid moving into ourselves.
+                || local_0 == local_1
                 // The field-and-variant information match up.
                 || vf_s0 != vf_s1
                 // Source and target locals have the same type.
@@ -64,6 +66,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
             }
 
             // Right shape; transform!
+            s0.source_info = s2.source_info;
             match &mut s0.kind {
                 StatementKind::Assign(box (place, rvalue)) => {
                     *place = local_0.into();
@@ -137,7 +140,7 @@ struct VarField<'tcx> {
 fn match_variant_field_place<'tcx>(place: &Place<'tcx>) -> Option<(Local, VarField<'tcx>)> {
     match place.as_ref() {
         PlaceRef {
-            base: &PlaceBase::Local(local),
+            local,
             projection: &[ProjectionElem::Downcast(_, var_idx), ProjectionElem::Field(field, ty)],
         } => Some((local, VarField { field, field_ty: ty, var_idx })),
         _ => None,

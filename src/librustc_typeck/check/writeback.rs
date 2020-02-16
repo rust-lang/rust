@@ -4,16 +4,16 @@
 
 use crate::check::FnCtxt;
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, DefIndex};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -134,8 +134,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnNeg, ref inner)
-            | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref inner)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_vars_if_possible(&inner_ty);
 
@@ -243,7 +243,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -424,7 +426,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
-            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
+            let instantiated_ty =
+                self.tcx().erase_regions(&self.resolve(&opaque_defn.concrete_ty, &hir_id));
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
@@ -442,7 +445,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id,
-                opaque_defn,
+                opaque_defn.substs,
                 instantiated_ty,
                 span,
             );

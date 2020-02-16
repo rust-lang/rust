@@ -9,13 +9,12 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::FxHashMap;
-
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 
@@ -74,10 +73,10 @@ fn collect_item(
                 )),
             };
             if let Some(span) = tcx.hir().span_if_local(original_def_id) {
-                span_note!(&mut err, span, "first defined here.");
+                err.span_note(span, "the diagnostic item is first defined here");
             } else {
                 err.note(&format!(
-                    "first defined in crate `{}`.",
+                    "the diagnostic item is first defined in crate `{}`.",
                     tcx.crate_name(original_def_id.krate)
                 ));
             }

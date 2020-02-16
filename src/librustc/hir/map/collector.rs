@@ -1,23 +1,24 @@
-use super::*;
-use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use crate::hir;
-use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
-use crate::hir::intravisit::{NestedVisitorMap, Visitor};
-use crate::hir::map::HirEntryMap;
-use crate::ich::Fingerprint;
+use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
+use crate::hir::map::definitions::{self, DefPathHash};
+use crate::hir::map::{Entry, HirEntryMap, Map};
+use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
-use crate::session::CrateDisambiguator;
-use crate::session::Session;
-use crate::util::nodemap::FxHashMap;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
+use rustc_hir as hir;
+use rustc_hir::def_id::CRATE_DEF_INDEX;
+use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::*;
 use rustc_index::vec::IndexVec;
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::Span;
-use std::iter::repeat;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use syntax::ast::NodeId;
 
-use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use std::iter::repeat;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
@@ -50,15 +51,12 @@ pub(super) struct NodeCollector<'a, 'hir> {
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
 
-fn input_dep_node_and_hash<I>(
+fn input_dep_node_and_hash(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'_>,
     dep_node: DepNode,
-    input: I,
-) -> (DepNodeIndex, Fingerprint)
-where
-    I: for<'a> HashStable<StableHashingContext<'a>>,
-{
+    input: impl for<'a> HashStable<StableHashingContext<'a>>,
+) -> (DepNodeIndex, Fingerprint) {
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
     let hash = if dep_graph.is_fully_enabled() {
@@ -72,16 +70,13 @@ where
     (dep_node_index, hash)
 }
 
-fn alloc_hir_dep_nodes<I>(
+fn alloc_hir_dep_nodes(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
-    item_like: I,
+    item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
-) -> (DepNodeIndex, DepNodeIndex)
-where
-    I: for<'a> HashStable<StableHashingContext<'a>>,
-{
+) -> (DepNodeIndex, DepNodeIndex) {
     let sig = dep_graph
         .input_task(
             def_path_hash.to_dep_node(DepKind::Hir),
@@ -97,6 +92,21 @@ where
     );
     hir_body_nodes.push((def_path_hash, hash));
     (sig, full)
+}
+
+fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
+    let mut upstream_crates: Vec<_> = cstore
+        .crates_untracked()
+        .iter()
+        .map(|&cnum| {
+            let name = cstore.crate_name_untracked(cnum);
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
+            let hash = cstore.crate_hash_untracked(cnum);
+            (name, disambiguator, hash)
+        })
+        .collect();
+    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+    upstream_crates
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -130,6 +140,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 trait_impls: _,
                 body_ids: _,
                 modules: _,
+                proc_macros: _,
             } = *krate;
 
             alloc_hir_dep_nodes(
@@ -191,18 +202,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             },
         );
 
-        let mut upstream_crates: Vec<_> = cstore
-            .crates_untracked()
-            .iter()
-            .map(|&cnum| {
-                let name = cstore.crate_name_untracked(cnum);
-                let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
-                let hash = cstore.crate_hash_untracked(cnum);
-                (name, disambiguator, hash)
-            })
-            .collect();
-
-        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+        let upstream_crates = upstream_crates(cstore);
 
         // We hash the final, remapped names of all local source files so we
         // don't have to include the path prefix remapping commandline args.
@@ -224,12 +224,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             (commandline_args_hash, crate_disambiguator.to_fingerprint()),
         );
 
-        let (_, crate_hash) = input_dep_node_and_hash(
-            self.dep_graph,
-            &mut self.hcx,
-            DepNode::new_no_params(DepKind::Krate),
-            crate_hash_input,
-        );
+        let mut stable_hasher = StableHasher::new();
+        crate_hash_input.hash_stable(&mut self.hcx, &mut stable_hasher);
+        let crate_hash: Fingerprint = stable_hasher.finish();
 
         let svh = Svh::new(crate_hash.to_smaller_hash());
         (self.map, svh)
@@ -269,7 +266,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node),
                 };
 
-                let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
+                let forgot_str = if hir_id == hir::DUMMY_HIR_ID {
                     format!("\nMaybe you forgot to lower the node id {:?}?", node_id)
                 } else {
                     String::new()
@@ -337,11 +334,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
+    type Map = Map<'hir>;
+
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         panic!("`visit_nested_xxx` must be manually implemented in this visitor");
     }
 

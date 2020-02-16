@@ -1,3 +1,4 @@
+// compile-flags: -Zsave-analysis
 // check-pass
 
 #![feature(type_alias_impl_trait)]

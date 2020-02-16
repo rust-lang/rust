@@ -1,11 +1,11 @@
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
+use rustc_attr as attr;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::attr;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
@@ -27,12 +27,19 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     bug!("closure kind predicate on function: {:#?}", predicate)
                 }
                 Predicate::Subtype(_) => bug!("subtype predicate on function: {:#?}", predicate),
-                Predicate::Trait(pred) => {
+                Predicate::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
                     match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
+                            // Allow `T: ?const Trait`
+                            if *constness == hir::Constness::NotConst
+                                && feature_allowed(tcx, def_id, sym::const_trait_bound_opt_out)
+                            {
+                                continue;
+                            }
+
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
                             let span = tcx.def_span(def.def_id);
@@ -261,7 +268,7 @@ fn check_place(
             ProjectionElem::Downcast(_symbol, _variant_index) => {}
 
             ProjectionElem::Field(..) => {
-                let base_ty = Place::ty_from(&place.base, &proj_base, body, tcx).ty;
+                let base_ty = Place::ty_from(place.local, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
                     if def.is_union() {
@@ -281,8 +288,22 @@ fn check_place(
     Ok(())
 }
 
-/// Returns whether `allow_internal_unstable(..., <feature_gate>, ...)` is present.
+/// Returns `true` if the given feature gate is allowed within the function with the given `DefId`.
 fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
+    // All features require that the corresponding gate be enabled,
+    // even if the function has `#[allow_internal_unstable(the_gate)]`.
+    if !tcx.features().enabled(feature_gate) {
+        return false;
+    }
+
+    // If this crate is not using stability attributes, or this function is not claiming to be a
+    // stable `const fn`, that is all that is required.
+    if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
+        return true;
+    }
+
+    // However, we cannot allow stable `const fn`s to use unstable features without an explicit
+    // opt-in via `allow_internal_unstable`.
     attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
         .map_or(false, |mut features| features.any(|name| name == feature_gate))
 }
@@ -295,7 +316,11 @@ fn check_terminator(
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
-        TerminatorKind::Goto { .. } | TerminatorKind::Return | TerminatorKind::Resume => Ok(()),
+        TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::FalseUnwind { .. }
+        | TerminatorKind::Goto { .. }
+        | TerminatorKind::Return
+        | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => check_place(tcx, location, span, def_id, body),
         TerminatorKind::DropAndReplace { location, value, .. } => {
@@ -303,13 +328,10 @@ fn check_terminator(
             check_operand(tcx, value, span, def_id, body)
         }
 
-        TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. }
-            if !feature_allowed(tcx, def_id, sym::const_if_match) =>
-        {
+        TerminatorKind::SwitchInt { .. } if !feature_allowed(tcx, def_id, sym::const_if_match) => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
-        TerminatorKind::FalseEdges { .. } => Ok(()),
         TerminatorKind::SwitchInt { discr, switch_ty: _, values: _, targets: _ } => {
             check_operand(tcx, discr, span, def_id, body)
         }
@@ -327,7 +349,7 @@ fn check_terminator(
         TerminatorKind::Call { func, args, from_hir_call: _, destination: _, cleanup: _ } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.kind {
-                if !tcx.is_min_const_fn(def_id) {
+                if !crate::const_eval::is_min_const_fn(tcx, def_id) {
                     return Err((
                         span,
                         format!(
@@ -352,14 +374,6 @@ fn check_terminator(
 
         TerminatorKind::Assert { cond, expected: _, msg: _, target: _, cleanup: _ } => {
             check_operand(tcx, cond, span, def_id, body)
-        }
-
-        TerminatorKind::FalseUnwind { .. } if feature_allowed(tcx, def_id, sym::const_loop) => {
-            Ok(())
-        }
-
-        TerminatorKind::FalseUnwind { .. } => {
-            Err((span, "loops are not allowed in const fn".into()))
         }
     }
 }

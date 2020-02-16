@@ -1,31 +1,31 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
-use rustc::hir::def::Namespace::{self, *};
-use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
-use rustc::util::nodemap::FxHashSet;
+use rustc_ast_pretty::pprust;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir as hir;
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast::{self, Ident, Path};
-use syntax::print::pprust;
-use syntax::struct_span_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
+use crate::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::path_names_to_string;
-use crate::VisResolutionError;
+use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
-
-use rustc_error_codes::*;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -47,6 +47,40 @@ impl TypoSuggestion {
 crate struct ImportSuggestion {
     pub did: Option<DefId>,
     pub path: Path,
+}
+
+crate enum MissingLifetimeSpot<'tcx> {
+    Generics(&'tcx hir::Generics<'tcx>),
+    HigherRanked { span: Span, span_type: ForLifetimeSpanType },
+}
+
+crate enum ForLifetimeSpanType {
+    BoundEmpty,
+    BoundTail,
+    TypeEmpty,
+    TypeTail,
+}
+
+impl ForLifetimeSpanType {
+    crate fn descr(&self) -> &'static str {
+        match self {
+            Self::BoundEmpty | Self::BoundTail => "bound",
+            Self::TypeEmpty | Self::TypeTail => "type",
+        }
+    }
+
+    crate fn suggestion(&self, sugg: &str) -> String {
+        match self {
+            Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
+            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
+        }
+    }
+}
+
+impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
+    fn into(self) -> MissingLifetimeSpot<'tcx> {
+        MissingLifetimeSpot::Generics(self)
+    }
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -770,6 +804,11 @@ impl<'a> Resolver<'a> {
         span: Span,
     ) -> bool {
         if let Some(suggestion) = suggestion {
+            // We shouldn't suggest underscore.
+            if suggestion.candidate == kw::Underscore {
+                return false;
+            }
+
             let msg = format!(
                 "{} {} with a similar name exists",
                 suggestion.res.article(),
@@ -781,8 +820,14 @@ impl<'a> Resolver<'a> {
                 suggestion.candidate.to_string(),
                 Applicability::MaybeIncorrect,
             );
-            let def_span =
-                suggestion.res.opt_def_id().and_then(|def_id| self.definitions.opt_span(def_id));
+            let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
+                LOCAL_CRATE => self.definitions.opt_span(def_id),
+                _ => Some(
+                    self.session
+                        .source_map()
+                        .def_span(self.cstore().get_span_untracked(def_id, self.session)),
+                ),
+            });
             if let Some(span) = def_span {
                 err.span_label(
                     span,
@@ -796,6 +841,163 @@ impl<'a> Resolver<'a> {
             return true;
         }
         false
+    }
+
+    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+        let res = b.res();
+        if b.span.is_dummy() {
+            let add_built_in = match b.res() {
+                // These already contain the "built-in" prefix or look bad with it.
+                Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod => false,
+                _ => true,
+            };
+            let (built_in, from) = if from_prelude {
+                ("", " from prelude")
+            } else if b.is_extern_crate()
+                && !b.is_import()
+                && self.session.opts.externs.get(&ident.as_str()).is_some()
+            {
+                ("", " passed with `--extern`")
+            } else if add_built_in {
+                (" built-in", "")
+            } else {
+                ("", "")
+            };
+
+            let article = if built_in.is_empty() { res.article() } else { "a" };
+            format!(
+                "{a}{built_in} {thing}{from}",
+                a = article,
+                thing = res.descr(),
+                built_in = built_in,
+                from = from
+            )
+        } else {
+            let introduced = if b.is_import() { "imported" } else { "defined" };
+            format!("the {thing} {introduced} here", thing = res.descr(), introduced = introduced)
+        }
+    }
+
+    crate fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+            // We have to print the span-less alternative first, otherwise formatting looks bad.
+            (b2, b1, misc2, misc1, true)
+        } else {
+            (b1, b2, misc1, misc2, false)
+        };
+
+        let mut err = struct_span_err!(
+            self.session,
+            ident.span,
+            E0659,
+            "`{ident}` is ambiguous ({why})",
+            ident = ident,
+            why = kind.descr()
+        );
+        err.span_label(ident.span, "ambiguous name");
+
+        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
+            let note_msg = format!(
+                "`{ident}` could{also} refer to {what}",
+                ident = ident,
+                also = also,
+                what = what
+            );
+
+            let thing = b.res().descr();
+            let mut help_msgs = Vec::new();
+            if b.is_glob_import()
+                && (kind == AmbiguityKind::GlobVsGlob
+                    || kind == AmbiguityKind::GlobVsExpanded
+                    || kind == AmbiguityKind::GlobVsOuter && swapped != also.is_empty())
+            {
+                help_msgs.push(format!(
+                    "consider adding an explicit import of \
+                     `{ident}` to disambiguate",
+                    ident = ident
+                ))
+            }
+            if b.is_extern_crate() && ident.span.rust_2018() {
+                help_msgs.push(format!(
+                    "use `::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            }
+            if misc == AmbiguityErrorMisc::SuggestCrate {
+                help_msgs.push(format!(
+                    "use `crate::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            } else if misc == AmbiguityErrorMisc::SuggestSelf {
+                help_msgs.push(format!(
+                    "use `self::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            }
+
+            err.span_note(b.span, &note_msg);
+            for (i, help_msg) in help_msgs.iter().enumerate() {
+                let or = if i == 0 { "" } else { "or " };
+                err.help(&format!("{}{}", or, help_msg));
+            }
+        };
+
+        could_refer_to(b1, misc1, "");
+        could_refer_to(b2, misc2, " also");
+        err.emit();
+    }
+
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+        let session = &self.session;
+        let mk_struct_span_error = |is_constructor| {
+            let mut descr = binding.res().descr().to_string();
+            if is_constructor {
+                descr += " constructor";
+            }
+            if binding.is_import() {
+                descr += " import";
+            }
+
+            let mut err =
+                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
+
+            err.span_label(ident.span, &format!("this {} is private", descr));
+            err.span_note(
+                session.source_map().def_span(binding.span),
+                &format!("the {} `{}` is defined here", descr, ident),
+            );
+
+            err
+        };
+
+        let mut err = if let NameBindingKind::Res(
+            Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
+            _,
+        ) = binding.kind
+        {
+            let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
+            if let Some(fields) = self.field_names.get(&def_id) {
+                let mut err = mk_struct_span_error(true);
+                let first_field = fields.first().expect("empty field list in the map");
+                err.span_label(
+                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
+                    "a constructor is private if any of the fields is private",
+                );
+                err
+            } else {
+                mk_struct_span_error(false)
+            }
+        } else {
+            mk_struct_span_error(false)
+        };
+
+        err.emit();
     }
 }
 
@@ -1253,11 +1455,15 @@ crate fn show_candidates(
     better: bool,
     found_use: bool,
 ) {
+    if candidates.is_empty() {
+        return;
+    }
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
         candidates.into_iter().map(|c| path_names_to_string(&c.path)).collect();
     path_strings.sort();
+    path_strings.dedup();
 
     let better = if better { "better " } else { "" };
     let msg_diff = match path_strings.len() {
@@ -1281,6 +1487,212 @@ crate fn show_candidates(
         for candidate in path_strings {
             msg.push('\n');
             msg.push_str(&candidate);
+        }
+        err.note(&msg);
+    }
+}
+
+impl<'tcx> LifetimeContext<'_, 'tcx> {
+    crate fn report_missing_lifetime_specifiers(
+        &self,
+        span: Span,
+        count: usize,
+    ) -> DiagnosticBuilder<'tcx> {
+        struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0106,
+            "missing lifetime specifier{}",
+            pluralize!(count)
+        )
+    }
+
+    crate fn emit_undeclared_lifetime_error(&self, lifetime_ref: &hir::Lifetime) {
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            lifetime_ref.span,
+            E0261,
+            "use of undeclared lifetime name `{}`",
+            lifetime_ref
+        );
+        err.span_label(lifetime_ref.span, "undeclared lifetime");
+        for missing in &self.missing_named_lifetime_spots {
+            match missing {
+                MissingLifetimeSpot::Generics(generics) => {
+                    let (span, sugg) = if let Some(param) = generics
+                        .params
+                        .iter()
+                        .filter(|p| match p.kind {
+                            hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            } => false,
+                            _ => true,
+                        })
+                        .next()
+                    {
+                        (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
+                    } else {
+                        (generics.span, format!("<{}>", lifetime_ref))
+                    };
+                    err.span_suggestion(
+                        span,
+                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                    err.span_suggestion(
+                        *span,
+                        &format!(
+                            "consider making the {} lifetime-generic with a new `{}` lifetime",
+                            span_type.descr(),
+                            lifetime_ref
+                        ),
+                        span_type.suggestion(&lifetime_ref.to_string()),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.note(
+                        "for more information on higher-ranked polymorphism, visit \
+                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                    );
+                }
+            }
+        }
+        err.emit();
+    }
+
+    crate fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
+        if let def::Res::Def(_, did) = trait_ref.trait_ref.path.res {
+            if [
+                self.tcx.lang_items().fn_once_trait(),
+                self.tcx.lang_items().fn_trait(),
+                self.tcx.lang_items().fn_mut_trait(),
+            ]
+            .contains(&Some(did))
+            {
+                let (span, span_type) = match &trait_ref.bound_generic_params {
+                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
+                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
+                return true;
+            }
+        };
+        false
+    }
+
+    crate fn add_missing_lifetime_specifiers_label(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        count: usize,
+        lifetime_names: &FxHashSet<ast::Ident>,
+        params: &[ElisionFailureInfo],
+    ) {
+        if count > 1 {
+            err.span_label(span, format!("expected {} lifetime parameters", count));
+        } else {
+            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
+            let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+                err.span_suggestion(
+                    span,
+                    "consider using the named lifetime",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+            };
+            let suggest_new =
+                |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
+                    err.span_label(span, "expected named lifetime parameter");
+
+                    for missing in self.missing_named_lifetime_spots.iter().rev() {
+                        let mut introduce_suggestion = vec![];
+                        let msg;
+                        let should_break;
+                        introduce_suggestion.push(match missing {
+                        MissingLifetimeSpot::Generics(generics) => {
+                            msg = "consider introducing a named lifetime parameter".to_string();
+                            should_break = true;
+                            if let Some(param) = generics.params.iter().filter(|p| match p.kind {
+                                hir::GenericParamKind::Type {
+                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                    ..
+                                } => false,
+                                _ => true,
+                            }).next() {
+                                (param.span.shrink_to_lo(), "'a, ".to_string())
+                            } else {
+                                (generics.span, "<'a>".to_string())
+                            }
+                        }
+                        MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                            msg = format!(
+                                "consider making the {} lifetime-generic with a new `'a` lifetime",
+                                span_type.descr(),
+                            );
+                            should_break = false;
+                            err.note(
+                                "for more information on higher-ranked polymorphism, visit \
+                             https://doc.rust-lang.org/nomicon/hrtb.html",
+                            );
+                            (*span, span_type.suggestion("'a"))
+                        }
+                    });
+                        for param in params {
+                            if let Ok(snippet) =
+                                self.tcx.sess.source_map().span_to_snippet(param.span)
+                            {
+                                if snippet.starts_with("&") && !snippet.starts_with("&'") {
+                                    introduce_suggestion
+                                        .push((param.span, format!("&'a {}", &snippet[1..])));
+                                } else if snippet.starts_with("&'_ ") {
+                                    introduce_suggestion
+                                        .push((param.span, format!("&'a {}", &snippet[4..])));
+                                }
+                            }
+                        }
+                        introduce_suggestion.push((span, sugg.to_string()));
+                        err.multipart_suggestion(
+                            &msg,
+                            introduce_suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                        if should_break {
+                            break;
+                        }
+                    }
+                };
+
+            match (
+                lifetime_names.len(),
+                lifetime_names.iter().next(),
+                snippet.as_ref().map(|s| s.as_str()),
+            ) {
+                (1, Some(name), Some("&")) => {
+                    suggest_existing(err, format!("&{} ", name));
+                }
+                (1, Some(name), Some("'_")) => {
+                    suggest_existing(err, name.to_string());
+                }
+                (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
+                    suggest_existing(err, format!("{}<{}>", snippet, name));
+                }
+                (0, _, Some("&")) => {
+                    suggest_new(err, "&'a ");
+                }
+                (0, _, Some("'_")) => {
+                    suggest_new(err, "'a");
+                }
+                (0, _, Some(snippet)) if !snippet.ends_with(">") => {
+                    suggest_new(err, &format!("{}<'a>", snippet));
+                }
+                _ => {
+                    err.span_label(span, "expected lifetime parameter");
+                }
+            }
         }
     }
 }

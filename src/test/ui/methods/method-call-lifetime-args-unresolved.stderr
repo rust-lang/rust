@@ -1,6 +1,8 @@
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
    |
+LL | fn main() {
+   |        - help: consider introducing lifetime `'a` here: `<'a>`
 LL |     0.clone::<'a>();
    |               ^^ undeclared lifetime
 

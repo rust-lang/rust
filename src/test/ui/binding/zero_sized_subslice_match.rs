@@ -1,5 +1,4 @@
 // run-pass
-#![feature(slice_patterns)]
 
 fn main() {
     let x = [(), ()];

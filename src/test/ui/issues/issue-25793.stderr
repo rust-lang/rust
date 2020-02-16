@@ -10,6 +10,8 @@ LL |         r.get_size(width!(self))
    |           -------- ------------ in this macro invocation
    |           |
    |           borrow later used by call
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

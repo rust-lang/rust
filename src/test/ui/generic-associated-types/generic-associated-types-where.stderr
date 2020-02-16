@@ -4,7 +4,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Assoc2<T> where T: Display;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/generic-associated-types-where.rs:13:5
@@ -12,7 +12,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Assoc3<T>;
    |     ^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/generic-associated-types-where.rs:15:5
@@ -20,7 +20,7 @@ error: type-generic associated types are not yet implemented
 LL |     type WithDefault<'a, T: Debug + 'a> = dyn Iterator<Item=T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: aborting due to 3 previous errors
 

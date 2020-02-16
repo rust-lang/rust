@@ -1,11 +1,25 @@
-[target.thumbv7m-none-eabi]
-# uncomment this to make `cargo run` execute programs on QEMU
+[target.thumbv6m-none-eabi]
+# FIXME: Should be Cortex-M0, but Qemu used by CI is too old
 runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 
-[target.thumbv6m-none-eabi]
-# uncomment this to make `cargo run` execute programs on QEMU
-# For now, we use cortex-m3 instead of cortex-m0 which are not supported by QEMU
+[target.thumbv7m-none-eabi]
 runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv7em-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv7em-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.base-none-eabi]
+# FIXME: Should be the Cortex-M23, bt Qemu does not currently support it
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.main-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.main-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 # uncomment ONE of these three option to make `cargo run` start a GDB session

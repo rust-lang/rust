@@ -1,6 +1,3 @@
-use crate::hir;
-use crate::hir::def::{DefKind, Namespace};
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
@@ -8,13 +5,16 @@ use crate::mir::interpret::{sign_extend, truncate, ConstValue, Scalar};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::attr::{SignedInt, UnsignedInt};
 
 use std::cell::Cell;
 use std::collections::BTreeMap;
@@ -724,7 +724,7 @@ pub trait PrettyPrinter<'tcx>:
             let mut resugared = false;
 
             // Special-case `Fn(...) -> ...` and resugar it.
-            let fn_trait_kind = self.tcx().lang_items().fn_trait_kind(principal.def_id);
+            let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
                 if let ty::Tuple(ref args) = principal.substs.type_at(0).kind {
                     let mut projections = predicates.projection_bounds();
@@ -831,7 +831,11 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    fn pretty_print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn pretty_print_const(
+        mut self,
+        ct: &'tcx ty::Const<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
@@ -839,32 +843,54 @@ pub trait PrettyPrinter<'tcx>:
             return Ok(self);
         }
 
+        macro_rules! print_underscore {
+            () => {{
+                p!(write("_"));
+                if print_ty {
+                    p!(write(": "), print(ct.ty));
+                }
+            }};
+        }
+
         match (ct.val, &ct.ty.kind) {
             (_, ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
-            (ty::ConstKind::Unevaluated(did, substs), _) => match self.tcx().def_kind(did) {
-                Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {
-                    p!(print_value_path(did, substs))
-                }
-                _ => {
-                    if did.is_local() {
-                        let span = self.tcx().def_span(did);
-                        if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
-                            p!(write("{}", snip))
-                        } else {
-                            p!(write("_: "), print(ct.ty))
+            (ty::ConstKind::Unevaluated(did, substs, promoted), _) => {
+                if let Some(promoted) = promoted {
+                    p!(print_value_path(did, substs));
+                    p!(write("::{:?}", promoted));
+                } else {
+                    match self.tcx().def_kind(did) {
+                        Some(DefKind::Static)
+                        | Some(DefKind::Const)
+                        | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
+                        _ => {
+                            if did.is_local() {
+                                let span = self.tcx().def_span(did);
+                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
+                                {
+                                    p!(write("{}", snip))
+                                } else {
+                                    print_underscore!()
+                                }
+                            } else {
+                                print_underscore!()
+                            }
                         }
-                    } else {
-                        p!(write("_: "), print(ct.ty))
                     }
                 }
-            },
-            (ty::ConstKind::Infer(..), _) => p!(write("_: "), print(ct.ty)),
+            }
+            (ty::ConstKind::Infer(..), _) => print_underscore!(),
             (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
-            (ty::ConstKind::Value(value), _) => return self.pretty_print_const_value(value, ct.ty),
+            (ty::ConstKind::Value(value), _) => {
+                return self.pretty_print_const_value(value, ct.ty, print_ty);
+            }
 
             _ => {
                 // fallback
-                p!(write("{:?} : ", ct.val), print(ct.ty))
+                p!(write("{:?}", ct.val));
+                if print_ty {
+                    p!(write(": "), print(ct.ty));
+                }
             }
         };
         Ok(self)
@@ -874,6 +900,7 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         ct: ConstValue<'tcx>,
         ty: Ty<'tcx>,
+        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
@@ -980,7 +1007,10 @@ pub trait PrettyPrinter<'tcx>:
                 };
                 if !printed {
                     // fallback
-                    p!(write("{:?} : ", ct), print(ty))
+                    p!(write("{:?}", ct));
+                    if print_ty {
+                        p!(write(": "), print(ty));
+                    }
                 }
             }
         };
@@ -1036,26 +1066,26 @@ impl<F> FmtPrinter<'a, 'tcx, F> {
     }
 }
 
-impl TyCtxt<'t> {
-    // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
-    // (but also some things just print a `DefId` generally so maybe we need this?)
-    fn guess_def_namespace(self, def_id: DefId) -> Namespace {
-        match self.def_key(def_id).disambiguated_data.data {
-            DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
-                Namespace::TypeNS
-            }
-
-            DefPathData::ValueNs(..)
-            | DefPathData::AnonConst
-            | DefPathData::ClosureExpr
-            | DefPathData::Ctor => Namespace::ValueNS,
-
-            DefPathData::MacroNs(..) => Namespace::MacroNS,
-
-            _ => Namespace::TypeNS,
+// HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
+// (but also some things just print a `DefId` generally so maybe we need this?)
+fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
+            Namespace::TypeNS
         }
-    }
 
+        DefPathData::ValueNs(..)
+        | DefPathData::AnonConst
+        | DefPathData::ClosureExpr
+        | DefPathData::Ctor => Namespace::ValueNS,
+
+        DefPathData::MacroNs(..) => Namespace::MacroNS,
+
+        _ => Namespace::TypeNS,
+    }
+}
+
+impl TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
     pub fn def_path_str(self, def_id: DefId) -> String {
@@ -1063,7 +1093,7 @@ impl TyCtxt<'t> {
     }
 
     pub fn def_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
-        let ns = self.guess_def_namespace(def_id);
+        let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
         let _ = FmtPrinter::new(self, &mut s, ns).print_def_path(def_id, substs);
@@ -1154,7 +1184,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 
     fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct)
+        self.pretty_print_const(ct, true)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
@@ -1352,7 +1382,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
             ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
 
-            ty::ReStatic | ty::ReEmpty | ty::ReClosureBound(_) => true,
+            ty::ReStatic | ty::ReEmpty(_) | ty::ReClosureBound(_) => true,
         }
     }
 }
@@ -1434,8 +1464,12 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                 p!(write("'static"));
                 return Ok(self);
             }
-            ty::ReEmpty => {
+            ty::ReEmpty(ty::UniverseIndex::ROOT) => {
                 p!(write("'<empty>"));
+                return Ok(self);
+            }
+            ty::ReEmpty(ui) => {
+                p!(write("'<empty:{:?}>", ui));
                 return Ok(self);
             }
 
@@ -1580,7 +1614,7 @@ where
     type Error = P::Error;
     fn print(&self, mut cx: P) -> Result<Self::Output, Self::Error> {
         define_scoped_cx!(cx);
-        p!(print(self.0), write(" : "), print(self.1));
+        p!(print(self.0), write(": "), print(self.1));
         Ok(cx)
     }
 }
@@ -1783,7 +1817,12 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match *self {
-            ty::Predicate::Trait(ref data) => p!(print(data)),
+            ty::Predicate::Trait(ref data, constness) => {
+                if let hir::Constness::Const = constness {
+                    p!(write("const "));
+                }
+                p!(print(data))
+            }
             ty::Predicate::Subtype(ref predicate) => p!(print(predicate)),
             ty::Predicate::RegionOutlives(ref predicate) => p!(print(predicate)),
             ty::Predicate::TypeOutlives(ref predicate) => p!(print(predicate)),

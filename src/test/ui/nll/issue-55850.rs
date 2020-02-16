@@ -15,7 +15,7 @@ where
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match Pin::new(&mut self.0).resume() {
+        match Pin::new(&mut self.0).resume(()) {
             Yielded(y) => Some(y),
             _ => None
         }

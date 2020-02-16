@@ -1,0 +1,27 @@
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/E0746.rs:8:13
+   |
+LL | fn foo() -> dyn Trait { Struct }
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
+   |
+LL | fn foo() -> impl Trait { Struct }
+   |             ^^^^^^^^^^
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/E0746.rs:11:13
+   |
+LL | fn bar() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
+   |
+LL | fn bar() -> impl Trait {
+   |             ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0746`.

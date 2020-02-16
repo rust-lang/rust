@@ -3,6 +3,9 @@ error[E0277]: the trait bound `Foo: Qux` is not satisfied in `impl std::future::
    |
 LL | fn is_qux<T: Qux>(t: T) { }
    |    ------    --- required by this bound in `is_qux`
+LL | 
+LL | async fn bar() {
+   |                - within this `impl std::future::Future`
 ...
 LL |     is_qux(bar());
    |     ^^^^^^ within `impl std::future::Future`, the trait `Qux` is not implemented for `Foo`

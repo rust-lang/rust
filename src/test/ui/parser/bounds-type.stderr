@@ -4,5 +4,11 @@ error: `?` may only modify trait bounds, not lifetime bounds
 LL |     T: ?'a,
    |        ^
 
-error: aborting due to previous error
+error: `?const` may only modify trait bounds, not lifetime bounds
+  --> $DIR/bounds-type.rs:15:8
+   |
+LL |     T: ?const 'a,
+   |        ^^^^^^
+
+error: aborting due to 2 previous errors
 

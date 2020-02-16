@@ -1,0 +1,11 @@
+error[E0599]: no associated item named `LINKS` found for type parameter `A` in the current scope
+  --> $DIR/associated-item-duplicate-bounds.rs:7:21
+   |
+LL |     links: [u32; A::LINKS], // Shouldn't suggest bounds already there.
+   |                     ^^^^^ associated item not found in `A`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

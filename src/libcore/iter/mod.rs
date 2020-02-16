@@ -327,7 +327,7 @@ pub use self::sources::{empty, Empty};
 pub use self::sources::{from_fn, FromFn};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{once, Once};
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
@@ -351,6 +351,8 @@ pub use self::adapters::Cloned;
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
+#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+pub use self::adapters::MapWhile;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
 #[stable(feature = "rust1", since = "1.0.0")]

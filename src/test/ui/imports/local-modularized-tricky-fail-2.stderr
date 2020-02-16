@@ -7,8 +7,9 @@ LL | exported!();
 LL |                 () => ( struct Б; )
    |                                ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: non-ascii idents are not fully supported
   --> $DIR/local-modularized-tricky-fail-2.rs:36:24
@@ -19,8 +20,9 @@ LL |     panic!();
 LL |         () => ( struct Г; )
    |                        ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: non-ascii idents are not fully supported
   --> $DIR/local-modularized-tricky-fail-2.rs:46:24
@@ -31,8 +33,9 @@ LL | include!();
 LL |         () => ( struct Д; )
    |                        ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

@@ -70,6 +70,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut print_path = move |fmt: &mut fmt::Formatter<'_>, bows: BytesOrWideString<'_>| {
         output_filename(fmt, bows, print_fmt, cwd.as_ref())
     };
+    write!(fmt, "stack backtrace:\n")?;
     let mut bt_fmt = BacktraceFmt::new(fmt, print_fmt, &mut print_path);
     bt_fmt.add_context()?;
     let mut idx = 0;

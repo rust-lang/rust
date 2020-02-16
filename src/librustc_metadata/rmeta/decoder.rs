@@ -4,9 +4,7 @@ use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc::dep_graph::{self, DepNodeIndex};
-use rustc::hir;
-use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::middle::cstore::{CrateSource, ExternCrate};
@@ -18,12 +16,15 @@ use rustc::mir::{self, interpret, BodyAndCache, Promoted};
 use rustc::session::Session;
 use rustc::ty::codec::TyDecoder;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::captures::Captures;
 use rustc::util::common::record_time;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 
 use std::io;
@@ -33,6 +34,7 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
@@ -40,7 +42,6 @@ use rustc_span::source_map::{self, respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 use syntax::ast::{self, Ident};
-use syntax::attr;
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -636,10 +637,6 @@ impl<'a, 'tcx> CrateMetadata {
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
-        // NOTE: If you update the order of macros in 'proc_macro_data' for any reason,
-        // you must also update src/librustc_builtin_macros/proc_macro_harness.rs
-        // Failing to do so will result in incorrect data being associated
-        // with proc macros when deserialized.
         let pos = self.root.proc_macro_data.unwrap().decode(self).position(|i| i == id).unwrap();
         &self.raw_proc_macros.unwrap()[pos]
     }
@@ -839,7 +836,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
         match self.is_proc_macro(id) {
-            true => self.root.proc_macro_stability.clone(),
+            true => self.root.proc_macro_stability,
             false => self.root.per_def.stability.get(self, id).map(|stab| stab.decode(self)),
         }
     }
@@ -930,7 +927,7 @@ impl<'a, 'tcx> CrateMetadata {
     /// Iterates over each child of the given item.
     fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
     where
-        F: FnMut(def::Export<hir::HirId>),
+        F: FnMut(Export<hir::HirId>),
     {
         if let Some(proc_macros_ids) = self.root.proc_macro_data.map(|d| d.decode(self)) {
             /* If we are loading as a proc macro, we want to return the view of this crate
@@ -944,12 +941,7 @@ impl<'a, 'tcx> CrateMetadata {
                         self.local_def_id(def_index),
                     );
                     let ident = Ident::from_str(raw_macro.name());
-                    callback(def::Export {
-                        ident: ident,
-                        res: res,
-                        vis: ty::Visibility::Public,
-                        span: DUMMY_SP,
-                    });
+                    callback(Export { ident, res, vis: ty::Visibility::Public, span: DUMMY_SP });
                 }
             }
             return;
@@ -989,7 +981,7 @@ impl<'a, 'tcx> CrateMetadata {
                             .unwrap_or(Lazy::empty());
                         for child_index in child_children.decode((self, sess)) {
                             if let Some(kind) = self.def_kind(child_index) {
-                                callback(def::Export {
+                                callback(Export {
                                     res: Res::Def(kind, self.local_def_id(child_index)),
                                     ident: Ident::with_dummy_span(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
@@ -1019,7 +1011,7 @@ impl<'a, 'tcx> CrateMetadata {
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
-                    callback(def::Export { res, ident, vis, span });
+                    callback(Export { res, ident, vis, span });
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
                     match kind {
@@ -1029,7 +1021,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(def::Export { res: ctor_res, vis, ident, span });
+                                callback(Export { res: ctor_res, vis, ident, span });
                             }
                         }
                         DefKind::Variant => {
@@ -1053,7 +1045,7 @@ impl<'a, 'tcx> CrateMetadata {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(def::Export { res: ctor_res, ident, vis, span });
+                            callback(Export { res: ctor_res, ident, vis, span });
                         }
                         _ => {}
                     }
@@ -1589,10 +1581,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn is_panic_runtime(&self) -> bool {
         self.root.panic_runtime
-    }
-
-    crate fn is_sanitizer_runtime(&self) -> bool {
-        self.root.sanitizer_runtime
     }
 
     crate fn is_profiler_runtime(&self) -> bool {

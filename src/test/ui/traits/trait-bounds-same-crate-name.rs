@@ -31,7 +31,7 @@ fn main() {
         a::try_foo(foo);
         //~^ ERROR E0277
         //~| trait impl with same name found
-        //~| Perhaps two different versions of crate `crate_a2`
+        //~| perhaps two different versions of crate `crate_a2`
 
         // We don't want to see the "version mismatch" help message here
         // because `implements_no_traits` has no impl for `Foo`

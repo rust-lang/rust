@@ -1,8 +1,8 @@
-error: expected one of `extern`, `fn`, or `{`, found `'b`
+error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:6:12
    |
 LL |     unsafe 'b: {}
-   |            ^^ expected one of `extern`, `fn`, or `{`
+   |            ^^ expected `{`
 
 error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:10:13

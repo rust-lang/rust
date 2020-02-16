@@ -1,4 +1,4 @@
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/issue-67273-assignment-match-prior-arm-bool-expected-unit.rs:22:14
    |
 LL | /     match i {

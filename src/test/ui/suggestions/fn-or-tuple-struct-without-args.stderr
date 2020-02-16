@@ -236,7 +236,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:46:20
    |
 LL |     let closure = || 42;
-   |                   -- closure defined here
+   |                   ----- the found closure
 LL |     let _: usize = closure;
    |            -----   ^^^^^^^
    |            |       |

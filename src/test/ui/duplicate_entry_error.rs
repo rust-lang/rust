@@ -8,7 +8,7 @@ use std::panic::PanicInfo;
 
 #[lang = "panic_impl"]
 fn panic_impl(info: &PanicInfo) -> ! {
-//~^ ERROR: duplicate lang item found: `panic_impl`.
+//~^ ERROR: found duplicate lang item `panic_impl`
     loop {}
 }
 

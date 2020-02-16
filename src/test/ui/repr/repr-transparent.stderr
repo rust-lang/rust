@@ -94,14 +94,26 @@ LL |     Foo(String),
 LL |     Bar,
    |     --- too many variants in `TooManyVariants`
 
+error[E0691]: zero-sized field in transparent enum has alignment larger than 1
+  --> $DIR/repr-transparent.rs:65:14
+   |
+LL |     Foo(u32, [u16; 0]),
+   |              ^^^^^^^^ has alignment larger than 1
+
+error[E0691]: zero-sized field in transparent enum has alignment larger than 1
+  --> $DIR/repr-transparent.rs:70:11
+   |
+LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
+   |           ^^^^^^^^^^^^^^^^^^ has alignment larger than 1
+
 error[E0690]: transparent union needs exactly one non-zero-sized field, but has 0
-  --> $DIR/repr-transparent.rs:64:1
+  --> $DIR/repr-transparent.rs:74:1
    |
 LL | union UnitUnion {
    | ^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent union needs exactly one non-zero-sized field, but has 2
-  --> $DIR/repr-transparent.rs:69:1
+  --> $DIR/repr-transparent.rs:79:1
    |
 LL | union TooManyFields {
    | ^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 2
@@ -110,7 +122,7 @@ LL |     u: u32,
 LL |     s: i32
    |     ------ this field is non-zero-sized
 
-error: aborting due to 15 previous errors
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0084, E0690, E0691, E0731.
 For more information about an error, try `rustc --explain E0084`.

@@ -4,12 +4,11 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 
 pub use emitter::ColorConfig;
 
+use log::debug;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -174,17 +173,27 @@ impl CodeSuggestion {
 
         self.substitutions
             .iter()
+            .filter(|subst| {
+                // Suggestions coming from macros can have malformed spans. This is a heavy
+                // handed approach to avoid ICEs by ignoring the suggestion outright.
+                let invalid = subst.parts.iter().any(|item| cm.is_valid_span(item.span).is_err());
+                if invalid {
+                    debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
+                }
+                !invalid
+            })
             .cloned()
-            .map(|mut substitution| {
+            .filter_map(|mut substitution| {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
 
                 // Find the bounding span.
-                let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-                let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+                let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
+                let hi = substitution.parts.iter().map(|part| part.span.hi()).max()?;
                 let bounding_span = Span::with_root_ctxt(lo, hi);
-                let lines = cm.span_to_lines(bounding_span).unwrap();
+                // The different spans might belong to different contexts, if so ignore suggestion.
+                let lines = cm.span_to_lines(bounding_span).ok()?;
                 assert!(!lines.lines.is_empty());
 
                 // To build up the result, we do this for each span:
@@ -234,7 +243,7 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                (buf, substitution.parts, only_capitalization)
+                Some((buf, substitution.parts, only_capitalization))
             })
             .collect()
     }
@@ -278,7 +287,6 @@ struct HandlerInner {
     err_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
-    continue_after_error: bool,
     delayed_span_bugs: Vec<Diagnostic>,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -326,9 +334,11 @@ pub struct HandlerFlags {
     /// If true, immediately print bugs registered with `delay_span_bug`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
-    /// show macro backtraces even for non-local macros.
-    /// (rustc: see `-Z external-macro-backtrace`)
-    pub external_macro_backtrace: bool,
+    /// Show macro backtraces.
+    /// (rustc: see `-Z macro-backtrace`)
+    pub macro_backtrace: bool,
+    /// If true, identical diagnostics are reported only once.
+    pub deduplicate_diagnostics: bool,
 }
 
 impl Drop for HandlerInner {
@@ -373,7 +383,7 @@ impl Handler {
             false,
             false,
             None,
-            flags.external_macro_backtrace,
+            flags.macro_backtrace,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -400,7 +410,6 @@ impl Handler {
                 err_count: 0,
                 deduplicated_err_count: 0,
                 emitter,
-                continue_after_error: true,
                 delayed_span_bugs: Vec::new(),
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
@@ -408,10 +417,6 @@ impl Handler {
                 stashed_diagnostics: Default::default(),
             }),
         }
-    }
-
-    pub fn set_continue_after_error(&self, continue_after_error: bool) {
-        self.inner.borrow_mut().continue_after_error = continue_after_error;
     }
 
     // This is here to not allow mutation of flags;
@@ -670,10 +675,6 @@ impl Handler {
         self.inner.borrow_mut().abort_if_errors()
     }
 
-    pub fn abort_if_errors_and_should_abort(&self) {
-        self.inner.borrow_mut().abort_if_errors_and_should_abort()
-    }
-
     /// `true` if we haven't taught a diagnostic with this code already.
     /// The caller must then teach the user about such a diagnostic.
     ///
@@ -694,7 +695,6 @@ impl Handler {
     fn emit_diag_at_span(&self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         let mut inner = self.inner.borrow_mut();
         inner.emit_diagnostic(diag.set_span(sp));
-        inner.abort_if_errors_and_should_abort();
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -736,16 +736,17 @@ impl HandlerInner {
             self.emitted_diagnostic_codes.insert(code.clone());
         }
 
-        let diagnostic_hash = {
+        let already_emitted = |this: &mut Self| {
             use std::hash::Hash;
             let mut hasher = StableHasher::new();
             diagnostic.hash(&mut hasher);
-            hasher.finish()
+            let diagnostic_hash = hasher.finish();
+            !this.emitted_diagnostics.insert(diagnostic_hash)
         };
 
-        // Only emit the diagnostic if we haven't already emitted an equivalent
-        // one:
-        if self.emitted_diagnostics.insert(diagnostic_hash) {
+        // Only emit the diagnostic if we've been asked to deduplicate and
+        // haven't already emitted an equivalent diagnostic.
+        if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
@@ -827,14 +828,6 @@ impl HandlerInner {
         self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
 
-    fn abort_if_errors_and_should_abort(&mut self) {
-        self.emit_stashed_diagnostics();
-
-        if self.has_errors() && !self.continue_after_error {
-            FatalError.raise();
-        }
-    }
-
     fn abort_if_errors(&mut self) {
         self.emit_stashed_diagnostics();
 
@@ -850,7 +843,6 @@ impl HandlerInner {
 
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         self.emit_diagnostic(diag.set_span(sp));
-        self.abort_if_errors_and_should_abort();
     }
 
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {

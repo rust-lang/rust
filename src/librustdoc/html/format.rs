@@ -9,12 +9,13 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
+use crate::html::escape::Escape;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_DEPTH};
 
@@ -314,8 +315,14 @@ impl clean::Lifetime {
 }
 
 impl clean::Constant {
-    crate fn print(&self) -> &str {
-        &self.expr
+    crate fn print(&self) -> impl fmt::Display + '_ {
+        display_fn(move |f| {
+            if f.alternate() {
+                f.write_str(&self.expr)
+            } else {
+                write!(f, "{}", Escape(&self.expr))
+            }
+        })
     }
 }
 
@@ -354,6 +361,7 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
+                    hir::TraitBoundModifier::MaybeConst => "?const",
                 };
                 if f.alternate() {
                     write!(f, "{}{:#}", modifier_str, ty.print())
@@ -689,7 +697,11 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Array(ref t, ref n) => {
             primitive_link(f, PrimitiveType::Array, "[")?;
             fmt::Display::fmt(&t.print(), f)?;
-            primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
+            if f.alternate() {
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
+            } else {
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)))
+            }
         }
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {
@@ -1159,11 +1171,14 @@ impl clean::ImportSource {
         display_fn(move |f| match self.did {
             Some(did) => resolved_path(f, did, &self.path, true, false),
             _ => {
-                for (i, seg) in self.path.segments.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, "::")?
-                    }
-                    write!(f, "{}", seg.name)?;
+                for seg in &self.path.segments[..self.path.segments.len() - 1] {
+                    write!(f, "{}::", seg.name)?;
+                }
+                let name = self.path.last_name();
+                if let hir::def::Res::PrimTy(p) = self.path.res {
+                    primitive_link(f, PrimitiveType::from(p), name)?;
+                } else {
+                    write!(f, "{}", name)?;
                 }
                 Ok(())
             }

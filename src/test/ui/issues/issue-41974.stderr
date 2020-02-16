@@ -9,11 +9,11 @@ LL | impl<T> Drop for T where T: A {
              where T: ?Sized;
    = note: downstream crates may implement trait `A` for type `std::boxed::Box<_>`
 
-error[E0120]: the Drop trait may only be implemented on structures
+error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
   --> $DIR/issue-41974.rs:7:18
    |
 LL | impl<T> Drop for T where T: A {
-   |                  ^ implementing Drop requires a struct
+   |                  ^ must be a struct, enum, or union
 
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/issue-41974.rs:7:6

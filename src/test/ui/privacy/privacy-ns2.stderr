@@ -58,19 +58,37 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:63:15
    |
 LL |     use foo3::Bar;
-   |               ^^^
+   |               ^^^ this trait is private
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:55:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
 
 error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:67:15
    |
 LL |     use foo3::Bar;
-   |               ^^^
+   |               ^^^ this trait is private
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:55:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
 
 error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:74:16
    |
 LL |     use foo3::{Bar,Baz};
-   |                ^^^
+   |                ^^^ this trait is private
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ns2.rs:55:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
 
 error[E0107]: wrong number of const arguments: expected 0, found 1
   --> $DIR/privacy-ns2.rs:41:18

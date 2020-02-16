@@ -5,7 +5,6 @@ use crate::llvm;
 use crate::llvm_util;
 use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
-use rustc::hir;
 
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
@@ -13,17 +12,18 @@ use rustc_codegen_ssa::traits::*;
 use crate::callee::get_fn;
 use rustc::bug;
 use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{self, DebugInfo};
+use rustc::session::config::{self, CFGuard, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{
     FnAbiExt, HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
 };
 use rustc::ty::{self, Instance, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashMap;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::Unsafety;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::abi::Abi;
@@ -143,6 +143,10 @@ fn strip_function_ptr_alignment(data_layout: String) -> String {
     data_layout.replace("-Fi8-", "-")
 }
 
+fn strip_x86_address_spaces(data_layout: String) -> String {
+    data_layout.replace("-p270:32:32-p271:32:32-p272:64:64-", "-")
+}
+
 pub unsafe fn create_module(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
@@ -155,6 +159,11 @@ pub unsafe fn create_module(
     let mut target_data_layout = sess.target.target.data_layout.clone();
     if llvm_util::get_major_version() < 9 {
         target_data_layout = strip_function_ptr_alignment(target_data_layout);
+    }
+    if llvm_util::get_major_version() < 10 {
+        if sess.target.target.arch == "x86" || sess.target.target.arch == "x86_64" {
+            target_data_layout = strip_x86_address_spaces(target_data_layout);
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -216,6 +225,16 @@ pub unsafe fn create_module(
     if !sess.needs_plt() {
         let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
+    }
+
+    // Set module flags to enable Windows Control Flow Guard (/guard:cf) metadata
+    // only (`cfguard=1`) or metadata and checks (`cfguard=2`).
+    match sess.opts.debugging_opts.control_flow_guard {
+        CFGuard::Disabled => {}
+        CFGuard::NoChecks => {
+            llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+        }
+        CFGuard::Checks => llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2),
     }
 
     llmod
@@ -415,7 +434,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
             tcx.types.never,
             false,
-            hir::Unsafety::Unsafe,
+            Unsafety::Unsafe,
             Abi::C,
         ));
 
@@ -542,10 +561,6 @@ impl CodegenCx<'b, 'tcx> {
             t_v4f64: t_f64, 4;
             t_v8f64: t_f64, 8;
         }
-
-        ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i64", fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
@@ -811,8 +826,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
-        ifn!("llvm.lifetime.start", fn(t_i64, i8p) -> void);
-        ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);

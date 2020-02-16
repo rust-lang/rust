@@ -1,0 +1,93 @@
+error[E0277]: `impl Sized` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:5:22
+   |
+LL |     println!("{:?}", t);
+   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `impl Sized`
+help: consider further restricting this bound with `+ std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:4:17
+   |
+LL | fn test_impl(t: impl Sized) {
+   |                 ^^^^^^^^^^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `T` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:11:22
+   |
+LL |     println!("{:?}", t);
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `T`
+help: consider restricting this type parameter with `T: std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:10:19
+   |
+LL | fn test_no_bounds<T>(t: T) {
+   |                   ^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `T` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:17:22
+   |
+LL |     println!("{:?}", t);
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `T`
+help: consider further restricting this bound with `+ std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:16:22
+   |
+LL | fn test_one_bound<T: Sized>(t: T) {
+   |                      ^^^^^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `Y` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:23:30
+   |
+LL |     println!("{:?} {:?}", x, y);
+   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `Y`
+help: consider restricting this type parameter with `where Y: std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:22:28
+   |
+LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug {
+   |                            ^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `X` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:29:22
+   |
+LL |     println!("{:?}", x);
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `X`
+help: consider further restricting this bound with `+ std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:28:40
+   |
+LL | fn test_one_bound_where<X>(x: X) where X: Sized {
+   |                                        ^^^^^^^^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `X` doesn't implement `std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:35:22
+   |
+LL |     println!("{:?}", x);
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `X`
+help: consider further restricting this type parameter with `where X: std::fmt::Debug`
+  --> $DIR/bound-suggestions.rs:34:27
+   |
+LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized {
+   |                           ^
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

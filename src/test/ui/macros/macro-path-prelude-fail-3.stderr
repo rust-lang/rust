@@ -1,8 +1,13 @@
 error: cannot find macro `inline` in this scope
-  --> $DIR/macro-path-prelude-fail-3.rs:2:5
+  --> $DIR/macro-path-prelude-fail-3.rs:6:5
    |
 LL |     inline!();
    |     ^^^^^^ help: a macro with a similar name exists: `line`
+   | 
+  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+   |
+LL |     macro_rules! line {
+   |     ----------------- similarly named macro `line` defined here
 
 error: aborting due to previous error
 

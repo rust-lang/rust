@@ -2,13 +2,25 @@ error[E0603]: enum `Bar` is private
   --> $DIR/struct-variant-privacy-xc.rs:4:33
    |
 LL | fn f(b: struct_variant_privacy::Bar) {
-   |                                 ^^^
+   |                                 ^^^ this enum is private
+   |
+note: the enum `Bar` is defined here
+  --> $DIR/auxiliary/struct_variant_privacy.rs:1:1
+   |
+LL | enum Bar {
+   | ^^^^^^^^
 
 error[E0603]: enum `Bar` is private
   --> $DIR/struct-variant-privacy-xc.rs:6:33
    |
 LL |         struct_variant_privacy::Bar::Baz { a: _a } => {}
-   |                                 ^^^
+   |                                 ^^^ this enum is private
+   |
+note: the enum `Bar` is defined here
+  --> $DIR/auxiliary/struct_variant_privacy.rs:1:1
+   |
+LL | enum Bar {
+   | ^^^^^^^^
 
 error: aborting due to 2 previous errors
 

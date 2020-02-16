@@ -8,7 +8,7 @@ trait IterBits {
 type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
 //~^ ERROR could not find defining uses
 
-impl<T, E> IterBits for T
+impl<T: Copy, E> IterBits for T
 where
     T: std::ops::Shr<Output = T>
         + std::ops::BitAnd<T, Output = T>

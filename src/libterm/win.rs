@@ -89,7 +89,7 @@ fn bits_to_color(bits: u16) -> color::Color {
         _ => unreachable!(),
     };
 
-    color | (bits & 0x8) // copy the hi-intensity bit
+    color | (u32::from(bits) & 0x8) // copy the hi-intensity bit
 }
 
 impl<T: Write + Send + 'static> WinConsole<T> {

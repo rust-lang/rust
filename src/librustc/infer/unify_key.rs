@@ -4,12 +4,26 @@ use rustc_data_structures::unify::{EqUnifyValue, NoError, UnificationTable, Unif
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
-use std::cell::RefMut;
 use std::cmp;
 use std::marker::PhantomData;
 
 pub trait ToType {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+}
+
+/// Raw `TyVid` are used as the unification key for `sub_relations`;
+/// they carry no values.
+impl UnifyKey for ty::TyVid {
+    type Value = ();
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> ty::TyVid {
+        ty::TyVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "TyVid"
+    }
 }
 
 impl UnifyKey for ty::IntVid {
@@ -199,7 +213,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
 pub fn replace_if_possible(
-    mut table: RefMut<'_, UnificationTable<InPlace<ty::ConstVid<'tcx>>>>,
+    table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>>>,
     c: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {

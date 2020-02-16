@@ -6,7 +6,7 @@ LL |     return; bar().await;
    |     |
    |     any code following this expression is unreachable
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable-lint-1.rs:2:9
    |
 LL | #![deny(unreachable_code)]

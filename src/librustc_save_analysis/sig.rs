@@ -29,9 +29,9 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc::hir::def::{DefKind, Res};
+use rustc_ast_pretty::pprust;
+use rustc_hir::def::{DefKind, Res};
 use syntax::ast::{self, Extern, NodeId};
-use syntax::print::pprust;
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
@@ -225,7 +225,7 @@ impl Sig for ast::Ty {
                     text.push('>');
                 }
 
-                if f.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = f.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, f.ext);
@@ -365,13 +365,13 @@ impl Sig for ast::Item {
             }
             ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
-                if header.constness.node == ast::Constness::Const {
+                if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
                 }
-                if header.asyncness.node.is_async() {
+                if header.asyncness.is_async() {
                     text.push_str("async ");
                 }
-                if header.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = header.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, header.ext);
@@ -453,7 +453,7 @@ impl Sig for ast::Item {
                     text.push_str("auto ");
                 }
 
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("trait ");
@@ -482,30 +482,34 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::Impl(
+            ast::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 ref generics,
-                ref opt_trait,
-                ref ty,
-                _,
-            ) => {
+                ref of_trait,
+                ref self_ty,
+                items: _,
+            } => {
                 let mut text = String::new();
                 if let ast::Defaultness::Default = defaultness {
                     text.push_str("default ");
                 }
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("impl");
+                if let ast::Const::Yes(_) = constness {
+                    text.push_str(" const");
+                }
 
                 let generics_sig = generics.make(offset + text.len(), id, scx)?;
                 text.push_str(&generics_sig.text);
 
                 text.push(' ');
 
-                let trait_sig = if let Some(ref t) = *opt_trait {
+                let trait_sig = if let Some(ref t) = *of_trait {
                     if polarity == ast::ImplPolarity::Negative {
                         text.push('!');
                     }
@@ -517,7 +521,7 @@ impl Sig for ast::Item {
                     text_sig(String::new())
                 };
 
-                let ty_sig = ty.make(offset + text.len(), id, scx)?;
+                let ty_sig = self_ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty_sig.text);
 
                 text.push_str(" {}");
@@ -719,7 +723,8 @@ impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                let decl = &sig.decl;
                 let mut text = String::new();
                 text.push_str("fn ");
 
@@ -879,13 +884,13 @@ fn make_method_signature(
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
-    if m.header.constness.node == ast::Constness::Const {
+    if let ast::Const::Yes(_) = m.header.constness {
         text.push_str("const ");
     }
-    if m.header.asyncness.node.is_async() {
+    if m.header.asyncness.is_async() {
         text.push_str("async ");
     }
-    if m.header.unsafety == ast::Unsafety::Unsafe {
+    if let ast::Unsafe::Yes(_) = m.header.unsafety {
         text.push_str("unsafe ");
     }
     push_extern(&mut text, m.header.ext);

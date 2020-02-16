@@ -1,8 +1,8 @@
 error: expected item after attributes
-  --> $DIR/attr-before-eof.rs:3:16
+  --> $DIR/attr-before-eof.rs:3:1
    |
 LL | #[derive(Debug)]
-   |                ^
+   | ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

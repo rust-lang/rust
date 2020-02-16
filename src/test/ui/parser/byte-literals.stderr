@@ -1,41 +1,41 @@
 error: unknown byte escape: f
-  --> $DIR/byte-literals.rs:6:21
+  --> $DIR/byte-literals.rs:3:21
    |
 LL | static FOO: u8 = b'\f';
    |                     ^ unknown byte escape
 
 error: unknown byte escape: f
-  --> $DIR/byte-literals.rs:9:8
+  --> $DIR/byte-literals.rs:6:8
    |
 LL |     b'\f';
    |        ^ unknown byte escape
 
 error: invalid character in numeric character escape: Z
-  --> $DIR/byte-literals.rs:10:10
+  --> $DIR/byte-literals.rs:7:10
    |
 LL |     b'\x0Z';
    |          ^
 
 error: byte constant must be escaped: \t
-  --> $DIR/byte-literals.rs:11:7
+  --> $DIR/byte-literals.rs:8:7
    |
 LL |     b'    ';
    |       ^^^^
 
 error: byte constant must be escaped: '
-  --> $DIR/byte-literals.rs:12:7
+  --> $DIR/byte-literals.rs:9:7
    |
 LL |     b''';
    |       ^
 
 error: byte constant must be ASCII. Use a \xHH escape for a non-ASCII byte
-  --> $DIR/byte-literals.rs:13:7
+  --> $DIR/byte-literals.rs:10:7
    |
 LL |     b'é';
    |       ^
 
 error: unterminated byte constant
-  --> $DIR/byte-literals.rs:14:6
+  --> $DIR/byte-literals.rs:11:6
    |
 LL |     b'a
    |      ^^^^

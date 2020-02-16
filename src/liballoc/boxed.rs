@@ -2,7 +2,8 @@
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
-//! drop their contents when they go out of scope.
+//! drop their contents when they go out of scope. Boxes also ensure that they
+//! never allocate more than `isize::MAX` bytes.
 //!
 //! # Examples
 //!
@@ -145,7 +146,7 @@ use core::ptr::{self, NonNull, Unique};
 use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, Alloc, Global};
+use crate::alloc::{self, AllocRef, Global};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 use crate::vec::Vec;
@@ -195,12 +196,14 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        if layout.size() == 0 {
-            return Box(NonNull::dangling().into());
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+            };
+            Box::from_raw(ptr.as_ptr())
         }
-        let ptr =
-            unsafe { Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)) };
-        Box(ptr.cast().into())
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -263,15 +266,14 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = if layout.size() == 0 {
-            NonNull::dangling()
-        } else {
-            unsafe {
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
                 Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
-            }
-        };
-        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
-        Box(Unique::from(slice))
+            };
+            Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
+        }
     }
 }
 
@@ -307,7 +309,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
-        Box(Box::into_unique(self).cast())
+        Box::from_raw(Box::into_raw(self) as *mut T)
     }
 }
 
@@ -345,7 +347,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
-        Box(Unique::new_unchecked(Box::into_raw(self) as _))
+        Box::from_raw(Box::into_raw(self) as *mut [T])
     }
 }
 
@@ -1046,48 +1048,7 @@ impl<A> FromIterator<A> for Box<[A]> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
-        let mut new = BoxBuilder { data: RawVec::with_capacity(self.len()), len: 0 };
-
-        let mut target = new.data.ptr();
-
-        for item in self.iter() {
-            unsafe {
-                ptr::write(target, item.clone());
-                target = target.offset(1);
-            };
-
-            new.len += 1;
-        }
-
-        return unsafe { new.into_box() };
-
-        // Helper type for responding to panics correctly.
-        struct BoxBuilder<T> {
-            data: RawVec<T>,
-            len: usize,
-        }
-
-        impl<T> BoxBuilder<T> {
-            unsafe fn into_box(self) -> Box<[T]> {
-                let raw = ptr::read(&self.data);
-                mem::forget(self);
-                raw.into_box()
-            }
-        }
-
-        impl<T> Drop for BoxBuilder<T> {
-            fn drop(&mut self) {
-                let mut data = self.data.ptr();
-                let max = unsafe { data.add(self.len) };
-
-                while data != max {
-                    unsafe {
-                        ptr::read(data);
-                        data = data.offset(1);
-                    }
-                }
-            }
-        }
+        self.to_vec().into_boxed_slice()
     }
 }
 
@@ -1144,6 +1105,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Box<T> {}
 
+#[cfg(bootstrap)]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
     type Yield = G::Yield;
@@ -1154,6 +1116,7 @@ impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
     }
 }
 
+#[cfg(bootstrap)]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
     type Yield = G::Yield;
@@ -1161,6 +1124,28 @@ impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
 
     fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
         G::resume((*self).as_mut())
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(Pin::new(&mut *self), arg)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<Box<G>> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume((*self).as_mut(), arg)
     }
 }
 

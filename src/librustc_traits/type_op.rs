@@ -1,5 +1,3 @@
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
@@ -15,6 +13,8 @@ use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use std::fmt;
 

@@ -1,13 +1,13 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![feature(lint_reasons)]
 
 #![warn(elided_lifetimes_in_paths,
-        //~^ NOTE lint level defined here
+        //~^ NOTE the lint level is defined here
         reason = "explicit anonymous lifetimes aid reasoning about ownership")]
 #![warn(
     nonstandard_style,
-    //~^ NOTE lint level defined here
+    //~^ NOTE the lint level is defined here
     reason = r#"people shouldn't have to change their usual style habits
 to contribute to our project"#
 )]

@@ -1,19 +1,18 @@
 error[E0277]: `F` cannot be sent between threads safely
-  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:1
+  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:22
    |
-LL |   struct X<F> where F: FnOnce() + 'static + Send {
-   |   ---------------------------------------------- required by `X`
+LL | struct X<F> where F: FnOnce() + 'static + Send {
+   | ---------------------------------------------- required by `X`
 ...
-LL |   fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-   |   ^                                                    - help: consider further restricting type parameter `F`: `, F: std::marker::Send`
-   |  _|
-   | |
-LL | |
-LL | |     return X { field: blk };
-LL | | }
-   | |_^ `F` cannot be sent between threads safely
+LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+   |                      ^^^^ `F` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `F`
+help: consider further restricting this bound with `+ std::marker::Send`
+  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:33
+   |
+LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

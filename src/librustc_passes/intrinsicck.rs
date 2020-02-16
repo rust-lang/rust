@@ -1,16 +1,15 @@
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
+use rustc::hir::map::Map;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};
-
-use rustc::hir;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
-
-use rustc_error_codes::*;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx }.as_deep_visitor());
@@ -123,7 +122,9 @@ impl ExprVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ItemVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -138,7 +139,9 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ExprVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

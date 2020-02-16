@@ -1,11 +1,11 @@
 error: character constant must be escaped: '
-  --> $DIR/bad-char-literals.rs:7:6
+  --> $DIR/bad-char-literals.rs:6:6
    |
 LL |     ''';
    |      ^
 
 error: character constant must be escaped: \n
-  --> $DIR/bad-char-literals.rs:11:6
+  --> $DIR/bad-char-literals.rs:10:6
    |
 LL |       '
    |  ______^
@@ -13,13 +13,13 @@ LL | | ';
    | |_
 
 error: character constant must be escaped: \r
-  --> $DIR/bad-char-literals.rs:16:6
+  --> $DIR/bad-char-literals.rs:15:6
    |
 LL |     '';
    |      ^
 
 error: character constant must be escaped: \t
-  --> $DIR/bad-char-literals.rs:19:6
+  --> $DIR/bad-char-literals.rs:18:6
    |
 LL |     '    ';
    |      ^^^^

@@ -1,9 +1,9 @@
-use rustc::hir::def_id::DefId;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory,
 };
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 
 struct ClauseVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -151,7 +151,7 @@ crate fn program_clauses_for_env<'tcx>(
 
 crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     use super::{IntoFromEnvGoal, Lower};
-    use rustc::hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
+    use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
 
     debug!("environment(def_id = {:?})", def_id);
 
@@ -161,7 +161,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     }
 
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates } =
+    let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     let clauses = predicates
@@ -195,8 +195,8 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(.., Some(..), _, _) => NodeKind::TraitImpl,
-            ItemKind::Impl(.., None, _, _) => NodeKind::InherentImpl,
+            ItemKind::Impl { of_trait: Some(_), .. } => NodeKind::TraitImpl,
+            ItemKind::Impl { of_trait: None, .. } => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },

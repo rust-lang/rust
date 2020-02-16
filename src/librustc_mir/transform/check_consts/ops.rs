@@ -1,15 +1,14 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc::hir::def_id::DefId;
 use rustc::session::config::nightly_options;
+use rustc::session::parse::feature_err;
 use rustc::ty::TyCtxt;
+use rustc_errors::struct_span_err;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use syntax::feature_gate::feature_err;
 
 use super::{ConstKind, Item};
-
-use rustc_error_codes::*;
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
@@ -115,12 +114,7 @@ impl NonConstOp for FnCallUnstable {
             &format!("`{}` is not yet stable as a const fn", item.tcx.def_path_str(def_id)),
         );
         if nightly_options::is_nightly_build() {
-            help!(
-                &mut err,
-                "add `#![feature({})]` to the \
-                   crate attributes to enable",
-                feature
-            );
+            err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
         }
         err.emit();
     }
@@ -197,13 +191,14 @@ impl NonConstOp for Loop {
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(
+        struct_span_err!(
             item.tcx.sess,
             span,
             E0492,
             "cannot borrow a constant which may contain \
             interior mutability, create a static instead"
-        );
+        )
+        .emit();
     }
 }
 
@@ -353,16 +348,18 @@ impl NonConstOp for StaticAccess {
             item.tcx.sess,
             span,
             E0013,
-            "{}s cannot refer to statics, use \
-                                        a constant instead",
+            "{}s cannot refer to statics",
             item.const_kind()
+        );
+        err.help(
+            "consider extracting the value of the `static` to a `const`, and referring to that",
         );
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
-                "Static and const variables can refer to other const variables. \
-                    But a const variable cannot refer to a static variable.",
+                "`static` and `const` variables can refer to other `const` variables. \
+                    A `const` variable, however, cannot refer to a `static` variable.",
             );
-            err.help("To fix this, the value can be extracted as a const and then used.");
+            err.help("To fix this, the value can be extracted to a `const` and then used.");
         }
         err.emit();
     }
@@ -375,13 +372,14 @@ impl NonConstOp for ThreadLocalAccess {
     const IS_SUPPORTED_IN_MIRI: bool = false;
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        span_err!(
+        struct_span_err!(
             item.tcx.sess,
             span,
             E0625,
             "thread-local statics cannot be \
             accessed at compile-time"
-        );
+        )
+        .emit();
     }
 }
 

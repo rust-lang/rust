@@ -17,7 +17,8 @@ use crate::{Applicability, DiagnosticId};
 use crate::{CodeSuggestion, SubDiagnostic};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_span::{MacroBacktrace, MultiSpan, Span, SpanLabel};
+use rustc_span::hygiene::ExpnData;
+use rustc_span::{MultiSpan, Span, SpanLabel};
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -35,7 +36,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 impl JsonEmitter {
@@ -44,7 +45,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
@@ -53,14 +54,14 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -68,7 +69,7 @@ impl JsonEmitter {
             Lrc::new(SourceMap::new(file_path_mapping)),
             pretty,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         )
     }
 
@@ -78,7 +79,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -87,7 +88,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -244,13 +245,7 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
-            .new_emitter(
-                Box::new(buf),
-                Some(je.sm.clone()),
-                false,
-                None,
-                je.external_macro_backtrace,
-            )
+            .new_emitter(Box::new(buf), Some(je.sm.clone()), false, None, je.macro_backtrace)
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
@@ -308,7 +303,7 @@ impl DiagnosticSpan {
         // backtrace ourselves, but the `macro_backtrace` helper makes
         // some decision, such as dropping some frames, and I don't
         // want to duplicate that logic here.
-        let backtrace = span.macro_backtrace().into_iter();
+        let backtrace = span.macro_backtrace();
         DiagnosticSpan::from_span_full(span, is_primary, label, suggestion, backtrace, je)
     }
 
@@ -317,7 +312,7 @@ impl DiagnosticSpan {
         is_primary: bool,
         label: Option<String>,
         suggestion: Option<(&String, Applicability)>,
-        mut backtrace: vec::IntoIter<MacroBacktrace>,
+        mut backtrace: impl Iterator<Item = ExpnData>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         let start = je.sm.lookup_char_pos(span.lo());
@@ -325,10 +320,10 @@ impl DiagnosticSpan {
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
             let def_site_span =
-                Self::from_span_full(bt.def_site_span, false, None, None, vec![].into_iter(), je);
+                Self::from_span_full(bt.def_site, false, None, None, vec![].into_iter(), je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
-                macro_decl_name: bt.macro_decl_name,
+                macro_decl_name: bt.kind.descr(),
                 def_site_span,
             })
         });

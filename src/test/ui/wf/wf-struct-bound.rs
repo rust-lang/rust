@@ -6,8 +6,8 @@
 
 trait ExtraCopy<T:Copy> { }
 
-struct SomeStruct<T,U> //~ ERROR E0277
-    where T: ExtraCopy<U>
+struct SomeStruct<T,U>
+    where T: ExtraCopy<U> //~ ERROR E0277
 {
     data: (T,U)
 }

@@ -1,4 +1,3 @@
-# NB: This file is not automatically deployed. After changes, it needs to be uploaded manually to doc.rust-lang.org
 User-agent: *
 Disallow: /0.3/
 Disallow: /0.4/

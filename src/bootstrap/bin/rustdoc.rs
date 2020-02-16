@@ -61,7 +61,7 @@ fn main() {
     }
 
     // Needed to be able to run all rustdoc tests.
-    if let Some(_) = env::var_os("RUSTDOC_GENERATE_REDIRECT_PAGES") {
+    if env::var_os("RUSTDOC_GENERATE_REDIRECT_PAGES").is_some() {
         // This "unstable-options" can be removed when `--generate-redirect-pages` is stabilized
         if !has_unstable {
             cmd.arg("-Z").arg("unstable-options");

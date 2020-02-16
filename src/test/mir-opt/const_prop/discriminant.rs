@@ -10,18 +10,18 @@ fn main() {
 //      ...
 //      _3 = std::option::Option::<bool>::Some(const true,);
 //      _4 = discriminant(_3);
-//      switchInt(move _4) -> [1isize: bb3, otherwise: bb2];
+//      switchInt(move _4) -> [1isize: bb2, otherwise: bb1];
 //  }
 //  bb1: {
-//      _2 = const 42i32;
-//      goto -> bb4;
-//  }
-//  bb2: {
 //      _2 = const 10i32;
 //      goto -> bb4;
 //  }
+//  bb2: {
+//      switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3];
+//  }
 //  bb3: {
-//      switchInt(((_3 as Some).0: bool)) -> [false: bb2, otherwise: bb1];
+//      _2 = const 42i32;
+//      goto -> bb4;
 //  }
 //  bb4: {
 //      _1 = Add(move _2, const 0i32);
@@ -33,18 +33,18 @@ fn main() {
 //      ...
 //      _3 = const Scalar(0x01) : std::option::Option<bool>;
 //      _4 = const 1isize;
-//      switchInt(const 1isize) -> [1isize: bb3, otherwise: bb2];
+//      switchInt(const 1isize) -> [1isize: bb2, otherwise: bb1];
 //  }
 //  bb1: {
-//      _2 = const 42i32;
-//      goto -> bb4;
-//  }
-//  bb2: {
 //      _2 = const 10i32;
 //      goto -> bb4;
 //  }
+//  bb2: {
+//      switchInt(const true) -> [false: bb1, otherwise: bb3];
+//  }
 //  bb3: {
-//      switchInt(const true) -> [false: bb2, otherwise: bb1];
+//      _2 = const 42i32;
+//      goto -> bb4;
 //  }
 //  bb4: {
 //      _1 = Add(move _2, const 0i32);

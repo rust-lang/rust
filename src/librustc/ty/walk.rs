@@ -81,7 +81,8 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         | ty::Bound(..)
         | ty::Foreign(..) => {}
         ty::Array(ty, len) => {
-            if let ty::ConstKind::Unevaluated(_, substs) = len.val {
+            if let ty::ConstKind::Unevaluated(_, substs, promoted) = len.val {
+                assert!(promoted.is_none());
                 stack.extend(substs.types().rev());
             }
             stack.push(len.ty);

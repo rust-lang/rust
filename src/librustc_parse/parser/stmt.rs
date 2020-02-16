@@ -2,18 +2,18 @@ use super::diagnostics::Error;
 use super::expr::LhsExpr;
 use super::pat::GateOr;
 use super::path::PathStyle;
-use super::{BlockMode, Parser, PrevTokenKind, Restrictions, SemiColonMode};
+use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::{respan, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::source_map::{BytePos, Span};
+use rustc_span::symbol::{kw, sym};
 use syntax::ast;
-use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
+use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use syntax::ptr::P;
-use syntax::token;
+use syntax::token::{self, TokenKind};
 use syntax::util::classify;
 
 use std::mem;
@@ -55,21 +55,11 @@ impl<'a> Parser<'a> {
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
-        let mac_vis = respan(lo, VisibilityKind::Inherited);
-        if let Some(macro_def) = self.eat_macro_def(&attrs, &mac_vis, lo)? {
-            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))));
-        }
-
-        // Starts like a simple path, being careful to avoid contextual keywords
-        // such as a union items, item with `crate` visibility or auto trait items.
-        // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
-        // like a path (1 token), but it fact not a path.
-        if self.token.is_path_start()
-            && !self.token.is_qpath_start()
-            && !self.is_union_item() // `union::b::c` - path, `union U { ... }` - not a path.
-            && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
-            && !self.is_auto_trait_item()
-            && !self.is_async_fn()
+        // Starts like a simple path, being careful to avoid contextual keywords,
+        // e.g., `union`, items with `crate` visibility, or `auto trait` items.
+        // We aim to parse an arbitrary path `a::b` but not something that starts like a path
+        // (1 token), but it fact not a path. Also, we avoid stealing syntax from `parse_item_`.
+        if self.token.is_path_start() && !self.token.is_qpath_start() && !self.is_path_start_item()
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
@@ -190,17 +180,13 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: &[Attribute]) {
         if !attrs.is_empty() {
-            if self.prev_token_kind == PrevTokenKind::DocComment {
+            if matches!(self.prev_token.kind, TokenKind::DocComment(..)) {
                 self.span_fatal_err(self.prev_span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
                 self.struct_span_err(self.token.span, "expected statement after outer attribute")
                     .emit();
             }
         }
-    }
-
-    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
     fn recover_stmt_local(
@@ -297,16 +283,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
-    }
-
-    fn is_auto_trait_item(&self) -> bool {
-        // auto trait
-        (self.token.is_keyword(kw::Auto) &&
-            self.is_keyword_ahead(1, &[kw::Trait]))
-        || // unsafe auto trait
-        (self.token.is_keyword(kw::Unsafe) &&
-         self.is_keyword_ahead(1, &[kw::Auto]) &&
-         self.is_keyword_ahead(2, &[kw::Trait]))
     }
 
     /// Parses a block. No inner attributes are allowed.
@@ -431,6 +407,23 @@ impl<'a> Parser<'a> {
                     if let Err(mut e) =
                         self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
                     {
+                        if let TokenKind::DocComment(..) = self.token.kind {
+                            if let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                                let sp = self.token.span;
+                                let marker = &snippet[..3];
+                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
+
+                                e.span_suggestion(
+                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
+                                    &format!(
+                                        "add a space before `{}` to use a regular comment",
+                                        doc_comment_marker,
+                                    ),
+                                    format!("{} {}", comment_marker, doc_comment_marker),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
                         e.emit();
                         self.recover_stmt();
                         // Don't complain about type errors in body tail after parse error (#57383).

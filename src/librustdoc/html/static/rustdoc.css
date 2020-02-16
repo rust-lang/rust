@@ -136,7 +136,7 @@ summary {
 	outline: none;
 }
 
-code, pre {
+code, pre, a.test-arrow {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -305,6 +305,7 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
+	position: relative;
 }
 
 .example-wrap {
@@ -542,11 +543,11 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .content .stability::before {
-	content: '˪';
-	font-size: 30px;
+	content: '⬑';
+	font-size: 25px;
 	position: absolute;
-	top: -9px;
-	left: -13px;
+	top: -6px;
+	left: -19px;
 }
 
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
@@ -878,6 +879,7 @@ a.test-arrow {
 	font-size: 130%;
 	top: 5px;
 	right: 5px;
+	z-index: 1;
 }
 a.test-arrow:hover{
 	text-decoration: none;

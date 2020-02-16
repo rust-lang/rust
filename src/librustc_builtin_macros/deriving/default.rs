@@ -2,14 +2,12 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_errors::struct_span_err;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use syntax::ast::{Expr, MetaItem};
 use syntax::ptr::P;
-use syntax::span_err;
-
-use rustc_error_codes::*;
 
 pub fn expand_deriving_default(
     cx: &mut ExtCtxt<'_>,
@@ -74,7 +72,13 @@ fn default_substructure(
             }
         },
         StaticEnum(..) => {
-            span_err!(cx, trait_span, E0665, "`Default` cannot be derived for enums, only structs");
+            struct_span_err!(
+                cx.parse_sess.span_diagnostic,
+                trait_span,
+                E0665,
+                "`Default` cannot be derived for enums, only structs"
+            )
+            .emit();
             // let compilation continue
             DummyResult::raw_expr(trait_span, true)
         }

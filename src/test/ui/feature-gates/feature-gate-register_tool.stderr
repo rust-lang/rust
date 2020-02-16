@@ -4,7 +4,7 @@ error[E0658]: the `#[register_tool]` attribute is an experimental feature
 LL | #![register_tool(tool)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/66079
+   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = help: add `#![feature(register_tool)]` to the crate attributes to enable
 
 error: aborting due to previous error

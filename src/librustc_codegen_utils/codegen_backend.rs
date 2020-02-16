@@ -43,11 +43,22 @@ pub trait CodegenBackend {
     /// # Panics
     ///
     /// Panics when the passed `Box<dyn Any>` was not returned by `codegen_backend`.
-    fn join_codegen_and_link(
+    fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         dep_graph: &DepGraph,
+    ) -> Result<Box<dyn Any>, ErrorReported>;
+
+    /// This is called on the returned `Box<dyn Any>` from `join_codegen`
+    ///
+    /// # Panics
+    ///
+    /// Panics when the passed `Box<dyn Any>` was not returned by `join_codegen`.
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: Box<dyn Any>,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported>;
 }

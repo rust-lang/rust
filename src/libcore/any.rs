@@ -194,7 +194,9 @@ impl dyn Any {
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
-            // SAFETY: just checked whether we are pointing to the correct type
+            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
+            // that check for memory safety because we have implemented Any for all types; no other
+            // impls can exist as they would conflict with our impl.
             unsafe { Some(&*(self as *const dyn Any as *const T)) }
         } else {
             None
@@ -228,7 +230,9 @@ impl dyn Any {
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
-            // SAFETY: just checked whether we are pointing to the correct type
+            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
+            // that check for memory safety because we have implemented Any for all types; no other
+            // impls can exist as they would conflict with our impl.
             unsafe { Some(&mut *(self as *mut dyn Any as *mut T)) }
         } else {
             None
@@ -476,10 +480,14 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 ///
 /// This is intended for diagnostic use. The exact contents and format of the
 /// string are not specified, other than being a best-effort description of the
-/// type. For example, `type_name_of::<Option<String>>(None)` could return
+/// type. For example, `type_name_of_val::<Option<String>>(None)` could return
 /// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
 /// `"foobar"`. In addition, the output may change between versions of the
 /// compiler.
+///
+/// This function does not resolve trait objects,
+/// meaning that `type_name_of_val(&7u32 as &dyn Debug)`
+/// may return `"dyn Debug"`, but not `"u32"`.
 ///
 /// The type name should not be considered a unique identifier of a type;
 /// multiple types may share the same type name.

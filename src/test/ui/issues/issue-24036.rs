@@ -10,7 +10,7 @@ fn closure_from_match() {
         2 => |c| c - 1,
         _ => |c| c - 1
     };
-    //~^^^ ERROR match arms have incompatible types
+    //~^^^ ERROR `match` arms have incompatible types
 }
 
 fn main() { }

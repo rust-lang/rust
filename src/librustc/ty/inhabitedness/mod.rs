@@ -96,15 +96,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // ```
         // forest.is_empty()
         // ```
-        self.ty_inhabitedness_forest(ty).contains(self, module)
+        ty.uninhabited_from(self).contains(self, module)
     }
 
     pub fn is_ty_uninhabited_from_any_module(self, ty: Ty<'tcx>) -> bool {
-        !self.ty_inhabitedness_forest(ty).is_empty()
-    }
-
-    fn ty_inhabitedness_forest(self, ty: Ty<'tcx>) -> DefIdForest {
-        ty.uninhabited_from(self)
+        !ty.uninhabited_from(self).is_empty()
     }
 }
 

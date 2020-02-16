@@ -10,8 +10,8 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc::middle::lang_items;
-use rustc::mir::interpret::PanicInfo;
-use rustc::mir::{self, PlaceBase, Static, StaticKind};
+use rustc::mir;
+use rustc::mir::AssertKind;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
@@ -264,7 +264,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
-                let op = self.codegen_consume(&mut bx, &mir::Place::return_place().as_ref());
+                let op = self.codegen_consume(&mut bx, mir::Place::return_place().as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(llval, align)
                 } else {
@@ -319,7 +319,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let place = self.codegen_place(&mut bx, &location.as_ref());
+        let place = self.codegen_place(&mut bx, location.as_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -378,7 +378,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let PanicInfo::OverflowNeg = *msg {
+            if let AssertKind::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -412,7 +412,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            PanicInfo::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
                 (lang_items::PanicBoundsCheckFnLangItem, vec![location, index, len])
@@ -609,53 +609,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // checked by const-qualification, which also
                     // promotes any complex rvalues to constants.
                     if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
-                        match arg {
-                            // The shuffle array argument is usually not an explicit constant,
-                            // but specified directly in the code. This means it gets promoted
-                            // and we can then extract the value by evaluating the promoted.
-                            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                                if let mir::PlaceRef {
-                                    base:
-                                        &PlaceBase::Static(box Static {
-                                            kind: StaticKind::Promoted(promoted, substs),
-                                            ty,
-                                            def_id,
-                                        }),
-                                    projection: &[],
-                                } = place.as_ref()
-                                {
-                                    let c = bx.tcx().const_eval_promoted(
-                                        Instance::new(def_id, self.monomorphize(&substs)),
-                                        promoted,
-                                    );
-                                    let (llval, ty) = self.simd_shuffle_indices(
-                                        &bx,
-                                        terminator.source_info.span,
-                                        ty,
-                                        c,
-                                    );
-                                    return OperandRef {
-                                        val: Immediate(llval),
-                                        layout: bx.layout_of(ty),
-                                    };
-                                } else {
-                                    span_bug!(span, "shuffle indices must be constant");
-                                }
-                            }
-
-                            mir::Operand::Constant(constant) => {
-                                let c = self.eval_mir_constant(constant);
-                                let (llval, ty) = self.simd_shuffle_indices(
-                                    &bx,
-                                    constant.span,
-                                    constant.literal.ty,
-                                    c,
-                                );
-                                return OperandRef {
-                                    val: Immediate(llval),
-                                    layout: bx.layout_of(ty),
-                                };
-                            }
+                        if let mir::Operand::Constant(constant) = arg {
+                            let c = self.eval_mir_constant(constant);
+                            let (llval, ty) = self.simd_shuffle_indices(
+                                &bx,
+                                constant.span,
+                                constant.literal.ty,
+                                c,
+                            );
+                            return OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) };
+                        } else {
+                            span_bug!(span, "shuffle indices must be constant");
                         }
                     }
 
@@ -1147,7 +1111,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             self.codegen_place(
                 bx,
-                &mir::PlaceRef { base: &dest.base, projection: &dest.projection },
+                mir::PlaceRef { local: dest.local, projection: &dest.projection },
             )
         };
         if fn_ret.is_indirect() {
@@ -1173,7 +1137,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_ref()));
+                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst.as_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout);
                     place.storage_live(bx);
@@ -1181,13 +1145,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let op = bx.load_operand(place);
                     place.storage_dead(bx);
                     self.locals[index] = LocalRef::Operand(Some(op));
+                    self.debug_introduce_local(bx, index);
                 }
                 LocalRef::Operand(Some(op)) => {
                     assert!(op.layout.is_zst(), "assigning to initialized SSAtemp");
                 }
             }
         } else {
-            let dst = self.codegen_place(bx, &dst.as_ref());
+            let dst = self.codegen_place(bx, dst.as_ref());
             self.codegen_transmute_into(bx, src, dst);
         }
     }
@@ -1222,6 +1187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
@@ -1236,6 +1202,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
         }
     }

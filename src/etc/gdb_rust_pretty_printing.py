@@ -9,7 +9,7 @@ import debugger_pretty_printers_common as rustpp
 if sys.version_info[0] >= 3:
     xrange = range
 
-rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to_string = True)
+rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to_string=True)
 
 # The btree pretty-printers fail in a confusing way unless
 # https://sourceware.org/bugzilla/show_bug.cgi?id=21763 is fixed.
@@ -21,9 +21,10 @@ if _match:
     if int(_match.group(1)) > 8 or (int(_match.group(1)) == 8 and int(_match.group(2)) >= 1):
         gdb_81 = True
 
-#===============================================================================
+# ===============================================================================
 # GDB Pretty Printing Module for Rust
-#===============================================================================
+# ===============================================================================
+
 
 class GdbType(rustpp.Type):
 
@@ -133,39 +134,39 @@ def rust_pretty_printer_lookup_function(gdb_val):
 
     if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
+                                 omit_first_field=False,
+                                 omit_type_name=False,
+                                 is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_STRUCT_VARIANT:
         return RustStructPrinter(val,
-                                 omit_first_field = True,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
+                                 omit_first_field=True,
+                                 omit_type_name=False,
+                                 is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_STR_SLICE:
         return RustStringSlicePrinter(val)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = True,
-                                 is_tuple_like = True)
+                                 omit_first_field=False,
+                                 omit_type_name=True,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE_STRUCT:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = False,
-                                 is_tuple_like = True)
+                                 omit_first_field=False,
+                                 omit_type_name=False,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_CSTYLE_VARIANT:
         return RustCStyleVariantPrinter(val.get_child_at_index(0))
 
     if type_kind == rustpp.TYPE_KIND_TUPLE_VARIANT:
         return RustStructPrinter(val,
-                                 omit_first_field = True,
-                                 omit_type_name = False,
-                                 is_tuple_like = True)
+                                 omit_first_field=True,
+                                 omit_type_name=False,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_SINGLETON_ENUM:
         variant = get_field_at_index(gdb_val, 0)
@@ -189,9 +190,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     return None
 
 
-#=------------------------------------------------------------------------------
+# =------------------------------------------------------------------------------
 # Pretty Printer Classes
-#=------------------------------------------------------------------------------
+# =------------------------------------------------------------------------------
 class RustEmptyPrinter(object):
     def __init__(self, val):
         self.__val = val
@@ -355,6 +356,7 @@ def children_of_node(boxed_node, height, want_values):
             else:
                 yield keys[i]['value']['value']
 
+
 class RustStdBTreeSetPrinter(object):
     def __init__(self, val):
         self.__val = val
@@ -428,6 +430,7 @@ class RustOsStringPrinter(object):
 
     def display_hint(self):
         return "string"
+
 
 class RustCStyleVariantPrinter(object):
     def __init__(self, val):

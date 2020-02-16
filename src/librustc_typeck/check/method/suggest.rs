@@ -4,21 +4,22 @@
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
-use crate::util::nodemap::FxHashSet;
-use errors::{pluralize, Applicability, DiagnosticBuilder};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
-use rustc::hir::{self, ExprKind, Node, QPath};
+use rustc::hir::map::Map;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::intravisit;
+use rustc_hir::{ExprKind, Node, QPath};
 use rustc_span::{source_map, FileName, Span};
 use syntax::ast;
 use syntax::util::lev_distance;
-
-use rustc_error_codes::*;
 
 use std::cmp::Ordering;
 
@@ -56,7 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.to_predicate(),
+                            poly_trait_ref.without_const().to_predicate(),
                         );
                         self.predicate_may_hold(&obligation)
                     })
@@ -191,21 +192,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let item_span =
                             self.tcx.sess.source_map().def_span(self.tcx.def_span(item.def_id));
                         let idx = if sources.len() > 1 {
-                            span_note!(
-                                err,
-                                item_span,
+                            let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
                                 idx + 1,
                                 self.tcx.def_path_str(trait_did)
                             );
+                            err.span_note(item_span, msg);
                             Some(idx + 1)
                         } else {
-                            span_note!(
-                                err,
-                                item_span,
+                            let msg = &format!(
                                 "the candidate is defined in the trait `{}`",
                                 self.tcx.def_path_str(trait_did)
                             );
+                            err.span_note(item_span, msg);
                             None
                         };
                         let path = self.tcx.def_path_str(trait_did);
@@ -359,10 +358,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess,
                             span,
                             E0599,
-                            "no {} named `{}` found for type `{}` in the current scope",
+                            "no {} named `{}` found for {} `{}` in the current scope",
                             item_kind,
                             item_name,
-                            ty_str
+                            actual.prefix_string(),
+                            ty_str,
                         );
                         if let Some(span) =
                             tcx.sess.confused_type_with_std_module.borrow().get(&span)
@@ -477,7 +477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     macro_rules! report_function {
                         ($span:expr, $name:expr) => {
                             err.note(&format!(
-                                "{} is a function, perhaps you wish to call it",
+                                "`{}` is a function, perhaps you wish to call it",
                                 $name
                             ));
                         };
@@ -640,9 +640,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates, needs_mut) => {
+            MethodError::IllegalSizedBound(candidates, needs_mut, bound_span) => {
                 let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
                 let mut err = self.sess().struct_span_err(span, &msg);
+                err.span_label(bound_span, "this has a `Sized` requirement");
                 if !candidates.is_empty() {
                     let help = format!(
                         "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
@@ -853,26 +854,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     sp
                                 };
-                                // FIXME: contrast `t.def_id` against `param.bounds` to not suggest
-                                // traits already there. That can happen when the cause is that
-                                // we're in a const scope or associated function used as a method.
-                                err.span_suggestions(
-                                    sp,
-                                    &message(format!(
-                                        "restrict type parameter `{}` with",
-                                        param.name.ident(),
-                                    )),
-                                    candidates.iter().map(|t| {
-                                        format!(
-                                            "{}{} {}{}",
+                                let trait_def_ids: FxHashSet<DefId> = param
+                                    .bounds
+                                    .iter()
+                                    .filter_map(|bound| bound.trait_def_id())
+                                    .collect();
+                                if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
+                                    err.span_suggestions(
+                                        sp,
+                                        &message(format!(
+                                            "restrict type parameter `{}` with",
                                             param.name.ident(),
-                                            if impl_trait { " +" } else { ":" },
-                                            self.tcx.def_path_str(t.def_id),
-                                            if has_bounds.is_some() { " + " } else { "" },
-                                        )
-                                    }),
-                                    Applicability::MaybeIncorrect,
-                                );
+                                        )),
+                                        candidates.iter().map(|t| {
+                                            format!(
+                                                "{}{} {}{}",
+                                                param.name.ident(),
+                                                if impl_trait { " +" } else { ":" },
+                                                self.tcx.def_path_str(t.def_id),
+                                                if has_bounds.is_some() { " + " } else { "" },
+                                            )
+                                        }),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                                 suggested = true;
                             }
                             Node::Item(hir::Item {
@@ -1073,18 +1078,18 @@ impl UsePlacementFinder<'tcx> {
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false, tcx };
-        hir::intravisit::walk_crate(&mut finder, krate);
+        intravisit::walk_crate(&mut finder, krate);
         (finder.span, finder.found_use)
     }
 }
 
-impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
+impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     fn visit_mod(&mut self, module: &'tcx hir::Mod<'tcx>, _: Span, hir_id: hir::HirId) {
         if self.span.is_some() {
             return;
         }
         if hir_id != self.target_module {
-            hir::intravisit::walk_mod(self, module, hir_id);
+            intravisit::walk_mod(self, module, hir_id);
             return;
         }
         // Find a `use` statement.
@@ -1124,8 +1129,10 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
-        hir::intravisit::NestedVisitorMap::None
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+        intravisit::NestedVisitorMap::None
     }
 }
 

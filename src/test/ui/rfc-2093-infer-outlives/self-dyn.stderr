@@ -7,7 +7,7 @@ LL | |     foo: Box<dyn Trait<'a, 'b, A>>
 LL | | }
    | |_^
    |
-   = note: A : 'a
+   = note: A: 'a
 
 error: aborting due to previous error
 

@@ -4,11 +4,11 @@ error: unexpected `,` in pattern
 LL |     while let b1, b2, b3 = reading_frame.next().expect("there should be a start codon") {
    |                 ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |     while let (b1, b2, b3) = reading_frame.next().expect("there should be a start codon") {
    |               ^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |     while let b1 | b2 | b3 = reading_frame.next().expect("there should be a start codon") {
    |               ^^^^^^^^^^^^
@@ -19,11 +19,11 @@ error: unexpected `,` in pattern
 LL |     if let b1, b2, b3 = reading_frame.next().unwrap() {
    |              ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |     if let (b1, b2, b3) = reading_frame.next().unwrap() {
    |            ^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |     if let b1 | b2 | b3 = reading_frame.next().unwrap() {
    |            ^^^^^^^^^^^^
@@ -34,11 +34,11 @@ error: unexpected `,` in pattern
 LL |         Nucleotide::Adenine, Nucleotide::Cytosine, _ => true
    |                            ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |         (Nucleotide::Adenine, Nucleotide::Cytosine, _) => true
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |         Nucleotide::Adenine | Nucleotide::Cytosine | _ => true
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,11 +49,11 @@ error: unexpected `,` in pattern
 LL |     for x, _barr_body in women.iter().map(|woman| woman.allosomes.clone()) {
    |          ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |     for (x, _barr_body) in women.iter().map(|woman| woman.allosomes.clone()) {
    |         ^^^^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |     for x | _barr_body in women.iter().map(|woman| woman.allosomes.clone()) {
    |         ^^^^^^^^^^^^^^
@@ -64,11 +64,11 @@ error: unexpected `,` in pattern
 LL |     for x, y @ Allosome::Y(_) in men.iter().map(|man| man.allosomes.clone()) {
    |          ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |     for (x, y @ Allosome::Y(_)) in men.iter().map(|man| man.allosomes.clone()) {
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |     for x | y @ Allosome::Y(_) in men.iter().map(|man| man.allosomes.clone()) {
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -79,11 +79,11 @@ error: unexpected `,` in pattern
 LL |     let women, men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
    |              ^
    |
-help: try adding parentheses to match on a tuple..
+help: try adding parentheses to match on a tuple...
    |
 LL |     let (women, men): (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
    |         ^^^^^^^^^^^^
-help: ..or a vertical bar to match on multiple alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL |     let women | men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
    |         ^^^^^^^^^^^

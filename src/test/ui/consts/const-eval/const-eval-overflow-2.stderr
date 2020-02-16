@@ -4,5 +4,11 @@ error: could not evaluate constant pattern
 LL |         NEG_NEG_128 => println!("A"),
    |         ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: could not evaluate constant pattern
+  --> $DIR/const-eval-overflow-2.rs:15:9
+   |
+LL |         NEG_NEG_128 => println!("A"),
+   |         ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

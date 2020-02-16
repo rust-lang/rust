@@ -90,8 +90,7 @@ pub fn read_file(
         let mut rustc_version_str_len = [0u8; 1];
         file.read_exact(&mut rustc_version_str_len)?;
         let rustc_version_str_len = rustc_version_str_len[0] as usize;
-        let mut buffer = Vec::with_capacity(rustc_version_str_len);
-        buffer.resize(rustc_version_str_len, 0);
+        let mut buffer = vec![0; rustc_version_str_len];
         file.read_exact(&mut buffer)?;
 
         if buffer != rustc_version().as_bytes() {

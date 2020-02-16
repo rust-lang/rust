@@ -1,13 +1,12 @@
 //! Defines the set of legal keys that can be used in queries.
 
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
-
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -50,6 +49,16 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.instance.default_span(tcx)
+    }
+}
+
+impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }
 
@@ -107,6 +116,15 @@ impl Key for (DefId, SimplifiedType) {
     }
 }
 
+impl<'tcx> Key for SubstsRef<'tcx> {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     fn query_crate(&self) -> CrateNum {
         self.0.krate
@@ -143,7 +161,7 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Key for ty::Const<'tcx> {
+impl<'tcx> Key for &'tcx ty::Const<'tcx> {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

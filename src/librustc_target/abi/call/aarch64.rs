@@ -6,7 +6,7 @@ where
     Ty: TyLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
-    arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
+    arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         let size = arg.layout.size;
 
         // Ensure we have at most four uniquely addressable members.

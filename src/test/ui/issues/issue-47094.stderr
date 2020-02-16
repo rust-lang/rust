@@ -1,14 +1,25 @@
-warning[E0566]: conflicting representation hints
-  --> $DIR/issue-47094.rs:3:8
+error[E0566]: conflicting representation hints
+  --> $DIR/issue-47094.rs:1:8
    |
-LL | #[repr(C,u8)]
-   |        ^ ^^
+LL | #[repr(C, u8)]
+   |        ^  ^^
+   |
+   = note: `#[deny(conflicting_repr_hints)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
-warning[E0566]: conflicting representation hints
-  --> $DIR/issue-47094.rs:9:8
+error[E0566]: conflicting representation hints
+  --> $DIR/issue-47094.rs:8:8
    |
 LL | #[repr(C)]
    |        ^
+LL |
 LL | #[repr(u8)]
    |        ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0566`.

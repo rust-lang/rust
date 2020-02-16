@@ -1,16 +1,15 @@
-use lint::{EarlyContext, LateContext, LintArray, LintContext};
-use lint::{EarlyLintPass, LateLintPass, LintPass};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::intravisit::FnKind;
-use rustc::hir::{self, GenericParamKind, PatKind};
-use rustc::lint;
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty;
+use rustc_attr as attr;
+use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{GenericParamKind, PatKind};
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::attr;
-use syntax::errors::Applicability;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {
@@ -108,15 +107,17 @@ impl NonCamelCaseTypes {
         let name = &ident.name.as_str();
 
         if !is_camel_case(name) {
-            let msg = format!("{} `{}` should have an upper camel case name", sort, name);
-            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, &msg)
-                .span_suggestion(
-                    ident.span,
-                    "convert the identifier to upper camel case",
-                    to_camel_case(name),
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
+                let msg = format!("{} `{}` should have an upper camel case name", sort, name);
+                lint.build(&msg)
+                    .span_suggestion(
+                        ident.span,
+                        "convert the identifier to upper camel case",
+                        to_camel_case(name),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit()
+            })
         }
     }
 }
@@ -139,6 +140,12 @@ impl EarlyLintPass for NonCamelCaseTypes {
             | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
             ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
             _ => (),
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
+        if let ast::AssocItemKind::TyAlias(..) = it.kind {
+            self.check_case(cx, "associated type", &it.ident);
         }
     }
 
@@ -218,25 +225,25 @@ impl NonSnakeCase {
         let name = &ident.name.as_str();
 
         if !is_snake_case(name) {
-            let sc = NonSnakeCase::to_snake_case(name);
+            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
+                let sc = NonSnakeCase::to_snake_case(name);
+                let msg = format!("{} `{}` should have a snake case name", sort, name);
+                let mut err = lint.build(&msg);
+                // We have a valid span in almost all cases, but we don't have one when linting a crate
+                // name provided via the command line.
+                if !ident.span.is_dummy() {
+                    err.span_suggestion(
+                        ident.span,
+                        "convert the identifier to snake case",
+                        sc,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.help(&format!("convert the identifier to snake case: `{}`", sc));
+                }
 
-            let msg = format!("{} `{}` should have a snake case name", sort, name);
-            let mut err = cx.struct_span_lint(NON_SNAKE_CASE, ident.span, &msg);
-
-            // We have a valid span in almost all cases, but we don't have one when linting a crate
-            // name provided via the command line.
-            if !ident.span.is_dummy() {
-                err.span_suggestion(
-                    ident.span,
-                    "convert the identifier to snake case",
-                    sc,
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.help(&format!("convert the identifier to snake case: `{}`", sc));
-            }
-
-            err.emit();
+                err.emit();
+            });
         }
     }
 }
@@ -345,7 +352,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat<'_>) {
-        if let &PatKind::Binding(_, _, ident, _) = &p.kind {
+        if let &PatKind::Binding(_, hid, ident, _) = &p.kind {
+            if let hir::Node::Pat(parent_pat) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
+            {
+                if let PatKind::Struct(_, field_pats, _) = &parent_pat.kind {
+                    for field in field_pats.iter() {
+                        if field.ident != ident {
+                            // Only check if a new name has been introduced, to avoid warning
+                            // on both the struct definition and this pattern.
+                            self.check_snake_case(cx, "variable", &ident);
+                        }
+                    }
+                    return;
+                }
+            }
             self.check_snake_case(cx, "variable", &ident);
         }
     }
@@ -368,19 +388,18 @@ declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_, '_>, sort: &str, ident: &Ident) {
         let name = &ident.name.as_str();
-
         if name.chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
-
-            let msg = format!("{} `{}` should have an upper case name", sort, name);
-            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, &msg)
-                .span_suggestion(
-                    ident.span,
-                    "convert the identifier to upper case",
-                    uc,
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
+                let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
+                lint.build(&format!("{} `{}` should have an upper case name", sort, name))
+                    .span_suggestion(
+                        ident.span,
+                        "convert the identifier to upper case",
+                        uc,
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+            })
         }
     }
 }

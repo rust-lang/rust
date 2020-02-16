@@ -4,13 +4,13 @@
 //! types or regions but can be other things. Examples of type relations are
 //! subtyping, type equality, etc.
 
-use crate::hir as ast;
-use crate::hir::def_id::DefId;
 use crate::mir::interpret::{get_slice_bytes, ConstValue};
 use crate::traits;
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as ast;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
 use std::rc::Rc;
@@ -568,12 +568,12 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (
-            ty::ConstKind::Unevaluated(a_def_id, a_substs),
-            ty::ConstKind::Unevaluated(b_def_id, b_substs),
-        ) if a_def_id == b_def_id => {
+            ty::ConstKind::Unevaluated(a_def_id, a_substs, a_promoted),
+            ty::ConstKind::Unevaluated(b_def_id, b_substs, b_promoted),
+        ) if a_def_id == b_def_id && a_promoted == b_promoted => {
             let substs =
                 relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
-            Ok(ty::ConstKind::Unevaluated(a_def_id, &substs))
+            Ok(ty::ConstKind::Unevaluated(a_def_id, &substs, a_promoted))
         }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
     };

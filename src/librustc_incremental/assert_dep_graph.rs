@@ -36,19 +36,20 @@
 use graphviz as dot;
 use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode};
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
 
 use std::env;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
@@ -159,7 +160,9 @@ impl IfThisChanged<'tcx> {
 }
 
 impl Visitor<'tcx> for IfThisChanged<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
@@ -232,7 +235,7 @@ fn dump_graph(tcx: TyCtxt<'_>) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
-        let mut file = File::create(&txt_path).unwrap();
+        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
         for &(ref source, ref target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }

@@ -4,7 +4,7 @@ error[E0658]: non-builtin inner attributes are unstable
 LL |     #![empty_attr]
    |     ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54726
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
 
 error[E0658]: non-builtin inner attributes are unstable
@@ -13,7 +13,7 @@ error[E0658]: non-builtin inner attributes are unstable
 LL |     #![empty_attr]
    |     ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54726
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
 
 error: key-value macro attributes are not supported
@@ -28,7 +28,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to statements
@@ -37,7 +37,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to statements
@@ -46,7 +46,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -55,7 +55,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = #[identity_attr] 2;
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -64,7 +64,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = [#[identity_attr] 2];
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -73,7 +73,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = #[identity_attr] println!();
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to patterns
@@ -82,7 +82,7 @@ error[E0658]: procedural macros cannot be expanded to patterns
 LL |     if let identity!(Some(_x)) = Some(3) {}
    |            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
@@ -91,7 +91,7 @@ error[E0658]: procedural macros cannot be expanded to statements
 LL |     empty!(struct S;);
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
@@ -100,7 +100,7 @@ error[E0658]: procedural macros cannot be expanded to statements
 LL |     empty!(let _x = 3;);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
@@ -109,7 +109,7 @@ error[E0658]: procedural macros cannot be expanded to expressions
 LL |     let _x = identity!(3);
    |              ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
@@ -118,7 +118,7 @@ error[E0658]: procedural macros cannot be expanded to expressions
 LL |     let _x = [empty!(3)];
    |               ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error: aborting due to 14 previous errors

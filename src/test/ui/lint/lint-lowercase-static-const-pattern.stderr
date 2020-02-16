@@ -4,7 +4,7 @@ error: constant in pattern `a` should have an upper case name
 LL |         (0, a) => 0,
    |             ^ help: convert the identifier to upper case: `A`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-lowercase-static-const-pattern.rs:4:9
    |
 LL | #![deny(non_upper_case_globals)]

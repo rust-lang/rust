@@ -4,7 +4,7 @@ error: `dyn` is a keyword in the 2018 edition
 LL |     pub mod dyn {
    |             ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:10:9
    |
 LL | #![deny(keyword_idents)]

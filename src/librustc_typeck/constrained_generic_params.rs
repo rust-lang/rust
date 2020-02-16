@@ -1,6 +1,6 @@
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -181,7 +181,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 // to project out an associated type defined by this very
                 // trait.
                 let unbound_trait_ref = projection.projection_ty.trait_ref(tcx);
-                if Some(unbound_trait_ref.clone()) == impl_trait_ref {
+                if Some(unbound_trait_ref) == impl_trait_ref {
                     continue;
                 }
 

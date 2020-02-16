@@ -167,11 +167,17 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match r {
-            ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            ty::ReFree(_)
+            | ty::ReErased
+            | ty::ReStatic
+            | ty::ReEmpty(ty::UniverseIndex::ROOT)
+            | ty::ReEarlyBound(..) => r,
+
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
                 CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(*placeholder) },
                 r,
             ),
+
             ty::ReVar(vid) => {
                 let universe = canonicalizer.region_var_universe(*vid);
                 canonicalizer.canonical_var_for_region(
@@ -179,6 +185,11 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
                     r,
                 )
             }
+
+            ty::ReEmpty(ui) => {
+                bug!("canonicalizing 'empty in universe {:?}", ui) // FIXME
+            }
+
             _ => {
                 // Other than `'static` or `'empty`, the query
                 // response should be executing in a fully
@@ -213,7 +224,7 @@ impl CanonicalizeRegionMode for CanonicalizeUserTypeAnnotation {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match r {
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReEmpty | ty::ReStatic => r,
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic => r,
             ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
             _ => {
                 // We only expect region names that the user can type.
@@ -306,7 +317,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                 let r = self
                     .infcx
                     .unwrap()
-                    .borrow_region_constraints()
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
                 debug!(
                     "canonical: region var found with vid {:?}, \
@@ -320,8 +333,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
+            | ty::ReEmpty(_)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
             | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) => {
@@ -610,7 +623,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
 
     /// Returns the universe in which `vid` is defined.
     fn region_var_universe(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
-        self.infcx.unwrap().borrow_region_constraints().var_universe(vid)
+        self.infcx.unwrap().inner.borrow_mut().unwrap_region_constraints().var_universe(vid)
     }
 
     /// Creates a canonical variable (with the given `info`)

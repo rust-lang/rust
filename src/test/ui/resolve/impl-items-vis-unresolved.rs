@@ -18,7 +18,8 @@ mod state {
 pub struct RawFloatState;
 impl RawFloatState {
     perftools_inline! {
-        pub(super) fn new() {} //~ ERROR failed to resolve: there are too many initial `super`s
+        pub(super) fn new() {}
+        //~^ ERROR failed to resolve: there are too many leading `super` keywords
     }
 }
 

@@ -80,7 +80,7 @@ LL |     assert_eq!(Foo::Bar, i);
    |     fn(usize) -> Foo {Foo::Bar}
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `fn(usize) -> Foo {Foo::Bar}`
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
   --> $DIR/issue-59488.rs:30:5
@@ -91,7 +91,7 @@ LL |     assert_eq!(Foo::Bar, i);
    = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
    = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
   --> $DIR/issue-59488.rs:30:5
@@ -102,7 +102,7 @@ LL |     assert_eq!(Foo::Bar, i);
    = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
    = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 

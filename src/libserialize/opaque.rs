@@ -192,7 +192,7 @@ impl<'a> Decoder<'a> {
 }
 
 macro_rules! read_uleb128 {
-    ($dec:expr, $t:ty, $fun:ident) => {{
+    ($dec:expr, $fun:ident) => {{
         let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
         $dec.position += bytes_read;
         Ok(value)
@@ -217,22 +217,22 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u128(&mut self) -> Result<u128, Self::Error> {
-        read_uleb128!(self, u128, read_u128_leb128)
+        read_uleb128!(self, read_u128_leb128)
     }
 
     #[inline]
     fn read_u64(&mut self) -> Result<u64, Self::Error> {
-        read_uleb128!(self, u64, read_u64_leb128)
+        read_uleb128!(self, read_u64_leb128)
     }
 
     #[inline]
     fn read_u32(&mut self) -> Result<u32, Self::Error> {
-        read_uleb128!(self, u32, read_u32_leb128)
+        read_uleb128!(self, read_u32_leb128)
     }
 
     #[inline]
     fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_uleb128!(self, u16, read_u16_leb128)
+        read_uleb128!(self, read_u16_leb128)
     }
 
     #[inline]
@@ -244,7 +244,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_usize(&mut self) -> Result<usize, Self::Error> {
-        read_uleb128!(self, usize, read_usize_leb128)
+        read_uleb128!(self, read_usize_leb128)
     }
 
     #[inline]

@@ -1,13 +1,20 @@
 error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/no-send-res-ports.rs:29:5
    |
-LL |     thread::spawn(move|| {
-   |     ^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+LL |       thread::spawn(move|| {
+   |  _____^^^^^^^^^^^^^_-
+   | |     |
+   | |     `std::rc::Rc<()>` cannot be sent between threads safely
+LL | |
+LL | |         let y = x;
+LL | |         println!("{:?}", y);
+LL | |     });
+   | |_____- within this `[closure@$DIR/no-send-res-ports.rs:29:19: 33:6 x:main::Foo]`
    | 
   ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
    |
-LL |     F: Send + 'static,
-   |        ---- required by this bound in `std::thread::spawn`
+LL |       F: Send + 'static,
+   |          ---- required by this bound in `std::thread::spawn`
    |
    = help: within `[closure@$DIR/no-send-res-ports.rs:29:19: 33:6 x:main::Foo]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `Port<()>`

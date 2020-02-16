@@ -1364,14 +1364,15 @@ function getSearchElement() {
             var href;
             var type = itemTypes[item.ty];
             var name = item.name;
+            var path = item.path;
 
             if (type === "mod") {
-                displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") + "/" +
+                displayPath = path + "::";
+                href = rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
@@ -1380,14 +1381,27 @@ function getSearchElement() {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
                 var parentType = itemTypes[myparent.ty];
+                var pageType = parentType;
+                var pageName = myparent.name;
+
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
+                } else if (type === "structfield" && parentType === "variant") {
+                    // Structfields belonging to variants are special: the
+                    // final path element is the enum name.
+                    var splitPath = item.path.split("::");
+                    var enumName = splitPath.pop();
+                    path = splitPath.join("::");
+                    displayPath = path + "::" + enumName + "::" + myparent.name + "::";
+                    anchor = "#variant." + myparent.name + ".field." + name;
+                    pageType = "enum";
+                    pageName = enumName;
                 } else {
-                    displayPath = item.path + "::" + myparent.name + "::";
+                    displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + item.path.replace(/::/g, "/") +
-                       "/" + parentType +
-                       "." + myparent.name +
+                href = rootPath + path.replace(/::/g, "/") +
+                       "/" + pageType +
+                       "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
@@ -1668,7 +1682,7 @@ function getSearchElement() {
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
 
-                // convert `paths` into an object form
+                // convert `rawPaths` entries into object form
                 var len = paths.length;
                 for (i = 0; i < len; ++i) {
                     paths[i] = {ty: paths[i][0], name: paths[i][1]};
@@ -1895,6 +1909,24 @@ function getSearchElement() {
         var implementors = document.getElementById("implementors-list");
         var synthetic_implementors = document.getElementById("synthetic-implementors-list");
 
+        if (synthetic_implementors) {
+            // This `inlined_types` variable is used to avoid having the same implementation
+            // showing up twice. For example "String" in the "Sync" doc page.
+            //
+            // By the way, this is only used by and useful for traits implemented automatically
+            // (like "Send" and "Sync").
+            var inlined_types = new Set();
+            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
+                var aliases = el.getAttribute("aliases");
+                if (!aliases) {
+                    return;
+                }
+                aliases.split(",").forEach(function(alias) {
+                    inlined_types.add(alias);
+                });
+            });
+        }
+
         var libs = Object.getOwnPropertyNames(imp);
         var llength = libs.length;
         for (var i = 0; i < llength; ++i) {
@@ -1911,10 +1943,10 @@ function getSearchElement() {
                 if (struct.synthetic) {
                     var stlength = struct.types.length;
                     for (var k = 0; k < stlength; k++) {
-                        if (window.inlined_types.has(struct.types[k])) {
+                        if (inlined_types.has(struct.types[k])) {
                             continue struct_loop;
                         }
-                        window.inlined_types.add(struct.types[k]);
+                        inlined_types.add(struct.types[k]);
                     }
                 }
 
@@ -2663,8 +2695,8 @@ function getSearchElement() {
             "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
-            "Search functions by type signature (e.g., <code>vec -> usize</code> or \
-             <code>* -> vec</code>)",
+            "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
+             <code>* -&gt; vec</code>)",
             "Search multiple things at once by splitting your query with comma (e.g., \
              <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
             "You can look for items with an exact name by putting double quotes around \

@@ -3,22 +3,22 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::hir::def::DefKind;
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
-use crate::hir::{self, HirId};
-use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::{self, in_derive_expansion, Lint};
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
-use errors::DiagnosticBuilder;
+use rustc_attr::{self as attr, ConstStability, Deprecation, RustcDeprecation, Stability};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::{self, HirId};
+use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
+use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
+use rustc_session::parse::feature_err_issue;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
-use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
-use syntax::errors::Applicability;
-use syntax::feature_gate::feature_err_issue;
 
 use std::num::NonZeroU32;
 
@@ -98,7 +98,7 @@ pub fn report_unstable(
     issue: Option<NonZeroU32>,
     is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
+    soft_handler: impl FnOnce(&'static Lint, Span, &str),
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -120,7 +120,7 @@ pub fn report_unstable(
     let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
         if is_soft {
-            soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
+            soft_handler(SOFT_UNSTABLE, span, &msg)
         } else {
             feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg)
                 .emit();
@@ -176,32 +176,32 @@ fn deprecation_message_common(message: String, reason: Option<Symbol>) -> String
 
 pub fn deprecation_message(depr: &Deprecation, path: &str) -> (String, &'static Lint) {
     let message = format!("use of deprecated item '{}'", path);
-    (deprecation_message_common(message, depr.note), lint::builtin::DEPRECATED)
+    (deprecation_message_common(message, depr.note), DEPRECATED)
 }
 
 pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String, &'static Lint) {
     let (message, lint) = if deprecation_in_effect(&depr.since.as_str()) {
-        (format!("use of deprecated item '{}'", path), lint::builtin::DEPRECATED)
+        (format!("use of deprecated item '{}'", path), DEPRECATED)
     } else {
         (
             format!(
                 "use of item '{}' that will be deprecated in future version {}",
                 path, depr.since
             ),
-            lint::builtin::DEPRECATED_IN_FUTURE,
+            DEPRECATED_IN_FUTURE,
         )
     };
     (deprecation_message_common(message, Some(depr.reason)), lint)
 }
 
 pub fn early_report_deprecation(
-    lint_buffer: &'a mut lint::LintBuffer,
+    lint_buffer: &'a mut LintBuffer,
     message: &str,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
 ) {
-    if in_derive_expansion(span) {
+    if span.in_derive_expansion() {
         return;
     }
 
@@ -218,15 +218,17 @@ fn late_report_deprecation(
     def_id: DefId,
     hir_id: HirId,
 ) {
-    if in_derive_expansion(span) {
+    if span.in_derive_expansion() {
         return;
     }
 
-    let mut diag = tcx.struct_span_lint_hir(lint, hir_id, span, message);
-    if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
-        deprecation_suggestion(&mut diag, suggestion, span);
-    }
-    diag.emit();
+    tcx.struct_span_lint_hir(lint, hir_id, span, |lint| {
+        let mut diag = lint.build(message);
+        if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
+            deprecation_suggestion(&mut diag, suggestion, span);
+        }
+        diag.emit()
+    });
     if hir_id == hir::DUMMY_HIR_ID {
         span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
     }
@@ -244,35 +246,35 @@ pub enum EvalResult {
     Unmarked,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    // See issue #38412.
-    fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
-        // Check if `def_id` is a trait method.
-        match self.def_kind(def_id) {
-            Some(DefKind::Method) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
-                if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
-                    // Trait methods do not declare visibility (even
-                    // for visibility info in cstore). Use containing
-                    // trait instead, so methods of `pub` traits are
-                    // themselves considered `pub`.
-                    def_id = trait_def_id;
-                }
+// See issue #38412.
+fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    // Check if `def_id` is a trait method.
+    match tcx.def_kind(def_id) {
+        Some(DefKind::Method) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
+            if let ty::TraitContainer(trait_def_id) = tcx.associated_item(def_id).container {
+                // Trait methods do not declare visibility (even
+                // for visibility info in cstore). Use containing
+                // trait instead, so methods of `pub` traits are
+                // themselves considered `pub`.
+                def_id = trait_def_id;
             }
-            _ => {}
         }
-
-        let visibility = self.visibility(def_id);
-
-        match visibility {
-            // Must check stability for `pub` items.
-            ty::Visibility::Public => false,
-
-            // These are not visible outside crate; therefore
-            // stability markers are irrelevant, if even present.
-            ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
-        }
+        _ => {}
     }
 
+    let visibility = tcx.visibility(def_id);
+
+    match visibility {
+        // Must check stability for `pub` items.
+        ty::Visibility::Public => false,
+
+        // These are not visible outside crate; therefore
+        // stability markers are irrelevant, if even present.
+        ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates the stability of an item.
     ///
     /// Returns `EvalResult::Allow` if the item is stable, or unstable but the corresponding
@@ -337,7 +339,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // Issue #38412: private items lack stability markers.
-        if self.skip_stability_check_due_to_privacy(def_id) {
+        if skip_stability_check_due_to_privacy(self, def_id) {
             return EvalResult::Allow;
         }
 
@@ -387,8 +389,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
-        let soft_handler =
-            |lint, span, msg: &_| self.lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg);
+        let soft_handler = |lint, span, msg: &_| {
+            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
+                lint.build(msg).emit()
+            })
+        };
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, is_soft } => {
@@ -401,9 +406,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
     }
-}
 
-impl<'tcx> TyCtxt<'tcx> {
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
         self.lookup_deprecation_entry(id).map(|depr| depr.attr)
     }

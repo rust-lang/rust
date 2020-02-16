@@ -388,13 +388,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
         // Remove unnecessary StorageLive and StorageDead annotations.
         data.statements.retain(|stmt| match &stmt.kind {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => self.map[*l].is_some(),
-            StatementKind::Assign(box (place, _)) => {
-                if let PlaceBase::Local(local) = place.base {
-                    self.map[local].is_some()
-                } else {
-                    true
-                }
-            }
+            StatementKind::Assign(box (place, _)) => self.map[place.local].is_some(),
             _ => true,
         });
         self.super_basic_block_data(block, data);

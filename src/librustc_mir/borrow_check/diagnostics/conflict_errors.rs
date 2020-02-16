@@ -1,15 +1,15 @@
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceBase,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
+    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::traits::error_reporting::suggest_constraining_type_param;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
@@ -186,7 +186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let ty =
-                Place::ty_from(used_place.base, used_place.projection, *self.body, self.infcx.tcx)
+                Place::ty_from(used_place.local, used_place.projection, *self.body, self.infcx.tcx)
                     .ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
@@ -217,12 +217,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         tcx.hir().get_generics(tcx.closure_base_def_id(self.mir_def_id))
                     {
                         suggest_constraining_type_param(
+                            tcx,
                             generics,
                             &mut err,
                             &param.name.as_str(),
                             "Copy",
                             tcx.sess.source_map(),
                             span,
+                            None,
                         );
                     }
                 }
@@ -395,14 +397,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             (BorrowKind::Mut { .. }, BorrowKind::Mut { .. }) => {
                 first_borrow_desc = "first ";
-                self.cannot_mutably_borrow_multiply(
+                let mut err = self.cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
                     &msg_place,
                     issued_span,
                     &msg_borrow,
                     None,
-                )
+                );
+                self.suggest_split_at_mut_if_applicable(
+                    &mut err,
+                    &place,
+                    &issued_borrow.borrowed_place,
+                );
+                err
             }
 
             (BorrowKind::Unique, BorrowKind::Unique) => {
@@ -547,6 +555,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
+    fn suggest_split_at_mut_if_applicable(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        place: &Place<'tcx>,
+        borrowed_place: &Place<'tcx>,
+    ) {
+        match (&place.projection[..], &borrowed_place.projection[..]) {
+            ([ProjectionElem::Index(_)], [ProjectionElem::Index(_)]) => {
+                err.help(
+                    "consider using `.split_at_mut(position)` or similar method to obtain \
+                     two mutable non-overlapping sub-slices",
+                );
+            }
+            _ => {}
+        }
+    }
+
     /// Returns the description of the root place for a conflicting borrow and the full
     /// descriptions of the places that caused the conflict.
     ///
@@ -597,15 +622,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // field access to a union. If we find that, then we will keep the place of the
                 // union being accessed and the field that was being accessed so we can check the
                 // second borrowed place for the same union and a access to a different field.
-                let Place { base, projection } = first_borrowed_place;
+                let Place { local, projection } = first_borrowed_place;
 
                 let mut cursor = projection.as_ref();
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(base, proj_base).is_some() => {
-                            return Some((PlaceRef { base: base, projection: proj_base }, field));
+                        ProjectionElem::Field(field, _)
+                            if union_ty(*local, proj_base).is_some() =>
+                        {
+                            return Some((
+                                PlaceRef { local: *local, projection: proj_base },
+                                field,
+                            ));
                         }
                         _ => {}
                     }
@@ -615,21 +645,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .and_then(|(target_base, target_field)| {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for a access to a different field of the same union.
-                let Place { base, projection } = second_borrowed_place;
+                let Place { local, projection } = second_borrowed_place;
 
                 let mut cursor = projection.as_ref();
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
                     if let ProjectionElem::Field(field, _) = elem {
-                        if let Some(union_ty) = union_ty(base, proj_base) {
+                        if let Some(union_ty) = union_ty(*local, proj_base) {
                             if field != target_field
-                                && base == target_base.base
+                                && *local == target_base.local
                                 && proj_base == target_base.projection
                             {
                                 // FIXME when we avoid clone reuse describe_place closure
                                 let describe_base_place = self
-                                    .describe_place(PlaceRef { base: base, projection: proj_base })
+                                    .describe_place(PlaceRef {
+                                        local: *local,
+                                        projection: proj_base,
+                                    })
                                     .unwrap_or_else(|| "_".to_owned());
 
                                 return Some((
@@ -686,15 +719,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_span = borrow_spans.var_or_use();
 
         assert!(root_place.projection.is_empty());
-        let proper_span = match root_place.base {
-            PlaceBase::Local(local) => self.body.local_decls[*local].source_info.span,
-            _ => drop_span,
-        };
+        let proper_span = self.body.local_decls[root_place.local].source_info.span;
 
         let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
 
         if self.access_place_error_reported.contains(&(
-            Place { base: root_place.base.clone(), projection: root_place_projection },
+            Place { local: root_place.local, projection: root_place_projection },
             borrow_span,
         )) {
             debug!(
@@ -705,18 +735,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         self.access_place_error_reported.insert((
-            Place { base: root_place.base.clone(), projection: root_place_projection },
+            Place { local: root_place.local, projection: root_place_projection },
             borrow_span,
         ));
 
-        if let PlaceBase::Local(local) = borrow.borrowed_place.base {
-            if self.body.local_decls[local].is_ref_to_thread_local() {
-                let err = self
-                    .report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
-                err.buffer(&mut self.errors_buffer);
-                return;
-            }
-        };
+        let borrowed_local = borrow.borrowed_place.local;
+        if self.body.local_decls[borrowed_local].is_ref_to_thread_local() {
+            let err =
+                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
+            err.buffer(&mut self.errors_buffer);
+            return;
+        }
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
             self.classify_drop_access_kind(borrow.borrowed_place.as_ref())
@@ -1142,13 +1171,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } else {
             let root_place =
                 self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
-            let local =
-                if let PlaceRef { base: PlaceBase::Local(local), projection: [] } = root_place {
-                    local
-                } else {
-                    bug!("try_report_cannot_return_reference_to_local: not a local")
-                };
-            match self.body.local_kind(*local) {
+            let local = root_place.local;
+            match self.body.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Temp => {
                     ("temporary value".to_string(), "temporary value created here".to_string())
                 }
@@ -1268,7 +1292,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         err.span_label(
             upvar_span,
-            format!("`{}` is declared here, outside of the {} body", upvar_name, escapes_from),
+            format!("`{}` declared here, outside of the {} body", upvar_name, escapes_from),
         );
 
         err.span_label(borrow_span, format!("borrow is only valid in the {} body", escapes_from));
@@ -1514,7 +1538,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             [proj_base @ .., elem] => {
                 // FIXME(spastorino) make this iterate
                 let base_access = self.classify_drop_access_kind(PlaceRef {
-                    base: place.base,
+                    local: place.local,
                     projection: proj_base,
                 });
                 match elem {
@@ -1522,7 +1546,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(&place.base, proj_base, *self.body, tcx).ty.is_box(),
+                                Place::ty_from(place.local, proj_base, *self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1530,7 +1554,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(&place.base, proj_base, *self.body, tcx).ty;
+                        let base_ty = Place::ty_from(place.local, proj_base, *self.body, tcx).ty;
                         match base_ty.kind {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
@@ -1839,7 +1863,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let ty::Ref(argument_region, _, _) = argument.kind {
                         if argument_region == return_region {
                             // Need to use the `rustc::ty` types to compare against the
-                            // `return_region`. Then use the `rustc::hir` type to get only
+                            // `return_region`. Then use the `rustc_hir` type to get only
                             // the lifetime span.
                             if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get

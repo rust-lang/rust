@@ -1,8 +1,8 @@
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::sym;
 use syntax::attr;
 

@@ -47,9 +47,9 @@ pub struct MyTypeWithStr(&'static str);
 // @!has show_const_contents/constant.MY_TYPE_WITH_STR.html '; //'
 pub const MY_TYPE_WITH_STR: MyTypeWithStr = MyTypeWithStr("show this");
 
-// @has show_const_contents/constant.EPSILON.html '1.1920929e-7f32;'
-// @!has show_const_contents/constant.EPSILON.html '; //'
-pub use std::f32::EPSILON;
+// @has show_const_contents/constant.PI.html '= 3.14159265358979323846264338327950288f32;'
+// @has show_const_contents/constant.PI.html '; // 3.14159274f32'
+pub use std::f32::consts::PI;
 
 // @has show_const_contents/constant.MAX.html '= i32::max_value(); // 2_147_483_647i32'
 pub use std::i32::MAX;
@@ -62,3 +62,6 @@ macro_rules! int_module {
 
 // @has show_const_contents/constant.MIN.html '= i16::min_value(); // -32_768i16'
 int_module!(i16);
+
+// @has show_const_contents/constant.ESCAPE.html //pre '= r#"<script>alert("ESCAPE");</script>"#;'
+pub const ESCAPE: &str = r#"<script>alert("ESCAPE");</script>"#;

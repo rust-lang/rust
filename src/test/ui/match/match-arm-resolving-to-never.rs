@@ -14,6 +14,6 @@ fn main() {
         E::C => 3,
         E::D => 4,
         E::E => unimplemented!(""),
-        E::F => "", //~ ERROR match arms have incompatible types
+        E::F => "", //~ ERROR `match` arms have incompatible types
     };
 }

@@ -14,15 +14,16 @@
 //! the required condition is not met.
 
 use rustc::dep_graph::{label_strs, DepNode};
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::Node as HirNode;
-use rustc::hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
+use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::Node as HirNode;
+use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
@@ -314,7 +315,7 @@ impl DirtyCleanVisitor<'tcx> {
                     //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
-                    HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
+                    HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.sess.span_fatal(
                         attr.span,
@@ -547,7 +548,9 @@ impl FindAllAttrs<'tcx> {
 }
 
 impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 

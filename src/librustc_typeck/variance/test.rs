@@ -1,9 +1,8 @@
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::sym;
-
-use rustc_error_codes::*;
 
 pub fn test_variance(tcx: TyCtxt<'_>) {
     tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
@@ -21,7 +20,7 @@ impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
         // attribute and report an error with various results if found.
         if self.tcx.has_attr(item_def_id, sym::rustc_variance) {
             let variances_of = self.tcx.variances_of(item_def_id);
-            span_err!(self.tcx.sess, item.span, E0208, "{:?}", variances_of);
+            struct_span_err!(self.tcx.sess, item.span, E0208, "{:?}", variances_of).emit();
         }
     }
 

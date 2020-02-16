@@ -4,11 +4,17 @@ error: cannot find attribute `empty_helper` in this scope
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^
 
-error[E0603]: derive macro `Empty` is private
+error[E0603]: derive macro import `Empty` is private
   --> $DIR/disappearing-resolution.rs:11:8
    |
 LL | use m::Empty;
-   |        ^^^^^
+   |        ^^^^^ this derive macro import is private
+   |
+note: the derive macro import `Empty` is defined here
+  --> $DIR/disappearing-resolution.rs:9:9
+   |
+LL |     use test_macros::Empty;
+   |         ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

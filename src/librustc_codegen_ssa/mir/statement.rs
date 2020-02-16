@@ -1,12 +1,11 @@
 use rustc::mir;
+use rustc_errors::struct_span_err;
 
 use super::FunctionCx;
 use super::LocalRef;
 use super::OperandValue;
 use crate::traits::BuilderMethods;
 use crate::traits::*;
-
-use rustc_error_codes::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(&mut self, mut bx: Bx, statement: &mir::Statement<'tcx>) -> Bx {
@@ -42,12 +41,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&mut bx, &place.as_ref());
+                    let cg_dest = self.codegen_place(&mut bx, place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {
-                self.codegen_place(&mut bx, &place.as_ref())
+                self.codegen_place(&mut bx, place.as_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -71,7 +70,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let outputs = asm
                     .outputs
                     .iter()
-                    .map(|output| self.codegen_place(&mut bx, &output.as_ref()))
+                    .map(|output| self.codegen_place(&mut bx, output.as_ref()))
                     .collect();
 
                 let input_vals = asm.inputs.iter().fold(
@@ -81,12 +80,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                         } else {
-                            span_err!(
+                            struct_span_err!(
                                 bx.sess(),
                                 span.to_owned(),
                                 E0669,
                                 "invalid value for constraint in inline assembly"
-                            );
+                            )
+                            .emit();
                         }
                         acc
                     },
@@ -100,12 +100,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         statement.source_info.span,
                     );
                     if !res {
-                        span_err!(
+                        struct_span_err!(
                             bx.sess(),
                             statement.source_info.span,
                             E0668,
                             "malformed inline assembly"
-                        );
+                        )
+                        .emit();
                     }
                 }
                 bx

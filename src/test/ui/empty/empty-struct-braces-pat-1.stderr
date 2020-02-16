@@ -15,6 +15,11 @@ LL |         XE::XEmpty3 => ()
    |         |   |
    |         |   help: a unit variant with a similar name exists: `XEmpty4`
    |         did you mean `XE::XEmpty3 { /* fields */ }`?
+   | 
+  ::: $DIR/auxiliary/empty-struct.rs:7:5
+   |
+LL |     XEmpty4,
+   |     ------- similarly named unit variant `XEmpty4` defined here
 
 error: aborting due to 2 previous errors
 

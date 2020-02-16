@@ -1,0 +1,3 @@
+// compile-flags:--test
+
+"fail

@@ -1,0 +1,141 @@
+error[E0382]: borrow of moved value: `x.0.0`
+  --> $DIR/or-patterns.rs:10:5
+   |
+LL |         ((y, _) | (_, y),) => (),
+   |           - value moved here
+LL |     }
+LL |     &x.0 .0;
+   |     ^^^^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0.0` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x.0.1`
+  --> $DIR/or-patterns.rs:12:5
+   |
+LL |         ((y, _) | (_, y),) => (),
+   |                       - value moved here
+...
+LL |     &x.0 .1;
+   |     ^^^^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0.1` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0502]: cannot borrow `x.0.0` as mutable because it is also borrowed as immutable
+  --> $DIR/or-patterns.rs:20:5
+   |
+LL |         ((ref y, _) | (_, ref y),) => y,
+   |           ----- immutable borrow occurs here
+LL |     };
+LL |     &mut x.0 .0;
+   |     ^^^^^^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.1` as mutable because it is also borrowed as immutable
+  --> $DIR/or-patterns.rs:22:5
+   |
+LL |         ((ref y, _) | (_, ref y),) => y,
+   |                           ----- immutable borrow occurs here
+...
+LL |     &mut x.0 .1;
+   |     ^^^^^^^^^^^ mutable borrow occurs here
+LL |
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.0` as immutable because it is also borrowed as mutable
+  --> $DIR/or-patterns.rs:31:5
+   |
+LL |         ((ref mut y, _) | (_, ref mut y),) => y,
+   |           --------- mutable borrow occurs here
+LL |     };
+LL |     &x.0 .0;
+   |     ^^^^^^^ immutable borrow occurs here
+...
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.1` as immutable because it is also borrowed as mutable
+  --> $DIR/or-patterns.rs:33:5
+   |
+LL |         ((ref mut y, _) | (_, ref mut y),) => y,
+   |                               --------- mutable borrow occurs here
+...
+LL |     &x.0 .1;
+   |     ^^^^^^^ immutable borrow occurs here
+LL |
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error[E0382]: borrow of moved value: `x.0.0`
+  --> $DIR/or-patterns.rs:40:5
+   |
+LL |     let ((y, _) | (_, y),) = x;
+   |           - value moved here
+LL |     &x.0 .0;
+   |     ^^^^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0.0` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x.0.1`
+  --> $DIR/or-patterns.rs:42:5
+   |
+LL |     let ((y, _) | (_, y),) = x;
+   |                       - value moved here
+...
+LL |     &x.0 .1;
+   |     ^^^^^^^ value borrowed here after move
+   |
+   = note: move occurs because `x.0.1` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0502]: cannot borrow `x.0.0` as mutable because it is also borrowed as immutable
+  --> $DIR/or-patterns.rs:48:5
+   |
+LL |     let ((ref r, _) | (_, ref r),) = x;
+   |           ----- immutable borrow occurs here
+LL |     &mut x.0 .0;
+   |     ^^^^^^^^^^^ mutable borrow occurs here
+...
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.1` as mutable because it is also borrowed as immutable
+  --> $DIR/or-patterns.rs:50:5
+   |
+LL |     let ((ref r, _) | (_, ref r),) = x;
+   |                           ----- immutable borrow occurs here
+...
+LL |     &mut x.0 .1;
+   |     ^^^^^^^^^^^ mutable borrow occurs here
+LL |
+LL |     drop(r);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.0` as immutable because it is also borrowed as mutable
+  --> $DIR/or-patterns.rs:57:5
+   |
+LL |     let ((ref mut r, _) | (_, ref mut r),) = x;
+   |           --------- mutable borrow occurs here
+LL |     &x.0 .0;
+   |     ^^^^^^^ immutable borrow occurs here
+...
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error[E0502]: cannot borrow `x.0.1` as immutable because it is also borrowed as mutable
+  --> $DIR/or-patterns.rs:59:5
+   |
+LL |     let ((ref mut r, _) | (_, ref mut r),) = x;
+   |                               --------- mutable borrow occurs here
+...
+LL |     &x.0 .1;
+   |     ^^^^^^^ immutable borrow occurs here
+LL |
+LL |     drop(r);
+   |          - mutable borrow later used here
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0382, E0502.
+For more information about an error, try `rustc --explain E0382`.

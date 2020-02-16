@@ -1072,6 +1072,19 @@ impl ThreadId {
             ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
+
+    /// This returns a numeric identifier for the thread identified by this
+    /// `ThreadId`.
+    ///
+    /// As noted in the documentation for the type itself, it is essentially an
+    /// opaque ID, but is guaranteed to be unique for each thread. The returned
+    /// value is entirely opaque -- only equality testing is stable. Note that
+    /// it is not guaranteed which values new threads will return, and this may
+    /// change across Rust versions.
+    #[unstable(feature = "thread_id_value", issue = "67939")]
+    pub fn as_u64(&self) -> u64 {
+        self.0.get()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@ fn main() {
 
     a + a; //~ ERROR cannot add `A` to `A`
 
-    a - a; //~ ERROR cannot substract `A` from `A`
+    a - a; //~ ERROR cannot subtract `A` from `A`
 
     a * a; //~ ERROR cannot multiply `A` to `A`
 

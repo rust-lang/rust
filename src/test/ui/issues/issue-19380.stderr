@@ -1,11 +1,18 @@
 error[E0038]: the trait `Qiz` cannot be made into an object
   --> $DIR/issue-19380.rs:11:3
    |
+LL | trait Qiz {
+   |       --- this trait cannot be made into an object...
 LL |   fn qiz();
-   |      --- associated function `qiz` has no `self` parameter
+   |      --- ...because associated function `qiz` has no `self` parameter
 ...
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qiz` cannot be made into an object
+   |
+help: consider turning `qiz` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |   fn qiz() where Self: Sized;
+   |            ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

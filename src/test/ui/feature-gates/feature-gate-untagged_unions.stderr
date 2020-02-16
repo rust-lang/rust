@@ -6,7 +6,7 @@ LL | |     a: String,
 LL | | }
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55149
+   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
 error[E0658]: unions with non-`Copy` fields are unstable
@@ -17,7 +17,7 @@ LL | |     a: T,
 LL | | }
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55149
+   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
 error[E0658]: unions with `Drop` implementations are unstable
@@ -28,7 +28,7 @@ LL | |     a: u8,
 LL | | }
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55149
+   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
 error[E0740]: unions may not contain fields that need dropping

@@ -53,7 +53,7 @@ fn extract_error_codes(f: &str, error_codes: &mut HashMap<String, bool>, path: &
                     error_codes.insert(err_code.clone(), false);
                 }
                 // Now we extract the tests from the markdown file!
-                let md = some_or_continue!(s.splitn(2, "include_str!(\"").skip(1).next());
+                let md = some_or_continue!(s.splitn(2, "include_str!(\"").nth(1));
                 let md_file_name = some_or_continue!(md.splitn(2, "\")").next());
                 let path = some_or_continue!(path.parent()).join(md_file_name);
                 match read_to_string(&path) {
@@ -84,7 +84,7 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, boo
         let s = line.trim();
         if s.starts_with("error[E") || s.starts_with("warning[E") {
             if let Some(err_code) = s.splitn(2, ']').next() {
-                if let Some(err_code) = err_code.splitn(2, '[').skip(1).next() {
+                if let Some(err_code) = err_code.splitn(2, '[').nth(1) {
                     let nb = error_codes.entry(err_code.to_owned()).or_insert(false);
                     *nb = true;
                 }

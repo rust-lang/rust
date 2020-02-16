@@ -9,17 +9,16 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use crate::constrained_generic_params as cgp;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_span::Span;
-
-use rustc_error_codes::*;
 
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self type (or are constrained by a
@@ -74,10 +73,10 @@ struct ImplWfCheck<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
+        if let hir::ItemKind::Impl { ref items, .. } = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
-            enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_item_refs);
-            enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
+            enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
+            enforce_impl_items_are_distinct(self.tcx, items);
         }
     }
 
@@ -98,7 +97,10 @@ fn enforce_impl_params_are_constrained(
         // (#36836)
         tcx.sess.delay_span_bug(
             tcx.def_span(impl_def_id),
-            "potentially unconstrained type parameters weren't evaluated",
+            &format!(
+                "potentially unconstrained type parameters weren't evaluated: {:?}",
+                impl_self_ty,
+            ),
         );
         return;
     }
@@ -118,11 +120,26 @@ fn enforce_impl_params_are_constrained(
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs
         .iter()
         .map(|item_ref| tcx.hir().local_def_id(item_ref.id.hir_id))
-        .filter(|&def_id| {
+        .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
-            item.kind == ty::AssocKind::Type && item.defaultness.has_value()
+            match item.kind {
+                ty::AssocKind::Type => {
+                    if item.defaultness.has_value() {
+                        cgp::parameters_for(&tcx.type_of(def_id), true)
+                    } else {
+                        Vec::new()
+                    }
+                }
+                ty::AssocKind::OpaqueTy => {
+                    // We don't know which lifetimes appear in the actual
+                    // opaque type, so use all of the lifetimes that appear
+                    // in the type's predicates.
+                    let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
+                    cgp::parameters_for(&predicates, true)
+                }
+                ty::AssocKind::Method | ty::AssocKind::Const => Vec::new(),
+            }
         })
-        .flat_map(|def_id| cgp::parameters_for(&tcx.type_of(def_id), true))
         .collect();
 
     for param in &impl_generics.params {

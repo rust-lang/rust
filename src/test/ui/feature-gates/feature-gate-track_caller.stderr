@@ -4,7 +4,7 @@ error[E0658]: the `#[track_caller]` attribute is an experimental feature
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/47809
+   = note: see issue #47809 <https://github.com/rust-lang/rust/issues/47809> for more information
    = help: add `#![feature(track_caller)]` to the crate attributes to enable
 
 error: aborting due to previous error

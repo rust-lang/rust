@@ -1,4 +1,4 @@
-#![feature(transparent_enums, transparent_unions)]
+#![feature(transparent_unions)]
 #![feature(ptr_internals)]
 #![deny(improper_ctypes)]
 #![allow(dead_code)]

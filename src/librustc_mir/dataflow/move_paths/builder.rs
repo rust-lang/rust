@@ -96,12 +96,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, place: &Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
         debug!("lookup({:?})", place);
-        let mut base = match place.base {
-            PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[local],
-            PlaceBase::Static(..) => {
-                return Err(MoveError::cannot_move_out_of(self.loc, Static));
-            }
-        };
+        let mut base = self.builder.data.rev_lookup.locals[place.local];
 
         // The move path index of the first union that we find. Once this is
         // some we stop creating child move paths, since moves from unions
@@ -114,7 +109,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let proj_base = &place.projection[..i];
             let body = self.builder.body;
             let tcx = self.builder.tcx;
-            let place_ty = Place::ty_from(&place.base, proj_base, body, tcx).ty;
+            let place_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
             match place_ty.kind {
                 ty::Ref(..) | ty::RawPtr(..) => {
                     let proj = &place.projection[..i + 1];
@@ -122,7 +117,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         self.loc,
                         BorrowedContent {
                             target_place: Place {
-                                base: place.base.clone(),
+                                local: place.local,
                                 projection: tcx.intern_place_elems(proj),
                             },
                         },
@@ -163,7 +158,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
             if union_path.is_none() {
                 base = self.add_move_path(base, elem, |tcx| Place {
-                    base: place.base.clone(),
+                    local: place.local,
                     projection: tcx.intern_place_elems(&place.projection[..i + 1]),
                 });
             }
@@ -385,7 +380,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(discr);
             }
 
-            TerminatorKind::Yield { ref value, .. } => {
+            TerminatorKind::Yield { ref value, resume_arg: ref place, .. } => {
+                self.create_move_path(place);
+                self.gather_init(place.as_ref(), InitKind::Deep);
                 self.gather_operand(value);
             }
 
@@ -435,10 +432,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // Split `Subslice` patterns into the corresponding list of
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
-            let base_place = Place {
-                base: place.base.clone(),
-                projection: self.builder.tcx.intern_place_elems(base),
-            };
+            let base_place =
+                Place { local: place.local, projection: self.builder.tcx.intern_place_elems(base) };
             let base_path = match self.move_path_for(&base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {
@@ -472,7 +467,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             match self.move_path_for(place) {
                 Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
                 Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((place.clone(), error));
+                    self.builder.errors.push((*place, error));
                 }
             };
         }
@@ -497,10 +492,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // of the union so it is marked as initialized again.
         if let [proj_base @ .., ProjectionElem::Field(_, _)] = place.projection {
             if let ty::Adt(def, _) =
-                Place::ty_from(place.base, proj_base, self.builder.body, self.builder.tcx).ty.kind
+                Place::ty_from(place.local, proj_base, self.builder.body, self.builder.tcx).ty.kind
             {
                 if def.is_union() {
-                    place = PlaceRef { base: place.base, projection: proj_base }
+                    place = PlaceRef { local: place.local, projection: proj_base }
                 }
             }
         }

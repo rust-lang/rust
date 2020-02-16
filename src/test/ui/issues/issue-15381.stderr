@@ -4,13 +4,6 @@ error[E0005]: refutable pattern in `for` loop binding: `&[]`, `&[_]`, `&[_, _]` 
 LL |     for &[x,y,z] in values.chunks(3).filter(|&xs| xs.len() == 3) {
    |         ^^^^^^^^ patterns `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
 
-error[E0381]: borrow of possibly-uninitialized variable: `y`
-  --> $DIR/issue-15381.rs:6:26
-   |
-LL |         println!("y={}", y);
-   |                          ^ use of possibly-uninitialized `y`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0005, E0381.
-For more information about an error, try `rustc --explain E0005`.
+For more information about this error, try `rustc --explain E0005`.

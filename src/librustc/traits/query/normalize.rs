@@ -13,6 +13,8 @@ use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
+pub use rustc::traits::query::NormalizationResult;
+
 impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
@@ -59,13 +61,6 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     }
 }
 
-/// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
-pub struct NormalizationResult<'tcx> {
-    /// Result of normalization.
-    pub normalized_ty: Ty<'tcx>,
-}
-
 struct QueryNormalizer<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     cause: &'cx ObligationCause<'tcx>,
@@ -81,6 +76,10 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_projections() {
+            return ty;
+        }
+
         let ty = ty.super_fold_with(self);
         match ty.kind {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {

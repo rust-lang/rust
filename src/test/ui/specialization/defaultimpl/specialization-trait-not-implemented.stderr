@@ -1,4 +1,4 @@
-error[E0599]: no method named `foo_one` found for type `MyStruct` in the current scope
+error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | struct MyStruct;

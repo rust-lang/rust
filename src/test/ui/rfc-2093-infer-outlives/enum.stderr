@@ -6,7 +6,7 @@ LL | |     One(Bar<'a, T>)
 LL | | }
    | |_^
    |
-   = note: T : 'a
+   = note: T: 'a
 
 error: rustc_outlives
   --> $DIR/enum.rs:13:1
@@ -16,7 +16,7 @@ LL | |     field2: &'b U
 LL | | }
    | |_^
    |
-   = note: U : 'b
+   = note: U: 'b
 
 error: rustc_outlives
   --> $DIR/enum.rs:19:1
@@ -26,7 +26,7 @@ LL | |     One(&'c Yang<K>)
 LL | | }
    | |_^
    |
-   = note: K : 'c
+   = note: K: 'c
 
 error: aborting due to 3 previous errors
 

@@ -1,4 +1,4 @@
-error[E0599]: no method named `homura` found for type `&'static str` in the current scope
+error[E0599]: no method named `homura` found for reference `&'static str` in the current scope
   --> $DIR/issue-19521.rs:2:8
    |
 LL |     "".homura()();

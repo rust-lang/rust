@@ -1,17 +1,18 @@
-error[E0644]: closure/generator type that references itself
-  --> $DIR/generator-yielding-or-returning-itself.rs:15:34
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _] as std::ops::Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _]`
+  --> $DIR/generator-yielding-or-returning-itself.rs:15:5
    |
-LL |       want_cyclic_generator_return(|| {
-   |  __________________________________^
-LL | |
-LL | |         if false { yield None.unwrap(); }
-LL | |         None.unwrap()
-LL | |     })
-   | |_____^ cyclic type of infinite size
+LL | pub fn want_cyclic_generator_return<T>(_: T)
+   |        ----------------------------
+LL |     where T: Generator<Yield = (), Return = T>
+   |                                    ---------- required by this bound in `want_cyclic_generator_return`
+...
+LL |     want_cyclic_generator_return(|| {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
-           see https://github.com/rust-lang/rust/issues/46062 for more details
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
 
 error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _] as std::ops::Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _]`
   --> $DIR/generator-yielding-or-returning-itself.rs:28:5
@@ -26,9 +27,9 @@ LL |     want_cyclic_generator_yield(|| {
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
-           see https://github.com/rust-lang/rust/issues/46062 for more details
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0271, E0644.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

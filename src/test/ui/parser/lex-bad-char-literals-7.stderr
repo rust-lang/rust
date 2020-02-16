@@ -1,17 +1,17 @@
 error: empty character literal
-  --> $DIR/lex-bad-char-literals-7.rs:3:20
+  --> $DIR/lex-bad-char-literals-7.rs:2:20
    |
 LL |     let _: char = '';
    |                    ^
 
 error: empty unicode escape (must have at least 1 hex digit)
-  --> $DIR/lex-bad-char-literals-7.rs:5:20
+  --> $DIR/lex-bad-char-literals-7.rs:4:20
    |
 LL |     let _: char = '\u{}';
    |                    ^^^^
 
 error: unterminated character literal
-  --> $DIR/lex-bad-char-literals-7.rs:12:13
+  --> $DIR/lex-bad-char-literals-7.rs:11:13
    |
 LL |     let _ = ' hello // here's a comment
    |             ^^^^^^^^

@@ -46,5 +46,11 @@ fn test_find_best_match_for_name() {
             find_best_match_for_name(input.iter(), "aaaa", Some(4)),
             Some(Symbol::intern("AAAA"))
         );
+
+        let input = vec![Symbol::intern("a_longer_variable_name")];
+        assert_eq!(
+            find_best_match_for_name(input.iter(), "a_variable_longer_name", None),
+            Some(Symbol::intern("a_longer_variable_name"))
+        );
     })
 }

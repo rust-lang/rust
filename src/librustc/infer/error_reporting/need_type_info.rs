@@ -1,22 +1,22 @@
-use crate::hir::def::{DefKind, Namespace};
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::hir::{self, Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
+use crate::hir::map::Map;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use crate::ty::print::Print;
 use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
-use errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
 
-use rustc_error_codes::*;
-
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
-    hir_map: &'a hir::map::Map<'tcx>,
+    hir_map: &'a Map<'tcx>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_ty: Option<Ty<'tcx>>,
@@ -25,11 +25,7 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
-    fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
-        target_ty: Ty<'tcx>,
-        hir_map: &'a hir::map::Map<'tcx>,
-    ) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: &'a Map<'tcx>) -> Self {
         Self {
             infcx,
             target_ty,
@@ -51,9 +47,12 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
                 if ty.walk().any(|inner_ty| {
                     inner_ty == self.target_ty
                         || match (&inner_ty.kind, &self.target_ty.kind) {
-                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                                self.infcx.type_variables.borrow_mut().sub_unified(a_vid, b_vid)
-                            }
+                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                .infcx
+                                .inner
+                                .borrow_mut()
+                                .type_variables
+                                .sub_unified(a_vid, b_vid),
                             _ => false,
                         }
                 }) {
@@ -68,7 +67,9 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 
@@ -151,16 +152,13 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> errors::DiagnosticId {
-        syntax::diagnostic_used!(E0282);
-        syntax::diagnostic_used!(E0283);
-        syntax::diagnostic_used!(E0284);
-        errors::DiagnosticId::Error(match self {
-            Self::E0282 => "E0282".to_string(),
-            Self::E0283 => "E0283".to_string(),
-            Self::E0284 => "E0284".to_string(),
-        })
+impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
+    fn into(self) -> rustc_errors::DiagnosticId {
+        match self {
+            Self::E0282 => rustc_errors::error_code!(E0282),
+            Self::E0283 => rustc_errors::error_code!(E0283),
+            Self::E0284 => rustc_errors::error_code!(E0284),
+        }
     }
 }
 
@@ -171,7 +169,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         highlight: Option<ty::print::RegionHighlightMode>,
     ) -> (String, Option<Span>, Cow<'static, str>, Option<String>, Option<&'static str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind {
                 let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
@@ -229,7 +227,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let getter = move |ty_vid| {
                 let var_origin = ty_vars.var_origin(ty_vid);
                 if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {

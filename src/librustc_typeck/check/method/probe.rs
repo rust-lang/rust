@@ -9,7 +9,6 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 use crate::namespace::Namespace;
 
-use rustc::hir;
 use rustc::infer::canonical::OriginalQueryValues;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -26,9 +25,12 @@ use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    WithConstness,
 };
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use std::cmp::max;
 use std::iter;
@@ -36,8 +38,6 @@ use std::mem;
 use std::ops::Deref;
 use syntax::ast;
 use syntax::util::lev_distance::{find_best_match_for_name, lev_distance};
-
-use rustc_error_codes::*;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -373,19 +373,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.rust_2018() {
-                    span_err!(
+                    struct_span_err!(
                         self.tcx.sess,
                         span,
                         E0699,
                         "the type of this value must be known \
                                to call a method on a raw pointer on it"
-                    );
+                    )
+                    .emit();
                 } else {
-                    self.tcx.lint_hir(
+                    self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        "type annotations needed",
+                        |lint| lint.build("type annotations needed").emit(),
                     );
                 }
             } else {
@@ -824,7 +825,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: do we want to commit to this behavior for param bounds?
 
         let bounds = self.param_env.caller_bounds.iter().filter_map(|predicate| match *predicate {
-            ty::Predicate::Trait(ref trait_predicate) => {
+            ty::Predicate::Trait(ref trait_predicate, _) => {
                 match trait_predicate.skip_binder().trait_ref.self_ty().kind {
                     ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
                     _ => None,
@@ -901,13 +902,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    let import_ids = trait_candidate
-                        .import_ids
-                        .iter()
-                        .map(|node_id| self.fcx.tcx.hir().node_to_hir_id(*node_id))
-                        .collect();
-                    let result =
-                        self.assemble_extension_candidates_for_trait(import_ids, trait_did);
+                    let result = self.assemble_extension_candidates_for_trait(
+                        &trait_candidate.import_ids,
+                        trait_did,
+                    );
                     result?;
                 }
             }
@@ -919,7 +917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(smallvec![], trait_info.def_id)?;
+                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id)?;
             }
         }
         Ok(())
@@ -958,7 +956,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: SmallVec<[hir::HirId; 1]>,
+        import_ids: &SmallVec<[hir::HirId; 1]>,
         trait_def_id: DefId,
     ) -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
@@ -1279,33 +1277,36 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
-        let mut diag = self.tcx.struct_span_lint_hir(
+        self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
-            "a method with this name may be added to the standard library in the future",
-        );
-
-        // FIXME: This should be a `span_suggestion` instead of `help`
-        // However `self.span` only
-        // highlights the method name, so we can't use it. Also consider reusing the code from
-        // `report_method_error()`.
-        diag.help(&format!(
-            "call with fully qualified syntax `{}(...)` to keep using the current method",
-            self.tcx.def_path_str(stable_pick.item.def_id),
-        ));
-
-        if nightly_options::is_nightly_build() {
-            for (candidate, feature) in unstable_candidates {
+            |lint| {
+                let mut diag = lint.build(
+                    "a method with this name may be added to the standard library in the future",
+                );
+                // FIXME: This should be a `span_suggestion` instead of `help`
+                // However `self.span` only
+                // highlights the method name, so we can't use it. Also consider reusing the code from
+                // `report_method_error()`.
                 diag.help(&format!(
-                    "add `#![feature({})]` to the crate attributes to enable `{}`",
-                    feature,
-                    self.tcx.def_path_str(candidate.item.def_id),
+                    "call with fully qualified syntax `{}(...)` to keep using the current method",
+                    self.tcx.def_path_str(stable_pick.item.def_id),
                 ));
-            }
-        }
 
-        diag.emit();
+                if nightly_options::is_nightly_build() {
+                    for (candidate, feature) in unstable_candidates {
+                        diag.help(&format!(
+                            "add `#![feature({})]` to the crate attributes to enable `{}`",
+                            feature,
+                            self.tcx.def_path_str(candidate.item.def_id),
+                        ));
+                    }
+                }
+
+                diag.emit();
+            },
+        );
     }
 
     fn select_trait_candidate(
@@ -1394,7 +1395,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 TraitCandidate(trait_ref) => {
-                    let predicate = trait_ref.to_predicate();
+                    let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
@@ -1428,7 +1429,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    if let &ty::Predicate::Trait(ref pred) = &o.predicate {
+                    if let &ty::Predicate::Trait(ref pred, _) = &o.predicate {
                         possibly_unsatisfied_predicates.push(pred.skip_binder().trait_ref);
                     }
                 }
@@ -1490,7 +1491,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
         Some(Pick {
-            item: probes[0].0.item.clone(),
+            item: probes[0].0.item,
             kind: TraitPick,
             import_ids: probes[0].0.import_ids.clone(),
             autoderefs: 0,
@@ -1695,10 +1696,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
+                    .iter()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0 && dist <= max_dist
                     })
+                    .copied()
                     .collect()
             } else {
                 self.fcx
@@ -1706,7 +1709,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).collect()
+            self.tcx.associated_items(def_id).to_vec()
         }
     }
 }
@@ -1714,7 +1717,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 impl<'tcx> Candidate<'tcx> {
     fn to_unadjusted_pick(&self) -> Pick<'tcx> {
         Pick {
-            item: self.item.clone(),
+            item: self.item,
             kind: match self.kind {
                 InherentImplCandidate(..) => InherentImplPick,
                 ObjectCandidate => ObjectPick,
@@ -1730,7 +1733,7 @@ impl<'tcx> Candidate<'tcx> {
                             && !trait_ref.skip_binder().substs.has_placeholders()
                     );
 
-                    WhereClausePick(trait_ref.clone())
+                    WhereClausePick(*trait_ref)
                 }
             },
             import_ids: self.import_ids.clone(),

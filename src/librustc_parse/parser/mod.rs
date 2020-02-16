@@ -2,6 +2,7 @@ pub mod attr;
 mod expr;
 mod item;
 mod module;
+pub use module::{ModulePath, ModulePathSuccess};
 mod pat;
 mod path;
 mod ty;
@@ -15,25 +16,22 @@ use crate::lexer::UnmatchedBrace;
 use crate::{Directory, DirectoryOwnership};
 
 use log::debug;
-use rustc_errors::{Applicability, DiagnosticBuilder, FatalError, PResult};
+use rustc_ast_pretty::pprust;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
-use syntax::ast::{self, AttrStyle, AttrVec, CrateSugar, Extern, Ident, Unsafety, DUMMY_NODE_ID};
-use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
-use syntax::print::pprust;
+use rustc_span::{FileName, Span, DUMMY_SP};
+use syntax::ast::DUMMY_NODE_ID;
+use syntax::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use syntax::ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
-use syntax::struct_span_err;
 use syntax::token::{self, DelimToken, Token, TokenKind};
 use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use std::borrow::Cow;
 use std::path::PathBuf;
 use std::{cmp, mem, slice};
-
-use rustc_error_codes::*;
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -85,20 +83,6 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum PrevTokenKind {
-    DocComment,
-    Comma,
-    Plus,
-    Interpolated,
-    Eof,
-    Ident,
-    BitOr,
-    Other,
-}
-
-// NOTE: `Ident`s are handled by `common.rs`.
-
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
@@ -106,19 +90,28 @@ pub struct Parser<'a> {
     /// "Normalized" means that some interpolated tokens
     /// (`$i: ident` and `$l: lifetime` meta-variables) are replaced
     /// with non-interpolated identifier and lifetime tokens they refer to.
-    /// Perhaps the normalized / non-normalized setup can be simplified somehow.
+    /// Use span from this token if you need an isolated span.
     pub token: Token,
-    /// The span of the current non-normalized token.
-    meta_var_span: Option<Span>,
-    /// The span of the previous non-normalized token.
+    /// The current non-normalized token if it's different from `token`.
+    /// Preferable use is through the `unnormalized_token()` getter.
+    /// Use span from this token if you need to concatenate it with some neighbouring spans.
+    unnormalized_token: Option<Token>,
+    /// The previous normalized token.
+    /// Use span from this token if you need an isolated span.
+    prev_token: Token,
+    /// The previous non-normalized token if it's different from `prev_token`.
+    /// Preferable use is through the `unnormalized_prev_token()` getter.
+    /// Use span from this token if you need to concatenate it with some neighbouring spans.
+    unnormalized_prev_token: Option<Token>,
+    /// Equivalent to `unnormalized_prev_token().span`.
+    /// FIXME: Remove in favor of `(unnormalized_)prev_token().span`.
     pub prev_span: Span,
-    /// The kind of the previous normalized token (in simplified form).
-    prev_token_kind: PrevTokenKind,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
-    pub(super) directory: Directory<'a>,
+    pub(super) directory: Directory,
     /// `true` to parse sub-modules in other files.
-    pub(super) recurse_into_file_modules: bool,
+    // Public for rustfmt usage.
+    pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -127,7 +120,8 @@ pub struct Parser<'a> {
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// `true` we should configure out of line modules as we parse.
-    cfg_mods: bool,
+    // Public for rustfmt usage.
+    pub cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -376,7 +370,7 @@ impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
-        directory: Option<Directory<'a>>,
+        directory: Option<Directory>,
         recurse_into_file_modules: bool,
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
@@ -384,13 +378,14 @@ impl<'a> Parser<'a> {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
+            unnormalized_token: None,
+            prev_token: Token::dummy(),
+            unnormalized_prev_token: None,
             prev_span: DUMMY_SP,
-            meta_var_span: None,
-            prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
-                path: Cow::from(PathBuf::new()),
+                path: PathBuf::new(),
                 ownership: DirectoryOwnership::Owned { relative: None },
             },
             root_module_name: None,
@@ -418,13 +413,21 @@ impl<'a> Parser<'a> {
                 &sess.source_map().lookup_char_pos(parser.token.span.lo()).file.unmapped_path
             {
                 if let Some(directory_path) = path.parent() {
-                    parser.directory.path = Cow::from(directory_path.to_path_buf());
+                    parser.directory.path = directory_path.to_path_buf();
                 }
             }
         }
 
         parser.process_potential_macro_variable();
         parser
+    }
+
+    fn unnormalized_token(&self) -> &Token {
+        self.unnormalized_token.as_ref().unwrap_or(&self.token)
+    }
+
+    fn unnormalized_prev_token(&self) -> &Token {
+        self.unnormalized_prev_token.as_ref().unwrap_or(&self.prev_token)
     }
 
     fn next_tok(&mut self) -> Token {
@@ -435,7 +438,7 @@ impl<'a> Parser<'a> {
         };
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.span = self.prev_span.with_ctxt(next.span.ctxt());
+            next.span = self.unnormalized_token().span.with_ctxt(next.span.ctxt());
         }
         next
     }
@@ -484,7 +487,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    // Public for rustfmt usage.
+    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
         self.parse_ident_common(true)
     }
 
@@ -503,10 +507,11 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(Ident::new(name, span))
             }
-            _ => Err(if self.prev_token_kind == PrevTokenKind::DocComment {
-                self.span_fatal_err(self.prev_span, Error::UselessDocComment)
-            } else {
-                self.expected_ident_found()
+            _ => Err(match self.prev_token.kind {
+                TokenKind::DocComment(..) => {
+                    self.span_fatal_err(self.prev_span, Error::UselessDocComment)
+                }
+                _ => self.expected_ident_found(),
             }),
         }
     }
@@ -541,7 +546,8 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    fn eat_keyword(&mut self, kw: Symbol) -> bool {
+    // Public for rustfmt usage.
+    pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
             true
@@ -564,6 +570,11 @@ impl<'a> Parser<'a> {
     /// Otherwise, eats it.
     fn expect_keyword(&mut self, kw: Symbol) -> PResult<'a, ()> {
         if !self.eat_keyword(kw) { self.unexpected() } else { Ok(()) }
+    }
+
+    /// Is the given keyword `kw` followed by a non-reserved identifier?
+    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
+        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
     fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
@@ -613,8 +624,8 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOpEq(token::Plus) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::Eq, span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi()));
                 true
             }
             _ => false,
@@ -631,8 +642,9 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::AndAnd => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::And), span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Ok(self
+                    .bump_with(token::BinOp(token::And), self.token.span.with_lo(start_point.hi())))
             }
             _ => self.unexpected(),
         }
@@ -648,8 +660,9 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::OrOr => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::Or), span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Ok(self
+                    .bump_with(token::BinOp(token::Or), self.token.span.with_lo(start_point.hi())))
             }
             _ => self.unexpected(),
         }
@@ -669,13 +682,16 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOp(token::Shl) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::Lt, span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(token::Lt, self.token.span.with_lo(start_point.hi()));
                 true
             }
             token::LArrow => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::BinOp(token::Minus), span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(
+                    token::BinOp(token::Minus),
+                    self.token.span.with_lo(start_point.hi()),
+                );
                 true
             }
             _ => false,
@@ -705,16 +721,16 @@ impl<'a> Parser<'a> {
                 Some(())
             }
             token::BinOp(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Gt, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Gt, self.token.span.with_lo(start_point.hi())))
             }
             token::BinOpEq(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Ge, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Ge, self.token.span.with_lo(start_point.hi())))
             }
             token::Ge => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Eq, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi())))
             }
             _ => None,
         };
@@ -766,7 +782,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut expect_err) => {
-                            let sp = self.sess.source_map().next_point(self.prev_span);
+                            let sp = self.prev_span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
                             // Attempt to keep parsing if it was a similar separator.
@@ -882,27 +898,20 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
-        if self.prev_token_kind == PrevTokenKind::Eof {
+        if self.prev_token.kind == TokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
             self.span_bug(self.token.span, msg);
         }
 
-        self.prev_span = self.meta_var_span.take().unwrap_or(self.token.span);
+        // Update the current and previous tokens.
+        let next_token = self.next_tok();
+        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.unnormalized_prev_token = self.unnormalized_token.take();
 
-        // Record last token kind for possible error recovery.
-        self.prev_token_kind = match self.token.kind {
-            token::DocComment(..) => PrevTokenKind::DocComment,
-            token::Comma => PrevTokenKind::Comma,
-            token::BinOp(token::Plus) => PrevTokenKind::Plus,
-            token::BinOp(token::Or) => PrevTokenKind::BitOr,
-            token::Interpolated(..) => PrevTokenKind::Interpolated,
-            token::Eof => PrevTokenKind::Eof,
-            token::Ident(..) => PrevTokenKind::Ident,
-            _ => PrevTokenKind::Other,
-        };
+        // Update fields derived from the previous token.
+        self.prev_span = self.unnormalized_prev_token().span;
 
-        self.token = self.next_tok();
         self.expected_tokens.clear();
         // Check after each token.
         self.process_potential_macro_variable();
@@ -910,13 +919,18 @@ impl<'a> Parser<'a> {
 
     /// Advances the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
+    /// FIXME: this function sets the previous token data to some semi-nonsensical values
+    /// which kind of work because they are currently used in very limited ways in practice.
+    /// Correct token kinds and spans need to be calculated instead.
     fn bump_with(&mut self, next: TokenKind, span: Span) {
-        self.prev_span = self.token.span.with_hi(span.lo());
-        // It would be incorrect to record the kind of the current token, but
-        // fortunately for tokens currently using `bump_with`, the
-        // `prev_token_kind` will be of no use anyway.
-        self.prev_token_kind = PrevTokenKind::Other;
-        self.token = Token::new(next, span);
+        // Update the current and previous tokens.
+        let next_token = Token::new(next, span);
+        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.unnormalized_prev_token = self.unnormalized_token.take();
+
+        // Update fields derived from the previous token.
+        self.prev_span = self.unnormalized_prev_token().span.with_hi(span.lo());
+
         self.expected_tokens.clear();
     }
 
@@ -945,17 +959,23 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> IsAsync {
+    fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            IsAsync::Async { closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+            let span = self.prev_span;
+            Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
-            IsAsync::NotAsync
+            Async::No
         }
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafety {
-        if self.eat_keyword(kw::Unsafe) { Unsafety::Unsafe } else { Unsafety::Normal }
+    fn parse_unsafety(&mut self) -> Unsafe {
+        if self.eat_keyword(kw::Unsafe) { Unsafe::Yes(self.prev_span) } else { Unsafe::No }
+    }
+
+    /// Parses constness: `const` or nothing.
+    fn parse_constness(&mut self) -> Const {
+        if self.eat_keyword(kw::Const) { Const::Yes(self.prev_span) } else { Const::No }
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1047,7 +1067,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn process_potential_macro_variable(&mut self) {
-        self.token = match self.token.kind {
+        let normalized_token = match self.token.kind {
             token::Dollar
                 if self.token.span.from_expansion() && self.look_ahead(1, |t| t.is_ident()) =>
             {
@@ -1064,7 +1084,6 @@ impl<'a> Parser<'a> {
                 return;
             }
             token::Interpolated(ref nt) => {
-                self.meta_var_span = Some(self.token.span);
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
@@ -1077,6 +1096,7 @@ impl<'a> Parser<'a> {
             }
             _ => return,
         };
+        self.unnormalized_token = Some(mem::replace(&mut self.token, normalized_token));
     }
 
     /// Parses a single token tree from the input.
@@ -1093,7 +1113,7 @@ impl<'a> Parser<'a> {
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = self.token.take();
+                let token = self.token.clone();
                 self.bump();
                 TokenTree::Token(token)
             }
@@ -1258,19 +1278,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
-    fn ban_async_in_2015(&self, async_span: Span) {
-        if async_span.rust_2015() {
-            struct_span_err!(
-                self.diagnostic(),
-                async_span,
-                E0670,
-                "`async fn` is not permitted in the 2015 edition",
-            )
-            .emit();
-        }
-    }
-
     fn collect_tokens<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
@@ -1372,6 +1379,8 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
     *sess.reached_eof.borrow_mut() |=
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {
-        make_unclosed_delims_error(unmatched, sess).map(|mut e| e.emit());
+        make_unclosed_delims_error(unmatched, sess).map(|mut e| {
+            e.emit();
+        });
     }
 }

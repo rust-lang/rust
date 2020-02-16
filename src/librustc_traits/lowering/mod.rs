@@ -1,10 +1,7 @@
 mod environment;
 
-use rustc::hir;
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
+use rustc::hir::map::Map;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, FromEnv, GoalKind, PolyDomainGoal, ProgramClause,
     ProgramClauseCategory, WellFormed, WhereClause,
@@ -12,6 +9,10 @@ use rustc::traits::{
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, List, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 use syntax::ast;
 
@@ -93,7 +94,7 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
         use rustc::ty::Predicate;
 
         match self {
-            Predicate::Trait(predicate) => predicate.lower(),
+            Predicate::Trait(predicate, _) => predicate.lower(),
             Predicate::RegionOutlives(predicate) => predicate.lower(),
             Predicate::TypeOutlives(predicate) => predicate.lower(),
             Predicate::Projection(predicate) => predicate.lower(),
@@ -600,7 +601,9 @@ impl ClauseDumper<'tcx> {
 }
 
 impl Visitor<'tcx> for ClauseDumper<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

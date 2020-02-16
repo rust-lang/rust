@@ -3,19 +3,18 @@ use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 
 use rustc::arena::Arena;
 use rustc::bug;
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
-use rustc::util::nodemap::NodeMap;
-use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::struct_span_err;
-use syntax::visit::{self, Visitor};
+use syntax::node_id::NodeMap;
+use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
@@ -25,19 +24,16 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
 }
 
-impl<'a, 'lowering, 'hir> ItemLowerer<'a, 'lowering, 'hir> {
-    fn with_trait_impl_ref<F>(&mut self, trait_impl_ref: &Option<TraitRef>, f: F)
-    where
-        F: FnOnce(&mut Self),
-    {
+impl ItemLowerer<'_, '_, '_> {
+    fn with_trait_impl_ref(&mut self, impl_ref: &Option<TraitRef>, f: impl FnOnce(&mut Self)) {
         let old = self.lctx.is_in_trait_impl;
-        self.lctx.is_in_trait_impl = if let &None = trait_impl_ref { false } else { true };
+        self.lctx.is_in_trait_impl = if let &None = impl_ref { false } else { true };
         f(self);
         self.lctx.is_in_trait_impl = old;
     }
 }
 
-impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
+impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_mod(&mut self, m: &'a Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
         let hir_id = self.lctx.lower_node_id(n);
 
@@ -70,8 +66,16 @@ impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.kind {
-                    this.with_trait_impl_ref(opt_trait_ref, |this| visit::walk_item(this, item));
+                if let ItemKind::Impl { constness, ref of_trait, .. } = item.kind {
+                    if let Const::Yes(span) = constness {
+                        this.lctx
+                            .diagnostic()
+                            .struct_span_err(item.span, "const trait impls are not yet implemented")
+                            .span_label(span, "const because of this")
+                            .emit();
+                    }
+
+                    this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
                 }
@@ -79,25 +83,23 @@ impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
         }
     }
 
-    fn visit_trait_item(&mut self, item: &'a AssocItem) {
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let hir_item = lctx.lower_trait_item(item);
-            let id = hir::TraitItemId { hir_id: hir_item.hir_id };
-            lctx.trait_items.insert(id, hir_item);
-            lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
+    fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
+            AssocCtxt::Trait => {
+                let hir_item = lctx.lower_trait_item(item);
+                let id = hir::TraitItemId { hir_id: hir_item.hir_id };
+                lctx.trait_items.insert(id, hir_item);
+                lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
+            }
+            AssocCtxt::Impl => {
+                let hir_item = lctx.lower_impl_item(item);
+                let id = hir::ImplItemId { hir_id: hir_item.hir_id };
+                lctx.impl_items.insert(id, hir_item);
+                lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
+            }
         });
 
-        visit::walk_trait_item(self, item);
-    }
-
-    fn visit_impl_item(&mut self, item: &'a AssocItem) {
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let hir_item = lctx.lower_impl_item(item);
-            let id = hir::ImplItemId { hir_id: hir_item.hir_id };
-            lctx.impl_items.insert(id, hir_item);
-            lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
-        });
-        visit::walk_impl_item(self, item);
+        visit::walk_assoc_item(self, item, ctxt);
     }
 }
 
@@ -115,7 +117,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let old_len = self.in_scope_lifetimes.len();
 
         let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
-            hir::ItemKind::Impl(_, _, _, ref generics, ..)
+            hir::ItemKind::Impl { ref generics, .. }
             | hir::ItemKind::Trait(_, _, ref generics, ..) => &generics.params[..],
             _ => &[],
         };
@@ -170,7 +172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 vec
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
-            ItemKind::Fn(..) | ItemKind::Impl(.., None, _, _) => smallvec![i.id],
+            ItemKind::Fn(..) | ItemKind::Impl { of_trait: None, .. } => smallvec![i.id],
             ItemKind::Static(ref ty, ..) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
@@ -270,7 +272,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty = self.lower_ty(
                     t,
                     if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None)
+                        ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
                     } else {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                     },
@@ -281,7 +283,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty = self.lower_ty(
                     t,
                     if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None)
+                        ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
                     } else {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                     },
@@ -297,20 +299,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
+                    let asyncness = header.asyncness;
                     let body_id =
-                        this.lower_maybe_async_body(span, &decl, header.asyncness.node, Some(body));
+                        this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let (generics, decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
-                            this.lower_fn_decl(
-                                &decl,
-                                Some((fn_def_id, idty)),
-                                true,
-                                header.asyncness.node.opt_return_id(),
-                            )
+                            let ret_id = asyncness.opt_return_id();
+                            this.lower_fn_decl(&decl, Some((fn_def_id, idty)), true, ret_id)
                         },
                     );
                     let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
@@ -328,8 +327,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 Some(bounds) => {
                     let ty = hir::OpaqueTy {
-                        generics: self.lower_generics(generics, ImplTraitContext::OpaqueTy(None)),
-                        bounds: self.lower_param_bounds(bounds, ImplTraitContext::OpaqueTy(None)),
+                        generics: self.lower_generics(
+                            generics,
+                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
+                        ),
+                        bounds: self.lower_param_bounds(
+                            bounds,
+                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
+                        ),
                         impl_trait_fn: None,
                         origin: hir::OpaqueTyOrigin::TypeAlias,
                     };
@@ -358,15 +363,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
-            ItemKind::Impl(
+            ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
-                ref ast_generics,
-                ref trait_ref,
-                ref ty,
-                ref impl_items,
-            ) => {
+                constness,
+                generics: ref ast_generics,
+                of_trait: ref trait_ref,
+                self_ty: ref ty,
+                items: ref impl_items,
+            } => {
                 let def_id = self.resolver.definitions().local_def_id(id);
 
                 // Lower the "impl header" first. This ordering is important
@@ -414,15 +420,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     });
 
-                hir::ItemKind::Impl(
-                    unsafety,
+                hir::ItemKind::Impl {
+                    unsafety: self.lower_unsafety(unsafety),
                     polarity,
-                    self.lower_defaultness(defaultness, true /* [1] */),
+                    defaultness: self.lower_defaultness(defaultness, true /* [1] */),
+                    constness: self.lower_constness(constness),
                     generics,
-                    trait_ref,
-                    lowered_ty,
-                    new_impl_items,
-                )
+                    of_trait: trait_ref,
+                    self_ty: lowered_ty,
+                    items: new_impl_items,
+                }
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_param_bounds(bounds, ImplTraitContext::disallowed());
@@ -431,7 +438,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .alloc_from_iter(items.iter().map(|item| self.lower_trait_item_ref(item)));
                 hir::ItemKind::Trait(
                     is_auto,
-                    unsafety,
+                    self.lower_unsafety(unsafety),
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
                     items,
@@ -654,7 +661,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
-                ForeignItemKind::Fn(ref fdec, ref generics) => {
+                ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                    let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
                         generics,
                         def_id,
@@ -834,19 +842,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(ref sig, ref body) => {
                 self.current_item = Some(i.span);
-                let body_id = self.lower_maybe_async_body(
-                    i.span,
-                    &sig.decl,
-                    sig.header.asyncness.node,
-                    body.as_deref(),
-                );
+                let asyncness = sig.header.asyncness;
+                let body_id =
+                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, body.as_deref());
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
                     impl_item_def_id,
                     impl_trait_return_allow,
-                    sig.header.asyncness.node.opt_return_id(),
+                    asyncness.opt_return_id(),
                 );
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
@@ -1031,12 +1036,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         decl: &FnDecl,
-        asyncness: IsAsync,
+        asyncness: Async,
         body: Option<&Block>,
     ) -> hir::BodyId {
         let closure_id = match asyncness {
-            IsAsync::Async { closure_id, .. } => closure_id,
-            IsAsync::NotAsync => return self.lower_fn_body_block(span, decl, body),
+            Async::Yes { closure_id, .. } => closure_id,
+            Async::No => return self.lower_fn_body_block(span, decl, body),
         };
 
         self.lower_body(|this| {
@@ -1245,9 +1250,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: h.unsafety,
-            asyncness: self.lower_asyncness(h.asyncness.node),
-            constness: h.constness.node,
+            unsafety: self.lower_unsafety(h.unsafety),
+            asyncness: self.lower_asyncness(h.asyncness),
+            constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
     }
@@ -1274,10 +1279,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .emit();
     }
 
-    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+    fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
         match a {
-            IsAsync::Async { .. } => hir::IsAsync::Async,
-            IsAsync::NotAsync => hir::IsAsync::NotAsync,
+            Async::Yes { .. } => hir::IsAsync::Async,
+            Async::No => hir::IsAsync::NotAsync,
+        }
+    }
+
+    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+        match c {
+            Const::Yes(_) => hir::Constness::Const,
+            Const::No => hir::Constness::NotConst,
+        }
+    }
+
+    pub(super) fn lower_unsafety(&mut self, u: Unsafe) -> hir::Unsafety {
+        match u {
+            Unsafe::Yes(_) => hir::Unsafety::Unsafe,
+            Unsafe::No => hir::Unsafety::Normal,
         }
     }
 

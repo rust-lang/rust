@@ -1,17 +1,11 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-40294.rs:5:1
+  --> $DIR/issue-40294.rs:6:19
    |
-LL |   trait Foo: Sized {
-   |   ---------------- required by `Foo`
+LL | trait Foo: Sized {
+   | ---------------- required by `Foo`
 ...
-LL | / fn foo<'a,'b,T>(x: &'a T, y: &'b T)
-LL | |     where &'a T : Foo,
-LL | |           &'b T : Foo
-LL | | {
-LL | |     x.foo();
-LL | |     y.foo();
-LL | | }
-   | |_^ cannot infer type for reference `&'a T`
+LL |     where &'a T : Foo,
+   |                   ^^^ cannot infer type for reference `&'a T`
    |
    = note: cannot resolve `&'a T: Foo`
 

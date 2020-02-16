@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use super::engine::{TraitEngine, TraitEngineExt};
 use super::project;
 use super::select::SelectionContext;
+use super::wf;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
@@ -17,10 +18,13 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
-    type Predicate = ty::Predicate<'tcx>;
+    /// Note that we include both the `ParamEnv` and the `Predicate`,
+    /// as the `ParamEnv` can influence whether fulfillment succeeds
+    /// or fails.
+    type CacheKey = ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>;
 
-    fn as_predicate(&self) -> &Self::Predicate {
-        &self.obligation.predicate
+    fn as_cache_key(&self) -> Self::CacheKey {
+        self.obligation.param_env.and(self.obligation.predicate)
     }
 }
 
@@ -310,7 +314,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         match obligation.predicate {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(data.clone());
 
                 if data.is_global() {
@@ -461,7 +465,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::WellFormed(ty) => {
-                match ty::wf::obligations(
+                match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
                     obligation.cause.body_id,
@@ -514,6 +518,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             obligation.param_env,
                             def_id,
                             substs,
+                            None,
                             Some(obligation.cause.span),
                         ) {
                             Ok(_) => ProcessResult::Changed(vec![]),

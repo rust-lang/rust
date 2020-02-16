@@ -3,18 +3,17 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir;
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::lint;
-use rustc::lint::LintStore;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::ty::steal::Steal;
-use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
-use rustc::util::common::{time, ErrorReported};
+use rustc::ty::{GlobalCtxt, ResolverOutputs};
+use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
+use rustc_lint::LintStore;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
@@ -67,7 +66,6 @@ pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: Once<GlobalCtxt<'tcx>>,
 
-    all_arenas: AllArenas,
     arena: WorkerLocal<Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
@@ -76,7 +74,7 @@ pub struct Queries<'tcx> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'tcx hir::map::Forest<'tcx>, Steal<ResolverOutputs>)>,
+    lower_to_hir: Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -87,7 +85,6 @@ impl<'tcx> Queries<'tcx> {
         Queries {
             compiler,
             gcx: Once::new(),
-            all_arenas: AllArenas::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
@@ -133,7 +130,7 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
-            let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
+            let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
@@ -176,6 +173,7 @@ impl<'tcx> Queries<'tcx> {
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
+            let _timer = self.session().timer("configure_and_expand");
             passes::configure_and_expand(
                 self.session().clone(),
                 lint_store.clone(),
@@ -195,7 +193,7 @@ impl<'tcx> Queries<'tcx> {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
                     let (prev_graph, prev_work_products) =
-                        time(self.session(), "blocked while dep-graph loading finishes", || {
+                        self.session().time("blocked_on_dep_graph_loading", || {
                             future
                                 .open()
                                 .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
@@ -209,9 +207,7 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn lower_to_hir(
-        &'tcx self,
-    ) -> Result<&Query<(&'tcx hir::map::Forest<'tcx>, Steal<ResolverOutputs>)>> {
+    pub fn lower_to_hir(&'tcx self) -> Result<&Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>> {
         self.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
@@ -219,14 +215,14 @@ impl<'tcx> Queries<'tcx> {
             let resolver = peeked.1.steal();
             let lint_store = &peeked.2;
             let hir = resolver.borrow_mut().access(|resolver| {
-                passes::lower_to_hir(
+                Ok(passes::lower_to_hir(
                     self.session(),
                     lint_store,
                     resolver,
                     &*self.dep_graph()?.peek(),
                     &krate,
                     &self.arena,
-                )
+                ))
             })?;
             let hir = self.arena.alloc(hir);
             Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
@@ -255,16 +251,18 @@ impl<'tcx> Queries<'tcx> {
             let outputs = self.prepare_outputs()?.peek().clone();
             let lint_store = self.expansion()?.peek().2.clone();
             let hir = self.lower_to_hir()?.peek();
-            let (ref hir_forest, ref resolver_outputs) = &*hir;
+            let dep_graph = self.dep_graph()?.peek().clone();
+            let (ref krate, ref resolver_outputs) = &*hir;
+            let _timer = self.session().timer("create_global_ctxt");
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
-                hir_forest,
+                krate,
+                dep_graph,
                 resolver_outputs.steal(),
                 outputs,
                 &crate_name,
                 &self.gcx,
-                &self.all_arenas,
                 &self.arena,
             ))
         })
@@ -312,14 +310,22 @@ pub struct Linker {
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        self.codegen_backend
-            .join_codegen_and_link(
-                self.ongoing_codegen,
-                &self.sess,
-                &self.dep_graph,
-                &self.prepare_outputs,
-            )
-            .map_err(|_| ErrorReported)
+        let codegen_results =
+            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess, &self.dep_graph)?;
+        let prof = self.sess.prof.clone();
+        let dep_graph = self.dep_graph;
+        prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
+
+        if !self
+            .sess
+            .opts
+            .output_types
+            .keys()
+            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
+        {
+            return Ok(());
+        }
+        self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }
 
@@ -328,6 +334,7 @@ impl Compiler {
     where
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
+        let mut _timer = None;
         let queries = Queries::new(&self);
         let ret = f(&queries);
 
@@ -336,6 +343,8 @@ impl Compiler {
                 gcx.peek().print_stats();
             }
         }
+
+        _timer = Some(self.session().timer("free_global_ctxt"));
 
         ret
     }

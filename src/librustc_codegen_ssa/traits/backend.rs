@@ -1,5 +1,6 @@
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
+use crate::ModuleCodegen;
 
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::{config, Session};
@@ -10,7 +11,6 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_span::symbol::Symbol;
 use syntax::expand::allocator::AllocatorKind;
 
-use std::sync::mpsc;
 use std::sync::Arc;
 
 pub trait BackendTypes {
@@ -21,7 +21,10 @@ pub trait BackendTypes {
     type Type: CodegenObject;
     type Funclet;
 
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
     type DIScope: Copy;
+    type DIVariable: Copy;
 }
 
 pub trait Backend<'tcx>:
@@ -34,7 +37,7 @@ impl<'tcx, T> Backend<'tcx> for T where
 {
 }
 
-pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send {
+pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send + Sync {
     fn new_metadata(&self, sess: TyCtxt<'_>, mod_name: &str) -> Self::Module;
     fn write_compressed_metadata<'tcx>(
         &self,
@@ -48,12 +51,13 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         mods: &mut Self::Module,
         kind: AllocatorKind,
     );
+    /// This generates the codegen unit and returns it along with
+    /// a `u64` giving an estimate of the unit's processing cost.
     fn compile_codegen_unit(
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        tx_to_llvm_workers: &mpsc::Sender<Box<dyn std::any::Any + Send>>,
-    );
+    ) -> (ModuleCodegen<Self::Module>, u64);
     // If find_features is true this won't access `sess.crate_types` by assuming
     // that `is_pie_binary` is false. When we discover LLVM target features
     // `sess.crate_types` is uninitialized so we cannot access it.

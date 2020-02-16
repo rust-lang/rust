@@ -2,9 +2,18 @@ error[E0106]: missing lifetime specifier
   --> $DIR/unboxed-closure-sugar-lifetime-elision.rs:26:39
    |
 LL |     let _: dyn Foo(&isize, &usize) -> &usize;
-   |                                       ^ expected lifetime parameter
+   |                    ------  ------     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+help: consider introducing a named lifetime parameter
+   |
+LL | fn main<'a>() {
+LL |     eq::< dyn for<'a> Foo<(&'a isize,), Output=&'a isize>,
+LL |           dyn Foo(&isize) -> &isize                                   >();
+LL |     eq::< dyn for<'a> Foo<(&'a isize,), Output=(&'a isize, &'a isize)>,
+LL |           dyn Foo(&isize) -> (&isize, &isize)                           >();
+LL | 
+ ...
 
 error: aborting due to previous error
 

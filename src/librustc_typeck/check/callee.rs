@@ -1,22 +1,20 @@
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
+use crate::type_error_struct;
 
-use errors::{Applicability, DiagnosticBuilder};
-use hir::def::Res;
-use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::{infer, traits};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
-
-use rustc::hir;
-
-use rustc_error_codes::*;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -241,7 +239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = (parent_node, callee_node)
         {
             let start = sp.shrink_to_lo();
-            let end = self.tcx.sess.source_map().next_point(callee_span);
+            let end = callee_span.shrink_to_hi();
             err.multipart_suggestion(
                 "if you meant to create this closure and immediately call it, surround the \
                 closure with parenthesis",
@@ -318,9 +316,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let call_is_multiline =
                                 self.tcx.sess.source_map().is_multiline(call_expr.span);
                             if call_is_multiline {
-                                let span = self.tcx.sess.source_map().next_point(callee.span);
                                 err.span_suggestion(
-                                    span,
+                                    callee.span.shrink_to_hi(),
                                     "try adding a semicolon",
                                     ";".to_owned(),
                                     Applicability::MaybeIncorrect,

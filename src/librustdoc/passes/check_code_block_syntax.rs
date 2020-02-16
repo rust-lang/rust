@@ -1,8 +1,9 @@
-use errors::Applicability;
+use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_parse::lexer::StringReader as Lexer;
-use rustc_span::source_map::FilePathMapping;
+use rustc_session::parse::ParseSess;
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan};
-use syntax::sess::ParseSess;
 use syntax::token;
 
 use crate::clean;
@@ -13,7 +14,7 @@ use crate::passes::Pass;
 
 pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     name: "check-code-block-syntax",
-    pass: check_code_block_syntax,
+    run: check_code_block_syntax,
     description: "validates syntax inside Rust code blocks",
 };
 
@@ -27,13 +28,19 @@ struct SyntaxChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
     fn check_rust_syntax(&self, item: &clean::Item, dox: &str, code_block: RustCodeBlock) {
-        let sess = ParseSess::new(FilePathMapping::empty());
+        let buffered_messages = Lrc::new(Lock::new(vec![]));
+
+        let emitter = BufferEmitter { messages: Lrc::clone(&buffered_messages) };
+
+        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let handler = Handler::with_emitter(false, None, Box::new(emitter));
+        let sess = ParseSess::with_span_handler(handler, cm);
         let source_file = sess.source_map().new_source_file(
             FileName::Custom(String::from("doctest")),
             dox[code_block.code].to_owned(),
         );
 
-        let validation_status = {
+        let validation_status = rustc_driver::catch_fatal_errors(|| {
             let mut has_syntax_errors = false;
             let mut only_whitespace = true;
             // even if there is a syntax error, we need to run the lexer over the whole file
@@ -54,7 +61,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             } else {
                 None
             }
-        };
+        })
+        .unwrap_or(Some(CodeBlockInvalid::SyntaxError));
 
         if let Some(code_block_invalid) = validation_status {
             let mut diag = if let Some(sp) =
@@ -93,6 +101,11 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                 diag
             };
 
+            // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
+            for message in buffered_messages.borrow().iter() {
+                diag.note(&message);
+            }
+
             diag.emit();
         }
     }
@@ -107,6 +120,20 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
         }
 
         self.fold_item_recur(item)
+    }
+}
+
+struct BufferEmitter {
+    messages: Lrc<Lock<Vec<String>>>,
+}
+
+impl Emitter for BufferEmitter {
+    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+        self.messages.borrow_mut().push(format!("error from rustc: {}", diag.message[0].0));
+    }
+
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+        None
     }
 }
 

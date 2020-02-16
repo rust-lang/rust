@@ -1,12 +1,12 @@
-use crate::{build, shim};
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::{shim, util};
+use rustc::hir::map::Map;
 use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::DefIdSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -36,12 +36,12 @@ pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
+pub mod unreachable_prop;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
-        mir_built,
         mir_const,
         mir_const_qualif,
         mir_validated,
@@ -86,7 +86,8 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             }
             intravisit::walk_struct_def(self, v)
         }
-        fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, 'tcx> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, Self::Map> {
             NestedVisitorMap::None
         }
     }
@@ -95,11 +96,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
         .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     tcx.arena.alloc(set)
-}
-
-fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
-    let mir = build::mir_build(tcx, def_id);
-    tcx.alloc_steal_mir(mir)
 }
 
 /// Where a specific `mir::Body` comes from.
@@ -221,6 +217,9 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
+
+    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id), &body, |_, _| Ok(()));
+
     run_passes(
         tcx,
         &mut body,
@@ -301,6 +300,7 @@ fn run_optimization_passes<'tcx>(
             // From here on out, regions are gone.
             &erase_regions::EraseRegions,
             // Optimizations begin.
+            &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
             &inline::Inline,

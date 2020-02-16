@@ -1,9 +1,8 @@
 use decoder::Metadata;
 use table::{Table, TableBuilder};
 
-use rustc::hir;
-use rustc::hir::def::{self, CtorKind};
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::exports::Export;
+use rustc::hir::map;
 use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
@@ -11,15 +10,19 @@ use rustc::mir;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
+use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::Encoder;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use syntax::{ast, attr};
+use syntax::ast;
 
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
@@ -191,7 +194,7 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLibrary]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[rustc_span::SourceFile]>,
-    def_path_table: Lazy<hir::map::definitions::DefPathTable>,
+    def_path_table: Lazy<map::definitions::DefPathTable>,
     impls: Lazy<[TraitImpls]>,
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     interpret_alloc_index: Lazy<[u32]>,
@@ -207,7 +210,6 @@ crate struct CrateRoot<'tcx> {
     no_builtins: bool,
     panic_runtime: bool,
     profiler_runtime: bool,
-    sanitizer_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
 }
 
@@ -317,7 +319,7 @@ struct RenderedConst(String);
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct ModData {
-    reexports: Lazy<[def::Export<hir::HirId>]>,
+    reexports: Lazy<[Export<hir::HirId>]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

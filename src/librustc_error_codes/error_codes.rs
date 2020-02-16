@@ -353,6 +353,7 @@ E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
+E0637: include_str!("./error_codes/E0637.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
 E0641: include_str!("./error_codes/E0641.md"),
@@ -397,6 +398,7 @@ E0718: include_str!("./error_codes/E0718.md"),
 E0720: include_str!("./error_codes/E0720.md"),
 E0723: include_str!("./error_codes/E0723.md"),
 E0725: include_str!("./error_codes/E0725.md"),
+E0727: include_str!("./error_codes/E0727.md"),
 E0728: include_str!("./error_codes/E0728.md"),
 E0729: include_str!("./error_codes/E0729.md"),
 E0730: include_str!("./error_codes/E0730.md"),
@@ -414,6 +416,7 @@ E0742: include_str!("./error_codes/E0742.md"),
 E0743: include_str!("./error_codes/E0743.md"),
 E0744: include_str!("./error_codes/E0744.md"),
 E0745: include_str!("./error_codes/E0745.md"),
+E0746: include_str!("./error_codes/E0746.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -582,7 +585,6 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0632, // cannot provide explicit generic arguments when `impl Trait` is
            // used in argument position
     E0634, // type has conflicting packed representaton hints
-    E0637, // "'_" is not a valid lifetime bound
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
@@ -606,6 +608,5 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
-    E0727, // `async` generators are not yet supported
     E0739, // invalid track_caller application/syntax
 }

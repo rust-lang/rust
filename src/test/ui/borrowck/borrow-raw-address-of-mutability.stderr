@@ -27,32 +27,32 @@ LL |     f();
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-raw-address-of-mutability.rs:29:17
    |
-LL |         let y = &raw mut x;
-   |                 ^^^^^^^^^^ cannot borrow as mutable
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-raw-address-of-mutability.rs:28:21
-   |
+LL |   fn make_fn<F: Fn()>(f: F) -> F { f }
+   |                          - change this to accept `FnMut` instead of `Fn`
+...
 LL |       let f = make_fn(|| {
-   |  _____________________^
+   |  _____________-------_-
+   | |             |
+   | |             expects `Fn` instead of `FnMut`
 LL | |         let y = &raw mut x;
+   | |                 ^^^^^^^^^^ cannot borrow as mutable
 LL | |     });
-   | |_____^
+   | |_____- in this closure
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-raw-address-of-mutability.rs:37:17
    |
-LL |         let y = &raw mut x;
-   |                 ^^^^^^^^^^ cannot borrow as mutable
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-raw-address-of-mutability.rs:36:21
-   |
+LL |   fn make_fn<F: Fn()>(f: F) -> F { f }
+   |                          - change this to accept `FnMut` instead of `Fn`
+...
 LL |       let f = make_fn(move || {
-   |  _____________________^
+   |  _____________-------_-
+   | |             |
+   | |             expects `Fn` instead of `FnMut`
 LL | |         let y = &raw mut x;
+   | |                 ^^^^^^^^^^ cannot borrow as mutable
 LL | |     });
-   | |_____^
+   | |_____- in this closure
 
 error: aborting due to 5 previous errors
 

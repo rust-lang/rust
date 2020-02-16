@@ -12,13 +12,19 @@ LL | const C: () = foo();
    |               |
    |               calling non-const function `foo`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/non_const_fn.rs:4:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 error[E0080]: evaluation of constant expression failed
+  --> $DIR/non_const_fn.rs:14:22
+   |
+LL |     println!("{:?}", C);
+   |                      ^ referenced constant has errors
+
+warning: erroneous constant used
   --> $DIR/non_const_fn.rs:14:22
    |
 LL |     println!("{:?}", C);

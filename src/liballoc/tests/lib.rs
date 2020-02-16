@@ -11,6 +11,7 @@
 #![feature(associated_type_bounds)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_drain_sorted)]
+#![feature(vec_remove_item)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

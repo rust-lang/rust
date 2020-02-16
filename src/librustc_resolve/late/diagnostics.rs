@@ -4,21 +4,20 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-use log::debug;
-use rustc::hir::def::Namespace::{self, *};
-use rustc::hir::def::{self, CtorKind, DefKind};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{self, CtorKind, DefKind};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::PrimTy;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
-use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
+use syntax::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_error_codes::*;
+use log::debug;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -52,7 +51,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     (variant_path_string, enum_path_string)
 }
 
-impl<'a> LateResolutionVisitor<'a, '_> {
+impl<'a> LateResolutionVisitor<'a, '_, '_> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -73,7 +72,6 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
-        let code = source.error_code(res.is_some());
         let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
             (
                 format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
@@ -123,7 +121,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             )
         };
 
-        let code = DiagnosticId::Error(code.into());
+        let code = source.error_code(res.is_some());
         let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
@@ -140,8 +138,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
-            syntax::diagnostic_used!(E0411);
-            err.code(DiagnosticId::Error("E0411".into()));
+            err.code(rustc_errors::error_code!(E0411));
             err.span_label(
                 span,
                 format!("`Self` is only available in impls, traits, and type definitions"),
@@ -151,8 +148,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_value(path, ns) {
             debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
 
-            syntax::diagnostic_used!(E0424);
-            err.code(DiagnosticId::Error("E0424".into()));
+            err.code(rustc_errors::error_code!(E0424));
             err.span_label(span, match source {
                 PathSource::Pat => format!(
                     "`self` value is a keyword and may not be bound to variables or shadowed",
@@ -861,5 +857,50 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             });
             variants
         })
+    }
+
+    crate fn report_missing_type_error(
+        &self,
+        path: &[Segment],
+    ) -> Option<(Span, &'static str, String, Applicability)> {
+        let ident = match path {
+            [segment] => segment.ident,
+            _ => return None,
+        };
+        match (
+            self.diagnostic_metadata.current_item,
+            self.diagnostic_metadata.currently_processing_generics,
+        ) {
+            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), true) if ident.name == sym::main => {
+                // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
+            }
+            (Some(Item { kind, .. }), true) => {
+                // Likely missing type parameter.
+                if let Some(generics) = kind.generics() {
+                    let msg = "you might be missing a type parameter";
+                    let (span, sugg) = if let [.., param] = &generics.params[..] {
+                        let span = if let [.., bound] = &param.bounds[..] {
+                            bound.span()
+                        } else {
+                            param.ident.span
+                        };
+                        (span, format!(", {}", ident))
+                    } else {
+                        (generics.span, format!("<{}>", ident))
+                    };
+                    // Do not suggest if this is coming from macro expansion.
+                    if !span.from_expansion() {
+                        return Some((
+                            span.shrink_to_hi(),
+                            msg,
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        ));
+                    }
+                }
+            }
+            _ => {}
+        }
+        None
     }
 }

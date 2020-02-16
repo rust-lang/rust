@@ -3,37 +3,37 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
-#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(set_stdio)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
-#![feature(const_fn)]
-#![feature(drain_filter)]
 #![feature(never_type)]
-#![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
 extern crate env_logger;
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_ast_pretty;
+extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
-extern crate rustc_error_codes;
+extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
+extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
+extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;
@@ -41,7 +41,6 @@ extern crate syntax;
 extern crate test as testing;
 #[macro_use]
 extern crate log;
-extern crate rustc_errors as errors;
 
 use std::default::Default;
 use std::env;
@@ -172,6 +171,9 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("no-default", |o| o.optflag("", "no-defaults", "don't run the default passes")),
         stable("document-private-items", |o| {
             o.optflag("", "document-private-items", "document private items")
+        }),
+        unstable("document-hidden-items", |o| {
+            o.optflag("", "document-hidden-items", "document items that have doc(hidden)")
         }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
@@ -445,12 +447,7 @@ fn main_args(args: &[String]) -> i32 {
 }
 
 fn main_options(options: config::Options) -> i32 {
-    let diag = core::new_handler(
-        options.error_format,
-        None,
-        options.debugging_options.treat_err_as_bug,
-        options.debugging_options.ui_testing(),
-    );
+    let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return markdown::test(options, &diag),
@@ -463,12 +460,7 @@ fn main_options(options: config::Options) -> i32 {
 
     // need to move these items separately because we lose them by the time the closure is called,
     // but we can't crates the Handler ahead of time because it's not Send
-    let diag_opts = (
-        options.error_format,
-        options.debugging_options.treat_err_as_bug,
-        options.debugging_options.ui_testing(),
-        options.edition,
-    );
+    let diag_opts = (options.error_format, options.edition, options.debugging_options.clone());
     let show_coverage = options.show_coverage;
     rust_input(options, move |out| {
         if show_coverage {
@@ -479,8 +471,8 @@ fn main_options(options: config::Options) -> i32 {
 
         let Output { krate, renderinfo, renderopts } = out;
         info!("going to format");
-        let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
-        let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
+        let (error_format, edition, debugging_options) = diag_opts;
+        let diag = core::new_handler(error_format, None, &debugging_options);
         match html::render::run(krate, renderopts, renderinfo, &diag, edition) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {
@@ -524,6 +516,6 @@ where
 
     match result {
         Ok(output) => output,
-        Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
+        Err(_) => panic::resume_unwind(Box::new(rustc_errors::FatalErrorMarker)),
     }
 }

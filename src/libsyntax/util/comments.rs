@@ -1,14 +1,11 @@
 pub use CommentStyle::*;
 
 use crate::ast;
-use crate::sess::ParseSess;
-
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos};
 
-use std::usize;
-
 use log::debug;
+use std::usize;
 
 #[cfg(test)]
 mod tests;
@@ -191,8 +188,8 @@ fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-crate fn gather_comments(sess: &ParseSess, path: FileName, src: String) -> Vec<Comment> {
-    let cm = SourceMap::new(sess.source_map().path_mapping().clone());
+pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> {
+    let cm = SourceMap::new(sm.path_mapping().clone());
     let source_file = cm.new_source_file(path, src);
     let text = (*source_file.src.as_ref().unwrap()).clone();
 

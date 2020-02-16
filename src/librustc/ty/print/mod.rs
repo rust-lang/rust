@@ -1,9 +1,9 @@
-use crate::hir::def_id::{CrateNum, DefId};
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::ty::subst::{GenericArg, Subst};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::{CrateNum, DefId};
 
 // `pretty` is a separate module only for organization.
 mod pretty;

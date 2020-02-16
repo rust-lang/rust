@@ -1,18 +1,17 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc::hir;
 use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc::ty::{self, TraitRef, Ty, TyCtxt};
+use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ToPredicate, TypeFoldable};
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
 
 use rustc_span::Span;
 use syntax::ast::Ident;
-
-use rustc_error_codes::*;
 
 use std::iter;
 
@@ -123,8 +122,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
-        let obligation =
-            traits::Obligation::new(cause.clone(), self.param_env, trait_ref.to_predicate());
+        let obligation = traits::Obligation::new(
+            cause.clone(),
+            self.param_env,
+            trait_ref.without_const().to_predicate(),
+        );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
@@ -248,8 +250,8 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         )
         .span_label(span, "deref recursion limit reached")
         .help(&format!(
-            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-            suggested_limit
+            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+            suggested_limit, tcx.crate_name,
         ))
         .emit();
     }

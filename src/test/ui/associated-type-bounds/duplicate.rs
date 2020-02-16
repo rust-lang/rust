@@ -1,4 +1,3 @@
-// compile-fail
 // ignore-tidy-linelength
 
 #![feature(associated_type_bounds)]
@@ -157,10 +156,13 @@ trait TRW3<T> where T: Iterator<Item: 'static, Item: 'static> {}
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 trait TRA1 { type A: Iterator<Item: Copy, Item: Send>; }
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 trait TRA2 { type A: Iterator<Item: Copy, Item: Copy>; }

@@ -2,9 +2,13 @@ error[E0277]: the trait bound `U: std::cmp::Eq` is not satisfied
   --> $DIR/specialization-wfcheck.rs:7:17
    |
 LL | default impl<U> Foo<'static, U> for () {}
-   |              -  ^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `U`
-   |              |
-   |              help: consider restricting this bound: `U: std::cmp::Eq`
+   |                 ^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `U: std::cmp::Eq`
+  --> $DIR/specialization-wfcheck.rs:7:14
+   |
+LL | default impl<U> Foo<'static, U> for () {}
+   |              ^
 
 error: aborting due to previous error
 

@@ -63,6 +63,10 @@ LL | use foo2::Bar;
    |
 LL | use foo3::Bar;
    |
+help: you might be missing a type parameter
+   |
+LL | fn test_glob3<Bar>() {
+   |              ^^^^^
 
 error[E0107]: wrong number of const arguments: expected 0, found 1
   --> $DIR/privacy-ns1.rs:35:17

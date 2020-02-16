@@ -1,7 +1,7 @@
 // aux-build:lint_output_format.rs
 
 #![feature(unstable_test_feature)]
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 extern crate lint_output_format;
 use lint_output_format::{foo, bar};

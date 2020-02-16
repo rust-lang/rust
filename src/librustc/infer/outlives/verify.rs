@@ -1,10 +1,10 @@
-use crate::hir::def_id::DefId;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Ty, TyCtxt};
-use crate::util::captures::Captures;
+use rustc_data_structures::captures::Captures;
+use rustc_hir::def_id::DefId;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
@@ -60,7 +60,18 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // scope type parameters:
         let param_bounds = param_bounds.chain(self.implicit_region_bound);
 
-        VerifyBound::AnyBound(param_bounds.map(|r| VerifyBound::OutlivedBy(r)).collect())
+        let any_bounds: Vec<_> = param_bounds.map(|r| VerifyBound::OutlivedBy(r)).collect();
+
+        if any_bounds.is_empty() {
+            // We know that all types `T` outlive `'empty`, so if we
+            // can find no other bound, then check that the region
+            // being tested is `'empty`.
+            VerifyBound::IsEmpty
+        } else {
+            // If we can find any other bound `R` such that `T: R`, then
+            // we don't need to check for `'empty`, because `R: 'empty`.
+            VerifyBound::AnyBound(any_bounds)
+        }
     }
 
     /// Given a projection like `T::Item`, searches the environment

@@ -10,10 +10,10 @@ fn main() {
 // START rustc.main.ConstProp.before.mir
 //  bb0: {
 //      ...
-//      _3 = const Scalar(AllocId(0).0x0) : &u8;
+//      _3 = const Scalar(alloc0+0) : &u8;
 //      _2 = (*_3);
 //      ...
-//      _5 = const Scalar(AllocId(0).0x0) : &u8;
+//      _5 = const Scalar(alloc0+0) : &u8;
 //      _4 = (*_5);
 //      _1 = Add(move _2, move _4);
 //      ...

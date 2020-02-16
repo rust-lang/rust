@@ -12,7 +12,7 @@ LL |         self.iter()
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
-error[E0599]: no method named `iter` found for type `&G` in the current scope
+error[E0599]: no method named `iter` found for reference `&G` in the current scope
   --> $DIR/issue-13853.rs:27:23
    |
 LL |     for node in graph.iter() {

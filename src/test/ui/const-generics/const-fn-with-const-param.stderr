@@ -1,7 +1,11 @@
-error: const parameters are not permitted in `const fn`
+error: const parameters are not permitted in const functions
   --> $DIR/const-fn-with-const-param.rs:4:1
    |
-LL | / const fn const_u32_identity<const X: u32>() -> u32 {
+LL |   const fn const_u32_identity<const X: u32>() -> u32 {
+   |   ^----
+   |   |
+   |  _`const` because of this
+   | |
 LL | |
 LL | |     X
 LL | | }

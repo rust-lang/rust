@@ -124,7 +124,7 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
     let output = t!(String::from_utf8(output.stdout));
 
     for (tool, submodule) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
-        let changed = output.lines().any(|l| l.starts_with("M") && l.ends_with(submodule));
+        let changed = output.lines().any(|l| l.starts_with('M') && l.ends_with(submodule));
         eprintln!("Verifying status of {}...", tool);
         if !changed {
             continue;

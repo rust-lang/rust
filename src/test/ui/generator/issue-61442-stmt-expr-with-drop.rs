@@ -18,12 +18,12 @@ fn drop_and_yield() {
         String::new();
         yield;
     };
-    Box::pin(x).as_mut().resume();
+    Box::pin(x).as_mut().resume(());
     let y = static || {
         String::new();
         yield;
     };
-    Box::pin(y).as_mut().resume();
+    Box::pin(y).as_mut().resume(());
 }
 
 fn main() {

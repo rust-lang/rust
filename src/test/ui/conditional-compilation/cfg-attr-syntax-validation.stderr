@@ -60,6 +60,8 @@ LL |         #[cfg(feature = $expr)]
 ...
 LL | generate_s10!(concat!("nonexistent"));
    | -------------------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 

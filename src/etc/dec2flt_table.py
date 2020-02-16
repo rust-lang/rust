@@ -14,7 +14,6 @@ is used because (u64, i16) has a ton of padding which would make the table
 even larger, and it's already uncomfortably large (6 KiB).
 """
 from __future__ import print_function
-import sys
 from math import ceil, log
 from fractions import Fraction
 from collections import namedtuple
@@ -81,6 +80,7 @@ def error(f, e, z):
     # The unit in the last place has value z.exp
     ulp_err = abs_err / Fraction(2) ** z.exp
     return float(ulp_err)
+
 
 HEADER = """
 //! Tables of approximations of powers of ten.
