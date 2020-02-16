@@ -95,6 +95,10 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         let mut start = START_BLOCK;
 
+        // Vec of the blocks that should be merged. We store the indices here, instead of the
+        // statements itself to avoid moving the (relatively) large statements twice.
+        // We do not push the statements directly into the target block (`bb`) as that is slower
+        // due to additional reallocations
         let mut merged_blocks = Vec::new();
         loop {
             let mut changed = false;
@@ -116,6 +120,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 }
 
                 let mut inner_changed = true;
+                merged_blocks.clear();
                 while inner_changed {
                     inner_changed = false;
                     inner_changed |= self.simplify_branch(&mut terminator);
@@ -134,7 +139,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     }
                     self.basic_blocks[bb].statements = statements;
                 }
-                merged_blocks.clear();
 
                 self.basic_blocks[bb].terminator = Some(terminator);
 
