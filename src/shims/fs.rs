@@ -785,7 +785,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("mkdir")?;
 
-        let mode = if this.tcx.sess.target.target.target_os.to_lowercase() == "macos" {
+        let _mode = if this.tcx.sess.target.target.target_os.to_lowercase() == "macos" {
             this.read_scalar(mode_op)?.not_undef()?.to_u16()? as u32
         } else {
             this.read_scalar(mode_op)?.to_u32()?
@@ -794,13 +794,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let mut builder = DirBuilder::new();
+
+        // If the host supports it, forward on the mode of the directory
+        // (i.e. permission bits and the sticky bit)
         #[cfg(target_family = "unix")]
         {
             use std::os::unix::fs::DirBuilderExt;
-            builder.mode(mode.into());
+            builder.mode(_mode.into());
         }
-        #[cfg(not(target_family = "unix"))]
-        let _mode = mode;
+
         let result = builder.create(path).map(|_| 0i32);
 
         this.try_unwrap_io_result(result)
@@ -842,7 +844,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .streams
                     .insert(dir_ptr, dir_iter);
                 if let Some(_) = prev {
-                    throw_unsup_format!("The pointer allocated for opendir was already registered by a previous call to opendir")
+                    panic!("The pointer allocated for opendir was already registered by a previous call to opendir")
                 } else {
                     Ok(Scalar::Ptr(dir_ptr))
                 }
@@ -868,11 +870,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent64_layout = this.libc_ty_layout("dirent64")?;
-        this.memory.check_ptr_access(
-            Scalar::Ptr(entry_ptr),
-            dirent64_layout.size,
-            dirent64_layout.align.abi,
-        )?;
 
         if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
             match dir_iter.next() {
@@ -945,11 +942,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent_layout = this.libc_ty_layout("dirent")?;
-        this.memory.check_ptr_access(
-            Scalar::Ptr(entry_ptr),
-            dirent_layout.size,
-            dirent_layout.align.abi,
-        )?;
 
         if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
             match dir_iter.next() {
