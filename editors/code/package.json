@@ -248,7 +248,8 @@
                 "rust-analyzer.maxInlayHintLength": {
                     "type": "number",
                     "default": 20,
-                    "exclusiveMinimum": 0,
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
                     "description": "Maximum length for inlay hints"
                 },
                 "rust-analyzer.cargoFeatures.noDefaultFeatures": {
