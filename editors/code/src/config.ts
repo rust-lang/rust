@@ -44,7 +44,6 @@ export class Config {
         this.refreshConfig();
     }
 
-
     private refreshConfig() {
         this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
         console.log("Using configuration:", this.cfg);
