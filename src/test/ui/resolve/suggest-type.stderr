@@ -1,5 +1,14 @@
+error[E0433]: failed to resolve: use of undeclared type or module `HashNap`
+  --> $DIR/suggest-type.rs:7:17
+   |
+LL |         let _ = HashNap::new();
+   |                 ^^^^^^^
+   |                 |
+   |                 use of undeclared type or module `HashNap`
+   |                 help: a struct with a similar name exists: `HashMap`
+
 error[E0433]: failed to resolve: use of undeclared type or module `Cstring`
-  --> $DIR/suggest-type.rs:8:13
+  --> $DIR/suggest-type.rs:15:13
    |
 LL |     let _ = Cstring::new("hello").unwrap();
    |             ^^^^^^^
@@ -8,7 +17,7 @@ LL |     let _ = Cstring::new("hello").unwrap();
    |             help: a struct with a similar name exists (notice the capitalization): `CString`
 
 error[E0433]: failed to resolve: use of undeclared type or module `foO`
-  --> $DIR/suggest-type.rs:13:13
+  --> $DIR/suggest-type.rs:20:13
    |
 LL |     let _ = foO::bar();
    |             ^^^
@@ -16,6 +25,6 @@ LL |     let _ = foO::bar();
    |             use of undeclared type or module `foO`
    |             help: a module with a similar name exists (notice the capitalization): `foo`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0433`.

@@ -1,7 +1,14 @@
 use std::ffi::CString;
 
 mod foo {
-    fn bar() {}
+    use std::collections::HashMap;
+
+    fn bar() {
+        let _ = HashNap::new();
+        //~^ ERROR failed to resolve: use of undeclared type or module `HashNap`
+        //~| HELP a struct with a similar name exists
+        //~| SUGGESTION HashMap
+    }
 }
 
 fn main() {

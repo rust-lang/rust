@@ -2195,7 +2195,7 @@ impl<'a> Resolver<'a> {
                             return PathResult::NonModule(PartialRes::new(Res::Err));
                         }
                     } else if i == 0 {
-                        self.make_undeclared_type_suggestion(ident)
+                        self.make_undeclared_type_suggestion(ident, &parent_scope, ns)
                     } else {
                         (format!("could not find `{}` in `{}`", ident, path[i - 1].ident), None)
                     };

@@ -1006,10 +1006,11 @@ impl<'a> Resolver<'a> {
     crate fn make_undeclared_type_suggestion(
         &mut self,
         ident: Ident,
+        parent_scope: &ParentScope<'a>,
+        ns: Namespace,
     ) -> (String, Option<Suggestion>) {
-        let parent_scope = &ParentScope::module(self.graph_root);
         let typo_suggestion = self.early_lookup_typo_candidate(
-            ScopeSet::AbsolutePath(TypeNS),
+            ScopeSet::All(ns, false),
             parent_scope,
             ident,
             &|_| true,
