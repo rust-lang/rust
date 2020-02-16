@@ -1,7 +1,5 @@
 # Debugging vs Code plugin and the Language Server
 
-**NOTE:** the information here is mostly obsolete
-
 Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb).
 
 Checkout rust rust-analyzer and open it in vscode.
