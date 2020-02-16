@@ -2035,7 +2035,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // Resolve arguments:
                     this.resolve_params(&fn_decl.inputs);
                     // No need to resolve return type --
-                    // the outer closure return type is `FunctionRetTy::Default`.
+                    // the outer closure return type is `FnRetTy::Default`.
 
                     // Now resolve the inner closure
                     {

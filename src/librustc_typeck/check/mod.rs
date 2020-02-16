@@ -5153,7 +5153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
-            (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
@@ -5162,18 +5162,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
                 err.span_label(span, "possibly return type missing here?");
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), _, false, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.span_label(span, "expected `()` because of default return type");
                 true
             }
             // expectation was caused by something else, not the default return
-            (&hir::FunctionRetTy::DefaultReturn(_), _, _, false) => false,
-            (&hir::FunctionRetTy::Return(ref ty), _, _, _) => {
+            (&hir::FnRetTy::DefaultReturn(_), _, _, false) => false,
+            (&hir::FnRetTy::Return(ref ty), _, _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
