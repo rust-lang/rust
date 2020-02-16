@@ -42,7 +42,7 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
 
   This enables ptrace on non-forked processes
 
-- Enable debug symbols in `Cargo.toml`:
+- By default, the LSP server is built without debug information. To enable it, you'll need to change `Cargo.toml`:
   ```toml
     [profile.dev]
     debug = 2
