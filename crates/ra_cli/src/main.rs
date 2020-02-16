@@ -132,18 +132,15 @@ fn main() -> Result<()> {
             }
             let verbose = matches.contains(["-v", "--verbose"]);
             let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
-            let highlight_path = matches.opt_value_from_str("--highlight")?;
+            let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
             let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
-            if highlight_path.is_some() && complete_path.is_some() {
-                panic!("either --highlight or --complete must be set, not both")
-            }
-            let op = if let Some(path) = highlight_path {
-                let path: String = path;
-                analysis_bench::Op::Highlight { path: path.into() }
-            } else if let Some(position) = complete_path {
-                analysis_bench::Op::Complete(position.parse()?)
-            } else {
-                panic!("either --highlight or --complete must be set")
+            let op = match (highlight_path, complete_path) {
+                (Some(path), None) => {
+                    let path: String = path;
+                    analysis_bench::Op::Highlight { path: path.into() }
+                }
+                (None, Some(position)) => analysis_bench::Op::Complete(position.parse()?),
+                _ => panic!("exactly one of  `--highlight`, `--complete` must be set"),
             };
             matches.finish().or_else(handle_extra_flags)?;
             analysis_bench::run(verbose, path.as_ref(), op)?;
