@@ -5,8 +5,6 @@ LL |     let z: isize = a.x + b.y;
    |                    --- ^ --- std::boxed::Box<isize>
    |                    |
    |                    std::boxed::Box<isize>
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 
 error[E0369]: cannot add `std::boxed::Box<isize>` to `std::boxed::Box<isize>`
   --> $DIR/autoderef-full-lval.rs:21:33
@@ -15,8 +13,6 @@ LL |     let answer: isize = forty.a + two.a;
    |                         ------- ^ ----- std::boxed::Box<isize>
    |                         |
    |                         std::boxed::Box<isize>
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 
 error: aborting due to 2 previous errors
 

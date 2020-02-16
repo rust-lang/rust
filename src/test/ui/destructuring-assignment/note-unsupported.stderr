@@ -16,8 +16,6 @@ LL |     (a, b) += (3, 4);
    |     ------^^^^^^^^^^
    |     |
    |     cannot use `+=` on type `({integer}, {integer})`
-   |
-   = note: an implementation of `std::ops::AddAssign` might be missing for `({integer}, {integer})`
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:7:12
@@ -48,8 +46,6 @@ LL |     [a, b] += [3, 4];
    |     ------^^^^^^^^^^
    |     |
    |     cannot use `+=` on type `[{integer}; 2]`
-   |
-   = note: an implementation of `std::ops::AddAssign` might be missing for `[{integer}; 2]`
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:11:12
