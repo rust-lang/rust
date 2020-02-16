@@ -20,6 +20,8 @@ pub(crate) enum Op {
 }
 
 pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
+    ra_prof::init();
+
     let start = Instant::now();
     eprint!("loading: ");
     let (mut host, roots) = ra_batch::load_cargo(path)?;
