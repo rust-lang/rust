@@ -1,6 +1,6 @@
 # Debugging vs Code plugin and the Language Server
 
-## Prerequsities
+## Prerequisites
 
 - Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) VSCode extensions.
 - Open the root folder in VSCode. Here you can access the preconfigured debug setups.
