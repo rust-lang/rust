@@ -166,7 +166,7 @@ impl<'a> Parser<'a> {
         while let Some(op) = self.check_assoc_op() {
             // Adjust the span for interpolated LHS to point to the `$lhs` token
             // and not to what it refers to.
-            let lhs_span = match self.unnormalized_prev_token().kind {
+            let lhs_span = match self.unnormalized_prev_token.kind {
                 TokenKind::Interpolated(..) => self.prev_span,
                 _ => lhs.span,
             };
@@ -527,7 +527,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
             (
-                match self.unnormalized_prev_token().kind {
+                match self.unnormalized_prev_token.kind {
                     TokenKind::Interpolated(..) => self.prev_span,
                     _ => e.span,
                 },
