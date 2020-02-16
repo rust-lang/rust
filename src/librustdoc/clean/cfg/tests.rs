@@ -87,11 +87,29 @@ fn test_cfg_and() {
         x &= word_cfg("test3");
         assert_eq!(x, word_cfg("test3"));
 
+        x &= word_cfg("test3");
+        assert_eq!(x, word_cfg("test3"));
+
+        x &= word_cfg("test4");
+        assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4")]));
+
         x &= word_cfg("test4");
         assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4")]));
 
         x &= word_cfg("test5");
         assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
+
+        x &= Cfg::All(vec![word_cfg("test6"), word_cfg("test7")]);
+        assert_eq!(
+            x,
+            Cfg::All(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+            ])
+        );
 
         x &= Cfg::All(vec![word_cfg("test6"), word_cfg("test7")]);
         assert_eq!(
@@ -119,6 +137,14 @@ fn test_cfg_and() {
             ])
         );
 
+        let mut z = word_cfg("test8");
+        z &= Cfg::All(vec![word_cfg("test9"), word_cfg("test10")]);
+        assert_eq!(z, Cfg::All(vec![word_cfg("test9"), word_cfg("test10"), word_cfg("test8")]));
+
+        let mut z = word_cfg("test11");
+        z &= Cfg::All(vec![word_cfg("test11"), word_cfg("test12")]);
+        assert_eq!(z, Cfg::All(vec![word_cfg("test11"), word_cfg("test12")]));
+
         assert_eq!(
             word_cfg("a") & word_cfg("b") & word_cfg("c"),
             Cfg::All(vec![word_cfg("a"), word_cfg("b"), word_cfg("c")])
@@ -145,11 +171,29 @@ fn test_cfg_or() {
         x |= word_cfg("test3");
         assert_eq!(x, word_cfg("test3"));
 
+        x |= word_cfg("test3");
+        assert_eq!(x, word_cfg("test3"));
+
+        x |= word_cfg("test4");
+        assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4")]));
+
         x |= word_cfg("test4");
         assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4")]));
 
         x |= word_cfg("test5");
         assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
+
+        x |= Cfg::Any(vec![word_cfg("test6"), word_cfg("test7")]);
+        assert_eq!(
+            x,
+            Cfg::Any(vec![
+                word_cfg("test3"),
+                word_cfg("test4"),
+                word_cfg("test5"),
+                word_cfg("test6"),
+                word_cfg("test7"),
+            ])
+        );
 
         x |= Cfg::Any(vec![word_cfg("test6"), word_cfg("test7")]);
         assert_eq!(
@@ -176,6 +220,14 @@ fn test_cfg_or() {
                 Cfg::All(vec![word_cfg("a"), word_cfg("b")]),
             ])
         );
+
+        let mut z = word_cfg("test8");
+        z |= Cfg::Any(vec![word_cfg("test9"), word_cfg("test10")]);
+        assert_eq!(z, Cfg::Any(vec![word_cfg("test9"), word_cfg("test10"), word_cfg("test8")]));
+
+        let mut z = word_cfg("test11");
+        z |= Cfg::Any(vec![word_cfg("test11"), word_cfg("test12")]);
+        assert_eq!(z, Cfg::Any(vec![word_cfg("test11"), word_cfg("test12")]));
 
         assert_eq!(
             word_cfg("a") | word_cfg("b") | word_cfg("c"),

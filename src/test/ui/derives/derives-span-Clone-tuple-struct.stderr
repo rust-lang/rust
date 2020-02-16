@@ -5,6 +5,7 @@ LL |     Error
    |     ^^^^^ the trait `std::clone::Clone` is not implemented for `Error`
    |
    = note: required by `std::clone::Clone::clone`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

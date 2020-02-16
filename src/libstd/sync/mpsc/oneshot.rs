@@ -118,12 +118,7 @@ impl<T> Packet<T> {
     // Just tests whether this channel has been sent on or not, this is only
     // safe to use from the sender.
     pub fn sent(&self) -> bool {
-        unsafe {
-            match *self.upgrade.get() {
-                NothingSent => false,
-                _ => true,
-            }
-        }
+        unsafe { !matches!(*self.upgrade.get(), NothingSent) }
     }
 
     pub fn recv(&self, deadline: Option<Instant>) -> Result<T, Failure<T>> {

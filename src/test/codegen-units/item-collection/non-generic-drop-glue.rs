@@ -5,7 +5,7 @@
 #![deny(dead_code)]
 #![feature(start)]
 
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<non_generic_drop_glue::StructWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<non_generic_drop_glue::StructWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
 struct StructWithDrop {
     x: i32
 }
@@ -19,7 +19,7 @@ struct StructNoDrop {
     x: i32
 }
 
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<non_generic_drop_glue::EnumWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<non_generic_drop_glue::EnumWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
 enum EnumWithDrop {
     A(i32)
 }

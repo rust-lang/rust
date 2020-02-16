@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) {
     match (l1, l2) {
     //~^ ERROR: cannot move out of type `[T]`, a non-copy slice

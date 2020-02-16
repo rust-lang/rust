@@ -14,8 +14,8 @@
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc::hir::def_id::DefId;
 use rustc::ty;
+use rustc_hir::def_id::DefId;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
@@ -141,7 +141,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         .predicates
         .iter()
         .filter_map(|(pred, _)| {
-            if let ty::Predicate::Trait(ref pred) = *pred {
+            if let ty::Predicate::Trait(ref pred, _) = *pred {
                 if pred.skip_binder().trait_ref.self_ty() == self_ty {
                     Some(pred.def_id())
                 } else {

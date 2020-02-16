@@ -140,7 +140,9 @@ impl ExpnId {
         loop {
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
-            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
+            if expn_data.is_root()
+                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+            {
                 break;
             }
             self = expn_data.call_site.ctxt().outer_expn();
@@ -717,7 +719,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
@@ -730,12 +732,16 @@ pub enum ExpnKind {
 }
 
 impl ExpnKind {
-    pub fn descr(&self) -> Symbol {
+    pub fn descr(&self) -> String {
         match *self {
-            ExpnKind::Root => kw::PathRoot,
-            ExpnKind::Macro(_, descr) => descr,
-            ExpnKind::AstPass(kind) => Symbol::intern(kind.descr()),
-            ExpnKind::Desugaring(kind) => Symbol::intern(kind.descr()),
+            ExpnKind::Root => kw::PathRoot.to_string(),
+            ExpnKind::Macro(macro_kind, name) => match macro_kind {
+                MacroKind::Bang => format!("{}!", name),
+                MacroKind::Attr => format!("#[{}]", name),
+                MacroKind::Derive => format!("#[derive({})]", name),
+            },
+            ExpnKind::AstPass(kind) => kind.descr().to_string(),
+            ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
         }
     }
 }

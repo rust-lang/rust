@@ -1,27 +1,26 @@
-use rustc::hir::def::Namespace::TypeNS;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use rustc::hir::HirId;
-use rustc::lint;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::session::{self, config};
 use rustc::ty::{Ty, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_driver::abort_on_err;
 use rustc_feature::UnstableFeatures;
+use rustc_hir::def::Namespace::TypeNS;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use rustc_hir::HirId;
 use rustc_interface::interface;
-use rustc_lint;
 use rustc_resolve as resolve;
+use rustc_session::lint;
 
-use errors::emitter::{Emitter, EmitterWriter};
-use errors::json::JsonEmitter;
+use rustc_attr as attr;
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::json::JsonEmitter;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use syntax::ast::CRATE_NODE_ID;
-use syntax::attr;
 
 use rustc_data_structures::sync::{self, Lrc};
 use std::cell::RefCell;
@@ -33,9 +32,9 @@ use crate::clean::{AttributesExt, MAX_DEF_ID};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::html::render::RenderInfo;
 
-use crate::passes;
+use crate::passes::{self, Condition::*, ConditionalPass};
 
-pub use rustc::session::config::{CodegenOptions, Input, Options};
+pub use rustc::session::config::{CodegenOptions, DebuggingOptions, Input, Options};
 pub use rustc::session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
@@ -125,7 +124,7 @@ impl<'tcx> DocContext<'tcx> {
 
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
-        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id).clone();
+        let def_id = *fake_ids.entry(crate_num).or_insert(start_def_id);
         fake_ids.insert(
             crate_num,
             DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) },
@@ -137,7 +136,7 @@ impl<'tcx> DocContext<'tcx> {
 
         self.all_fake_def_ids.borrow_mut().insert(def_id);
 
-        def_id.clone()
+        def_id
     }
 
     /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
@@ -170,12 +169,8 @@ impl<'tcx> DocContext<'tcx> {
 pub fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
-    treat_err_as_bug: Option<usize>,
-    ui_testing: bool,
-) -> errors::Handler {
-    // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
-    // stick to the defaults
-    let sessopts = Options::default();
+    debugging_opts: &DebuggingOptions,
+) -> rustc_errors::Handler {
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -184,33 +179,27 @@ pub fn new_handler(
                     color_config,
                     source_map.map(|cm| cm as _),
                     short,
-                    sessopts.debugging_opts.teach,
-                    sessopts.debugging_opts.terminal_width,
+                    debugging_opts.teach,
+                    debugging_opts.terminal_width,
                     false,
                 )
-                .ui_testing(ui_testing),
+                .ui_testing(debugging_opts.ui_testing()),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {
             let source_map = source_map.unwrap_or_else(|| {
-                Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()))
+                Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
                 JsonEmitter::stderr(None, source_map, pretty, json_rendered, false)
-                    .ui_testing(ui_testing),
+                    .ui_testing(debugging_opts.ui_testing()),
             )
         }
     };
 
-    errors::Handler::with_emitter_and_flags(
+    rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        errors::HandlerFlags {
-            can_emit_warnings: true,
-            treat_err_as_bug,
-            report_delayed_bugs: false,
-            external_macro_backtrace: false,
-            ..Default::default()
-        },
+        debugging_opts.diagnostic_handler_flags(true),
     )
 }
 
@@ -234,6 +223,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         describe_lints,
         lint_cap,
         mut default_passes,
+        mut document_private,
+        document_hidden,
         mut manual_passes,
         display_warnings,
         render_options,
@@ -315,8 +306,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         cg: codegen_options,
         externs,
         target_triple: target,
-        // Ensure that rustdoc works even if rustc is feature-staged
-        unstable_features: UnstableFeatures::Allow,
+        unstable_features: UnstableFeatures::from_environment(),
         actually_rustdoc: true,
         debugging_opts: debugging_options,
         error_format,
@@ -420,13 +410,16 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 let mut krate = clean::krate(&mut ctxt);
 
-                fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
+                fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
                     let mut msg = diag.struct_warn(&format!(
                         "the `#![doc({})]` attribute is \
                                                          considered deprecated",
                         name
                     ));
-                    msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+                    msg.warn(
+                        "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                         for more information",
+                    );
 
                     if name == "no_default_passes" {
                         msg.help("you may want to use `#![doc(document_private_items)]`");
@@ -470,16 +463,14 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
 
                     if attr.is_word() && name == sym::document_private_items {
-                        if default_passes == passes::DefaultPassOption::Default {
-                            default_passes = passes::DefaultPassOption::Private;
-                        }
+                        document_private = true;
                     }
                 }
 
-                let passes = passes::defaults(default_passes).iter().chain(
+                let passes = passes::defaults(default_passes).iter().copied().chain(
                     manual_passes.into_iter().flat_map(|name| {
                         if let Some(pass) = passes::find_pass(&name) {
-                            Some(pass)
+                            Some(ConditionalPass::always(pass))
                         } else {
                             error!("unknown pass {}, skipping", name);
                             None
@@ -489,9 +480,17 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 info!("Executing passes");
 
-                for pass in passes {
-                    debug!("running pass {}", pass.name);
-                    krate = (pass.pass)(krate, &ctxt);
+                for p in passes {
+                    let run = match p.condition {
+                        Always => true,
+                        WhenDocumentPrivate => document_private,
+                        WhenNotDocumentPrivate => !document_private,
+                        WhenNotDocumentHidden => !document_hidden,
+                    };
+                    if run {
+                        debug!("running pass {}", p.pass.name);
+                        krate = (p.pass.run)(krate, &ctxt);
+                    }
                 }
 
                 ctxt.sess().abort_if_errors();

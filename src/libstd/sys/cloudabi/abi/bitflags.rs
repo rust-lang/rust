@@ -21,9 +21,6 @@
 // OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
-// Appease Rust's tidy.
-// ignore-license
-
 #[cfg(feature = "bitflags")]
 use bitflags::bitflags;
 

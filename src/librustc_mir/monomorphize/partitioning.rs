@@ -96,17 +96,17 @@ use std::cmp;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
-use rustc::util::common::time;
-use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
 
 use crate::monomorphize::collector::InliningMap;
@@ -324,7 +324,7 @@ fn mono_item_visibility(
     };
 
     let def_id = match instance.def {
-        InstanceDef::Item(def_id) => def_id,
+        InstanceDef::Item(def_id) | InstanceDef::DropGlue(def_id, Some(_)) => def_id,
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VtableShim(..)
@@ -740,18 +740,15 @@ fn compute_codegen_unit_name(
 
     let cgu_def_id = cgu_def_id.unwrap();
 
-    cache
-        .entry((cgu_def_id, volatile))
-        .or_insert_with(|| {
-            let def_path = tcx.def_path(cgu_def_id);
+    *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
+        let def_path = tcx.def_path(cgu_def_id);
 
-            let components = def_path.data.iter().map(|part| part.data.as_symbol());
+        let components = def_path.data.iter().map(|part| part.data.as_symbol());
 
-            let volatile_suffix = volatile.then_some("volatile");
+        let volatile_suffix = volatile.then_some("volatile");
 
-            name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
-        })
-        .clone()
+        name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
+    })
 }
 
 fn numbered_codegen_unit_name(
@@ -797,6 +794,8 @@ where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
     'tcx: 'a,
 {
+    let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
+
     let mut symbols: Vec<_> =
         mono_items.map(|mono_item| (mono_item, mono_item.symbol_name(tcx))).collect();
 
@@ -866,25 +865,26 @@ fn collect_and_partition_mono_items(
         }
     };
 
-    let (items, inlining_map) = time(tcx.sess, "monomorphization collection", || {
-        collector::collect_crate_mono_items(tcx, collection_mode)
-    });
+    let (items, inlining_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
     tcx.sess.abort_if_errors();
 
-    assert_symbols_are_distinct(tcx, items.iter());
+    let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
+        sync::join(
+            || {
+                let strategy = if tcx.sess.opts.incremental.is_some() {
+                    PartitioningStrategy::PerModule
+                } else {
+                    PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
+                };
 
-    let strategy = if tcx.sess.opts.incremental.is_some() {
-        PartitioningStrategy::PerModule
-    } else {
-        PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
-    };
-
-    let codegen_units = time(tcx.sess, "codegen unit partitioning", || {
-        partition(tcx, items.iter().cloned(), strategy, &inlining_map)
-            .into_iter()
-            .map(Arc::new)
-            .collect::<Vec<_>>()
+                partition(tcx, items.iter().cloned(), strategy, &inlining_map)
+                    .into_iter()
+                    .map(Arc::new)
+                    .collect::<Vec<_>>()
+            },
+            || assert_symbols_are_distinct(tcx, items.iter()),
+        )
     });
 
     let mono_items: DefIdSet = items

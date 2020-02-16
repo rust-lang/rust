@@ -1,1 +1,1 @@
-extern fn main() {} //~ ERROR: main function has wrong type [E0580]
+extern fn main() {} //~ ERROR: `main` function has wrong type [E0580]

@@ -34,7 +34,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_span::source_map::{dummy_spanned, respan, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -256,22 +256,26 @@ impl ParenthesizedArgs {
     }
 }
 
-pub use rustc_session::node_id::NodeId;
+pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 
-/// `NodeId` used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
-
-/// When parsing and doing expansions, we initially give all AST nodes this AST
-/// node value. Then later, in the renumber pass, we renumber them to have
-/// small, positive ids.
-pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
-
-/// A modifier on a bound, currently this is only used for `?Sized`, where the
-/// modifier is `Maybe`. Negative bounds should also be handled here.
+/// A modifier on a bound, e.g., `?Sized` or `?const Trait`.
+///
+/// Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitBoundModifier {
+    /// No modifiers
     None,
+
+    /// `?Trait`
     Maybe,
+
+    /// `?const Trait`
+    MaybeConst,
+
+    /// `?const ?Trait`
+    //
+    // This parses but will be rejected during AST validation.
+    MaybeConstMaybe,
 }
 
 /// The AST represents all type param bounds as types.
@@ -420,13 +424,18 @@ pub struct WhereEqPredicate {
     pub rhs_ty: P<Ty>,
 }
 
-pub use rustc_session::parse::CrateConfig;
-
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
+    /// The order of items in the HIR is unrelated to the order of
+    /// items in the AST. However, we generate proc macro harnesses
+    /// based on the AST order, and later refer to these harnesses
+    /// from the HIR. This field keeps track of the order in which
+    /// we generated proc macros harnesses, so that we can map
+    /// HIR proc macros items back to their harness items.
+    pub proc_macros: Vec<NodeId>,
 }
 
 /// Possible values inside of compile-time attribute lists.
@@ -649,7 +658,7 @@ pub enum PatKind {
     Lit(P<Expr>),
 
     /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
-    Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
+    Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
     Slice(Vec<P<Pat>>),
@@ -1196,14 +1205,14 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
     ///
     /// The `NodeId` is the `NodeId` for the closure that results from
     /// desugaring an async block, just like the NodeId field in the
-    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// `Async::Yes` variant. This is necessary in order to create a def for the
     /// closure which can be used as a parent of any child defs. Defs
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
@@ -1415,7 +1424,7 @@ pub enum MacDelimiter {
 }
 
 impl MacDelimiter {
-    crate fn to_token(self) -> DelimToken {
+    pub fn to_token(self) -> DelimToken {
         match self {
             MacDelimiter::Parenthesis => DelimToken::Paren,
             MacDelimiter::Bracket => DelimToken::Bracket,
@@ -1441,8 +1450,8 @@ pub struct MacroDef {
     pub legacy: bool,
 }
 
-// Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -1478,7 +1487,7 @@ pub struct StrLit {
 }
 
 impl StrLit {
-    crate fn as_lit(&self) -> Lit {
+    pub fn as_lit(&self) -> Lit {
         let token_kind = match self.style {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),
@@ -1491,9 +1500,9 @@ impl StrLit {
     }
 }
 
-// Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -1504,7 +1513,8 @@ pub enum LitIntType {
 }
 
 /// Type of the float literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),
@@ -1515,8 +1525,7 @@ pub enum LitFloatType {
 /// Literal kind.
 ///
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
-// Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
@@ -1861,7 +1870,7 @@ pub struct Ty {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
-    pub unsafety: Unsafety,
+    pub unsafety: Unsafe,
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
@@ -2099,69 +2108,38 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic
-)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            Unsafety::Unsafe => "unsafe ",
-            Unsafety::Normal => "",
-        }
-    }
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Unsafe {
+    Yes(Span),
+    No,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum IsAsync {
-    Async { closure_id: NodeId, return_impl_trait_id: NodeId },
-    NotAsync,
+pub enum Async {
+    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    No,
 }
 
-impl IsAsync {
+impl Async {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self { true } else { false }
+        if let Async::Yes { .. } = self { true } else { false }
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-            IsAsync::NotAsync => None,
+            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::No => None,
         }
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum Constness {
-    Const,
-    NotConst,
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Const {
+    Yes(Span),
+    No,
 }
 
 /// Item defaultness.
@@ -2230,7 +2208,7 @@ pub struct Mod {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
     pub abi: Option<StrLit>,
-    pub items: Vec<ForeignItem>,
+    pub items: Vec<P<ForeignItem>>,
 }
 
 /// Global inline assembly.
@@ -2524,18 +2502,29 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
-    pub asyncness: Spanned<IsAsync>,
-    pub constness: Spanned<Constness>,
+    pub unsafety: Unsafe,
+    pub asyncness: Async,
+    pub constness: Const,
     pub ext: Extern,
+}
+
+impl FnHeader {
+    /// Does this function header have any qualifiers or is it empty?
+    pub fn has_qualifiers(&self) -> bool {
+        let Self { unsafety, asyncness, constness, ext } = self;
+        matches!(unsafety, Unsafe::Yes(_))
+            || asyncness.is_async()
+            || matches!(constness, Const::Yes(_))
+            || !matches!(ext, Extern::None)
+    }
 }
 
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
-            unsafety: Unsafety::Normal,
-            asyncness: dummy_spanned(IsAsync::NotAsync),
-            constness: dummy_spanned(Constness::NotConst),
+            unsafety: Unsafe::No,
+            asyncness: Async::No,
+            constness: Const::No,
             ext: Extern::None,
         }
     }
@@ -2562,7 +2551,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(FnSig, Generics, P<Block>),
+    Fn(FnSig, Generics, Option<P<Block>>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2592,7 +2581,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<AssocItem>),
+    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2600,15 +2589,19 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl(
-        Unsafety,
-        ImplPolarity,
-        Defaultness,
-        Generics,
-        Option<TraitRef>, // (optional) trait this impl implements
-        P<Ty>,            // self
-        Vec<AssocItem>,
-    ),
+    Impl {
+        unsafety: Unsafe,
+        polarity: ImplPolarity,
+        defaultness: Defaultness,
+        constness: Const,
+        generics: Generics,
+
+        /// The trait being implemented, if any.
+        of_trait: Option<TraitRef>,
+
+        self_ty: P<Ty>,
+        items: Vec<P<AssocItem>>,
+    },
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -2635,7 +2628,21 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl(..) => "item",
+            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl { .. } => "item",
+        }
+    }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        match self {
+            Self::Fn(_, generics, _)
+            | Self::TyAlias(_, generics)
+            | Self::Enum(_, generics)
+            | Self::Struct(_, generics)
+            | Self::Union(_, generics)
+            | Self::Trait(_, _, generics, ..)
+            | Self::TraitAlias(generics, _)
+            | Self::Impl { generics, .. } => Some(generics),
+            _ => None,
         }
     }
 }
@@ -2646,7 +2653,7 @@ pub type ForeignItem = Item<ForeignItemKind>;
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign function.
-    Fn(P<FnDecl>, Generics),
+    Fn(FnSig, Generics, Option<P<Block>>),
     /// A foreign static item (`static ext: u8`).
     Static(P<Ty>, Mutability),
     /// A foreign type.

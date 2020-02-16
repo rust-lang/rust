@@ -1,10 +1,9 @@
+use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::{self, InferCtxt, SubregionOrigin};
 use crate::middle::region;
 use crate::ty::error::TypeError;
 use crate::ty::{self, Region};
-use errors::DiagnosticBuilder;
-
-use rustc_error_codes::*;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(
@@ -167,8 +166,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
-                self.tcx.note_and_explain_region(region_scope_tree, &mut err, "", sup, "...");
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(self.tcx, region_scope_tree, &mut err, "", sup, "...");
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...does not necessarily outlive ",
@@ -185,14 +185,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of reference outlives lifetime of \
                                                 borrowed content..."
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...the reference is valid for ",
                     sub,
                     "...",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...but the borrowed content is only valid for ",
@@ -211,14 +213,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 of captured variable `{}`...",
                     var_name
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...the borrowed pointer is valid for ",
                     sub,
                     "...",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     &format!("...but `{}` is only valid for ", var_name),
@@ -230,14 +234,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::InfStackClosure(span) => {
                 let mut err =
                     struct_span_err!(self.tcx.sess, span, E0314, "closure outlives stack frame");
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...the closure must be valid for ",
                     sub,
                     "...",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "...but the closure's stack frame is only valid \
@@ -254,7 +260,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     E0315,
                     "cannot invoke closure outside of its lifetime"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the closure is only valid for ",
@@ -270,7 +277,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     E0473,
                     "dereference of reference outside its lifetime"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the reference is only valid for ",
@@ -288,14 +296,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 enclosing closure",
                     self.tcx.hir().name(id)
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "captured variable is valid for ",
                     sup,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "closure is valid for ",
@@ -311,7 +321,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     E0475,
                     "index of slice outside its lifetime"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the slice is only valid for ",
@@ -328,14 +339,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of the source pointer does not outlive \
                                                 lifetime bound of the object type"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "object type is valid for ",
                     sub,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "source pointer is only valid for ",
@@ -354,14 +367,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.ty_to_string(ty)
                 );
                 match *sub {
-                    ty::ReStatic => self.tcx.note_and_explain_region(
+                    ty::ReStatic => note_and_explain_region(
+                        self.tcx,
                         region_scope_tree,
                         &mut err,
                         "type must satisfy ",
                         sub,
                         "",
                     ),
-                    _ => self.tcx.note_and_explain_region(
+                    _ => note_and_explain_region(
+                        self.tcx,
                         region_scope_tree,
                         &mut err,
                         "type must outlive ",
@@ -374,14 +389,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::RelateRegionParamBound(span) => {
                 let mut err =
                     struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "lifetime parameter instantiated with ",
                     sup,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "but lifetime parameter must outlive ",
@@ -399,7 +416,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 parameter) is not valid at this point",
                     self.ty_to_string(ty)
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "type must outlive ",
@@ -416,7 +434,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of method receiver does not outlive the \
                                                 method call"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the receiver is only valid for ",
@@ -433,7 +452,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of function argument does not outlive \
                                                 the function call"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the function argument is only valid for ",
@@ -450,7 +470,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of return value does not outlive the \
                                                 function call"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the return value is only valid for ",
@@ -467,7 +488,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of operand does not outlive the \
                                                 operation"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the operand is only valid for ",
@@ -483,7 +505,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     E0484,
                     "reference is not valid at the time of borrow"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the borrow is only valid for ",
@@ -500,7 +523,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "automatically reference is not valid at the time \
                                                 of borrow"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the automatic borrow is only valid for ",
@@ -518,7 +542,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 not valid during the expression: `{}`",
                     self.ty_to_string(t)
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "type is only valid for ",
@@ -536,14 +561,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 called while references are dead"
                 );
                 // FIXME (22171): terms "super/subregion" are suboptimal
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "superregion: ",
                     sup,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "subregion: ",
@@ -560,7 +587,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of variable does not enclose its \
                                                 declaration"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the variable is only valid for ",
@@ -576,7 +604,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     E0489,
                     "type/lifetime parameter not in scope here"
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the parameter is only valid for ",
@@ -593,14 +622,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "a value of type `{}` is borrowed for too long",
                     self.ty_to_string(ty)
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the type is valid for ",
                     sub,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "but the borrow lasts for ",
@@ -618,14 +649,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 than the data it references",
                     self.ty_to_string(ty)
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "the pointer is valid for ",
                     sub,
                     "",
                 );
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     "but the referenced data is only valid for ",

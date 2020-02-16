@@ -9,6 +9,19 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
+macro_rules! make_attr_macro {
+    ($name:ident) => {
+        /// Generated doc comment
+        #[proc_macro_attribute]
+        pub fn $name(args: TokenStream, input: TokenStream) -> TokenStream {
+            panic!()
+        }
+    }
+}
+
+make_attr_macro!(first_attr);
+make_attr_macro!(second_attr);
+
 /// a proc-macro that swallows its input and does nothing.
 #[proc_macro]
 pub fn some_proc_macro(_input: TokenStream) -> TokenStream {

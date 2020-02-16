@@ -902,6 +902,12 @@ impl UnixListener {
 
     /// Moves the socket into or out of nonblocking mode.
     ///
+    /// This will result in the `accept` operation becoming nonblocking,
+    /// i.e., immediately returning from their calls. If the IO operation is
+    /// successful, `Ok` is returned and no further action is required. If the
+    /// IO operation could not be completed and needs to be retried, an error
+    /// with kind [`io::ErrorKind::WouldBlock`] is returned.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -913,6 +919,8 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../../../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)

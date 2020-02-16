@@ -1,8 +1,13 @@
 error[E0412]: cannot find type `Fo` in this scope
-  --> $DIR/issue-7607-1.rs:5:6
+  --> $DIR/issue-7607-1.rs:9:6
    |
 LL | impl Fo {
    |      ^^ help: a trait with a similar name exists: `Fn`
+   | 
+  ::: $SRC_DIR/libcore/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
 
 error: aborting due to previous error
 

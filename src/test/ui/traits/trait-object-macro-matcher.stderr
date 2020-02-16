@@ -10,7 +10,7 @@ error[E0038]: the trait `std::marker::Copy` cannot be made into an object
 LL |     m!(dyn Copy + Send + 'static);
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
+   = note: the trait cannot be made into an object because it requires `Self: Sized`
 
 error: aborting due to 2 previous errors
 

@@ -4,7 +4,7 @@ error[E0723]: can only call other `const fn` within a `const fn`, but `const reg
 LL |         regular_in_block();
    |         ^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: can only call other `const fn` within a `const fn`, but `const regular` is not stable as `const fn`
@@ -13,7 +13,7 @@ error[E0723]: can only call other `const fn` within a `const fn`, but `const reg
 LL |         regular();
    |         ^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

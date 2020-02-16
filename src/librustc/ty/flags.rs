@@ -138,7 +138,7 @@ impl FlagComputation {
             }
 
             &ty::Opaque(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_PROJECTION | TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
             }
 
@@ -219,7 +219,7 @@ impl FlagComputation {
     fn add_const(&mut self, c: &ty::Const<'_>) {
         self.add_ty(c.ty);
         match c.val {
-            ty::ConstKind::Unevaluated(_, substs) => {
+            ty::ConstKind::Unevaluated(_, substs, _) => {
                 self.add_substs(substs);
                 self.add_flags(TypeFlags::HAS_PROJECTION);
             }

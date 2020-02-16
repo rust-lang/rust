@@ -4,7 +4,7 @@ error: lifetime parameter `'a` never used
 LL | pub async fn func_with_unused_lifetime<'a>(s: &'a str) {
    |                                        ^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused-lifetime.rs:7:9
    |
 LL | #![deny(unused_lifetimes)]

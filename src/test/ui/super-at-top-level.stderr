@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: there are too many initial `super`s.
+error[E0433]: failed to resolve: there are too many leading `super` keywords
   --> $DIR/super-at-top-level.rs:1:5
    |
 LL | use super::f;
-   |     ^^^^^ there are too many initial `super`s.
+   |     ^^^^^ there are too many leading `super` keywords
 
 error: aborting due to previous error
 

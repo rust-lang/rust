@@ -2,7 +2,7 @@ error[E0138]: multiple `start` functions
   --> $DIR/E0138.rs:7:1
    |
 LL | fn foo(argc: isize, argv: *const *const u8) -> isize { 0 }
-   | ---------------------------------------------------------- previous `start` function here
+   | ---------------------------------------------------------- previous `#[start]` function here
 ...
 LL | fn f(argc: isize, argv: *const *const u8) -> isize { 0 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ multiple `start` functions

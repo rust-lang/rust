@@ -2,20 +2,17 @@
 
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(slice_patterns)]
 
+use rustc_ast_pretty::pprust;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Diagnostic, FatalError, Level, PResult};
+use rustc_session::parse::ParseSess;
+use rustc_span::{FileName, SourceFile, Span};
 use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
-use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, FatalError, Level, PResult};
-use rustc_span::{FileName, SourceFile, Span};
-
-use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str;
 
 use log::info;
@@ -31,8 +28,8 @@ pub mod validate_attr;
 pub mod config;
 
 #[derive(Clone)]
-pub struct Directory<'a> {
-    pub path: Cow<'a, Path>,
+pub struct Directory {
+    pub path: PathBuf,
     pub ownership: DirectoryOwnership,
 }
 
@@ -276,7 +273,7 @@ pub fn stream_to_parser<'a>(
 pub fn stream_to_parser_with_base_dir<'a>(
     sess: &'a ParseSess,
     stream: TokenStream,
-    base_dir: Directory<'a>,
+    base_dir: Directory,
 ) -> Parser<'a> {
     Parser::new(sess, stream, Some(base_dir), true, false, None)
 }

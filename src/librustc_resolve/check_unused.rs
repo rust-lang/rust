@@ -26,13 +26,13 @@
 use crate::imports::ImportDirectiveSubclass;
 use crate::Resolver;
 
-use errors::pluralize;
-
-use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::pluralize;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
+use syntax::node_id::NodeMap;
 use syntax::visit::{self, Visitor};
 
 struct UnusedImport<'a> {
@@ -318,7 +318,7 @@ impl Resolver<'_> {
                 unused.use_tree_id,
                 ms,
                 &msg,
-                lint::builtin::BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes),
+                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes),
             );
         }
     }

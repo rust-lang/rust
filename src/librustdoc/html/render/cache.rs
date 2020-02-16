@@ -1,8 +1,8 @@
 use crate::clean::{self, AttributesExt, GetDefId};
 use crate::fold::DocFolder;
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::middle::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
 use std::collections::BTreeMap;
@@ -43,7 +43,7 @@ crate struct Cache {
     /// found on that implementation.
     pub impls: FxHashMap<DefId, Vec<Impl>>,
 
-    /// Maintains a mapping of local crate `NodeId`s to the fully qualified name
+    /// Maintains a mapping of local crate `DefId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
@@ -277,7 +277,7 @@ impl DocFolder for Cache {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.parent_stack.last().unwrap()),
+                        Some(*self.parent_stack.last().expect("parent_stack is empty")),
                         Some(&self.stack[..self.stack.len() - 1]),
                     ),
                     false,
@@ -286,7 +286,7 @@ impl DocFolder for Cache {
                     if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
-                        let last = self.parent_stack.last().unwrap();
+                        let last = self.parent_stack.last().expect("parent_stack is empty 2");
                         let did = *last;
                         let path = match self.paths.get(&did) {
                             // The current stack not necessarily has correlation
@@ -358,6 +358,7 @@ impl DocFolder for Cache {
             | clean::ForeignTypeItem
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
+            | clean::VariantItem(..)
                 if !self.stripped_mod =>
             {
                 // Re-exported items mean that the same id can show up twice
@@ -372,13 +373,6 @@ impl DocFolder for Cache {
                     self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
                 }
                 self.add_aliases(&item);
-            }
-            // Link variants to their parent enum because pages aren't emitted
-            // for each variant.
-            clean::VariantItem(..) if !self.stripped_mod => {
-                let mut stack = self.stack.clone();
-                stack.pop();
-                self.paths.insert(item.def_id, (stack, ItemType::Enum));
             }
 
             clean::PrimitiveItem(..) => {
@@ -396,7 +390,8 @@ impl DocFolder for Cache {
             | clean::EnumItem(..)
             | clean::ForeignTypeItem
             | clean::StructItem(..)
-            | clean::UnionItem(..) => {
+            | clean::UnionItem(..)
+            | clean::VariantItem(..) => {
                 self.parent_stack.push(item.def_id);
                 self.parent_is_trait_impl = false;
                 true
@@ -468,7 +463,7 @@ impl DocFolder for Cache {
                         self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
                     }
                 } else {
-                    let trait_did = impl_item.trait_did().unwrap();
+                    let trait_did = impl_item.trait_did().expect("no trait did");
                     self.orphan_trait_impls.push((trait_did, dids, impl_item));
                 }
                 None
@@ -478,10 +473,10 @@ impl DocFolder for Cache {
         });
 
         if pushed {
-            self.stack.pop().unwrap();
+            self.stack.pop().expect("stack already empty");
         }
         if parent_pushed {
-            self.parent_stack.pop().unwrap();
+            self.parent_stack.pop().expect("parent stack already empty");
         }
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
@@ -564,7 +559,7 @@ fn extern_location(
 
 /// Builds the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
-    let mut nodeid_to_pathid = FxHashMap::default();
+    let mut defid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
 
@@ -586,21 +581,21 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         }
     }
 
-    // Reduce `NodeId` in paths into smaller sequential numbers,
+    // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
     let mut lastpath = String::new();
     let mut lastpathid = 0usize;
 
     for item in search_index {
-        item.parent_idx = item.parent.map(|nodeid| {
-            if nodeid_to_pathid.contains_key(&nodeid) {
-                *nodeid_to_pathid.get(&nodeid).unwrap()
+        item.parent_idx = item.parent.map(|defid| {
+            if defid_to_pathid.contains_key(&defid) {
+                *defid_to_pathid.get(&defid).expect("no pathid")
             } else {
                 let pathid = lastpathid;
-                nodeid_to_pathid.insert(nodeid, pathid);
+                defid_to_pathid.insert(defid, pathid);
                 lastpathid += 1;
 
-                let &(ref fqp, short) = paths.get(&nodeid).unwrap();
+                let &(ref fqp, short) = paths.get(&defid).unwrap();
                 crate_paths.push((short, fqp.last().unwrap().clone()));
                 pathid
             }
@@ -639,7 +634,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             items: crate_items,
             paths: crate_paths,
         })
-        .unwrap()
+        .expect("failed serde conversion")
     )
 }
 

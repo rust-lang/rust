@@ -5,7 +5,7 @@ trait Foo {
 trait Bar {}
 
 fn do_stuff<T : Bar>(t : T) {
-    t.foo() //~ ERROR no method named `foo` found for type `T` in the current scope
+    t.foo() //~ ERROR no method named `foo` found
 }
 
 fn main() {}

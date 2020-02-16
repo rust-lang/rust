@@ -8,6 +8,7 @@ const C: U = U { a: 10 };
 fn main() {
     match C {
         C => {} //~ ERROR cannot use unions in constant patterns
+                //~| ERROR cannot use unions in constant patterns
         _ => {}
     }
 }

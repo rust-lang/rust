@@ -3,22 +3,14 @@
 
 use crate::ich::StableHashingContext;
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::SourceFile;
 use syntax::ast;
 
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Lifetime {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.id.hash_stable(hcx, hasher);
-        self.ident.hash_stable(hcx, hasher);
-    }
-}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -43,24 +35,22 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
+    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
-        debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
-        debug_assert!(!self.is_doc_comment());
+        debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
+        debug_assert!(!attr.is_doc_comment());
 
-        let ast::Attribute { kind, id: _, style, span } = self;
+        let ast::Attribute { kind, id: _, style, span } = attr;
         if let ast::AttrKind::Normal(item) = kind {
-            item.hash_stable(hcx, hasher);
-            style.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
+            item.hash_stable(self, hasher);
+            style.hash_stable(self, hasher);
+            span.hash_stable(self, hasher);
         } else {
             unreachable!();
         }
     }
 }
-
-impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

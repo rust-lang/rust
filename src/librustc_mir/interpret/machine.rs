@@ -5,14 +5,14 @@
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 use super::{
-    AllocId, Allocation, AllocationExtra, AssertMessage, Frame, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
+    AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
+    OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -139,6 +139,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// was used.
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
@@ -170,7 +171,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
-        msg: &AssertMessage<'tcx>,
+        msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
@@ -211,7 +212,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         frame.locals[local].access()
     }
 
-    /// Called before a `StaticKind::Static` value is accessed.
+    /// Called before a `Static` value is accessed.
     fn before_access_static(
         _memory_extra: &Self::MemoryExtra,
         _allocation: &Allocation,

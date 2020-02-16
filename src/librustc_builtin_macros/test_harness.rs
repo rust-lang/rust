@@ -4,6 +4,7 @@ use log::debug;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
@@ -15,7 +16,6 @@ use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax::mut_visit::{ExpectOne, *};
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 
 use std::{iter, mem};
 
@@ -40,7 +40,7 @@ pub fn inject(
     resolver: &mut dyn Resolver,
     should_test: bool,
     krate: &mut ast::Crate,
-    span_diagnostic: &errors::Handler,
+    span_diagnostic: &rustc_errors::Handler,
     features: &Features,
     panic_strategy: PanicStrategy,
     platform_panic_strategy: PanicStrategy,
@@ -307,7 +307,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(vec![], ast::FunctionRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
-    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), main_body);
+    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), Some(main_body));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
@@ -351,7 +351,7 @@ fn is_test_case(i: &ast::Item) -> bool {
     attr::contains_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
+fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {

@@ -1,4 +1,4 @@
-error[E0599]: no method named `foo` found for type `Bar` in the current scope
+error[E0599]: no method named `foo` found for struct `Bar` in the current scope
   --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:20:8
    |
 LL | struct Bar;

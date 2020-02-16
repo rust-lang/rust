@@ -1,9 +1,9 @@
 use super::{Parser, PathStyle, TokenType};
+use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::{Span, Symbol};
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 use syntax::token::{self, Nonterminal};
 use syntax::util::comments;
 
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
                                    source files. Outer attributes, like `#[test]`, annotate the \
                                    item following them.",
                             )
-                            .emit()
+                            .emit();
                     }
                 }
 
@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
     pub fn parse_attr_item(&mut self) -> PResult<'a, ast::AttrItem> {
         let item = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
-                Nonterminal::NtMeta(ref item) => Some(item.clone()),
+                Nonterminal::NtMeta(ref item) => Some(item.clone().into_inner()),
                 _ => None,
             },
             _ => None,
@@ -236,10 +236,10 @@ impl<'a> Parser<'a> {
             self.struct_span_err(lit.span, msg)
                 .help(
                     "instead of using a suffixed literal \
-                                    (1u8, 1.0f32, etc.), use an unsuffixed version \
-                                    (1, 1.0, etc.).",
+                                    (`1u8`, `1.0f32`, etc.), use an unsuffixed version \
+                                    (`1`, `1.0`, etc.)",
                 )
-                .emit()
+                .emit();
         }
 
         Ok(lit)

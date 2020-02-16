@@ -1,11 +1,11 @@
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::ExpansionConfig;
+use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 use syntax::{ast, attr};
 
 pub fn inject(

@@ -232,7 +232,7 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
             }
         }
     }
-    return false;
+    false
 }
 
 pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
@@ -344,7 +344,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                 }
                 None
             } else {
-                let s = issue_str.split('(').nth(1).unwrap().split(')').nth(0).unwrap();
+                let s = issue_str.split('(').nth(1).unwrap().split(')').next().unwrap();
                 Some(s.parse().unwrap())
             };
             Some((name.to_owned(), Feature { level, since, has_gate_test: false, tracking_issue }))

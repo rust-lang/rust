@@ -4,7 +4,6 @@ use crate::astconv::AstConv;
 use crate::check::{callee, FnCtxt, Needs, PlaceOp};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
-use rustc::hir;
 use rustc::infer::{self, InferOk};
 use rustc::traits;
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
@@ -12,6 +11,7 @@ use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Ty};
+use rustc_hir as hir;
 use rustc_span::Span;
 
 use std::ops::Deref;
@@ -32,7 +32,7 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
 
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
-    pub illegal_sized_bound: bool,
+    pub illegal_sized_bound: Option<Span>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -112,7 +112,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
-        if !illegal_sized_bound {
+        if illegal_sized_bound.is_none() {
             let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
             self.add_obligations(method_ty, all_substs, &method_predicates);
         }
@@ -425,7 +425,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             match exprs.last().unwrap().kind {
                 hir::ExprKind::Field(ref expr, _)
                 | hir::ExprKind::Index(ref expr, _)
-                | hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
+                | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,
             }
         }
@@ -471,7 +471,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         &[index_expr_ty],
                     );
                 }
-                hir::ExprKind::Unary(hir::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr, &[]);
                 }
                 _ => {}
@@ -561,23 +561,31 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn predicates_require_illegal_sized_bound(
         &self,
         predicates: &ty::InstantiatedPredicates<'tcx>,
-    ) -> bool {
+    ) -> Option<Span> {
         let sized_def_id = match self.tcx.lang_items().sized_trait() {
             Some(def_id) => def_id,
-            None => return false,
+            None => return None,
         };
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
             .filter_map(|predicate| match predicate {
-                ty::Predicate::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    Some(trait_pred)
+                ty::Predicate::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
+                    let span = predicates
+                        .predicates
+                        .iter()
+                        .zip(predicates.spans.iter())
+                        .filter_map(|(p, span)| if *p == predicate { Some(*span) } else { None })
+                        .next()
+                        .unwrap_or(rustc_span::DUMMY_SP);
+                    Some((trait_pred, span))
                 }
                 _ => None,
             })
-            .any(|trait_pred| match trait_pred.skip_binder().self_ty().kind {
-                ty::Dynamic(..) => true,
-                _ => false,
+            .filter_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
+                ty::Dynamic(..) => Some(span),
+                _ => None,
             })
+            .next()
     }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {
@@ -596,7 +604,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         target_trait_def_id: DefId,
     ) -> ty::PolyTraitRef<'tcx> {
         let upcast_trait_refs =
-            self.tcx.upcast_choices(source_trait_ref.clone(), target_trait_def_id);
+            traits::upcast_choices(self.tcx, source_trait_ref, target_trait_def_id);
 
         // must be exactly one trait ref or we'd get an ambig error etc
         if upcast_trait_refs.len() != 1 {

@@ -1,29 +1,29 @@
 error: missing `for` in a trait impl
-  --> $DIR/impl-parsing.rs:6:11
+  --> $DIR/impl-parsing.rs:4:11
    |
 LL | impl Trait Type {}
    |           ^ help: add `for` here
 
 error: missing `for` in a trait impl
-  --> $DIR/impl-parsing.rs:7:11
+  --> $DIR/impl-parsing.rs:5:11
    |
 LL | impl Trait .. {}
    |           ^ help: add `for` here
 
 error: expected a trait, found type
-  --> $DIR/impl-parsing.rs:8:6
+  --> $DIR/impl-parsing.rs:6:6
    |
 LL | impl ?Sized for Type {}
    |      ^^^^^^
 
 error: expected a trait, found type
-  --> $DIR/impl-parsing.rs:9:6
+  --> $DIR/impl-parsing.rs:7:6
    |
 LL | impl ?Sized for .. {}
    |      ^^^^^^
 
 error: expected `impl`, found `FAIL`
-  --> $DIR/impl-parsing.rs:11:16
+  --> $DIR/impl-parsing.rs:9:16
    |
 LL | default unsafe FAIL
    |                ^^^^ expected `impl`

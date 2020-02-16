@@ -1,7 +1,8 @@
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_span::Span;
+use rustc_span::source_map::DesugaringKind;
+use rustc_span::{Span, Symbol};
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;
@@ -177,7 +178,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 grouped_errors.push(GroupedMoveError::MovesFromPlace {
                     span,
-                    move_from: match_place.clone(),
+                    move_from: *match_place,
                     original_path,
                     kind,
                     binds_to,
@@ -243,9 +244,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             );
             (
                 match kind {
-                    IllegalMoveOriginKind::Static => {
-                        unreachable!();
-                    }
                     IllegalMoveOriginKind::BorrowedContent { target_place } => self
                         .report_cannot_move_from_borrowed_content(
                             original_path,
@@ -276,7 +274,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let base_static = PlaceRef { base: &place.base, projection: &[ProjectionElem::Deref] };
+            let base_static = PlaceRef { local: place.local, projection: &[ProjectionElem::Deref] };
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
@@ -305,17 +303,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let deref_base = match deref_target_place.projection.as_ref() {
             &[ref proj_base @ .., ProjectionElem::Deref] => {
-                PlaceRef { base: &deref_target_place.base, projection: &proj_base }
+                PlaceRef { local: deref_target_place.local, projection: &proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
-        if let PlaceRef { base: PlaceBase::Local(local), projection: [] } = deref_base {
-            let decl = &self.body.local_decls[*local];
+        if let PlaceRef { local, projection: [] } = deref_base {
+            let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
                     span,
-                    &format!("`{}` in pattern guard", self.local_names[*local].unwrap()),
+                    &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
                 );
                 err.note(
                     "variables bound in patterns cannot be moved from \
@@ -385,10 +383,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         };
-        let move_ty = format!("{:?}", move_place.ty(*self.body, self.infcx.tcx).ty,);
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let is_option = move_ty.starts_with("std::option::Option");
-            let is_result = move_ty.starts_with("std::result::Result");
+            let def_id = match move_place.ty(*self.body, self.infcx.tcx).ty.kind {
+                ty::Adt(self_def, _) => self_def.did,
+                ty::Foreign(def_id)
+                | ty::FnDef(def_id, _)
+                | ty::Closure(def_id, _)
+                | ty::Generator(def_id, ..)
+                | ty::Opaque(def_id, _) => def_id,
+                _ => return err,
+            };
+            let is_option =
+                self.infcx.tcx.is_diagnostic_item(Symbol::intern("option_type"), def_id);
+            let is_result =
+                self.infcx.tcx.is_diagnostic_item(Symbol::intern("result_type"), def_id);
             if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
                 err.span_suggestion(
                     span,
@@ -397,6 +405,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         if is_option { "Option" } else { "Result" }
                     ),
                     format!("{}.as_ref()", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if span.is_desugaring(DesugaringKind::ForLoop)
+                && self.infcx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id)
+            {
+                // FIXME: suggest for anything that implements `IntoIterator`.
+                err.span_suggestion(
+                    span,
+                    "consider iterating over a slice of the `Vec<_>`'s content",
+                    format!("&{}", snippet),
                     Applicability::MaybeIncorrect,
                 );
             }

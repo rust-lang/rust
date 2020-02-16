@@ -26,13 +26,25 @@ error[E0603]: struct `Crate` is private
   --> $DIR/test.rs:38:25
    |
 LL |     use pub_restricted::Crate;
-   |                         ^^^^^
+   |                         ^^^^^ this struct is private
+   |
+note: the struct `Crate` is defined here
+  --> $DIR/auxiliary/pub_restricted.rs:3:1
+   |
+LL | pub(crate) struct Crate;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: function `f` is private
   --> $DIR/test.rs:30:19
    |
 LL |     use foo::bar::f;
-   |                   ^
+   |                   ^ this function is private
+   |
+note: the function `f` is defined here
+  --> $DIR/test.rs:8:9
+   |
+LL |         pub(super) fn f() {}
+   |         ^^^^^^^^^^^^^^^^^
 
 error[E0616]: field `x` of struct `foo::bar::S` is private
   --> $DIR/test.rs:31:5

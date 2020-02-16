@@ -63,8 +63,7 @@ use std::{
     env, io,
     io::prelude::Write,
     panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
-    process,
-    process::{Command, Termination},
+    process::{self, Command, Termination},
     sync::mpsc::{channel, Sender},
     sync::{Arc, Mutex},
     thread,
@@ -153,12 +152,13 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
+        env::remove_var(SECONDARY_TEST_INVOKER_VAR);
         let test = tests
             .iter()
             .filter(|test| test.desc.name.as_slice() == name)
             .map(make_owned_test)
             .next()
-            .expect("couldn't find a test with the provided name");
+            .expect(&format!("couldn't find a test with the provided name '{}'", name));
         let TestDescAndFn { desc, testfn } = test;
         let testfn = match testfn {
             StaticTestFn(f) => f,
@@ -456,9 +456,13 @@ pub fn run_test(
                 monitor_ch,
                 opts.time,
             ),
-            RunStrategy::SpawnPrimary => {
-                spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time)
-            }
+            RunStrategy::SpawnPrimary => spawn_test_subprocess(
+                desc,
+                opts.nocapture,
+                opts.time.is_some(),
+                monitor_ch,
+                opts.time,
+            ),
         };
 
         // If the platform is single-threaded we're just going to run
@@ -485,9 +489,7 @@ pub fn run_test(
         }
         StaticBenchFn(benchfn) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
-                (benchfn.clone())(harness)
-            });
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, benchfn);
         }
         DynTestFn(f) => {
             match strategy {
@@ -553,12 +555,13 @@ fn run_test_in_process(
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap().to_vec();
-    let message = CompletedTest::new(desc.clone(), test_result, exec_time, stdout);
+    let message = CompletedTest::new(desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
 }
 
 fn spawn_test_subprocess(
     desc: TestDesc,
+    nocapture: bool,
     report_time: bool,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
@@ -567,11 +570,15 @@ fn spawn_test_subprocess(
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
 
+        let mut command = Command::new(current_exe);
+        command.env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice());
+        if nocapture {
+            command.stdout(process::Stdio::inherit());
+            command.stderr(process::Stdio::inherit());
+        }
+
         let start = report_time.then(Instant::now);
-        let output = match Command::new(current_exe)
-            .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
-            .output()
-        {
+        let output = match command.output() {
             Ok(out) => out,
             Err(e) => {
                 let err = format!("Failed to spawn {} as child for test: {:?}", args[0], e);
@@ -602,7 +609,7 @@ fn spawn_test_subprocess(
         (result, test_output, exec_time)
     })();
 
-    let message = CompletedTest::new(desc.clone(), result, exec_time, test_output);
+    let message = CompletedTest::new(desc, result, exec_time, test_output);
     monitor_ch.send(message).unwrap();
 }
 

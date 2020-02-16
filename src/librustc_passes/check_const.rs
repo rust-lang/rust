@@ -7,18 +7,18 @@
 //! errors. We still look for those primitives in the MIR const-checker to ensure nothing slips
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
+use rustc::hir::Hir;
 use rustc::session::config::nightly_options;
+use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
-use syntax::feature_gate::feature_err;
-use syntax::span_err;
 
 use std::fmt;
 
@@ -75,7 +75,7 @@ enum ConstKind {
 }
 
 impl ConstKind {
-    fn for_body(body: &hir::Body<'_>, hir_map: &Map<'_>) -> Option<Self> {
+    fn for_body(body: &hir::Body<'_>, hir_map: Hir<'_>) -> Option<Self> {
         let is_const_fn = |id| hir_map.fn_sig_by_hir_id(id).unwrap().header.is_const();
 
         let owner = hir_map.body_owner(body.id());
@@ -154,7 +154,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
-            &[] => span_err!(self.tcx.sess, span, E0744, "{}", msg),
+            &[] => struct_span_err!(self.tcx.sess, span, E0744, "{}", msg).emit(),
 
             // If the user enabled `#![feature(const_loop)]` but not `#![feature(const_if_match)]`,
             // explain why their `while` loop is being rejected.
@@ -200,18 +200,20 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
         let kind = Some(ConstKind::AnonConst);
-        self.recurse_into(kind, |this| hir::intravisit::walk_anon_const(this, anon));
+        self.recurse_into(kind, |this| intravisit::walk_anon_const(this, anon));
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let kind = ConstKind::for_body(body, self.tcx.hir());
-        self.recurse_into(kind, |this| hir::intravisit::walk_body(this, body));
+        self.recurse_into(kind, |this| intravisit::walk_body(this, body));
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
@@ -220,7 +222,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 self.const_check_violated(NonConstExpr::OrPattern, p.span);
             }
         }
-        hir::intravisit::walk_pat(self, p)
+        intravisit::walk_pat(self, p)
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
@@ -250,6 +252,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             _ => {}
         }
 
-        hir::intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e);
     }
 }

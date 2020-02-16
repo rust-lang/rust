@@ -2,7 +2,7 @@
 //
 use State::*;
 
-use errors::{DiagnosticBuilder, PResult};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, PResult};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -11,9 +11,6 @@ use syntax::ast::{self, AsmDialect};
 use syntax::ptr::P;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{self, TokenStream};
-use syntax::{span_err, struct_span_err};
-
-use rustc_error_codes::*;
 
 enum State {
     Asm,
@@ -173,12 +170,13 @@ fn parse_inline_asm<'a>(
                         Some('=') => None,
                         Some('+') => Some(Symbol::intern(&format!("={}", ch.as_str()))),
                         _ => {
-                            span_err!(
-                                cx,
+                            struct_span_err!(
+                                cx.parse_sess.span_diagnostic,
                                 span,
                                 E0661,
                                 "output operand constraint lacks '=' or '+'"
-                            );
+                            )
+                            .emit();
                             None
                         }
                     };
@@ -202,9 +200,21 @@ fn parse_inline_asm<'a>(
                     let constraint = parse_asm_str(&mut p)?;
 
                     if constraint.as_str().starts_with("=") {
-                        span_err!(cx, p.prev_span, E0662, "input operand constraint contains '='");
+                        struct_span_err!(
+                            cx.parse_sess.span_diagnostic,
+                            p.prev_span,
+                            E0662,
+                            "input operand constraint contains '='"
+                        )
+                        .emit();
                     } else if constraint.as_str().starts_with("+") {
-                        span_err!(cx, p.prev_span, E0663, "input operand constraint contains '+'");
+                        struct_span_err!(
+                            cx.parse_sess.span_diagnostic,
+                            p.prev_span,
+                            E0663,
+                            "input operand constraint contains '+'"
+                        )
+                        .emit();
                     }
 
                     p.expect(&token::OpenDelim(token::Paren))?;
@@ -225,12 +235,13 @@ fn parse_inline_asm<'a>(
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
                     } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
-                        span_err!(
-                            cx,
+                        struct_span_err!(
+                            cx.parse_sess.span_diagnostic,
                             p.prev_span,
                             E0664,
                             "clobber should not be surrounded by braces"
-                        );
+                        )
+                        .emit();
                     }
 
                     clobs.push(s);

@@ -1,18 +1,8 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{ParamEnvAnd, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
-pub struct Subtype<'tcx> {
-    pub sub: Ty<'tcx>,
-    pub sup: Ty<'tcx>,
-}
-
-impl<'tcx> Subtype<'tcx> {
-    pub fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
-        Self { sub, sup }
-    }
-}
+pub use rustc::traits::query::type_op::Subtype;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for Subtype<'tcx> {
     type QueryResponse = ();

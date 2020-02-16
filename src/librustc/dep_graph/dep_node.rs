@@ -35,7 +35,7 @@
 //! "infer" some properties for each kind of `DepNode`:
 //!
 //! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s, like `Krate`, represent global concepts with only one value.
+//!   `DepNode`s, like `AllLocalTraitImpls`, represent global concepts with only one value.
 //! * Whether it is possible, in principle, to reconstruct a query key from a
 //!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
 //!   in which case it is possible to map the node's fingerprint back to the
@@ -49,13 +49,10 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::DefPathHash;
-use crate::hir::HirId;
-use crate::mir;
-use crate::mir::interpret::GlobalId;
-
 use crate::ich::{Fingerprint, StableHashingContext};
+use crate::mir;
+use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -64,7 +61,10 @@ use crate::traits::query::{
 };
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::HirId;
 use rustc_span::symbol::Symbol;
 use std::fmt;
 use std::hash::Hash;
@@ -396,28 +396,9 @@ impl DefPathHash {
     }
 }
 
-impl DefId {
-    pub fn to_dep_node(self, tcx: TyCtxt<'_>, kind: DepKind) -> DepNode {
-        DepNode::from_def_path_hash(kind, tcx.def_path_hash(self))
-    }
-}
-
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
-
-    // Represents the `Krate` as a whole (the `hir::Krate` value) (as
-    // distinct from the krate module). This is basically a hash of
-    // the entire krate, so if you read from `Krate` (e.g., by calling
-    // `tcx.hir().krate()`), we will have to assume that any change
-    // means that you need to be recompiled. This is because the
-    // `Krate` value gives you access to all other items. To avoid
-    // this fate, do not call `tcx.hir().krate()`; instead, prefer
-    // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
-    // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
-    // access to the krate, but you must remember to add suitable
-    // edges yourself for the individual items that you read.
-    [eval_always] Krate,
 
     // Represents the body of a function or method. The def-id is that of the
     // function/method.

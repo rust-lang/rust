@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 
 use crate::borrow_check::MirBorrowckCtxt;
 
-use super::{ErrorConstraintInfo, RegionErrorNamingCtx, RegionName, RegionNameSource};
+use super::{ErrorConstraintInfo, RegionName, RegionNameSource};
 
 /// The different things we could suggest.
 enum SuggestedConstraint {
@@ -77,19 +77,15 @@ impl OutlivesSuggestionBuilder {
     fn region_vid_to_name(
         &self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
-        renctx: &mut RegionErrorNamingCtx,
         region: RegionVid,
     ) -> Option<RegionName> {
-        mbcx.nonlexical_regioncx
-            .give_region_a_name(mbcx, renctx, region)
-            .filter(Self::region_name_is_suggestable)
+        mbcx.give_region_a_name(region).filter(Self::region_name_is_suggestable)
     }
 
     /// Compiles a list of all suggestions to be printed in the final big suggestion.
     fn compile_all_suggestions(
         &self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
-        renctx: &mut RegionErrorNamingCtx,
     ) -> SmallVec<[SuggestedConstraint; 2]> {
         let mut suggested = SmallVec::new();
 
@@ -98,7 +94,7 @@ impl OutlivesSuggestionBuilder {
         let mut unified_already = FxHashSet::default();
 
         for (fr, outlived) in &self.constraints_to_add {
-            let fr_name = if let Some(fr_name) = self.region_vid_to_name(mbcx, renctx, *fr) {
+            let fr_name = if let Some(fr_name) = self.region_vid_to_name(mbcx, *fr) {
                 fr_name
             } else {
                 continue;
@@ -107,9 +103,7 @@ impl OutlivesSuggestionBuilder {
             let outlived = outlived
                 .iter()
                 // if there is a `None`, we will just omit that constraint
-                .filter_map(|fr| {
-                    self.region_vid_to_name(mbcx, renctx, *fr).map(|rname| (fr, rname))
-                })
+                .filter_map(|fr| self.region_vid_to_name(mbcx, *fr).map(|rname| (fr, rname)))
                 .collect::<Vec<_>>();
 
             // No suggestable outlived lifetimes.
@@ -173,12 +167,11 @@ impl OutlivesSuggestionBuilder {
         &mut self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
         errci: &ErrorConstraintInfo,
-        renctx: &mut RegionErrorNamingCtx,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         // Emit an intermediate note.
-        let fr_name = self.region_vid_to_name(mbcx, renctx, errci.fr);
-        let outlived_fr_name = self.region_vid_to_name(mbcx, renctx, errci.outlived_fr);
+        let fr_name = self.region_vid_to_name(mbcx, errci.fr);
+        let outlived_fr_name = self.region_vid_to_name(mbcx, errci.outlived_fr);
 
         if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name) {
             if let RegionNameSource::Static = outlived_fr_name.source {
@@ -194,11 +187,7 @@ impl OutlivesSuggestionBuilder {
 
     /// If there is a suggestion to emit, add a diagnostic to the buffer. This is the final
     /// suggestion including all collected constraints.
-    crate fn add_suggestion(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_>,
-        renctx: &mut RegionErrorNamingCtx,
-    ) {
+    crate fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_>) {
         // No constraints to add? Done.
         if self.constraints_to_add.is_empty() {
             debug!("No constraints to suggest.");
@@ -215,7 +204,7 @@ impl OutlivesSuggestionBuilder {
         }
 
         // Get all suggestable constraints.
-        let suggested = self.compile_all_suggestions(mbcx, renctx);
+        let suggested = self.compile_all_suggestions(mbcx);
 
         // If there are no suggestable constraints...
         if suggested.is_empty() {

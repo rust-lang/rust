@@ -1,0 +1,19 @@
+error: expected crate top-level item to be a module after macro expansion, found a function
+  --> $DIR/issue-59191-replace-root-with-fn.rs:7:1
+   |
+LL | #![issue_59191::no_main]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0601]: `main` function not found in crate `issue_59191_replace_root_with_fn`
+  --> $DIR/issue-59191-replace-root-with-fn.rs:5:1
+   |
+LL | / #![feature(custom_inner_attributes)]
+LL | |
+LL | | #![issue_59191::no_main]
+   | |________________________^ consider adding a `main` function to `$DIR/issue-59191-replace-root-with-fn.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

@@ -1,10 +1,10 @@
 use super::graphviz::write_mir_fn_graphviz;
 use crate::transform::MirSource;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use std::fmt::Display;
 use std::fmt::Write as _;
@@ -540,7 +540,7 @@ fn write_mir_sig(
     body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    use rustc::hir::def::DefKind;
+    use rustc_hir::def::DefKind;
 
     trace!("write_mir_sig: {:?}", src.instance);
     let kind = tcx.def_kind(src.def_id());

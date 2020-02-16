@@ -8,13 +8,14 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc::hir::def::Res;
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::{self, Mutability};
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -496,7 +497,7 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(diagnostic: &::rustc_errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
@@ -701,7 +702,7 @@ impl GenericBound {
     }
 
     pub fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        use rustc::hir::TraitBoundModifier as TBM;
+        use rustc_hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
             if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
@@ -1289,6 +1290,19 @@ impl From<ast::FloatTy> for PrimitiveType {
     }
 }
 
+impl From<hir::PrimTy> for PrimitiveType {
+    fn from(prim_ty: hir::PrimTy) -> PrimitiveType {
+        match prim_ty {
+            hir::PrimTy::Int(int_ty) => int_ty.into(),
+            hir::PrimTy::Uint(uint_ty) => uint_ty.into(),
+            hir::PrimTy::Float(float_ty) => float_ty.into(),
+            hir::PrimTy::Str => PrimitiveType::Str,
+            hir::PrimTy::Bool => PrimitiveType::Bool,
+            hir::PrimTy::Char => PrimitiveType::Char,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Visibility {
     Public,
@@ -1405,6 +1419,14 @@ pub struct PathSegment {
 pub struct Typedef {
     pub type_: Type,
     pub generics: Generics,
+    // Type of target item.
+    pub item_type: Option<Type>,
+}
+
+impl GetDefId for Typedef {
+    fn def_id(&self) -> Option<DefId> {
+        self.type_.def_id()
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -1477,6 +1477,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(c.clone().skip(5).size_hint().1, None);
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
+    assert_eq!(c.clone().map_while(|_| None::<()>).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
@@ -1491,6 +1492,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().skip(3).size_hint(), (7, Some(7)));
     assert_eq!(vi.clone().skip(12).size_hint(), (0, Some(0)));
     assert_eq!(vi.clone().take_while(|_| false).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().map_while(|_| None::<()>).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().skip_while(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.clone().chain(v2).size_hint(), (13, Some(13)));
@@ -1954,10 +1956,18 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
 
+    assert_eq!(*r.start(), 10);
+    assert_eq!(*r.end(), 10);
+    assert_ne!(r, 10..=10);
+
     let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
     assert!(r.is_empty());
     assert_eq!(r.next_back(), None);
+
+    assert_eq!(*r.start(), 10);
+    assert_eq!(*r.end(), 10);
+    assert_ne!(r, 10..=10);
 
     let mut r = 10..=12;
     assert_eq!(r.next(), Some(10));
@@ -2076,6 +2086,9 @@ fn test_range_inclusive_nth() {
     assert_eq!((10..=15).nth(5), Some(15));
     assert_eq!((10..=15).nth(6), None);
 
+    let mut exhausted_via_next = 10_u8..=20;
+    while exhausted_via_next.next().is_some() {}
+
     let mut r = 10_u8..=20;
     assert_eq!(r.nth(2), Some(12));
     assert_eq!(r, 13..=20);
@@ -2085,6 +2098,7 @@ fn test_range_inclusive_nth() {
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
+    assert_eq!(r, exhausted_via_next);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
@@ -2096,6 +2110,9 @@ fn test_range_inclusive_nth_back() {
     assert_eq!((10..=15).nth_back(6), None);
     assert_eq!((-120..=80_i8).nth_back(200), Some(-120));
 
+    let mut exhausted_via_next_back = 10_u8..=20;
+    while exhausted_via_next_back.next_back().is_some() {}
+
     let mut r = 10_u8..=20;
     assert_eq!(r.nth_back(2), Some(18));
     assert_eq!(r, 10..=17);
@@ -2105,6 +2122,7 @@ fn test_range_inclusive_nth_back() {
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth_back(10), None);
     assert_eq!(r.is_empty(), true);
+    assert_eq!(r, exhausted_via_next_back);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 

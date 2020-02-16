@@ -1,4 +1,4 @@
-error[E0308]: start function has wrong type
+error[E0308]: `#[start]` function has wrong type
   --> $DIR/issue-9575.rs:4:1
    |
 LL | fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {

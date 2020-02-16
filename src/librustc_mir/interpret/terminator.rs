@@ -204,7 +204,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // ABI check
         {
             let callee_abi = {
-                let instance_ty = instance.ty(*self.tcx);
+                let instance_ty = instance.ty_env(*self.tcx, self.param_env);
                 match instance_ty.kind {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
@@ -238,7 +238,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
+                let body = match M::find_mir_or_eval_fn(self, span, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
@@ -378,7 +378,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     None => {
                         // Unsized self.
-                        args[0].assert_mem_place()
+                        args[0].assert_mem_place(self)
                     }
                 };
                 // Find and consult vtable

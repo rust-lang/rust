@@ -4,7 +4,7 @@ enum S {
 
 fn bug(l: S) {
     match l {
-        S::B {} => {}, //~ ERROR no variant `B` in enum `S`
+        S::B {} => {}, //~ ERROR no variant named `B` found for enum `S`
     }
 }
 

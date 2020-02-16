@@ -9,9 +9,6 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::hir;
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime as rl;
@@ -19,14 +16,18 @@ use rustc::middle::stability;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_attr as attr;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{self, Ident};
-use syntax::attr;
 
 use std::collections::hash_map::Entry;
 use std::default::Default;
@@ -446,7 +447,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
+            | ty::ReEmpty(_)
             | ty::ReClosureBound(_)
             | ty::ReErased => {
                 debug!("cannot clean region {:?}", self);
@@ -481,7 +482,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
         use rustc::ty::Predicate;
 
         match *self {
-            Predicate::Trait(ref pred) => Some(pred.clean(cx)),
+            Predicate::Trait(ref pred, _) => Some(pred.clean(cx)),
             Predicate::Subtype(ref pred) => Some(pred.clean(cx)),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
@@ -520,7 +521,7 @@ impl<'tcx> Clean<Option<WherePredicate>>
         let ty::OutlivesPredicate(ref a, ref b) = *self;
 
         match (a, b) {
-            (ty::ReEmpty, ty::ReEmpty) => {
+            (ty::ReEmpty(_), ty::ReEmpty(_)) => {
                 return None;
             }
             _ => {}
@@ -538,7 +539,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
         match lt {
-            ty::ReEmpty => return None,
+            ty::ReEmpty(_) => return None,
             _ => {}
         }
 
@@ -895,7 +896,7 @@ impl Clean<Item> for doctree::Function<'_> {
             enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
 
         let did = cx.tcx.hir().local_def_id(self.id);
-        let constness = if cx.tcx.is_min_const_fn(did) {
+        let constness = if is_min_const_fn(cx.tcx, did) {
             hir::Constness::Const
         } else {
             hir::Constness::NotConst
@@ -1003,8 +1004,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
 impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
         match *self {
-            hir::Return(ref typ) => Return(typ.clean(cx)),
-            hir::DefaultReturn(..) => DefaultReturn,
+            Self::Return(ref typ) => Return(typ.clean(cx)),
+            Self::DefaultReturn(..) => DefaultReturn,
         }
     }
 }
@@ -1121,7 +1122,9 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
-                TypedefItem(Typedef { type_: ty.clean(cx), generics: Generics::default() }, true)
+                let type_ = ty.clean(cx);
+                let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
+                TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
             }
             hir::ImplItemKind::OpaqueTy(ref bounds) => OpaqueTyItem(
                 OpaqueTy { bounds: bounds.clean(cx), generics: Generics::default() },
@@ -1187,7 +1190,7 @@ impl Clean<Item> for ty::AssocItem {
                 };
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 if provided {
-                    let constness = if cx.tcx.is_min_const_fn(self.def_id) {
+                    let constness = if is_min_const_fn(cx.tcx, self.def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
@@ -1281,10 +1284,13 @@ impl Clean<Item> for ty::AssocItem {
 
                     AssocTypeItem(bounds, ty.clean(cx))
                 } else {
+                    let type_ = cx.tcx.type_of(self.def_id).clean(cx);
+                    let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
                     TypedefItem(
                         Typedef {
-                            type_: cx.tcx.type_of(self.def_id).clean(cx),
+                            type_,
                             generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
+                            item_type,
                         },
                         true,
                     )
@@ -1313,7 +1319,7 @@ impl Clean<Item> for ty::AssocItem {
 
 impl Clean<Type> for hir::Ty<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
-        use rustc::hir::*;
+        use rustc_hir::*;
 
         match self.kind {
             TyKind::Never => Never,
@@ -1411,7 +1417,7 @@ impl Clean<Type> for hir::Ty<'_> {
                                         });
                                     if let Some(ty) = type_ {
                                         ty_substs.insert(ty_param_def_id, ty.clean(cx));
-                                    } else if let Some(default) = default.clone() {
+                                    } else if let Some(default) = *default {
                                         ty_substs.insert(ty_param_def_id, default.clean(cx));
                                     }
                                     indices.types += 1;
@@ -1808,7 +1814,7 @@ impl Clean<Item> for doctree::Union<'_> {
     }
 }
 
-impl Clean<VariantStruct> for ::rustc::hir::VariantData<'_> {
+impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -1988,6 +1994,8 @@ impl Clean<String> for ast::Name {
 
 impl Clean<Item> for doctree::Typedef<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let type_ = self.ty.clean(cx);
+        let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1996,10 +2004,7 @@ impl Clean<Item> for doctree::Typedef<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: TypedefItem(
-                Typedef { type_: self.ty.clean(cx), generics: self.gen.clean(cx) },
-                false,
-            ),
+            inner: TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
         }
     }
 }
@@ -2100,18 +2105,19 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 
-        let provided = trait_
+        let provided: FxHashSet<String> = trait_
             .def_id()
             .map(|did| {
-                cx.tcx
-                    .provided_trait_methods(did)
-                    .into_iter()
-                    .map(|meth| meth.ident.to_string())
-                    .collect()
+                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
             })
             .unwrap_or_default();
 
-        ret.push(Item {
+        let for_ = self.for_.clean(cx);
+        let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
+            Some(DefKind::TyAlias) => Some(cx.tcx.type_of(did).clean(cx)),
+            _ => None,
+        });
+        let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
@@ -2122,15 +2128,19 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             inner: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
-                provided_trait_methods: provided,
+                provided_trait_methods: provided.clone(),
                 trait_,
-                for_: self.for_.clean(cx),
+                for_,
                 items,
                 polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
                 synthetic: false,
                 blanket_impl: None,
             }),
-        });
+        };
+        if let Some(type_alias) = type_alias {
+            ret.push(make_item(trait_.clone(), type_alias, items.clone()));
+        }
+        ret.push(make_item(trait_, for_, items));
         ret
     }
 }

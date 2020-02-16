@@ -13,12 +13,12 @@ LL | / const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
 LL | |     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
 LL | |     // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
 LL | |     let out_of_bounds_ptr = &ptr[255];
-   | |                             ^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of allocation 6 which has size 1
+   | |                             ^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of allocation 8 which has size 1
 LL | |     mem::transmute(out_of_bounds_ptr)
 LL | | } };
    | |____-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/ub-nonnull.rs:14:8
    |
 LL | #[deny(const_err)] // this triggers a `const_err` so validation does not even happen

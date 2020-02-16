@@ -1,24 +1,24 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use crate::hir::def_id::DefId;
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
+use rustc::session::parse::feature_err;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-
-use errors::DiagnosticBuilder;
+use rustc::ty::{
+    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir::def_id::DefId;
+use rustc_hir::ItemKind;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
-use syntax::feature_gate;
 
-use rustc::hir;
-use rustc::hir::itemlikevisit::ParItemLikeVisitor;
-
-use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
@@ -97,7 +97,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(_, _, defaultness, _, ref trait_ref, ref self_ty, _) => {
+        hir::ItemKind::Impl { defaultness, ref of_trait, ref self_ty, .. } => {
             let is_auto = tcx
                 .impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
@@ -107,18 +107,19 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
             }
             match polarity {
                 ty::ImplPolarity::Positive => {
-                    check_impl(tcx, item, self_ty, trait_ref);
+                    check_impl(tcx, item, self_ty, of_trait);
                 }
                 ty::ImplPolarity::Negative => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if trait_ref.is_some() && !is_auto {
-                        span_err!(
+                    if of_trait.is_some() && !is_auto {
+                        struct_span_err!(
                             tcx.sess,
                             item.span,
                             E0192,
                             "negative impls are only allowed for \
                                    auto traits (e.g., `Send` and `Sync`)"
                         )
+                        .emit()
                     }
                 }
                 ty::ImplPolarity::Reservation => {
@@ -175,7 +176,70 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None,
     };
+    check_object_unsafe_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+}
+
+fn could_be_self(trait_def_id: DefId, ty: &hir::Ty<'_>) -> bool {
+    match ty.kind {
+        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
+            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+/// Detect when an object unsafe trait is referring to itself in one of its associated items.
+/// When this is done, suggest using `Self` instead.
+fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
+    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id)) {
+        hir::Node::Item(item) => match item.kind {
+            hir::ItemKind::Trait(..) => (item.ident, tcx.hir().local_def_id(item.hir_id)),
+            _ => return,
+        },
+        _ => return,
+    };
+    let mut trait_should_be_self = vec![];
+    match &item.kind {
+        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
+            if could_be_self(trait_def_id, ty) =>
+        {
+            trait_should_be_self.push(ty.span)
+        }
+        hir::TraitItemKind::Method(sig, _) => {
+            for ty in sig.decl.inputs {
+                if could_be_self(trait_def_id, ty) {
+                    trait_should_be_self.push(ty.span);
+                }
+            }
+            match sig.decl.output {
+                hir::FunctionRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
+                    trait_should_be_self.push(ty.span);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    if !trait_should_be_self.is_empty() {
+        if rustc::traits::object_safety_violations(tcx, trait_def_id).is_empty() {
+            return;
+        }
+        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
+        tcx.sess
+            .struct_span_err(
+                trait_should_be_self,
+                "associated item referring to unboxed trait object for its own trait",
+            )
+            .span_label(trait_name.span, "in this trait")
+            .multipart_suggestion(
+                "you might have meant to use `Self` to refer to the implementing type",
+                sugg,
+                Applicability::MachineApplicable,
+            )
+            .emit();
+    }
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -218,9 +282,17 @@ fn check_associated_item(
             ty::AssocKind::Method => {
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
-                check_fn_or_method(tcx, fcx, span, sig, item.def_id, &mut implied_bounds);
-                let sig_if_method = sig_if_method.expect("bad signature for method");
-                check_method_receiver(fcx, sig_if_method, &item, self_ty);
+                let hir_sig = sig_if_method.expect("bad signature for method");
+                check_fn_or_method(
+                    tcx,
+                    fcx,
+                    item.ident.span,
+                    sig,
+                    hir_sig,
+                    item.def_id,
+                    &mut implied_bounds,
+                );
+                check_method_receiver(fcx, hir_sig, &item, self_ty);
             }
             ty::AssocKind::Type => {
                 if item.defaultness.has_value() {
@@ -249,6 +321,15 @@ fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> 
         id,
         span,
         param_env: tcx.param_env(def_id),
+    }
+}
+
+fn item_adt_kind(kind: &ItemKind<'_>) -> Option<AdtKind> {
+    match kind {
+        ItemKind::Struct(..) => Some(AdtKind::Struct),
+        ItemKind::Union(..) => Some(AdtKind::Union),
+        ItemKind::Enum(..) => Some(AdtKind::Enum),
+        _ => None,
     }
 }
 
@@ -297,7 +378,7 @@ fn check_type_defn<'tcx, F>(
                         field.span,
                         fcx.body_id,
                         traits::FieldSized {
-                            adt_kind: match item.kind.adt_kind() {
+                            adt_kind: match item_adt_kind(&item.kind) {
                                 Some(i) => i,
                                 None => bug!(),
                             },
@@ -354,7 +435,11 @@ fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
         let sig = fcx.tcx.fn_sig(def_id);
         let sig = fcx.normalize_associated_types_in(item.span, &sig);
         let mut implied_bounds = vec![];
-        check_fn_or_method(tcx, fcx, item.span, sig, def_id, &mut implied_bounds);
+        let hir_sig = match &item.kind {
+            ItemKind::Fn(sig, ..) => sig,
+            _ => bug!("expected `ItemKind::Fn`, found `{:?}`", item.kind),
+        };
+        check_fn_or_method(tcx, fcx, item.ident.span, sig, hir_sig, def_id, &mut implied_bounds);
         implied_bounds
     })
 }
@@ -407,7 +492,7 @@ fn check_impl<'tcx>(
                 let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
                 let trait_ref =
                     fcx.normalize_associated_types_in(ast_trait_ref.path.span, &trait_ref);
-                let obligations = ty::wf::trait_obligations(
+                let obligations = traits::wf::trait_obligations(
                     fcx,
                     fcx.param_env,
                     fcx.body_id,
@@ -442,7 +527,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     def_id: DefId,
-    return_ty: Option<Ty<'tcx>>,
+    return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     debug!("check_where_clauses(def_id={:?}, return_ty={:?})", def_id, return_ty);
 
@@ -576,17 +661,22 @@ fn check_where_clauses<'tcx, 'fcx>(
 
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
-    if let Some(return_ty) = return_ty {
-        predicates.predicates.extend(check_opaque_types(tcx, fcx, def_id, span, return_ty));
+    if let Some((return_ty, span)) = return_ty {
+        let opaque_types = check_opaque_types(tcx, fcx, def_id, span, return_ty);
+        for _ in 0..opaque_types.len() {
+            predicates.spans.push(span);
+        }
+        predicates.predicates.extend(opaque_types);
     }
 
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
-    let wf_obligations = predicates
-        .predicates
-        .iter()
-        .flat_map(|p| ty::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, span));
+    assert_eq!(predicates.predicates.len(), predicates.spans.len());
+    let wf_obligations =
+        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(p, sp)| {
+            traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, *sp)
+        });
 
     for obligation in wf_obligations.chain(default_obligations) {
         debug!("next obligation cause: {:?}", obligation.cause);
@@ -599,23 +689,28 @@ fn check_fn_or_method<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     sig: ty::PolyFnSig<'tcx>,
+    hir_sig: &hir::FnSig<'_>,
     def_id: DefId,
     implied_bounds: &mut Vec<Ty<'tcx>>,
 ) {
     let sig = fcx.normalize_associated_types_in(span, &sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
-    for input_ty in sig.inputs() {
+    for (input_ty, span) in sig.inputs().iter().zip(hir_sig.decl.inputs.iter().map(|t| t.span)) {
         fcx.register_wf_obligation(&input_ty, span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
-    fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::ReturnType);
+    fcx.register_wf_obligation(
+        sig.output(),
+        hir_sig.decl.output.span(),
+        ObligationCauseCode::ReturnType,
+    );
 
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
+    check_where_clauses(tcx, fcx, span, def_id, Some((sig.output(), hir_sig.decl.output.span())));
 }
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
@@ -811,7 +906,7 @@ fn check_method_receiver<'fcx, 'tcx>(
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
             if receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
                 // Report error; would have worked with `arbitrary_self_types`.
-                feature_gate::feature_err(
+                feature_err(
                     &fcx.tcx.sess.parse_sess,
                     sym::arbitrary_self_types,
                     span,
@@ -945,7 +1040,8 @@ fn receiver_is_implemented(
         substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
     };
 
-    let obligation = traits::Obligation::new(cause, fcx.param_env, trait_ref.to_predicate());
+    let obligation =
+        traits::Obligation::new(cause, fcx.param_env, trait_ref.without_const().to_predicate());
 
     if fcx.predicate_must_hold_modulo_regions(&obligation) {
         true

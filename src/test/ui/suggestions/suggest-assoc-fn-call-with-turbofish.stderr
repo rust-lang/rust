@@ -1,4 +1,4 @@
-error[E0599]: no method named `default_hello` found for type `GenericAssocMethod<i32>` in the current scope
+error[E0599]: no method named `default_hello` found for struct `GenericAssocMethod<i32>` in the current scope
   --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:9:7
    |
 LL | struct GenericAssocMethod<T>(T);

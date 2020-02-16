@@ -9,10 +9,12 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
    |
 LL | type Underconstrained<T: Trait> = impl 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
-...
-LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
-   |                   - help: consider restricting this bound: `T: Trait`
    |
+help: consider restricting this type parameter with `T: Trait`
+  --> $DIR/generic_underconstrained.rs:10:19
+   |
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                   ^
    = note: the return type of a function must have a statically known size
 
 error: aborting due to 2 previous errors

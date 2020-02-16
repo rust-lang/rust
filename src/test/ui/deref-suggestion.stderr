@@ -42,6 +42,8 @@ LL |     ($x:expr) => { &$x }
 ...
 LL |     foo3(borrow!(0));
    |          ---------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:36:5
@@ -49,7 +51,7 @@ error[E0308]: mismatched types
 LL |     assert_eq!(3i32, &3i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&i32`
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:39:17

@@ -250,6 +250,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
+    #[inline]
     fn from(err: String) -> Box<dyn Error + Send + Sync> {
         struct StringError(String);
 
@@ -317,6 +318,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
+    #[inline]
     fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
         From::from(String::from(err))
     }

@@ -1,0 +1,14 @@
+error: defining opaque type use does not fully define opaque type: generic parameter `U` is specified as concrete type `()`
+  --> $DIR/issue-68368-non-defining-use.rs:8:1
+   |
+LL | fn f<'a>() -> Alias<'a, ()> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not find defining uses
+  --> $DIR/issue-68368-non-defining-use.rs:7:1
+   |
+LL | type Alias<'a, U> = impl Trait<U>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

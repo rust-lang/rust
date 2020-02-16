@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/escape-upvar-ref.rs:23:27
    |
 LL |         let mut closure = || p = &y;
@@ -13,7 +13,7 @@ LL |         let mut closure = || p = &y;
    = note: number of external vids: 4
    = note: where '_#1r: '_#3r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-upvar-ref.rs:17:1
    |
 LL | / fn test() {

@@ -1,7 +1,7 @@
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use std::fmt;
 use std::ops::Index;
 

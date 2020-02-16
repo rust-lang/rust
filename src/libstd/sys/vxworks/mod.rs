@@ -36,18 +36,10 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {
-    // By default, some platforms will send a *signal* when an EPIPE error
-    // would otherwise be delivered. This runtime doesn't install a SIGPIPE
-    // handler, causing it to kill the program, which isn't exactly what we
-    // want!
-    //
-    // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem.
+    // ignore SIGPIPE
     unsafe {
-        reset_sigpipe();
+        assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
-
-    unsafe fn reset_sigpipe() {}
 }
 
 pub use libc::signal;

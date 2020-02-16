@@ -1,8 +1,9 @@
 //! The `DepGraphSafe` trait
 
-use crate::hir::def_id::DefId;
-use crate::hir::BodyId;
 use crate::ty::TyCtxt;
+
+use rustc_hir::def_id::DefId;
+use rustc_hir::BodyId;
 use syntax::ast::NodeId;
 
 /// The `DepGraphSafe` trait is used to specify what kinds of values

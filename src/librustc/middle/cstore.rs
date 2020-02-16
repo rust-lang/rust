@@ -2,15 +2,15 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::definitions::{DefKey, DefPathTable};
 use crate::session::search_paths::PathKind;
-use crate::session::{CrateDisambiguator, Session};
-use crate::ty::{self, TyCtxt};
-use rustc_data_structures::svh::Svh;
+use crate::session::CrateDisambiguator;
+use crate::ty::TyCtxt;
 
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_macros::HashStable;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -27,7 +27,7 @@ pub use rustc_session::utils::NativeLibraryKind;
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable)]
+#[derive(PartialEq, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -75,7 +75,7 @@ impl DepKind {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum LibSource {
     Some(PathBuf),
     MetadataOnly,
@@ -160,6 +160,7 @@ pub enum ExternCrateSource {
     Path,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct EncodedMetadata {
     pub raw_data: Vec<u8>,
 }
@@ -208,7 +209,6 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.

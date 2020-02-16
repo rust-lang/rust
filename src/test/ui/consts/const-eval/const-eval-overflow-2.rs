@@ -14,6 +14,7 @@ fn main() {
     match -128i8 {
         NEG_NEG_128 => println!("A"),
         //~^ ERROR could not evaluate constant pattern
+        //~| ERROR could not evaluate constant pattern
         _ => println!("B"),
     }
 }

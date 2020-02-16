@@ -21,7 +21,6 @@
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
-#![feature(const_fn)]
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]

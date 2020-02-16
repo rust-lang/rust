@@ -1,8 +1,6 @@
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId};
 use rustc_span::{MultiSpan, Span};
-
-use rustc_error_codes::*;
 
 impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
     crate fn cannot_move_when_borrowed(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {

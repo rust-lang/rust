@@ -5,13 +5,10 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(rustc_attrs)]
 #![feature(specialization)]
-#![feature(step_trait)]
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -26,7 +23,8 @@ use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
-
+pub mod def_id;
+use def_id::DefId;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
@@ -309,6 +307,11 @@ impl Span {
         self.ctxt() != SyntaxContext::root()
     }
 
+    /// Returns `true` if `span` originates in a derive-macro's expansion.
+    pub fn in_derive_expansion(self) -> bool {
+        matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+    }
+
     #[inline]
     pub fn with_root_ctxt(lo: BytePos, hi: BytePos) -> Span {
         Span::new(lo, hi, SyntaxContext::root())
@@ -441,37 +444,26 @@ impl Span {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
 
-    pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
+    pub fn macro_backtrace(mut self) -> impl Iterator<Item = ExpnData> {
         let mut prev_span = DUMMY_SP;
-        let mut result = vec![];
-        loop {
-            let expn_data = self.ctxt().outer_expn_data();
-            if expn_data.is_root() {
-                break;
-            }
-            // Don't print recursive invocations.
-            if !expn_data.call_site.source_equal(&prev_span) {
-                let (pre, post) = match expn_data.kind {
-                    ExpnKind::Root => break,
-                    ExpnKind::Desugaring(..) => ("desugaring of ", ""),
-                    ExpnKind::AstPass(..) => ("", ""),
-                    ExpnKind::Macro(macro_kind, _) => match macro_kind {
-                        MacroKind::Bang => ("", "!"),
-                        MacroKind::Attr => ("#[", "]"),
-                        MacroKind::Derive => ("#[derive(", ")]"),
-                    },
-                };
-                result.push(MacroBacktrace {
-                    call_site: expn_data.call_site,
-                    macro_decl_name: format!("{}{}{}", pre, expn_data.kind.descr(), post),
-                    def_site_span: expn_data.def_site,
-                });
-            }
+        std::iter::from_fn(move || {
+            loop {
+                let expn_data = self.ctxt().outer_expn_data();
+                if expn_data.is_root() {
+                    return None;
+                }
 
-            prev_span = self;
-            self = expn_data.call_site;
-        }
-        result
+                let is_recursive = expn_data.call_site.source_equal(&prev_span);
+
+                prev_span = self;
+                self = expn_data.call_site;
+
+                // Don't print recursive invocations.
+                if !is_recursive {
+                    return Some(expn_data);
+                }
+            }
+        })
     }
 
     /// Returns a `Span` that would enclose both `self` and `end`.
@@ -1052,7 +1044,7 @@ impl Decodable for SourceFile {
                 name_was_remapped,
                 unmapped_path: None,
                 // `crate_of_origin` has to be set by the importer.
-                // This value matches up with `rustc::hir::def_id::INVALID_CRATE`.
+                // This value matches up with `rustc_hir::def_id::INVALID_CRATE`.
                 // That constant is not available here, unfortunately.
                 crate_of_origin: std::u32::MAX - 1,
                 start_pos,
@@ -1507,18 +1499,6 @@ pub struct FileLines {
 pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
     AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
 
-#[derive(Debug)]
-pub struct MacroBacktrace {
-    /// span where macro was applied to generate this code
-    pub call_site: Span,
-
-    /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
-    pub macro_decl_name: String,
-
-    /// span where macro was defined (possibly dummy)
-    pub def_site_span: Span,
-}
-
 // _____________________________________________________________________________
 // SpanLinesError, SpanSnippetError, DistinctSources, MalformedSourceMapPositions
 //
@@ -1580,6 +1560,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// instead of implementing everything in librustc.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
+    fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn byte_pos_to_line_and_col(
         &mut self,
         byte: BytePos,

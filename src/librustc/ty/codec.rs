@@ -7,12 +7,12 @@
 // persisting to incr. comp. caches.
 
 use crate::arena::ArenaAllocatable;
-use crate::hir::def_id::{CrateNum, DefId};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{self, interpret::Allocation};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
 use std::hash::Hash;
@@ -226,11 +226,11 @@ pub fn decode_place<D>(decoder: &mut D) -> Result<mir::Place<'tcx>, D::Error>
 where
     D: TyDecoder<'tcx>,
 {
-    let base: mir::PlaceBase<'tcx> = Decodable::decode(decoder)?;
+    let local: mir::Local = Decodable::decode(decoder)?;
     let len = decoder.read_usize()?;
     let projection: &'tcx List<mir::PlaceElem<'tcx>> =
         decoder.tcx().mk_place_elems((0..len).map(|_| Decodable::decode(decoder)))?;
-    Ok(mir::Place { base, projection })
+    Ok(mir::Place { local, projection })
 }
 
 #[inline]
@@ -353,7 +353,7 @@ macro_rules! implement_ty_decoder {
             use $crate::ty;
             use $crate::ty::codec::*;
             use $crate::ty::subst::SubstsRef;
-            use $crate::hir::def_id::{CrateNum};
+            use rustc_hir::def_id::{CrateNum};
 
             use rustc_span::Span;
 

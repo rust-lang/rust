@@ -47,8 +47,8 @@ macro_rules! impl_from {
         #[doc = $doc]
         impl From<$Small> for $Large {
             #[inline]
-            fn from(small: $Small) -> $Large {
-                small as $Large
+            fn from(small: $Small) -> Self {
+                small as Self
             }
         }
     };
@@ -177,7 +177,7 @@ macro_rules! try_from_unbounded {
             /// is outside of the range of the target type.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
-                Ok(value as $target)
+                Ok(value as Self)
             }
         }
     )*}
@@ -194,9 +194,9 @@ macro_rules! try_from_lower_bounded {
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
+            fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u >= 0 {
-                    Ok(u as $target)
+                    Ok(u as Self)
                 } else {
                     Err(TryFromIntError(()))
                 }
@@ -216,11 +216,11 @@ macro_rules! try_from_upper_bounded {
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                if u > (<$target>::max_value() as $source) {
+            fn try_from(u: $source) -> Result<Self, Self::Error> {
+                if u > (Self::max_value() as $source) {
                     Err(TryFromIntError(()))
                 } else {
-                    Ok(u as $target)
+                    Ok(u as Self)
                 }
             }
         }
@@ -238,13 +238,13 @@ macro_rules! try_from_both_bounded {
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                let min = <$target>::min_value() as $source;
-                let max = <$target>::max_value() as $source;
+            fn try_from(u: $source) -> Result<Self, Self::Error> {
+                let min = Self::min_value() as $source;
+                let max = Self::max_value() as $source;
                 if u < min || u > max {
                     Err(TryFromIntError(()))
                 } else {
-                    Ok(u as $target)
+                    Ok(u as Self)
                 }
             }
         }
@@ -385,10 +385,10 @@ macro_rules! nzint_impl_from {
         #[doc = $doc]
         impl From<$Small> for $Large {
             #[inline]
-            fn from(small: $Small) -> $Large {
+            fn from(small: $Small) -> Self {
                 // SAFETY: input type guarantees the value is non-zero
                 unsafe {
-                    <$Large>::new_unchecked(small.get().into())
+                    Self::new_unchecked(small.get().into())
                 }
             }
         }

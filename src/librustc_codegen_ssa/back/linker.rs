@@ -9,17 +9,18 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_serialize::{json, Encoder};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct LinkerInfo {
     exports: FxHashMap<CrateType, Vec<String>>,
 }
@@ -105,6 +106,7 @@ pub trait Linker {
     fn no_relro(&mut self);
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
+    fn control_flow_guard(&mut self);
     fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
@@ -357,6 +359,10 @@ impl<'a> Linker for GccLinker<'a> {
         // the overhead of the initialization should be minor.
         self.cmd.arg("-u");
         self.cmd.arg("__llvm_profile_runtime");
+    }
+
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
     }
 
     fn debuginfo(&mut self) {
@@ -659,6 +665,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         // Nothing needed here.
     }
 
+    fn control_flow_guard(&mut self) {
+        self.cmd.arg("/guard:cf");
+    }
+
     fn debuginfo(&mut self) {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
@@ -861,6 +871,10 @@ impl<'a> Linker for EmLinker<'a> {
         // noop, but maybe we need something like the gnu linker?
     }
 
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
+
     fn debuginfo(&mut self) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
@@ -1057,6 +1071,10 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn debuginfo(&mut self) {}
 
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
+
     fn no_default_libraries(&mut self) {}
 
     fn build_dylib(&mut self, _out_filename: &Path) {
@@ -1103,7 +1121,11 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
         if level.is_below_threshold(export_threshold) {
-            symbols.push(symbol.symbol_name(tcx).to_string());
+            symbols.push(symbol_export::symbol_name_for_instance_in_crate(
+                tcx,
+                symbol,
+                LOCAL_CRATE,
+            ));
         }
     }
 
@@ -1124,12 +1146,7 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
                     continue;
                 }
 
-                // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
-                // We want to block export of generics from dylibs,
-                // but we must fix rust-lang/rust#65890 before we can
-                // do that robustly.
-
-                symbols.push(symbol.symbol_name(tcx).to_string());
+                symbols.push(symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum));
             }
         }
     }
@@ -1232,6 +1249,10 @@ impl<'a> Linker for PtxLinker<'a> {
     fn pgo_gen(&mut self) {}
 
     fn no_default_libraries(&mut self) {}
+
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
 
     fn build_dylib(&mut self, _out_filename: &Path) {}
 

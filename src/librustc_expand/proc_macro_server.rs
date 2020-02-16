@@ -1,18 +1,17 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast_pretty::pprust;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::Diagnostic;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
 use syntax::token;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax::util::comments;
-
-use errors::Diagnostic;
-use rustc_data_structures::sync::Lrc;
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
@@ -265,13 +264,13 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     }
 }
 
-impl ToInternal<errors::Level> for Level {
-    fn to_internal(self) -> errors::Level {
+impl ToInternal<rustc_errors::Level> for Level {
+    fn to_internal(self) -> rustc_errors::Level {
         match self {
-            Level::Error => errors::Level::Error,
-            Level::Warning => errors::Level::Warning,
-            Level::Note => errors::Level::Note,
-            Level::Help => errors::Level::Help,
+            Level::Error => rustc_errors::Level::Error,
+            Level::Warning => rustc_errors::Level::Warning,
+            Level::Note => rustc_errors::Level::Note,
+            Level::Help => rustc_errors::Level::Help,
             _ => unreachable!("unknown proc_macro::Level variant: {:?}", self),
         }
     }

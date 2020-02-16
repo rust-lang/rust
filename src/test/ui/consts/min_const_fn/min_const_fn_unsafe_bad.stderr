@@ -4,7 +4,7 @@ error[E0658]: dereferencing raw pointers in constant functions is unstable
 LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
    |                                                                             ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/51911
+   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable
@@ -13,7 +13,7 @@ error[E0658]: dereferencing raw pointers in constant functions is unstable
 LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    |                                                                      ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/51911
+   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable
@@ -22,7 +22,7 @@ error[E0658]: dereferencing raw pointers in constant functions is unstable
 LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize { &*x }
    |                                                                                   ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/51911
+   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0723]: accessing union fields is unstable
@@ -31,7 +31,7 @@ error[E0723]: accessing union fields is unstable
 LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block

@@ -80,7 +80,7 @@ function ciCommit {
 
 function ciCheckoutPath {
     if isAzurePipelines; then
-        echo "${SYSTEM_WORKFOLDER}"
+        echo "${BUILD_SOURCESDIRECTORY}"
     elif isGitHubActions; then
         echo "${GITHUB_WORKSPACE}"
     else
@@ -99,7 +99,7 @@ function ciCommandAddPath {
     if isAzurePipelines; then
         echo "##vso[task.prependpath]${path}"
     elif isGitHubActions; then
-        echo "::add-path::${value}"
+        echo "::add-path::${path}"
     else
         echo "ciCommandAddPath only works inside CI!"
         exit 1

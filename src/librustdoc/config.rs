@@ -3,8 +3,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use errors;
-use getopts;
 use rustc::lint::Level;
 use rustc::session;
 use rustc::session::config::{
@@ -14,7 +12,6 @@ use rustc::session::config::{
 use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::search_paths::SearchPath;
-use rustc_driver;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
 
@@ -24,7 +21,7 @@ use crate::html;
 use crate::html::markdown::IdMap;
 use crate::html::static_files;
 use crate::opts;
-use crate::passes::{self, DefaultPassOption};
+use crate::passes::{self, Condition, DefaultPassOption};
 use crate::theme;
 
 /// Configuration options for rustdoc.
@@ -98,6 +95,10 @@ pub struct Options {
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub default_passes: DefaultPassOption,
+    /// Document items that have lower than `pub` visibility.
+    pub document_private: bool,
+    /// Document items that have `doc(hidden)`.
+    pub document_hidden: bool,
     /// Any passes manually selected by the user.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
@@ -146,6 +147,8 @@ impl fmt::Debug for Options {
             .field("test_args", &self.test_args)
             .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
+            .field("document_private", &self.document_private)
+            .field("document_hidden", &self.document_hidden)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
             .field("show_coverage", &self.show_coverage)
@@ -240,22 +243,26 @@ impl Options {
                 println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
-            for pass in passes::DEFAULT_PASSES {
-                println!("{:>20}", pass.name);
-            }
-            println!("\nPasses run with `--document-private-items`:");
-            for pass in passes::DEFAULT_PRIVATE_PASSES {
-                println!("{:>20}", pass.name);
+            for p in passes::DEFAULT_PASSES {
+                print!("{:>20}", p.pass.name);
+                println_condition(p.condition);
             }
 
             if nightly_options::is_nightly_build() {
                 println!("\nPasses run with `--show-coverage`:");
-                for pass in passes::DEFAULT_COVERAGE_PASSES {
-                    println!("{:>20}", pass.name);
+                for p in passes::COVERAGE_PASSES {
+                    print!("{:>20}", p.pass.name);
+                    println_condition(p.condition);
                 }
-                println!("\nPasses run with `--show-coverage --document-private-items`:");
-                for pass in passes::PRIVATE_COVERAGE_PASSES {
-                    println!("{:>20}", pass.name);
+            }
+
+            fn println_condition(condition: Condition) {
+                use Condition::*;
+                match condition {
+                    Always => println!(),
+                    WhenDocumentPrivate => println!("  (when --document-private-items)"),
+                    WhenNotDocumentPrivate => println!("  (when not --document-private-items)"),
+                    WhenNotDocumentHidden => println!("  (when not --document-hidden-items)"),
                 }
             }
 
@@ -269,12 +276,7 @@ impl Options {
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(
-            error_format,
-            None,
-            debugging_options.treat_err_as_bug,
-            debugging_options.ui_testing(),
-        );
+        let diag = new_handler(error_format, None, &debugging_options);
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
@@ -449,16 +451,11 @@ impl Options {
             });
 
         let show_coverage = matches.opt_present("show-coverage");
-        let document_private = matches.opt_present("document-private-items");
 
         let default_passes = if matches.opt_present("no-defaults") {
             passes::DefaultPassOption::None
-        } else if show_coverage && document_private {
-            passes::DefaultPassOption::PrivateCoverage
         } else if show_coverage {
             passes::DefaultPassOption::Coverage
-        } else if document_private {
-            passes::DefaultPassOption::Private
         } else {
             passes::DefaultPassOption::Default
         };
@@ -497,6 +494,8 @@ impl Options {
         let runtool = matches.opt_str("runtool");
         let runtool_args = matches.opt_strs("runtool-arg");
         let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
+        let document_private = matches.opt_present("document-private-items");
+        let document_hidden = matches.opt_present("document-hidden-items");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -523,6 +522,8 @@ impl Options {
             should_test,
             test_args,
             default_passes,
+            document_private,
+            document_hidden,
             manual_passes,
             display_warnings,
             show_coverage,
@@ -562,14 +563,17 @@ impl Options {
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
+fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
     let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
             let mut err =
                 diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn("please see https://github.com/rust-lang/rust/issues/44136");
+            err.warn(
+                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                 for more information",
+            );
 
             if *flag == "no-defaults" {
                 err.help("you may want to use --document-private-items");

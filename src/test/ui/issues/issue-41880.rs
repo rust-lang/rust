@@ -25,5 +25,5 @@ impl<T: Clone, F> Iterator for Iterate<T, F> where F: Fn(&T) -> T {
 fn main() {
     let a = iterate(0, |x| x+1);
     println!("{:?}", a.iter().take(10).collect::<Vec<usize>>());
-    //~^ ERROR no method named `iter` found for type `Iterate<{integer}
+    //~^ ERROR no method named `iter` found
 }

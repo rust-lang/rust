@@ -4,7 +4,7 @@ warning: literal out of range for `i8`
 LL |     let error = 255i8;
    |                 ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/type-overflow.rs:2:9
    |
 LL | #![warn(overflowing_literals)]

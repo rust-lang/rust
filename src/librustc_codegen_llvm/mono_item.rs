@@ -5,11 +5,11 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use log::debug;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc::ty::{Instance, TypeFoldable};
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 
 pub use rustc::mir::mono::MonoItem;
 
@@ -22,7 +22,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         symbol_name: &str,
     ) {
         let instance = Instance::mono(self.tcx, def_id);
-        let ty = instance.ty(self.tcx);
+        let ty = instance.monomorphic_ty(self.tcx);
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {

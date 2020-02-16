@@ -93,5 +93,6 @@ pub trait HasCodegen<'tcx>:
             Type = Self::Type,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
+            DIVariable = Self::DIVariable,
         >;
 }

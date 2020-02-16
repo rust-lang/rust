@@ -4,7 +4,7 @@ error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not liv
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: 'a`...
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-fn.rs:28:5
@@ -12,7 +12,7 @@ error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not liv
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: 'a`...
 
 error: aborting due to 2 previous errors
 

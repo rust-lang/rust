@@ -1,10 +1,10 @@
 error[E0277]: the size for values of type `<Self as std::ops::Deref>::Target` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:4:29
+  --> $DIR/issue-42312.rs:4:12
    |
 LL |     fn baz(_: Self::Target) where Self: Deref {}
-   |                             ^                - help: consider further restricting the associated type: `, <Self as std::ops::Deref>::Target: std::marker::Sized`
-   |                             |
-   |                             doesn't have a size known at compile-time
+   |            ^                                 - help: consider further restricting the associated type: `, <Self as std::ops::Deref>::Target: std::marker::Sized`
+   |            |
+   |            doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `<Self as std::ops::Deref>::Target`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -12,10 +12,10 @@ LL |     fn baz(_: Self::Target) where Self: Deref {}
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `(dyn std::string::ToString + 'static)` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:8:27
+  --> $DIR/issue-42312.rs:8:10
    |
 LL | pub fn f(_: dyn ToString) {}
-   |                           ^ doesn't have a size known at compile-time
+   |          ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::string::ToString + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

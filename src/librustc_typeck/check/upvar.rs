@@ -35,13 +35,14 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::def_id::LocalDefId;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::infer::UpvarRegion;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::Span;
 use syntax::ast;
 
@@ -59,7 +60,9 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -209,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns a list of `ClosureUpvar`s for each upvar.
+    // Returns a list of `Ty`s for each upvar.
     fn final_upvar_tys(&self, closure_id: hir::HirId) -> Vec<Ty<'tcx>> {
         // Presently an unboxed closure type cannot "escape" out of a
         // function, so we will only encounter ones that originated in the

@@ -6,7 +6,7 @@ LL | |     bar: Bar<U>
 LL | | }
    | |_^
    |
-   = note: U : 'static
+   = note: U: 'static
 
 error: aborting due to previous error
 

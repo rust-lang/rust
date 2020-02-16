@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn main() {
     let r = &[1, 2];
     match r {

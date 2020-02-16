@@ -1,11 +1,11 @@
 use crate::generic_types;
 use crate::lowering::Lower;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, GoalKind, ProgramClause, ProgramClauseCategory, WellFormed,
 };
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
 

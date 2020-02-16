@@ -80,7 +80,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-s"
         run(["curl", option,
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-             "--connect-timeout", "30", # timeout if cannot connect within 30 seconds
+             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
             exception=exception)
@@ -332,7 +332,6 @@ class RustBuild(object):
         self.use_vendored_sources = ''
         self.verbose = False
 
-
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
 
@@ -351,7 +350,7 @@ class RustBuild(object):
             try:
                 with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                     temp_path = temp_file.name
-                with tarfile.open(temp_path, "w:xz") as tar:
+                with tarfile.open(temp_path, "w:xz"):
                     pass
                 return True
             except tarfile.CompressionError:
@@ -397,7 +396,7 @@ class RustBuild(object):
 
         if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
             not os.path.exists(self.rustfmt())
-            or self.program_out_of_date(self.rustfmt_stamp())
+            or self.program_out_of_date(self.rustfmt_stamp(), self.rustfmt_channel)
         ):
             if rustfmt_channel:
                 tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
@@ -407,7 +406,7 @@ class RustBuild(object):
                 self.fix_executable("{}/bin/rustfmt".format(self.bin_root()))
                 self.fix_executable("{}/bin/cargo-fmt".format(self.bin_root()))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
-                    rustfmt_stamp.write(self.date)
+                    rustfmt_stamp.write(self.date + self.rustfmt_channel)
 
     def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
         if date is None:
@@ -521,12 +520,12 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustfmt-stamp')
 
-    def program_out_of_date(self, stamp_path):
+    def program_out_of_date(self, stamp_path, extra=""):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
         with open(stamp_path, 'r') as stamp:
-            return self.date != stamp.read()
+            return (self.date + extra) != stamp.read()
 
     def bin_root(self):
         """Return the binary root directory
@@ -825,7 +824,7 @@ class RustBuild(object):
                 if not os.path.exists(vendor_dir):
                     print('error: vendoring required, but vendor directory does not exist.')
                     print('       Run `cargo vendor` without sudo to initialize the '
-                        'vendor directory.')
+                          'vendor directory.')
                     raise Exception("{} not found".format(vendor_dir))
 
         if self.use_vendored_sources:
@@ -839,7 +838,7 @@ class RustBuild(object):
                     "\n"
                     "[source.vendored-sources]\n"
                     "directory = '{}/vendor'\n"
-                .format(self.rust_root))
+                    .format(self.rust_root))
         else:
             if os.path.exists('.cargo'):
                 shutil.rmtree('.cargo')

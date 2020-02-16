@@ -58,21 +58,16 @@ This API is completely unstable and subject to change.
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![allow(non_camel_case_types)]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(exhaustive_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(slice_patterns)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate syntax;
 
 #[macro_use]
 extern crate rustc;
@@ -93,8 +88,6 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::{self, Node};
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
@@ -106,11 +99,12 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_errors::struct_span_err;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::Node;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use util::common::time;
-
-use rustc_error_codes::*;
 
 use std::iter;
 
@@ -304,13 +298,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
-    let _prof_timer = tcx.prof.generic_activity("type_check_crate");
+    let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "type collecting", || {
+        tcx.sess.time("type_collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
                 tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
             }
@@ -319,35 +313,35 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "outlives testing", || outlives::test::test_inferred_outlives(tcx));
+            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "impl wf inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl_wf_inference", || impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "coherence checking", || coherence::check_coherence(tcx));
+        tcx.sess.time("coherence_checking", || coherence::check_coherence(tcx));
     })?;
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            time(tcx.sess, "variance testing", || variance::test::test_variance(tcx));
+            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "wf checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
     })?;
 
-    time(tcx.sess, "item-types checking", || {
+    tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     });
 
-    time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
+    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
@@ -383,6 +377,7 @@ pub fn hir_trait_to_predicates<'tcx>(
         &item_cx,
         hir_trait,
         DUMMY_SP,
+        hir::Constness::NotConst,
         tcx.types.err,
         &mut bounds,
         true,

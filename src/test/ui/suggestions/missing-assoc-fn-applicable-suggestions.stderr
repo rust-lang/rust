@@ -1,0 +1,16 @@
+error[E0046]: not all trait items implemented, missing: `Type`, `bar`, `baz`
+  --> $DIR/missing-assoc-fn-applicable-suggestions.rs:15:1
+   |
+LL |     type Type;
+   |     ---------- `Type` from trait
+LL |     fn bar<T>(_: T) -> Self;
+   |     ------------------------ `bar` from trait
+LL |     fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: Copy;
+   |     ------------------------------------------------------------------- `baz` from trait
+...
+LL | impl TraitA<()> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `Type`, `bar`, `baz` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

@@ -1,14 +1,10 @@
-use crate::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{
-    hir,
-    lint::FutureIncompatibleInfo,
-    ty::{
-        self,
-        adjustment::{Adjust, Adjustment},
-    },
-};
+use crate::{LateContext, LateLintPass, LintContext};
+use rustc::ty;
+use rustc::ty::adjustment::{Adjust, Adjustment};
+use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::symbol::sym;
-use syntax::errors::Applicability;
 
 declare_lint! {
     pub ARRAY_INTO_ITER,
@@ -81,13 +77,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            let msg = format!(
+            cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
+                lint.build(&format!(
                 "this method call currently resolves to `<&{} as IntoIterator>::into_iter` (due \
                     to autoref coercions), but that might change in the future when \
                     `IntoIterator` impls for arrays are added.",
                 target,
-            );
-            cx.struct_span_lint(ARRAY_INTO_ITER, *span, &msg)
+                ))
                 .span_suggestion(
                     call.ident.span,
                     "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
@@ -95,6 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
                     Applicability::MachineApplicable,
                 )
                 .emit();
+            })
         }
     }
 }

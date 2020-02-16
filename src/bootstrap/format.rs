@@ -20,7 +20,15 @@ fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
     cmd.arg(&path);
     let cmd_debug = format!("{:?}", cmd);
     let status = cmd.status().expect("executing rustfmt");
-    assert!(status.success(), "running {} successful", cmd_debug);
+    if !status.success() {
+        eprintln!(
+            "Running `{}` failed.\nIf you're running `tidy`, \
+            try again with `--bless` flag. Or, you just want to format \
+            code, run `./x.py fmt` instead.",
+            cmd_debug,
+        );
+        std::process::exit(1);
+    }
 }
 
 #[derive(serde::Deserialize)]

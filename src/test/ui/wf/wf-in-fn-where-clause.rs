@@ -6,8 +6,8 @@
 trait MustBeCopy<T:Copy> {
 }
 
-fn bar<T,U>() //~ ERROR E0277
-    where T: MustBeCopy<U>
+fn bar<T,U>()
+    where T: MustBeCopy<U> //~ ERROR E0277
 {
 }
 

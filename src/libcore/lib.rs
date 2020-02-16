@@ -44,7 +44,7 @@
 // Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
 // this, both the generated test artifact and the linked libtest (which
 // transitively includes libcore) will both define the same set of lang items,
-// and this will cause the E0152 "duplicate lang item found" error. See
+// and this will cause the E0152 "found duplicate lang item" error. See
 // discussion in #50466 for details.
 //
 // This cfg won't affect doc tests.
@@ -70,8 +70,14 @@
 #![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
-#![feature(const_fn)]
+#![feature(const_ascii_ctype_on_intrinsics)]
+#![feature(const_alloc_layout)]
 #![feature(const_if_match)]
+#![feature(const_checked_int_methods)]
+#![feature(const_euclidean_int_methods)]
+#![feature(const_overflowing_int_methods)]
+#![feature(const_saturating_int_methods)]
+#![feature(const_int_unchecked_arith)]
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
@@ -87,7 +93,6 @@
 #![feature(intrinsics)]
 #![feature(try_find)]
 #![feature(is_sorted)]
-#![feature(iter_once_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
@@ -133,7 +138,8 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![feature(slice_patterns)]
+#![feature(assoc_int_consts)]
+#![cfg_attr(not(bootstrap), feature(no_niche))] // rust-lang/rust#68303
 
 #[prelude_import]
 #[allow(unused)]

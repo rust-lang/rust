@@ -3,10 +3,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(arbitrary_self_types)]
-#![feature(box_patterns)]
-#![feature(box_syntax)]
-#![feature(core_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
@@ -15,9 +11,9 @@
 #[macro_use]
 extern crate rustc;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 
 pub mod codegen_backend;

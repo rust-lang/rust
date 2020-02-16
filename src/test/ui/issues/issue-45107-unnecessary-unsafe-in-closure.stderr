@@ -7,7 +7,7 @@ LL |         let f = |v: &mut Vec<_>| {
 LL |             unsafe {
    |             ^^^^^^ unnecessary `unsafe` block
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:1:8
    |
 LL | #[deny(unused_unsafe)]

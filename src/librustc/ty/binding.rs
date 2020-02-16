@@ -1,6 +1,6 @@
-use crate::hir::BindingAnnotation;
-use crate::hir::BindingAnnotation::*;
-use crate::hir::Mutability;
+use rustc_hir::BindingAnnotation;
+use rustc_hir::BindingAnnotation::*;
+use rustc_hir::Mutability;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable)]
 pub enum BindingMode {

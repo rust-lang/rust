@@ -4,6 +4,8 @@
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
 //!
+//! Vectors ensure they never allocate more than `isize::MAX` bytes.
+//!
 //! # Examples
 //!
 //! You can explicitly create a [`Vec<T>`] with [`new`]:
@@ -176,7 +178,7 @@ use crate::raw_vec::RawVec;
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
-/// when you just want to provide a read access. The same goes for [`String`] and
+/// when you just want to provide read access. The same goes for [`String`] and
 /// [`&str`].
 ///
 /// # Capacity and reallocation
@@ -1054,7 +1056,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.retain(|&x| x%2 == 0);
+    /// vec.retain(|&x| x % 2 == 0);
     /// assert_eq!(vec, [2, 4]);
     /// ```
     ///
@@ -1688,7 +1690,9 @@ impl<T: PartialEq> Vec<T> {
     pub fn dedup(&mut self) {
         self.dedup_by(|a, b| a == b)
     }
+}
 
+impl<T> Vec<T> {
     /// Removes the first instance of `item` from the vector if the item exists.
     ///
     /// # Examples
@@ -1702,7 +1706,10 @@ impl<T: PartialEq> Vec<T> {
     /// assert_eq!(vec, vec![2, 3, 1]);
     /// ```
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
-    pub fn remove_item(&mut self, item: &T) -> Option<T> {
+    pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
+    where
+        T: PartialEq<V>,
+    {
         let pos = self.iter().position(|x| *x == *item)?;
         Some(self.remove(pos))
     }

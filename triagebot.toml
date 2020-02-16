@@ -19,3 +19,14 @@ Thanks! <3
 [instructions]: https://rust-lang.github.io/rustc-guide/ice-breaker/llvm.html
 """
 label = "ICEBreaker-LLVM"
+
+[ping.icebreakers-cleanup-crew]
+message = """\
+Hey Cleanup Crew ICE-breakers! This bug has been identified as a good
+"Cleanup ICE-breaking candidate". In case it's useful, here are some
+[instructions] for tackling these sorts of bugs. Maybe take a look?
+Thanks! <3
+
+[instructions]: https://rust-lang.github.io/rustc-guide/ice-breaker/cleanup-crew.html
+"""
+label = "ICEBreaker-Cleanup-Crew"

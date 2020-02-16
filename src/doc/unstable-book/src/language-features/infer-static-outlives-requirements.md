@@ -1,8 +1,8 @@
 # `infer_static_outlives_requirements`
 
-The tracking issue for this feature is: [#44493]
+The tracking issue for this feature is: [#54185]
 
-[#44493]: https://github.com/rust-lang/rust/issues/44493
+[#54185]: https://github.com/rust-lang/rust/issues/54185
 
 ------------------------
 The `infer_static_outlives_requirements` feature indicates that certain

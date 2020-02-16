@@ -73,7 +73,7 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
   x
 }
 
-// CHECK: @struct_return(%S* noalias nocapture sret dereferenceable(32))
+// CHECK: @struct_return(%S* noalias nocapture sret dereferenceable(32){{( %0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
   S {
@@ -117,7 +117,7 @@ pub fn str(_: &[u8]) {
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box({}* noalias nonnull align 1, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}))
+// CHECK: @trait_box({}* noalias nonnull align 1{{( %0)?}}, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
 }

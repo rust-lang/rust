@@ -1,3 +1,4 @@
+pub mod codegen_fn_attrs;
 pub mod cstore;
 pub mod dependency_format;
 pub mod exported_symbols;
@@ -32,4 +33,3 @@ pub mod recursion_limit;
 pub mod region;
 pub mod resolve_lifetime;
 pub mod stability;
-pub mod weak_lang_items;

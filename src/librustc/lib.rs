@@ -27,36 +27,26 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(arbitrary_self_types)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
-#![feature(overlapping_marker_traits)]
+#![feature(marker_trait_attr)]
 #![feature(extern_types)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 #![feature(option_expect_none)]
 #![feature(range_is_empty)]
-#![feature(slice_patterns)]
 #![feature(specialization)]
-#![feature(unboxed_closures)]
-#![feature(thread_local)]
-#![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]
 #![feature(stmt_expr_attributes)]
-#![feature(integer_atomics)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![feature(log_syntax)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(hash_raw_entry)]
@@ -66,16 +56,12 @@
 extern crate bitflags;
 #[macro_use]
 extern crate scoped_tls;
-#[cfg(windows)]
-extern crate libc;
 #[macro_use]
 extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_data_structures;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate syntax;
 #[macro_use]
 extern crate smallvec;
 
@@ -103,9 +89,7 @@ pub mod ty;
 
 pub mod util {
     pub mod bug;
-    pub mod captures;
     pub mod common;
-    pub mod nodemap;
 }
 
 // Allows macros to refer to this crate as `::rustc`

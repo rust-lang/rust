@@ -7,8 +7,15 @@ pub trait Foo<T> {
     fn get(&self, t: T) -> Self::A;
 }
 
-struct SomeStruct<I : for<'x> Foo<&'x isize>> {
+struct SomeStruct<I: for<'x> Foo<&'x isize>> {
     field: I::A
+    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+}
+
+enum SomeEnum<I: for<'x> Foo<&'x isize>> {
+    TupleVariant(I::A),
+    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    StructVariant { field: I::A },
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
@@ -18,7 +25,7 @@ struct SomeStruct<I : for<'x> Foo<&'x isize>> {
 //     field: <I as for<'y> Foo<&'y isize>>::A
 // }
 
-struct YetAnotherStruct<'a, I : for<'x> Foo<&'x isize>> {
+struct YetAnotherStruct<'a, I: for<'x> Foo<&'x isize>> {
     field: <I as Foo<&'a isize>>::A
 }
 

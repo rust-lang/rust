@@ -4,10 +4,10 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;
@@ -453,7 +453,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
+            | ty::ReEmpty(_)
             | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.

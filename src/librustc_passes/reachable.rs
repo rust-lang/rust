@@ -5,22 +5,22 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::Node;
-use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc::hir::map::Map;
+use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::privacy;
 use rustc::session::config;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FxHashSet, HirIdSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-
-use rustc::hir;
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::hir::intravisit;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::intravisit;
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{HirIdSet, Node};
 use rustc_target::spec::abi::Abi;
 
 // Returns true if the given item must be inlined because it may be
@@ -35,7 +35,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: Codegen
         hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => {
             return true;
         }
-        hir::ItemKind::Impl(..) | hir::ItemKind::Fn(..) => {
+        hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
@@ -83,7 +83,9 @@ struct ReachableContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -179,7 +181,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
                             match self.tcx.hir().expect_item(impl_hir_id).kind {
-                                hir::ItemKind::Impl(..) => {
+                                hir::ItemKind::Impl { .. } => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
                                 }
@@ -264,7 +266,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     | hir::ItemKind::Static(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod(..)
-                    | hir::ItemKind::Impl(..)
+                    | hir::ItemKind::Impl { .. }
                     | hir::ItemKind::Trait(..)
                     | hir::ItemKind::TraitAlias(..)
                     | hir::ItemKind::Struct(..)
@@ -347,9 +349,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.kind {
+        if let hir::ItemKind::Impl { of_trait: Some(ref trait_ref), ref items, .. } = item.kind {
             if !self.access_levels.is_reachable(item.hir_id) {
-                self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
+                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.hir_id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,
@@ -360,12 +362,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                     return;
                 }
 
-                let provided_trait_methods = self.tcx.provided_trait_methods(trait_def_id);
-                self.worklist.reserve(provided_trait_methods.len());
-                for default_method in provided_trait_methods {
-                    let hir_id = self.tcx.hir().as_local_hir_id(default_method.def_id).unwrap();
-                    self.worklist.push(hir_id);
-                }
+                // FIXME(#53488) remove `let`
+                let tcx = self.tcx;
+                self.worklist.extend(
+                    tcx.provided_trait_methods(trait_def_id)
+                        .map(|assoc| tcx.hir().as_local_hir_id(assoc.def_id).unwrap()),
+                );
             }
         }
     }

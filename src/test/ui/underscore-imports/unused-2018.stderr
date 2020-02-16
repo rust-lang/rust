@@ -4,7 +4,7 @@ error: unused import: `core::any`
 LL |     use core::any;
    |         ^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused-2018.rs:3:9
    |
 LL | #![deny(unused_imports)]

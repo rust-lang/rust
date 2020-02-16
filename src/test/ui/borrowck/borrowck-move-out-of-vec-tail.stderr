@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:19:19
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:17:19
    |
 LL |             match tail {
    |                   ^^^^ cannot move out of here

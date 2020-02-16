@@ -1,7 +1,5 @@
 // Test that we do not permit moves from &[] matched by a vec pattern.
 
-#![feature(slice_patterns)]
-
 #[derive(Clone, Debug)]
 struct Foo {
     string: String

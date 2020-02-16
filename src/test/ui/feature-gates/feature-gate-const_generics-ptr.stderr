@@ -4,7 +4,7 @@ error[E0658]: const generics are unstable
 LL | struct ConstFn<const F: fn()>;
    |                      ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: const generics are unstable
@@ -13,7 +13,7 @@ error[E0658]: const generics are unstable
 LL | struct ConstPtr<const P: *const u32>;
    |                       ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: using function pointers as const generic parameters is unstable
@@ -22,7 +22,7 @@ error[E0658]: using function pointers as const generic parameters is unstable
 LL | struct ConstFn<const F: fn()>;
    |                         ^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53020
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
    = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error[E0658]: using raw pointers as const generic parameters is unstable
@@ -31,7 +31,7 @@ error[E0658]: using raw pointers as const generic parameters is unstable
 LL | struct ConstPtr<const P: *const u32>;
    |                          ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/53020
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
    = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error: aborting due to 4 previous errors

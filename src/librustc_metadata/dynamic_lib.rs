@@ -111,9 +111,9 @@ mod dl {
     ) -> Result<*mut u8, String> {
         check_for_errors_in(|| libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8)
     }
+
     pub(super) unsafe fn close(handle: *mut u8) {
         libc::dlclose(handle as *mut libc::c_void);
-        ()
     }
 }
 
@@ -124,27 +124,15 @@ mod dl {
     use std::os::windows::prelude::*;
     use std::ptr;
 
-    use libc::{c_char, c_uint, c_void};
-
-    type DWORD = u32;
-    type HMODULE = *mut u8;
-    type BOOL = i32;
-    type LPCWSTR = *const u16;
-    type LPCSTR = *const i8;
-
-    extern "system" {
-        fn SetThreadErrorMode(dwNewMode: DWORD, lpOldMode: *mut DWORD) -> c_uint;
-        fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-        fn GetModuleHandleExW(dwFlags: DWORD, name: LPCWSTR, handle: *mut HMODULE) -> BOOL;
-        fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
-        fn FreeLibrary(handle: HMODULE) -> BOOL;
-    }
+    use winapi::shared::minwindef::HMODULE;
+    use winapi::um::errhandlingapi::SetThreadErrorMode;
+    use winapi::um::libloaderapi::{FreeLibrary, GetModuleHandleExW, GetProcAddress, LoadLibraryW};
+    use winapi::um::winbase::SEM_FAILCRITICALERRORS;
 
     pub(super) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
         let prev_error_mode = unsafe {
-            // SEM_FAILCRITICALERRORS 0x01
-            let new_error_mode = 1;
+            let new_error_mode = SEM_FAILCRITICALERRORS;
             let mut prev_error_mode = 0;
             let result = SetThreadErrorMode(new_error_mode, &mut prev_error_mode);
             if result == 0 {
@@ -156,12 +144,12 @@ mod dl {
         let result = match filename {
             Some(filename) => {
                 let filename_str: Vec<_> = filename.encode_wide().chain(Some(0)).collect();
-                let result = unsafe { LoadLibraryW(filename_str.as_ptr()) };
+                let result = unsafe { LoadLibraryW(filename_str.as_ptr()) } as *mut u8;
                 ptr_result(result)
             }
             None => {
                 let mut handle = ptr::null_mut();
-                let succeeded = unsafe { GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle) };
+                let succeeded = unsafe { GetModuleHandleExW(0, ptr::null(), &mut handle) };
                 if succeeded == 0 {
                     Err(io::Error::last_os_error().to_string())
                 } else {
@@ -177,7 +165,10 @@ mod dl {
         result
     }
 
-    pub(super) unsafe fn symbol(handle: *mut u8, symbol: *const c_char) -> Result<*mut u8, String> {
+    pub(super) unsafe fn symbol(
+        handle: *mut u8,
+        symbol: *const libc::c_char,
+    ) -> Result<*mut u8, String> {
         let ptr = GetProcAddress(handle as HMODULE, symbol) as *mut u8;
         ptr_result(ptr)
     }

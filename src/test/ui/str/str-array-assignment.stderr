@@ -1,4 +1,4 @@
-error[E0308]: if and else have incompatible types
+error[E0308]: `if` and `else` have incompatible types
   --> $DIR/str-array-assignment.rs:3:37
    |
 LL |   let t = if true { s[..2] } else { s };

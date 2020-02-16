@@ -4,7 +4,9 @@
 #![feature(const_fn)]
 #![allow(const_err)]
 
-fn double(x: usize) -> usize { x * 2 }
+fn double(x: usize) -> usize {
+    x * 2
+}
 const X: fn(usize) -> usize = double;
 
 const fn bar(x: fn(usize) -> usize, y: usize) -> usize {

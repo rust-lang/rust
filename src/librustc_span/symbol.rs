@@ -5,7 +5,6 @@
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_index::vec::Idx;
 use rustc_macros::{symbols, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
@@ -121,6 +120,7 @@ symbols! {
         abi_vectorcall,
         abi_x86_interrupt,
         aborts,
+        address,
         add_with_overflow,
         advanced_slice_patterns,
         adx_target_feature,
@@ -168,6 +168,7 @@ symbols! {
         bindings_after_at,
         block,
         bool,
+        borrowck_graphviz_format,
         borrowck_graphviz_postflow,
         borrowck_graphviz_preflow,
         box_patterns,
@@ -220,6 +221,8 @@ symbols! {
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_transmute,
+        const_trait_bound_opt_out,
+        const_trait_impl,
         contents,
         context,
         convert,
@@ -336,12 +339,14 @@ symbols! {
         FxHashSet,
         FxHashMap,
         gen_future,
+        gen_kill,
         generators,
         generic_associated_types,
         generic_param_attrs,
         global_allocator,
         global_asm,
         globs,
+        half_open_range_patterns,
         hash,
         Hash,
         HashSet,
@@ -441,6 +446,7 @@ symbols! {
         mem_uninitialized,
         mem_zeroed,
         member_constraints,
+        memory,
         message,
         meta,
         min_align_of,
@@ -451,6 +457,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_ref_pattern,
         move_val_init,
         movbe_target_feature,
         mul_with_overflow,
@@ -483,6 +490,8 @@ symbols! {
         None,
         non_exhaustive,
         non_modrs_mods,
+        no_sanitize,
+        no_niche,
         no_stack_check,
         no_start,
         no_std,
@@ -579,6 +588,7 @@ symbols! {
         repr128,
         repr_align,
         repr_align_enum,
+        repr_no_niche,
         repr_packed,
         repr_simd,
         repr_transparent,
@@ -717,6 +727,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         then_with,
+        thread,
         thread_local,
         tool_attributes,
         tool_lints,
@@ -733,6 +744,7 @@ symbols! {
         try_trait,
         tt,
         tuple_indexing,
+        two_phase,
         Ty,
         ty,
         type_alias_impl_trait,
@@ -750,8 +762,13 @@ symbols! {
         u64,
         u8,
         unboxed_closures,
+        unchecked_add,
+        unchecked_div,
+        unchecked_mul,
+        unchecked_rem,
         unchecked_shl,
         unchecked_shr,
+        unchecked_sub,
         underscore_const_names,
         underscore_imports,
         underscore_lifetimes,
@@ -1047,6 +1064,7 @@ pub mod kw {
 }
 
 // This module has a very short name because it's used a lot.
+#[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;

@@ -1,7 +1,6 @@
 use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::util::common::time;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_serialize::opaque::Encoder;
@@ -33,19 +32,15 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 if tcx.sess.opts.debugging_opts.incremental_queries {
-                    let _timer = tcx.prof.generic_activity("incr_comp_persist_result_cache");
-
-                    time(sess, "persist query result cache", || {
+                    sess.time("incr_comp_persist_result_cache", || {
                         save_in(sess, query_cache_path, |e| encode_query_cache(tcx, e));
                     });
                 }
             },
             || {
-                time(sess, "persist dep-graph", || {
-                    let _timer = tcx.prof.generic_activity("incr_comp_persist_dep_graph");
-
+                sess.time("incr_comp_persist_dep_graph", || {
                     save_in(sess, dep_graph_path, |e| {
-                        time(sess, "encode dep-graph", || encode_dep_graph(tcx, e))
+                        sess.time("incr_comp_encode_dep_graph", || encode_dep_graph(tcx, e))
                     });
                 });
             },
@@ -147,10 +142,8 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
     tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
 
     // Encode the graph data.
-    let serialized_graph = time(tcx.sess, "getting serialized graph", || {
-        let _timer = tcx.prof.generic_activity("incr_comp_serialize_dep_graph");
-        tcx.dep_graph.serialize()
-    });
+    let serialized_graph =
+        tcx.sess.time("incr_comp_serialize_dep_graph", || tcx.dep_graph.serialize());
 
     if tcx.sess.opts.debugging_opts.incremental_info {
         #[derive(Clone)]
@@ -231,8 +224,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         println!("[incremental]");
     }
 
-    time(tcx.sess, "encoding serialized graph", || {
-        let _timer = tcx.prof.generic_activity("incr_comp_encode_serialized_dep_graph");
+    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || {
         serialized_graph.encode(encoder).unwrap();
     });
 }
@@ -244,7 +236,7 @@ fn encode_work_product_index(
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
-            id: id.clone(),
+            id: *id,
             work_product: work_product.clone(),
         })
         .collect();
@@ -253,9 +245,7 @@ fn encode_work_product_index(
 }
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
-    time(tcx.sess, "serialize query result cache", || {
-        let _timer = tcx.prof.generic_activity("incr_comp_serialize_result_cache");
-
+    tcx.sess.time("incr_comp_serialize_result_cache", || {
         tcx.serialize_query_result_cache(encoder).unwrap();
     })
 }

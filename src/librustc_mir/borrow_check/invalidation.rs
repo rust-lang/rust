@@ -3,7 +3,7 @@ use rustc::mir::TerminatorKind;
 use rustc::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
 use rustc::mir::{BorrowKind, Mutability, Operand};
 use rustc::mir::{Statement, StatementKind};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
 use crate::dataflow::indexes::BorrowIndex;
@@ -16,7 +16,6 @@ use crate::borrow_check::{
 
 pub(super) fn generate_invalidates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
@@ -33,7 +32,6 @@ pub(super) fn generate_invalidates<'tcx>(
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
-            param_env,
             tcx,
             location_table,
             body: &body,
@@ -45,7 +43,6 @@ pub(super) fn generate_invalidates<'tcx>(
 
 struct InvalidationGenerator<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
@@ -156,13 +153,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::interpret::PanicInfo;
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::AssertKind;
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }
             }
-            TerminatorKind::Yield { ref value, resume, drop: _ } => {
+            TerminatorKind::Yield { ref value, resume, resume_arg, drop: _ } => {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places
@@ -173,6 +170,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                         self.all_facts.invalidates.push((resume, i));
                     }
                 }
+
+                self.mutate_place(location, resume_arg, Deep, JustWrite);
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
@@ -337,13 +336,11 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         );
         let tcx = self.tcx;
         let body = self.body;
-        let param_env = self.param_env;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
         each_borrow_involving_path(
             self,
             tcx,
-            param_env,
             body,
             location,
             (sd, place),

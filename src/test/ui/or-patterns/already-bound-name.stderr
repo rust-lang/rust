@@ -1,97 +1,89 @@
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:12:13
+  --> $DIR/already-bound-name.rs:11:13
    |
 LL |     let (a, a) = (0, 1); // Standard duplication without an or-pattern.
    |             ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:15:15
+  --> $DIR/already-bound-name.rs:14:15
    |
 LL |     let (a, A(a, _) | B(a)) = (0, A(1, 2));
    |               ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:15:25
+  --> $DIR/already-bound-name.rs:14:25
    |
 LL |     let (a, A(a, _) | B(a)) = (0, A(1, 2));
    |                         ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:19:26
+  --> $DIR/already-bound-name.rs:18:26
    |
 LL |     let (A(a, _) | B(a), a) = (A(0, 1), 2);
    |                          ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:22:14
+  --> $DIR/already-bound-name.rs:21:14
    |
 LL |     let A(a, a) | B(a) = A(0, 1);
    |              ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:25:21
+  --> $DIR/already-bound-name.rs:24:21
    |
 LL |     let B(a) | A(a, a) = A(0, 1);
    |                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:29:21
+  --> $DIR/already-bound-name.rs:28:21
    |
 LL |         B(a) | A(a, a) => {} // Let's ensure `match` has no funny business.
    |                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:33:36
+  --> $DIR/already-bound-name.rs:32:36
    |
 LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
    |                                    ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:33:46
+  --> $DIR/already-bound-name.rs:32:46
    |
 LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
    |                                              ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:38:36
+  --> $DIR/already-bound-name.rs:37:36
    |
 LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                    ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:38:46
+  --> $DIR/already-bound-name.rs:37:46
    |
 LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                              ^ used in a pattern more than once
 
 error[E0408]: variable `a` is not bound in all patterns
-  --> $DIR/already-bound-name.rs:38:9
+  --> $DIR/already-bound-name.rs:37:9
    |
 LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |         ^^^^ pattern doesn't bind `a`        - variable not in all patterns
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:43:49
+  --> $DIR/already-bound-name.rs:42:49
    |
 LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                                 ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:43:59
+  --> $DIR/already-bound-name.rs:42:59
    |
 LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                                           ^ used in a pattern more than once
 
-warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
-  --> $DIR/already-bound-name.rs:4:12
-   |
-LL | #![feature(or_patterns)]
-   |            ^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0308]: mismatched types
-  --> $DIR/already-bound-name.rs:33:31
+  --> $DIR/already-bound-name.rs:32:31
    |
 LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
    |                               ^                    ------- this expression has type `E<E<{integer}>>`

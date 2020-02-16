@@ -54,14 +54,16 @@ where
     T: Iterator<Item = &'a Symbol>,
 {
     let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
+    let name_vec: Vec<&Symbol> = iter_names.collect();
 
-    let (case_insensitive_match, levenstein_match) = iter_names
+    let (case_insensitive_match, levenshtein_match) = name_vec
+        .iter()
         .filter_map(|&name| {
             let dist = lev_distance(lookup, &name.as_str());
             if dist <= max_dist { Some((name, dist)) } else { None }
         })
         // Here we are collecting the next structure:
-        // (case_insensitive_match, (levenstein_match, levenstein_distance))
+        // (case_insensitive_match, (levenshtein_match, levenshtein_distance))
         .fold((None, None), |result, (candidate, dist)| {
             (
                 if candidate.as_str().to_uppercase() == lookup.to_uppercase() {
@@ -75,10 +77,31 @@ where
                 },
             )
         });
-
+    // Priority of matches:
+    // 1. Exact case insensitive match
+    // 2. Levenshtein distance match
+    // 3. Sorted word match
     if let Some(candidate) = case_insensitive_match {
-        Some(candidate) // exact case insensitive match has a higher priority
+        Some(*candidate)
+    } else if levenshtein_match.is_some() {
+        levenshtein_match.map(|(candidate, _)| *candidate)
     } else {
-        levenstein_match.map(|(candidate, _)| candidate)
+        find_match_by_sorted_words(name_vec, lookup)
     }
+}
+
+fn find_match_by_sorted_words<'a>(iter_names: Vec<&'a Symbol>, lookup: &str) -> Option<Symbol> {
+    iter_names.iter().fold(None, |result, candidate| {
+        if sort_by_words(&candidate.as_str()) == sort_by_words(lookup) {
+            Some(**candidate)
+        } else {
+            result
+        }
+    })
+}
+
+fn sort_by_words(name: &str) -> String {
+    let mut split_words: Vec<&str> = name.split('_').collect();
+    split_words.sort();
+    split_words.join("_")
 }

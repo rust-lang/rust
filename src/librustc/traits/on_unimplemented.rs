@@ -1,16 +1,15 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use crate::hir::def_id::DefId;
 use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::FxHashMap;
 
+use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::struct_span_err;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::{MetaItem, NestedMetaItem};
-use syntax::attr;
-
-use rustc_error_codes::*;
 
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
@@ -293,26 +292,28 @@ impl<'tcx> OnUnimplementedFormatString {
                         match generics.params.iter().find(|param| param.name == s) {
                             Some(_) => (),
                             None => {
-                                span_err!(
+                                struct_span_err!(
                                     tcx.sess,
                                     span,
                                     E0230,
                                     "there is no parameter `{}` on trait `{}`",
                                     s,
                                     name
-                                );
+                                )
+                                .emit();
                                 result = Err(ErrorReported);
                             }
                         }
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
-                        span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             span,
                             E0231,
                             "only named substitution parameters are allowed"
-                        );
+                        )
+                        .emit();
                         result = Err(ErrorReported);
                     }
                 },

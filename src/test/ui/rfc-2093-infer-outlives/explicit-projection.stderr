@@ -7,7 +7,7 @@ LL | |     foo: <A as Trait<'a, B>>::Type
 LL | | }
    | |_^
    |
-   = note: B : 'a
+   = note: B: 'a
 
 error: aborting due to previous error
 

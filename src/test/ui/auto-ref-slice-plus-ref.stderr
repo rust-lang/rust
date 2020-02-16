@@ -1,4 +1,4 @@
-error[E0599]: no method named `test_mut` found for type `std::vec::Vec<{integer}>` in the current scope
+error[E0599]: no method named `test_mut` found for struct `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:7:7
    |
 LL |     a.test_mut();
@@ -8,7 +8,7 @@ LL |     a.test_mut();
    = note: the following trait defines an item `test_mut`, perhaps you need to implement it:
            candidate #1: `MyIter`
 
-error[E0599]: no method named `test` found for type `std::vec::Vec<{integer}>` in the current scope
+error[E0599]: no method named `test` found for struct `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7
    |
 LL |     a.test();
@@ -18,7 +18,7 @@ LL |     a.test();
    = note: the following trait defines an item `test`, perhaps you need to implement it:
            candidate #1: `MyIter`
 
-error[E0599]: no method named `test` found for type `[{integer}; 1]` in the current scope
+error[E0599]: no method named `test` found for array `[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:10:11
    |
 LL |     ([1]).test();
@@ -28,7 +28,7 @@ LL |     ([1]).test();
    = note: the following trait defines an item `test`, perhaps you need to implement it:
            candidate #1: `MyIter`
 
-error[E0599]: no method named `test` found for type `&[{integer}; 1]` in the current scope
+error[E0599]: no method named `test` found for reference `&[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:11:12
    |
 LL |     (&[1]).test();

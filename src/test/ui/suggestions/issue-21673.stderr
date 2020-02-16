@@ -1,4 +1,4 @@
-error[E0599]: no method named `method` found for type `&T` in the current scope
+error[E0599]: no method named `method` found for reference `&T` in the current scope
   --> $DIR/issue-21673.rs:6:7
    |
 LL |     x.method()
@@ -10,7 +10,7 @@ help: the following trait defines an item `method`, perhaps you need to restrict
 LL | fn call_method<T: Foo + std::fmt::Debug>(x: &T) {
    |                ^^^^^^^^
 
-error[E0599]: no method named `method` found for type `T` in the current scope
+error[E0599]: no method named `method` found for type parameter `T` in the current scope
   --> $DIR/issue-21673.rs:10:7
    |
 LL |     x.method()

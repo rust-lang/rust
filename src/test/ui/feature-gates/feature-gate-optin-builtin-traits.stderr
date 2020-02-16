@@ -4,7 +4,7 @@ error[E0658]: auto traits are experimental and possibly buggy
 LL | auto trait AutoDummyTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/13231
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
    = help: add `#![feature(optin_builtin_traits)]` to the crate attributes to enable
 
 error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
@@ -13,7 +13,7 @@ error[E0658]: negative trait bounds are not yet fully implemented; use marker ty
 LL | impl !AutoDummyTrait for DummyStruct {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/13231
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
    = help: add `#![feature(optin_builtin_traits)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

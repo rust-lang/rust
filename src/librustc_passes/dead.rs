@@ -2,22 +2,19 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::Node;
-use rustc::hir::{self, PatKind, TyKind};
-
-use rustc::hir::def::{CtorOf, DefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
-use rustc::lint;
+use rustc::hir::map::Map;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::privacy;
 use rustc::ty::{self, DefIdTree, TyCtxt};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{Node, PatKind, TyKind};
+use rustc_session::lint;
 
-use rustc_data_structures::fx::FxHashMap;
-
-use rustc_span;
 use rustc_span::symbol::sym;
 use syntax::{ast, attr};
 
@@ -213,7 +210,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -405,10 +404,10 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl(.., ref opt_trait, _, impl_item_refs) => {
-                for impl_item_ref in impl_item_refs {
+            hir::ItemKind::Impl { ref of_trait, items, .. } => {
+                for impl_item_ref in items {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
-                    if opt_trait.is_some()
+                    if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(
                             self.tcx,
                             impl_item.hir_id,
@@ -555,22 +554,21 @@ impl DeadVisitor<'tcx> {
         participle: &str,
     ) {
         if !name.as_str().starts_with("_") {
-            self.tcx.lint_hir(
-                lint::builtin::DEAD_CODE,
-                id,
-                span,
-                &format!("{} is never {}: `{}`", node_type, participle, name),
-            );
+            self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
+                lint.build(&format!("{} is never {}: `{}`", node_type, participle, name)).emit()
+            });
         }
     }
 }
 
 impl Visitor<'tcx> for DeadVisitor<'tcx> {
+    type Map = Map<'tcx>;
+
     /// Walk nested items in place so that we don't report dead-code
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -584,7 +582,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 | hir::ItemKind::Struct(..)
                 | hir::ItemKind::Union(..)
                 | hir::ItemKind::Trait(..)
-                | hir::ItemKind::Impl(..) => {
+                | hir::ItemKind::Impl { .. } => {
                     // FIXME(66095): Because item.span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation

@@ -42,14 +42,15 @@ use std::rc::Rc;
 use std::str;
 use std::sync::Arc;
 
-use errors;
-use rustc::hir::def_id::DefId;
-use rustc::hir::{self, Mutability};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::Mutability;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
@@ -57,7 +58,6 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use syntax::ast;
-use syntax::print::pprust;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
 use crate::config::RenderOptions;
@@ -72,8 +72,6 @@ use crate::html::item_type::ItemType;
 use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::html::{highlight, layout, static_files};
-
-use minifier;
 
 #[cfg(test)]
 mod tests;
@@ -393,7 +391,7 @@ pub fn run(
     mut krate: clean::Crate,
     options: RenderOptions,
     renderinfo: RenderInfo,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
     edition: Edition,
 ) -> Result<(), Error> {
     // need to save a copy of the options for rendering the index page
@@ -527,7 +525,7 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -992,13 +990,11 @@ themePicker.onblur = handleThemeButtonsBlur;
             writeln!(v, "{}", *implementor).unwrap();
         }
         v.push_str(
-            r"
-            if (window.register_implementors) {
-                window.register_implementors(implementors);
-            } else {
-                window.pending_implementors = implementors;
-            }
-        ",
+            "if (window.register_implementors) {\
+                 window.register_implementors(implementors);\
+             } else {\
+                 window.pending_implementors = implementors;\
+             }",
         );
         v.push_str("})()");
         cx.shared.fs.write(&mydst, &v)?;
@@ -2152,7 +2148,7 @@ fn stability_tags(item: &clean::Item) -> String {
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|s| s.level == stability::Unstable) {
-        if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
+        if stab.feature.as_deref() == Some("rustc_private") {
             tags += &tag_html("internal", "Internal");
         } else {
             tags += &tag_html("unstable", "Experimental");
@@ -2205,7 +2201,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
-        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+        let is_rustc_private = stab.feature.as_deref() == Some("rustc_private");
 
         let mut message = if is_rustc_private {
             "<span class='emoji'>⚙️</span> This is an internal compiler API."
@@ -2214,7 +2210,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
         }
         .to_owned();
 
-        if let Some(feature) = stab.feature.as_ref() {
+        if let Some(feature) = stab.feature.as_deref() {
             let mut feature = format!("<code>{}</code>", Escape(&feature));
             if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
                 feature.push_str(&format!(
@@ -2279,7 +2275,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
     );
 
     if c.value.is_some() || c.is_literal {
-        write!(w, " = {expr};", expr = c.expr);
+        write!(w, " = {expr};", expr = Escape(&c.expr));
     } else {
         write!(w, ";");
     }
@@ -2292,7 +2288,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
             if value_lowercase != expr_lowercase
                 && value_lowercase.trim_end_matches("i32") != expr_lowercase
             {
-                write!(w, " // {value}", value = value);
+                write!(w, " // {value}", value = Escape(value));
             }
         }
     }
@@ -2321,8 +2317,8 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         "{}{}{}{}{:#}fn {}{:#}",
         it.visibility.print_with_space(),
         f.header.constness.print_with_space(),
-        f.header.unsafety.print_with_space(),
         f.header.asyncness.print_with_space(),
+        f.header.unsafety.print_with_space(),
         print_abi_with_space(f.header.abi),
         it.name.as_ref().unwrap(),
         f.generics.print()
@@ -2332,12 +2328,12 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     render_attributes(w, it, false);
     write!(
         w,
-        "{vis}{constness}{unsafety}{asyncness}{abi}fn \
+        "{vis}{constness}{asyncness}{unsafety}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
-        unsafety = f.header.unsafety.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
+        unsafety = f.header.unsafety.print_with_space(),
         abi = print_abi_with_space(f.header.abi),
         name = it.name.as_ref().unwrap(),
         generics = f.generics.print(),
@@ -2353,6 +2349,7 @@ fn render_implementor(
     implementor: &Impl,
     w: &mut Buffer,
     implementor_dups: &FxHashMap<&str, (DefId, bool)>,
+    aliases: &[String],
 ) {
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
@@ -2375,6 +2372,7 @@ fn render_implementor(
         Some(use_absolute),
         false,
         false,
+        aliases,
     );
 }
 
@@ -2396,6 +2394,7 @@ fn render_impls(cx: &Context, w: &mut Buffer, traits: &[&&Impl], containing_item
                 None,
                 false,
                 true,
+                &[],
             );
             buffer.into_inner()
         })
@@ -2597,8 +2596,6 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All);
 
-    let mut synthetic_types = Vec::new();
-
     if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -2649,6 +2646,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
                     None,
                     true,
                     false,
+                    &[],
                 );
             }
             write_loading_content(w, "");
@@ -2661,7 +2659,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
             "<div class='item-list' id='implementors-list'>",
         );
         for implementor in concrete {
-            render_implementor(cx, implementor, w, &implementor_dups);
+            render_implementor(cx, implementor, w, &implementor_dups, &[]);
         }
         write_loading_content(w, "</div>");
 
@@ -2673,9 +2671,13 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
                 "<div class='item-list' id='synthetic-implementors-list'>",
             );
             for implementor in synthetic {
-                synthetic_types
-                    .extend(collect_paths_for_type(implementor.inner_impl().for_.clone()));
-                render_implementor(cx, implementor, w, &implementor_dups);
+                render_implementor(
+                    cx,
+                    implementor,
+                    w,
+                    &implementor_dups,
+                    &collect_paths_for_type(implementor.inner_impl().for_.clone()),
+                );
             }
             write_loading_content(w, "</div>");
         }
@@ -2700,17 +2702,12 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
             write_loading_content(w, "</div>");
         }
     }
-    write!(
-        w,
-        r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
-        serde_json::to_string(&synthetic_types).unwrap(),
-    );
 
     write!(
         w,
-        r#"<script type="text/javascript" async
-                         src="{root_path}/implementors/{path}/{ty}.{name}.js">
-                 </script>"#,
+        "<script type=\"text/javascript\" \
+                 src=\"{root_path}/implementors/{path}/{ty}.{name}.js\" async>\
+         </script>",
         root_path = vec![".."; cx.current.len()].join("/"),
         path = if it.def_id.is_local() {
             cx.current.join("/")
@@ -2832,8 +2829,8 @@ fn render_assoc_item(
             "{}{}{}{}{}{:#}fn {}{:#}",
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
-            header.unsafety.print_with_space(),
             header.asyncness.print_with_space(),
+            header.unsafety.print_with_space(),
             print_default_space(meth.is_default()),
             print_abi_with_space(header.abi),
             name,
@@ -2854,8 +2851,8 @@ fn render_assoc_item(
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
-            header.unsafety.print_with_space(),
             header.asyncness.print_with_space(),
+            header.unsafety.print_with_space(),
             print_default_space(meth.is_default()),
             print_abi_with_space(header.abi),
             href = href,
@@ -3392,6 +3389,7 @@ fn render_assoc_items(
                 None,
                 false,
                 true,
+                &[],
             );
         }
     }
@@ -3469,20 +3467,23 @@ fn render_deref_methods(
     deref_mut: bool,
 ) {
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
-    let target = impl_
+    let (target, real_target) = impl_
         .inner_impl()
         .items
         .iter()
         .filter_map(|item| match item.inner {
-            clean::TypedefItem(ref t, true) => Some(&t.type_),
+            clean::TypedefItem(ref t, true) => Some(match *t {
+                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                _ => (&t.type_, &t.type_),
+            }),
             _ => None,
         })
         .next()
         .expect("Expected associated type binding");
     let what =
-        AssocItemRender::DerefFor { trait_: deref_type, type_: target, deref_mut_: deref_mut };
+        AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id() {
-        render_assoc_items(w, cx, container_item, did, what)
+        render_assoc_items(w, cx, container_item, did, what);
     } else {
         if let Some(prim) = target.primitive_type() {
             if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
@@ -3599,6 +3600,9 @@ fn render_impl(
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
     show_default_items: bool,
+    // This argument is used to reference same type with different pathes to avoid duplication
+    // in documentation pages for trait with automatic implementations like "Send" and "Sync".
+    aliases: &[String],
 ) {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
@@ -3611,21 +3615,19 @@ fn render_impl(
             }
             None => "impl".to_string(),
         });
+        let aliases = if aliases.is_empty() {
+            String::new()
+        } else {
+            format!(" aliases=\"{}\"", aliases.join(","))
+        };
         if let Some(use_absolute) = use_absolute {
-            write!(w, "<h3 id='{}' class='impl'><code class='in-band'>", id);
+            write!(w, "<h3 id='{}' class='impl'{}><code class='in-band'>", id, aliases);
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute);
             if show_def_docs {
                 for it in &i.inner_impl().items {
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
                         write!(w, "<span class=\"where fmt-newline\">  ");
-                        assoc_type(
-                            w,
-                            it,
-                            &vec![],
-                            Some(&tydef.type_),
-                            AssocItemLink::Anchor(None),
-                            "",
-                        );
+                        assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "");
                         write!(w, ";</span>");
                     }
                 }
@@ -3634,8 +3636,9 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "<h3 id='{}' class='impl'><code class='in-band'>{}</code>",
+                "<h3 id='{}' class='impl'{}><code class='in-band'>{}</code>",
                 id,
+                aliases,
                 i.inner_impl().print()
             );
         }
@@ -4123,12 +4126,15 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some(target) = impl_
+                if let Some((target, real_target)) = impl_
                     .inner_impl()
                     .items
                     .iter()
                     .filter_map(|item| match item.inner {
-                        clean::TypedefItem(ref t, true) => Some(&t.type_),
+                        clean::TypedefItem(ref t, true) => Some(match *t {
+                            clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                            _ => (&t.type_, &t.type_),
+                        }),
                         _ => None,
                     })
                     .next()
@@ -4147,7 +4153,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                                 "{:#}",
                                 impl_.inner_impl().trait_.as_ref().unwrap().print()
                             )),
-                            Escape(&format!("{:#}", target.print()))
+                            Escape(&format!("{:#}", real_target.print()))
                         ));
                         out.push_str("</a>");
                         let mut ret = impls

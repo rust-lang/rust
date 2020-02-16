@@ -104,6 +104,7 @@ impl Buf {
         self.inner.shrink_to(min_capacity)
     }
 
+    #[inline]
     pub fn as_slice(&self) -> &Slice {
         unsafe { mem::transmute(&*self.inner) }
     }

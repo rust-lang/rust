@@ -2,10 +2,11 @@ use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause};
 
-use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir::{self, is_range_literal, print, Node};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::{is_range_literal, print, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::util::parser::PREC_POSTFIX;
@@ -23,6 +24,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_ref_or_into(err, expr, expected, expr_ty);
+        if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
+            return;
+        }
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_await(err, expr, expected, expr_ty);
     }
@@ -535,6 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let item_def_id = self
                     .tcx
                     .associated_items(deref_trait)
+                    .iter()
                     .find(|item| item.kind == ty::AssocKind::Type)
                     .unwrap()
                     .def_id;
@@ -796,9 +801,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         err.warn(
                             "if the rounded value cannot be represented by the target \
-                                  integer type, including `Inf` and `NaN`, casting will cause \
-                                  undefined behavior \
-                                  (https://github.com/rust-lang/rust/issues/10184)",
+                                integer type, including `Inf` and `NaN`, casting will cause \
+                                undefined behavior \
+                                (see issue #10184 <https://github.com/rust-lang/rust/issues/10184> \
+                                for more information)",
                         );
                     }
                     true

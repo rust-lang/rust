@@ -1,4 +1,4 @@
-error[E0599]: no method named `f` found for type `()` in the current scope
+error[E0599]: no method named `f` found for unit type `()` in the current scope
   --> $DIR/shadowed-trait-methods.rs:13:8
    |
 LL |     ().f()

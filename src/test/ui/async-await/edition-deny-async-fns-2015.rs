@@ -16,7 +16,7 @@ impl Foo {
 
 trait Bar {
     async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
-                      //~^ ERROR trait fns cannot be declared `async`
+                      //~^ ERROR functions in traits cannot be declared `async`
 }
 
 fn main() {

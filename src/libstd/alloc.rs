@@ -133,9 +133,9 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
-// The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
+// The AllocRef impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Alloc for System {
+unsafe impl AllocRef for System {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)

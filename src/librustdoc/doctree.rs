@@ -7,8 +7,8 @@ use rustc_span::{self, Span};
 use syntax::ast;
 use syntax::ast::Name;
 
-use rustc::hir;
-use rustc::hir::def_id::CrateNum;
+use rustc_hir as hir;
+use rustc_hir::def_id::CrateNum;
 
 pub struct Module<'hir> {
     pub name: Option<Name>,
@@ -203,6 +203,7 @@ pub struct Impl<'hir> {
     pub unsafety: hir::Unsafety,
     pub polarity: hir::ImplPolarity,
     pub defaultness: hir::Defaultness,
+    pub constness: hir::Constness,
     pub generics: &'hir hir::Generics<'hir>,
     pub trait_: &'hir Option<hir::TraitRef<'hir>>,
     pub for_: &'hir hir::Ty<'hir>,

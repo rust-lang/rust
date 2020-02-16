@@ -5,12 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(box_syntax)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(set_stdio)]
-#![feature(no_debug)]
-#![feature(integer_atomics)]
 #![recursion_limit = "256"]
 
 pub extern crate getopts;
@@ -23,33 +18,35 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-//use rustc_resolve as resolve;
-use errors::{registry::Registry, PResult};
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::lint;
-use rustc::lint::Lint;
+use rustc::lint::{Lint, LintId};
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::config::nightly_options;
 use rustc::session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
 use rustc::session::{config, DiagnosticOutput, Session};
 use rustc::session::{early_error, early_warn};
 use rustc::ty::TyCtxt;
-use rustc::util::common::{print_time_passes_entry, set_time_depth, time, ErrorReported};
+use rustc::util::common::ErrorReported;
+use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
+use rustc_errors::{registry::Registry, PResult};
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
-use rustc_interface::util::get_builtin_codegen_backend;
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_interface::util::{collect_crate_types, get_builtin_codegen_backend};
 use rustc_interface::{interface, Queries};
+use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_serialize::json::ToJson;
+use rustc_serialize::json::{self, ToJson};
 
 use std::borrow::Cow;
 use std::cmp::max;
 use std::default::Default;
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::io::{self, Read, Write};
 use std::mem;
 use std::panic::{self, catch_unwind};
@@ -122,10 +119,6 @@ pub trait Callbacks {
         Compilation::Continue
     }
 }
-
-pub struct DefaultCallbacks;
-
-impl Callbacks for DefaultCallbacks {}
 
 #[derive(Default)]
 pub struct TimePassesCallbacks {
@@ -286,7 +279,8 @@ pub fn run_compiler(
                 &matches,
                 compiler.input(),
             )
-        });
+        })
+        .and_then(|| RustcDefaultCalls::try_process_rlink(sess, compiler));
 
         if should_stop == Compilation::Stop {
             return sess.compile_status();
@@ -368,7 +362,7 @@ pub fn run_compiler(
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
                     let result = tcx.analysis(LOCAL_CRATE);
 
-                    time(sess, "save analysis", || {
+                    sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
                             &expanded_crate,
@@ -388,6 +382,7 @@ pub fn run_compiler(
                 })?;
             } else {
                 // Drop AST after creating GlobalCtxt to free memory
+                let _timer = sess.prof.generic_activity("drop_ast");
                 mem::drop(queries.expansion()?.take());
             }
 
@@ -412,6 +407,7 @@ pub fn run_compiler(
         })?;
 
         if let Some(linker) = linker {
+            let _timer = sess.timer("link");
             linker.link()?
         }
 
@@ -512,15 +508,10 @@ fn stdout_isatty() -> bool {
 
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
-    type DWORD = u32;
-    type BOOL = i32;
-    type HANDLE = *mut u8;
-    type LPDWORD = *mut u32;
-    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
-    extern "system" {
-        fn GetStdHandle(which: DWORD) -> HANDLE;
-        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
-    }
+    use winapi::um::consoleapi::GetConsoleMode;
+    use winapi::um::processenv::GetStdHandle;
+    use winapi::um::winbase::STD_OUTPUT_HANDLE;
+
     unsafe {
         let handle = GetStdHandle(STD_OUTPUT_HANDLE);
         let mut out = 0;
@@ -596,6 +587,34 @@ fn show_content_with_pager(content: &String) {
 }
 
 impl RustcDefaultCalls {
+    fn process_rlink(sess: &Session, compiler: &interface::Compiler) -> Result<(), ErrorReported> {
+        if let Input::File(file) = compiler.input() {
+            // FIXME: #![crate_type] and #![crate_name] support not implemented yet
+            let attrs = vec![];
+            sess.crate_types.set(collect_crate_types(sess, &attrs));
+            let outputs = compiler.build_output_filenames(&sess, &attrs);
+            let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
+                sess.fatal(&format!("failed to read rlink file: {}", err));
+            });
+            let codegen_results: CodegenResults = json::decode(&rlink_data).unwrap_or_else(|err| {
+                sess.fatal(&format!("failed to decode rlink: {}", err));
+            });
+            compiler.codegen_backend().link(&sess, Box::new(codegen_results), &outputs)
+        } else {
+            sess.fatal(&format!("rlink must be a file"))
+        }
+    }
+
+    pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
+        if sess.opts.debugging_opts.link_only {
+            let result = RustcDefaultCalls::process_rlink(sess, compiler);
+            abort_on_err(result, sess);
+            Compilation::Stop
+        } else {
+            Compilation::Continue
+        }
+    }
+
     pub fn list_metadata(
         sess: &Session,
         metadata_loader: &dyn MetadataLoader,
@@ -671,7 +690,7 @@ impl RustcDefaultCalls {
                         println!("{}", id);
                         continue;
                     }
-                    let crate_types = rustc_interface::util::collect_crate_types(sess, attrs);
+                    let crate_types = collect_crate_types(sess, attrs);
                     for &style in &crate_types {
                         let fname = rustc_codegen_utils::link::filename_for_input(
                             sess, style, &id, &t_outputs,
@@ -808,7 +827,7 @@ the command line flag directly.
     );
 }
 
-fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
+fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
     println!(
         "
 Available lint options:
@@ -829,8 +848,8 @@ Available lint options:
     }
 
     fn sort_lint_groups(
-        lints: Vec<(&'static str, Vec<lint::LintId>, bool)>,
-    ) -> Vec<(&'static str, Vec<lint::LintId>)> {
+        lints: Vec<(&'static str, Vec<LintId>, bool)>,
+    ) -> Vec<(&'static str, Vec<LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
         lints.sort_by_key(|l| l.0);
         lints
@@ -889,7 +908,7 @@ Available lint options:
     println!("    {}  {}", padded("----"), "---------");
     println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
+    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
         for (name, to) in lints {
             let name = name.to_lowercase().replace("_", "-");
             let desc = to
@@ -1133,7 +1152,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 /// the panic into a `Result` instead.
 pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
-        if value.is::<errors::FatalErrorMarker>() {
+        if value.is::<rustc_errors::FatalErrorMarker>() {
             ErrorReported
         } else {
             panic::resume_unwind(value);
@@ -1162,22 +1181,21 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Separate the output with an empty line
     eprintln!();
 
-    let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
-        errors::ColorConfig::Auto,
+    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+        rustc_errors::ColorConfig::Auto,
         None,
         false,
         false,
         None,
         false,
     ));
-    let handler = errors::Handler::with_emitter(true, None, emitter);
+    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
-    if !info.payload().is::<errors::ExplicitBug>() {
-        let d = errors::Diagnostic::new(errors::Level::Bug, "unexpected panic");
+    if !info.payload().is::<rustc_errors::ExplicitBug>() {
+        let d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
         handler.emit_diagnostic(&d);
-        handler.abort_if_errors_and_should_abort();
     }
 
     let mut xs: Vec<Cow<'static, str>> = vec![
@@ -1213,11 +1231,8 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     #[cfg(windows)]
     unsafe {
         if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-            extern "system" {
-                fn DebugBreak();
-            }
             // Trigger a debugger if we crashed during bootstrap
-            DebugBreak();
+            winapi::um::debugapi::DebugBreak();
         }
     }
 }
@@ -1260,7 +1275,6 @@ pub fn main() {
         Err(_) => EXIT_FAILURE,
     };
     // The extra `\t` is necessary to align this label with the others.
-    set_time_depth(0);
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
     process::exit(exit_code);
 }

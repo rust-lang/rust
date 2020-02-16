@@ -1,7 +1,7 @@
-use crate::hir::def_id::DefId;
 use crate::ich::StableHashingContext;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;

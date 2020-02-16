@@ -19,6 +19,8 @@ pub mod prove_predicate;
 use self::prove_predicate::ProvePredicate;
 pub mod subtype;
 
+pub use crate::traits::types::query::type_op::*;
+
 /// "Type ops" are used in NLL to perform some particular action and
 /// extract out the resulting region constraints (or an error if it
 /// cannot be completed).

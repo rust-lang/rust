@@ -472,6 +472,9 @@ supported_targets! {
     ("thumbv8m.main-none-eabi", thumbv8m_main_none_eabi),
     ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
+    ("armv7a-none-eabi", armv7a_none_eabi),
+    ("armv7a-none-eabihf", armv7a_none_eabihf),
+
     ("msp430-none-elf", msp430_none_elf),
 
     ("aarch64-unknown-cloudabi", aarch64_unknown_cloudabi),
@@ -805,6 +808,9 @@ pub struct TargetOptions {
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
+
+    /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
+    pub llvm_args: Vec<String>,
 }
 
 impl Default for TargetOptions {
@@ -893,6 +899,7 @@ impl Default for TargetOptions {
             target_mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
             relax_elf_relocations: false,
+            llvm_args: vec![],
         }
     }
 }
@@ -1206,6 +1213,7 @@ impl Target {
         key!(target_mcount);
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
+        key!(llvm_args, list);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1433,6 +1441,7 @@ impl ToJson for Target {
         target_option_val!(target_mcount);
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
+        target_option_val!(llvm_args);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert(

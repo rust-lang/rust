@@ -1,5 +1,4 @@
 // run-pass
-#![feature(slice_patterns)]
 
 fn main() {
     let mut x: &[_] = &[1, 2, 3, 4];

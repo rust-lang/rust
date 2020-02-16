@@ -15,5 +15,7 @@ mod tool_mod {
 #[imported_inline] //~ ERROR cannot use a built-in attribute through an import
 #[builtin::imported_inline] //~ ERROR cannot use a built-in attribute through an import
 #[imported_rustfmt::skip] //~ ERROR cannot use a tool module through an import
+                          //~| ERROR cannot use a tool module through an import
 #[tool_mod::imported_rustfmt::skip] //~ ERROR cannot use a tool module through an import
+                                    //~| ERROR cannot use a tool module through an import
 fn main() {}

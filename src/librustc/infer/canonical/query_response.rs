@@ -22,7 +22,7 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, BoundVar, Ty, TyCtxt};
-use crate::util::captures::Captures;
+use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_span::DUMMY_SP;

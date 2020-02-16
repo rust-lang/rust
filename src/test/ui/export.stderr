@@ -26,7 +26,13 @@ error[E0603]: function `z` is private
   --> $DIR/export.rs:10:18
    |
 LL | fn main() { foo::z(10); }
-   |                  ^
+   |                  ^ this function is private
+   |
+note: the function `z` is defined here
+  --> $DIR/export.rs:5:5
+   |
+LL |     fn z(y: isize) { log(debug, y); }
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

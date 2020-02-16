@@ -38,6 +38,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    ///
+    /// This is marked `#inline(always)` to work around adverserial codegen when `opt-level = 3`
+    #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);

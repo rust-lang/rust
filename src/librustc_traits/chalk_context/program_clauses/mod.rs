@@ -2,11 +2,11 @@ mod builtin;
 mod primitive;
 
 use super::ChalkInferenceContext;
-use rustc::hir::def_id::DefId;
 use rustc::traits::{
     Clause, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory, WellFormed,
 };
 use rustc::ty::{self, TyCtxt};
+use rustc_hir::def_id::DefId;
 use std::iter;
 
 use self::builtin::*;

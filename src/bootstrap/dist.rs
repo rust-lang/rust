@@ -105,6 +105,7 @@ impl Step for Docs {
         t!(fs::create_dir_all(&dst));
         let src = builder.doc_out(host);
         builder.cp_r(&src, &dst);
+        builder.install(&builder.src.join("src/doc/robots.txt"), &dst, 0o644);
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -827,7 +828,7 @@ impl Step for Analysis {
         assert!(builder.config.extended);
         let name = pkgname(builder, "rust-analysis");
 
-        if &compiler.host != builder.config.build {
+        if compiler.host != builder.config.build {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -876,7 +877,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
             Some(path) => path,
             None => return false,
         };
-        if spath.ends_with("~") || spath.ends_with(".pyc") {
+        if spath.ends_with('~') || spath.ends_with(".pyc") {
             return false;
         }
 
@@ -984,10 +985,6 @@ impl Step for Src {
             "src/libcore",
             "src/libpanic_abort",
             "src/libpanic_unwind",
-            "src/librustc_asan",
-            "src/librustc_lsan",
-            "src/librustc_msan",
-            "src/librustc_tsan",
             "src/libstd",
             "src/libunwind",
             "src/libtest",

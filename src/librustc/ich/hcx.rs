@@ -1,5 +1,3 @@
-use crate::hir;
-use crate::hir::def_id::{DefId, DefIndex};
 use crate::hir::map::definitions::Definitions;
 use crate::hir::map::DefPathHash;
 use crate::ich::{self, CachingSourceMapView};
@@ -7,17 +5,18 @@ use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
-use std::cmp::Ord;
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
 use syntax::ast;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
+use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
@@ -33,10 +32,10 @@ pub struct StableHashingContext<'a> {
     sess: &'a Session,
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
-    body_resolver: BodyResolver<'a>,
+    pub(super) body_resolver: BodyResolver<'a>,
     hash_spans: bool,
     hash_bodies: bool,
-    node_id_hashing_mode: NodeIdHashingMode,
+    pub(super) node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
@@ -54,12 +53,12 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the `hir::Crate` but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'tcx>(&'tcx hir::Crate<'tcx>);
+pub(super) struct BodyResolver<'tcx>(&'tcx hir::Crate<'tcx>);
 
 impl<'tcx> BodyResolver<'tcx> {
     /// Returns a reference to the `hir::Body` with the given `BodyId`.
     /// **Does not do any tracking**; use carefully.
-    fn body(self, id: hir::BodyId) -> &'tcx hir::Body<'tcx> {
+    pub(super) fn body(self, id: hir::BodyId) -> &'tcx hir::Body<'tcx> {
         self.0.body(id)
     }
 }
@@ -207,31 +206,6 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
 
 impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        if hcx.hash_bodies() {
-            hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match hcx.node_id_hashing_mode {
-            NodeIdHashingMode::Ignore => {
-                // Don't do anything.
-            }
-            NodeIdHashingMode::HashDefPath => {
-                let hir::HirId { owner, local_id } = *self;
-
-                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
-                local_id.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
@@ -273,6 +247,12 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
+    }
+
+    #[inline]
+    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
     }
 
     fn byte_pos_to_line_and_col(

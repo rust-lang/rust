@@ -32,47 +32,47 @@ fn main() {
 //     bb2: {
 //         StorageDead(_4);
 //         _5 = discriminant(_3);
-//         switchInt(move _5) -> [0isize: bb10, 1isize: bb5, otherwise: bb4];
+//         switchInt(move _5) -> [0isize: bb4, 1isize: bb6, otherwise: bb5];
 //     }
 //     bb3 (cleanup): {
 //         drop(_2) -> bb1;
 //     }
 //     bb4: {
-//         unreachable;
-//     }
-//     bb5: {
-//         StorageLive(_6);
-//         _6 = ((_3 as Err).0: std::option::NoneError);
-//         StorageLive(_8);
-//         StorageLive(_9);
-//         _9 = _6;
-//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb7, unwind: bb3];
-//     }
-//     bb6: {
-//         return;
-//     }
-//     bb7: {
-//         StorageDead(_9);
-//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb8, unwind: bb3];
-//     }
-//     bb8: {
-//         StorageDead(_8);
-//         StorageDead(_6);
-//         drop(_2) -> bb9;
-//     }
-//     bb9: {
-//         StorageDead(_2);
-//         StorageDead(_1);
-//         StorageDead(_3);
-//         goto -> bb6;
-//     }
-//     bb10: {
 //         StorageLive(_10);
 //         _10 = ((_3 as Ok).0: u32);
 //         (*_2) = _10;
 //         StorageDead(_10);
 //         _1 = move _2;
 //         drop(_2) -> [return: bb12, unwind: bb11];
+//     }
+//     bb5: {
+//         unreachable;
+//     }
+//     bb6: {
+//         StorageLive(_6);
+//         _6 = ((_3 as Err).0: std::option::NoneError);
+//         StorageLive(_8);
+//         StorageLive(_9);
+//         _9 = _6;
+//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb8, unwind: bb3];
+//     }
+//     bb7: {
+//         return;
+//     }
+//     bb8: {
+//         StorageDead(_9);
+//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb9, unwind: bb3];
+//     }
+//     bb9: {
+//         StorageDead(_8);
+//         StorageDead(_6);
+//         drop(_2) -> bb10;
+//     }
+//     bb10: {
+//         StorageDead(_2);
+//         StorageDead(_1);
+//         StorageDead(_3);
+//         goto -> bb7;
 //     }
 //     bb11 (cleanup): {
 //         drop(_1) -> bb1;
@@ -85,7 +85,7 @@ fn main() {
 //     bb13: {
 //         StorageDead(_1);
 //         StorageDead(_3);
-//         goto -> bb6;
+//         goto -> bb7;
 //     }
 // }
 // END rustc.test.ElaborateDrops.before.mir

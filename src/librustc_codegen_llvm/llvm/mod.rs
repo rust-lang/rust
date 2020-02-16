@@ -69,6 +69,7 @@ impl FromStr for ArchiveKind {
         match s {
             "gnu" => Ok(ArchiveKind::K_GNU),
             "bsd" => Ok(ArchiveKind::K_BSD),
+            "darwin" => Ok(ArchiveKind::K_DARWIN),
             "coff" => Ok(ArchiveKind::K_COFF),
             _ => Err(()),
         }

@@ -1,12 +1,11 @@
-use crate::hir::def::Namespace;
-use crate::hir::def_id::DefId;
-use crate::hir::CodegenFnAttrFlags;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
-use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::AtomicRef;
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::HashStable;
-use rustc_target::spec::abi::Abi;
 
 use std::fmt;
 
@@ -62,9 +61,68 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    /// Returns the `Ty` corresponding to this `Instance`,
+    /// with generic substitutions applied and lifetimes erased.
+    ///
+    /// This method can only be called when the 'substs' for this Instance
+    /// are fully monomorphic (no `ty::Param`'s are present).
+    /// This is usually the case (e.g. during codegen).
+    /// However, during constant evaluation, we may want
+    /// to try to resolve a `Instance` using generic parameters
+    /// (e.g. when we are attempting to to do const-propagation).
+    /// In this case, `Instance.ty_env` should be used to provide
+    /// the `ParamEnv` for our generic context.
+    pub fn monomorphic_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
+        // There shouldn't be any params - if there are, then
+        // Instance.ty_env should have been used to provide the proper
+        // ParamEnv
+        if self.substs.has_param_types() {
+            bug!("Instance.ty called for type {:?} with params in substs: {:?}", ty, self.substs);
+        }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
+    }
+
+    /// Like `Instance.ty`, but allows a `ParamEnv` to be specified for use during
+    /// normalization. This method is only really useful during constant evaluation,
+    /// where we are dealing with potentially generic types.
+    pub fn ty_env(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+        let ty = tcx.type_of(self.def.def_id());
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, &ty)
+    }
+
+    /// Finds a crate that contains a monomorphization of this instance that
+    /// can be linked to from the local crate. A return value of `None` means
+    /// no upstream crate provides such an exported monomorphization.
+    ///
+    /// This method already takes into account the global `-Zshare-generics`
+    /// setting, always returning `None` if `share-generics` is off.
+    pub fn upstream_monomorphization(&self, tcx: TyCtxt<'tcx>) -> Option<CrateNum> {
+        // If we are not in share generics mode, we don't link to upstream
+        // monomorphizations but always instantiate our own internal versions
+        // instead.
+        if !tcx.sess.opts.share_generics() {
+            return None;
+        }
+
+        // If this is an item that is defined in the local crate, no upstream
+        // crate can know about it/provide a monomorphization.
+        if self.def_id().is_local() {
+            return None;
+        }
+
+        // If this a non-generic instance, it cannot be a shared monomorphization.
+        if self.substs.non_erasable_generics().next().is_none() {
+            return None;
+        }
+
+        match self.def {
+            InstanceDef::Item(def_id) => tcx
+                .upstream_monomorphizations_for(def_id)
+                .and_then(|monos| monos.get(&self.substs).cloned()),
+            InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.substs),
+            _ => None,
+        }
     }
 }
 
@@ -89,7 +147,12 @@ impl<'tcx> InstanceDef<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
+    /// Returns `true` if the LLVM version of this instance is unconditionally
+    /// marked with `inline`. This implies that a copy of this instance is
+    /// generated in every codegen unit.
+    /// Note that this is only a hint. See the documentation for
+    /// `generates_cgu_internal_copy` for more information.
+    pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
@@ -102,8 +165,15 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local(&self, tcx: TyCtxt<'tcx>) -> bool {
-        if self.is_inline(tcx) {
+    /// Returns `true` if the machine code for this instance is instantiated in
+    /// each codegen unit that references it.
+    /// Note that this is only a hint! The compiler can globally decide to *not*
+    /// do this in order to speed up compilation. CGU-internal copies are
+    /// only exist to enable inlining. If inlining is not performed (e.g. at
+    /// `-Copt-level=0`) then the time for generating them is wasted and it's
+    /// better to create a single copy with external linkage.
+    pub fn generates_cgu_internal_copy(&self, tcx: TyCtxt<'tcx>) -> bool {
+        if self.requires_inline(tcx) {
             return true;
         }
         if let ty::InstanceDef::DropGlue(..) = *self {
@@ -116,7 +186,12 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.codegen_fn_attrs(self.def_id()).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+        match *self {
+            InstanceDef::Item(def_id) => {
+                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+            }
+            _ => false,
+        }
     }
 }
 
@@ -187,45 +262,7 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
-            debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-            let item = tcx.associated_item(def_id);
-            resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
-        } else {
-            let ty = tcx.type_of(def_id);
-            let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
-
-            let def = match item_type.kind {
-                ty::FnDef(..)
-                    if {
-                        let f = item_type.fn_sig(tcx);
-                        f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
-                    } =>
-                {
-                    debug!(" => intrinsic");
-                    ty::InstanceDef::Intrinsic(def_id)
-                }
-                _ => {
-                    if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
-                        let ty = substs.type_at(0);
-                        if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
-                            debug!(" => nontrivial drop glue");
-                            ty::InstanceDef::DropGlue(def_id, Some(ty))
-                        } else {
-                            debug!(" => trivial drop glue");
-                            ty::InstanceDef::DropGlue(def_id, None)
-                        }
-                    } else {
-                        debug!(" => free item");
-                        ty::InstanceDef::Item(def_id)
-                    }
-                }
-            };
-            Some(Instance { def: def, substs: substs })
-        };
-        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
-        result
+        (*RESOLVE_INSTANCE)(tcx, param_env, def_id, substs)
     }
 
     pub fn resolve_for_fn_ptr(
@@ -300,6 +337,7 @@ impl<'tcx> Instance<'tcx> {
         let fn_once = tcx.lang_items().fn_once_trait().unwrap();
         let call_once = tcx
             .associated_items(fn_once)
+            .iter()
             .find(|it| it.kind == ty::AssocKind::Method)
             .unwrap()
             .def_id;
@@ -318,88 +356,6 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn is_vtable_shim(&self) -> bool {
         if let InstanceDef::VtableShim(..) = self.def { true } else { false }
-    }
-}
-
-fn resolve_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_item: &ty::AssocItem,
-    param_env: ty::ParamEnv<'tcx>,
-    trait_id: DefId,
-    rcvr_substs: SubstsRef<'tcx>,
-) -> Option<Instance<'tcx>> {
-    let def_id = trait_item.def_id;
-    debug!(
-        "resolve_associated_item(trait_item={:?}, \
-            param_env={:?}, \
-            trait_id={:?}, \
-            rcvr_substs={:?})",
-        def_id, param_env, trait_id, rcvr_substs
-    );
-
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
-
-    // Now that we know which impl is being used, we can dispatch to
-    // the actual function:
-    match vtbl {
-        traits::VtableImpl(impl_data) => {
-            let (def_id, substs) =
-                traits::find_associated_item(tcx, param_env, trait_item, rcvr_substs, &impl_data);
-
-            let resolved_item = tcx.associated_item(def_id);
-
-            // Since this is a trait item, we need to see if the item is either a trait default item
-            // or a specialization because we can't resolve those unless we can `Reveal::All`.
-            // NOTE: This should be kept in sync with the similar code in
-            // `rustc::traits::project::assemble_candidates_from_impls()`.
-            let eligible = if !resolved_item.defaultness.is_default() {
-                true
-            } else if param_env.reveal == traits::Reveal::All {
-                !trait_ref.needs_subst()
-            } else {
-                false
-            };
-
-            if !eligible {
-                return None;
-            }
-
-            let substs = tcx.erase_regions(&substs);
-            Some(ty::Instance::new(def_id, substs))
-        }
-        traits::VtableGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id),
-            substs: generator_data.substs,
-        }),
-        traits::VtableClosure(closure_data) => {
-            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            Some(Instance::resolve_closure(
-                tcx,
-                closure_data.closure_def_id,
-                closure_data.substs,
-                trait_closure_kind,
-            ))
-        }
-        traits::VtableFnPointer(ref data) => Some(Instance {
-            def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
-            substs: rcvr_substs,
-        }),
-        traits::VtableObject(ref data) => {
-            let index = tcx.get_vtable_index_of_object_method(data, def_id);
-            Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
-        }
-        traits::VtableBuiltin(..) => {
-            if tcx.lang_items().clone_trait().is_some() {
-                Some(Instance {
-                    def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
-                    substs: rcvr_substs,
-                })
-            } else {
-                None
-            }
-        }
-        traits::VtableAutoImpl(..) | traits::VtableParam(..) | traits::VtableTraitAlias(..) => None,
     }
 }
 
@@ -435,3 +391,21 @@ fn needs_fn_once_adapter_shim(
         (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }
+
+fn resolve_instance_default(
+    _tcx: TyCtxt<'tcx>,
+    _param_env: ty::ParamEnv<'tcx>,
+    _def_id: DefId,
+    _substs: SubstsRef<'tcx>,
+) -> Option<Instance<'tcx>> {
+    unimplemented!()
+}
+
+pub static RESOLVE_INSTANCE: AtomicRef<
+    for<'tcx> fn(
+        TyCtxt<'tcx>,
+        ty::ParamEnv<'tcx>,
+        DefId,
+        SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>>,
+> = AtomicRef::new(&(resolve_instance_default as _));

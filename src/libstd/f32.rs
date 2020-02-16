@@ -44,23 +44,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f32 {
-        // On MSVC LLVM will lower many math intrinsics to a call to the
-        // corresponding function. On MSVC, however, many of these functions
-        // aren't actually available as symbols to call, but rather they are all
-        // `static inline` functions in header files. This means that from a C
-        // perspective it's "compatible", but not so much from an ABI
-        // perspective (which we're worried about).
-        //
-        // The inline header functions always just cast to a f64 and do their
-        // operation, so we do that here as well, but only for MSVC targets.
-        //
-        // Note that there are many MSVC-specific float operations which
-        // redirect to this comment, so `floorf` is just one case of a missing
-        // function on MSVC, but there are many others elsewhere.
-        #[cfg(target_env = "msvc")]
-        return (self as f64).floor() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::floorf32(self) };
+        unsafe { intrinsics::floorf32(self) }
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -78,11 +62,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).ceil() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::ceilf32(self) };
+        unsafe { intrinsics::ceilf32(self) }
     }
 
     /// Returns the nearest integer to a number. Round half-way cases away from
@@ -131,10 +111,10 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let x = 3.5_f32;
-    /// let y = -3.5_f32;
-    /// let abs_difference_x = (x.fract() - 0.5).abs();
-    /// let abs_difference_y = (y.fract() - (-0.5)).abs();
+    /// let x = 3.6_f32;
+    /// let y = -3.6_f32;
+    /// let abs_difference_x = (x.fract() - 0.6).abs();
+    /// let abs_difference_y = (y.fract() - (-0.6)).abs();
     ///
     /// assert!(abs_difference_x <= f32::EPSILON);
     /// assert!(abs_difference_y <= f32::EPSILON);
@@ -348,14 +328,10 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).powf(n as f64) as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::powf32(self, n) };
+        unsafe { intrinsics::powf32(self, n) }
     }
 
-    /// Takes the square root of a number.
+    /// Returns the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -376,7 +352,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 {
-        if self < 0.0 { NAN } else { unsafe { intrinsics::sqrtf32(self) } }
+        unsafe { intrinsics::sqrtf32(self) }
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -399,11 +375,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).exp() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::expf32(self) };
+        unsafe { intrinsics::expf32(self) }
     }
 
     /// Returns `2^(self)`.
@@ -447,11 +419,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).ln() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::logf32(self) };
+        unsafe { intrinsics::logf32(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -521,11 +489,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).log10() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::log10f32(self) };
+        unsafe { intrinsics::log10f32(self) }
     }
 
     /// The positive difference of two numbers.
@@ -564,7 +528,7 @@ impl f32 {
         unsafe { cmath::fdimf(self, other) }
     }
 
-    /// Takes the cubic root of a number.
+    /// Returns the cubic root of a number.
     ///
     /// # Examples
     ///
@@ -625,11 +589,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        // see notes in `core::f32::Float::floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).sin() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::sinf32(self) };
+        unsafe { intrinsics::sinf32(self) }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -649,11 +609,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        // see notes in `core::f32::Float::floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).cos() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::cosf32(self) };
+        unsafe { intrinsics::cosf32(self) }
     }
 
     /// Computes the tangent of a number (in radians).

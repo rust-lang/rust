@@ -4,10 +4,10 @@
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
 use super::validity::RefTracking;
-use rustc::hir;
 use rustc::mir::interpret::{ErrorHandled, InterpResult};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
 
 use syntax::ast::Mutability;
 
@@ -41,6 +41,11 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// despite the nested mutable reference!
     /// The field gets updated when an `UnsafeCell` is encountered.
     mutability: Mutability,
+
+    /// This flag is to avoid triggering UnsafeCells are not allowed behind references in constants
+    /// for promoteds.
+    /// It's a copy of `mir::Body`'s ignore_interior_mut_in_const_validation field
+    ignore_interior_mut_in_const_validation: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -164,14 +169,16 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.
                 let old = std::mem::replace(&mut self.mutability, Mutability::Mut);
-                assert_ne!(
-                    self.mode,
-                    InternMode::Const,
-                    "UnsafeCells are not allowed behind references in constants. This should have \
-                    been prevented statically by const qualification. If this were allowed one \
-                    would be able to change a constant at one use site and other use sites could \
-                    observe that mutation.",
-                );
+                if !self.ignore_interior_mut_in_const_validation {
+                    assert_ne!(
+                        self.mode,
+                        InternMode::Const,
+                        "UnsafeCells are not allowed behind references in constants. This should \
+                        have been prevented statically by const qualification. If this were \
+                        allowed one would be able to change a constant at one use site and other \
+                        use sites could observe that mutation.",
+                    );
+                }
                 let walked = self.walk_aggregate(mplace, fields);
                 self.mutability = old;
                 return walked;
@@ -193,7 +200,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
             {
                 // Validation has already errored on an invalid vtable pointer so we can safely not
                 // do anything if this is not a real pointer.
-                if let Scalar::Ptr(vtable) = mplace.meta.unwrap() {
+                if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
                     // Explicitly choose `Immutable` here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
                     self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
@@ -226,7 +233,8 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                     | (InternMode::Const, hir::Mutability::Mut) => match referenced_ty.kind {
                         ty::Array(_, n)
                             if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
-                        ty::Slice(_) if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
+                        ty::Slice(_)
+                            if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)? == 0 => {}
                         _ => bug!("const qualif failed to prevent mutable references"),
                     },
                 }
@@ -260,18 +268,27 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
     }
 }
 
+pub enum InternKind {
+    /// The `mutability` of the static, ignoring the type which may have interior mutability.
+    Static(hir::Mutability),
+    Constant,
+    Promoted,
+    ConstProp,
+}
+
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
-    // The `mutability` of the place, ignoring the type.
-    place_mut: Option<hir::Mutability>,
+    intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
+    ignore_interior_mut_in_const_validation: bool,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
-    let (base_mutability, base_intern_mode) = match place_mut {
+    let (base_mutability, base_intern_mode) = match intern_kind {
         // `static mut` doesn't care about interior mutability, it's mutable anyway
-        Some(mutbl) => (mutbl, InternMode::Static),
-        // consts, promoteds. FIXME: what about array lengths, array initializers?
-        None => (Mutability::Not, InternMode::ConstBase),
+        InternKind::Static(mutbl) => (mutbl, InternMode::Static),
+        // FIXME: what about array lengths, array initializers?
+        InternKind::Constant | InternKind::ConstProp => (Mutability::Not, InternMode::ConstBase),
+        InternKind::Promoted => (Mutability::Not, InternMode::ConstBase),
     };
 
     // Type based interning.
@@ -301,6 +318,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             mode,
             leftover_allocations,
             mutability,
+            ignore_interior_mut_in_const_validation,
         }
         .visit_value(mplace);
         if let Err(error) = interned {
@@ -308,12 +326,15 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // to read enum discriminants in order to find references in enum variant fields.
             if let err_unsup!(ValidationFailure(_)) = error.kind {
                 let err = crate::const_eval::error_to_const_error(&ecx, error);
-                match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
-                    Ok(mut diag) => {
+                match err.struct_error(
+                    ecx.tcx,
+                    "it is undefined behavior to use this value",
+                    |mut diag| {
                         diag.note(crate::const_eval::note_on_undefined_behavior_error());
                         diag.emit();
-                    }
-                    Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
+                    },
+                ) {
+                    Ok(()) | Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
                 }
             }
         }
@@ -328,10 +349,24 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
-            match base_intern_mode {
-                InternMode::Static => {}
-                InternMode::Const | InternMode::ConstBase => {
-                    // If it's not a static, it *must* be immutable.
+            match intern_kind {
+                // Statics may contain mutable allocations even behind relocations.
+                // Even for immutable statics it would be ok to have mutable allocations behind
+                // raw pointers, e.g. for `static FOO: *const AtomicUsize = &AtomicUsize::new(42)`.
+                InternKind::Static(_) => {}
+                // Raw pointers in promoteds may only point to immutable things so we mark
+                // everything as immutable.
+                // It is UB to mutate through a raw pointer obtained via an immutable reference.
+                // Since all references and pointers inside a promoted must by their very definition
+                // be created from an immutable reference (and promotion also excludes interior
+                // mutability), mutating through them would be UB.
+                // There's no way we can check whether the user is using raw pointers correctly,
+                // so all we can do is mark this as immutable here.
+                InternKind::Promoted => {
+                    alloc.mutability = Mutability::Not;
+                }
+                InternKind::Constant | InternKind::ConstProp => {
+                    // If it's a constant, it *must* be immutable.
                     // We cannot have mutable memory inside a constant.
                     // We use `delay_span_bug` here, because this can be reached in the presence
                     // of fancy transmutes.
@@ -354,6 +389,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
         } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
+            // We have hit an `AllocId` that is neither in local or global memory and isn't marked
+            // as dangling by local memory.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }

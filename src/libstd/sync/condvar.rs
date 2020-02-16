@@ -204,9 +204,7 @@ impl Condvar {
     }
 
     /// Blocks the current thread until this condition variable receives a
-    /// notification and the required condition is met. Spurious wakeups are
-    /// ignored and this function will only return once the condition has been
-    /// met.
+    /// notification and the provided condition is false.
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
@@ -228,29 +226,27 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// #![feature(wait_until)]
-    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     ///
-    /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
-    ///     *started = true;
+    ///     let mut pending = lock.lock().unwrap();
+    ///     *pending = false;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
     /// });
     ///
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
-    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
-    /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
+    /// // As long as the value inside the `Mutex<bool>` is `true`, we wait.
+    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| { *pending }).unwrap();
     /// ```
-    #[unstable(feature = "wait_until", issue = "47960")]
-    pub fn wait_until<'a, T, F>(
+    #[stable(feature = "wait_until", since = "1.42.0")]
+    pub fn wait_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
         mut condition: F,
@@ -258,7 +254,7 @@ impl Condvar {
     where
         F: FnMut(&mut T) -> bool,
     {
-        while !condition(&mut *guard) {
+        while condition(&mut *guard) {
             guard = self.wait(guard)?;
         }
         Ok(guard)
@@ -343,11 +339,10 @@ impl Condvar {
     /// Condition variables normally have a boolean predicate associated with
     /// them, and the predicate must always be checked each time this function
     /// returns to protect against spurious wakeups. Additionally, it is
-    /// typically desirable for the time-out to not exceed some duration in
+    /// typically desirable for the timeout to not exceed some duration in
     /// spite of spurious wakes, thus the sleep-duration is decremented by the
-    /// amount slept. Alternatively, use the `wait_timeout_until` method
-    /// to wait until a condition is met with a total time-out regardless
-    /// of spurious wakes.
+    /// amount slept. Alternatively, use the `wait_timeout_while` method
+    /// to wait with a timeout while a predicate is true.
     ///
     /// The returned [`WaitTimeoutResult`] value indicates if the timeout is
     /// known to have elapsed.
@@ -356,7 +351,7 @@ impl Condvar {
     /// returns, regardless of whether the timeout elapsed or not.
     ///
     /// [`wait`]: #method.wait
-    /// [`wait_timeout_until`]: #method.wait_timeout_until
+    /// [`wait_timeout_while`]: #method.wait_timeout_while
     /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
     ///
     /// # Examples
@@ -407,10 +402,9 @@ impl Condvar {
     }
 
     /// Waits on this condition variable for a notification, timing out after a
-    /// specified duration. Spurious wakes will not cause this function to
-    /// return.
+    /// specified duration.
     ///
-    /// The semantics of this function are equivalent to [`wait_until`] except
+    /// The semantics of this function are equivalent to [`wait_while`] except
     /// that the thread will be blocked for roughly no longer than `dur`. This
     /// method should not be used for precise timing due to anomalies such as
     /// preemption or platform differences that may not cause the maximum
@@ -423,47 +417,45 @@ impl Condvar {
     /// The returned [`WaitTimeoutResult`] value indicates if the timeout is
     /// known to have elapsed without the condition being met.
     ///
-    /// Like [`wait_until`], the lock specified will be re-acquired when this
+    /// Like [`wait_while`], the lock specified will be re-acquired when this
     /// function returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait_until`]: #method.wait_until
+    /// [`wait_while`]: #method.wait_while
     /// [`wait_timeout`]: #method.wait_timeout
     /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(wait_timeout_until)]
-    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     /// use std::time::Duration;
     ///
-    /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
     ///     let (lock, cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
-    ///     *started = true;
+    ///     let mut pending = lock.lock().unwrap();
+    ///     *pending = false;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
     /// });
     ///
     /// // wait for the thread to start up
     /// let (lock, cvar) = &*pair;
-    /// let result = cvar.wait_timeout_until(
+    /// let result = cvar.wait_timeout_while(
     ///     lock.lock().unwrap(),
     ///     Duration::from_millis(100),
-    ///     |&mut started| started,
+    ///     |&mut pending| pending,
     /// ).unwrap();
     /// if result.1.timed_out() {
-    ///     // timed-out without the condition ever evaluating to true.
+    ///     // timed-out without the condition ever evaluating to false.
     /// }
     /// // access the locked mutex via result.0
     /// ```
-    #[unstable(feature = "wait_timeout_until", issue = "47960")]
-    pub fn wait_timeout_until<'a, T, F>(
+    #[stable(feature = "wait_timeout_until", since = "1.42.0")]
+    pub fn wait_timeout_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
         dur: Duration,
@@ -474,7 +466,7 @@ impl Condvar {
     {
         let start = Instant::now();
         loop {
-            if condition(&mut *guard) {
+            if !condition(&mut *guard) {
                 return Ok((guard, WaitTimeoutResult(false)));
             }
             let timeout = match dur.checked_sub(start.elapsed()) {
@@ -613,7 +605,6 @@ impl Drop for Condvar {
 #[cfg(test)]
 mod tests {
     use crate::sync::atomic::{AtomicBool, Ordering};
-    /// #![feature(wait_until)]
     use crate::sync::mpsc::channel;
     use crate::sync::{Arc, Condvar, Mutex};
     use crate::thread;
@@ -683,7 +674,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    fn wait_until() {
+    fn wait_while() {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         let pair2 = pair.clone();
 
@@ -698,7 +689,7 @@ mod tests {
 
         // Wait for the thread to start up.
         let &(ref lock, ref cvar) = &*pair;
-        let guard = cvar.wait_until(lock.lock().unwrap(), |started| *started);
+        let guard = cvar.wait_while(lock.lock().unwrap(), |started| !*started);
         assert!(*guard.unwrap());
     }
 
@@ -725,24 +716,24 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
     #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
-    fn wait_timeout_until_wait() {
+    fn wait_timeout_while_wait() {
         let m = Arc::new(Mutex::new(()));
         let c = Arc::new(Condvar::new());
 
         let g = m.lock().unwrap();
-        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(1), |_| false).unwrap();
+        let (_g, wait) = c.wait_timeout_while(g, Duration::from_millis(1), |_| true).unwrap();
         // no spurious wakeups. ensure it timed-out
         assert!(wait.timed_out());
     }
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    fn wait_timeout_until_instant_satisfy() {
+    fn wait_timeout_while_instant_satisfy() {
         let m = Arc::new(Mutex::new(()));
         let c = Arc::new(Condvar::new());
 
         let g = m.lock().unwrap();
-        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(0), |_| true).unwrap();
+        let (_g, wait) = c.wait_timeout_while(g, Duration::from_millis(0), |_| false).unwrap();
         // ensure it didn't time-out even if we were not given any time.
         assert!(!wait.timed_out());
     }
@@ -750,7 +741,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
     #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
-    fn wait_timeout_until_wake() {
+    fn wait_timeout_while_wake() {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         let pair_copy = pair.clone();
 
@@ -764,7 +755,7 @@ mod tests {
             cvar.notify_one();
         });
         let (g2, wait) = c
-            .wait_timeout_until(g, Duration::from_millis(u64::MAX), |&mut notified| notified)
+            .wait_timeout_while(g, Duration::from_millis(u64::MAX), |&mut notified| !notified)
             .unwrap();
         // ensure it didn't time-out even if we were not given any time.
         assert!(!wait.timed_out());

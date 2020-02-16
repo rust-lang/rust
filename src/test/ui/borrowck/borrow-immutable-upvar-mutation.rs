@@ -3,10 +3,16 @@
 // Tests that we can't assign to or mutably borrow upvars from `Fn`
 // closures (issue #17780)
 
-fn set(x: &mut usize) { *x = 5; }
+fn set(x: &mut usize) {
+    *x = 5;
+}
 
-fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
-fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn<A, F: Fn<A>>(f: F) -> F {
+    f
+}
+fn to_fn_mut<A, F: FnMut<A>>(f: F) -> F {
+    f
+}
 
 fn main() {
     // By-ref captures
@@ -18,7 +24,10 @@ fn main() {
         let _g = to_fn(|| set(&mut y)); //~ ERROR cannot borrow
 
         let mut z = 0;
-        let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); }); //~ ERROR cannot assign
+        let _h = to_fn_mut(|| {
+            set(&mut z);
+            to_fn(|| z = 42); //~ ERROR cannot assign
+        });
     }
 
     // By-value captures
@@ -30,6 +39,18 @@ fn main() {
         let _g = to_fn(move || set(&mut y)); //~ ERROR cannot borrow
 
         let mut z = 0;
-        let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); }); //~ ERROR cannot assign
+        let _h = to_fn_mut(move || {
+            set(&mut z);
+            to_fn(move || z = 42);
+            //~^ ERROR cannot assign
+        });
     }
+}
+
+fn foo() -> Box<dyn Fn() -> usize> {
+    let mut x = 0;
+    Box::new(move || {
+        x += 1; //~ ERROR cannot assign
+        x
+    })
 }

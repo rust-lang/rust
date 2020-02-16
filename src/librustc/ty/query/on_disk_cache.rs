@@ -1,6 +1,4 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
@@ -9,12 +7,12 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use crate::util::common::{time, time_ext};
-
-use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::Diagnostic;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
@@ -200,7 +198,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Encode query results.
             let mut query_result_index = EncodedQueryResultIndex::new();
 
-            time(tcx.sess, "encode query results", || {
+            tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
@@ -1055,24 +1053,25 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results for {}", ::std::any::type_name::<Q>());
+    let _timer = tcx
+        .sess
+        .prof
+        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
-    time_ext(tcx.sess.time_extended(), desc, || {
-        let shards = Q::query_cache(tcx).lock_shards();
-        assert!(shards.iter().all(|shard| shard.active.is_empty()));
-        for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
-            if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
-                let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+    let shards = Q::query_cache(tcx).lock_shards();
+    assert!(shards.iter().all(|shard| shard.active.is_empty()));
+    for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
+        if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
+            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
-                // Record position of the cache entry.
-                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+            // Record position of the cache entry.
+            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-                // Encode the type check tables with the `SerializedDepNodeIndex`
-                // as tag.
-                encoder.encode_tagged(dep_node, &entry.value)?;
-            }
+            // Encode the type check tables with the `SerializedDepNodeIndex`
+            // as tag.
+            encoder.encode_tagged(dep_node, &entry.value)?;
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

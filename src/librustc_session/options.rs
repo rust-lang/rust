@@ -11,8 +11,6 @@ use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 
-use getopts;
-
 use std::collections::BTreeMap;
 
 use std::collections::hash_map::DefaultHasher;
@@ -263,6 +261,8 @@ macro_rules! options {
         pub const parse_sanitizer_list: Option<&str> =
             Some("comma separated list of sanitizers");
         pub const parse_sanitizer_memory_track_origins: Option<&str> = None;
+        pub const parse_cfguard: Option<&str> =
+            Some("either `disabled`, `nochecks`, or `checks`");
         pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&str> =
@@ -288,7 +288,7 @@ macro_rules! options {
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
-            SymbolManglingVersion};
+            SymbolManglingVersion, CFGuard};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -497,6 +497,16 @@ macro_rules! options {
                     false
                 }
             }
+        }
+
+        fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
+            match v {
+                Some("disabled") => *slot = CFGuard::Disabled,
+                Some("nochecks") => *slot = CFGuard::NoChecks,
+                Some("checks") => *slot = CFGuard::Checks,
+                _ => return false,
+            }
+            true
         }
 
         fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
@@ -718,6 +728,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "measure time of rustc processes"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass"),
+    llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
+        "generate JSON tracing data file from LLVM data"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input"),
     asm_comments: bool = (false, parse_bool, [TRACKED],
@@ -764,16 +776,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "treat error number `val` that occurs as bug"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug`"),
-    external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
-        "show macro backtraces even for non-local macros"),
+    macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
+        "show macro backtraces"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help"),
     terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "set the current terminal width"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort"),
-    continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
-        "attempt to recover from parse errors (experimental)"),
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
         "print tasks that execute and the color their dep node gets (requires debug build)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -925,8 +935,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
+    // keep this in sync with the event filter names in librustc_data_structures/profiling.rs
     self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
-        "specifies which kinds of events get recorded by the self profiler"),
+        "specifies which kinds of events get recorded by the self profiler;
+        for example: `-Z self-profile-events=default,query-keys`
+        all options: none, all, default, generic-activity, query-provider, query-cache-hit
+                     query-blocked, incr-cache-load, query-keys, function-args, args, llvm"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emits a section containing stack size metadata"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -946,4 +960,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     insert_sideeffect: bool = (false, parse_bool, [TRACKED],
         "fix undefined behavior when a thread doesn't eventually make progress \
          (such as entering an empty infinite loop) by inserting llvm.sideeffect"),
+    deduplicate_diagnostics: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+        "deduplicate identical diagnostics"),
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [UNTRACKED],
+        "use Windows Control Flow Guard (`disabled`, `nochecks` or `checks`)"),
+    no_link: bool = (false, parse_bool, [TRACKED],
+        "compile without linking"),
+    link_only: bool = (false, parse_bool, [TRACKED],
+        "link the `.rlink` file generated by `-Z no-link`"),
+    new_llvm_pass_manager: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "use new LLVM pass manager"),
 }

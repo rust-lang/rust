@@ -1,27 +1,27 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::hir;
-use crate::hir::def::DefKind;
-use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
-use crate::middle::lang_items;
 use crate::mir::interpret::{sign_extend, truncate};
-use crate::traits::{self, ObligationCause};
-use crate::ty::layout::{Integer, IntegerExt};
+use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use crate::util::common::ErrorReported;
-
+use rustc_apfloat::Float as _;
+use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
+use rustc_target::abi::TargetDataLayout;
+use smallvec::SmallVec;
 use std::{cmp, fmt};
 use syntax::ast;
-use syntax::attr::{self, SignedInt, UnsignedInt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -45,26 +45,38 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
+fn signed_min(size: Size) -> i128 {
+    sign_extend(1_u128 << (size.bits() - 1), size) as i128
+}
+
+fn signed_max(size: Size) -> i128 {
+    i128::max_value() >> (128 - size.bits())
+}
+
+fn unsigned_max(size: Size) -> u128 {
+    u128::max_value() >> (128 - size.bits())
+}
+
+fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
+    let (int, signed) = match ty.kind {
+        Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
+        Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
+        _ => bug!("non integer discriminant"),
+    };
+    (int.size(), signed)
+}
+
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
     pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (int, signed) = match self.ty.kind {
-            Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
-            Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
-            _ => bug!("non integer discriminant"),
-        };
-
-        let size = int.size();
-        let bit_size = int.size().bits();
-        let shift = 128 - bit_size;
-        if signed {
-            let sext = |u| sign_extend(u, size) as i128;
-            let min = sext(1_u128 << (bit_size - 1));
-            let max = i128::max_value() >> shift;
-            let val = sext(self.val);
+        let (size, signed) = int_size_and_signed(tcx, self.ty);
+        let (val, oflo) = if signed {
+            let min = signed_min(size);
+            let max = signed_max(size);
+            let val = sign_extend(self.val, size) as i128;
             assert!(n < (i128::max_value() as u128));
             let n = n as i128;
             let oflo = val > max - n;
@@ -72,14 +84,15 @@ impl<'tcx> Discr<'tcx> {
             // zero the upper bits
             let val = val as u128;
             let val = truncate(val, size);
-            (Self { val: val as u128, ty: self.ty }, oflo)
+            (val, oflo)
         } else {
-            let max = u128::max_value() >> shift;
+            let max = unsigned_max(size);
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo { n - (max - val) - 1 } else { val + n };
-            (Self { val: val, ty: self.ty }, oflo)
-        }
+            (val, oflo)
+        };
+        (Self { val, ty: self.ty }, oflo)
     }
 }
 
@@ -122,13 +135,6 @@ impl IntTypeExt for attr::IntType {
     }
 }
 
-#[derive(Clone)]
-pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<&'tcx ty::FieldDef>),
-    NotAnAdt,
-    HasDestructor,
-}
-
 /// Describes whether a type is representable. For types that are not
 /// representable, 'SelfRecursive' and 'ContainsRecursive' are used to
 /// distinguish between types that are recursive with themselves and types that
@@ -142,65 +148,6 @@ pub enum Representability {
     Representable,
     ContainsRecursive,
     SelfRecursive(Vec<Span>),
-}
-
-impl<'tcx> ty::ParamEnv<'tcx> {
-    pub fn can_type_implement_copy(
-        self,
-        tcx: TyCtxt<'tcx>,
-        self_type: Ty<'tcx>,
-    ) -> Result<(), CopyImplementationError<'tcx>> {
-        // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt().enter(|infcx| {
-            let (adt, substs) = match self_type.kind {
-                // These types used to have a builtin impl.
-                // Now libcore provides that impl.
-                ty::Uint(_)
-                | ty::Int(_)
-                | ty::Bool
-                | ty::Float(_)
-                | ty::Char
-                | ty::RawPtr(..)
-                | ty::Never
-                | ty::Ref(_, _, hir::Mutability::Not) => return Ok(()),
-
-                ty::Adt(adt, substs) => (adt, substs),
-
-                _ => return Err(CopyImplementationError::NotAnAdt),
-            };
-
-            let mut infringing = Vec::new();
-            for variant in &adt.variants {
-                for field in &variant.fields {
-                    let ty = field.ty(tcx, substs);
-                    if ty.references_error() {
-                        continue;
-                    }
-                    let span = tcx.def_span(field.did);
-                    let cause = ObligationCause { span, ..ObligationCause::dummy() };
-                    let ctx = traits::FulfillmentContext::new();
-                    match traits::fully_normalize(&infcx, ctx, cause, self, &ty) {
-                        Ok(ty) => {
-                            if !infcx.type_is_copy_modulo_regions(self, ty, span) {
-                                infringing.push(field);
-                            }
-                        }
-                        Err(errors) => {
-                            infcx.report_fulfillment_errors(&errors, None, false);
-                        }
-                    };
-                }
-            }
-            if !infringing.is_empty() {
-                return Err(CopyImplementationError::InfrigingFields(infringing));
-            }
-            if adt.has_dtor(tcx) {
-                return Err(CopyImplementationError::HasDestructor);
-            }
-
-            Ok(())
-        })
-    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -393,70 +340,6 @@ impl<'tcx> TyCtxt<'tcx> {
         (a, b)
     }
 
-    /// Given a set of predicates that apply to an object type, returns
-    /// the region bounds that the (erased) `Self` type must
-    /// outlive. Precisely *because* the `Self` type is erased, the
-    /// parameter `erased_self_ty` must be supplied to indicate what type
-    /// has been used to represent `Self` in the predicates
-    /// themselves. This should really be a unique type; `FreshTy(0)` is a
-    /// popular choice.
-    ///
-    /// N.B., in some cases, particularly around higher-ranked bounds,
-    /// this function returns a kind of conservative approximation.
-    /// That is, all regions returned by this function are definitely
-    /// required, but there may be other region bounds that are not
-    /// returned, as well as requirements like `for<'a> T: 'a`.
-    ///
-    /// Requires that trait definitions have been processed so that we can
-    /// elaborate predicates and walk supertraits.
-    //
-    // FIXME: callers may only have a `&[Predicate]`, not a `Vec`, so that's
-    // what this code should accept.
-    pub fn required_region_bounds(
-        self,
-        erased_self_ty: Ty<'tcx>,
-        predicates: Vec<ty::Predicate<'tcx>>,
-    ) -> Vec<ty::Region<'tcx>> {
-        debug!(
-            "required_region_bounds(erased_self_ty={:?}, predicates={:?})",
-            erased_self_ty, predicates
-        );
-
-        assert!(!erased_self_ty.has_escaping_bound_vars());
-
-        traits::elaborate_predicates(self, predicates)
-            .filter_map(|predicate| {
-                match predicate {
-                    ty::Predicate::Projection(..)
-                    | ty::Predicate::Trait(..)
-                    | ty::Predicate::Subtype(..)
-                    | ty::Predicate::WellFormed(..)
-                    | ty::Predicate::ObjectSafe(..)
-                    | ty::Predicate::ClosureKind(..)
-                    | ty::Predicate::RegionOutlives(..)
-                    | ty::Predicate::ConstEvaluatable(..) => None,
-                    ty::Predicate::TypeOutlives(predicate) => {
-                        // Search for a bound of the form `erased_self_ty
-                        // : 'a`, but be wary of something like `for<'a>
-                        // erased_self_ty : 'a` (we interpret a
-                        // higher-ranked bound like that as 'static,
-                        // though at present the code in `fulfill.rs`
-                        // considers such bounds to be unsatisfiable, so
-                        // it's kind of a moot point since you could never
-                        // construct such an object, but this seems
-                        // correct even if that code changes).
-                        let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
-                        if t == &erased_self_ty && !r.has_escaping_bound_vars() {
-                            Some(*r)
-                        } else {
-                            None
-                        }
-                    }
-                }
-            })
-            .collect()
-    }
-
     /// Calculate the destructor of a given type.
     pub fn calculate_dtor(
         self,
@@ -474,7 +357,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
-            if let Some(item) = self.associated_items(impl_did).next() {
+            if let Some(item) = self.associated_items(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
                     dtor_did = Some(item.def_id);
                 }
@@ -665,8 +548,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if self.is_mutable_static(def_id) {
             self.mk_mut_ptr(static_ty)
-        } else if self.is_foreign_item(def_id) {
-            self.mk_imm_ptr(static_ty)
         } else {
             self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
         }
@@ -734,7 +615,7 @@ impl<'tcx> TyCtxt<'tcx> {
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
                 if let ty::Opaque(def_id, substs) = t.kind {
                     self.expand_opaque_ty(def_id, substs).unwrap_or(t)
-                } else if t.has_projections() {
+                } else if t.has_opaque_types() {
                     t.super_fold_with(self)
                 } else {
                     t
@@ -755,6 +636,44 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
+    /// Returns the maximum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
+                Some(val)
+            }
+            ty::Char => Some(std::char::MAX as u128),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => ::rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ast::FloatTy::F64 => ::rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
+    /// Returns the minimum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { truncate(signed_min(size) as u128, size) } else { 0 };
+                Some(val)
+            }
+            ty::Char => Some(0),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
+                ast::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
     /// Checks whether values of this type `T` are *moved* or *copied*
     /// when referenced -- this amounts to a check for whether `T:
     /// Copy`, but note that we **don't** consider lifetimes when
@@ -807,7 +726,23 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Note that this method is used to check eligible types in unions.
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        tcx.needs_drop_raw(param_env.and(self)).0
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.needs_drop_raw(param_env.and(erased))
+            }
+        }
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
@@ -1006,128 +941,6 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::CopyTraitLangItem)
-}
-
-fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::SizedTraitLangItem)
-}
-
-fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::FreezeTraitLangItem)
-}
-
-fn is_item_raw<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    item: lang_items::LangItem,
-) -> bool {
-    let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(item, None);
-    tcx.infer_ctxt().enter(|infcx| {
-        traits::type_known_to_meet_bound_modulo_regions(
-            &infcx,
-            param_env,
-            ty,
-            trait_def_id,
-            DUMMY_SP,
-        )
-    })
-}
-
-#[derive(Clone, HashStable)]
-pub struct NeedsDrop(pub bool);
-
-fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
-    let (param_env, ty) = query.into_parts();
-
-    let needs_drop = |ty: Ty<'tcx>| -> bool { tcx.needs_drop_raw(param_env.and(ty)).0 };
-
-    assert!(!ty.needs_infer());
-
-    NeedsDrop(match ty.kind {
-        // Fast-path for primitive types
-        ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Bool
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Never
-        | ty::FnDef(..)
-        | ty::FnPtr(_)
-        | ty::Char
-        | ty::GeneratorWitness(..)
-        | ty::RawPtr(_)
-        | ty::Ref(..)
-        | ty::Str => false,
-
-        // Foreign types can never have destructors
-        ty::Foreign(..) => false,
-
-        // `ManuallyDrop` doesn't have a destructor regardless of field types.
-        ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
-
-        // Issue #22536: We first query `is_copy_modulo_regions`.  It sees a
-        // normalized version of the type, and therefore will definitely
-        // know whether the type implements Copy (and thus needs no
-        // cleanup/drop/zeroing) ...
-        _ if ty.is_copy_modulo_regions(tcx, param_env, DUMMY_SP) => false,
-
-        // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking for the structural "may drop".
-
-        // FIXME(#22815): Note that this is a conservative heuristic;
-        // it may report that the type "may drop" when actual type does
-        // not actually have a destructor associated with it. But since
-        // the type absolutely did not have the `Copy` bound attached
-        // (see above), it is sound to treat it as having a destructor.
-
-        // User destructors are the only way to have concrete drop types.
-        ty::Adt(def, _) if def.has_dtor(tcx) => true,
-
-        // Can refer to a type which may drop.
-        // FIXME(eddyb) check this against a ParamEnv.
-        ty::Dynamic(..)
-        | ty::Projection(..)
-        | ty::Param(_)
-        | ty::Bound(..)
-        | ty::Placeholder(..)
-        | ty::Opaque(..)
-        | ty::Infer(_)
-        | ty::Error => true,
-
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
-        // Zero-length arrays never contain anything to drop.
-        ty::Array(_, len) if len.try_eval_usize(tcx, param_env) == Some(0) => false,
-
-        // Structural recursion.
-        ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
-
-        ty::Closure(def_id, ref substs) => {
-            substs.as_closure().upvar_tys(def_id, tcx).any(needs_drop)
-        }
-
-        // Pessimistically assume that all generators will require destructors
-        // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass
-        ty::Generator(..) => true,
-
-        ty::Tuple(..) => ty.tuple_fields().any(needs_drop),
-
-        // unions don't have destructors because of the child types,
-        // only if they manually implement `Drop` (handled above).
-        ty::Adt(def, _) if def.is_union() => false,
-
-        ty::Adt(def, substs) => def
-            .variants
-            .iter()
-            .any(|variant| variant.fields.iter().any(|field| needs_drop(field.ty(tcx, substs)))),
-    })
-}
-
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
@@ -1177,12 +990,71 @@ impl<'tcx> ExplicitSelf<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    *providers = ty::query::Providers {
-        is_copy_raw,
-        is_sized_raw,
-        is_freeze_raw,
-        needs_drop_raw,
-        ..*providers
-    };
+/// Returns a list of types such that the given type needs drop if and only if
+/// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
+/// this type always needs drop.
+pub fn needs_drop_components(
+    ty: Ty<'tcx>,
+    target_layout: &TargetDataLayout,
+) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
+    match ty.kind {
+        ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_))
+        | ty::Bool
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Never
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Char
+        | ty::GeneratorWitness(..)
+        | ty::RawPtr(_)
+        | ty::Ref(..)
+        | ty::Str => Ok(SmallVec::new()),
+
+        // Foreign types can never have destructors.
+        ty::Foreign(..) => Ok(SmallVec::new()),
+
+        // Pessimistically assume that all generators will require destructors
+        // as we don't know if a destructor is a noop or not until after the MIR
+        // state transformation pass.
+        ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+
+        ty::Slice(ty) => needs_drop_components(ty, target_layout),
+        ty::Array(elem_ty, size) => {
+            match needs_drop_components(elem_ty, target_layout) {
+                Ok(v) if v.is_empty() => Ok(v),
+                res => match size.val.try_to_bits(target_layout.pointer_size) {
+                    // Arrays of size zero don't need drop, even if their element
+                    // type does.
+                    Some(0) => Ok(SmallVec::new()),
+                    Some(_) => res,
+                    // We don't know which of the cases above we are in, so
+                    // return the whole type and let the caller decide what to
+                    // do.
+                    None => Ok(smallvec![ty]),
+                },
+            }
+        }
+        // If any field needs drop, then the whole tuple does.
+        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), move |mut acc, elem| {
+            acc.extend(needs_drop_components(elem, target_layout)?);
+            Ok(acc)
+        }),
+
+        // These require checking for `Copy` bounds or `Adt` destructors.
+        ty::Adt(..)
+        | ty::Projection(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(..)
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        | ty::Closure(..) => Ok(smallvec![ty]),
+    }
 }
+
+#[derive(Copy, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
+pub struct AlwaysRequiresDrop;

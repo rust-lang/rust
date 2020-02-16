@@ -44,28 +44,28 @@ macro_rules! integer_sum_product {
     (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]
         impl Sum for $a {
-            fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold($zero, Add::add)
             }
         }
 
         #[$attr]
         impl Product for $a {
-            fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold($one, Mul::mul)
             }
         }
 
         #[$attr]
         impl<'a> Sum<&'a $a> for $a {
-            fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold($zero, Add::add)
             }
         }
 
         #[$attr]
         impl<'a> Product<&'a $a> for $a {
-            fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold($one, Mul::mul)
             }
         }
@@ -84,28 +84,28 @@ macro_rules! float_sum_product {
     ($($a:ident)*) => ($(
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
-            fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(0.0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
-            fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(1.0, Mul::mul)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
-            fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(0.0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
-            fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(1.0, Mul::mul)
             }
         }

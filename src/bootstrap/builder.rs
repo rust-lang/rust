@@ -343,6 +343,7 @@ impl<'a> Builder<'a> {
                 tool::Rustdoc,
                 tool::Clippy,
                 native::Llvm,
+                native::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
                 native::Lld
@@ -509,7 +510,7 @@ impl<'a> Builder<'a> {
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
-        let builder = Builder {
+        Builder {
             build,
             top_stage: build.config.stage.unwrap_or(2),
             kind,
@@ -517,9 +518,7 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths: paths.to_owned(),
-        };
-
-        builder
+        }
     }
 
     pub fn execute_cli(&self) {
@@ -693,7 +692,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        if let Some(linker) = self.linker(compiler.host) {
+        if let Some(linker) = self.linker(compiler.host, true) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
@@ -726,7 +725,7 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&my_out, &rustdoc);
         }
 
-        cargo.env("CARGO_TARGET_DIR", out_dir).arg(cmd).arg("-Zconfig-profile");
+        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd).arg("-Zconfig-profile");
 
         let profile_var = |name: &str| {
             let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
@@ -752,13 +751,12 @@ impl<'a> Builder<'a> {
             cargo.env("RUST_CHECK", "1");
         }
 
-        let stage;
-        if compiler.stage == 0 && self.local_rebuild {
+        let stage = if compiler.stage == 0 && self.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
-            stage = 1;
+            1
         } else {
-            stage = compiler.stage;
-        }
+            compiler.stage
+        };
 
         let mut rustflags = Rustflags::new(&target);
         if stage != 0 {
@@ -849,7 +847,13 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
-        rustflags.arg("-Zexternal-macro-backtrace");
+        // cfg(bootstrap): the flag was renamed from `-Zexternal-macro-backtrace`
+        // to `-Zmacro-backtrace`, keep only the latter after beta promotion.
+        if stage == 0 {
+            rustflags.arg("-Zexternal-macro-backtrace");
+        } else {
+            rustflags.arg("-Zmacro-backtrace");
+        }
 
         let want_rustdoc = self.doc_tests != DocTests::No;
 
@@ -864,6 +868,18 @@ impl<'a> Builder<'a> {
         let maybe_sysroot = self.sysroot(compiler);
         let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
         let libdir = self.rustc_libdir(compiler);
+
+        // Clear the output directory if the real rustc we're using has changed;
+        // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
+        //
+        // Avoid doing this during dry run as that usually means the relevant
+        // compiler is not yet linked/copied properly.
+        //
+        // Only clear out the directory if we're compiling std; otherwise, we
+        // should let Cargo take care of things for us (via depdep info)
+        if !self.config.dry_run && mode == Mode::Std && cmd == "build" {
+            self.clear_if_dirty(&out_dir, &self.rustc(compiler));
+        }
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
@@ -936,10 +952,31 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if let Some(host_linker) = self.linker(compiler.host) {
+        // FIXME: Don't use LLD if we're compiling libtest, since it fails to link it.
+        // See https://github.com/rust-lang/rust/issues/68647.
+        let can_use_lld = mode != Mode::Std;
+
+        // FIXME: The beta compiler doesn't pick the `lld-link` flavor for `*-pc-windows-msvc`
+        // Remove `RUSTC_HOST_LINKER_FLAVOR` when this is fixed
+        let lld_linker_flavor = |linker: &Path, target: Interned<String>| {
+            compiler.stage == 0
+                && linker.file_name() == Some(OsStr::new("rust-lld"))
+                && target.contains("pc-windows-msvc")
+        };
+
+        if let Some(host_linker) = self.linker(compiler.host, can_use_lld) {
+            if lld_linker_flavor(host_linker, compiler.host) {
+                cargo.env("RUSTC_HOST_LINKER_FLAVOR", "lld-link");
+            }
+
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
-        if let Some(target_linker) = self.linker(target) {
+
+        if let Some(target_linker) = self.linker(target, can_use_lld) {
+            if lld_linker_flavor(target_linker, target) {
+                rustflags.arg("-Clinker-flavor=lld-link");
+            }
+
             let target = crate::envify(&target);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
@@ -1098,6 +1135,20 @@ impl<'a> Builder<'a> {
             );
         }
 
+        // If Control Flow Guard is enabled, pass the `control_flow_guard=checks` flag to rustc
+        // when compiling the standard library, since this might be linked into the final outputs
+        // produced by rustc. Since this mitigation is only available on Windows, only enable it
+        // for the standard library in case the compiler is run on a non-Windows platform.
+        // This is not needed for stage 0 artifacts because these will only be used for building
+        // the stage 1 compiler.
+        if cfg!(windows)
+            && mode == Mode::Std
+            && self.config.control_flow_guard
+            && compiler.stage >= 1
+        {
+            rustflags.arg("-Zcontrol_flow_guard=checks");
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
@@ -1239,12 +1290,7 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && dur > Duration::from_millis(100) {
-            println!(
-                "[TIMING] {:?} -- {}.{:03}",
-                step,
-                dur.as_secs(),
-                dur.subsec_nanos() / 1_000_000
-            );
+            println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
         }
 
         {
@@ -1289,7 +1335,7 @@ impl Rustflags {
 
     fn arg(&mut self, arg: &str) -> &mut Self {
         assert_eq!(arg.split_whitespace().count(), 1);
-        if self.0.len() > 0 {
+        if !self.0.is_empty() {
             self.0.push_str(" ");
         }
         self.0.push_str(arg);

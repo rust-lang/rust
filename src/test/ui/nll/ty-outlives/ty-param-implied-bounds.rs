@@ -1,5 +1,5 @@
 // compile-flags:-Zborrowck=mir -Zverbose
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 // Test that we assume that universal types like `T` outlive the
 // function body.

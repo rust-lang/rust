@@ -26,8 +26,11 @@ rustc-hash = "1.0.1"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_index = { path = "../librustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
-measureme = "0.5"
+measureme = "0.7.1"
 
 [dependencies.parking_lot]
 version = "0.9"
 features = ["nightly"]
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "psapi"] }

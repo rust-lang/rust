@@ -1,4 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
 fn main() {
     let _: char = '';
     //~^ ERROR: empty character literal

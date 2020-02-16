@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![warn(unused_imports)]
 
 use crate::foo::Bar;

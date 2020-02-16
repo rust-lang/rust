@@ -1,6 +1,6 @@
-use crate::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use crate::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_errors::Applicability;
 use syntax::ast::{ExprKind, Stmt, StmtKind};
-use syntax::errors::Applicability;
 
 declare_lint! {
     pub REDUNDANT_SEMICOLON,
@@ -26,19 +26,21 @@ impl EarlyLintPass for RedundantSemicolon {
                             } else {
                                 "unnecessary trailing semicolon"
                             };
-                            let mut err = cx.struct_span_lint(REDUNDANT_SEMICOLON, stmt.span, &msg);
-                            let suggest_msg = if multiple {
-                                "remove these semicolons"
-                            } else {
-                                "remove this semicolon"
-                            };
-                            err.span_suggestion(
-                                stmt.span,
-                                &suggest_msg,
-                                String::new(),
-                                Applicability::MaybeIncorrect,
-                            );
-                            err.emit();
+                            cx.struct_span_lint(REDUNDANT_SEMICOLON, stmt.span, |lint| {
+                                let mut err = lint.build(&msg);
+                                let suggest_msg = if multiple {
+                                    "remove these semicolons"
+                                } else {
+                                    "remove this semicolon"
+                                };
+                                err.span_suggestion(
+                                    stmt.span,
+                                    &suggest_msg,
+                                    String::new(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                err.emit();
+                            });
                         }
                     }
                 }

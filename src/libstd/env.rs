@@ -878,6 +878,7 @@ pub mod consts {
     /// - mips64
     /// - powerpc
     /// - powerpc64
+    /// - riscv64
     /// - s390x
     /// - sparc64
     #[stable(feature = "env", since = "1.0.0")]
@@ -1033,6 +1034,11 @@ mod arch {
 #[cfg(target_arch = "hexagon")]
 mod arch {
     pub const ARCH: &'static str = "hexagon";
+}
+
+#[cfg(target_arch = "riscv64")]
+mod arch {
+    pub const ARCH: &'static str = "riscv64";
 }
 
 #[cfg(test)]

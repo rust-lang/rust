@@ -20,6 +20,6 @@ impl ToString_ for Point {
 
 fn main() {
     let p = Point::new(0.0, 0.0);
-    //~^ ERROR no function or associated item named `new` found for type `Point`
+    //~^ ERROR no function or associated item named `new` found for struct `Point`
     println!("{}", p.to_string());
 }

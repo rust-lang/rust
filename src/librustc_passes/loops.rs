@@ -1,18 +1,15 @@
 use Context::*;
 
-use rustc::session::Session;
-
-use errors::Applicability;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
-use rustc::hir::{self, Destination, Movability, Node};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_errors::{struct_span_err, Applicability};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Destination, Movability, Node};
+use rustc_session::Session;
 use rustc_span::Span;
-use syntax::struct_span_err;
-
-use rustc_error_codes::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
@@ -44,7 +41,9 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 }
 
 impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 

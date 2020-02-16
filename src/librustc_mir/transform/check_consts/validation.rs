@@ -1,13 +1,13 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::hir::{def_id::DefId, HirId};
 use rustc::middle::lang_items;
 use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
-use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
+use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -20,7 +20,9 @@ use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
+use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use dataflow::Analysis;
 
 pub type IndirectlyMutableResults<'mir, 'tcx> =
     old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
@@ -31,12 +33,11 @@ struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
 }
 
 impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
-    pub fn new(q: Q, item: &'a Item<'mir, 'tcx>, dead_unwinds: &BitSet<BasicBlock>) -> Self {
-        let analysis = FlowSensitiveAnalysis::new(q, item);
-        let results =
-            dataflow::Engine::new(item.tcx, &item.body, item.def_id, dead_unwinds, analysis)
-                .iterate_to_fixpoint();
-        let cursor = dataflow::ResultsCursor::new(*item.body, results);
+    pub fn new(q: Q, item: &'a Item<'mir, 'tcx>) -> Self {
+        let cursor = FlowSensitiveAnalysis::new(q, item)
+            .into_engine(item.tcx, &item.body, item.def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*item.body);
 
         let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
         for (local, decl) in item.body.local_decls.iter_enumerated() {
@@ -64,7 +65,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn needs_drop(&mut self, local: Local, location: Location) -> bool {
         if !self.needs_drop.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -76,7 +77,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn has_mut_interior(&mut self, local: Local, location: Location) -> bool {
         if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -84,17 +85,6 @@ impl Qualifs<'a, 'mir, 'tcx> {
         self.has_mut_interior.cursor.seek_before(location);
         self.has_mut_interior.cursor.get().contains(local)
             || self.indirectly_mutable(local, location)
-    }
-
-    /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
-    /// `indirectly_mutable` cursors to be updated beforehand.
-    fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
-        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
-            return false;
-        }
-
-        self.has_mut_interior.cursor.get().contains(local)
-            || self.indirectly_mutable.get().contains(local)
     }
 
     fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
@@ -120,8 +110,8 @@ impl Qualifs<'a, 'mir, 'tcx> {
         let return_loc = item.body.terminator_loc(return_block);
 
         ConstQualifs {
-            needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
+            needs_drop: self.needs_drop(RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior(RETURN_PLACE, return_loc),
         }
     }
 }
@@ -144,12 +134,10 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
 
 impl Validator<'a, 'mir, 'tcx> {
     pub fn new(item: &'a Item<'mir, 'tcx>) -> Self {
+        let needs_drop = QualifCursor::new(NeedsDrop, item);
+        let has_mut_interior = QualifCursor::new(HasMutInterior, item);
+
         let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
-
-        let needs_drop = QualifCursor::new(NeedsDrop, item, &dead_unwinds);
-
-        let has_mut_interior = QualifCursor::new(HasMutInterior, item, &dead_unwinds);
-
         let indirectly_mutable = old_dataflow::do_dataflow(
             item.tcx,
             &*item.body,
@@ -172,7 +160,7 @@ impl Validator<'a, 'mir, 'tcx> {
         let Item { tcx, body, def_id, const_kind, .. } = *self.item;
 
         let use_min_const_fn_checks = (const_kind == Some(ConstKind::ConstFn)
-            && tcx.is_min_const_fn(def_id))
+            && crate::const_eval::is_min_const_fn(tcx, def_id))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
@@ -246,23 +234,6 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::StaticAccess, span)
         }
     }
-
-    fn check_immutable_borrow_like(&mut self, location: Location, place: &Place<'tcx>) {
-        // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
-        // seek the cursors beforehand.
-        self.qualifs.has_mut_interior.cursor.seek_before(location);
-        self.qualifs.indirectly_mutable.seek(location);
-
-        let borrowed_place_has_mut_interior = HasMutInterior::in_place(
-            &self.item,
-            &|local| self.qualifs.has_mut_interior_eager_seek(local),
-            place.as_ref(),
-        );
-
-        if borrowed_place_has_mut_interior {
-            self.check_op(ops::CellBorrow);
-        }
-    }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
@@ -302,8 +273,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_place_base(&place.base, ctx, location);
-                    self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -315,8 +286,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_place_base(&place.base, ctx, location);
-                    self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -367,22 +338,18 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
             Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
-            // At the moment, `PlaceBase::Static` is only used for promoted MIR.
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
-            | Rvalue::AddressOf(Mutability::Not, ref place)
-                if matches!(place.base, PlaceBase::Static(_)) =>
-            {
-                bug!("Saw a promoted during const-checking, which must run before promotion")
-            }
+            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                    &self.item,
+                    &mut |local| self.qualifs.has_mut_interior(local, location),
+                    place.as_ref(),
+                );
 
-            Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place) => {
-                self.check_immutable_borrow_like(location, place)
-            }
-
-            Rvalue::AddressOf(Mutability::Not, ref place) => {
-                self.check_immutable_borrow_like(location, place)
+                if borrowed_place_has_mut_interior {
+                    self.check_op(ops::CellBorrow);
+                }
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -419,26 +386,14 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         }
     }
 
-    fn visit_place_base(
-        &mut self,
-        place_base: &PlaceBase<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
+    fn visit_place_base(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
         trace!(
-            "visit_place_base: place_base={:?} context={:?} location={:?}",
-            place_base,
+            "visit_place_base: place_local={:?} context={:?} location={:?}",
+            place_local,
             context,
             location,
         );
-        self.super_place_base(place_base, context, location);
-
-        match place_base {
-            PlaceBase::Local(_) => {}
-            PlaceBase::Static(_) => {
-                bug!("Promotion must be run after const validation");
-            }
-        }
+        self.super_place_base(place_local, context, location);
     }
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
@@ -451,30 +406,30 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     }
     fn visit_projection_elem(
         &mut self,
-        place_base: &PlaceBase<'tcx>,
+        place_local: &Local,
         proj_base: &[PlaceElem<'tcx>],
         elem: &PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
         trace!(
-            "visit_projection_elem: place_base={:?} proj_base={:?} elem={:?} \
+            "visit_projection_elem: place_local={:?} proj_base={:?} elem={:?} \
             context={:?} location={:?}",
-            place_base,
+            place_local,
             proj_base,
             elem,
             context,
             location,
         );
 
-        self.super_projection_elem(place_base, proj_base, elem, context, location);
+        self.super_projection_elem(place_local, proj_base, elem, context, location);
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
-                        if let (PlaceBase::Local(local), []) = (place_base, proj_base) {
+                        if let (local, []) = (place_local, proj_base) {
                             let decl = &self.body.local_decls[*local];
                             if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
                                 let span = decl.source_info.span;
@@ -495,7 +450,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
@@ -559,13 +514,13 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 // At this point, we are calling a function whose `DefId` is known...
-                if self.tcx.is_const_fn(def_id) {
+                if is_const_fn(self.tcx, def_id) {
                     return;
                 }
 
                 if is_lang_panic_fn(self.tcx, def_id) {
                     self.check_op(ops::Panic);
-                } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
+                } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
                     // Exempt unstable const fns inside of macros with
                     // `#[allow_internal_unstable]`.
                     if !self.span.allows_unstable(feature) {
@@ -594,7 +549,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop_lazy_seek(local, location)
+                    self.qualifs.needs_drop(local, location)
                 } else {
                     true
                 };
@@ -611,7 +566,10 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
 fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
     struct_span_err!(tcx.sess, span, E0723, "{}", msg)
-        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .note(
+            "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
+             for more information",
+        )
         .help("add `#![feature(const_fn)]` to the crate attributes to enable")
         .emit();
 }
@@ -639,16 +597,16 @@ fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
                 *span,
                 &format!(
                     "use of {} here does not actually short circuit due to \
-                the const evaluator presently not being able to do control flow. \
-                See https://github.com/rust-lang/rust/issues/49146 for more \
-                information.",
+                     the const evaluator presently not being able to do control flow. \
+                     See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
+                     for more information.",
                     kind
                 ),
             );
         }
         for local in locals {
             let span = body.local_decls[local].source_info.span;
-            error.span_note(span, "more locals defined here");
+            error.span_note(span, "more locals are defined here");
         }
         error.emit();
     }
@@ -679,17 +637,15 @@ fn place_as_reborrow(
 
         // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
         // that points to the allocation for the static. Don't treat these as reborrows.
-        if let PlaceBase::Local(local) = place.base {
-            if body.local_decls[local].is_ref_to_static() {
-                return None;
-            }
+        if body.local_decls[place.local].is_ref_to_static() {
+            return None;
         }
 
         // Ensure the type being derefed is a reference and not a raw pointer.
         //
         // This is sufficient to prevent an access to a `static mut` from being marked as a
         // reborrow, even if the check above were to disappear.
-        let inner_ty = Place::ty_from(&place.base, inner, body, tcx).ty;
+        let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
         match inner_ty.kind {
             ty::Ref(..) => Some(inner),
             _ => None,

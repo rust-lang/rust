@@ -52,22 +52,22 @@ pub struct WithEmptyRustEnum {
 
 #[rustc_layout(homogeneous_aggregate)]
 pub type Test1 = BaseCase;
-//~^ ERROR homogeneous_aggregate: Homogeneous(Reg { kind: Float, size: Size { raw: 4 } })
+//~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size { raw: 4 } }))
 
 #[rustc_layout(homogeneous_aggregate)]
 pub type Test2 = WithPhantomData;
-//~^ ERROR homogeneous_aggregate: Homogeneous(Reg { kind: Float, size: Size { raw: 4 } })
+//~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size { raw: 4 } }))
 
 #[rustc_layout(homogeneous_aggregate)]
 pub type Test3 = WithEmptyRustStruct;
-//~^ ERROR homogeneous_aggregate: Homogeneous(Reg { kind: Float, size: Size { raw: 4 } })
+//~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size { raw: 4 } }))
 
 #[rustc_layout(homogeneous_aggregate)]
 pub type Test4 = WithTransitivelyEmptyRustStruct;
-//~^ ERROR homogeneous_aggregate: Homogeneous(Reg { kind: Float, size: Size { raw: 4 } })
+//~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size { raw: 4 } }))
 
 #[rustc_layout(homogeneous_aggregate)]
 pub type Test5 = WithEmptyRustEnum;
-//~^ ERROR homogeneous_aggregate: Homogeneous(Reg { kind: Float, size: Size { raw: 4 } })
+//~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size { raw: 4 } }))
 
 fn main() { }

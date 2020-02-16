@@ -4,7 +4,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     'β,
    |     ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -13,7 +13,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     γ
    |     ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -22,7 +22,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     δ: usize
    |     ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -31,7 +31,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     let α = 0.00001f64;
    |         ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 warning: type parameter `γ` should have an upper camel case name

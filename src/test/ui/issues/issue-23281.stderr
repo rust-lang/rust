@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn std::ops::Fn() + 'static)` cannot be known at compilation time
-  --> $DIR/issue-23281.rs:4:5
+  --> $DIR/issue-23281.rs:4:27
    |
 LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                           ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

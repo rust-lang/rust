@@ -12,17 +12,17 @@ use std::io;
 use std::io::prelude::*;
 
 use rustc_parse::lexer;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{FileName, Span};
-use syntax::sess::ParseSess;
 use syntax::token::{self, Token};
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(
     src: &str,
     class: Option<&str>,
-    extension: Option<&str>,
+    playground_button: Option<&str>,
     tooltip: Option<(&str, &str)>,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
@@ -41,7 +41,7 @@ pub fn render_with_highlighting(
     let fm = sess
         .source_map()
         .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src.to_owned());
-    let highlight_result = {
+    let highlight_result = rustc_driver::catch_fatal_errors(|| {
         let lexer = lexer::StringReader::new(&sess, fm, None);
         let mut classifier = Classifier::new(lexer, sess.source_map());
 
@@ -51,21 +51,19 @@ pub fn render_with_highlighting(
         } else {
             Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
         }
-    };
+    })
+    .unwrap_or(Err(()));
 
     match highlight_result {
         Ok(highlighted_source) => {
             write_header(class, &mut out).unwrap();
             write!(out, "{}", highlighted_source).unwrap();
-            if let Some(extension) = extension {
-                write!(out, "{}", extension).unwrap();
-            }
-            write_footer(&mut out).unwrap();
+            write_footer(&mut out, playground_button).unwrap();
         }
         Err(()) => {
             // If errors are encountered while trying to highlight, just emit
             // the unhighlighted source.
-            write!(out, "<pre><code>{}</code></pre>", src).unwrap();
+            write!(out, "<pre><code>{}</code></pre>", Escape(src)).unwrap();
         }
     }
 
@@ -432,6 +430,6 @@ fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
     write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
-fn write_footer(out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "</pre></div>\n")
+fn write_footer(out: &mut dyn Write, playground_button: Option<&str>) -> io::Result<()> {
+    write!(out, "</pre>{}</div>\n", if let Some(button) = playground_button { button } else { "" })
 }

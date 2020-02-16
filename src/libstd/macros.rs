@@ -9,18 +9,11 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(libstd_sys_internals)]
 macro_rules! panic {
-    () => ({
-        $crate::panic!("explicit panic")
-    });
-    ($msg:expr) => ({
-        $crate::rt::begin_panic($msg, &($crate::file!(), $crate::line!(), $crate::column!()))
-    });
-    ($msg:expr,) => ({
-        $crate::panic!($msg)
-    });
+    () => ({ $crate::panic!("explicit panic") });
+    ($msg:expr) => ({ $crate::rt::begin_panic($msg) });
+    ($msg:expr,) => ({ $crate::panic!($msg) });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+),
-                                    &($crate::file!(), $crate::line!(), $crate::column!()))
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
     });
 }
 

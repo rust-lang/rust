@@ -10,7 +10,7 @@ LL | |         println!("Hello, world!");
 LL | |     }
    | |_____^ unreachable block in `while` expression
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/expr_while.rs:4:9
    |
 LL | #![deny(unreachable_code)]

@@ -505,15 +505,15 @@ macro_rules! impls {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized> Clone for $t<T> {
-            fn clone(&self) -> $t<T> {
-                $t
+            fn clone(&self) -> Self {
+                Self
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized> Default for $t<T> {
-            fn default() -> $t<T> {
-                $t
+            fn default() -> Self {
+                Self
             }
         }
 
@@ -727,6 +727,10 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`Pin<P>`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
+#[rustc_on_unimplemented(
+    on(_Self = "std::future::Future", note = "consider using `Box::pin`",),
+    message = "`{Self}` cannot be unpinned"
+)]
 #[lang = "unpin"]
 pub auto trait Unpin {}
 

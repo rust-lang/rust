@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn main() {
     let s: &[bool] = &[true; 0];
     let s1: &[bool; 1] = &[false; 1];

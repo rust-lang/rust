@@ -16,9 +16,10 @@ pub use core::future::*;
 ///
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
+// This is `const` to avoid extra errors after we recover from `const async fn`
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+pub const fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
 
@@ -40,7 +41,10 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
         // Safe because we're !Unpin + !Drop mapping to a ?Unpin value
         let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
         let _guard = unsafe { set_task_context(cx) };
-        match gen.resume() {
+        match gen.resume(
+            #[cfg(not(bootstrap))]
+            (),
+        ) {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         }

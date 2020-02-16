@@ -2,7 +2,8 @@ use super::command::Command;
 use super::link::{self, get_linker, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
-use super::symbol_export::ExportedSymbols;
+use super::symbol_export::symbol_name_for_instance_in_crate;
+
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
     RLIB_BYTECODE_EXTENSION,
@@ -11,21 +12,23 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
 };
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::util::common::{print_time_passes_entry, set_time_depth, time_depth};
-use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::TimingGuard;
+use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
@@ -45,7 +48,6 @@ use std::str;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use std::time::Instant;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
@@ -81,11 +83,12 @@ pub struct ModuleConfig {
     pub verify_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
     pub no_builtins: bool,
-    pub time_passes: bool,
+    pub time_module: bool,
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
+    pub new_llvm_pass_manager: Option<bool>,
     // Instead of creating an object file by doing LLVM codegen, just
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
@@ -125,11 +128,12 @@ impl ModuleConfig {
             verify_llvm_ir: false,
             no_prepopulate_passes: false,
             no_builtins: false,
-            time_passes: false,
+            time_module: true,
             vectorize_loop: false,
             vectorize_slp: false,
             merge_functions: false,
             inline_threshold: None,
+            new_llvm_pass_manager: None,
         }
     }
 
@@ -137,8 +141,8 @@ impl ModuleConfig {
         self.verify_llvm_ir = sess.verify_llvm_ir();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
-        self.time_passes = sess.time_extended();
         self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode =
@@ -207,12 +211,13 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
     }
 }
 
+pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
+
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub backend: B,
-    pub time_passes: bool,
     pub prof: SelfProfilerRef,
     pub lto: Lto,
     pub no_landing_pads: bool,
@@ -434,8 +439,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     // Exclude metadata and allocator modules from time_passes output, since
     // they throw off the "LLVM passes" measurement.
-    metadata_config.time_passes = false;
-    allocator_config.time_passes = false;
+    metadata_config.time_module = false;
+    allocator_config.time_module = false;
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -481,6 +486,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     if sess.opts.incremental.is_none() {
         return work_products;
     }
+
+    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = vec![];
@@ -688,11 +695,17 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    fn profiling_event_id(&self) -> &'static str {
+    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
         match *self {
-            WorkItem::Optimize(_) => "codegen_module_optimize",
-            WorkItem::CopyPostLtoArtifacts(_) => "codegen_copy_artifacts_from_incr_cache",
-            WorkItem::LTO(_) => "codegen_module_perform_lto",
+            WorkItem::Optimize(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &m.name[..])
+            }
+            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
+                .prof
+                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &m.name[..]),
+            WorkItem::LTO(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
+            }
         }
     }
 }
@@ -903,7 +916,7 @@ pub enum Message<B: WriteBackendMethods> {
         worker_id: usize,
     },
     Done {
-        result: Result<CompiledModule, ()>,
+        result: Result<CompiledModule, Option<WorkerFatalError>>,
         worker_id: usize,
     },
     CodegenDone {
@@ -957,7 +970,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             let symbols = tcx
                 .exported_symbols(cnum)
                 .iter()
-                .map(|&(s, lvl)| (s.symbol_name(tcx).to_string(), lvl))
+                .map(|&(s, lvl)| (symbol_name_for_instance_in_crate(tcx, s, cnum), lvl))
                 .collect();
             Arc::new(symbols)
         };
@@ -1026,7 +1039,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
-        time_passes: sess.time_extended(),
         prof: sess.prof.clone(),
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
@@ -1184,9 +1196,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
-        // We pretend to be within the top-level LLVM time-passes task here:
-        set_time_depth(1);
-
         let max_workers = ::num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
@@ -1224,7 +1233,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut main_thread_worker_state = MainThreadWorkerState::Idle;
         let mut running = 0;
 
-        let mut llvm_start_time = None;
+        let prof = &cgcx.prof;
+        let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;
 
         // Run the message loop while there's still anything that needs message
         // processing. Note that as soon as codegen is aborted we simply want to
@@ -1262,6 +1272,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             ..cgcx.clone()
                         };
                         maybe_start_llvm_timer(
+                            prof,
                             cgcx.config(item.module_kind()),
                             &mut llvm_start_time,
                         );
@@ -1313,6 +1324,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                 ..cgcx.clone()
                             };
                             maybe_start_llvm_timer(
+                                prof,
                                 cgcx.config(item.module_kind()),
                                 &mut llvm_start_time,
                             );
@@ -1345,7 +1357,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             while !codegen_aborted && work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
-                maybe_start_llvm_timer(cgcx.config(item.module_kind()), &mut llvm_start_time);
+                maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
 
                 let cgcx =
                     CodegenContext { worker: get_worker_id(&mut free_worker_ids), ..cgcx.clone() };
@@ -1476,20 +1488,18 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
                 // If the thread failed that means it panicked, so we abort immediately.
-                Message::Done { result: Err(()), worker_id: _ } => {
+                Message::Done { result: Err(None), worker_id: _ } => {
                     bug!("worker thread panicked");
+                }
+                Message::Done { result: Err(Some(WorkerFatalError)), worker_id: _ } => {
+                    return Err(());
                 }
                 Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
         }
 
-        if let Some(llvm_start_time) = llvm_start_time {
-            let total_llvm_time = Instant::now().duration_since(llvm_start_time);
-            // This is the top-level timing for all of LLVM, set the time-depth
-            // to zero.
-            set_time_depth(1);
-            print_time_passes_entry(cgcx.time_passes, "LLVM passes", total_llvm_time);
-        }
+        // Drop to print timings
+        drop(llvm_start_time);
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
@@ -1514,46 +1524,49 @@ fn start_executing_work<B: ExtraBackendMethods>(
         items_in_queue > 0 && items_in_queue >= max_workers.saturating_sub(workers_running / 2)
     }
 
-    fn maybe_start_llvm_timer(config: &ModuleConfig, llvm_start_time: &mut Option<Instant>) {
-        // We keep track of the -Ztime-passes output manually,
-        // since the closure-based interface does not fit well here.
-        if config.time_passes {
-            if llvm_start_time.is_none() {
-                *llvm_start_time = Some(Instant::now());
-            }
+    fn maybe_start_llvm_timer<'a>(
+        prof: &'a SelfProfilerRef,
+        config: &ModuleConfig,
+        llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
+    ) {
+        if config.time_module && llvm_start_time.is_none() {
+            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes", "crate"));
         }
     }
 }
 
 pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
 
+/// `FatalError` is explicitly not `Send`.
+#[must_use]
+pub struct WorkerFatalError;
+
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
-    let depth = time_depth();
-
     thread::spawn(move || {
-        set_time_depth(depth);
-
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb<B: ExtraBackendMethods> {
             coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<WorkItemResult<B>>,
+            result: Option<Result<WorkItemResult<B>, FatalError>>,
             worker_id: usize,
         }
         impl<B: ExtraBackendMethods> Drop for Bomb<B> {
             fn drop(&mut self) {
                 let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(WorkItemResult::Compiled(m)) => {
+                    Some(Ok(WorkItemResult::Compiled(m))) => {
                         Message::Done::<B> { result: Ok(m), worker_id }
                     }
-                    Some(WorkItemResult::NeedsFatLTO(m)) => {
+                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
                         Message::NeedsFatLTO::<B> { result: m, worker_id }
                     }
-                    Some(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
                         Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
                     }
-                    None => Message::Done::<B> { result: Err(()), worker_id },
+                    Some(Err(FatalError)) => {
+                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                    }
+                    None => Message::Done::<B> { result: Err(None), worker_id },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
@@ -1572,8 +1585,8 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
-            execute_work_item(&cgcx, work).ok()
+            let _prof_timer = work.start_profiling(&cgcx);
+            Some(execute_work_item(&cgcx, work))
         };
     });
 }
@@ -1692,7 +1705,6 @@ impl SharedEmitterMain {
                         d.code(code);
                     }
                     handler.emit_diagnostic(&d);
-                    handler.abort_if_errors_and_should_abort();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
                     sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
@@ -1728,8 +1740,11 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
+        let _timer = sess.timer("finish_ongoing_codegen");
+
         self.shared_emitter_main.check(sess, true);
-        let compiled_modules = match self.future.join() {
+        let future = self.future;
+        let compiled_modules = sess.time("join_worker_thread", || match future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
             Ok(Err(())) => {
                 sess.abort_if_errors();
@@ -1738,7 +1753,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             Err(_) => {
                 bug!("panic during codegen/LLVM phase");
             }
-        };
+        });
 
         sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 

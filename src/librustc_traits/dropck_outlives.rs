@@ -1,4 +1,3 @@
-use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
@@ -7,7 +6,8 @@ use rustc::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_span::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers<'_>) {
@@ -227,8 +227,8 @@ fn dtorck_constraint_for_ty<'tcx>(
             // In particular, skipping over `_interior` is safe
             // because any side-effects from dropping `_interior` can
             // only take place through references with lifetimes
-            // derived from lifetimes attached to the upvars, and we
-            // *do* incorporate the upvars here.
+            // derived from lifetimes attached to the upvars and resume
+            // argument, and we *do* incorporate those here.
 
             constraints.outlives.extend(
                 substs
@@ -236,6 +236,7 @@ fn dtorck_constraint_for_ty<'tcx>(
                     .upvar_tys(def_id, tcx)
                     .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
             );
+            constraints.outlives.push(substs.as_generator().resume_ty(def_id, tcx).into());
         }
 
         ty::Adt(def, substs) => {

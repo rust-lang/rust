@@ -1,11 +1,3 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-63388-1.rs:12:10
-   |
-LL |     ) -> &dyn Foo
-   |          ^^^^^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#22r
-
 error: lifetime may not live long enough
   --> $DIR/issue-63388-1.rs:13:5
    |
@@ -19,6 +11,5 @@ LL | |         foo
 LL | |     }
    | |_____^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0700`.

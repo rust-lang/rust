@@ -1,8 +1,8 @@
-error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found keyword `pub`
-  --> $DIR/default.rs:22:13
+error: missing `fn`, `type`, or `const` for associated-item declaration
+  --> $DIR/default.rs:22:12
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }
-   |             ^^^ expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`
+   |            ^ missing `fn`, `type`, or `const`
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/default.rs:16:5

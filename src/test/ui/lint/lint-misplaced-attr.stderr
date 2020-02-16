@@ -4,7 +4,7 @@ error: unused attribute
 LL |     #![crate_type = "bin"]
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-misplaced-attr.rs:4:9
    |
 LL | #![deny(unused_attributes)]
