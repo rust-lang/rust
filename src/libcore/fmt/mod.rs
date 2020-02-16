@@ -255,12 +255,19 @@ pub struct ArgumentV1<'a> {
     formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
 }
 
-impl<'a> ArgumentV1<'a> {
-    #[inline(never)]
-    fn show_usize(x: &usize, f: &mut Formatter<'_>) -> Result {
-        Display::fmt(x, f)
-    }
+// This gurantees a single stable value for the function pointer associated with
+// indices/counts in the formatting infrastructure.
+//
+// Note that a function defined as such would not be correct as functions are
+// always tagged unnamed_addr with the current lowering to LLVM IR, so their
+// address is not considered important to LLVM and as such the as_usize cast
+// could have been miscompiled. In practice, we never call as_usize on non-usize
+// containing data (as a matter of static generation of the formatting
+// arguments), so this is merely an additional check.
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |_, _| loop {};
 
+impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
@@ -270,11 +277,13 @@ impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
-        ArgumentV1::new(x, ArgumentV1::show_usize)
+        ArgumentV1::new(x, USIZE_MARKER)
     }
 
     fn as_usize(&self) -> Option<usize> {
-        if self.formatter as usize == ArgumentV1::show_usize as usize {
+        if self.formatter as usize == USIZE_MARKER as usize {
+            // SAFETY: The `formatter` field is only set to USIZE_MARKER if
+            // the value is a usize, so this is safe
             Some(unsafe { *(self.value as *const _ as *const usize) })
         } else {
             None
