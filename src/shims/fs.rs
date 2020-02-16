@@ -13,15 +13,12 @@ use helpers::immty_from_uint_checked;
 use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
-pub enum FileHandle {
-    StdInPlaceholder,
-    StdOutPlaceholder,
-    StdErrPlaceholder,
-    File { file: File, writable: bool },
-    // In the future, could add support for dirfd() and other functions by
-    // adding a Directory variant here
+pub struct FileHandle {
+    file: File,
+    writable: bool,
 }
 
+#[derive(Debug, Default)]
 pub struct FileHandler {
     handles: BTreeMap<i32, FileHandle>,
 }
@@ -60,17 +57,6 @@ impl FileHandler {
 
         self.handles.insert(new_fd, file_handle).unwrap_none();
         new_fd
-    }
-}
-
-impl Default for FileHandler {
-    fn default() -> Self {
-        let mut handles: BTreeMap<i32, FileHandle> = Default::default();
-        // 0, 1 and 2 are reserved for stdin, stdout and stderr.
-        handles.insert(0, FileHandle::StdInPlaceholder);
-        handles.insert(1, FileHandle::StdOutPlaceholder);
-        handles.insert(2, FileHandle::StdErrPlaceholder);
-        FileHandler { handles }
     }
 }
 
@@ -149,7 +135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
-            fh.insert_fd(FileHandle::File { file, writable })
+            fh.insert_fd(FileHandle { file, writable })
         });
 
         this.try_unwrap_io_result(fd)
@@ -185,6 +171,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
+            if fd <= 2 {
+                throw_unsup_format!("Duplicating file descriptors for stdin, stdout, or stderr is not supported")
+            }
             let start_op = start_op.ok_or_else(|| {
                 err_unsup_format!(
                     "fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"
@@ -193,12 +182,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let start = this.read_scalar(start_op)?.to_i32()?;
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
-                Some(FileHandle::File { file, writable }) => (file.try_clone(), *writable),
-                Some(_) => throw_unsup_format!("Duplicating file descriptors for stdin, stdout, or stderr is not supported"),
+                Some(FileHandle { file, writable }) => (file.try_clone(), *writable),
                 None => return this.handle_not_found(),
             };
             let fd_result = file_result.map(|duplicated| {
-                fh.insert_fd_with_min_fd(FileHandle::File { file: duplicated, writable }, start)
+                fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
             });
             this.try_unwrap_io_result(fd_result)
         } else {
@@ -213,12 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        if fd <= 2 {
-            // early return to prevent removing StdInPlaceholder, etc., from the handles map
-            return this.handle_not_found();
-        }
-
-        if let Some(FileHandle::File { file, writable }) = this.machine.file_handler.handles.remove(&fd) {
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.remove(&fd) {
             // We sync the file if it was opened in a mode different than read-only.
             if writable {
                 // `File::sync_all` does the checks that are done when closing a file. We do this to
@@ -267,7 +250,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
-        if let Some(FileHandle::File { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             // This can never fail because `count` was capped to be smaller than
             // `isize::max_value()`.
             let count = isize::try_from(count).unwrap();
@@ -321,7 +304,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
-        if let Some(FileHandle::File { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
             let result = file.write(&bytes).map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
@@ -356,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         };
 
-        if let Some(FileHandle::File { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             let result = file.seek(seek_from).map(|offset| offset as i64);
             this.try_unwrap_io_result(result)
         } else {
@@ -719,8 +702,8 @@ impl FileMetadata {
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
         let file = match option {
-            Some(FileHandle::File { file, writable: _ }) => file,
-            Some(_) | None => return ecx.handle_not_found().map(|_: i32| None),
+            Some(FileHandle { file, writable: _ }) => file,
+            None => return ecx.handle_not_found().map(|_: i32| None),
         };
         let metadata = file.metadata();
 
