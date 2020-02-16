@@ -4,6 +4,10 @@ use std::iter::FromIterator;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
+mod index_map;
+
+pub use index_map::SortedIndexMultiMap;
+
 /// `SortedMap` is a data structure with similar characteristics as BTreeMap but
 /// slightly different trade-offs: lookup, insertion, and removal are O(log(N))
 /// and elements can be iterated in order cheaply.
