@@ -1,8 +1,8 @@
-# Debugging vs Code plugin and the Language Server
+# Debugging VSCode plugin and the language server
 
 ## Prerequisites
 
-- Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) VSCode extensions.
+- Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb).
 - Open the root folder in VSCode. Here you can access the preconfigured debug setups.
 
   <img height=150px src="https://user-images.githubusercontent.com/36276403/74611090-92ec5380-5101-11ea-8a41-598f51f3f3e3.png" alt="Debug options view">
@@ -15,8 +15,8 @@
 
 ## Common knowledge
 
-* All debug configurations open new `[Extension Development Host]` VSCode instance
-where **only** your `rust-analyzer` extension is enabled.
+* All debug configurations open a new `[Extension Development Host]` VSCode instance
+where **only** the `rust-analyzer` extension being debugged is enabled.
 * To activate the extension you need to open any Rust project folder in `[Extension Development Host]`.
 
 
