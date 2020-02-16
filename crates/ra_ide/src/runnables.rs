@@ -73,11 +73,9 @@ fn runnable_fn(
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let test_id = if let Some(module) = fn_def
-            .syntax()
-            .ancestors()
-            .find_map(ast::Module::cast)
-            .and_then(|module| source_binder.to_def(InFile::new(file_id.into(), module)))
+        let test_id = if let Some(module) = source_binder
+            .to_def(InFile::new(file_id.into(), fn_def.clone()))
+            .map(|def| def.module(db))
         {
             let path = module
                 .path_to_root(db)
@@ -174,7 +172,7 @@ mod tests {
             Runnable {
                 range: [22; 46),
                 kind: Test {
-                    test_id: Name(
+                    test_id: Path(
                         "test_foo",
                     ),
                 },
@@ -182,7 +180,7 @@ mod tests {
             Runnable {
                 range: [47; 81),
                 kind: Test {
-                    test_id: Name(
+                    test_id: Path(
                         "test_foo",
                     ),
                 },
