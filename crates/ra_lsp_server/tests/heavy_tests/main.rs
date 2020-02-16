@@ -147,7 +147,7 @@ fn main() {}
         },
         json!([
           {
-            "args": [ "test", "--package", "foo", "--test", "spam", "--", "test_eggs", "--nocapture" ],
+            "args": [ "test", "--package", "foo", "--test", "spam", "--", "test_eggs", "--exact", "--nocapture" ],
             "bin": "cargo",
             "env": { "RUST_BACKTRACE": "short" },
             "label": "test test_eggs",
