@@ -60,6 +60,10 @@ export class Ctx {
         this.pushCleanup(d);
     }
 
+    get globalState(): vscode.Memento {
+        return this.extCtx.globalState;
+    }
+
     get subscriptions(): Disposable[] {
         return this.extCtx.subscriptions;
     }

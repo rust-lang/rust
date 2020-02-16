@@ -11,7 +11,7 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const serverPath = await ensureServerBinary(config.serverBinarySource);
+    const serverPath = await ensureServerBinary(config.serverSource);
     if (!serverPath) return null;
 
     const run: lc.Executable = {

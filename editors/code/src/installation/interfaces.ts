@@ -1,3 +1,5 @@
+import * as vscode from "vscode";
+
 export interface GithubRepo {
     name: string;
     owner: string;
@@ -50,6 +52,17 @@ export namespace BinarySource {
          * and in local `.dir`.
          */
         file: string;
+
+        /**
+         * Tag of github release that denotes a version required by this extension.
+         */
+        version: string;
+
+        /**
+         * Object that provides `get()/update()` operations to store metadata
+         * about the actual binary, e.g. its actual version.
+         */
+        storage: vscode.Memento;
     }
 
 }

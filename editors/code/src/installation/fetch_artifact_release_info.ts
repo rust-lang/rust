@@ -3,24 +3,30 @@ import { GithubRepo, ArtifactReleaseInfo } from "./interfaces";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
+
 /**
- * Fetches the latest release from GitHub `repo` and returns metadata about
- * `artifactFileName` shipped with this release or `null` if no such artifact was published.
+ * Fetches the release with `releaseTag` (or just latest release when not specified)
+ * from GitHub `repo` and returns metadata about `artifactFileName` shipped with
+ * this release or `null` if no such artifact was published.
  */
-export async function fetchLatestArtifactReleaseInfo(
-    repo: GithubRepo, artifactFileName: string
+export async function fetchArtifactReleaseInfo(
+    repo: GithubRepo, artifactFileName: string, releaseTag?: string
 ): Promise<null | ArtifactReleaseInfo> {
 
     const repoOwner = encodeURIComponent(repo.owner);
     const repoName  = encodeURIComponent(repo.name);
 
-    const apiEndpointPath = `/repos/${repoOwner}/${repoName}/releases/latest`;
+    const apiEndpointPath = releaseTag
+        ? `/repos/${repoOwner}/${repoName}/releases/tags/${releaseTag}`
+        : `/repos/${repoOwner}/${repoName}/releases/latest`;
+
     const requestUrl = GITHUB_API_ENDPOINT_URL + apiEndpointPath;
 
     // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
 
     console.log("Issuing request for released artifacts metadata to", requestUrl);
 
+    // FIXME: handle non-ok response
     const response: GithubRelease = await fetch(requestUrl, {
             headers: { Accept: "application/vnd.github.v3+json" }
         })
