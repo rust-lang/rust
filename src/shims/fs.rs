@@ -204,19 +204,39 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DirHandler {
     /// Directory iterators used to emulate libc "directory streams", as used in opendir, readdir,
     /// and closedir.
     ///
-    /// When opendir is called, a new allocation is made, a directory iterator is created on the
-    /// host for the target directory, and an entry is stored in this hash map, indexed by a
-    /// pointer to the allocation which represents the directory stream. When readdir is called,
-    /// the directory stream pointer is used to look up the corresponding ReadDir iterator from
-    /// this HashMap, and information from the next directory entry is returned. When closedir is
-    /// called, the ReadDir iterator is removed from this HashMap, and the allocation that
-    /// represented the directory stream is deallocated.
-    streams: HashMap<Pointer<Tag>, ReadDir>,
+    /// When opendir is called, a directory iterator is created on the host for the target
+    /// directory, and an entry is stored in this hash map, indexed by an ID which represents
+    /// the directory stream. When readdir is called, the directory stream ID is used to look up
+    /// the corresponding ReadDir iterator from this HashMap, and information from the next
+    /// directory entry is returned. When closedir is called, the ReadDir iterator is removed from
+    /// this HashMap.
+    streams: HashMap<u64, ReadDir>,
+    /// ID number to be used by the next call to opendir
+    next_id: u64,
+}
+
+impl DirHandler {
+    fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
+        let id = self.next_id;
+        self.next_id += 1;
+        self.streams.insert(id, read_dir).unwrap_none();
+        id
+    }
+}
+
+impl Default for DirHandler {
+    fn default() -> DirHandler {
+        DirHandler {
+            streams: HashMap::new(),
+            // Skip 0 as an ID, because it looks like a null pointer to libc
+            next_id: 1,
+        }
+    }
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -838,20 +858,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         match result {
             Ok(dir_iter) => {
-                let size = 1;
-                let kind = MiriMemoryKind::Env;
-                let align = this.min_align(size, kind);
-                let dir_ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into());
-                let prev = this
-                    .machine
-                    .dir_handler
-                    .streams
-                    .insert(dir_ptr, dir_iter);
-                if let Some(_) = prev {
-                    panic!("The pointer allocated for opendir was already registered by a previous call to opendir")
-                } else {
-                    Ok(Scalar::Ptr(dir_ptr))
-                }
+                let id = this.machine.dir_handler.insert_new(dir_iter);
+
+                // The libc API for opendir says that this method returns a pointer to an opaque
+                // structure, but we are returning an ID number. Thus, pass it as a scalar of
+                // pointer width.
+                Ok(Scalar::from_int(id, this.pointer_size()))
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
@@ -870,7 +882,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("readdir64_r")?;
 
-        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent64_layout = this.libc_ty_layout("dirent64")?;
@@ -946,7 +958,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("readdir_r")?;
 
-        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent_layout = this.libc_ty_layout("dirent")?;
@@ -1020,11 +1032,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("closedir")?;
 
-        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         if let Some(dir_iter) = this.machine.dir_handler.streams.remove(&dirp) {
             drop(dir_iter);
-            this.memory.deallocate(dirp, None, MiriMemoryKind::Env.into())?;
             Ok(0)
         } else {
             this.handle_not_found()
