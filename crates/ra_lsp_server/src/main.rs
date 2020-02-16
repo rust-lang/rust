@@ -15,13 +15,8 @@ fn main() -> Result<()> {
 
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
-
     env_logger::try_init()?;
-
-    ra_prof::set_filter(match std::env::var("RA_PROFILE") {
-        Ok(spec) => ra_prof::Filter::from_spec(&spec),
-        Err(_) => ra_prof::Filter::disabled(),
-    });
+    ra_prof::init();
     Ok(())
 }
 
