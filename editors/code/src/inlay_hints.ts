@@ -13,7 +13,7 @@ export function activateInlayHints(ctx: Ctx) {
 
     vscode.workspace.onDidChangeTextDocument(
         async event => {
-            if (event.contentChanges.length !== 0) return;
+            if (event.contentChanges.length === 0) return;
             if (event.document.languageId !== 'rust') return;
             await hintsUpdater.refresh();
         },
