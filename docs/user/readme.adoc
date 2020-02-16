@@ -27,8 +27,9 @@ https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree]
 
 You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
-By default, the plugin will download the latest version of the server as well.
+By default, the plugin will download the matching version of the server as well.
 
+// FIXME: update the image (its text has changed)
 image::https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png[]
 
 The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
@@ -37,9 +38,7 @@ Note that we only support the latest version of VS Code.
 
 ==== Updates
 
-The extension will be updated automatically as new versions become available.
-The server update functionality is in progress.
-For the time being, the workaround is to remove the binary from `globalStorage` and to restart the extension.
+The extension will be updated automatically as new versions become available. It will ask your permission to download the matching language server version binary if needed.
 
 ==== Building From Source
 
