@@ -5,12 +5,13 @@
 
   // NOTE: --disable-extensions
   // Disable all installed extensions for increas performance of playground 
-  // and prevent potential problem and collision with developer's extansion
+  // Disable all installed extensions to increase performance of the debug instance 
+  // and prevent potential conflicts with other installed extensions.
 
   "version": "0.2.0",
   "configurations": [
     {
-      // Used for testing extansion that located in extensionDevelopmentPath
+      // Used for testing the extension with the installed LSP server.
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
@@ -25,7 +26,7 @@
       "preLaunchTask": "Build Extension"
     },
     {
-      // Used for testing extansion with local lsp server located in __RA_LSP_SERVER_DEBUG
+      // Used for testing theextension with a local build of the LSP server (in `target/debug`).
       "name": "Run Extension (Dev Server)",
       "type": "extensionHost",
       "request": "launch",
