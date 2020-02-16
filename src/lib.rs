@@ -62,5 +62,5 @@ pub use crate::stacked_borrows::{
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub fn miri_default_args() -> &'static [&'static str] {
-    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0", "--cfg=miri"]
+    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0", "--cfg=miri", "-Cdebug-assertions=on"]
 }

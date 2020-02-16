@@ -1,4 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
+// normalize-stderr-test "[^ ]*libcore/macros/mod.rs[0-9:]*" -> "$$LOC"
 #![feature(never_type)]
 #![allow(const_err)]
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -11,7 +12,6 @@ thread_local! {
 }
 
 struct DropTester;
-
 impl Drop for DropTester {
     fn drop(&mut self) {
         DROPPED.with(|c| {
@@ -64,6 +64,7 @@ fn main() {
     // Assertion and debug assertion
     test(|_old_val| { assert!(false); loop {} });
     test(|_old_val| { debug_assert!(false); loop {} });
+    test(|_old_val| { unsafe { (1 as *const i32).read() }; loop {} }); // trigger debug-assertion in libstd
 
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
