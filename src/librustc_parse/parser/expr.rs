@@ -551,8 +551,8 @@ impl<'a> Parser<'a> {
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
-        let type_result = match self.parse_ty_no_plus() {
-            Ok(rhs) => Ok(mk_expr(self, rhs)),
+        let cast_expr = match self.parse_ty_no_plus() {
+            Ok(rhs) => mk_expr(self, rhs),
             Err(mut type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
@@ -606,41 +606,63 @@ impl<'a> Parser<'a> {
                             )
                             .emit();
 
-                        Ok(expr)
+                        expr
                     }
                     Err(mut path_err) => {
                         // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
                         mem::replace(self, parser_snapshot_after_type);
-                        Err(type_err)
+                        return Err(type_err);
                     }
                 }
             }
         };
 
-        // Disallow postfix operators such as `.`, `?` or index (`[]`) after casts.
-        // Parses the postfix operator and emits an error.
-        let expr = type_result?;
-        let span = expr.span;
+        self.parse_and_disallow_postfix_after_cast(cast_expr)
+    }
 
-        // The resulting parse tree for `&x as T[0]` has a precedence of `((&x) as T)[0]`.
-        let with_postfix = self.parse_dot_or_call_expr_with_(expr, span)?;
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
+    /// Parses a postfix operators such as `.`, `?`, or index (`[]`) after a cast,
+    /// then emits an error and returns the newly parsed tree.
+    /// The resulting parse tree for `&x as T[0]` has a precedence of `((&x) as T)[0]`.
+    fn parse_and_disallow_postfix_after_cast(
+        &mut self,
+        cast_expr: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hasher;
+        // Hash the memory location of expr before parsing any following postfix operators.
+        // This will be compared with the hash of the output expression.
+        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
+        let mut before_hasher = DefaultHasher::new();
+        std::ptr::hash(&*cast_expr, &mut before_hasher);
+        let before_hash = before_hasher.finish();
+        let span = cast_expr.span;
+        let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
+
+        let mut after_hasher = DefaultHasher::new();
+        std::ptr::hash(&*with_postfix, &mut after_hasher);
+        let after_hash = after_hasher.finish();
+
+        // Check if an illegal postfix operator has been added after the cast.
+        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) || after_hash != before_hash {
             let expr_str = self.span_to_snippet(span);
 
             let msg = format!(
-                "casts followed by {} are not supported",
+                "casts cannot be followed by {}",
                 match with_postfix.kind {
-                    ExprKind::Index(_, _) => "index operators",
-                    ExprKind::Try(_) => "try operators",
-                    ExprKind::Field(_, _) => "field access expressions",
-                    ExprKind::MethodCall(_, _) => "method call expressions",
-                    ExprKind::Await(_) => "awaits",
-                    _ => "expressions",
+                    ExprKind::Index(_, _) => "indexing",
+                    ExprKind::Try(_) => "?",
+                    ExprKind::Field(_, _) => "a field access",
+                    ExprKind::MethodCall(_, _) => "a method call",
+                    ExprKind::Call(_, _) => "a function call",
+                    ExprKind::Await(_) => "`.await`",
+                    ref kind =>
+                        unreachable!("parse_dot_or_call_expr_with_ shouldn't produce a {:?}", kind),
                 }
             );
-            let mut err = self.struct_span_err(with_postfix.span, &msg);
-            let suggestion = "try surrounding the expression with parentheses";
+            let mut err = self.struct_span_err(span, &msg);
+            let suggestion = "try surrounding the expression in parentheses";
             if let Ok(expr_str) = expr_str {
                 err.span_suggestion(
                     span,
