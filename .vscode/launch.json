@@ -28,7 +28,7 @@
       ]
     },
     {
-      // Used for testing theextension with a local build of the LSP server (in `target/debug`).
+      // Used for testing the extension with a local build of the LSP server (in `target/debug`).
       "name": "Run Extension (Dev Server)",
       "type": "extensionHost",
       "request": "launch",
@@ -49,12 +49,13 @@
       }
     },
     {
-      // Attaching LLDB by Pid to lsp server
-      // NOTE: it requires root permission, also for better debugging
-      // if you want more than just assembler representation for ex:
-      // walk in file, you need debugging symbols.
-      // Project can build with it, for set - chane inside
-      // ./Cargo.toml field debug
+      // Used to attach LLDB to a running LSP server.
+      // NOTE: Might require root permissions. For this run:
+      //
+      // `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`
+      //
+      // Don't forget to set `debug = 2` in `Cargo.toml` before building the server
+
       "name": "Attach To Server",
       "type": "lldb",
       "request": "attach",
