@@ -856,8 +856,6 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
     if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }
-    // check at the beginning and the parser checks after each bump
-    p.process_potential_macro_variable();
     match parse_nt_inner(p, sp, name) {
         Ok(nt) => nt,
         Err(mut err) => {

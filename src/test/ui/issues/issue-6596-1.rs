@@ -1,7 +1,7 @@
 macro_rules! e {
     ($inp:ident) => (
         $nonexistent
-        //~^ ERROR unknown macro variable `nonexistent`
+        //~^ ERROR expected expression, found `$`
     );
 }
 
