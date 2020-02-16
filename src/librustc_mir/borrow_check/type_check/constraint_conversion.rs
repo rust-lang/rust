@@ -1,12 +1,12 @@
-use rustc::infer::canonical::QueryOutlivesConstraint;
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
-use rustc::infer::region_constraints::{GenericKind, VerifyBound};
-use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
+use rustc_infer::infer::canonical::QueryOutlivesConstraint;
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
+use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
+use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_span::DUMMY_SP;
 
 use crate::borrow_check::{

@@ -14,7 +14,6 @@ use rustc::mir::{
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
-use rustc::traits;
 use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
@@ -25,6 +24,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
+use rustc_infer::traits;
 use rustc_span::Span;
 use syntax::ast::Mutability;
 

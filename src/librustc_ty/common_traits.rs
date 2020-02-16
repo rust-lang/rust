@@ -1,8 +1,9 @@
 //! Queries for checking whether a type implements one of a few common traits.
 
 use rustc::middle::lang_items;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits;
 use rustc_span::DUMMY_SP;
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {

@@ -13,10 +13,6 @@
 //!   defined in the `ty` module. This includes the **type context**
 //!   (or `tcx`), which is the central context during most of
 //!   compilation, containing the interners and other things.
-//! - **Traits.** Trait resolution is implemented in the `traits` module.
-//! - **Type inference.** The type inference code can be found in the `infer` module;
-//!   this code handles low-level equality and subtyping operations. The
-//!   type check pass in the compiler is found in the `librustc_typeck` crate.
 //!
 //! For more information about how rustc works, see the [rustc guide].
 //!

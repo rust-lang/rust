@@ -1,9 +1,6 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use rustc::infer::canonical::QueryOutlivesConstraint;
-use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
     ConstraintCategory, Local, Location,
@@ -15,6 +12,9 @@ use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::canonical::QueryOutlivesConstraint;
+use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
+use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc_span::Span;
 
 use crate::borrow_check::{
