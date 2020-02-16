@@ -2,6 +2,7 @@
 
 use std::{
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
     time::Instant,
 };
@@ -14,9 +15,30 @@ use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
 use crate::Result;
 
+pub(crate) struct Position {
+    path: PathBuf,
+    line: u32,
+    column: u32,
+}
+
+impl FromStr for Position {
+    type Err = Box<dyn std::error::Error + Send + Sync>;
+    fn from_str(s: &str) -> Result<Self> {
+        let (path_line, column) = rsplit_at_char(s, ':')?;
+        let (path, line) = rsplit_at_char(path_line, ':')?;
+        Ok(Position { path: path.into(), line: line.parse()?, column: column.parse()? })
+    }
+}
+
+fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
+    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
+    Ok((&s[..idx], &s[idx + 1..]))
+}
+
 pub(crate) enum Op {
     Highlight { path: PathBuf },
-    Complete { path: PathBuf, line: u32, column: u32 },
+    Complete(Position),
+    GotoDef(Position),
 }
 
 pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
@@ -31,7 +53,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
     let file_id = {
         let path = match &op {
             Op::Highlight { path } => path,
-            Op::Complete { path, .. } => path,
+            Op::Complete(pos) | Op::GotoDef(pos) => &pos.path,
         };
         let path = std::env::current_dir()?.join(path).canonicalize()?;
         roots
@@ -51,7 +73,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             .ok_or_else(|| format!("Can't find {:?}", path))?
     };
 
-    match op {
+    match &op {
         Op::Highlight { .. } => {
             let res = do_work(&mut host, file_id, |analysis| {
                 analysis.diagnostics(file_id).unwrap();
@@ -61,16 +83,30 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
                 println!("\n{}", res);
             }
         }
-        Op::Complete { line, column, .. } => {
+        Op::Complete(pos) | Op::GotoDef(pos) => {
+            let is_completion = match op {
+                Op::Complete(..) => true,
+                _ => false,
+            };
+
             let offset = host
                 .analysis()
                 .file_line_index(file_id)?
-                .offset(LineCol { line, col_utf16: column });
+                .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
             let file_postion = FilePosition { file_id, offset };
 
-            let res = do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
-            if verbose {
-                println!("\n{:#?}", res);
+            if is_completion {
+                let res =
+                    do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
+                if verbose {
+                    println!("\n{:#?}", res);
+                }
+            } else {
+                let res =
+                    do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_postion));
+                if verbose {
+                    println!("\n{:#?}", res);
+                }
             }
         }
     }
