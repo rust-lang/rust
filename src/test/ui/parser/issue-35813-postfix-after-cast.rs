@@ -22,10 +22,10 @@ pub fn index_after_cast_to_index() {
 
 pub fn cast_after_cast() {
     if 5u64 as i32 as u16 == 0u16 {
-        
+
     }
     if 5u64: u64: u64 == 0u64 {
-       
+
     }
     let _ = 5u64: u64: u64 as u8 as i8 == 9i8;
     let _ = 0i32: i32: i32;
@@ -107,7 +107,7 @@ pub fn cast_then_call() {
 pub fn cast_to_fn_should_work() {
     let drop_ptr = drop as fn(u8);
     drop as fn(u8);
-    drop_ptr: fn(u8); 
+    drop_ptr: fn(u8);
 }
 
 pub fn parens_after_cast_error() {
