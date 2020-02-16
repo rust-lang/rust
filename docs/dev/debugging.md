@@ -26,7 +26,7 @@ where **only** your `rust-analyzer` extension is enabled.
 - `Run Extension (Dev Server)` - runs extension with the locally built LSP server (`target/debug/ra_lsp_server`).
 
 TypeScript debugging is configured to watch your source edits and recompile.
-To apply changes to already running debug process press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
+To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
 
 ```
 > Developer: Reload Window
