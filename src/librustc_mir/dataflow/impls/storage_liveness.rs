@@ -118,13 +118,13 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         self.borrowed_locals.borrow().analysis().statement_effect(sets, stmt, loc);
 
         // If a place is assigned to in a statement, it needs storage for that statement.
-        match stmt.kind {
-            StatementKind::StorageDead(l) => sets.kill(l),
-            StatementKind::Assign(box (ref place, _))
-            | StatementKind::SetDiscriminant { box ref place, .. } => {
+        match &stmt.kind {
+            StatementKind::StorageDead(l) => sets.kill(*l),
+            StatementKind::Assign(box (place, _))
+            | StatementKind::SetDiscriminant { box place, .. } => {
                 sets.gen(place.local);
             }
-            StatementKind::InlineAsm(box InlineAsm { ref outputs, .. }) => {
+            StatementKind::InlineAsm(box InlineAsm { outputs, .. }) => {
                 for place in &**outputs {
                     sets.gen(place.local);
                 }
