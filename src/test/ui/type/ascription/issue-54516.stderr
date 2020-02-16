@@ -1,13 +1,31 @@
-error: expected one of `!`, `,`, or `::`, found `(`
-  --> $DIR/issue-54516.rs:4:58
+error: casts cannot be followed by a function call
+  --> $DIR/issue-54516.rs:4:20
    |
 LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
-   |                            -                             ^ expected one of `!`, `,`, or `::`
+   |                    ^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                            |
    |                            help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
    = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
-error: aborting due to previous error
+error[E0423]: expected value, found module `std::mem`
+  --> $DIR/issue-54516.rs:4:20
+   |
+LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
+   |                    ^^^^^^^^- help: maybe you meant to write a path separator here: `::`
+   |                    |
+   |                    not a value
 
+error[E0412]: cannot find type `size_of` in this scope
+  --> $DIR/issue-54516.rs:4:29
+   |
+LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
+   |                            -^^^^^^^ not found in this scope
+   |                            |
+   |                            help: maybe you meant to write a path separator here: `::`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0412, E0423.
+For more information about an error, try `rustc --explain E0412`.
