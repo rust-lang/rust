@@ -40,7 +40,6 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
   echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
   ```
 
-  This enables ptrace on non-forked processes
 
 - By default, the LSP server is built without debug information. To enable it, you'll need to change `Cargo.toml`:
   ```toml
