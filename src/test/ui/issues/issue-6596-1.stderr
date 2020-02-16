@@ -1,8 +1,8 @@
-error: unknown macro variable `nonexistent`
+error: expected expression, found `$`
   --> $DIR/issue-6596-1.rs:3:9
    |
 LL |         $nonexistent
-   |         ^^^^^^^^^^^^ unknown macro variable
+   |         ^^^^^^^^^^^^ expected expression
 ...
 LL |     e!(foo);
    |     -------- in this macro invocation
