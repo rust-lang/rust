@@ -1,63 +1,15 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { strict as assert } from "assert";
-import { promises as fs } from "fs";
 import { promises as dns } from "dns";
 import { spawnSync } from "child_process";
-import { throttle } from "throttle-debounce";
 
 import { BinarySource } from "./interfaces";
-import { fetchLatestArtifactReleaseInfo } from "./fetch_latest_artifact_release_info";
-import { downloadFile } from "./download_file";
+import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
+import { downloadArtifact } from "./download_artifact";
 
-export async function downloadLatestServer(
-    {file: artifactFileName, dir: installationDir, repo}: BinarySource.GithubRelease
-) {
-    const { releaseName, downloadUrl } = (await fetchLatestArtifactReleaseInfo(
-        repo, artifactFileName
-    ))!;
-
-    await fs.mkdir(installationDir).catch(err => assert.strictEqual(
-        err?.code,
-        "EEXIST",
-        `Couldn't create directory "${installationDir}" to download `+
-        `language server binary: ${err.message}`
-    ));
-
-    const installationPath = path.join(installationDir, artifactFileName);
-
-    console.time("Downloading ra_lsp_server");
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            cancellable: false, // FIXME: add support for canceling download?
-            title: `Downloading language server (${releaseName})`
-        },
-        async (progress, _cancellationToken) => {
-            let lastPrecentage = 0;
-            const filePermissions = 0o755; // (rwx, r_x, r_x)
-            await downloadFile(downloadUrl, installationPath, filePermissions, throttle(
-                200,
-                /* noTrailing: */ true,
-                (readBytes, totalBytes) => {
-                    const newPercentage = (readBytes / totalBytes) * 100;
-                    progress.report({
-                        message: newPercentage.toFixed(0) + "%",
-                        increment: newPercentage - lastPrecentage
-                    });
-
-                    lastPrecentage = newPercentage;
-                })
-            );
-        }
-    );
-    console.timeEnd("Downloading ra_lsp_server");
-}
-export async function ensureServerBinary(
-    serverSource: null | BinarySource
-): Promise<null | string> {
-
-    if (!serverSource) {
+export async function ensureServerBinary(source: null | BinarySource): Promise<null | string> {
+    if (!source) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
@@ -69,80 +21,104 @@ export async function ensureServerBinary(
         return null;
     }
 
-    switch (serverSource.type) {
+    switch (source.type) {
         case BinarySource.Type.ExplicitPath: {
-            if (isBinaryAvailable(serverSource.path)) {
-                return serverSource.path;
+            if (isBinaryAvailable(source.path)) {
+                return source.path;
             }
 
             vscode.window.showErrorMessage(
-                `Unable to run ${serverSource.path} binary. ` +
+                `Unable to run ${source.path} binary. ` +
                 `To use the pre-built language server, set "rust-analyzer.raLspServerPath" ` +
                 "value to `null` or remove it from the settings to use it by default."
             );
             return null;
         }
         case BinarySource.Type.GithubRelease: {
-            const prebuiltBinaryPath = path.join(serverSource.dir, serverSource.file);
+            const prebuiltBinaryPath = path.join(source.dir, source.file);
 
-            if (isBinaryAvailable(prebuiltBinaryPath)) {
+            const installedVersion: null | string = getServerVersion(source.storage);
+            const requiredVersion: string = source.version;
+
+            console.log("Installed version:", installedVersion, "required:", requiredVersion);
+
+            if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion == requiredVersion) {
+                // FIXME: check for new releases and notify the user to update if possible
                 return prebuiltBinaryPath;
             }
 
             const userResponse = await vscode.window.showInformationMessage(
-                "Language server binary for rust-analyzer was not found. " +
+                `Language server version ${source.version} for rust-analyzer is not installed. ` +
                 "Do you want to download it now?",
                 "Download now", "Cancel"
             );
             if (userResponse !== "Download now") return null;
 
-            try {
-                await downloadLatestServer(serverSource);
-            } catch (err) {
-                vscode.window.showErrorMessage(
-                    `Failed to download language server from ${serverSource.repo.name} ` +
-                    `GitHub repository: ${err.message}`
-                );
-
-                console.error(err);
-
-                dns.resolve('example.com').then(
-                    addrs => console.log("DNS resolution for example.com was successful", addrs),
-                    err => {
-                        console.error(
-                            "DNS resolution for example.com failed, " +
-                            "there might be an issue with Internet availability"
-                        );
-                        console.error(err);
-                    }
-                );
-
-                return null;
-            }
-
-            if (!isBinaryAvailable(prebuiltBinaryPath)) assert(false,
-                `Downloaded language server binary is not functional.` +
-                `Downloaded from: ${JSON.stringify(serverSource)}`
-            );
-
-
-            vscode.window.showInformationMessage(
-                "Rust analyzer language server was successfully installed 🦀"
-            );
+            if (!await downloadServer(source)) return null;
 
             return prebuiltBinaryPath;
         }
     }
+}
 
-    function isBinaryAvailable(binaryPath: string) {
-        const res = spawnSync(binaryPath, ["--version"]);
+async function downloadServer(source: BinarySource.GithubRelease): Promise<boolean> {
+    try {
+        const releaseInfo = (await fetchArtifactReleaseInfo(source.repo, source.file, source.version))!;
 
-        // ACHTUNG! `res` type declaration is inherently wrong, see
-        // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/42221
+        await downloadArtifact(releaseInfo, source.file, source.dir, "language server");
+        await setServerVersion(source.storage, releaseInfo.releaseName);
+    } catch (err) {
+        vscode.window.showErrorMessage(
+            `Failed to download language server from ${source.repo.name} ` +
+            `GitHub repository: ${err.message}`
+        );
 
-        console.log("Checked binary availablity via --version", res);
-        console.log(binaryPath, "--version output:", res.output?.map(String));
+        console.error(err);
 
-        return res.status === 0;
+        dns.resolve('example.com').then(
+            addrs => console.log("DNS resolution for example.com was successful", addrs),
+            err => {
+                console.error(
+                    "DNS resolution for example.com failed, " +
+                    "there might be an issue with Internet availability"
+                );
+                console.error(err);
+            }
+        );
+        return false;
     }
+
+    if (!isBinaryAvailable(path.join(source.dir, source.file))) assert(false,
+        `Downloaded language server binary is not functional.` +
+        `Downloaded from: ${JSON.stringify(source, null, 4)}`
+    );
+
+    vscode.window.showInformationMessage(
+        "Rust analyzer language server was successfully installed 🦀"
+    );
+
+    return true;
+}
+
+function isBinaryAvailable(binaryPath: string): boolean {
+    const res = spawnSync(binaryPath, ["--version"]);
+
+    // ACHTUNG! `res` type declaration is inherently wrong, see
+    // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/42221
+
+    console.log("Checked binary availablity via --version", res);
+    console.log(binaryPath, "--version output:", res.output?.map(String));
+
+    return res.status === 0;
+}
+
+function getServerVersion(storage: vscode.Memento): null | string {
+    const version = storage.get<null | string>("server-version", null);
+    console.log("Get server-version:", version);
+    return version;
+}
+
+async function setServerVersion(storage: vscode.Memento, version: string): Promise<void> {
+    console.log("Set server-version:", version);
+    await storage.update("server-version", version.toString());
 }
