@@ -92,7 +92,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             let offset = host
                 .analysis()
                 .file_line_index(file_id)?
-                .offset(LineCol { line: pos.line, col_utf16: pos.column });
+                .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
             let file_postion = FilePosition { file_id, offset };
 
             if is_completion {
