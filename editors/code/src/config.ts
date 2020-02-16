@@ -153,5 +153,5 @@ export class Config {
     }
 
     // for internal use
-    get withSysroot() { return this.cfg.get("withSysroot", false); }
+    get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
 }
