@@ -6,7 +6,7 @@
     "private": true,
     "icon": "icon.png",
     "//": "The real version is in release.yaml, this one just needs to be bigger",
-    "version": "0.2.0-dev",
+    "version": "0.2.20200211-dev",
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",

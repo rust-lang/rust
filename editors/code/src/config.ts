@@ -24,6 +24,19 @@ export class Config {
     ]
     .map(opt => `${Config.rootSection}.${opt}`);
 
+    private static readonly extensionVersion: string = (() => {
+        const packageJsonVersion = vscode
+            .extensions
+            .getExtension("matklad.rust-analyzer")!
+            .packageJSON
+            .version as string; // n.n.YYYYMMDD
+
+        const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
+        const [, yyyy, mm, dd] = packageJsonVersion.match(realVersionRegexp)!;
+
+        return `${yyyy}-${mm}-${dd}`;
+    })();
+
     private cfg!: vscode.WorkspaceConfiguration;
 
     constructor(private readonly ctx: vscode.ExtensionContext) {
@@ -98,7 +111,7 @@ export class Config {
         }
     }
 
-    get serverBinarySource(): null | BinarySource {
+    get serverSource(): null | BinarySource {
         const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
 
         if (serverPath) {
@@ -116,6 +129,8 @@ export class Config {
             type: BinarySource.Type.GithubRelease,
             dir:  this.ctx.globalStoragePath,
             file: prebuiltBinaryName,
+            storage: this.ctx.globalState,
+            version: Config.extensionVersion,
             repo: {
                 name: "rust-analyzer",
                 owner: "rust-analyzer",
