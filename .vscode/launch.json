@@ -4,7 +4,6 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 
   // NOTE: --disable-extensions
-  // Disable all installed extensions for increas performance of playground
   // Disable all installed extensions to increase performance of the debug instance
   // and prevent potential conflicts with other installed extensions.
 
