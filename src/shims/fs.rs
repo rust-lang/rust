@@ -875,26 +875,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             match dir_iter.next() {
                 Some(Ok(dir_entry)) => {
                     // write into entry, write pointer to result, return 0 on success
+
+                    let name_offset = dirent64_layout.details.fields.offset(4);
+                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+
+                    let name_fits = this.write_os_str_to_c_str(&dir_entry.file_name(), Scalar::Ptr(name_ptr), 256)?;
+                    if !name_fits {
+                        panic!("A directory entry had a name too large to fit in libc::dirent64");
+                    }
+
                     let entry_place = this.deref_operand(entry_op)?;
                     let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
                     let off64_t_layout = this.libc_ty_layout("off64_t")?;
                     let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
                     let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
 
-                    let name_offset = dirent64_layout.details.fields.offset(4);
-                    let name_ptr = entry_ptr.offset(name_offset, this)?;
-
                     #[cfg(unix)]
                     let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                     #[cfg(not(unix))]
                     let ino = 0;
-
-                    #[cfg(unix)]
-                    let file_name = dir_entry.file_name();
-                    #[cfg(unix)]
-                    let file_name = std::os::unix::ffi::OsStrExt::as_bytes(file_name.as_os_str());
-                    #[cfg(not(unix))]
-                    let file_name = b"";
 
                     let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
 
@@ -905,7 +904,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
                     ];
                     this.write_packed_immediates(entry_place, &imms)?;
-                    this.memory.write_bytes(Scalar::Ptr(name_ptr), file_name.iter().copied())?;
 
                     let result_place = this.deref_operand(result_op)?;
                     this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
@@ -947,26 +945,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             match dir_iter.next() {
                 Some(Ok(dir_entry)) => {
                     // write into entry, write pointer to result, return 0 on success
+
+                    let name_offset = dirent_layout.details.fields.offset(5);
+                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+
+                    let file_name = dir_entry.file_name();
+                    let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 1024)?;
+                    if !name_fits {
+                        panic!("A directory entry had a name too large to fit in libc::dirent");
+                    }
+
                     let entry_place = this.deref_operand(entry_op)?;
                     let ino_t_layout = this.libc_ty_layout("ino_t")?;
                     let off_t_layout = this.libc_ty_layout("off_t")?;
                     let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
                     let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
 
-                    let name_offset = dirent_layout.details.fields.offset(5);
-                    let name_ptr = entry_ptr.offset(name_offset, this)?;
-
                     #[cfg(unix)]
                     let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                     #[cfg(not(unix))]
                     let ino = 0;
 
-                    #[cfg(unix)]
-                    let file_name = dir_entry.file_name();
-                    #[cfg(unix)]
-                    let file_name = std::os::unix::ffi::OsStrExt::as_bytes(file_name.as_os_str());
-                    #[cfg(not(unix))]
-                    let file_name = b"";
+                    let file_name_len = this.os_str_length_as_c_str(&file_name)? as u128;
 
                     let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
 
@@ -974,11 +974,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
                         immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
                         immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
-                        immty_from_uint_checked(file_name.len() as u128, c_ushort_layout)?, // d_namlen
+                        immty_from_uint_checked(file_name_len, c_ushort_layout)?, // d_namlen
                         immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
                     ];
                     this.write_packed_immediates(entry_place, &imms)?;
-                    this.memory.write_bytes(Scalar::Ptr(name_ptr), file_name.iter().copied())?;
 
                     let result_place = this.deref_operand(result_op)?;
                     this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
