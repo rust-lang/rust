@@ -172,6 +172,7 @@ fn maybe_source_file_to_parser(
     parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof && parser.token.span.is_dummy() {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
+        assert!(parser.unnormalized_token.is_none());
     }
 
     Ok(parser)
