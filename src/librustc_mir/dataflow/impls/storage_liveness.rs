@@ -129,7 +129,14 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
                     sets.gen(place.local);
                 }
             }
-            _ => (),
+
+            // Nothing to do for these. Match exhaustively so this fails to compile when new
+            // variants are added.
+            StatementKind::AscribeUserType(..)
+            | StatementKind::FakeRead(..)
+            | StatementKind::Nop
+            | StatementKind::Retag(..)
+            | StatementKind::StorageLive(..) => {}
         }
     }
 
