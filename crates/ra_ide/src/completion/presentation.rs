@@ -280,7 +280,7 @@ impl Completions {
             StructKind::Record => {
                 join(detail_types.map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string())))
                     .separator(", ")
-                    .surround_with("{", "}")
+                    .surround_with("{ ", " }")
                     .to_string()
             }
         };
@@ -328,7 +328,7 @@ mod tests {
                 delete: [121; 123),
                 insert: "Foo",
                 kind: EnumVariant,
-                detail: "{x: i32, y: i32}",
+                detail: "{ x: i32, y: i32 }",
             },
         ]"###
         );
