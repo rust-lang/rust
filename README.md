@@ -14,13 +14,13 @@ for example:
 * Not sufficiently aligned memory accesses and references
 * Violation of *some* basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
-* WIP: Violations of the rules governing aliasing for reference types
+* **Experimental**: Violations of the rules governing aliasing for reference types
 
 Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-Be aware that Miri will not catch all cases of undefined behavior in your
+Be aware that Miri will **not catch all cases of undefined behavior** in your
 program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
