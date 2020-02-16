@@ -48,7 +48,7 @@ To apply changes to already running debug process press <kbd>Ctrl+Shift+P</kbd> 
     debug = 2
   ```
 
-- Select `Run Extension (Dev Server)` to run your local built `target/debug/ra_lsp_server`.
+- Select `Run Extension (Dev Server)` to run your locally built `target/debug/ra_lsp_server`.
 
 - In the original VSCode window once again select `Attach To Server` debug configuration.
 
