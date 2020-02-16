@@ -418,8 +418,10 @@ pub fn get_rustc_cfg_options() -> CfgOptions {
     // Some nightly-only cfgs, which are required for stdlib
     {
         cfg_options.insert_atom("target_thread_local".into());
-        for &target_has_atomic in ["16", "32", "64", "8", "cas", "ptr"].iter() {
-            cfg_options.insert_key_value("target_has_atomic".into(), target_has_atomic.into())
+        for &target_has_atomic in ["8", "16", "32", "64", "cas", "ptr"].iter() {
+            cfg_options.insert_key_value("target_has_atomic".into(), target_has_atomic.into());
+            cfg_options
+                .insert_key_value("target_has_atomic_load_store".into(), target_has_atomic.into());
         }
     }
 

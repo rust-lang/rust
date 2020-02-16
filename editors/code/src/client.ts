@@ -1,39 +1,42 @@
 import * as lc from 'vscode-languageclient';
+import * as vscode from 'vscode';
 
-import { window, workspace } from 'vscode';
 import { Config } from './config';
-import { ensureLanguageServerBinary } from './installation/language_server';
+import { ensureServerBinary } from './installation/server';
+import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 
 export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
-    const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
+    const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const raLspServerPath = await ensureLanguageServerBinary(config.langServerSource);
-    if (!raLspServerPath) return null;
+    const serverPath = await ensureServerBinary(config.serverSource);
+    if (!serverPath) return null;
 
     const run: lc.Executable = {
-        command: raLspServerPath,
+        command: serverPath,
         options: { cwd: workspaceFolderPath },
     };
     const serverOptions: lc.ServerOptions = {
         run,
         debug: run,
     };
-    const traceOutputChannel = window.createOutputChannel(
+    const traceOutputChannel = vscode.window.createOutputChannel(
         'Rust Analyzer Language Server Trace',
     );
+    const cargoWatchOpts = config.cargoWatchOptions;
+
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
         initializationOptions: {
             publishDecorations: true,
             lruCapacity: config.lruCapacity,
             maxInlayHintLength: config.maxInlayHintLength,
-            cargoWatchEnable: config.cargoWatchOptions.enable,
-            cargoWatchArgs: config.cargoWatchOptions.arguments,
-            cargoWatchCommand: config.cargoWatchOptions.command,
-            cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
+            cargoWatchEnable: cargoWatchOpts.enable,
+            cargoWatchArgs: cargoWatchOpts.arguments,
+            cargoWatchCommand: cargoWatchOpts.command,
+            cargoWatchAllTargets: cargoWatchOpts.allTargets,
             excludeGlobs: config.excludeGlobs,
             useClientWatching: config.useClientWatching,
             featureFlags: config.featureFlags,
@@ -78,6 +81,10 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
             }
         },
     };
-    res.registerProposedFeatures();
+
+    // To turn on all proposed features use: res.registerProposedFeatures();
+    // Here we want to just enable CallHierarchyFeature since it is available on stable.
+    // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
+    res.registerFeature(new CallHierarchyFeature(res));
     return res;
 }

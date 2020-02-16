@@ -26,6 +26,13 @@ pub use crate::memory_usage::{Bytes, MemoryUsage};
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
+pub fn init() {
+    set_filter(match std::env::var("RA_PROFILE") {
+        Ok(spec) => Filter::from_spec(&spec),
+        Err(_) => Filter::disabled(),
+    });
+}
+
 /// Set profiling filter. It specifies descriptions allowed to profile.
 /// This is helpful when call stack has too many nested profiling scopes.
 /// Additionally filter can specify maximum depth of profiling scopes nesting.

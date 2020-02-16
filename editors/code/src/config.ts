@@ -16,45 +16,62 @@ export interface CargoFeatures {
     allFeatures: boolean;
     features: string[];
 }
-
 export class Config {
-    langServerSource!: null | BinarySource;
+    private static readonly rootSection = "rust-analyzer";
+    private static readonly requiresReloadOpts = [
+        "cargoFeatures",
+        "cargo-watch",
+    ]
+    .map(opt => `${Config.rootSection}.${opt}`);
 
-    highlightingOn = true;
-    rainbowHighlightingOn = false;
-    enableEnhancedTyping = true;
-    lruCapacity: null | number = null;
-    displayInlayHints = true;
-    maxInlayHintLength: null | number = null;
-    excludeGlobs: string[] = [];
-    useClientWatching = true;
-    featureFlags: Record<string, boolean> = {};
-    // for internal use
-    withSysroot: null | boolean = null;
-    cargoWatchOptions: CargoWatchOptions = {
-        enable: true,
-        arguments: [],
-        command: '',
-        allTargets: true,
-    };
-    cargoFeatures: CargoFeatures = {
-        noDefaultFeatures: false,
-        allFeatures: true,
-        features: [],
-    };
+    private static readonly extensionVersion: string = (() => {
+        const packageJsonVersion = vscode
+            .extensions
+            .getExtension("matklad.rust-analyzer")!
+            .packageJSON
+            .version as string; // n.n.YYYYMMDD
 
-    private prevEnhancedTyping: null | boolean = null;
-    private prevCargoFeatures: null | CargoFeatures = null;
-    private prevCargoWatchOptions: null | CargoWatchOptions = null;
+        const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
+        const [, yyyy, mm, dd] = packageJsonVersion.match(realVersionRegexp)!;
 
-    constructor(ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(ctx), null, ctx.subscriptions);
-        this.refresh(ctx);
+        return `${yyyy}-${mm}-${dd}`;
+    })();
+
+    private cfg!: vscode.WorkspaceConfiguration;
+
+    constructor(private readonly ctx: vscode.ExtensionContext) {
+        vscode.workspace.onDidChangeConfiguration(this.onConfigChange, this, ctx.subscriptions);
+        this.refreshConfig();
     }
 
-    private static expandPathResolving(path: string) {
-        if (path.startsWith('~/')) {
-            return path.replace('~', os.homedir());
+
+    private refreshConfig() {
+        this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
+        console.log("Using configuration:", this.cfg);
+    }
+
+    private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
+        this.refreshConfig();
+
+        const requiresReloadOpt = Config.requiresReloadOpts.find(
+            opt => event.affectsConfiguration(opt)
+        );
+
+        if (!requiresReloadOpt) return;
+
+        const userResponse = await vscode.window.showInformationMessage(
+            `Changing "${requiresReloadOpt}" requires a reload`,
+            "Reload now"
+        );
+
+        if (userResponse === "Reload now") {
+            vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+    }
+
+    private static replaceTildeWithHomeDir(path: string) {
+        if (path.startsWith("~/")) {
+            return os.homedir() + path.slice("~".length);
         }
         return path;
     }
@@ -64,17 +81,14 @@ export class Config {
      * `platform` on GitHub releases. (It is also stored under the same name when
      * downloaded by the extension).
      */
-    private static prebuiltLangServerFileName(
-        platform: NodeJS.Platform,
-        arch: string
-    ): null | string {
+    get prebuiltServerFileName(): null | string {
         // See possible `arch` values here:
         // https://nodejs.org/api/process.html#process_process_arch
 
-        switch (platform) {
+        switch (process.platform) {
 
             case "linux": {
-                switch (arch) {
+                switch (process.arch) {
                     case "arm":
                     case "arm64": return null;
 
@@ -97,29 +111,26 @@ export class Config {
         }
     }
 
-    private static langServerBinarySource(
-        ctx: vscode.ExtensionContext,
-        config: vscode.WorkspaceConfiguration
-    ): null | BinarySource {
-        const langServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
+    get serverSource(): null | BinarySource {
+        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
 
-        if (langServerPath) {
+        if (serverPath) {
             return {
                 type: BinarySource.Type.ExplicitPath,
-                path: Config.expandPathResolving(langServerPath)
+                path: Config.replaceTildeWithHomeDir(serverPath)
             };
         }
 
-        const prebuiltBinaryName = Config.prebuiltLangServerFileName(
-            process.platform, process.arch
-        );
+        const prebuiltBinaryName = this.prebuiltServerFileName;
 
         if (!prebuiltBinaryName) return null;
 
         return {
             type: BinarySource.Type.GithubRelease,
-            dir: ctx.globalStoragePath,
+            dir:  this.ctx.globalStoragePath,
             file: prebuiltBinaryName,
+            storage: this.ctx.globalState,
+            version: Config.extensionVersion,
             repo: {
                 name: "rust-analyzer",
                 owner: "rust-analyzer",
@@ -127,158 +138,35 @@ export class Config {
         };
     }
 
+    // We don't do runtime config validation here for simplicity. More on stackoverflow:
+    // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    // FIXME: revisit the logic for `if (.has(...)) config.get(...)` set default
-    // values only in one place (i.e. remove default values from non-readonly members declarations)
-    private refresh(ctx: vscode.ExtensionContext) {
-        const config = vscode.workspace.getConfiguration('rust-analyzer');
+    get highlightingOn()        { return this.cfg.get("highlightingOn") as boolean; }
+    get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
+    get lruCapacity()           { return this.cfg.get("lruCapacity") as null | number; }
+    get displayInlayHints()     { return this.cfg.get("displayInlayHints") as boolean; }
+    get maxInlayHintLength()    { return this.cfg.get("maxInlayHintLength") as number; }
+    get excludeGlobs()          { return this.cfg.get("excludeGlobs") as string[]; }
+    get useClientWatching()     { return this.cfg.get("useClientWatching") as boolean; }
+    get featureFlags()          { return this.cfg.get("featureFlags") as Record<string, boolean>; }
 
-        let requireReloadMessage = null;
-
-        if (config.has('highlightingOn')) {
-            this.highlightingOn = config.get('highlightingOn') as boolean;
-        }
-
-        if (config.has('rainbowHighlightingOn')) {
-            this.rainbowHighlightingOn = config.get(
-                'rainbowHighlightingOn',
-            ) as boolean;
-        }
-
-        if (config.has('enableEnhancedTyping')) {
-            this.enableEnhancedTyping = config.get(
-                'enableEnhancedTyping',
-            ) as boolean;
-
-            if (this.prevEnhancedTyping === null) {
-                this.prevEnhancedTyping = this.enableEnhancedTyping;
-            }
-        } else if (this.prevEnhancedTyping === null) {
-            this.prevEnhancedTyping = this.enableEnhancedTyping;
-        }
-
-        if (this.prevEnhancedTyping !== this.enableEnhancedTyping) {
-            requireReloadMessage =
-                'Changing enhanced typing setting requires a reload';
-            this.prevEnhancedTyping = this.enableEnhancedTyping;
-        }
-
-        this.langServerSource = Config.langServerBinarySource(ctx, config);
-
-        if (config.has('cargo-watch.enable')) {
-            this.cargoWatchOptions.enable = config.get<boolean>(
-                'cargo-watch.enable',
-                true,
-            );
-        }
-
-        if (config.has('cargo-watch.arguments')) {
-            this.cargoWatchOptions.arguments = config.get<string[]>(
-                'cargo-watch.arguments',
-                [],
-            );
-        }
-
-        if (config.has('cargo-watch.command')) {
-            this.cargoWatchOptions.command = config.get<string>(
-                'cargo-watch.command',
-                '',
-            );
-        }
-
-        if (config.has('cargo-watch.allTargets')) {
-            this.cargoWatchOptions.allTargets = config.get<boolean>(
-                'cargo-watch.allTargets',
-                true,
-            );
-        }
-
-        if (config.has('lruCapacity')) {
-            this.lruCapacity = config.get('lruCapacity') as number;
-        }
-
-        if (config.has('displayInlayHints')) {
-            this.displayInlayHints = config.get('displayInlayHints') as boolean;
-        }
-        if (config.has('maxInlayHintLength')) {
-            this.maxInlayHintLength = config.get(
-                'maxInlayHintLength',
-            ) as number;
-        }
-        if (config.has('excludeGlobs')) {
-            this.excludeGlobs = config.get('excludeGlobs') || [];
-        }
-        if (config.has('useClientWatching')) {
-            this.useClientWatching = config.get('useClientWatching') || true;
-        }
-        if (config.has('featureFlags')) {
-            this.featureFlags = config.get('featureFlags') || {};
-        }
-        if (config.has('withSysroot')) {
-            this.withSysroot = config.get('withSysroot') || false;
-        }
-
-        if (config.has('cargoFeatures.noDefaultFeatures')) {
-            this.cargoFeatures.noDefaultFeatures = config.get(
-                'cargoFeatures.noDefaultFeatures',
-                false,
-            );
-        }
-        if (config.has('cargoFeatures.allFeatures')) {
-            this.cargoFeatures.allFeatures = config.get(
-                'cargoFeatures.allFeatures',
-                true,
-            );
-        }
-        if (config.has('cargoFeatures.features')) {
-            this.cargoFeatures.features = config.get(
-                'cargoFeatures.features',
-                [],
-            );
-        }
-
-        if (
-            this.prevCargoFeatures !== null &&
-            (this.cargoFeatures.allFeatures !==
-                this.prevCargoFeatures.allFeatures ||
-                this.cargoFeatures.noDefaultFeatures !==
-                this.prevCargoFeatures.noDefaultFeatures ||
-                this.cargoFeatures.features.length !==
-                this.prevCargoFeatures.features.length ||
-                this.cargoFeatures.features.some(
-                    (v, i) => v !== this.prevCargoFeatures!.features[i],
-                ))
-        ) {
-            requireReloadMessage = 'Changing cargo features requires a reload';
-        }
-        this.prevCargoFeatures = { ...this.cargoFeatures };
-
-        if (this.prevCargoWatchOptions !== null) {
-            const changed =
-                this.cargoWatchOptions.enable !== this.prevCargoWatchOptions.enable ||
-                this.cargoWatchOptions.command !== this.prevCargoWatchOptions.command ||
-                this.cargoWatchOptions.allTargets !== this.prevCargoWatchOptions.allTargets ||
-                this.cargoWatchOptions.arguments.length !== this.prevCargoWatchOptions.arguments.length ||
-                this.cargoWatchOptions.arguments.some(
-                    (v, i) => v !== this.prevCargoWatchOptions!.arguments[i],
-                );
-            if (changed) {
-                requireReloadMessage = 'Changing cargo-watch options requires a reload';
-            }
-        }
-        this.prevCargoWatchOptions = { ...this.cargoWatchOptions };
-
-        if (requireReloadMessage !== null) {
-            const reloadAction = 'Reload now';
-            vscode.window
-                .showInformationMessage(requireReloadMessage, reloadAction)
-                .then(selectedAction => {
-                    if (selectedAction === reloadAction) {
-                        vscode.commands.executeCommand(
-                            'workbench.action.reloadWindow',
-                        );
-                    }
-                });
-        }
+    get cargoWatchOptions(): CargoWatchOptions {
+        return {
+            enable:     this.cfg.get("cargo-watch.enable") as boolean,
+            arguments:  this.cfg.get("cargo-watch.arguments") as string[],
+            allTargets: this.cfg.get("cargo-watch.allTargets") as boolean,
+            command:    this.cfg.get("cargo-watch.command") as string,
+        };
     }
+
+    get cargoFeatures(): CargoFeatures {
+        return {
+            noDefaultFeatures: this.cfg.get("cargoFeatures.noDefaultFeatures") as boolean,
+            allFeatures:       this.cfg.get("cargoFeatures.allFeatures") as boolean,
+            features:          this.cfg.get("cargoFeatures.features") as string[],
+        };
+    }
+
+    // for internal use
+    get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
 }

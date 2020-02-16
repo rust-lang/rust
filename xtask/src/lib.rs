@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-mod cmd;
+pub mod not_bash;
 pub mod install;
 pub mod pre_commit;
 
@@ -9,15 +9,15 @@ mod ast_src;
 
 use anyhow::Context;
 use std::{
-    env, fs,
+    env,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 use crate::{
-    cmd::{run, run_with_output},
     codegen::Mode,
+    not_bash::{fs2, pushd, rm_rf, run},
 };
 
 pub use anyhow::Result;
@@ -38,9 +38,9 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     ensure_rustfmt()?;
 
     if mode == Mode::Verify {
-        run(&format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN), ".")?;
+        run!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN)?;
     } else {
-        run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
+        run!("rustup run {} -- cargo fmt", TOOLCHAIN)?;
     }
     Ok(())
 }
@@ -70,8 +70,9 @@ fn ensure_rustfmt() -> Result<()> {
         Ok(status) if status.success() => return Ok(()),
         _ => (),
     };
-    run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
-    run(&format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN), ".")
+    run!("rustup toolchain install {}", TOOLCHAIN)?;
+    run!("rustup component add rustfmt --toolchain {}", TOOLCHAIN)?;
+    Ok(())
 }
 
 pub fn run_clippy() -> Result<()> {
@@ -92,34 +93,28 @@ pub fn run_clippy() -> Result<()> {
         "clippy::nonminimal_bool",
         "clippy::redundant_pattern_matching",
     ];
-    run(
-        &format!(
-            "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
-            TOOLCHAIN,
-            allowed_lints.join(" -A ")
-        ),
-        ".",
+    run!(
+        "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
+        TOOLCHAIN,
+        allowed_lints.join(" -A ")
     )?;
     Ok(())
 }
 
 fn install_clippy() -> Result<()> {
-    run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
-    run(&format!("rustup component add clippy --toolchain {}", TOOLCHAIN), ".")
+    run!("rustup toolchain install {}", TOOLCHAIN)?;
+    run!("rustup component add clippy --toolchain {}", TOOLCHAIN)?;
+    Ok(())
 }
 
 pub fn run_fuzzer() -> Result<()> {
-    match Command::new("cargo")
-        .args(&["fuzz", "--help"])
-        .stderr(Stdio::null())
-        .stdout(Stdio::null())
-        .status()
-    {
-        Ok(status) if status.success() => (),
-        _ => run("cargo install cargo-fuzz", ".")?,
+    let _d = pushd("./crates/ra_syntax");
+    if run!("cargo fuzz --help").is_err() {
+        run!("cargo install cargo-fuzz")?;
     };
 
-    run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
+    run!("rustup run nightly -- cargo fuzz run parser")?;
+    Ok(())
 }
 
 /// Cleans the `./target` dir after the build such that only
@@ -141,7 +136,7 @@ pub fn run_pre_cache() -> Result<()> {
         }
     }
 
-    fs::remove_file("./target/.rustc_info.json")?;
+    fs2::remove_file("./target/.rustc_info.json")?;
     let to_delete = ["ra_", "heavy_test"];
     for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
         for entry in Path::new(dir).read_dir()? {
@@ -155,22 +150,20 @@ pub fn run_pre_cache() -> Result<()> {
     Ok(())
 }
 
-fn rm_rf(path: &Path) -> Result<()> {
-    if path.is_file() { fs::remove_file(path) } else { fs::remove_dir_all(path) }
-        .with_context(|| format!("failed to remove {:?}", path))
-}
+pub fn run_release(dry_run: bool) -> Result<()> {
+    if !dry_run {
+        run!("git switch release")?;
+        run!("git fetch upstream")?;
+        run!("git reset --hard upstream/master")?;
+        run!("git push")?;
+    }
 
-pub fn run_release() -> Result<()> {
-    run("git switch release", ".")?;
-    run("git fetch upstream", ".")?;
-    run("git reset --hard upstream/master", ".")?;
-    run("git push", ".")?;
+    let website_root = project_root().join("../rust-analyzer.github.io");
+    let changelog_dir = website_root.join("./thisweek/_posts");
 
-    let changelog_dir = project_root().join("../rust-analyzer.github.io/thisweek/_posts");
-
-    let today = run_with_output("date --iso", ".")?;
-    let commit = run_with_output("git rev-parse HEAD", ".")?;
-    let changelog_n = fs::read_dir(changelog_dir.as_path())?.count();
+    let today = run!("date --iso")?;
+    let commit = run!("git rev-parse HEAD")?;
+    let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
 
     let contents = format!(
         "\
@@ -193,7 +186,9 @@ Release: release:{}[]
     );
 
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-    fs::write(&path, &contents)?;
+    fs2::write(&path, &contents)?;
+
+    fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
 
     Ok(())
 }

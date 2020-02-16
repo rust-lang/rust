@@ -249,6 +249,8 @@ impl InferenceTable {
         match (ty1, ty2) {
             (Ty::Unknown, _) | (_, Ty::Unknown) => true,
 
+            (Ty::Placeholder(p1), Ty::Placeholder(p2)) if *p1 == *p2 => true,
+
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
             | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2)))

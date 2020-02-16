@@ -526,3 +526,25 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn coerce_placeholder_ref() {
+    // placeholders should unify, even behind references
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct S<T> { t: T }
+impl<TT> S<TT> {
+    fn get(&self) -> &TT {
+        &self.t
+    }
+}
+"#, true),
+        @r###"
+    [51; 55) 'self': &S<TT>
+    [64; 87) '{     ...     }': &TT
+    [74; 81) '&self.t': &TT
+    [75; 79) 'self': &S<TT>
+    [75; 81) 'self.t': TT
+    "###
+    );
+}

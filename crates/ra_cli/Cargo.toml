@@ -6,8 +6,10 @@ authors = ["rust-analyzer developers"]
 publish = false
 
 [dependencies]
+itertools = "0.8.0"
 pico-args = "0.3.0"
 env_logger = { version = "0.7.1", default-features = false }
+rand = { version = "0.7.0", features = ["small_rng"] }
 
 ra_syntax = { path = "../ra_syntax" }
 ra_ide = { path = "../ra_ide" }

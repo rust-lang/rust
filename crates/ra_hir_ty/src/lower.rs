@@ -14,9 +14,9 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
-    LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
-    VariantId,
+    AdtId, AssocContainerId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
+    ImplId, LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
+    UnionId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -152,7 +152,7 @@ impl Ty {
                                     data.provenance == TypeParamProvenance::ArgumentImplTrait
                                 })
                                 .nth(idx as usize)
-                                .map_or(Ty::Unknown, |(id, _)| Ty::Param(id));
+                                .map_or(Ty::Unknown, |(id, _)| Ty::Placeholder(id));
                             param
                         } else {
                             Ty::Unknown
@@ -270,7 +270,7 @@ impl Ty {
                 let generics =
                     generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
                         Ty::Bound(idx)
@@ -339,7 +339,7 @@ impl Ty {
             None => return Ty::Unknown, // this can't actually happen
         };
         let param_id = match self_ty {
-            Ty::Param(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
+            Ty::Placeholder(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
             Ty::Bound(idx) if ctx.type_param_mode == TypeParamLoweringMode::Variable => {
                 let generics = generics(ctx.db, def);
                 let param_id = if let Some((id, _)) = generics.iter().nth(idx as usize) {
@@ -544,7 +544,7 @@ impl GenericPredicate {
                 let generics = generics(ctx.db, generic_def);
                 let param_id = hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
                         Ty::Bound(idx)
@@ -672,10 +672,34 @@ impl TraitEnvironment {
     pub fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
         let ctx = TyLoweringContext::new(db, &resolver)
             .with_type_param_mode(TypeParamLoweringMode::Placeholder);
-        let predicates = resolver
+        let mut predicates = resolver
             .where_predicates_in_scope()
             .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
             .collect::<Vec<_>>();
+
+        if let Some(def) = resolver.generic_def() {
+            let container: Option<AssocContainerId> = match def {
+                // FIXME: is there a function for this?
+                GenericDefId::FunctionId(f) => Some(f.lookup(db).container),
+                GenericDefId::AdtId(_) => None,
+                GenericDefId::TraitId(_) => None,
+                GenericDefId::TypeAliasId(t) => Some(t.lookup(db).container),
+                GenericDefId::ImplId(_) => None,
+                GenericDefId::EnumVariantId(_) => None,
+                GenericDefId::ConstId(c) => Some(c.lookup(db).container),
+            };
+            if let Some(AssocContainerId::TraitId(trait_id)) = container {
+                // add `Self: Trait<T1, T2, ...>` to the environment in trait
+                // function default implementations (and hypothetical code
+                // inside consts or type aliases)
+                test_utils::tested_by!(trait_self_implements_self);
+                let substs = Substs::type_params(db, trait_id);
+                let trait_ref = TraitRef { trait_: trait_id, substs };
+                let pred = GenericPredicate::Implemented(trait_ref);
+
+                predicates.push(pred);
+            }
+        }
 
         Arc::new(TraitEnvironment { predicates })
     }

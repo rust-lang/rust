@@ -5,7 +5,8 @@
     "preview": true,
     "private": true,
     "icon": "icon.png",
-    "version": "0.1.0",
+    "//": "The real version is in release.yaml, this one just needs to be bigger",
+    "version": "0.2.20200211-dev",
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
@@ -15,7 +16,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.41.0"
+        "vscode": "^1.42.0"
     },
     "scripts": {
         "vscode:prepublish": "tsc && rollup -c",
@@ -35,13 +36,13 @@
         "@types/node": "^12.12.25",
         "@types/node-fetch": "^2.5.4",
         "@types/throttle-debounce": "^2.1.0",
-        "@types/vscode": "^1.41.0",
+        "@types/vscode": "^1.42.0",
         "rollup": "^1.31.0",
         "tslib": "^1.10.0",
         "tslint": "^5.20.1",
         "typescript": "^3.7.5",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.71.0"
+        "vsce": "^1.73.0"
     },
     "activationEvents": [
         "onLanguage:rust",
@@ -181,6 +182,9 @@
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "default": [],
                     "description": "Paths to exclude from analysis"
                 },
@@ -196,6 +200,9 @@
                 },
                 "rust-analyzer.cargo-watch.arguments": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "description": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
                     "default": []
                 },
@@ -226,11 +233,10 @@
                     "description": "Trace requests to the ra_lsp_server"
                 },
                 "rust-analyzer.lruCapacity": {
-                    "type": [
-                        "number",
-                        "null"
-                    ],
+                    "type": [ "null", "integer" ],
                     "default": null,
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
                     "description": "Number of syntax trees rust-analyzer keeps in memory"
                 },
                 "rust-analyzer.displayInlayHints": {
@@ -239,8 +245,10 @@
                     "description": "Display additional type and parameter information in the editor"
                 },
                 "rust-analyzer.maxInlayHintLength": {
-                    "type": "number",
+                    "type": [ "null", "integer" ],
                     "default": 20,
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
                     "description": "Maximum length for inlay hints"
                 },
                 "rust-analyzer.cargoFeatures.noDefaultFeatures": {
@@ -255,6 +263,9 @@
                 },
                 "rust-analyzer.cargoFeatures.features": {
                     "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
                     "default": [],
                     "description": "List of features to activate"
                 }

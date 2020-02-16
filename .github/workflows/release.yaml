@@ -190,4 +190,4 @@ jobs:
       - name: Publish Extension
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
-        run: ./node_modules/vsce/out/vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
+        run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
