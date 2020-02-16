@@ -659,8 +659,7 @@ impl<'a> Parser<'a> {
                     ExprKind::MethodCall(_, _) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_) => "`.await`",
-                    ref kind =>
-                        unreachable!("parse_dot_or_call_expr_with_ shouldn't produce a {:?}", kind),
+                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
                 }
             );
             let mut err = self.struct_span_err(span, &msg);
