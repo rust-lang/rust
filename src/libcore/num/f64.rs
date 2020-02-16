@@ -126,7 +126,7 @@ pub mod consts {
     pub const E: f64 = 2.71828182845904523536028747135266250_f64;
 
     /// log<sub>2</sub>(10)
-    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    #[stable(feature = "extra_log_consts", since = "1.43.0")]
     pub const LOG2_10: f64 = 3.32192809488736234787031942948939018_f64;
 
     /// log<sub>2</sub>(e)
@@ -134,7 +134,7 @@ pub mod consts {
     pub const LOG2_E: f64 = 1.44269504088896340735992468100189214_f64;
 
     /// log<sub>10</sub>(2)
-    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    #[stable(feature = "extra_log_consts", since = "1.43.0")]
     pub const LOG10_2: f64 = 0.301029995663981195213738894724493027_f64;
 
     /// log<sub>10</sub>(e)

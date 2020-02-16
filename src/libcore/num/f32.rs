@@ -130,7 +130,7 @@ pub mod consts {
     pub const LOG2_E: f32 = 1.44269504088896340735992468100189214_f32;
 
     /// log<sub>2</sub>(10)
-    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    #[stable(feature = "extra_log_consts", since = "1.43.0")]
     pub const LOG2_10: f32 = 3.32192809488736234787031942948939018_f32;
 
     /// log<sub>10</sub>(e)
@@ -138,7 +138,7 @@ pub mod consts {
     pub const LOG10_E: f32 = 0.434294481903251827651128918916605082_f32;
 
     /// log<sub>10</sub>(2)
-    #[unstable(feature = "extra_log_consts", issue = "50540")]
+    #[stable(feature = "extra_log_consts", since = "1.43.0")]
     pub const LOG10_2: f32 = 0.301029995663981195213738894724493027_f32;
 
     /// ln(2)
