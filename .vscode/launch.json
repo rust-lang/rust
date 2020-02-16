@@ -2,14 +2,21 @@
   // Use IntelliSense to learn about possible attributes.
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+
+  // NOTE: --disable-extensions
+  // Disable all installed extensions for increas performance of playground 
+  // and prevent potential problem and collision with developer's extansion
+
   "version": "0.2.0",
   "configurations": [
     {
+      // Used for testing extansion that located in extensionDevelopmentPath
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
       "outFiles": [
@@ -18,11 +25,13 @@
       "preLaunchTask": "Build Extension"
     },
     {
+      // Used for testing extansion with local lsp server located in __RA_LSP_SERVER_DEBUG
       "name": "Run Extension (Dev Server)",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
       "outFiles": [
@@ -34,7 +43,13 @@
       }
     },
     {
-      "name": "Debug Lsp Server",
+      // Attaching LLDB by Pid to lsp server
+      // NOTE: it requires root permission, also for better debugging
+      // if you want more than just assembler representation for ex: 
+      // walk in file, you need debugging symbols.
+      // Project can build with it, for set - chane inside
+      // ./Cargo.toml field debug 
+      "name": "Attach To Server",
       "type": "lldb",
       "request": "attach",
       "program": "${workspaceFolder}/target/debug/ra_lsp_server",
