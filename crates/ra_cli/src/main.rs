@@ -133,22 +133,15 @@ fn main() -> Result<()> {
             let verbose = matches.contains(["-v", "--verbose"]);
             let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
             let highlight_path = matches.opt_value_from_str("--highlight")?;
-            let complete_path = matches.opt_value_from_str("--complete")?;
+            let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
             if highlight_path.is_some() && complete_path.is_some() {
                 panic!("either --highlight or --complete must be set, not both")
             }
             let op = if let Some(path) = highlight_path {
                 let path: String = path;
                 analysis_bench::Op::Highlight { path: path.into() }
-            } else if let Some(path_line_col) = complete_path {
-                let path_line_col: String = path_line_col;
-                let (path_line, column) = rsplit_at_char(path_line_col.as_str(), ':')?;
-                let (path, line) = rsplit_at_char(path_line, ':')?;
-                analysis_bench::Op::Complete {
-                    path: path.into(),
-                    line: line.parse()?,
-                    column: column.parse()?,
-                }
+            } else if let Some(position) = complete_path {
+                analysis_bench::Op::Complete(position.parse()?)
             } else {
                 panic!("either --highlight or --complete must be set")
             };
@@ -182,9 +175,4 @@ fn read_stdin() -> Result<String> {
     let mut buff = String::new();
     std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)
-}
-
-fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
-    Ok((&s[..idx], &s[idx + 1..]))
 }
