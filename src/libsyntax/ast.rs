@@ -429,6 +429,13 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
+    /// The order of items in the HIR is unrelated to the order of
+    /// items in the AST. However, we generate proc macro harnesses
+    /// based on the AST order, and later refer to these harnesses
+    /// from the HIR. This field keeps track of the order in which
+    /// we generated proc macros harnesses, so that we can map
+    /// HIR proc macros items back to their harness items.
+    pub proc_macros: Vec<NodeId>,
 }
 
 /// Possible values inside of compile-time attribute lists.

@@ -989,7 +989,7 @@ pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, 
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    visit_clobber(krate, |Crate { module, attrs, span }| {
+    visit_clobber(krate, |Crate { module, attrs, span, proc_macros }| {
         let item = P(Item {
             ident: Ident::invalid(),
             attrs,
@@ -1004,11 +1004,11 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
         let len = items.len();
         if len == 0 {
             let module = Mod { inner: span, items: vec![], inline: true };
-            Crate { module, attrs: vec![], span }
+            Crate { module, attrs: vec![], span, proc_macros }
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
             match kind {
-                ItemKind::Mod(module) => Crate { module, attrs, span },
+                ItemKind::Mod(module) => Crate { module, attrs, span, proc_macros },
                 _ => panic!("visitor converted a module to not a module"),
             }
         } else {
