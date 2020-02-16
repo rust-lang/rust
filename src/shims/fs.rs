@@ -871,60 +871,62 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent64_layout = this.libc_ty_layout("dirent64")?;
 
-        if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
-            match dir_iter.next() {
-                Some(Ok(dir_entry)) => {
-                    // Write into entry, write pointer to result, return 0 on success.
-                    // The name is written with write_os_str_to_c_str, while the rest of the
-                    // dirent64 struct is written using write_packed_immediates.
+        let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
+            err_unsup_format!("The DIR pointer passed to readdir64_r did not come from opendir")
+        })?;
+        match dir_iter.next() {
+            Some(Ok(dir_entry)) => {
+                // Write into entry, write pointer to result, return 0 on success.
+                // The name is written with write_os_str_to_c_str, while the rest of the
+                // dirent64 struct is written using write_packed_immediates.
 
-                    let name_offset = dirent64_layout.details.fields.offset(4);
-                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+                let name_offset = dirent64_layout.details.fields.offset(4);
+                let name_ptr = entry_ptr.offset(name_offset, this)?;
 
-                    let name_fits = this.write_os_str_to_c_str(&dir_entry.file_name(), Scalar::Ptr(name_ptr), 256)?;
-                    if !name_fits {
-                        panic!("A directory entry had a name too large to fit in libc::dirent64");
-                    }
-
-                    let entry_place = this.deref_operand(entry_op)?;
-                    let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
-                    let off64_t_layout = this.libc_ty_layout("off64_t")?;
-                    let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
-                    let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
-
-                    #[cfg(unix)]
-                    let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
-                    #[cfg(not(unix))]
-                    let ino = 0;
-
-                    let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
-
-                    let imms = [
-                        immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
-                        immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
-                        immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
-                        immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
-                    ];
-                    this.write_packed_immediates(entry_place, &imms)?;
-
-                    let result_place = this.deref_operand(result_op)?;
-                    this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
-
-                    Ok(0)
+                let file_name = dir_entry.file_name();
+                let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 256)?;
+                if !name_fits {
+                    panic!("A directory entry had a name too large to fit in libc::dirent64");
                 }
-                None => {
-                    // end of stream: return 0, assign *result=NULL
-                    this.write_null(this.deref_operand(result_op)?.into())?;
-                    Ok(0)
-                }
-                Some(Err(e)) => match e.raw_os_error() {
-                    // return positive error number on error
-                    Some(error) => Ok(error),
-                    None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
-                }
+
+                let entry_place = this.deref_operand(entry_op)?;
+                let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
+                let off64_t_layout = this.libc_ty_layout("off64_t")?;
+                let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
+                let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
+
+                #[cfg(unix)]
+                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
+                #[cfg(not(unix))]
+                let ino = 0;
+
+                let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+
+                let imms = [
+                    immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
+                    immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
+                    immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                    immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                ];
+                this.write_packed_immediates(entry_place, &imms)?;
+
+                let result_place = this.deref_operand(result_op)?;
+                this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
+
+                Ok(0)
             }
-        } else {
-            throw_unsup_format!("The DIR pointer passed to readdir64_r did not come from opendir")
+            None => {
+                // end of stream: return 0, assign *result=NULL
+                this.write_null(this.deref_operand(result_op)?.into())?;
+                Ok(0)
+            }
+            Some(Err(e)) => match e.raw_os_error() {
+                // return positive error number on error
+                Some(error) => Ok(error),
+                None => {
+                    throw_unsup_format!("The error {} couldn't be converted to a return value", e)
+                }
+            },
         }
     }
 
@@ -943,64 +945,65 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
         let dirent_layout = this.libc_ty_layout("dirent")?;
 
-        if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
-            match dir_iter.next() {
-                Some(Ok(dir_entry)) => {
-                    // Write into entry, write pointer to result, return 0 on success.
-                    // The name is written with write_os_str_to_c_str, while the rest of the
-                    // dirent struct is written using write_packed_Immediates.
+        let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
+            err_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
+        })?;
+        match dir_iter.next() {
+            Some(Ok(dir_entry)) => {
+                // Write into entry, write pointer to result, return 0 on success.
+                // The name is written with write_os_str_to_c_str, while the rest of the
+                // dirent struct is written using write_packed_Immediates.
 
-                    let name_offset = dirent_layout.details.fields.offset(5);
-                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+                let name_offset = dirent_layout.details.fields.offset(5);
+                let name_ptr = entry_ptr.offset(name_offset, this)?;
 
-                    let file_name = dir_entry.file_name();
-                    let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 1024)?;
-                    if !name_fits {
-                        panic!("A directory entry had a name too large to fit in libc::dirent");
-                    }
-
-                    let entry_place = this.deref_operand(entry_op)?;
-                    let ino_t_layout = this.libc_ty_layout("ino_t")?;
-                    let off_t_layout = this.libc_ty_layout("off_t")?;
-                    let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
-                    let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
-
-                    #[cfg(unix)]
-                    let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
-                    #[cfg(not(unix))]
-                    let ino = 0;
-
-                    let file_name_len = this.os_str_length_as_c_str(&file_name)? as u128;
-
-                    let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
-
-                    let imms = [
-                        immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
-                        immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
-                        immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
-                        immty_from_uint_checked(file_name_len, c_ushort_layout)?, // d_namlen
-                        immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
-                    ];
-                    this.write_packed_immediates(entry_place, &imms)?;
-
-                    let result_place = this.deref_operand(result_op)?;
-                    this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
-
-                    Ok(0)
+                let file_name = dir_entry.file_name();
+                let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 1024)?;
+                if !name_fits {
+                    panic!("A directory entry had a name too large to fit in libc::dirent");
                 }
-                None => {
-                    // end of stream: return 0, assign *result=NULL
-                    this.write_null(this.deref_operand(result_op)?.into())?;
-                    Ok(0)
-                }
-                Some(Err(e)) => match e.raw_os_error() {
-                    // return positive error number on error
-                    Some(error) => Ok(error),
-                    None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
-                }
+
+                let entry_place = this.deref_operand(entry_op)?;
+                let ino_t_layout = this.libc_ty_layout("ino_t")?;
+                let off_t_layout = this.libc_ty_layout("off_t")?;
+                let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
+                let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
+
+                #[cfg(unix)]
+                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
+                #[cfg(not(unix))]
+                let ino = 0;
+
+                let file_name_len = this.os_str_length_as_c_str(&file_name)? as u128;
+
+                let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+
+                let imms = [
+                    immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
+                    immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
+                    immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                    immty_from_uint_checked(file_name_len, c_ushort_layout)?, // d_namlen
+                    immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                ];
+                this.write_packed_immediates(entry_place, &imms)?;
+
+                let result_place = this.deref_operand(result_op)?;
+                this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
+
+                Ok(0)
             }
-        } else {
-            throw_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
+            None => {
+                // end of stream: return 0, assign *result=NULL
+                this.write_null(this.deref_operand(result_op)?.into())?;
+                Ok(0)
+            }
+            Some(Err(e)) => match e.raw_os_error() {
+                // return positive error number on error
+                Some(error) => Ok(error),
+                None => {
+                    throw_unsup_format!("The error {} couldn't be converted to a return value", e)
+                }
+            },
         }
     }
 
