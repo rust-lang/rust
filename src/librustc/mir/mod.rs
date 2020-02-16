@@ -1475,9 +1475,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Abort => write!(fmt, "abort"),
-            Yield { value, resume_arg, .. } => {
-                write!(fmt, "{:?} = suspend({:?})", resume_arg, value)
-            }
+            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
             Drop { location, .. } => write!(fmt, "drop({:?})", location),
             DropAndReplace { location, value, .. } => {
