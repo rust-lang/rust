@@ -134,13 +134,14 @@ fn main() -> Result<()> {
             let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
             let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
             let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
-            let op = match (highlight_path, complete_path) {
-                (Some(path), None) => {
-                    let path: String = path;
-                    analysis_bench::Op::Highlight { path: path.into() }
-                }
-                (None, Some(position)) => analysis_bench::Op::Complete(position.parse()?),
-                _ => panic!("exactly one of  `--highlight`, `--complete` must be set"),
+            let goto_def_path: Option<String> = matches.opt_value_from_str("--goto-def")?;
+            let op = match (highlight_path, complete_path, goto_def_path) {
+                (Some(path), None, None) => analysis_bench::Op::Highlight { path: path.into() },
+                (None, Some(position), None) => analysis_bench::Op::Complete(position.parse()?),
+                (None, None, Some(position)) => analysis_bench::Op::GotoDef(position.parse()?),
+                _ => panic!(
+                    "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
+                ),
             };
             matches.finish().or_else(handle_extra_flags)?;
             analysis_bench::run(verbose, path.as_ref(), op)?;

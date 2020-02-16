@@ -38,6 +38,7 @@ fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
 pub(crate) enum Op {
     Highlight { path: PathBuf },
     Complete(Position),
+    GotoDef(Position),
 }
 
 pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
@@ -52,7 +53,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
     let file_id = {
         let path = match &op {
             Op::Highlight { path } => path,
-            Op::Complete(pos) => &pos.path,
+            Op::Complete(pos) | Op::GotoDef(pos) => &pos.path,
         };
         let path = std::env::current_dir()?.join(path).canonicalize()?;
         roots
@@ -72,7 +73,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             .ok_or_else(|| format!("Can't find {:?}", path))?
     };
 
-    match op {
+    match &op {
         Op::Highlight { .. } => {
             let res = do_work(&mut host, file_id, |analysis| {
                 analysis.diagnostics(file_id).unwrap();
@@ -82,16 +83,30 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
                 println!("\n{}", res);
             }
         }
-        Op::Complete(pos) => {
+        Op::Complete(pos) | Op::GotoDef(pos) => {
+            let is_completion = match op {
+                Op::Complete(..) => true,
+                _ => false,
+            };
+
             let offset = host
                 .analysis()
                 .file_line_index(file_id)?
                 .offset(LineCol { line: pos.line, col_utf16: pos.column });
             let file_postion = FilePosition { file_id, offset };
 
-            let res = do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
-            if verbose {
-                println!("\n{:#?}", res);
+            if is_completion {
+                let res =
+                    do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
+                if verbose {
+                    println!("\n{:#?}", res);
+                }
+            } else {
+                let res =
+                    do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_postion));
+                if verbose {
+                    println!("\n{:#?}", res);
+                }
             }
         }
     }
