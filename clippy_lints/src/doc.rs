@@ -1,6 +1,7 @@
 use crate::utils::{is_entrypoint_fn, match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
+use rustc::ty::TyKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -213,13 +214,33 @@ fn lint_for_missing_headers<'a, 'tcx>(
             "unsafe function's docs miss `# Safety` section",
         );
     }
-    if !headers.errors && match_type(cx, return_ty(cx, hir_id), &paths::RESULT) {
-        span_lint(
-            cx,
-            MISSING_ERRORS_DOC,
-            span,
-            "docs for function returning `Result` missing `# Errors` section",
-        );
+    if !headers.errors {
+        if match_type(cx, return_ty(cx, hir_id), &paths::RESULT) {
+            span_lint(
+                cx,
+                MISSING_ERRORS_DOC,
+                span,
+                "docs for function returning `Result` missing `# Errors` section",
+            );
+        } else {
+            use TyKind::*;
+            let def_id = cx.tcx.hir().local_def_id(hir_id);
+            let mir = cx.tcx.optimized_mir(def_id);
+            if let Opaque(_, subs) = mir.return_ty().kind {
+                if let Some(ty) = subs.types().next() {
+                    if let Generator(_, subs, _) = ty.kind {
+                        if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT) {
+                            span_lint(
+                                cx,
+                                MISSING_ERRORS_DOC,
+                                span,
+                                "docs for function returning `Result` missing `# Errors` section",
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
