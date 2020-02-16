@@ -22,7 +22,7 @@ where **only** your `rust-analyzer` extension is enabled.
 
 ## Debug TypeScript VSCode extension
 
-- `Run Extension` - runs the extension with globally installed `ra_lsp_server` binary.
+- `Run Extension` - runs the extension with the globally installed `ra_lsp_server` binary.
 - `Run Extension (Dev Server)` - runs extension with binary from your locally built `target/debug/ra_lsp_server`.
 
 TypeScript debugging is configured to watch your source edits and recompile.
