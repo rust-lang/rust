@@ -1468,21 +1468,21 @@ impl<'tcx> TerminatorKind<'tcx> {
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
         use self::TerminatorKind::*;
-        match *self {
+        match self {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr: ref place, .. } => write!(fmt, "switchInt({:?})", place),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Abort => write!(fmt, "abort"),
-            Yield { ref value, .. } => write!(fmt, "_1 = suspend({:?})", value),
+            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { ref location, ref value, .. } => {
+            Drop { location, .. } => write!(fmt, "drop({:?})", location),
+            DropAndReplace { location, value, .. } => {
                 write!(fmt, "replace({:?} <- {:?})", location, value)
             }
-            Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref destination, _)) = *destination {
+            Call { func, args, destination, .. } => {
+                if let Some((destination, _)) = destination {
                     write!(fmt, "{:?} = ", destination)?;
                 }
                 write!(fmt, "{:?}(", func)?;
@@ -1494,7 +1494,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
-            Assert { ref cond, expected, ref msg, .. } => {
+            Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
                     write!(fmt, "!")?;
