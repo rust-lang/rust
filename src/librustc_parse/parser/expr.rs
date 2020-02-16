@@ -645,7 +645,9 @@ impl<'a> Parser<'a> {
 
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) || after_hash != before_hash {
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _))
+            || after_hash != before_hash
+        {
             let expr_str = self.span_to_snippet(span);
 
             let msg = format!(
