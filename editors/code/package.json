@@ -233,10 +233,7 @@
                     "description": "Trace requests to the ra_lsp_server"
                 },
                 "rust-analyzer.lruCapacity": {
-                    "type": [
-                        "number",
-                        "null"
-                    ],
+                    "type": [ "null", "integer" ],
                     "default": null,
                     "description": "Number of syntax trees rust-analyzer keeps in memory"
                 },
@@ -246,7 +243,7 @@
                     "description": "Display additional type and parameter information in the editor"
                 },
                 "rust-analyzer.maxInlayHintLength": {
-                    "type": "number",
+                    "type": [ "null", "integer" ],
                     "default": 20,
                     "minimum": 0,
                     "exclusiveMinimum": true,
