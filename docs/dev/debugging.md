@@ -34,7 +34,7 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
 
 ## Debug Rust LSP server
 
-- To attach to the `lsp server` in linux you'll have to run:
+- When attaching a debugger to an already running `rust-analyzer` server on Linux you might need to enable `ptrace` for unrelated processes by running:
 
   ```
   echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
