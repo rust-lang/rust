@@ -56,7 +56,7 @@ To apply changes to already running debug process press <kbd>Ctrl+Shift+P</kbd> 
 
 - Navigate to `crates/ra_lsp_server/src/main_loop.rs` and add a breakpoint to the `on_task` function.
 
-- Go back to the `[Extension Development Host]` instance and hover over a rust variable and your breakpoint should hit.
+- Go back to the `[Extension Development Host]` instance and hover over a Rust variable and your breakpoint should hit.
 
 ## Demo
 
