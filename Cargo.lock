@@ -115,9 +115,9 @@ checksum = "b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"
 
 [[package]]
 name = "backtrace"
-version = "0.3.40"
+version = "0.3.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "924c76597f0d9ca25d762c25a4d369d51267536465dc5064bdf0eb073ed477ea"
+checksum = "b4b1549d804b6c73f4817df2ba073709e96e426f12987127c48e6745568c350b"
 dependencies = [
  "backtrace-sys",
  "cfg-if",
@@ -1364,9 +1364,7 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f22b8f315b98f415780ddbe9163c7dbbc5a07225b6d102ace1d8aeef85775140"
+version = "0.1.6"
 dependencies = [
  "compiler_builtins",
  "libc",
