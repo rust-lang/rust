@@ -1,34 +1,58 @@
 # Debugging vs Code plugin and the Language Server
 
-Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb).
+## Prerequsities
 
-Checkout rust rust-analyzer and open it in vscode.
+- Install [LLDB](https://lldb.llvm.org/) and the [LLDB Extension](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) VSCode extensions.
+- Open the root folder in VSCode. Here you can access the preconfigured debug setups.
+
+  <img height=150px src="https://user-images.githubusercontent.com/36276403/74611090-92ec5380-5101-11ea-8a41-598f51f3f3e3.png" alt="Debug options view">
+
+- Install all TypeScript dependencies
+  ```bash
+  cd editors/code
+  npm i
+  ```
+
+## Common knowledge
+
+* All debug configurations open new `[Extension Development Host]` VSCode instance
+where **only** your `rust-analyzer` extension is enabled.
+* To activate the extension you need to open any Rust project folder in `[Extension Development Host]`.
+
+
+## Debug TypeScript VSCode extension
+
+- `Run Extension` - runs the extension with globally installed `ra_lsp_server` binary.
+- `Run Extension (Dev Server)` - runs extension with binary from your locally built `target/debug/ra_lsp_server`.
+
+TypeScript debugging is configured to watch your source edits and recompile.
+To apply changes to already running debug process press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
 
 ```
-$ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
-$ cd rust-analyzer
-$ code .
+> Developer: Reload Window
 ```
+
+## Debug Rust LSP server
 
 - To attach to the `lsp server` in linux you'll have to run:
 
-  `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`
+  ```
+  echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+  ```
 
-  This enables ptrace on non forked processes
+  This enables ptrace on non-forked processes
 
-- Ensure the dependencies for the extension are installed, run the `npm: install - editors/code` task in vscode.
+- Enable debug symbols in `Cargo.toml`:
+  ```toml
+    [profile.dev]
+    debug = 2
+  ```
 
-- Launch the `Debug Extension`, this will build the extension and the `lsp server`.
+- Select `Run Extension (Dev Server)` to run your local built `target/debug/ra_lsp_server`.
 
-- A new instance of vscode with `[Extension Development Host]` in the title.
+- In the original VSCode window once again select `Attach To Server` debug configuration.
 
-  Don't worry about disabling `rls` all other extensions will be disabled but this one.
-
-- In the new vscode instance open a rust project, and navigate to a rust file
-
-- In the original vscode start an additional debug session (the three periods in the launch) and select `Debug Lsp Server`.
-
-- A list of running processes should appear select the `ra_lsp_server` from this repo.
+- A list of running processes should appear. Select the `ra_lsp_server` from this repo.
 
 - Navigate to `crates/ra_lsp_server/src/main_loop.rs` and add a breakpoint to the `on_task` function.
 
@@ -36,7 +60,8 @@ $ code .
 
 ## Demo
 
-![demonstration of debugging](https://user-images.githubusercontent.com/1711539/51384036-254fab80-1b2c-11e9-824d-95f9a6e9cf4f.gif)
+- [Debugging TypeScript VScode extension](https://www.youtube.com/watch?v=T-hvpK6s4wM).
+- [Debugging Rust LSP server](https://www.youtube.com/watch?v=EaNb5rg4E0M).
 
 ## Troubleshooting
 
