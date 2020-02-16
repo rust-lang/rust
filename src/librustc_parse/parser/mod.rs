@@ -95,7 +95,7 @@ pub struct Parser<'a> {
     /// The current non-normalized token if it's different from `token`.
     /// Preferable use is through the `unnormalized_token()` getter.
     /// Use span from this token if you need to concatenate it with some neighbouring spans.
-    unnormalized_token: Option<Token>,
+    pub unnormalized_token: Option<Token>,
     /// The previous normalized token.
     /// Use span from this token if you need an isolated span.
     prev_token: Token,
@@ -1096,15 +1096,15 @@ impl<'a> Parser<'a> {
                     &mut self.token_cursor.frame,
                     self.token_cursor.stack.pop().unwrap(),
                 );
-                self.token.span = frame.span.entire();
+                self.token = Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close);
+                self.unnormalized_token = None;
                 self.bump();
                 TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream.into())
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = self.token.clone();
                 self.bump();
-                TokenTree::Token(token)
+                TokenTree::Token(self.prev_token.clone())
             }
         }
     }
