@@ -173,6 +173,10 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
                 } else if file_type.is_symlink() {
                     Ok(this.eval_libc("DT_LNK")?.to_u8()? as i32)
                 } else {
+                    // Certain file types are only supported when the host is a Unix system.
+                    // (i.e. devices and sockets) If it is, check those cases, if not, fall back to
+                    // DT_UNKNOWN sooner.
+
                     #[cfg(unix)]
                     {
                         use std::os::unix::fs::FileTypeExt;
@@ -895,6 +899,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
                 let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
 
+                // If the host is a Unix system, fill in the inode number with its real value.
+                // If not, use 0 as a fallback value.
                 #[cfg(unix)]
                 let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                 #[cfg(not(unix))]
@@ -969,6 +975,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
                 let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
 
+                // If the host is a Unix system, fill in the inode number with its real value.
+                // If not, use 0 as a fallback value.
                 #[cfg(unix)]
                 let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                 #[cfg(not(unix))]
