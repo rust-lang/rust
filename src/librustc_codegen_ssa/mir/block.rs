@@ -524,13 +524,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
         #[derive(Debug, PartialEq)]
-        enum PanicIntrinsic { IfUninhabited, IfZeroInvalid, IfAnyInvalid };
+        enum PanicIntrinsic {
+            IfUninhabited,
+            IfZeroInvalid,
+            IfAnyInvalid,
+        };
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             // FIXME: Move to symbols instead of strings.
             "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
             "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
             "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
-            _ => None
+            _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
             use PanicIntrinsic::*;
@@ -538,10 +542,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 IfUninhabited => layout.abi.is_uninhabited(),
-                IfZeroInvalid => // We unwrap as the error type is `!`.
-                    !layout.might_permit_raw_init(&bx, /*zero:*/ true).unwrap(),
-                IfAnyInvalid => // We unwrap as the error type is `!`.
-                    !layout.might_permit_raw_init(&bx, /*zero:*/ false).unwrap(),
+                // We unwrap as the error type is `!`.
+                IfZeroInvalid => !layout.might_permit_raw_init(&bx, /*zero:*/ true).unwrap(),
+                // We unwrap as the error type is `!`.
+                IfAnyInvalid => !layout.might_permit_raw_init(&bx, /*zero:*/ false).unwrap(),
             };
             if do_panic {
                 let msg_str = if layout.abi.is_uninhabited() {

@@ -1047,22 +1047,17 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the vonst value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C, E>(
-        self,
-        cx: &C,
-        zero: bool,
-    ) -> Result<bool, E>
+    pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
     where
         Self: Copy,
         Ty: TyLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout
+        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {
                 let range = &s.valid_range;
                 // The range must contain 0.
-                range.contains(&0) ||
-                (*range.start() > *range.end()) // wrap-around allows 0
+                range.contains(&0) || (*range.start() > *range.end()) // wrap-around allows 0
             } else {
                 // The range must include all values. `valid_range_exclusive` handles
                 // the wrap-around using target arithmetic; with wrap-around then the full
@@ -1076,13 +1071,11 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         let res = match &self.abi {
             Abi::Uninhabited => false, // definitely UB
             Abi::Scalar(s) => scalar_allows_raw_init(s),
-            Abi::ScalarPair(s1, s2) =>
-                scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-            Abi::Vector { element: s, count } =>
-                *count == 0 || scalar_allows_raw_init(s),
+            Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+            Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
             Abi::Aggregate { .. } => {
                 match self.variants {
-                    Variants::Multiple { .. } =>
+                    Variants::Multiple { .. } => {
                         if zero {
                             // FIXME(#66151):
                             // could we identify the variant with discriminant 0, check that?
@@ -1091,17 +1084,20 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                             // FIXME(#66151): This needs to have some sort of discriminant,
                             // which cannot be undef. But for now we are conservative.
                             true
-                        },
+                        }
+                    }
                     Variants::Single { .. } => {
                         // For aggregates, recurse.
                         match self.fields {
                             FieldPlacement::Union(..) => true, // An all-0 unit is fine.
                             FieldPlacement::Array { .. } =>
-                                // FIXME(#66151): The widely use smallvec 0.6 creates uninit arrays
-                                // with any element type, so let us not (yet) complain about that.
-                                /* count == 0 ||
-                                self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? */
-                                true,
+                            // FIXME(#66151): The widely use smallvec 0.6 creates uninit arrays
+                            // with any element type, so let us not (yet) complain about that.
+                            /* count == 0 ||
+                            self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? */
+                            {
+                                true
+                            }
                             FieldPlacement::Arbitrary { .. } => {
                                 // FIXME(#66151) cargo depends on sized-chunks 0.3.0 which
                                 // has some illegal zero-initialization, so let us not (yet)
