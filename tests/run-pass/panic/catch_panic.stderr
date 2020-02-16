@@ -16,4 +16,10 @@ thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4'
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:62:34
 Caught panic message (String): attempt to divide by zero
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:65:23
+Caught panic message (&str): assertion failed: false
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:66:23
+Caught panic message (&str): assertion failed: false
+thread 'main' panicked at 'attempt to copy from unaligned or null pointer', $LOC
+Caught panic message (String): attempt to copy from unaligned or null pointer
 Success!
