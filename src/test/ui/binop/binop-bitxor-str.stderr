@@ -5,8 +5,6 @@ LL | fn main() { let x = "a".to_string() ^ "b".to_string(); }
    |                     --------------- ^ --------------- std::string::String
    |                     |
    |                     std::string::String
-   |
-   = note: an implementation of `std::ops::BitXor` might be missing for `std::string::String`
 
 error: aborting due to previous error
 

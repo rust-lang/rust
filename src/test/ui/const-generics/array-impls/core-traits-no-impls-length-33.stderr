@@ -23,8 +23,6 @@ LL |     [0_usize; 33] == [1_usize; 33]
    |     ------------- ^^ ------------- [usize; 33]
    |     |
    |     [usize; 33]
-   |
-   = note: an implementation of `std::cmp::PartialEq` might be missing for `[usize; 33]`
 
 error[E0369]: binary operation `<` cannot be applied to type `[usize; 33]`
   --> $DIR/core-traits-no-impls-length-33.rs:19:19
@@ -33,8 +31,6 @@ LL |     [0_usize; 33] < [1_usize; 33]
    |     ------------- ^ ------------- [usize; 33]
    |     |
    |     [usize; 33]
-   |
-   = note: an implementation of `std::cmp::PartialOrd` might be missing for `[usize; 33]`
 
 error[E0277]: the trait bound `&[usize; 33]: std::iter::IntoIterator` is not satisfied
   --> $DIR/core-traits-no-impls-length-33.rs:24:14

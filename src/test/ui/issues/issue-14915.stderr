@@ -5,8 +5,6 @@ LL |     println!("{}", x + 1);
    |                    - ^ - {integer}
    |                    |
    |                    std::boxed::Box<isize>
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 
 error: aborting due to previous error
 

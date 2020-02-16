@@ -5,7 +5,7 @@ use super::{FnCtxt, Needs};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc_errors::{self, struct_span_err, Applicability};
+use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_span::Span;
@@ -321,11 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty, missing_trait
                                     ));
                                 } else if !suggested_deref {
-                                    err.note(&format!(
-                                        "an implementation of `{}` might \
-                                         be missing for `{}`",
-                                        missing_trait, lhs_ty
-                                    ));
+                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
                             err.emit();
@@ -467,11 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty, missing_trait
                                     ));
                                 } else if !suggested_deref && !involves_fn {
-                                    err.note(&format!(
-                                        "an implementation of `{}` might \
-                                         be missing for `{}`",
-                                        missing_trait, lhs_ty
-                                    ));
+                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
                             err.emit();
@@ -707,11 +699,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 hir::UnOp::UnNot => "std::ops::Not",
                                 hir::UnOp::UnDeref => "std::ops::UnDerf",
                             };
-                            err.note(&format!(
-                                "an implementation of `{}` might \
-                                                be missing for `{}`",
-                                missing_trait, operand_ty
-                            ));
+                            suggest_impl_missing(&mut err, operand_ty, &missing_trait);
                         }
                     }
                     err.emit();
@@ -926,6 +914,19 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
+        }
+    }
+}
+
+/// If applicable, note that an implementation of `trait` for `ty` may fix the error.
+fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_trait: &str) {
+    if let Adt(def, _) = ty.peel_refs().kind {
+        if def.did.is_local() {
+            err.note(&format!(
+                "an implementation of `{}` might \
+                be missing for `{}`",
+                missing_trait, ty
+            ));
         }
     }
 }
