@@ -33,6 +33,11 @@ impl FileHandler {
 
     fn insert_fd_with_min_fd(&mut self, file_handle: FileHandle, min_fd: i32) -> i32 {
         let min_fd = std::cmp::max(min_fd, 3);
+
+        // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
+        // between used FDs, the find_map combinator will return it. If the first such unused FD
+        // is after all other used FDs, the find_map combinator will return None, and we will use
+        // the FD following the greatest FD thus far.
         let candidate_new_fd = self
             .handles
             .range(min_fd..)
@@ -50,8 +55,9 @@ impl FileHandler {
         let new_fd = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.handles.keys().rev().next().map(|last_fd| last_fd + 1).unwrap_or(min_fd)
+            self.handles.last_entry().map(|entry| entry.key() + 1).unwrap_or(min_fd)
         });
+
         self.handles.insert(new_fd, file_handle).unwrap_none();
         new_fd
     }
@@ -153,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        arg_op: Option<OpTy<'tcx, Tag>>,
+        start_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -179,12 +185,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            let arg_op = arg_op.ok_or_else(|| {
+            let start_op = start_op.ok_or_else(|| {
                 err_unsup_format!(
                     "fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"
                 )
             })?;
-            let arg = this.read_scalar(arg_op)?.to_i32()?;
+            let start = this.read_scalar(start_op)?.to_i32()?;
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
                 Some(FileHandle::File { file, writable }) => (file.try_clone(), *writable),
@@ -192,7 +198,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 None => return this.handle_not_found(),
             };
             let fd_result = file_result.map(|duplicated| {
-                fh.insert_fd_with_min_fd(FileHandle::File { file: duplicated, writable }, arg)
+                fh.insert_fd_with_min_fd(FileHandle::File { file: duplicated, writable }, start)
             });
             this.try_unwrap_io_result(fd_result)
         } else {
