@@ -1,74 +1,163 @@
-error: casts followed by index operators are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:9:5
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:10:5
    |
 LL |     vec![1, 2, 3] as Vec<i32>[0];
-   |     -------------------------^^^
-   |     |
-   |     help: try surrounding the expression with parentheses: `(vec![1, 2, 3] as Vec<i32>)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(vec![1, 2, 3] as Vec<i32>)`
 
-error: casts followed by index operators are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:14:5
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:12:5
+   |
+LL |     vec![1, 2, 3]: Vec<i32>[0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(vec![1, 2, 3]: Vec<i32>)`
+
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:17:5
    |
 LL |     (&[0]) as &[i32][0];
-   |     ----------------^^^
-   |     |
-   |     help: try surrounding the expression with parentheses: `((&[0]) as &[i32])`
+   |     ^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `((&[0]) as &[i32])`
 
-error: casts followed by index operators are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:20:18
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:19:5
+   |
+LL |     (&[0i32]): &[i32; 1][0];
+   |     ^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `((&[0i32]): &[i32; 1])`
+
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:40:18
    |
 LL |     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];
-   |                  ---------------------------^^^
-   |                  |
-   |                  help: try surrounding the expression with parentheses: `(&vec![1, 2, 3] as &Vec<i32>)`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&vec![1, 2, 3] as &Vec<i32>)`
 
-error: casts followed by method call expressions are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:33:8
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:45:5
+   |
+LL |     0 as i32.max(0);
+   |     ^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:47:5
+   |
+LL |     0: i32.max(0);
+   |     ^^^^^^ help: try surrounding the expression in parentheses: `(0: i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:62:8
    |
 LL |     if 5u64 as i32.max(0) == 0 {
-   |        -----------^^^^^^^
-   |        |
-   |        help: try surrounding the expression with parentheses: `(5u64 as i32)`
+   |        ^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64 as i32)`
 
-error: casts followed by method call expressions are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:40:9
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:65:8
+   |
+LL |     if 5u64: u64.max(0) == 0 {
+   |        ^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64: u64)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:72:9
    |
 LL |         5u64 as u32.max(0) == 0
-   |         -----------^^^^^^^
-   |         |
-   |         help: try surrounding the expression with parentheses: `(5u64 as u32)`
+   |         ^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64 as u32)`
 
-error: casts followed by index operators are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:45:24
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:76:9
+   |
+LL |         5u64: u64.max(0) == 0
+   |         ^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64: u64)`
+
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:81:24
    |
 LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
-   |                        ------------------^^^^^^
-   |                        |
-   |                        help: try surrounding the expression with parentheses: `(&[1,2,3] as &[i32])`
+   |                        ^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&[1,2,3] as &[i32])`
 
-error: casts followed by awaits are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:49:5
+error: casts cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:84:25
+   |
+LL | static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&[1i32,2,3]: &[i32; 3])`
+
+error: casts cannot be followed by ?
+  --> $DIR/issue-35813-postfix-after-cast.rs:89:5
+   |
+LL |     Err(0u64) as Result<u64,u64>?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Err(0u64) as Result<u64,u64>)`
+
+error: casts cannot be followed by ?
+  --> $DIR/issue-35813-postfix-after-cast.rs:91:5
+   |
+LL |     Err(0u64): Result<u64,u64>?;
+   |     ^^^^^^^^^-^^^^^^^^^^^^^^^^
+   |              |
+   |              help: maybe write a path separator here: `::`
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+
+error: casts cannot be followed by a function call
+  --> $DIR/issue-35813-postfix-after-cast.rs:115:5
+   |
+LL |     drop as fn(u8)(0);
+   |     ^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(drop as fn(u8))`
+
+error: casts cannot be followed by a function call
+  --> $DIR/issue-35813-postfix-after-cast.rs:117:5
+   |
+LL |     drop_ptr: fn(u8)(0);
+   |     ^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(drop_ptr: fn(u8))`
+
+error: casts cannot be followed by `.await`
+  --> $DIR/issue-35813-postfix-after-cast.rs:122:5
    |
 LL |     Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>.await;
-   |     -----------------------------------------------------^^^^^^
-   |     |
-   |     help: try surrounding the expression with parentheses: `(Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>)`
 
-error: casts followed by field access expressions are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:61:5
+error: casts cannot be followed by `.await`
+  --> $DIR/issue-35813-postfix-after-cast.rs:125:5
+   |
+LL |     Box::pin(noop()): Pin<Box<_>>.await;
+   |     ^^^^^^^^^^^^^^^^-^^^^^^^^^^^^
+   |                     |
+   |                     help: maybe write a path separator here: `::`
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+
+error: casts cannot be followed by a field access
+  --> $DIR/issue-35813-postfix-after-cast.rs:137:5
    |
 LL |     Foo::default() as Foo.bar;
-   |     ---------------------^^^^
-   |     |
-   |     help: try surrounding the expression with parentheses: `(Foo::default() as Foo)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Foo::default() as Foo)`
 
-error: casts followed by method call expressions are not supported
-  --> $DIR/issue-35813-postfix-after-cast.rs:27:9
+error: casts cannot be followed by a field access
+  --> $DIR/issue-35813-postfix-after-cast.rs:139:5
    |
-LL |         if true { 33 } else { 44 } as i32.max(0)
-   |         ---------------------------------^^^^^^^
-   |         |
-   |         help: try surrounding the expression with parentheses: `(if true { 33 } else { 44 } as i32)`
+LL |     Foo::default(): Foo.bar;
+   |     ^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Foo::default(): Foo)`
 
-error: aborting due to 9 previous errors
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:54:9
+   |
+LL |         if true { 33 } else { 44 } as i32.max(0),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(if true { 33 } else { 44 } as i32)`
 
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:56:9
+   |
+LL |         if true { 33 } else { 44 }: i32.max(0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(if true { 33 } else { 44 }: i32)`
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-35813-postfix-after-cast.rs:101:13
+   |
+LL |     drop as F();
+   |             ^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-35813-postfix-after-cast.rs:103:15
+   |
+LL |     drop_ptr: F();
+   |               ^^^ only `Fn` traits may use parentheses
+
+error: aborting due to 25 previous errors
+
+For more information about this error, try `rustc --explain E0214`.
