@@ -874,7 +874,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
             match dir_iter.next() {
                 Some(Ok(dir_entry)) => {
-                    // write into entry, write pointer to result, return 0 on success
+                    // Write into entry, write pointer to result, return 0 on success.
+                    // The name is written with write_os_str_to_c_str, while the rest of the
+                    // dirent64 struct is written using write_packed_immediates.
 
                     let name_offset = dirent64_layout.details.fields.offset(4);
                     let name_ptr = entry_ptr.offset(name_offset, this)?;
@@ -944,7 +946,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
             match dir_iter.next() {
                 Some(Ok(dir_entry)) => {
-                    // write into entry, write pointer to result, return 0 on success
+                    // Write into entry, write pointer to result, return 0 on success.
+                    // The name is written with write_os_str_to_c_str, while the rest of the
+                    // dirent struct is written using write_packed_Immediates.
 
                     let name_offset = dirent_layout.details.fields.offset(5);
                     let name_ptr = entry_ptr.offset(name_offset, this)?;
