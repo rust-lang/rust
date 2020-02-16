@@ -61,6 +61,10 @@ fn main() {
     test(|_old_val| { let _val = [0, 1, 2][4]; loop {} });
     test(|_old_val| { let _val = 1/0; loop {} });
 
+    // Assertion and debug assertion
+    test(|_old_val| { assert!(false); loop {} });
+    test(|_old_val| { debug_assert!(false); loop {} });
+
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
 
