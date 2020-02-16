@@ -14,13 +14,13 @@ for example:
 * Not sufficiently aligned memory accesses and references
 * Violation of *some* basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
-* WIP: Violations of the rules governing aliasing for reference types
+* **Experimental**: Violations of the rules governing aliasing for reference types
 
 Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-Be aware that Miri will not catch all cases of undefined behavior in your
+Be aware that Miri will **not catch all cases of undefined behavior** in your
 program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
@@ -147,8 +147,8 @@ Several `-Z` flags are relevant for Miri:
 
 * `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It configures the
   seed of the RNG that Miri uses to resolve non-determinism.  This RNG is used
-  to pick base addresses for allocations, and when the interpreted program
-  requests system entropy.  The default seed is 0.
+  to pick base addresses for allocations.  When isolation is enabled (the default),
+  this is also used to emulate system entropy.  The default seed is 0.
   **NOTE**: This entropy is not good enough for cryptographic use!  Do not
   generate secret keys in Miri or perform other kinds of cryptographic
   operations that rely on proper random numbers.
@@ -157,8 +157,8 @@ Several `-Z` flags are relevant for Miri:
   useful for debugging.  It means Miri will miss bugs in your program.  However,
   this can also help to make Miri run faster.
 * `-Zmiri-disable-isolation` disables host host isolation.  As a consequence,
-  the program has access to host resources such as environment variables and
-  randomness (and, eventually, file systems and more).
+  the program has access to host resources such as environment variables, file
+  systems, and randomness.
 * `-Zmiri-ignore-leaks` disables the memory leak checker.
 * `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from
   the host. Can be used multiple times to exclude several variables. The `TERM`
