@@ -480,8 +480,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
-            Some(ty) => FunctionRetTy::Ty(ty),
-            None => FunctionRetTy::Default(span),
+            Some(ty) => FnRetTy::Ty(ty),
+            None => FnRetTy::Default(span),
         };
         let ast_decl = FnDecl { inputs: vec![], output };
         let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
@@ -721,7 +721,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
         let outer_decl =
-            FnDecl { inputs: decl.inputs.clone(), output: FunctionRetTy::Default(fn_decl_span) };
+            FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
@@ -747,7 +747,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `|x: u8| future_from_generator(|| -> X { ... })`.
             let body_id = this.lower_fn_body(&outer_decl, |this| {
                 let async_ret_ty =
-                    if let FunctionRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
+                    if let FnRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
                 let async_body = this.make_async_expr(
                     capture_clause,
                     closure_id,

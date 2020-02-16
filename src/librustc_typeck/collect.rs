@@ -1360,8 +1360,8 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     }
 }
 
-pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
-    if let hir::FunctionRetTy::Return(ref ty) = output {
+pub fn get_infer_ret_ty(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
+    if let hir::FnRetTy::Return(ref ty) = output {
         if is_suggestable_infer_ty(ty) {
             return Some(&**ty);
         }
@@ -2079,7 +2079,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
             check(&input, ty)
         }
-        if let hir::FunctionRetTy::Return(ref ty) = decl.output {
+        if let hir::FnRetTy::Return(ref ty) = decl.output {
             check(&ty, *fty.output().skip_binder())
         }
     }

@@ -519,7 +519,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn lambda(&self, span: Span, ids: Vec<ast::Ident>, body: P<ast::Expr>) -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
-            ast::FunctionRetTy::Default(span),
+            ast::FnRetTy::Default(span),
         );
 
         // FIXME -- We are using `span` as the span of the `|...|`
@@ -569,7 +569,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     // FIXME: unused `self`
-    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
+    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl { inputs, output })
     }
 

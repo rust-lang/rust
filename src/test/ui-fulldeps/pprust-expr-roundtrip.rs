@@ -117,7 +117,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             11 => {
                 let decl = P(FnDecl {
                     inputs: vec![],
-                    output: FunctionRetTy::Default(DUMMY_SP),
+                    output: FnRetTy::Default(DUMMY_SP),
                 });
                 iter_exprs(depth - 1, &mut |e| g(
                         ExprKind::Closure(CaptureBy::Value,

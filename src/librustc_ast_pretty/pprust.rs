@@ -2673,8 +2673,8 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    crate fn print_fn_ret_ty(&mut self, fn_ret_ty: &ast::FunctionRetTy) {
-        if let ast::FunctionRetTy::Ty(ty) = fn_ret_ty {
+    crate fn print_fn_ret_ty(&mut self, fn_ret_ty: &ast::FnRetTy) {
+        if let ast::FnRetTy::Ty(ty) = fn_ret_ty {
             self.space_if_not_bol();
             self.ibox(INDENT_UNIT);
             self.word_space("->");
