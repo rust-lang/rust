@@ -91,7 +91,7 @@ LL |     Err(0u64): Result<u64,u64>?;
    |              help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error: casts cannot be followed by a function call
   --> $DIR/issue-35813-postfix-after-cast.rs:115:5
@@ -120,7 +120,7 @@ LL |     Box::pin(noop()): Pin<Box<_>>.await;
    |                     help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error: casts cannot be followed by a field access
   --> $DIR/issue-35813-postfix-after-cast.rs:137:5
