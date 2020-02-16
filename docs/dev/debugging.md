@@ -10,7 +10,7 @@
 - Install all TypeScript dependencies
   ```bash
   cd editors/code
-  npm i
+  npm install
   ```
 
 ## Common knowledge
