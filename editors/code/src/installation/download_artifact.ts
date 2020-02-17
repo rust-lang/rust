@@ -15,7 +15,7 @@ import { throttle } from "throttle-debounce";
  * of the artifact as `displayName`.
  */
 export async function downloadArtifact(
-    {downloadUrl, releaseName}: ArtifactReleaseInfo,
+    { downloadUrl, releaseName }: ArtifactReleaseInfo,
     artifactFileName: string,
     installationDir: string,
     displayName: string,
@@ -23,7 +23,7 @@ export async function downloadArtifact(
     await fs.mkdir(installationDir).catch(err => assert.strictEqual(
         err?.code,
         "EEXIST",
-        `Couldn't create directory "${installationDir}" to download `+
+        `Couldn't create directory "${installationDir}" to download ` +
         `${artifactFileName} artifact: ${err.message}`
     ));
 

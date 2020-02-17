@@ -14,9 +14,9 @@ export function ssr(ctx: Ctx): Cmd {
                 if (x.includes('==>>')) {
                     return null;
                 }
-                return "Enter request: pattern ==>> template"
+                return "Enter request: pattern ==>> template";
             }
-        }
+        };
         const request = await vscode.window.showInputBox(options);
 
         if (!request) return;

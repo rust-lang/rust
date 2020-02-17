@@ -29,7 +29,7 @@ export function activateHighlighting(ctx: Ctx) {
                 highlighter.setHighlights(targetEditor, params.decorations);
             },
         );
-    };
+    }
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),

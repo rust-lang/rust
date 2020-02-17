@@ -15,7 +15,7 @@ export function activateStatusDisplay(ctx: Ctx) {
             WorkDoneProgress.type,
             'rustAnalyzer/cargoWatcher',
             params => statusDisplay.handleProgressNotification(params)
-        ))
+        ));
     }
 }
 
