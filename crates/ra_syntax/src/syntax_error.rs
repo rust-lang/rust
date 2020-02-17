@@ -1,4 +1,4 @@
-//! Module that defines `SyntaxError`.
+//! See docs for `SyntaxError`.
 
 use std::fmt;
 
