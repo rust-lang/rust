@@ -794,6 +794,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                 if !args_to_recover.is_empty() {
                     let mut applicability = Applicability::MachineApplicable;
                     span_lint_and_then(cx, UNIT_ARG, expr.span, "passing a unit value to a function", |db| {
+                        let mut or = "";
+                        args_to_recover
+                            .iter()
+                            .filter_map(|arg| {
+                                if_chain! {
+                                    if let ExprKind::Block(block, _) = arg.kind;
+                                    if block.expr.is_none();
+                                    if let Some(last_stmt) = block.stmts.iter().last();
+                                    if let StmtKind::Semi(last_expr) = last_stmt.kind;
+                                    if let Some(snip) = snippet_opt(cx, last_expr.span);
+                                    then {
+                                        Some((
+                                            last_stmt.span,
+                                            snip,
+                                        ))
+                                    }
+                                    else {
+                                        None
+                                    }
+                                }
+                            })
+                            .for_each(|(span, sugg)| {
+                                db.span_suggestion(
+                                    span,
+                                    "remove the semicolon from the last statement in the block",
+                                    sugg,
+                                    Applicability::MaybeIncorrect,
+                                );
+                                or = "or ";
+                            });
                         let sugg = args_to_recover
                             .iter()
                             .enumerate()
