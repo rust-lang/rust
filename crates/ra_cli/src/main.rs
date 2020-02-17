@@ -18,7 +18,41 @@ fn main() -> Result<()> {
     env_logger::try_init()?;
 
     let command = Command::from_args()?;
-    command.run()?;
+    match command {
+        Command::Parse { no_dump } => {
+            let _p = profile("parsing");
+            let file = file()?;
+            if !no_dump {
+                println!("{:#?}", file.syntax());
+            }
+            std::mem::forget(file);
+        }
+        Command::Symbols => {
+            let file = file()?;
+            for s in file_structure(&file) {
+                println!("{:?}", s);
+            }
+        }
+        Command::Highlight { rainbow } => {
+            let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
+            let html = analysis.highlight_as_html(file_id, rainbow).unwrap();
+            println!("{}", html);
+        }
+        Command::Stats { verbosity, randomize, memory_usage, only, with_deps, path } => {
+            analysis_stats::run(
+                verbosity,
+                memory_usage,
+                path.as_ref(),
+                only.as_ref().map(String::as_ref),
+                with_deps,
+                randomize,
+            )?;
+        }
+        Command::Bench { verbose, path, op } => {
+            analysis_bench::run(verbose, path.as_ref(), op)?;
+        }
+        Command::HelpPrinted => (),
+    }
 
     Ok(())
 }
@@ -245,45 +279,6 @@ SUBCOMMANDS:
             }
         };
         Ok(command)
-    }
-
-    fn run(self) -> Result<()> {
-        match self {
-            Command::Parse { no_dump } => {
-                let _p = profile("parsing");
-                let file = file()?;
-                if !no_dump {
-                    println!("{:#?}", file.syntax());
-                }
-                std::mem::forget(file);
-            }
-            Command::Symbols => {
-                let file = file()?;
-                for s in file_structure(&file) {
-                    println!("{:?}", s);
-                }
-            }
-            Command::Highlight { rainbow } => {
-                let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
-                let html = analysis.highlight_as_html(file_id, rainbow).unwrap();
-                println!("{}", html);
-            }
-            Command::Stats { verbosity, randomize, memory_usage, only, with_deps, path } => {
-                analysis_stats::run(
-                    verbosity,
-                    memory_usage,
-                    path.as_ref(),
-                    only.as_ref().map(String::as_ref),
-                    with_deps,
-                    randomize,
-                )?;
-            }
-            Command::Bench { verbose, path, op } => {
-                analysis_bench::run(verbose, path.as_ref(), op)?;
-            }
-            Command::HelpPrinted => (),
-        }
-        Ok(())
     }
 }
 
