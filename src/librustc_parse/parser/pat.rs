@@ -503,17 +503,18 @@ impl<'a> Parser<'a> {
         // Parse the pattern we hope to be an identifier.
         let mut pat = self.parse_pat(Some("identifier"))?;
 
-        // Add `mut` to any binding in the parsed pattern.
-        let changed_any_binding = Self::make_all_value_bindings_mutable(&mut pat);
-
-        // Unwrap; If we don't have `mut $ident`, error.
-        let pat = pat.into_inner();
-        match &pat.kind {
-            PatKind::Ident(..) => {}
-            _ => self.ban_mut_general_pat(mut_span, &pat, changed_any_binding),
+        // If we don't have `mut $ident (@ pat)?`, error.
+        if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind {
+            // Don't recurse into the subpattern.
+            // `mut` on the outer binding doesn't affect the inner bindings.
+            *m = Mutability::Mut;
+        } else {
+            // Add `mut` to any binding in the parsed pattern.
+            let changed_any_binding = Self::make_all_value_bindings_mutable(&mut pat);
+            self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
-        Ok(pat.kind)
+        Ok(pat.into_inner().kind)
     }
 
     /// Recover on `mut ref? ident @ pat` and suggest
@@ -542,14 +543,10 @@ impl<'a> Parser<'a> {
             }
 
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(ref mut bm, ..) = pat.kind {
-                    if let BindingMode::ByValue(ref mut m @ Mutability::Not) = bm {
-                        *m = Mutability::Mut;
-                    }
+                if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind
+                {
                     self.0 = true;
-                    // Don't recurse into the subpattern, mut on the outer
-                    // binding doesn't affect the inner bindings.
-                    return;
+                    *m = Mutability::Mut;
                 }
                 noop_visit_pat(pat, self);
             }
