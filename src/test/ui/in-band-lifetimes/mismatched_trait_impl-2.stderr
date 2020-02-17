@@ -2,12 +2,12 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/mismatched_trait_impl-2.rs:8:5
    |
 LL |     fn deref(&self) -> &dyn Trait {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found fn(&Struct) -> &dyn Trait
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Struct) -> &dyn Trait`
    | 
   ::: $SRC_DIR/libcore/ops/deref.rs:LL:COL
    |
 LL |     fn deref(&self) -> &Self::Target;
-   |     --------------------------------- expected fn(&Struct) -> &(dyn Trait + 'static)
+   |     --------------------------------- expected `fn(&Struct) -> &(dyn Trait + 'static)`
    |
    = note: expected `fn(&Struct) -> &(dyn Trait + 'static)`
               found `fn(&Struct) -> &dyn Trait`

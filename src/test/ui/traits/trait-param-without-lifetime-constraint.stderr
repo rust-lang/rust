@@ -2,12 +2,15 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/trait-param-without-lifetime-constraint.rs:14:5
    |
 LL | pub trait HaveRelationship<To> {
-   |                            -- for `impl` items to implement the method, this type parameter might need a lifetime restriction like `To: 'a`
+   |                            -- this type parameter might not have a lifetime compatible with the `impl`
 LL |     fn get_relation(&self) -> To;
-   |     ----------------------------- expected fn(&Article) -> &ProofReader
+   |     -----------------------------
+   |     |                         |
+   |     |                         you might want to borrow this type parameter in the trait to make it match the `impl`
+   |     expected `fn(&Article) -> &ProofReader`
 ...
 LL |     fn get_relation(&self) -> &ProofReader {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found fn(&Article) -> &ProofReader
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Article) -> &ProofReader`
    |
    = note: expected `fn(&Article) -> &ProofReader`
               found `fn(&Article) -> &ProofReader`
