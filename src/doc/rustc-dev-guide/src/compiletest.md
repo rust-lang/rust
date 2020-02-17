@@ -20,7 +20,7 @@ The tests themselves are typically (but not always) organized into
 a folder holding tests that should compile successfully,
 but return a failure (non-zero status), `compile-fail`, a folder holding tests
 that should fail to compile, and many more.  The various suites are defined in
-[src/tools/compiletest/src/common.rs][common] in the `pub struct Config`
+[src/tools/compiletest/src/common.rs][common] in the `pub enum Mode`
 declaration.  And a very good introduction to the different suites of compiler
 tests along with details about them can be found in [Adding new
 tests](./tests/adding.html).
