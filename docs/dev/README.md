@@ -157,7 +157,7 @@ There's also two VS Code commands which might be of interest:
 
 # Profiling
 
-We have a built-in hierarchical profiler, you can enable it by using `RA_PROF` env-var:
+We have a built-in hierarchical profiler, you can enable it by using `RA_PROFILE` env-var:
 
 ```
 RA_PROFILE=*             // dump everything
@@ -165,7 +165,7 @@ RA_PROFILE=foo|bar|baz   // enabled only selected entries
 RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
 ```
 
-In particular, I have `export RA_PROFILE='*>10' in my shell profile.
+In particular, I have `export RA_PROFILE='*>10'` in my shell profile.
 
 To measure time for from-scratch analysis, use something like this:
 
