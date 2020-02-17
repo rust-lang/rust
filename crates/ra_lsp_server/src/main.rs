@@ -1,14 +1,39 @@
 //! `ra_lsp_server` binary
+mod args;
 
 use lsp_server::Connection;
-use ra_lsp_server::{from_json, show_message, Result, ServerConfig};
+use ra_lsp_server::{cli, from_json, show_message, Result, ServerConfig};
 use ra_prof;
+
+use crate::args::HelpPrinted;
 
 fn main() -> Result<()> {
     setup_logging()?;
-    match Args::parse()? {
-        Args::Version => println!("rust-analyzer {}", env!("REV")),
-        Args::Run => run_server()?,
+    let args = match args::Args::parse()? {
+        Ok(it) => it,
+        Err(HelpPrinted) => return Ok(()),
+    };
+    match args.command {
+        args::Command::Parse { no_dump } => cli::parse(no_dump)?,
+        args::Command::Symbols => cli::symbols()?,
+        args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
+        args::Command::Stats { randomize, memory_usage, only, with_deps, path } => {
+            cli::analysis_stats(
+                args.verbosity,
+                memory_usage,
+                path.as_ref(),
+                only.as_ref().map(String::as_ref),
+                with_deps,
+                randomize,
+            )?
+        }
+
+        args::Command::Bench { path, what } => {
+            cli::analysis_bench(args.verbosity, path.as_ref(), what)?
+        }
+
+        args::Command::RunServer => run_server()?,
+        args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
     Ok(())
 }
@@ -18,19 +43,6 @@ fn setup_logging() -> Result<()> {
     env_logger::try_init()?;
     ra_prof::init();
     Ok(())
-}
-
-enum Args {
-    Version,
-    Run,
-}
-
-impl Args {
-    fn parse() -> Result<Args> {
-        let res =
-            if std::env::args().any(|it| it == "--version") { Args::Version } else { Args::Run };
-        Ok(res)
-    }
 }
 
 fn run_server() -> Result<()> {

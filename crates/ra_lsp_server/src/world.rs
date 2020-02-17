@@ -19,12 +19,12 @@ use ra_ide::{
 };
 use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
-use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
 use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
+    vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
 };
 
