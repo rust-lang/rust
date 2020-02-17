@@ -7,7 +7,7 @@ import { Ctx, sendRequestWithRetry } from './ctx';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
-    ctx.onDidRestart(client => {
+    ctx.onStart(client => {
         client.onNotification(
             'rust-analyzer/publishDecorations',
             (params: PublishDecorationsParams) => {

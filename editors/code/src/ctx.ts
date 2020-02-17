@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import { strict as assert } from "assert";
 
 import { Config } from './config';
 import { createClient } from './client';
@@ -16,19 +17,16 @@ export class Ctx {
     // on the event loop to get a better picture of what we can do here)
     client: lc.LanguageClient | null = null;
     private extCtx: vscode.ExtensionContext;
-    private onDidRestartHooks: Array<(client: lc.LanguageClient) => void> = [];
+    private onStartHooks: Array<(client: lc.LanguageClient) => void> = [];
 
     constructor(extCtx: vscode.ExtensionContext) {
         this.config = new Config(extCtx);
         this.extCtx = extCtx;
     }
 
-    async restartServer() {
-        const old = this.client;
-        if (old) {
-            await old.stop();
-        }
-        this.client = null;
+    async startServer() {
+        assert(this.client == null);
+
         const client = await createClient(this.config);
         if (!client) {
             throw new Error(
@@ -41,7 +39,7 @@ export class Ctx {
         await client.onReady();
 
         this.client = client;
-        for (const hook of this.onDidRestartHooks) {
+        for (const hook of this.onStartHooks) {
             hook(client);
         }
     }
@@ -72,8 +70,13 @@ export class Ctx {
         this.extCtx.subscriptions.push(d);
     }
 
-    onDidRestart(hook: (client: lc.LanguageClient) => void) {
-        this.onDidRestartHooks.push(hook);
+    onStart(hook: (client: lc.LanguageClient) => void) {
+        const client = this.client;
+        if (client == null) {
+            this.onStartHooks.push(hook);
+        } else {
+            hook(client)
+        }
     }
 }
 
