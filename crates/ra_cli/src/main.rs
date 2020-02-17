@@ -12,12 +12,15 @@ use ra_ide::{file_structure, Analysis};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+type Result<T, E = Box<dyn Error + Send + Sync>> = std::result::Result<T, E>;
 
 fn main() -> Result<()> {
     env_logger::try_init()?;
 
-    let command = Command::from_args()?;
+    let command = match Command::from_args()? {
+        Ok(it) => it,
+        Err(HelpPrinted) => return Ok(()),
+    };
     match command {
         Command::Parse { no_dump } => {
             let _p = profile("parsing");
@@ -51,7 +54,6 @@ fn main() -> Result<()> {
         Command::Bench { verbosity, path, op } => {
             analysis_bench::run(verbosity, path.as_ref(), op)?;
         }
-        Command::HelpPrinted => (),
     }
 
     Ok(())
@@ -101,11 +103,12 @@ enum Command {
         path: PathBuf,
         op: analysis_bench::Op,
     },
-    HelpPrinted,
 }
 
+struct HelpPrinted;
+
 impl Command {
-    fn from_args() -> Result<Command> {
+    fn from_args() -> Result<Result<Command, HelpPrinted>> {
         let mut matches = Arguments::from_env();
         let subcommand = matches.subcommand()?.unwrap_or_default();
 
@@ -136,7 +139,7 @@ FLAGS:
     -h, --help       Prints help inforamtion
         --no-dump"
                     );
-                    return Ok(Command::HelpPrinted);
+                    return Ok(Err(HelpPrinted));
                 }
 
                 let no_dump = matches.contains("--no-dump");
@@ -155,7 +158,7 @@ USAGE:
 FLAGS:
     -h, --help    Prints help inforamtion"
                     );
-                    return Ok(Command::HelpPrinted);
+                    return Ok(Err(HelpPrinted));
                 }
 
                 matches.finish().or_else(handle_extra_flags)?;
@@ -175,7 +178,7 @@ FLAGS:
     -h, --help       Prints help information
     -r, --rainbow"
                     );
-                    return Ok(Command::HelpPrinted);
+                    return Ok(Err(HelpPrinted));
                 }
 
                 let rainbow = matches.contains(["-r", "--rainbow"]);
@@ -203,7 +206,7 @@ OPTIONS:
 ARGS:
     <PATH>"
                     );
-                    return Ok(Command::HelpPrinted);
+                    return Ok(Err(HelpPrinted));
                 }
 
                 let randomize = matches.contains("--randomize");
@@ -240,7 +243,7 @@ OPTIONS:
 ARGS:
     <PATH>    Project to analyse"
                     );
-                    return Ok(Command::HelpPrinted);
+                    return Ok(Err(HelpPrinted));
                 }
 
                 let path: PathBuf = matches.opt_value_from_str("--path")?.unwrap_or_default();
@@ -275,10 +278,10 @@ SUBCOMMANDS:
     parse
     symbols"
                 );
-                return Ok(Command::HelpPrinted);
+                return Ok(Err(HelpPrinted));
             }
         };
-        Ok(command)
+        Ok(Ok(command))
     }
 }
 
