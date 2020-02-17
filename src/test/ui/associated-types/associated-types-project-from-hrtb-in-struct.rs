@@ -12,11 +12,12 @@ struct SomeStruct<I: for<'x> Foo<&'x isize>> {
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
-enum SomeEnum<I: for<'x> Foo<&'x isize>> {
+enum SomeEnum<'b, I: for<'a> Foo<&'a isize>> {
     TupleVariant(I::A),
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
     StructVariant { field: I::A },
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    OkVariant(&'b usize),
 }
 
 // FIXME(eddyb) This one doesn't even compile because of the unsupported syntax.
@@ -26,7 +27,13 @@ enum SomeEnum<I: for<'x> Foo<&'x isize>> {
 // }
 
 struct YetAnotherStruct<'a, I: for<'x> Foo<&'x isize>> {
-    field: <I as Foo<&'a isize>>::A
+    field: <I as Foo<&'a isize>>::A,
+}
+
+struct Why<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'n, 'o, 'p, 'q, 'r, 's, 't, 'u, 'v, 'w, 'x,
+    'y, 'z, 'aa, I: for<'l, 'm> Foo<&'l &'m isize>> {
+    field: I::A,
+    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
 pub fn main() {}
