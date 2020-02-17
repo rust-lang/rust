@@ -71,7 +71,7 @@ pub use crate::{
     references::{
         Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
     },
-    runnables::{Runnable, RunnableKind},
+    runnables::{Runnable, RunnableKind, TestId},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     syntax_highlighting::HighlightedRange,
 };

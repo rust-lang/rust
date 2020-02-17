@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_ide::{FileId, RunnableKind};
+use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
 use crate::{world::WorldSnapshot, Result};
@@ -13,13 +13,16 @@ pub(crate) fn runnable_args(
     let spec = CargoTargetSpec::for_file(world, file_id)?;
     let mut res = Vec::new();
     match kind {
-        RunnableKind::Test { name } => {
+        RunnableKind::Test { test_id } => {
             res.push("test".to_string());
             if let Some(spec) = spec {
                 spec.push_to(&mut res);
             }
             res.push("--".to_string());
-            res.push(name.to_string());
+            res.push(test_id.to_string());
+            if let TestId::Path(_) = test_id {
+                res.push("--exact".to_string());
+            }
             res.push("--nocapture".to_string());
         }
         RunnableKind::TestMod { path } => {
@@ -31,13 +34,16 @@ pub(crate) fn runnable_args(
             res.push(path.to_string());
             res.push("--nocapture".to_string());
         }
-        RunnableKind::Bench { name } => {
+        RunnableKind::Bench { test_id } => {
             res.push("bench".to_string());
             if let Some(spec) = spec {
                 spec.push_to(&mut res);
             }
             res.push("--".to_string());
-            res.push(name.to_string());
+            res.push(test_id.to_string());
+            if let TestId::Path(_) = test_id {
+                res.push("--exact".to_string());
+            }
             res.push("--nocapture".to_string());
         }
         RunnableKind::Bin => {
