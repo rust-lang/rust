@@ -806,9 +806,8 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> PolyFn
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> Binders<Ty> {
     let struct_data = db.struct_data(def.into());
-    match struct_data.variant_data.kind() {
-        StructKind::Unit => return type_for_adt(db, def.into()),
-        StructKind::Tuple | StructKind::Record => (),
+    if let StructKind::Unit = struct_data.variant_data.kind() {
+        return type_for_adt(db, def.into());
     }
     let generics = generics(db, def.into());
     let substs = Substs::bound_vars(&generics);
@@ -832,9 +831,8 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId
 fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> Binders<Ty> {
     let enum_data = db.enum_data(def.parent);
     let var_data = &enum_data.variants[def.local_id].variant_data;
-    match var_data.kind() {
-        StructKind::Unit => return type_for_adt(db, def.parent.into()),
-        StructKind::Record | StructKind::Tuple => (),
+    if let StructKind::Unit = var_data.kind() {
+        return type_for_adt(db, def.parent.into());
     }
     let generics = generics(db, def.parent.into());
     let substs = Substs::bound_vars(&generics);
