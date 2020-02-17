@@ -392,6 +392,7 @@ impl Session {
         );
     }
 
+    #[inline]
     pub fn source_map(&self) -> &source_map::SourceMap {
         self.parse_sess.source_map()
     }
