@@ -14,6 +14,15 @@ use ra_syntax::{AstNode, SourceFile};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+fn main() -> Result<()> {
+    env_logger::try_init()?;
+
+    let command = Command::from_args()?;
+    command.run()?;
+
+    Ok(())
+}
+
 #[derive(Clone, Copy)]
 pub enum Verbosity {
     Spammy,
@@ -37,17 +46,40 @@ impl Verbosity {
     }
 }
 
-fn main() -> Result<()> {
-    env_logger::try_init()?;
+enum Command {
+    Parse {
+        no_dump: bool,
+    },
+    Symbols,
+    Highlight {
+        rainbow: bool,
+    },
+    Stats {
+        verbosity: Verbosity,
+        randomize: bool,
+        memory_usage: bool,
+        only: Option<String>,
+        with_deps: bool,
+        path: String,
+    },
+    Bench {
+        verbose: bool,
+        path: String,
+        op: analysis_bench::Op,
+    },
+    HelpPrinted,
+}
 
-    let mut matches = Arguments::from_env();
-    let subcommand = matches.subcommand()?.unwrap_or_default();
+impl Command {
+    fn from_args() -> Result<Command> {
+        let mut matches = Arguments::from_env();
+        let subcommand = matches.subcommand()?.unwrap_or_default();
 
-    match subcommand.as_str() {
-        "parse" => {
-            if matches.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
+        let command = match subcommand.as_str() {
+            "parse" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
 ra-cli-parse
 
 USAGE:
@@ -56,24 +88,18 @@ USAGE:
 FLAGS:
     -h, --help       Prints help inforamtion
         --no-dump"
-                );
-                return Ok(());
-            }
+                    );
+                    return Ok(Command::HelpPrinted);
+                }
 
-            let no_dump = matches.contains("--no-dump");
-            matches.finish().or_else(handle_extra_flags)?;
-
-            let _p = profile("parsing");
-            let file = file()?;
-            if !no_dump {
-                println!("{:#?}", file.syntax());
+                let no_dump = matches.contains("--no-dump");
+                matches.finish().or_else(handle_extra_flags)?;
+                Command::Parse { no_dump }
             }
-            std::mem::forget(file);
-        }
-        "symbols" => {
-            if matches.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
+            "symbols" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
 ra-cli-symbols
 
 USAGE:
@@ -81,21 +107,18 @@ USAGE:
 
 FLAGS:
     -h, --help    Prints help inforamtion"
-                );
-                return Ok(());
-            }
+                    );
+                    return Ok(Command::HelpPrinted);
+                }
 
-            matches.finish().or_else(handle_extra_flags)?;
+                matches.finish().or_else(handle_extra_flags)?;
 
-            let file = file()?;
-            for s in file_structure(&file) {
-                println!("{:?}", s);
+                Command::Symbols
             }
-        }
-        "highlight" => {
-            if matches.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
+            "highlight" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
 ra-cli-highlight
 
 USAGE:
@@ -104,21 +127,18 @@ USAGE:
 FLAGS:
     -h, --help       Prints help information
     -r, --rainbow"
-                );
-                return Ok(());
+                    );
+                    return Ok(Command::HelpPrinted);
+                }
+
+                let rainbow = matches.contains(["-r", "--rainbow"]);
+                matches.finish().or_else(handle_extra_flags)?;
+                Command::Highlight { rainbow }
             }
-
-            let rainbow_opt = matches.contains(["-r", "--rainbow"]);
-            matches.finish().or_else(handle_extra_flags)?;
-
-            let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
-            let html = analysis.highlight_as_html(file_id, rainbow_opt).unwrap();
-            println!("{}", html);
-        }
-        "analysis-stats" => {
-            if matches.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
+            "analysis-stats" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
 ra-cli-analysis-stats
 
 USAGE:
@@ -135,47 +155,40 @@ OPTIONS:
 
 ARGS:
     <PATH>"
-                );
-                return Ok(());
-            }
-
-            let verbosity = match (
-                matches.contains(["-vv", "--spammy"]),
-                matches.contains(["-v", "--verbose"]),
-                matches.contains(["-q", "--quiet"]),
-            ) {
-                (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
-                (true, _, false) => Verbosity::Spammy,
-                (false, false, false) => Verbosity::Normal,
-                (false, false, true) => Verbosity::Quiet,
-                (false, true, false) => Verbosity::Verbose,
-                (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
-            };
-            let randomize = matches.contains("--randomize");
-            let memory_usage = matches.contains("--memory-usage");
-            let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
-            let with_deps: bool = matches.contains("--with-deps");
-            let path = {
-                let mut trailing = matches.free()?;
-                if trailing.len() != 1 {
-                    Err("Invalid flags")?;
+                    );
+                    return Ok(Command::HelpPrinted);
                 }
-                trailing.pop().unwrap()
-            };
 
-            analysis_stats::run(
-                verbosity,
-                memory_usage,
-                path.as_ref(),
-                only.as_ref().map(String::as_ref),
-                with_deps,
-                randomize,
-            )?;
-        }
-        "analysis-bench" => {
-            if matches.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
+                let verbosity = match (
+                    matches.contains(["-vv", "--spammy"]),
+                    matches.contains(["-v", "--verbose"]),
+                    matches.contains(["-q", "--quiet"]),
+                ) {
+                    (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
+                    (true, _, false) => Verbosity::Spammy,
+                    (false, false, false) => Verbosity::Normal,
+                    (false, false, true) => Verbosity::Quiet,
+                    (false, true, false) => Verbosity::Verbose,
+                    (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
+                };
+                let randomize = matches.contains("--randomize");
+                let memory_usage = matches.contains("--memory-usage");
+                let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
+                let with_deps: bool = matches.contains("--with-deps");
+                let path = {
+                    let mut trailing = matches.free()?;
+                    if trailing.len() != 1 {
+                        Err("Invalid flags")?;
+                    }
+                    trailing.pop().unwrap()
+                };
+
+                Command::Stats { verbosity, randomize, memory_usage, only, with_deps, path }
+            }
+            "analysis-bench" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
 ra_cli-analysis-bench
 
 USAGE:
@@ -191,29 +204,28 @@ OPTIONS:
 
 ARGS:
     <PATH>    Project to analyse"
-                );
-                return Ok(());
+                    );
+                    return Ok(Command::HelpPrinted);
+                }
+
+                let verbose = matches.contains(["-v", "--verbose"]);
+                let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
+                let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
+                let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
+                let goto_def_path: Option<String> = matches.opt_value_from_str("--goto-def")?;
+                let op = match (highlight_path, complete_path, goto_def_path) {
+                    (Some(path), None, None) => analysis_bench::Op::Highlight { path: path.into() },
+                    (None, Some(position), None) => analysis_bench::Op::Complete(position.parse()?),
+                    (None, None, Some(position)) => analysis_bench::Op::GotoDef(position.parse()?),
+                    _ => panic!(
+                        "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
+                    ),
+                };
+                Command::Bench { verbose, path, op }
             }
-
-            let verbose = matches.contains(["-v", "--verbose"]);
-            let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
-            let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
-            let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
-            let goto_def_path: Option<String> = matches.opt_value_from_str("--goto-def")?;
-            let op = match (highlight_path, complete_path, goto_def_path) {
-                (Some(path), None, None) => analysis_bench::Op::Highlight { path: path.into() },
-                (None, Some(position), None) => analysis_bench::Op::Complete(position.parse()?),
-                (None, None, Some(position)) => analysis_bench::Op::GotoDef(position.parse()?),
-                _ => panic!(
-                    "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
-                ),
-            };
-            matches.finish().or_else(handle_extra_flags)?;
-
-            analysis_bench::run(verbose, path.as_ref(), op)?;
-        }
-        _ => eprintln!(
-            "\
+            _ => {
+                eprintln!(
+                    "\
 ra-cli
 
 USAGE:
@@ -228,9 +240,51 @@ SUBCOMMANDS:
     highlight
     parse
     symbols"
-        ),
+                );
+                return Ok(Command::HelpPrinted);
+            }
+        };
+        Ok(command)
     }
-    Ok(())
+
+    fn run(self) -> Result<()> {
+        match self {
+            Command::Parse { no_dump } => {
+                let _p = profile("parsing");
+                let file = file()?;
+                if !no_dump {
+                    println!("{:#?}", file.syntax());
+                }
+                std::mem::forget(file);
+            }
+            Command::Symbols => {
+                let file = file()?;
+                for s in file_structure(&file) {
+                    println!("{:?}", s);
+                }
+            }
+            Command::Highlight { rainbow } => {
+                let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
+                let html = analysis.highlight_as_html(file_id, rainbow).unwrap();
+                println!("{}", html);
+            }
+            Command::Stats { verbosity, randomize, memory_usage, only, with_deps, path } => {
+                analysis_stats::run(
+                    verbosity,
+                    memory_usage,
+                    path.as_ref(),
+                    only.as_ref().map(String::as_ref),
+                    with_deps,
+                    randomize,
+                )?;
+            }
+            Command::Bench { verbose, path, op } => {
+                analysis_bench::run(verbose, path.as_ref(), op)?;
+            }
+            Command::HelpPrinted => (),
+        }
+        Ok(())
+    }
 }
 
 fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
