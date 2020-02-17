@@ -42,6 +42,7 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
             featureFlags: config.featureFlags,
             withSysroot: config.withSysroot,
             cargoFeatures: config.cargoFeatures,
+            rustfmtArgs: config.rustfmtArgs,
         },
         traceOutputChannel,
     };

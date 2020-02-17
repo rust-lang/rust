@@ -178,6 +178,7 @@ pub fn main_loop(
                     command: config.cargo_watch_command,
                     all_targets: config.cargo_watch_all_targets,
                 },
+                rustfmt_args: config.rustfmt_args,
             }
         };
 

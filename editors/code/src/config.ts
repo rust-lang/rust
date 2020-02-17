@@ -149,7 +149,8 @@ export class Config {
     get excludeGlobs()          { return this.cfg.get("excludeGlobs") as string[]; }
     get useClientWatching()     { return this.cfg.get("useClientWatching") as boolean; }
     get featureFlags()          { return this.cfg.get("featureFlags") as Record<string, boolean>; }
-
+    get rustfmtArgs()           { return this.cfg.get("rustfmtArgs") as string[]; }
+    
     get cargoWatchOptions(): CargoWatchOptions {
         return {
             enable:     this.cfg.get("cargo-watch.enable") as boolean,
