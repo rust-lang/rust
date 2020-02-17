@@ -181,8 +181,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-$EXT_VERSION.vsix
-          asset_name: rust-analyzer-$EXT_VERSION.vsix
+          asset_path: ./dist/rust-analyzer-${{ env.EXT_VERSION }}.vsix
+          asset_name: rust-analyzer-${{ env.EXT_VERSION }}.vsix
           asset_content_type: application/octet-stream
 
       - run: npm ci
