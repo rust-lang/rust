@@ -7,7 +7,7 @@ use hir_expand::{
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
     name::{name, AsName, Name},
-    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -25,8 +25,9 @@ use crate::{
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
     visibility::Visibility,
-    AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
-    LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, AsMacroCall, AstId, AstIdWithPath, ConstLoc, ContainerId, EnumLoc, EnumVariantId,
+    FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc,
+    TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -99,9 +100,14 @@ struct ImportDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct MacroDirective {
     module_id: LocalModuleId,
-    ast_id: AstId<ast::MacroCall>,
-    path: ModPath,
+    ast_id: AstIdWithPath<ast::MacroCall>,
     legacy: Option<MacroCallId>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct DeriveDirective {
+    module_id: LocalModuleId,
+    ast_id: AstIdWithPath<ast::ModuleItem>,
 }
 
 /// Walks the tree of module recursively
@@ -112,7 +118,7 @@ struct DefCollector<'a, DB> {
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
-    unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, ModPath)>,
+    unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
 }
@@ -515,16 +521,16 @@ where
                 return false;
             }
 
-            let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                self.db,
-                ResolveMode::Other,
-                directive.module_id,
-                &directive.path,
-                BuiltinShadowMode::Module,
-            );
-
-            if let Some(def) = resolved_res.resolved_def.take_macros() {
-                let call_id = def.as_call_id(self.db, MacroCallKind::FnLike(directive.ast_id));
+            if let Some(call_id) = directive.ast_id.as_call_id(self.db, |path| {
+                let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                    self.db,
+                    ResolveMode::Other,
+                    directive.module_id,
+                    &path,
+                    BuiltinShadowMode::Module,
+                );
+                resolved_res.resolved_def.take_macros()
+            }) {
                 resolved.push((directive.module_id, call_id));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -532,12 +538,11 @@ where
 
             true
         });
-        attribute_macros.retain(|(module_id, ast_id, path)| {
-            let resolved_res = self.resolve_attribute_macro(path);
-
-            if let Some(def) = resolved_res {
-                let call_id = def.as_call_id(self.db, MacroCallKind::Attr(*ast_id));
-                resolved.push((*module_id, call_id));
+        attribute_macros.retain(|directive| {
+            if let Some(call_id) =
+                directive.ast_id.as_call_id(self.db, |path| self.resolve_attribute_macro(&path))
+            {
+                resolved.push((directive.module_id, call_id));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -833,20 +838,22 @@ where
                 };
                 let path = ModPath::from_tt_ident(ident);
 
-                let ast_id = AstId::new(self.file_id, def.kind.ast_id());
-                self.def_collector.unexpanded_attribute_macros.push((self.module_id, ast_id, path));
+                let ast_id = AstIdWithPath::new(self.file_id, def.kind.ast_id(), path);
+                self.def_collector
+                    .unexpanded_attribute_macros
+                    .push(DeriveDirective { module_id: self.module_id, ast_id });
             }
         }
     }
 
     fn collect_macro(&mut self, mac: &raw::MacroData) {
-        let ast_id = AstId::new(self.file_id, mac.ast_id);
+        let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
 
         // Case 0: builtin macros
         if mac.builtin {
             if let Some(name) = &mac.name {
                 let krate = self.def_collector.def_map.krate;
-                if let Some(macro_id) = find_builtin_macro(name, krate, ast_id) {
+                if let Some(macro_id) = find_builtin_macro(name, krate, ast_id.ast_id) {
                     self.def_collector.define_macro(
                         self.module_id,
                         name.clone(),
@@ -862,7 +869,7 @@ where
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
                 let macro_id = MacroDefId {
-                    ast_id: Some(ast_id),
+                    ast_id: Some(ast_id.ast_id),
                     krate: Some(self.def_collector.def_map.krate),
                     kind: MacroDefKind::Declarative,
                 };
@@ -872,15 +879,13 @@ where
         }
 
         // Case 2: try to resolve in legacy scope and expand macro_rules
-        if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
-            self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+        if let Some(macro_call_id) = ast_id.as_call_id(self.def_collector.db, |path| {
+            path.as_ident().and_then(|name| {
+                self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+            })
         }) {
-            let macro_call_id =
-                macro_def.as_call_id(self.def_collector.db, MacroCallKind::FnLike(ast_id));
-
             self.def_collector.unexpanded_macros.push(MacroDirective {
                 module_id: self.module_id,
-                path: mac.path.clone(),
                 ast_id,
                 legacy: Some(macro_call_id),
             });
@@ -890,14 +895,12 @@ where
 
         // Case 3: resolve in module scope, expand during name resolution.
         // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
-        let mut path = mac.path.clone();
-        if path.is_ident() {
-            path.kind = PathKind::Super(0);
+        if ast_id.path.is_ident() {
+            ast_id.path.kind = PathKind::Super(0);
         }
 
         self.def_collector.unexpanded_macros.push(MacroDirective {
             module_id: self.module_id,
-            path,
             ast_id,
             legacy: None,
         });

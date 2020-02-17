@@ -46,7 +46,10 @@ mod marks;
 
 use std::hash::Hash;
 
-use hir_expand::{ast_id_map::FileAstId, AstId, HirFileId, InFile, MacroDefId};
+use hir_expand::{
+    ast_id_map::FileAstId, db::AstDatabase, hygiene::Hygiene, AstId, HirFileId, InFile,
+    MacroCallId, MacroCallKind, MacroDefId,
+};
 use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
@@ -411,5 +414,63 @@ impl HasModule for GenericDefId {
 impl HasModule for StaticLoc {
     fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         self.container.module(db)
+    }
+}
+
+/// A helper trait for converting to MacroCallId
+pub trait AsMacroCall {
+    fn as_call_id(
+        &self,
+        db: &(impl db::DefDatabase + AstDatabase),
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    ) -> Option<MacroCallId>;
+}
+
+impl AsMacroCall for InFile<&ast::MacroCall> {
+    fn as_call_id(
+        &self,
+        db: &(impl db::DefDatabase + AstDatabase),
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    ) -> Option<MacroCallId> {
+        let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
+        let h = Hygiene::new(db, self.file_id);
+        let path = path::ModPath::from_src(self.value.path()?, &h)?;
+
+        AstIdWithPath::new(ast_id.file_id, ast_id.value, path).as_call_id(db, resolver)
+    }
+}
+
+/// Helper wrapper for `AstId` with `ModPath`
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct AstIdWithPath<T: ast::AstNode> {
+    pub ast_id: AstId<T>,
+    pub path: path::ModPath,
+}
+
+impl<T: ast::AstNode> AstIdWithPath<T> {
+    pub fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: path::ModPath) -> AstIdWithPath<T> {
+        AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
+    }
+}
+
+impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
+    fn as_call_id(
+        &self,
+        db: &impl AstDatabase,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    ) -> Option<MacroCallId> {
+        let def = resolver(self.path.clone())?;
+        Some(def.as_call_id(db, MacroCallKind::FnLike(self.ast_id.clone())))
+    }
+}
+
+impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
+    fn as_call_id(
+        &self,
+        db: &impl AstDatabase,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    ) -> Option<MacroCallId> {
+        let def = resolver(self.path.clone())?;
+        Some(def.as_call_id(db, MacroCallKind::Attr(self.ast_id.clone())))
     }
 }
