@@ -113,7 +113,7 @@ communication, and `print!` would break it.
 If I need to fix something simultaneously in the server and in the client, I
 feel even more sad. I don't have a specific workflow for this case.
 
-Additionally, I use `cargo run --release -p ra_cli -- analysis-stats
+Additionally, I use `cargo run --release -p ra_lsp_server -- analysis-stats
 path/to/some/rust/crate` to run a batch analysis. This is primarily useful for
 performance optimizations, or for bug minimization.
 
@@ -170,12 +170,12 @@ In particular, I have `export RA_PROFILE='*>10'` in my shell profile.
 To measure time for from-scratch analysis, use something like this:
 
 ```
-$ cargo run --release -p ra_cli -- analysis-stats ../chalk/
+$ cargo run --release -p ra_lsp_server -- analysis-stats ../chalk/
 ```
 
 For measuring time of incremental analysis, use either of these:
 
 ```
-$ cargo run --release -p ra_cli -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
-$ cargo run --release -p ra_cli -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
+$ cargo run --release -p ra_lsp_server -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
+$ cargo run --release -p ra_lsp_server -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
 ```
