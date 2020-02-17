@@ -23,6 +23,7 @@ macro_rules! print {
     };
 }
 
+mod vfs_glob;
 mod caps;
 mod cargo_target_spec;
 mod conv;

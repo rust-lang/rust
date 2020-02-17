@@ -135,7 +135,7 @@ pub fn main_loop(
         let globs = config
             .exclude_globs
             .iter()
-            .map(|glob| ra_vfs_glob::Glob::new(glob))
+            .map(|glob| crate::vfs_glob::Glob::new(glob))
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
         if config.use_client_watching {

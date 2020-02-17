@@ -1,3 +1,8 @@
+//! Command like parsing for rust-analyzer.
+//!
+//! If run started args, we run the LSP server loop. With a subcommand, we do a
+//! one-time batch processing.
+
 use anyhow::{bail, Result};
 use pico_args::Arguments;
 use ra_lsp_server::cli::{BenchWhat, Position, Verbosity};
