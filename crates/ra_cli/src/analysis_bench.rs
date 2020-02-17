@@ -2,6 +2,7 @@
 
 use std::{path::Path, sync::Arc, time::Instant};
 
+use anyhow::format_err;
 use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
@@ -39,7 +40,7 @@ pub(crate) fn run(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Result<
                 }
                 None
             })
-            .ok_or_else(|| format!("Can't find {:?}", path))?
+            .ok_or_else(|| format_err!("Can't find {}", path.display()))?
     };
 
     match &what {

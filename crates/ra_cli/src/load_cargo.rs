@@ -1,8 +1,6 @@
 //! FIXME: write short doc here
 
-use std::{collections::HashSet, error::Error, path::Path};
-
-use rustc_hash::FxHashMap;
+use std::{collections::HashSet, path::Path};
 
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
@@ -10,8 +8,9 @@ use ra_ide::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use ra_vfs_glob::RustPackageFilterBuilder;
+use rustc_hash::FxHashMap;
 
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+use anyhow::Result;
 
 fn vfs_file_to_id(f: ra_vfs::VfsFile) -> FileId {
     FileId(f.0)

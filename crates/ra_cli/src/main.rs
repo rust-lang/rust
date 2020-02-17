@@ -5,14 +5,14 @@ mod analysis_stats;
 mod analysis_bench;
 mod progress_report;
 
-use std::{error::Error, fmt::Write, io::Read, path::PathBuf, str::FromStr};
+use std::{fmt::Write, io::Read, path::PathBuf, str::FromStr};
 
 use pico_args::Arguments;
 use ra_ide::{file_structure, Analysis};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
-type Result<T, E = Box<dyn Error + Send + Sync>> = std::result::Result<T, E>;
+use anyhow::{bail, format_err, Result};
 
 fn main() -> Result<()> {
     env_logger::try_init()?;
@@ -118,7 +118,7 @@ pub(crate) struct Position {
 }
 
 impl FromStr for Position {
-    type Err = Box<dyn std::error::Error + Send + Sync>;
+    type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self> {
         let (path_line, column) = rsplit_at_char(s, ':')?;
         let (path, line) = rsplit_at_char(path_line, ':')?;
@@ -127,7 +127,7 @@ impl FromStr for Position {
 }
 
 fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
+    let idx = s.rfind(c).ok_or_else(|| format_err!("no `{}` in {}", c, s))?;
     Ok((&s[..idx], &s[idx + 1..]))
 }
 
@@ -143,12 +143,12 @@ impl Command {
             matches.contains(["-v", "--verbose"]),
             matches.contains(["-q", "--quiet"]),
         ) {
-            (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
+            (true, _, true) => bail!("Invalid flags: -q conflicts with -vv"),
             (true, _, false) => Verbosity::Spammy,
             (false, false, false) => Verbosity::Normal,
             (false, false, true) => Verbosity::Quiet,
             (false, true, false) => Verbosity::Verbose,
-            (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
+            (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
 
         let command = match subcommand.as_str() {
@@ -242,7 +242,7 @@ ARGS:
                 let path = {
                     let mut trailing = matches.free()?;
                     if trailing.len() != 1 {
-                        Err("Invalid flags")?;
+                        bail!("Invalid flags");
                     }
                     trailing.pop().unwrap().into()
                 };
@@ -318,9 +318,9 @@ fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
             write!(&mut invalid_flags, "{}, ", flag)?;
         }
         let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
-        Err(format!("Invalid flags: {}", invalid_flags).into())
+        bail!("Invalid flags: {}", invalid_flags);
     } else {
-        Err(e.to_string().into())
+        bail!(e);
     }
 }
 
