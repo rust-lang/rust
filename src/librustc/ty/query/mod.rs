@@ -1,4 +1,4 @@
-use crate::dep_graph::{self, DepNode};
+use crate::dep_graph::{self, DepConstructor, DepNode};
 use crate::hir::exports::Export;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;

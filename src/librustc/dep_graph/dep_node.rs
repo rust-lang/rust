@@ -76,10 +76,6 @@ macro_rules! erase {
     ($x:tt) => {{}};
 }
 
-macro_rules! replace {
-    ($x:tt with $($y:tt)*) => ($($y)*)
-}
-
 macro_rules! is_anon_attr {
     (anon) => {
         true
@@ -175,10 +171,43 @@ macro_rules! define_dep_nodes {
             }
         }
 
-        pub enum DepConstructor<$tcx> {
+        pub struct DepConstructor;
+
+        impl DepConstructor {
             $(
-                $variant $(( $tuple_arg_ty ))*
-            ),*
+                #[inline(always)]
+                #[allow(unreachable_code, non_snake_case)]
+                pub fn $variant<'tcx>(_tcx: TyCtxt<'tcx>, $(arg: $tuple_arg_ty)*) -> DepNode {
+                    // tuple args
+                    $({
+                        erase!($tuple_arg_ty);
+                        let hash = DepNodeParams::to_fingerprint(&arg, _tcx);
+                        let dep_node = DepNode {
+                            kind: DepKind::$variant,
+                            hash
+                        };
+
+                        #[cfg(debug_assertions)]
+                        {
+                            if !dep_node.kind.can_reconstruct_query_key() &&
+                            (_tcx.sess.opts.debugging_opts.incremental_info ||
+                                _tcx.sess.opts.debugging_opts.query_dep_graph)
+                            {
+                                _tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                    arg.to_debug_str(_tcx)
+                                });
+                            }
+                        }
+
+                        return dep_node;
+                    })*
+
+                    DepNode {
+                        kind: DepKind::$variant,
+                        hash: Fingerprint::ZERO,
+                    }
+                }
+            )*
         }
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
@@ -189,49 +218,6 @@ macro_rules! define_dep_nodes {
         }
 
         impl DepNode {
-            #[allow(unreachable_code, non_snake_case)]
-            pub fn new<'tcx>(tcx: TyCtxt<'tcx>,
-                                       dep: DepConstructor<'tcx>)
-                                       -> DepNode
-            {
-                match dep {
-                    $(
-                        DepConstructor :: $variant $(( replace!(($tuple_arg_ty) with arg) ))*
-                            =>
-                        {
-                            // tuple args
-                            $({
-                                erase!($tuple_arg_ty);
-                                let hash = DepNodeParams::to_fingerprint(&arg, tcx);
-                                let dep_node = DepNode {
-                                    kind: DepKind::$variant,
-                                    hash
-                                };
-
-                                #[cfg(debug_assertions)]
-                                {
-                                    if !dep_node.kind.can_reconstruct_query_key() &&
-                                    (tcx.sess.opts.debugging_opts.incremental_info ||
-                                        tcx.sess.opts.debugging_opts.query_dep_graph)
-                                    {
-                                        tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                            arg.to_debug_str(tcx)
-                                        });
-                                    }
-                                }
-
-                                return dep_node;
-                            })*
-
-                            DepNode {
-                                kind: DepKind::$variant,
-                                hash: Fingerprint::ZERO,
-                            }
-                        }
-                    )*
-                }
-            }
-
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
