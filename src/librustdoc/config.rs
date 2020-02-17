@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
-use std::ffi::OsStr;
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -28,12 +28,12 @@ use crate::theme;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum OutputFormat {
     Json,
-    HTML,
+    Html,
 }
 
 impl OutputFormat {
     pub fn is_json(&self) -> bool {
-        match *self {
+        match self {
             OutputFormat::Json => true,
             _ => false,
         }
@@ -46,7 +46,7 @@ impl TryFrom<&str> for OutputFormat {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "json" => Ok(OutputFormat::Json),
-            "html" => Ok(OutputFormat::HTML),
+            "html" => Ok(OutputFormat::Html),
             _ => Err(format!("unknown output format `{}`", value)),
         }
     }
@@ -498,6 +498,12 @@ impl Options {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
+                    } else if !o.is_json() && show_coverage {
+                        diag.struct_err(
+                            "html output format isn't supported for the --show-coverage option",
+                        )
+                        .emit();
+                        return Err(1);
                     }
                     Some(o)
                 }
@@ -505,7 +511,7 @@ impl Options {
                     diag.struct_err(&e).emit();
                     return Err(1);
                 }
-            }
+            },
             None => None,
         };
         let crate_name = matches.opt_str("crate-name");

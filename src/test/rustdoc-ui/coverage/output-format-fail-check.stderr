@@ -1,0 +1,6 @@
+warning: the 'output-format' flag is considered deprecated
+   |
+   = warning: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
+
+error: too many file operands
+
