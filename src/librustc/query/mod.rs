@@ -1130,16 +1130,6 @@ rustc_queries! {
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
         }
 
-        query evaluate_goal(
-            goal: traits::ChalkCanonicalGoal<'tcx>
-        ) -> Result<
-            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-            NoSolution
-        > {
-            no_force
-            desc { "evaluating trait selection obligation `{}`", goal.value.goal }
-        }
-
         /// Do not call this query directly: part of the `Eq` type-op
         query type_op_ascribe_user_type(
             goal: CanonicalTypeOpAscribeUserTypeGoal<'tcx>

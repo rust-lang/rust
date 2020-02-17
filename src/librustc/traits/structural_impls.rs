@@ -595,42 +595,6 @@ impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
     }
 }
 
-impl<'tcx, C> Lift<'tcx> for chalk_engine::ExClause<C>
-where
-    C: chalk_engine::context::Context + Clone,
-    C: traits::ChalkContextLift<'tcx>,
-{
-    type Lifted = C::LiftedExClause;
-
-    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        <C as traits::ChalkContextLift>::lift_ex_clause_to_tcx(self, tcx)
-    }
-}
-
-impl<'tcx, C> Lift<'tcx> for chalk_engine::DelayedLiteral<C>
-where
-    C: chalk_engine::context::Context + Clone,
-    C: traits::ChalkContextLift<'tcx>,
-{
-    type Lifted = C::LiftedDelayedLiteral;
-
-    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        <C as traits::ChalkContextLift>::lift_delayed_literal_to_tcx(self, tcx)
-    }
-}
-
-impl<'tcx, C> Lift<'tcx> for chalk_engine::Literal<C>
-where
-    C: chalk_engine::context::Context + Clone,
-    C: traits::ChalkContextLift<'tcx>,
-{
-    type Lifted = C::LiftedLiteral;
-
-    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        <C as traits::ChalkContextLift>::lift_literal_to_tcx(self, tcx)
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 
@@ -673,40 +637,4 @@ impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
     }
-}
-
-impl<'tcx, C> TypeFoldable<'tcx> for chalk_engine::ExClause<C>
-where
-    C: traits::ExClauseFold<'tcx>,
-    C::Substitution: Clone,
-    C::RegionConstraint: Clone,
-{
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        <C as traits::ExClauseFold>::fold_ex_clause_with(self, folder)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        <C as traits::ExClauseFold>::visit_ex_clause_with(self, visitor)
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx, C> TypeFoldable<'tcx> for chalk_engine::DelayedLiteral<C> {
-        (chalk_engine::DelayedLiteral::CannotProve)(a),
-        (chalk_engine::DelayedLiteral::Negative)(a),
-        (chalk_engine::DelayedLiteral::Positive)(a, b),
-    } where
-        C: chalk_engine::context::Context<CanonicalConstrainedSubst: TypeFoldable<'tcx>> + Clone,
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx, C> TypeFoldable<'tcx> for chalk_engine::Literal<C> {
-        (chalk_engine::Literal::Negative)(a),
-        (chalk_engine::Literal::Positive)(a),
-    } where
-        C: chalk_engine::context::Context<GoalInEnvironment: Clone + TypeFoldable<'tcx>> + Clone,
-}
-
-CloneTypeFoldableAndLiftImpls! {
-    chalk_engine::TableIndex,
 }

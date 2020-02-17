@@ -7,9 +7,7 @@ pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
 
-use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
-use crate::ty::fold::{TypeFolder, TypeVisitor};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt};
 
@@ -24,8 +22,6 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
-
-pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
 
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
@@ -713,45 +709,6 @@ pub struct VtableTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,
-}
-
-pub trait ExClauseFold<'tcx>
-where
-    Self: chalk_engine::context::Context + Clone,
-{
-    fn fold_ex_clause_with<F: TypeFolder<'tcx>>(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        folder: &mut F,
-    ) -> chalk_engine::ExClause<Self>;
-
-    fn visit_ex_clause_with<V: TypeVisitor<'tcx>>(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        visitor: &mut V,
-    ) -> bool;
-}
-
-pub trait ChalkContextLift<'tcx>
-where
-    Self: chalk_engine::context::Context + Clone,
-{
-    type LiftedExClause: Debug + 'tcx;
-    type LiftedDelayedLiteral: Debug + 'tcx;
-    type LiftedLiteral: Debug + 'tcx;
-
-    fn lift_ex_clause_to_tcx(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedExClause>;
-
-    fn lift_delayed_literal_to_tcx(
-        ex_clause: &chalk_engine::DelayedLiteral<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedDelayedLiteral>;
-
-    fn lift_literal_to_tcx(
-        ex_clause: &chalk_engine::Literal<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedLiteral>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
