@@ -25,7 +25,6 @@ module.exports = {
                 }
             }
         ],
-        "@typescript-eslint/no-floating-promises": "error",
         "@typescript-eslint/semi": [
             "error",
             "always"
