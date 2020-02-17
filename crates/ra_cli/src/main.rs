@@ -5,7 +5,7 @@ mod analysis_stats;
 mod analysis_bench;
 mod progress_report;
 
-use std::{error::Error, fmt::Write, io::Read};
+use std::{error::Error, fmt::Write, io::Read, path::PathBuf};
 
 use pico_args::Arguments;
 use ra_ide::{file_structure, Analysis};
@@ -60,11 +60,11 @@ enum Command {
         memory_usage: bool,
         only: Option<String>,
         with_deps: bool,
-        path: String,
+        path: PathBuf,
     },
     Bench {
         verbose: bool,
-        path: String,
+        path: PathBuf,
         op: analysis_bench::Op,
     },
     HelpPrinted,
@@ -180,7 +180,7 @@ ARGS:
                     if trailing.len() != 1 {
                         Err("Invalid flags")?;
                     }
-                    trailing.pop().unwrap()
+                    trailing.pop().unwrap().into()
                 };
 
                 Command::Stats { verbosity, randomize, memory_usage, only, with_deps, path }
@@ -209,7 +209,7 @@ ARGS:
                 }
 
                 let verbose = matches.contains(["-v", "--verbose"]);
-                let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
+                let path: PathBuf = matches.opt_value_from_str("--path")?.unwrap_or_default();
                 let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
                 let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
                 let goto_def_path: Option<String> = matches.opt_value_from_str("--goto-def")?;
