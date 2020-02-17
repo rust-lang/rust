@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_sugg;
+use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -39,6 +39,7 @@ declare_lint_pass!(SingleComponentPathImports => [SINGLE_COMPONENT_PATH_IMPORTS]
 impl EarlyLintPass for SingleComponentPathImports {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if_chain! {
+            if !in_macro(item.span);
             if cx.sess.opts.edition == Edition::Edition2018;
             if !item.vis.node.is_pub();
             if let ItemKind::Use(use_tree) = &item.kind;
