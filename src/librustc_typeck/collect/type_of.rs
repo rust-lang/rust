@@ -10,8 +10,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
-use rustc_infer::traits;
 use rustc_hir::{ItemKind, Node, CRATE_HIR_ID};
+use rustc_infer::traits;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
