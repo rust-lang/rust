@@ -7,9 +7,7 @@ use std::{mem, ops::Index, sync::Arc};
 
 use drop_bomb::DropBomb;
 use either::Either;
-use hir_expand::{
-    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroCallKind, MacroDefId,
-};
+use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
 use ra_arena::{map::ArenaMap, Arena};
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
@@ -23,7 +21,7 @@ use crate::{
     nameres::CrateDefMap,
     path::{ModPath, Path},
     src::HasSource,
-    DefWithBodyId, HasModule, Lookup, ModuleId,
+    AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
 pub(crate) struct Expander {
@@ -51,30 +49,26 @@ impl Expander {
         db: &DB,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
-        let ast_id = AstId::new(
-            self.current_file_id,
-            db.ast_id_map(self.current_file_id).ast_id(&macro_call),
-        );
+        let macro_call = InFile::new(self.current_file_id, &macro_call);
 
-        if let Some(path) = macro_call.path().and_then(|path| self.parse_mod_path(path)) {
-            if let Some(def) = self.resolve_path_as_macro(db, &path) {
-                let call_id = def.as_call_id(db, MacroCallKind::FnLike(ast_id));
-                let file_id = call_id.as_file();
-                if let Some(node) = db.parse_or_expand(file_id) {
-                    if let Some(expr) = T::cast(node) {
-                        log::debug!("macro expansion {:#?}", expr.syntax());
+        if let Some(call_id) =
+            macro_call.as_call_id(db, |path| self.resolve_path_as_macro(db, &path))
+        {
+            let file_id = call_id.as_file();
+            if let Some(node) = db.parse_or_expand(file_id) {
+                if let Some(expr) = T::cast(node) {
+                    log::debug!("macro expansion {:#?}", expr.syntax());
 
-                        let mark = Mark {
-                            file_id: self.current_file_id,
-                            ast_id_map: mem::take(&mut self.ast_id_map),
-                            bomb: DropBomb::new("expansion mark dropped"),
-                        };
-                        self.hygiene = Hygiene::new(db, file_id);
-                        self.current_file_id = file_id;
-                        self.ast_id_map = db.ast_id_map(file_id);
+                    let mark = Mark {
+                        file_id: self.current_file_id,
+                        ast_id_map: mem::take(&mut self.ast_id_map),
+                        bomb: DropBomb::new("expansion mark dropped"),
+                    };
+                    self.hygiene = Hygiene::new(db, file_id);
+                    self.current_file_id = file_id;
+                    self.ast_id_map = db.ast_id_map(file_id);
 
-                        return Some((mark, expr));
-                    }
+                    return Some((mark, expr));
                 }
             }
         }
@@ -97,10 +91,6 @@ impl Expander {
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
         Path::from_src(path, &self.hygiene)
-    }
-
-    fn parse_mod_path(&mut self, path: ast::Path) -> Option<ModPath> {
-        ModPath::from_src(path, &self.hygiene)
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &ModPath) -> Option<MacroDefId> {

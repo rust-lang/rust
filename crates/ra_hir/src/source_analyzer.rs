@@ -15,11 +15,9 @@ use hir_def::{
     },
     expr::{ExprId, PatId},
     resolver::{self, resolver_for_scope, Resolver, TypeNs, ValueNs},
-    DefWithBodyId, TraitId,
+    AsMacroCall, DefWithBodyId, TraitId,
 };
-use hir_expand::{
-    hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
-};
+use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile, MacroCallId};
 use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
 use ra_syntax::{
     ast::{self, AstNode},
@@ -363,12 +361,10 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Expansion> {
-        let def = self.resolve_macro_call(db, macro_call)?.id;
-        let ast_id = AstId::new(
-            macro_call.file_id,
-            db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
-        );
-        Some(Expansion { macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)) })
+        let macro_call_id = macro_call.as_call_id(db, |path| {
+            self.resolver.resolve_path_as_macro(db, &path).map(|it| it.into())
+        })?;
+        Some(Expansion { macro_call_id })
     }
 }
 
