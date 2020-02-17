@@ -221,15 +221,15 @@ pub struct MutBorrow<'mir, 'tcx> {
 }
 
 impl MutBorrow<'mir, 'tcx> {
-    // `&` and `&raw` only allow mutation if the borrowed place is `!Freeze`.
-    //
-    // This assumes that it is UB to take the address of a struct field whose type is
-    // `Freeze`, then use pointer arithmetic to derive a pointer to a *different* field of
-    // that same struct whose type is `!Freeze`. If we decide that this is not UB, we will
-    // have to check the type of the borrowed **local** instead of the borrowed **place**
-    // below. See [rust-lang/unsafe-code-guidelines#134].
-    //
-    // [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
+    /// `&` and `&raw` only allow mutation if the borrowed place is `!Freeze`.
+    ///
+    /// This assumes that it is UB to take the address of a struct field whose type is
+    /// `Freeze`, then use pointer arithmetic to derive a pointer to a *different* field of
+    /// that same struct whose type is `!Freeze`. If we decide that this is not UB, we will
+    /// have to check the type of the borrowed **local** instead of the borrowed **place**
+    /// below. See [rust-lang/unsafe-code-guidelines#134].
+    ///
+    /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: &Place<'tcx>) -> bool {
         !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env, DUMMY_SP)
     }
