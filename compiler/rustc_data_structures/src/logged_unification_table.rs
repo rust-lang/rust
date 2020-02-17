@@ -38,9 +38,8 @@ where
     where
         K::Value: ut::UnifyValue<Error = ut::NoError>,
     {
-        if !self.unify_log.get(vid).is_empty()
-            || self.reference_counts.get(vid).map_or(false, |c| *c != 0)
-        {
+        if self.needs_log(vid) {
+            warn!("ModifiedSet {:?} => {:?}", vid, ty);
             self.modified_set.set(vid);
         }
         let vid = vid.into();
@@ -60,29 +59,35 @@ where
         value: K::Value,
     ) -> Result<(), <K::Value as ut::UnifyValue>::Error> {
         let vid = self.find(vid).into();
-        if !self.unify_log.get(vid).is_empty()
-            || self.reference_counts.get(vid).map_or(false, |c| *c != 0)
-        {
+        if self.needs_log(vid) {
             self.modified_set.set(vid);
         }
         self.relations.unify_var_value(vid, value)
     }
 
     pub fn unify_var_var(&mut self, a: I, b: I) -> Result<(), <K::Value as ut::UnifyValue>::Error> {
-        let a_root = self.relations.find(a);
-        let b_root = self.relations.find(b);
-        if a_root == b_root {
+        let a = self.relations.find(a);
+        let b = self.relations.find(b);
+        if a == b {
             return Ok(());
         }
 
-        self.relations.unify_var_var(a_root, b_root)?;
+        self.relations.unify_var_var(a, b)?;
 
-        if a_root == self.relations.find(a_root) {
-            self.unify_log.unify(a_root.into(), b_root.into());
-        } else {
-            self.unify_log.unify(b_root.into(), a_root.into());
+        if self.needs_log(a.into()) || self.needs_log(b.into()) {
+            warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
+            if a == self.relations.find(a) {
+                self.unify_log.unify(a.into(), b.into());
+            } else {
+                self.unify_log.unify(b.into(), a.into());
+            }
         }
         Ok(())
+    }
+
+    fn needs_log(&self, vid: I) -> bool {
+        !self.unify_log.get(vid).is_empty()
+            || self.reference_counts.get(vid).map_or(false, |c| *c != 0)
     }
 
     pub fn union_value(&mut self, vid: I, value: K::Value)
@@ -145,6 +150,7 @@ where
     }
 
     pub fn watch_variable(&mut self, index: I) {
+        debug_assert!(index == self.relations.find(index).into());
         self.reference_counts.ensure_contains_elem(index, || 0);
         self.reference_counts[index] += 1;
     }
