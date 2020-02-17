@@ -120,7 +120,7 @@ macro_rules! make_value_visitor {
             }
             /// Visits the given value as a union. No automatic recursion can happen here.
             #[inline(always)]
-            fn visit_union(&mut self, _v: Self::V) -> InterpResult<'tcx>
+            fn visit_union(&mut self, _v: Self::V, _fields: usize) -> InterpResult<'tcx>
             {
                 Ok(())
             }
@@ -150,8 +150,9 @@ macro_rules! make_value_visitor {
             ) -> InterpResult<'tcx> {
                 self.visit_value(new_val)
             }
-
             /// Called when recursing into an enum variant.
+            /// This gives the visitor the chance to track the stack of nested fields that
+            /// we are descending through.
             #[inline(always)]
             fn visit_variant(
                 &mut self,
@@ -161,33 +162,6 @@ macro_rules! make_value_visitor {
             ) -> InterpResult<'tcx> {
                 self.visit_value(new_val)
             }
-
-            /// Called whenever we reach a value with uninhabited layout.
-            /// Recursing to fields will *always* continue after this!  This is not meant to control
-            /// whether and how we descend recursively/ into the scalar's fields if there are any,
-            /// it is meant to provide the chance for additional checks when a value of uninhabited
-            /// layout is detected.
-            #[inline(always)]
-            fn visit_uninhabited(&mut self) -> InterpResult<'tcx>
-            { Ok(()) }
-            /// Called whenever we reach a value with scalar layout.
-            /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory if the
-            /// visitor is not even interested in scalars.
-            /// Recursing to fields will *always* continue after this!  This is not meant to control
-            /// whether and how we descend recursively/ into the scalar's fields if there are any,
-            /// it is meant to provide the chance for additional checks when a value of scalar
-            /// layout is detected.
-            #[inline(always)]
-            fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> InterpResult<'tcx>
-            { Ok(()) }
-
-            /// Called whenever we reach a value of primitive type. There can be no recursion
-            /// below such a value. This is the leaf function.
-            /// We do *not* provide an `ImmTy` here because some implementations might want
-            /// to write to the place this primitive lives in.
-            #[inline(always)]
-            fn visit_primitive(&mut self, _v: Self::V) -> InterpResult<'tcx>
-            { Ok(()) }
 
             // Default recursors. Not meant to be overloaded.
             fn walk_aggregate(
@@ -204,23 +178,10 @@ macro_rules! make_value_visitor {
             fn walk_value(&mut self, v: Self::V) -> InterpResult<'tcx>
             {
                 trace!("walk_value: type: {}", v.layout().ty);
-                // If this is a multi-variant layout, we have to find the right one and proceed with
-                // that.
-                match v.layout().variants {
-                    layout::Variants::Multiple { .. } => {
-                        let op = v.to_op(self.ecx())?;
-                        let idx = self.ecx().read_discriminant(op)?.1;
-                        let inner = v.project_downcast(self.ecx(), idx)?;
-                        trace!("walk_value: variant layout: {:#?}", inner.layout());
-                        // recurse with the inner type
-                        return self.visit_variant(v, idx, inner);
-                    }
-                    layout::Variants::Single { .. } => {}
-                }
 
-                // Even for single variants, we might be able to get a more refined type:
-                // If it is a trait object, switch to the actual type that was used to create it.
+                // Special treatment for special types, where the (static) layout is not sufficient.
                 match v.layout().ty.kind {
+                    // If it is a trait object, switch to the real type that was used to create it.
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing
                         let dest = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
@@ -229,56 +190,16 @@ macro_rules! make_value_visitor {
                         // recurse with the inner type
                         return self.visit_field(v, 0, Value::from_mem_place(inner));
                     },
-                    ty::Generator(..) => {
-                        // FIXME: Generator layout is lying: it claims a whole bunch of fields exist
-                        // when really many of them can be uninitialized.
-                        // Just treat them as a union for now, until hopefully the layout
-                        // computation is fixed.
-                        return self.visit_union(v);
-                    }
+                    // Slices do not need special handling here: they have `Array` field
+                    // placement with length 0, so we enter the `Array` case below which
+                    // indirectly uses the metadata to determine the actual length.
                     _ => {},
                 };
 
-                // If this is a scalar, visit it as such.
-                // Things can be aggregates and have scalar layout at the same time, and that
-                // is very relevant for `NonNull` and similar structs: We need to visit them
-                // at their scalar layout *before* descending into their fields.
-                // FIXME: We could avoid some redundant checks here. For newtypes wrapping
-                // scalars, we do the same check on every "level" (e.g., first we check
-                // MyNewtype and then the scalar in there).
-                match v.layout().abi {
-                    layout::Abi::Uninhabited => {
-                        self.visit_uninhabited()?;
-                    }
-                    layout::Abi::Scalar(ref layout) => {
-                        self.visit_scalar(v, layout)?;
-                    }
-                    // FIXME: Should we do something for ScalarPair? Vector?
-                    _ => {}
-                }
-
-                // Check primitive types.  We do this after checking the scalar layout,
-                // just to have that done as well.  Primitives can have varying layout,
-                // so we check them separately and before aggregate handling.
-                // It is CRITICAL that we get this check right, or we might be
-                // validating the wrong thing!
-                let primitive = match v.layout().fields {
-                    // Primitives appear as Union with 0 fields - except for Boxes and fat pointers.
-                    layout::FieldPlacement::Union(0) => true,
-                    _ => v.layout().ty.builtin_deref(true).is_some(),
-                };
-                if primitive {
-                    return self.visit_primitive(v);
-                }
-
-                // Proceed into the fields.
+                // Visit the fields of this value.
                 match v.layout().fields {
                     layout::FieldPlacement::Union(fields) => {
-                        // Empty unions are not accepted by rustc. That's great, it means we can
-                        // use that as an unambiguous signal for detecting primitives.  Make sure
-                        // we did not miss any primitive.
-                        assert!(fields > 0);
-                        self.visit_union(v)
+                        self.visit_union(v, fields)?;
                     },
                     layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
@@ -288,18 +209,35 @@ macro_rules! make_value_visitor {
                                 v.project_field(self.ecx(), i as u64)
                             })
                             .collect();
-                        self.visit_aggregate(v, fields.into_iter())
+                        self.visit_aggregate(v, fields.into_iter())?;
                     },
                     layout::FieldPlacement::Array { .. } => {
                         // Let's get an mplace first.
                         let mplace = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
                         // Now we can go over all the fields.
+                        // This uses the *run-time length*, i.e., if we are a slice,
+                        // the dynamic info from the metadata is used.
                         let iter = self.ecx().mplace_array_fields(mplace)?
                             .map(|f| f.and_then(|f| {
                                 Ok(Value::from_mem_place(f))
                             }));
-                        self.visit_aggregate(v, iter)
+                        self.visit_aggregate(v, iter)?;
                     }
+                }
+
+                match v.layout().variants {
+                    // If this is a multi-variant layout, find the right variant and proceed
+                    // with *its* fields.
+                    layout::Variants::Multiple { .. } => {
+                        let op = v.to_op(self.ecx())?;
+                        let idx = self.ecx().read_discriminant(op)?.1;
+                        let inner = v.project_downcast(self.ecx(), idx)?;
+                        trace!("walk_value: variant layout: {:#?}", inner.layout());
+                        // recurse with the inner type
+                        self.visit_variant(v, idx, inner)
+                    }
+                    // For single-variant layouts, we already did anything there is to do.
+                    layout::Variants::Single { .. } => Ok(())
                 }
             }
         }
