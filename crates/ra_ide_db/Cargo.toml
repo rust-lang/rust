@@ -38,9 +38,3 @@ hir = { path = "../ra_hir", package = "ra_hir" }
 
 [dev-dependencies]
 insta = "0.13.0"
-
-[dev-dependencies.proptest]
-version = "0.9.0"
-# Disable `fork` feature to allow compiling on webassembly
-default-features = false
-features = ["std", "bit-set", "break-dead-code"]

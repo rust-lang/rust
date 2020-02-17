@@ -1,11 +1,10 @@
 //! FIXME: write short doc here
 
 mod text_edit;
-pub mod test_utils;
-
-pub use crate::text_edit::{TextEdit, TextEditBuilder};
 
 use text_unit::{TextRange, TextUnit};
+
+pub use crate::text_edit::{TextEdit, TextEditBuilder};
 
 /// Must not overlap with other `AtomTextEdit`s
 #[derive(Debug, Clone)]

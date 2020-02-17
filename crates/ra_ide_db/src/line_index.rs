@@ -125,30 +125,8 @@ impl LineIndex {
 }
 
 #[cfg(test)]
-/// Simple reference implementation to use in proptests
-pub fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
-    let mut res = LineCol { line: 0, col_utf16: 0 };
-    for (i, c) in text.char_indices() {
-        if i + c.len_utf8() > offset.to_usize() {
-            // if it's an invalid offset, inside a multibyte char
-            // return as if it was at the start of the char
-            break;
-        }
-        if c == '\n' {
-            res.line += 1;
-            res.col_utf16 = 0;
-        } else {
-            res.col_utf16 += 1;
-        }
-    }
-    res
-}
-
-#[cfg(test)]
 mod test_line_index {
     use super::*;
-    use proptest::{prelude::*, proptest};
-    use ra_text_edit::test_utils::{arb_offset, arb_text};
 
     #[test]
     fn test_line_index() {
@@ -172,44 +150,6 @@ mod test_line_index {
         assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 5 });
         assert_eq!(index.line_col(7.into()), LineCol { line: 2, col_utf16: 0 });
     }
-
-    fn arb_text_with_offset() -> BoxedStrategy<(TextUnit, String)> {
-        arb_text().prop_flat_map(|text| (arb_offset(&text), Just(text))).boxed()
-    }
-
-    fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
-        let mut res = LineCol { line: 0, col_utf16: 0 };
-        for (i, c) in text.char_indices() {
-            if i + c.len_utf8() > offset.to_usize() {
-                // if it's an invalid offset, inside a multibyte char
-                // return as if it was at the start of the char
-                break;
-            }
-            if c == '\n' {
-                res.line += 1;
-                res.col_utf16 = 0;
-            } else {
-                res.col_utf16 += 1;
-            }
-        }
-        res
-    }
-
-    proptest! {
-        #[test]
-        fn test_line_index_proptest((offset, text) in arb_text_with_offset()) {
-            let expected = to_line_col(&text, offset);
-            let line_index = LineIndex::new(&text);
-            let actual = line_index.line_col(offset);
-
-            assert_eq!(actual, expected);
-        }
-    }
-}
-
-#[cfg(test)]
-mod test_utf8_utf16_conv {
-    use super::*;
 
     #[test]
     fn test_char_len() {
