@@ -111,7 +111,6 @@ macro_rules! define_dep_nodes {
     $(
         [$($attrs:tt)*]
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
-                       $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
     ) => (
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
@@ -133,13 +132,6 @@ macro_rules! define_dep_nodes {
                             // tuple args
                             $({
                                 return <$tuple_arg_ty as DepNodeParams>
-                                    ::CAN_RECONSTRUCT_QUERY_KEY;
-                            })*
-
-                            // struct args
-                            $({
-
-                                return <( $($struct_arg_ty,)* ) as DepNodeParams>
                                     ::CAN_RECONSTRUCT_QUERY_KEY;
                             })*
 
@@ -176,12 +168,6 @@ macro_rules! define_dep_nodes {
                                 return true;
                             })*
 
-                            // struct args
-                            $({
-                                $(erase!($struct_arg_name);)*
-                                return true;
-                            })*
-
                             false
                         }
                     )*
@@ -192,7 +178,6 @@ macro_rules! define_dep_nodes {
         pub enum DepConstructor<$tcx> {
             $(
                 $variant $(( $tuple_arg_ty ))*
-                         $({ $($struct_arg_name : $struct_arg_ty),* })*
             ),*
         }
 
@@ -212,7 +197,6 @@ macro_rules! define_dep_nodes {
                 match dep {
                     $(
                         DepConstructor :: $variant $(( replace!(($tuple_arg_ty) with arg) ))*
-                                                   $({ $($struct_arg_name),* })*
                             =>
                         {
                             // tuple args
@@ -232,31 +216,6 @@ macro_rules! define_dep_nodes {
                                     {
                                         tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
                                             arg.to_debug_str(tcx)
-                                        });
-                                    }
-                                }
-
-                                return dep_node;
-                            })*
-
-                            // struct args
-                            $({
-                                let tupled_args = ( $($struct_arg_name,)* );
-                                let hash = DepNodeParams::to_fingerprint(&tupled_args,
-                                                                         tcx);
-                                let dep_node = DepNode {
-                                    kind: DepKind::$variant,
-                                    hash
-                                };
-
-                                #[cfg(debug_assertions)]
-                                {
-                                    if !dep_node.kind.can_reconstruct_query_key() &&
-                                    (tcx.sess.opts.debugging_opts.incremental_info ||
-                                        tcx.sess.opts.debugging_opts.query_dep_graph)
-                                    {
-                                        tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                            tupled_args.to_debug_str(tcx)
                                         });
                                     }
                                 }
