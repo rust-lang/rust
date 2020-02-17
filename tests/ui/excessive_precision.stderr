@@ -2,7 +2,7 @@ error: float has excessive precision
   --> $DIR/excessive_precision.rs:15:26
    |
 LL |     const BAD32_1: f32 = 0.123_456_789_f32;
-   |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79`
+   |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79_f32`
    |
    = note: `-D clippy::excessive-precision` implied by `-D warnings`
 
@@ -28,7 +28,7 @@ error: float has excessive precision
   --> $DIR/excessive_precision.rs:20:26
    |
 LL |     const BAD64_1: f64 = 0.123_456_789_012_345_67f64;
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_789_012_345_66`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_789_012_345_66_f64`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:21:26
@@ -58,13 +58,13 @@ error: float has excessive precision
   --> $DIR/excessive_precision.rs:37:26
    |
 LL |     let bad32_suf: f32 = 1.123_456_789_f32;
-   |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8`
+   |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8_f32`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:38:21
    |
 LL |     let bad32_inf = 1.123_456_789_f32;
-   |                     ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8`
+   |                     ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8_f32`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:40:22
@@ -76,7 +76,7 @@ error: float has excessive precision
   --> $DIR/excessive_precision.rs:41:26
    |
 LL |     let bad64_suf: f64 = 0.123_456_789_012_345_67f64;
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_789_012_345_66`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_789_012_345_66_f64`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:42:21
@@ -108,5 +108,71 @@ error: float has excessive precision
 LL |     let bad_bige32: f32 = 1.123_456_788_888E-10;
    |                           ^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8E-10`
 
-error: aborting due to 18 previous errors
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:65:18
+   |
+LL |     let _: f32 = 16_777_217.0;
+   |                  ^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_216.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:66:18
+   |
+LL |     let _: f32 = 16_777_219.0;
+   |                  ^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_220.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:67:18
+   |
+LL |     let _: f32 = 16_777_219.;
+   |                  ^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_220.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:68:18
+   |
+LL |     let _: f32 = 16_777_219.000;
+   |                  ^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_220.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:69:13
+   |
+LL |     let _ = 16_777_219f32;
+   |             ^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_220.0_f32`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:70:19
+   |
+LL |     let _: f32 = -16_777_219.0;
+   |                   ^^^^^^^^^^^^ help: consider changing the type or replacing it with: `16_777_220.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:71:18
+   |
+LL |     let _: f64 = 9_007_199_254_740_993.0;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `9_007_199_254_740_992.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:72:18
+   |
+LL |     let _: f64 = 9_007_199_254_740_993.;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `9_007_199_254_740_992.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:73:18
+   |
+LL |     let _: f64 = 9_007_199_254_740_993.000;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `9_007_199_254_740_992.0`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:74:13
+   |
+LL |     let _ = 9_007_199_254_740_993f64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `9_007_199_254_740_992.0_f64`
+
+error: literal cannot be represented as the underlying type without loss of precision
+  --> $DIR/excessive_precision.rs:75:19
+   |
+LL |     let _: f64 = -9_007_199_254_740_993.0;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or replacing it with: `9_007_199_254_740_992.0`
+
+error: aborting due to 29 previous errors
 
