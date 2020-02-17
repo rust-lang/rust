@@ -16,7 +16,7 @@ export * from './ssr';
 
 export function collectGarbage(ctx: Ctx): Cmd {
     return async () => {
-        ctx.client?.sendRequest<null>('rust-analyzer/collectGarbage', null);
+        await ctx.client?.sendRequest<null>('rust-analyzer/collectGarbage', null);
     };
 }
 

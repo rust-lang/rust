@@ -11,7 +11,7 @@ import { Config } from './config';
 let ctx: Ctx | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
-    const config = new Config(context)
+    const config = new Config(context);
 
     const serverPath = await ensureServerBinary(config.serverSource);
     if (serverPath == null) {
@@ -33,7 +33,7 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage('Reloading rust-analyzer...');
             // @DanTup maneuver
             // https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
-            await deactivate()
+            await deactivate();
             for (const sub of ctx.subscriptions) {
                 try {
                     sub.dispose();
@@ -41,9 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
                     console.error(e);
                 }
             }
-            await activate(context)
-        }
-    })
+            await activate(context);
+        };
+    });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
@@ -54,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('onEnter', commands.onEnter);
-    ctx.registerCommand('ssr', commands.ssr)
+    ctx.registerCommand('ssr', commands.ssr);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);

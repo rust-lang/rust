@@ -29,13 +29,13 @@ export function activateInlayHints(ctx: Ctx) {
 
     ctx.pushCleanup({
         dispose() {
-            hintsUpdater.clear()
+            hintsUpdater.clear();
         }
-    })
+    });
 
     // XXX: we don't await this, thus Promise rejections won't be handled, but
     // this should never throw in fact...
-    hintsUpdater.setEnabled(ctx.config.displayInlayHints)
+    void hintsUpdater.setEnabled(ctx.config.displayInlayHints);
 }
 
 interface InlayHintsParams {
@@ -57,7 +57,7 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
 const parameterHintDecorationType = vscode.window.createTextEditorDecorationType({
     before: {
         color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-    }
+    },
 });
 
 class HintsUpdater {
