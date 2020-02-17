@@ -147,10 +147,6 @@ different from data on disk. This is more or less the single really
 platform-dependent component, so it lives in a separate repository and has an
 extensive cross-platform CI testing.
 
-### `crates/ra_cli`
-
-A CLI interface to rust-analyzer, mainly for testing.
-
 ## Testing Infrastructure
 
 Rust Analyzer has three interesting [systems

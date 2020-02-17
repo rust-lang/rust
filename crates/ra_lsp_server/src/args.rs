@@ -74,7 +74,7 @@ impl Args {
 ra-cli-parse
 
 USAGE:
-    ra_cli parse [FLAGS]
+    ra_lsp_server parse [FLAGS]
 
 FLAGS:
     -h, --help       Prints help inforamtion
@@ -94,7 +94,7 @@ FLAGS:
 ra-cli-symbols
 
 USAGE:
-    ra_cli highlight [FLAGS]
+    ra_lsp_server highlight [FLAGS]
 
 FLAGS:
     -h, --help    Prints help inforamtion"
@@ -113,7 +113,7 @@ FLAGS:
 ra-cli-highlight
 
 USAGE:
-    ra_cli highlight [FLAGS]
+    ra_lsp_server highlight [FLAGS]
 
 FLAGS:
     -h, --help       Prints help information
@@ -133,7 +133,7 @@ FLAGS:
 ra-cli-analysis-stats
 
 USAGE:
-    ra_cli analysis-stats [FLAGS] [OPTIONS] [PATH]
+    ra_lsp_server analysis-stats [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
     -h, --help            Prints help information
@@ -168,10 +168,10 @@ ARGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra_cli-analysis-bench
+ra_lsp_server-analysis-bench
 
 USAGE:
-    ra_cli analysis-bench [FLAGS] [OPTIONS] [PATH]
+    ra_lsp_server analysis-bench [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
     -h, --help        Prints help information
@@ -207,7 +207,7 @@ ARGS:
 ra-cli
 
 USAGE:
-    ra_cli <SUBCOMMAND>
+    ra_lsp_server <SUBCOMMAND>
 
 FLAGS:
     -h, --help        Prints help information
