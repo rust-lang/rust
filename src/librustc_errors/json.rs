@@ -48,7 +48,7 @@ impl JsonEmitter {
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
-            dst: Box::new(io::stderr()),
+            dst: Box::new(io::BufWriter::new(io::stderr())),
             registry,
             sm: source_map,
             pretty,
