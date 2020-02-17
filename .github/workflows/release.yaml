@@ -112,7 +112,8 @@ jobs:
           node-version: 12.x
 
       - run: echo "::set-env name=TAG::$(date --iso)"
-      - run: 'echo "TAG: $TAG"'
+      - run: echo "::set-env name=EXT_VERSION::0.1.$(date +%Y%m%d)"
+      - run: 'echo "TAG: $TAG EXT_VERSION: $EXT_VERSION"'
 
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -180,8 +181,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-0.1.0.vsix
-          asset_name: rust-analyzer-0.1.0.vsix
+          asset_path: ./dist/rust-analyzer-$EXT_VERSION.vsix
+          asset_name: rust-analyzer-$EXT_VERSION.vsix
           asset_content_type: application/octet-stream
 
       - run: npm ci
@@ -190,4 +191,4 @@ jobs:
       - name: Publish Extension
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
+        run: npx vsce publish $EXT_VERSION --pat ${{ secrets.MARKETPLACE_TOKEN }}
