@@ -40,16 +40,10 @@ impl Verbosity {
 fn main() -> Result<()> {
     env_logger::try_init()?;
 
-    let subcommand = match std::env::args_os().nth(1) {
-        None => {
-            eprintln!("{}", help::GLOBAL_HELP);
-            return Ok(());
-        }
-        Some(s) => s,
-    };
-    let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
+    let mut matches = Arguments::from_env();
+    let subcommand = matches.subcommand()?.unwrap_or_default();
 
-    match &*subcommand.to_string_lossy() {
+    match subcommand.as_str() {
         "parse" => {
             if matches.contains(["-h", "--help"]) {
                 eprintln!("{}", help::PARSE_HELP);
