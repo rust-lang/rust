@@ -2,17 +2,16 @@
 
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
-use itertools::Itertools;
-use rand::{seq::SliceRandom, thread_rng};
-
 use hir::{
     db::{DefDatabase, HirDatabase},
     AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
+use itertools::Itertools;
 use ra_db::SourceDatabaseExt;
 use ra_syntax::AstNode;
+use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{progress_report::ProgressReport, Result, Verbosity};
 
