@@ -139,7 +139,8 @@ pub fn load(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ra_hir::Crate;
+
+    use hir::Crate;
 
     #[test]
     fn test_loading_rust_analyzer() {

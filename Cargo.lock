@@ -918,21 +918,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_batch"
-version = "0.1.0"
-dependencies = [
- "crossbeam-channel",
- "log",
- "ra_db",
- "ra_hir",
- "ra_ide",
- "ra_project_model",
- "ra_vfs",
- "ra_vfs_glob",
- "rustc-hash",
-]
-
-[[package]]
 name = "ra_cargo_watch"
 version = "0.1.0"
 dependencies = [
@@ -960,18 +945,23 @@ dependencies = [
 name = "ra_cli"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "env_logger",
  "itertools",
+ "log",
  "pico-args",
- "ra_batch",
  "ra_db",
  "ra_hir",
  "ra_hir_def",
  "ra_hir_ty",
  "ra_ide",
  "ra_prof",
+ "ra_project_model",
  "ra_syntax",
+ "ra_vfs",
+ "ra_vfs_glob",
  "rand",
+ "rustc-hash",
 ]
 
 [[package]]

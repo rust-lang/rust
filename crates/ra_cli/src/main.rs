@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 
+mod load_cargo;
 mod analysis_stats;
 mod analysis_bench;
-mod help;
 mod progress_report;
 
 use std::{error::Error, fmt::Write, io::Read};
@@ -40,21 +40,26 @@ impl Verbosity {
 fn main() -> Result<()> {
     env_logger::try_init()?;
 
-    let subcommand = match std::env::args_os().nth(1) {
-        None => {
-            eprintln!("{}", help::GLOBAL_HELP);
-            return Ok(());
-        }
-        Some(s) => s,
-    };
-    let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
+    let mut matches = Arguments::from_env();
+    let subcommand = matches.subcommand()?.unwrap_or_default();
 
-    match &*subcommand.to_string_lossy() {
+    match subcommand.as_str() {
         "parse" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::PARSE_HELP);
+                eprintln!(
+                    "\
+ra-cli-parse
+
+USAGE:
+    ra_cli parse [FLAGS]
+
+FLAGS:
+    -h, --help       Prints help inforamtion
+        --no-dump"
+                );
                 return Ok(());
             }
+
             let no_dump = matches.contains("--no-dump");
             matches.finish().or_else(handle_extra_flags)?;
 
@@ -67,10 +72,21 @@ fn main() -> Result<()> {
         }
         "symbols" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::SYMBOLS_HELP);
+                eprintln!(
+                    "\
+ra-cli-symbols
+
+USAGE:
+    ra_cli highlight [FLAGS]
+
+FLAGS:
+    -h, --help    Prints help inforamtion"
+                );
                 return Ok(());
             }
+
             matches.finish().or_else(handle_extra_flags)?;
+
             let file = file()?;
             for s in file_structure(&file) {
                 println!("{:?}", s);
@@ -78,20 +94,51 @@ fn main() -> Result<()> {
         }
         "highlight" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::HIGHLIGHT_HELP);
+                eprintln!(
+                    "\
+ra-cli-highlight
+
+USAGE:
+    ra_cli highlight [FLAGS]
+
+FLAGS:
+    -h, --help       Prints help information
+    -r, --rainbow"
+                );
                 return Ok(());
             }
+
             let rainbow_opt = matches.contains(["-r", "--rainbow"]);
             matches.finish().or_else(handle_extra_flags)?;
+
             let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
             let html = analysis.highlight_as_html(file_id, rainbow_opt).unwrap();
             println!("{}", html);
         }
         "analysis-stats" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::ANALYSIS_STATS_HELP);
+                eprintln!(
+                    "\
+ra-cli-analysis-stats
+
+USAGE:
+    ra_cli analysis-stats [FLAGS] [OPTIONS] [PATH]
+
+FLAGS:
+    -h, --help            Prints help information
+        --memory-usage
+    -v, --verbose
+    -q, --quiet
+
+OPTIONS:
+    -o <ONLY>
+
+ARGS:
+    <PATH>"
+                );
                 return Ok(());
             }
+
             let verbosity = match (
                 matches.contains(["-vv", "--spammy"]),
                 matches.contains(["-v", "--verbose"]),
@@ -111,11 +158,11 @@ fn main() -> Result<()> {
             let path = {
                 let mut trailing = matches.free()?;
                 if trailing.len() != 1 {
-                    eprintln!("{}", help::ANALYSIS_STATS_HELP);
                     Err("Invalid flags")?;
                 }
                 trailing.pop().unwrap()
             };
+
             analysis_stats::run(
                 verbosity,
                 memory_usage,
@@ -127,9 +174,27 @@ fn main() -> Result<()> {
         }
         "analysis-bench" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::ANALYSIS_BENCH_HELP);
+                eprintln!(
+                    "\
+ra_cli-analysis-bench
+
+USAGE:
+    ra_cli analysis-bench [FLAGS] [OPTIONS] [PATH]
+
+FLAGS:
+    -h, --help        Prints help information
+    -v, --verbose
+
+OPTIONS:
+    --complete <PATH:LINE:COLUMN>    Compute completions at this location
+    --highlight <PATH>               Hightlight this file
+
+ARGS:
+    <PATH>    Project to analyse"
+                );
                 return Ok(());
             }
+
             let verbose = matches.contains(["-v", "--verbose"]);
             let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
             let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
@@ -144,9 +209,26 @@ fn main() -> Result<()> {
                 ),
             };
             matches.finish().or_else(handle_extra_flags)?;
+
             analysis_bench::run(verbose, path.as_ref(), op)?;
         }
-        _ => eprintln!("{}", help::GLOBAL_HELP),
+        _ => eprintln!(
+            "\
+ra-cli
+
+USAGE:
+    ra_cli <SUBCOMMAND>
+
+FLAGS:
+    -h, --help        Prints help information
+
+SUBCOMMANDS:
+    analysis-bench
+    analysis-stats
+    highlight
+    parse
+    symbols"
+        ),
     }
     Ok(())
 }
