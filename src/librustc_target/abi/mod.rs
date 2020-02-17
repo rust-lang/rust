@@ -871,8 +871,26 @@ impl Niche {
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
-    pub variants: Variants,
+    /// Says where the fields are located.
+    /// Primitives and fieldless enums appear as unions without fields.
     pub fields: FieldPlacement,
+
+    /// Encodes information about multi-variant layouts.
+    /// Even with `Multiple` variants, a layout can still have fields! Those are then
+    /// shared between all variants. One of them will be the discriminant,
+    /// but e.g. generators can have more.
+    ///
+    /// A layout-guided recursive descent must first look at all the fields,
+    /// and only then check if this is a multi-variant layout and if so, proceed
+    /// with the active variant.
+    pub variants: Variants,
+
+    /// The `abi` defines how this data is passed between functions, and it defines
+    /// value restrictions via `valid_range`.
+    ///
+    /// Note that this is entirely orthogonal to the recursive structrue defined by
+    /// `variants` and `fields`; for example, `ManuallyDrop<Result<isize, isize>>` has
+    /// `Abi::ScalarPair`! So, having a non-`Aggregate` `abi` should not stop a recursive descent.
     pub abi: Abi,
 
     /// The leaf scalar with the largest number of invalid values
