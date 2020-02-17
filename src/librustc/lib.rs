@@ -38,6 +38,7 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(option_expect_none)]
+#![feature(or_patterns)]
 #![feature(range_is_empty)]
 #![feature(specialization)]
 #![feature(trusted_len)]

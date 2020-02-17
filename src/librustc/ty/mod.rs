@@ -2875,8 +2875,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 _ => false,
             }
         } else {
-            match self.def_kind(def_id).expect("no def for `DefId`") {
-                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
+            match self.def_kind(def_id) {
+                Some(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy) => true,
                 _ => false,
             }
         };
