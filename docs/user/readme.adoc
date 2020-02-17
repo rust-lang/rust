@@ -19,6 +19,13 @@ https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc
 In theory, one should be able to just install the server binary and have it automatically work with any editor.
 We are not there yet, so some editor specific setup is required.
 
+Additionally, rust-analyzer needs sources of the standard library.
+This commands adds them:
+
+```bash
+$ rustup component add rust-src
+```
+
 === VS Code
 
 This the best supported editor at the moment.
