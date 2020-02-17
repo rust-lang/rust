@@ -54,30 +54,4 @@ fn check_ln1p() {
     let _ = (1.0 + x - 2.0).ln();
 }
 
-fn check_log_division() {
-    let x = 3f32;
-    let y = 2f32;
-    let b = 4f32;
-
-    let _ = x.log2() / y.log2();
-    let _ = x.log10() / y.log10();
-    let _ = x.ln() / y.ln();
-    let _ = x.log(4.0) / y.log(4.0);
-    let _ = x.log(b) / y.log(b);
-    let _ = x.log(b) / y.log(x);
-    let _ = x.log(b) / 2f32.log(b);
-
-    let x = 3f64;
-    let y = 2f64;
-    let b = 4f64;
-
-    let _ = x.log2() / y.log2();
-    let _ = x.log10() / y.log10();
-    let _ = x.ln() / y.ln();
-    let _ = x.log(4.0) / y.log(4.0);
-    let _ = x.log(b) / y.log(b);
-    let _ = x.log(b) / y.log(x);
-    let _ = x.log(b) / 2f64.log(b);
-}
-
 fn main() {}
