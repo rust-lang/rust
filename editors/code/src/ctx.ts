@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import { strict as assert } from "assert";
 
 import { Config } from './config';
 import { createClient } from './client';
@@ -15,23 +14,21 @@ export class Ctx {
     // FIXME: this actually needs syncronization of some kind (check how
     // vscode deals with `deactivate()` call when extension has some work scheduled
     // on the event loop to get a better picture of what we can do here)
-    client: lc.LanguageClient | null = null;
+    client: lc.LanguageClient;
     private extCtx: vscode.ExtensionContext;
 
-    constructor(extCtx: vscode.ExtensionContext) {
-        this.config = new Config(extCtx);
-        this.extCtx = extCtx;
+    static async create(config: Config, extCtx: vscode.ExtensionContext, serverPath: string): Promise<Ctx> {
+        const client = await createClient(config, serverPath);
+        const res = new Ctx(config, extCtx, client);
+        res.pushCleanup(client.start());
+        await client.onReady();
+        return res;
     }
 
-    async startServer(serverPath: string) {
-        assert(this.client == null);
-
-        const client = await createClient(this.config, serverPath);
-
-        this.pushCleanup(client.start());
-        await client.onReady();
-
-        this.client = client;
+    private constructor(config: Config, extCtx: vscode.ExtensionContext, client: lc.LanguageClient) {
+        this.config = config;
+        this.extCtx = extCtx;
+        this.client = client
     }
 
     get activeRustEditor(): vscode.TextEditor | undefined {
