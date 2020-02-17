@@ -22,7 +22,7 @@
         "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package -o rust-analyzer.vsix",
         "watch": "tsc --watch",
-        "fmt": "tsfmt -r && tslint -p tsconfig.json -c tslint.json 'src/**/*.ts' --fix"
+        "fmt": "tsfmt -r && eslint -c .eslintrc.js --ext ts ./src/ --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
@@ -37,9 +37,11 @@
         "@types/node-fetch": "^2.5.4",
         "@types/throttle-debounce": "^2.1.0",
         "@types/vscode": "^1.42.0",
+        "@typescript-eslint/eslint-plugin": "^2.20.0",
+        "@typescript-eslint/parser": "^2.20.0",
+        "eslint": "^6.8.0",
         "rollup": "^1.31.1",
         "tslib": "^1.10.0",
-        "tslint": "^5.20.1",
         "typescript": "^3.7.5",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.73.0"
