@@ -91,15 +91,11 @@ export async function sendRequestWithRetry<R>(
     for (const delay of [2, 4, 6, 8, 10, null]) {
         try {
             return await (token ? client.sendRequest(method, param, token) : client.sendRequest(method, param));
-        } catch (e) {
-            if (
-                e.code === lc.ErrorCodes.ContentModified &&
-                delay !== null
-            ) {
-                await sleep(10 * (1 << delay));
-                continue;
+        } catch (err) {
+            if (delay === null || err.code !== lc.ErrorCodes.ContentModified) {
+                throw err;
             }
-            throw e;
+            await sleep(10 * (1 << delay));
         }
     }
     throw 'unreachable';
