@@ -93,7 +93,7 @@ jobs:
         working-directory: ./editors/code
 
       - name: Copy vscode extension
-        run: mkdir -p ./dist/code && cp ./editors/code/*.vsix ./dist/
+        run: mkdir -p ./dist/code && cp ./editors/code/rust-analyzer.vsix ./dist/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
@@ -112,8 +112,7 @@ jobs:
           node-version: 12.x
 
       - run: echo "::set-env name=TAG::$(date --iso)"
-      - run: echo "::set-env name=EXT_VERSION::0.1.$(date +%Y%m%d)"
-      - run: 'echo "TAG: $TAG EXT_VERSION: $EXT_VERSION"'
+      - run: 'echo "TAG: $TAG"'
 
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -181,8 +180,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-${{ env.EXT_VERSION }}.vsix
-          asset_name: rust-analyzer-${{ env.EXT_VERSION }}.vsix
+          asset_path: ./dist/rust-analyzer.vsix
+          asset_name: rust-analyzer.vsix
           asset_content_type: application/octet-stream
 
       - run: npm ci
@@ -191,4 +190,4 @@ jobs:
       - name: Publish Extension
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish $EXT_VERSION --pat ${{ secrets.MARKETPLACE_TOKEN }}
+        run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}

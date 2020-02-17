@@ -4,7 +4,7 @@ use std::{env, path::PathBuf, str};
 
 use anyhow::{bail, format_err, Context, Result};
 
-use crate::not_bash::{ls, pushd, rm, run};
+use crate::not_bash::{pushd, run};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 41;
@@ -99,28 +99,20 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
         run!("npm --version").context("`npm` is required to build the VS Code plugin")?;
         run!("npm install")?;
 
-        let vsix_pkg = {
-            rm("*.vsix")?;
-            run!("npm run package --scripts-prepend-node-path")?;
-            ls("*.vsix")?.pop().unwrap()
-        };
+        run!("npm run package --scripts-prepend-node-path")?;
 
         let code = find_code(|bin| run!("{} --version", bin).is_ok())?;
-        run!("{} --install-extension {} --force", code, vsix_pkg.display())?;
+        run!("{} --install-extension rust-analyzer.vsix --force", code)?;
         installed_extensions = run!("{} --list-extensions", code; echo = false)?;
     } else {
         run!("cmd.exe /c npm --version")
             .context("`npm` is required to build the VS Code plugin")?;
         run!("cmd.exe /c npm install")?;
 
-        let vsix_pkg = {
-            rm("*.vsix")?;
-            run!("cmd.exe /c npm run package")?;
-            ls("*.vsix")?.pop().unwrap()
-        };
+        run!("cmd.exe /c npm run package")?;
 
         let code = find_code(|bin| run!("cmd.exe /c {}.cmd --version", bin).is_ok())?;
-        run!(r"cmd.exe /c {}.cmd --install-extension {} --force", code, vsix_pkg.display())?;
+        run!(r"cmd.exe /c {}.cmd --install-extension rust-analyzer.vsix --force", code)?;
         installed_extensions = run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?;
     }
 

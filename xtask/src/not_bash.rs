@@ -2,8 +2,6 @@
 use std::{
     cell::RefCell,
     env,
-    ffi::OsStr,
-    fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -68,37 +66,15 @@ impl Drop for Pushd {
     }
 }
 
-pub fn rm(glob: &str) -> Result<()> {
-    let cwd = Env::with(|env| env.cwd());
-    ls(glob)?.into_iter().try_for_each(|it| fs::remove_file(cwd.join(it)))?;
-    Ok(())
-}
-
 pub fn rm_rf(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
+    if !path.exists() {
+        return Ok(());
+    }
     if path.is_file() {
         fs2::remove_file(path)
     } else {
         fs2::remove_dir_all(path)
-    }
-}
-
-pub fn ls(glob: &str) -> Result<Vec<PathBuf>> {
-    let cwd = Env::with(|env| env.cwd());
-    let mut res = Vec::new();
-    for entry in fs::read_dir(&cwd)? {
-        let entry = entry?;
-        if matches(&entry.file_name(), glob) {
-            let path = entry.path();
-            let path = path.strip_prefix(&cwd).unwrap();
-            res.push(path.to_path_buf())
-        }
-    }
-    return Ok(res);
-
-    fn matches(file_name: &OsStr, glob: &str) -> bool {
-        assert!(glob.starts_with('*'));
-        file_name.to_string_lossy().ends_with(&glob[1..])
     }
 }
 

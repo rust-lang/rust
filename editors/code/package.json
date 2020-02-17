@@ -20,7 +20,7 @@
     },
     "scripts": {
         "vscode:prepublish": "tsc && rollup -c",
-        "package": "vsce package",
+        "package": "vsce package -o rust-analyzer.vsix",
         "watch": "tsc --watch",
         "fmt": "tsfmt -r && tslint -p tsconfig.json -c tslint.json 'src/**/*.ts' --fix"
     },
