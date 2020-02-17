@@ -33,7 +33,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "cranelift-bforest"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-entity 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
 ]
@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cranelift-bforest 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
@@ -58,7 +58,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen-shared 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "cranelift-entity 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
@@ -67,17 +67,17 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-shared"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 
 [[package]]
 name = "cranelift-entity"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 
 [[package]]
 name = "cranelift-frontend"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -88,7 +88,7 @@ dependencies = [
 [[package]]
 name = "cranelift-module"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "cranelift-entity 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
@@ -99,7 +99,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "raw-cpuid 7.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -109,7 +109,7 @@ dependencies = [
 [[package]]
 name = "cranelift-object"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "cranelift-module 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
@@ -120,7 +120,7 @@ dependencies = [
 [[package]]
 name = "cranelift-simplejit"
 version = "0.58.0"
-source = "git+https://github.com/bytecodealliance/cranelift/#f1aa07265b3b25c1859f7184e92fd600316b4b25"
+source = "git+https://github.com/bytecodealliance/cranelift/#cd3d84e580cc69876a93ea87ef12d45ee2942b2d"
 dependencies = [
  "cranelift-codegen 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
  "cranelift-module 0.58.0 (git+https://github.com/bytecodealliance/cranelift/)",
