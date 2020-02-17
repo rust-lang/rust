@@ -20,7 +20,9 @@ In theory, one should be able to just install the server binary and have it auto
 We are not there yet, so some editor specific setup is required.
 
 Additionally, rust-analyzer needs sources of the standard library.
-This commands adds them:
+If the source code is not present, rust-analyzer will attempt to install it automatically.
+
+To add the sources manually, run the following command:
 
 ```bash
 $ rustup component add rust-src
