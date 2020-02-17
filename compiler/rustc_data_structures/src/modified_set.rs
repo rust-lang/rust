@@ -2,12 +2,17 @@ use std::{collections::VecDeque, marker::PhantomData};
 
 use rustc_index::{bit_set::BitSet, vec::Idx};
 
+#[derive(Copy, Clone, Debug)]
+enum Undo<T> {
+    Add(T),
+    Drain { index: usize, offset: usize },
+}
+
 #[derive(Clone, Debug)]
 pub struct ModifiedSet<T: Idx> {
-    modified: VecDeque<T>,
+    modified: VecDeque<Undo<T>>,
     snapshots: usize,
     modified_set: BitSet<T>,
-    undo_offsets: Vec<usize>,
     offsets: Vec<usize>,
 }
 
@@ -18,7 +23,6 @@ impl<T: Idx> Default for ModifiedSet<T> {
             snapshots: 0,
             modified_set: BitSet::new_empty(0),
             offsets: Vec::new(),
-            undo_offsets: Vec::new(),
         }
     }
 }
@@ -33,62 +37,59 @@ impl<T: Idx> ModifiedSet<T> {
             self.modified_set.resize(index.index() + 1);
         }
         if self.modified_set.insert(index) {
-            self.modified.push_back(index);
+            self.modified.push_back(Undo::Add(index));
         }
     }
 
-    pub fn drain(&mut self, offset: &Offset<T>, mut f: impl FnMut(T) -> bool) {
-        let offset = &mut self.offsets[offset.index];
-        for &index in self.modified.iter().skip(*offset) {
-            if f(index) {}
+    pub fn drain(&mut self, index: &Offset<T>, mut f: impl FnMut(T) -> bool) {
+        let offset = &mut self.offsets[index.index];
+        if *offset < self.modified.len() {
+            for &undo in self.modified.iter().skip(*offset) {
+                if let Undo::Add(index) = undo {
+                    f(index);
+                }
+            }
+            self.modified.push_back(Undo::Drain { index: index.index, offset: *offset });
+            *offset = self.modified.len();
         }
-        *offset = self.modified.len();
     }
 
     pub fn snapshot(&mut self) -> Snapshot<T> {
         self.snapshots += 1;
-        let offsets_start = self.undo_offsets.len();
-        self.undo_offsets.extend_from_slice(&self.offsets);
-        Snapshot {
-            modified_len: self.modified.len(),
-            offsets_start,
-            offsets_len: self.offsets.len(),
-            _marker: PhantomData,
-        }
+        Snapshot { modified_len: self.modified.len(), _marker: PhantomData }
     }
 
     pub fn rollback_to(&mut self, snapshot: Snapshot<T>) {
         self.snapshots -= 1;
-        for &index in self.modified.iter().skip(snapshot.modified_len) {
-            self.modified_set.remove(index);
+        if snapshot.modified_len < self.modified.len() {
+            for &undo in
+                self.modified.iter().rev().take(self.modified.len() - snapshot.modified_len)
+            {
+                match undo {
+                    Undo::Add(index) => {
+                        self.modified_set.remove(index);
+                    }
+                    Undo::Drain { index, offset } => {
+                        if let Some(o) = self.offsets.get_mut(index) {
+                            *o = offset;
+                        }
+                    }
+                }
+            }
+            self.modified.truncate(snapshot.modified_len);
         }
-        self.modified.truncate(snapshot.modified_len);
-        let (offsets, offsets_rest) = self.offsets.split_at_mut(snapshot.offsets_len);
-        offsets.copy_from_slice(
-            &self.undo_offsets
-                [snapshot.offsets_start..snapshot.offsets_start + snapshot.offsets_len],
-        );
-        for offset in offsets_rest {
-            *offset = self.modified.len().min(*offset);
-        }
-        self.undo_offsets.truncate(snapshot.offsets_start);
 
         if self.snapshots == 0 {
             let min = self.offsets.iter().copied().min().unwrap_or(0);
-            // Any indices still in `modified` may not have been instantiated, so if we observe them again
-            // we need to notify any listeners again
-            for index in self.modified.drain(..min) {
-                self.modified_set.remove(index);
-            }
+            self.modified.drain(..min);
             for offset in &mut self.offsets {
                 *offset -= min;
             }
         }
     }
 
-    pub fn commit(&mut self, snapshot: Snapshot<T>) {
+    pub fn commit(&mut self, _snapshot: Snapshot<T>) {
         self.snapshots -= 1;
-        self.undo_offsets.truncate(snapshot.offsets_start);
         if self.snapshots == 0 {
             // Everything up until this point is committed, so we can forget anything before the
             // current offsets
@@ -102,6 +103,7 @@ impl<T: Idx> ModifiedSet<T> {
 
     pub fn register(&mut self) -> Offset<T> {
         let index = self.offsets.len();
+        self.modified.push_back(Undo::Drain { index, offset: 0 });
         self.offsets.push(0);
         Offset { index, _marker: PhantomData }
     }
@@ -131,7 +133,5 @@ impl<T> Drop for Offset<T> {
 #[derive(Debug)]
 pub struct Snapshot<T> {
     modified_len: usize,
-    offsets_start: usize,
-    offsets_len: usize,
     _marker: PhantomData<T>,
 }

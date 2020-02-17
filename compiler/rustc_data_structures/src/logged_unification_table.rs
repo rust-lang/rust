@@ -74,11 +74,14 @@ where
 
         self.relations.unify_var_var(a, b)?;
 
-        if self.needs_log(a.into()) || self.needs_log(b.into()) {
-            warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
-            if a == self.relations.find(a) {
+        if a == self.relations.find(a) {
+            if self.needs_log(b.into()) {
+                warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
                 self.unify_log.unify(a.into(), b.into());
-            } else {
+            }
+        } else {
+            if self.needs_log(a.into()) {
+                warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
                 self.unify_log.unify(b.into(), a.into());
             }
         }
