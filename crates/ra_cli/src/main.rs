@@ -17,7 +17,7 @@ type Result<T, E = Box<dyn Error + Send + Sync>> = std::result::Result<T, E>;
 fn main() -> Result<()> {
     env_logger::try_init()?;
 
-    let command = match Command::from_args()? {
+    let command = match Command::from_env_args()? {
         Ok(it) => it,
         Err(HelpPrinted) => return Ok(()),
     };
@@ -108,7 +108,7 @@ enum Command {
 struct HelpPrinted;
 
 impl Command {
-    fn from_args() -> Result<Result<Command, HelpPrinted>> {
+    fn from_env_args() -> Result<Result<Command, HelpPrinted>> {
         let mut matches = Arguments::from_env();
         let subcommand = matches.subcommand()?.unwrap_or_default();
 
