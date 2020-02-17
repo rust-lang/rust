@@ -2606,6 +2606,8 @@ impl ItemKind {
     }
 }
 
+// FIXME(Centril): These definitions should be unmerged;
+// see https://github.com/rust-lang/rust/pull/69194#discussion_r379899975
 pub type ForeignItem = Item<AssocItemKind>;
 pub type ForeignItemKind = AssocItemKind;
 
