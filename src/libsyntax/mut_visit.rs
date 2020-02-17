@@ -744,10 +744,10 @@ pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     noop_visit_fn_ret_ty(output, vis);
 }
 
-pub fn noop_visit_fn_ret_ty<T: MutVisitor>(fn_ret_ty: &mut FunctionRetTy, vis: &mut T) {
+pub fn noop_visit_fn_ret_ty<T: MutVisitor>(fn_ret_ty: &mut FnRetTy, vis: &mut T) {
     match fn_ret_ty {
-        FunctionRetTy::Default(span) => vis.visit_span(span),
-        FunctionRetTy::Ty(ty) => vis.visit_ty(ty),
+        FnRetTy::Default(span) => vis.visit_span(span),
+        FnRetTy::Ty(ty) => vis.visit_ty(ty),
     }
 }
 

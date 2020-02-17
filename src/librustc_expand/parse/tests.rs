@@ -65,7 +65,7 @@ fn string_to_tts_macro() {
 
         match tts {
             [TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. }), TokenTree::Token(Token { kind: token::Not, .. }), TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. }), TokenTree::Delimited(_, macro_delim, macro_tts)]
-                if name_macro_rules == &sym::macro_rules && name_zip.as_str() == "zip" =>
+                if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" =>
             {
                 let tts = &macro_tts.trees().collect::<Vec<_>>();
                 match &tts[..] {

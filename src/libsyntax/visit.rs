@@ -215,7 +215,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
-    fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FunctionRetTy) {
+    fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) {
         walk_fn_ret_ty(self, ret_ty)
     }
     fn visit_fn_header(&mut self, _header: &'ast FnHeader) {
@@ -594,8 +594,8 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a 
     }
 }
 
-pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FunctionRetTy) {
-    if let FunctionRetTy::Ty(ref output_ty) = *ret_ty {
+pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FnRetTy) {
+    if let FnRetTy::Ty(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }

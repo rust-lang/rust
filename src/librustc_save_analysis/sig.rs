@@ -241,7 +241,7 @@ impl Sig for ast::Ty {
                     refs.extend(nested.refs.into_iter());
                 }
                 text.push(')');
-                if let ast::FunctionRetTy::Ty(ref t) = f.decl.output {
+                if let ast::FnRetTy::Ty(ref t) = f.decl.output {
                     text.push_str(" -> ");
                     let nested = t.make(offset + text.len(), None, scx)?;
                     text.push_str(&nested.text);
@@ -392,7 +392,7 @@ impl Sig for ast::Item {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -743,7 +743,7 @@ impl Sig for ast::ForeignItem {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -911,7 +911,7 @@ fn make_method_signature(
     }
     sig.text.push(')');
 
-    if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {
+    if let ast::FnRetTy::Ty(ref t) = m.decl.output {
         sig.text.push_str(" -> ");
         let nested = t.make(sig.text.len(), None, scx)?;
         sig.text.push_str(&nested.text);
