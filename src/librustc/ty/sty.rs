@@ -1066,11 +1066,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx
             .associated_items(trait_ref.def_id)
-            .iter()
-            .find(|item| {
-                item.kind == ty::AssocKind::Type
-                    && tcx.hygienic_eq(item_name, item.ident, trait_ref.def_id)
-            })
+            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
             .unwrap()
             .def_id;
 

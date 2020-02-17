@@ -1975,16 +1975,12 @@ fn check_impl_items_against_trait<'tcx>(
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx
             .associated_items(impl_trait_ref.def_id)
-            .iter()
-            .find(|ac| {
-                Namespace::from(&impl_item.kind) == Namespace::from(ac.kind)
-                    && tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id)
-            })
+            .find_by_name_and_namespace(tcx, ty_impl_item.ident, namespace, impl_trait_ref.def_id)
             .or_else(|| {
                 // Not compatible, but needed for the error message
                 tcx.associated_items(impl_trait_ref.def_id)
-                    .iter()
-                    .find(|ac| tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
+                    .filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id)
+                    .next()
             });
 
         // Check that impl definition matches trait definition
@@ -2088,7 +2084,7 @@ fn check_impl_items_against_trait<'tcx>(
     let mut missing_items = Vec::new();
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
-    for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
+    for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
         let is_implemented = trait_def
             .ancestors(tcx, impl_id)
             .leaf_def(tcx, trait_item.ident, trait_item.kind)
@@ -5265,7 +5261,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
                 let future_trait = self.tcx.lang_items().future_trait().unwrap();
-                let item_def_id = self.tcx.associated_items(future_trait)[0].def_id;
+                let item_def_id = self
+                    .tcx
+                    .associated_items(future_trait)
+                    .in_definition_order()
+                    .nth(0)
+                    .unwrap()
+                    .def_id;
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         // `<T as Future>::Output`

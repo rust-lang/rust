@@ -167,17 +167,19 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         params: &[GenericArg<'tcx>],
     ) -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
-        for item in self.tcx.associated_items(trait_def_id) {
-            // The unhygienic comparison here is acceptable because this is only
-            // used on known traits.
-            if item.kind == ty::AssocKind::Method && item.ident.name == method_name {
-                let method_ty = self.tcx.type_of(item.def_id);
-                let method_ty = method_ty.subst(self.tcx, substs);
-                return ty::Const::zero_sized(self.tcx, method_ty);
-            }
-        }
 
-        bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
+        // The unhygienic comparison here is acceptable because this is only
+        // used on known traits.
+        let item = self
+            .tcx
+            .associated_items(trait_def_id)
+            .filter_by_name_unhygienic(method_name)
+            .find(|item| item.kind == ty::AssocKind::Method)
+            .expect("trait method not found");
+
+        let method_ty = self.tcx.type_of(item.def_id);
+        let method_ty = method_ty.subst(self.tcx, substs);
+        ty::Const::zero_sized(self.tcx, method_ty)
     }
 
     crate fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: VariantIdx) -> Vec<Field> {

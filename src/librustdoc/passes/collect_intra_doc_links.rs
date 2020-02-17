@@ -95,7 +95,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .tcx
                     .inherent_impls(did)
                     .iter()
-                    .flat_map(|imp| cx.tcx.associated_items(*imp))
+                    .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
                     .any(|item| item.ident.name == variant_name)
                 {
                     return Err(ErrorKind::ResolutionFailure);
@@ -206,8 +206,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 return cx
                     .tcx
                     .associated_items(did)
-                    .iter()
-                    .find(|item| item.ident.name == item_name)
+                    .filter_by_name_unhygienic(item_name)
+                    .next()
                     .and_then(|item| match item.kind {
                         ty::AssocKind::Method => Some("method"),
                         _ => None,
@@ -234,7 +234,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         .tcx
                         .inherent_impls(did)
                         .iter()
-                        .flat_map(|imp| cx.tcx.associated_items(*imp))
+                        .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
                         .find(|item| item.ident.name == item_name);
                     if let Some(item) = item {
                         let out = match item.kind {

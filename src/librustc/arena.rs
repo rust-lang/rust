@@ -48,6 +48,7 @@ macro_rules! arena_types {
             [] item_local_set: rustc_hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
+            [] associated_items: rustc::ty::AssociatedItems,
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,

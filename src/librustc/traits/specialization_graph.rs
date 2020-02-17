@@ -81,8 +81,8 @@ impl<'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'tcx>) -> &'tcx [ty::AssocItem] {
-        tcx.associated_items(self.def_id())
+    pub fn items(&self, tcx: TyCtxt<'tcx>) -> impl 'tcx + Iterator<Item = &'tcx ty::AssocItem> {
+        tcx.associated_items(self.def_id()).in_definition_order()
     }
 
     /// Finds an associated item defined in this node.
@@ -99,7 +99,7 @@ impl<'tcx> Node {
         use crate::ty::AssocKind::*;
 
         tcx.associated_items(self.def_id())
-            .iter()
+            .filter_by_name_unhygienic(trait_item_name.name)
             .find(move |impl_item| {
                 match (trait_item_kind, impl_item.kind) {
                 | (Const, Const)
