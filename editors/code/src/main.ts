@@ -16,7 +16,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (serverPath == null) {
         throw new Error(
             "Rust Analyzer Language Server is not available. " +
-            "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
+            "Please, ensure its [proper installation](https://rust-analyzer.github.io/manual.html#installation)."
         );
     }
 
