@@ -14,14 +14,22 @@ LL |     let mut (_, _) = (0, 0);
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
+error: `mut` must be attached to each individual binding
+  --> $DIR/mut-patterns.rs:12:9
+   |
+LL |     let mut (x @ y) = 0;
+   |         ^^^^^^^^^^^ help: add `mut` to each binding: `(mut x @ mut y)`
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
+
 error: `mut` on a binding may not be repeated
-  --> $DIR/mut-patterns.rs:12:13
+  --> $DIR/mut-patterns.rs:14:13
    |
 LL |     let mut mut x = 0;
    |             ^^^ help: remove the additional `mut`s
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:17:9
+  --> $DIR/mut-patterns.rs:19:9
    |
 LL |     let mut Foo { x: x } = Foo { x: 3 };
    |         ^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `Foo { x: mut x }`
@@ -29,7 +37,7 @@ LL |     let mut Foo { x: x } = Foo { x: 3 };
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:21:9
+  --> $DIR/mut-patterns.rs:23:9
    |
 LL |     let mut Foo { x } = Foo { x: 3 };
    |         ^^^^^^^^^^^^^ help: add `mut` to each binding: `Foo { mut x }`
@@ -37,13 +45,13 @@ LL |     let mut Foo { x } = Foo { x: 3 };
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: `mut` on a binding may not be repeated
-  --> $DIR/mut-patterns.rs:26:13
+  --> $DIR/mut-patterns.rs:28:13
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |             ^^^ help: remove the additional `mut`s
 
 error: expected identifier, found reserved keyword `yield`
-  --> $DIR/mut-patterns.rs:26:17
+  --> $DIR/mut-patterns.rs:28:17
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                 ^^^^^ expected identifier, found reserved keyword
@@ -54,7 +62,7 @@ LL |     let mut mut r#yield(become, await) = r#yield(0, 0);
    |                 ^^^^^^^
 
 error: expected identifier, found reserved keyword `become`
-  --> $DIR/mut-patterns.rs:26:23
+  --> $DIR/mut-patterns.rs:28:23
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                       ^^^^^^ expected identifier, found reserved keyword
@@ -65,7 +73,7 @@ LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
    |                       ^^^^^^^^
 
 error: expected identifier, found keyword `await`
-  --> $DIR/mut-patterns.rs:26:31
+  --> $DIR/mut-patterns.rs:28:31
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                               ^^^^^ expected identifier, found keyword
@@ -76,7 +84,7 @@ LL |     let mut mut yield(become, r#await) = r#yield(0, 0);
    |                               ^^^^^^^
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:26:9
+  --> $DIR/mut-patterns.rs:28:9
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `r#yield(mut r#become, mut r#await)`
@@ -84,7 +92,7 @@ LL |     let mut mut yield(become, await) = r#yield(0, 0);
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:35:9
+  --> $DIR/mut-patterns.rs:37:9
    |
 LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))`
@@ -92,7 +100,7 @@ LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: expected identifier, found `x`
-  --> $DIR/mut-patterns.rs:42:21
+  --> $DIR/mut-patterns.rs:44:21
    |
 LL |             let mut $p = 0;
    |                     ^^ expected identifier
@@ -102,5 +110,5 @@ LL |     foo!(x);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
