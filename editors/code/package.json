@@ -33,11 +33,11 @@
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.2",
         "@rollup/plugin-node-resolve": "^7.1.1",
-        "@types/node": "^12.12.25",
+        "@types/node": "^12.12.27",
         "@types/node-fetch": "^2.5.4",
         "@types/throttle-debounce": "^2.1.0",
         "@types/vscode": "^1.42.0",
-        "rollup": "^1.31.0",
+        "rollup": "^1.31.1",
         "tslib": "^1.10.0",
         "tslint": "^5.20.1",
         "typescript": "^3.7.5",
