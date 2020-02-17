@@ -44,6 +44,8 @@ pub struct ServerConfig {
     /// Fine grained feature flags to disable specific features.
     pub feature_flags: FxHashMap<String, bool>,
 
+    pub rustfmt_args: Vec<String>,
+
     /// Cargo feature configurations.
     pub cargo_features: CargoFeatures,
 }
@@ -63,6 +65,7 @@ impl Default for ServerConfig {
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
             cargo_features: Default::default(),
+            rustfmt_args: Vec::new(),
         }
     }
 }

@@ -188,6 +188,14 @@
                     "default": [],
                     "description": "Paths to exclude from analysis"
                 },
+                "rust-analyzer.rustfmtArgs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Additional arguments to rustfmt"
+                },
                 "rust-analyzer.useClientWatching": {
                     "type": "boolean",
                     "default": true,
@@ -233,7 +241,10 @@
                     "description": "Trace requests to the ra_lsp_server"
                 },
                 "rust-analyzer.lruCapacity": {
-                    "type": [ "null", "integer" ],
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
                     "default": null,
                     "minimum": 0,
                     "exclusiveMinimum": true,
@@ -245,7 +256,10 @@
                     "description": "Display additional type and parameter information in the editor"
                 },
                 "rust-analyzer.maxInlayHintLength": {
-                    "type": [ "null", "integer" ],
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
                     "default": 20,
                     "minimum": 0,
                     "exclusiveMinimum": true,

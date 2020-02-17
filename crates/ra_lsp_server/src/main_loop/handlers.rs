@@ -590,6 +590,7 @@ pub fn handle_formatting(
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     let mut rustfmt = process::Command::new("rustfmt");
+    rustfmt.args(&world.options.rustfmt_args);
     if let Some(&crate_id) = crate_ids.first() {
         // Assume all crates are in the same edition
         let edition = world.analysis().crate_edition(crate_id)?;
