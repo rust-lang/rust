@@ -1,4 +1,4 @@
-use crate::utils::{is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use crate::utils::{get_trait_def_id, implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
 use rustc::ty::TyKind;
@@ -223,19 +223,24 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 "docs for function returning `Result` missing `# Errors` section",
             );
         } else {
-            use TyKind::*;
             let def_id = cx.tcx.hir().local_def_id(hir_id);
             let mir = cx.tcx.optimized_mir(def_id);
-            if let Opaque(_, subs) = mir.return_ty().kind {
-                if let Some(ty) = subs.types().next() {
-                    if let Generator(_, subs, _) = ty.kind {
-                        if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT) {
-                            span_lint(
-                                cx,
-                                MISSING_ERRORS_DOC,
-                                span,
-                                "docs for function returning `Result` missing `# Errors` section",
-                            );
+            if let Some(future) = get_trait_def_id(cx, &paths::FUTURE) {
+                if implements_trait(cx, mir.return_ty(), future, &[]) {
+                    use TyKind::*;
+
+                    if let Opaque(_, subs) = mir.return_ty().kind {
+                        if let Some(ty) = subs.types().next() {
+                            if let Generator(_, subs, _) = ty.kind {
+                                if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT) {
+                                    span_lint(
+                                        cx,
+                                        MISSING_ERRORS_DOC,
+                                        span,
+                                        "docs for function returning `Result` missing `# Errors` section",
+                                    );
+                                }
+                            }
                         }
                     }
                 }
