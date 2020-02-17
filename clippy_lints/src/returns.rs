@@ -242,7 +242,7 @@ impl EarlyLintPass for Return {
             FnKind::Fn(.., None) => {},
         }
         if_chain! {
-            if let ast::FunctionRetTy::Ty(ref ty) = kind.decl().output;
+            if let ast::FnRetTy::Ty(ref ty) = kind.decl().output;
             if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {

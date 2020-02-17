@@ -141,7 +141,7 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
     let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
     let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
 
-    let output_ty = if let FunctionRetTy::Return(ty) = &impl_decl.output {
+    let output_ty = if let FnRetTy::Return(ty) = &impl_decl.output {
         Some(&**ty)
     } else {
         None

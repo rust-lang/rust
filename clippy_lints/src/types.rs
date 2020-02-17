@@ -242,7 +242,7 @@ impl Types {
             self.check_ty(cx, input, false);
         }
 
-        if let FunctionRetTy::Return(ref ty) = decl.output {
+        if let FnRetTy::Return(ref ty) = decl.output {
             self.check_ty(cx, ty, false);
         }
     }
@@ -1476,7 +1476,7 @@ impl<'a, 'tcx> TypeComplexity {
         for arg in decl.inputs {
             self.check_type(cx, arg);
         }
-        if let FunctionRetTy::Return(ref ty) = decl.output {
+        if let FnRetTy::Return(ref ty) = decl.output {
             self.check_type(cx, ty);
         }
     }
