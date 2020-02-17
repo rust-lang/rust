@@ -3406,14 +3406,14 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy<'_>) -> bool {
+    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FnRetTy<'_>) -> bool {
         let is_unit = |ty: &hir::Ty<'_>| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(&[]));
         match (self, ty) {
-            (Self::Unit, &hir::FunctionRetTy::DefaultReturn(_)) => true,
-            (Self::Unit, &hir::FunctionRetTy::Return(ref ty)) if is_unit(ty) => true,
-            (Self::Bool, &hir::FunctionRetTy::Return(ref ty)) if is_bool(ty) => true,
-            (Self::Any, &hir::FunctionRetTy::Return(ref ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::FunctionRetTy::Return(ref ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
+            (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
+            (Self::Unit, &hir::FnRetTy::Return(ref ty)) if is_unit(ty) => true,
+            (Self::Bool, &hir::FnRetTy::Return(ref ty)) if is_bool(ty) => true,
+            (Self::Any, &hir::FnRetTy::Return(ref ty)) if !is_unit(ty) => true,
+            (Self::Ref, &hir::FnRetTy::Return(ref ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
     }

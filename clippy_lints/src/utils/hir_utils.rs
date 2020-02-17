@@ -633,10 +633,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(&arg);
                 }
                 match bfn.decl.output {
-                    FunctionRetTy::DefaultReturn(_) => {
+                    FnRetTy::DefaultReturn(_) => {
                         ().hash(&mut self.s);
                     },
-                    FunctionRetTy::Return(ref ty) => {
+                    FnRetTy::Return(ref ty) => {
                         self.hash_ty(ty);
                     },
                 }

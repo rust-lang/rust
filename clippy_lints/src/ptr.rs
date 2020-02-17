@@ -253,7 +253,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
         }
     }
 
-    if let FunctionRetTy::Return(ref ty) = decl.output {
+    if let FnRetTy::Return(ref ty) = decl.output {
         if let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
             for (_, ref mutbl, ref argspan) in decl

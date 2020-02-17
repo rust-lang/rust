@@ -468,8 +468,8 @@ fn check_must_use_candidate<'a, 'tcx>(
 
 fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
     match decl.output {
-        hir::FunctionRetTy::DefaultReturn(_) => true,
-        hir::FunctionRetTy::Return(ref ty) => match ty.kind {
+        hir::FnRetTy::DefaultReturn(_) => true,
+        hir::FnRetTy::Return(ref ty) => match ty.kind {
             hir::TyKind::Tup(ref tys) => tys.is_empty(),
             hir::TyKind::Never => true,
             _ => false,
