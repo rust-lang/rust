@@ -483,11 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .iter()
-            .find(|item| {
-                Namespace::from(item.kind) == ns
-                    && self.tcx.hygienic_eq(item_name, item.ident, def_id)
-            })
+            .find_by_name_and_namespace(self.tcx, item_name, ns, def_id)
             .copied()
     }
 }

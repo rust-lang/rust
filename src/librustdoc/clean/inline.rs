@@ -190,8 +190,10 @@ pub fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind)
 }
 
 pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
+    let trait_items =
+        cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
+
     let auto_trait = cx.tcx.trait_def(did).has_auto_impl;
-    let trait_items = cx.tcx.associated_items(did).iter().map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
@@ -376,7 +378,7 @@ pub fn build_impl(
     } else {
         (
             tcx.associated_items(did)
-                .iter()
+                .in_definition_order()
                 .filter_map(|item| {
                     if associated_trait.is_some() || item.vis == ty::Visibility::Public {
                         Some(item.clean(cx))

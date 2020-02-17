@@ -1696,7 +1696,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .iter()
+                    .in_definition_order()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
@@ -1709,7 +1709,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).to_vec()
+            self.tcx.associated_items(def_id).in_definition_order().copied().collect()
         }
     }
 }

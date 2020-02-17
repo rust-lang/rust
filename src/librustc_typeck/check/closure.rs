@@ -248,7 +248,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if is_gen {
             // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
             // associated item and not yield.
-            let return_assoc_item = self.tcx.associated_items(gen_trait)[1].def_id;
+            let return_assoc_item =
+                self.tcx.associated_items(gen_trait).in_definition_order().nth(1).unwrap().def_id;
             if return_assoc_item != projection.projection_def_id() {
                 debug!("deduce_sig_from_projection: not return assoc item of generator");
                 return None;
@@ -673,7 +674,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item = self.tcx.associated_items(future_trait)[0].def_id;
+        let output_assoc_item =
+            self.tcx.associated_items(future_trait).in_definition_order().nth(0).unwrap().def_id;
         if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,
