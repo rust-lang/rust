@@ -10,7 +10,7 @@ use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
-    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
+    LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -60,7 +60,7 @@ pub trait AstDatabase: SourceDatabase {
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
 
     #[salsa::interned]
-    fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
+    fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
     fn parse_macro(&self, macro_file: MacroFile)
@@ -108,6 +108,9 @@ pub(crate) fn macro_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+    let id = match id {
+        MacroCallId::LazyMacro(id) => id,
+    };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
     let (tt, tmap) = mbe::syntax_node_to_token_tree(&arg)?;
@@ -118,7 +121,11 @@ pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
-    let loc = db.lookup_intern_macro(id);
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+    };
+
+    let loc = db.lookup_intern_macro(lazy_id);
     let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
@@ -167,8 +174,11 @@ pub(crate) fn parse_macro(
 
 /// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
 /// FIXME: Not completed
-fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> FragmentKind {
-    let syn = db.lookup_intern_macro(macro_call_id).kind.node(db).value;
+fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+    };
+    let syn = db.lookup_intern_macro(lazy_id).kind.node(db).value;
 
     let parent = match syn.parent() {
         Some(it) => it,

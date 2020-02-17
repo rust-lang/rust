@@ -23,7 +23,10 @@ impl Hygiene {
         let def_crate = match file_id.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let lazy_id = match macro_file.macro_call_id {
+                    crate::MacroCallId::LazyMacro(id) => id,
+                };
+                let loc = db.lookup_intern_macro(lazy_id);
                 match loc.def.kind {
                     MacroDefKind::Declarative => loc.def.krate,
                     MacroDefKind::BuiltIn(_) => None,

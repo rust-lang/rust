@@ -248,7 +248,7 @@ mod tests {
             kind: MacroCallKind::Attr(AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]))),
         };
 
-        let id = db.intern_macro(loc);
+        let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         // FIXME text() for syntax nodes parsed from token tree looks weird

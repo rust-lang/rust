@@ -70,7 +70,10 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let lazy_id = match macro_file.macro_call_id {
+                    MacroCallId::LazyMacro(id) => id,
+                };
+                let loc = db.lookup_intern_macro(lazy_id);
                 loc.kind.file_id().original_file(db)
             }
         }
@@ -81,7 +84,10 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let lazy_id = match macro_file.macro_call_id {
+                    MacroCallId::LazyMacro(id) => id,
+                };
+                let loc = db.lookup_intern_macro(lazy_id);
                 Some(loc.kind.node(db))
             }
         }
@@ -92,7 +98,10 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let lazy_id = match macro_file.macro_call_id {
+                    MacroCallId::LazyMacro(id) => id,
+                };
+                let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
 
                 let arg_tt = loc.kind.arg(db)?;
                 let def_tt = loc.def.ast_id?.to_node(db).token_tree()?;
@@ -118,7 +127,10 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let lazy_id = match macro_file.macro_call_id {
+                    MacroCallId::LazyMacro(id) => id,
+                };
+                let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
                 let item = match loc.def.kind {
                     MacroDefKind::BuiltInDerive(_) => loc.kind.node(db),
                     _ => return None,
@@ -137,13 +149,24 @@ pub struct MacroFile {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallId(salsa::InternId);
-impl salsa::InternKey for MacroCallId {
+pub enum MacroCallId {
+    LazyMacro(LazyMacroId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LazyMacroId(salsa::InternId);
+impl salsa::InternKey for LazyMacroId {
     fn from_intern_id(v: salsa::InternId) -> Self {
-        MacroCallId(v)
+        LazyMacroId(v)
     }
     fn as_intern_id(&self) -> salsa::InternId {
         self.0
+    }
+}
+
+impl From<LazyMacroId> for MacroCallId {
+    fn from(it: LazyMacroId) -> Self {
+        MacroCallId::LazyMacro(it)
     }
 }
 
@@ -162,7 +185,7 @@ pub struct MacroDefId {
 
 impl MacroDefId {
     pub fn as_call_id(self, db: &dyn db::AstDatabase, kind: MacroCallKind) -> MacroCallId {
-        db.intern_macro(MacroCallLoc { def: self, kind })
+        db.intern_macro(MacroCallLoc { def: self, kind }).into()
     }
 }
 

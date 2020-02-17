@@ -80,6 +80,10 @@ fn stringify_expand(
     id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
+    let id = match id {
+        MacroCallId::LazyMacro(id) => id,
+    };
+
     let loc = db.lookup_intern_macro(id);
 
     let macro_content = {
@@ -241,7 +245,7 @@ mod tests {
             )),
         };
 
-        let id = db.intern_macro(loc);
+        let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         parsed.text().to_string()
