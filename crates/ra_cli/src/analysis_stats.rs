@@ -13,7 +13,7 @@ use ra_db::SourceDatabaseExt;
 use ra_syntax::AstNode;
 use rand::{seq::SliceRandom, thread_rng};
 
-use crate::{progress_report::ProgressReport, Result, Verbosity};
+use crate::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
 
 pub fn run(
     verbosity: Verbosity,
@@ -24,7 +24,7 @@ pub fn run(
     randomize: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
-    let (mut host, roots) = ra_batch::load_cargo(path)?;
+    let (mut host, roots) = load_cargo(path)?;
     let db = host.raw_database();
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();

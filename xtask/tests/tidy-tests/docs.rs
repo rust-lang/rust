@@ -73,7 +73,6 @@ fn no_docs_comments() {
     }
 
     let whitelist = [
-        "ra_batch",
         "ra_cli",
         "ra_db",
         "ra_hir",

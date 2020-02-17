@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+mod load_cargo;
 mod analysis_stats;
 mod analysis_bench;
 mod progress_report;
@@ -157,12 +158,10 @@ ARGS:
             let path = {
                 let mut trailing = matches.free()?;
                 if trailing.len() != 1 {
-                    eprintln!("{}", help::ANALYSIS_STATS_HELP);
                     Err("Invalid flags")?;
                 }
                 trailing.pop().unwrap()
             };
-            matches.finish().or_else(handle_extra_flags)?;
 
             analysis_stats::run(
                 verbosity,

@@ -6,18 +6,23 @@ authors = ["rust-analyzer developers"]
 publish = false
 
 [dependencies]
-itertools = "0.8.0"
-pico-args = "0.3.0"
+crossbeam-channel = "0.4.0"
 env_logger = { version = "0.7.1", default-features = false }
+itertools = "0.8.0"
+log = "0.4.5"
+pico-args = "0.3.0"
 rand = { version = "0.7.0", features = ["small_rng"] }
+rustc-hash = "1.0"
 
-ra_syntax = { path = "../ra_syntax" }
-ra_ide = { path = "../ra_ide" }
-ra_batch = { path = "../ra_batch" }
 hir = { path = "../ra_hir", package = "ra_hir" }
-hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 ra_db = { path = "../ra_db" }
+ra_ide = { path = "../ra_ide" }
+ra_project_model = { path = "../ra_project_model" }
+ra_syntax = { path = "../ra_syntax" }
+ra_vfs = "0.5.0"
+ra_vfs_glob = { path = "../ra_vfs_glob" }
 
 [dependencies.ra_prof]
 path = "../ra_prof"

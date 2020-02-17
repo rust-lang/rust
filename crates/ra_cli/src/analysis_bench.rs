@@ -13,7 +13,7 @@ use ra_db::{
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
-use crate::Result;
+use crate::{load_cargo::load_cargo, Result};
 
 pub(crate) struct Position {
     path: PathBuf,
@@ -46,7 +46,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
 
     let start = Instant::now();
     eprint!("loading: ");
-    let (mut host, roots) = ra_batch::load_cargo(path)?;
+    let (mut host, roots) = load_cargo(path)?;
     let db = host.raw_database();
     eprintln!("{:?}\n", start.elapsed());
 
