@@ -13,6 +13,7 @@ log = "0.4.5"
 pico-args = "0.3.0"
 rand = { version = "0.7.0", features = ["small_rng"] }
 rustc-hash = "1.0"
+anyhow = "1.0"
 
 hir = { path = "../ra_hir", package = "ra_hir" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }

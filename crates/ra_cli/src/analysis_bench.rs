@@ -1,47 +1,17 @@
 //! FIXME: write short doc here
 
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-    time::Instant,
-};
+use std::{path::Path, sync::Arc, time::Instant};
 
+use anyhow::format_err;
 use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
-use crate::{load_cargo::load_cargo, Result};
+use crate::{load_cargo::load_cargo, BenchWhat, Result, Verbosity};
 
-pub(crate) struct Position {
-    path: PathBuf,
-    line: u32,
-    column: u32,
-}
-
-impl FromStr for Position {
-    type Err = Box<dyn std::error::Error + Send + Sync>;
-    fn from_str(s: &str) -> Result<Self> {
-        let (path_line, column) = rsplit_at_char(s, ':')?;
-        let (path, line) = rsplit_at_char(path_line, ':')?;
-        Ok(Position { path: path.into(), line: line.parse()?, column: column.parse()? })
-    }
-}
-
-fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
-    Ok((&s[..idx], &s[idx + 1..]))
-}
-
-pub(crate) enum Op {
-    Highlight { path: PathBuf },
-    Complete(Position),
-    GotoDef(Position),
-}
-
-pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
+pub(crate) fn run(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Result<()> {
     ra_prof::init();
 
     let start = Instant::now();
@@ -51,9 +21,9 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
     eprintln!("{:?}\n", start.elapsed());
 
     let file_id = {
-        let path = match &op {
-            Op::Highlight { path } => path,
-            Op::Complete(pos) | Op::GotoDef(pos) => &pos.path,
+        let path = match &what {
+            BenchWhat::Highlight { path } => path,
+            BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => &pos.path,
         };
         let path = std::env::current_dir()?.join(path).canonicalize()?;
         roots
@@ -70,22 +40,22 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
                 }
                 None
             })
-            .ok_or_else(|| format!("Can't find {:?}", path))?
+            .ok_or_else(|| format_err!("Can't find {}", path.display()))?
     };
 
-    match &op {
-        Op::Highlight { .. } => {
+    match &what {
+        BenchWhat::Highlight { .. } => {
             let res = do_work(&mut host, file_id, |analysis| {
                 analysis.diagnostics(file_id).unwrap();
                 analysis.highlight_as_html(file_id, false).unwrap()
             });
-            if verbose {
+            if verbosity.is_verbose() {
                 println!("\n{}", res);
             }
         }
-        Op::Complete(pos) | Op::GotoDef(pos) => {
-            let is_completion = match op {
-                Op::Complete(..) => true,
+        BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => {
+            let is_completion = match what {
+                BenchWhat::Complete(..) => true,
                 _ => false,
             };
 
@@ -98,13 +68,13 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             if is_completion {
                 let res =
                     do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
-                if verbose {
+                if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
             } else {
                 let res =
                     do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_postion));
-                if verbose {
+                if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
             }
