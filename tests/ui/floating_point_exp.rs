@@ -1,4 +1,4 @@
-#![warn(clippy::floating_point_improvements)]
+#![warn(clippy::suboptimal_flops)]
 
 fn main() {
     let x = 2f32;

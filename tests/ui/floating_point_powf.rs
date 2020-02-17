@@ -1,4 +1,4 @@
-#![warn(clippy::floating_point_improvements)]
+#![warn(clippy::suboptimal_flops)]
 
 fn main() {
     let x = 3f32;
@@ -14,8 +14,6 @@ fn main() {
     let _ = x.powf(-2.0);
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);
-    let _ = x.powf(16_777_217.0);
-    let _ = x.powf(-16_777_217.0);
 
     let x = 3f64;
     let _ = 2f64.powf(x);
@@ -30,6 +28,4 @@ fn main() {
     let _ = x.powf(-2.0);
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);
-    let _ = x.powf(9_007_199_254_740_993.0);
-    let _ = x.powf(-9_007_199_254_740_993.0);
 }

@@ -4,7 +4,7 @@ error: logarithm for bases 2, 10 and e can be computed more accurately
 LL |     let _ = x.log(2f32);
    |             ^^^^^^^^^^^ help: consider using: `x.log2()`
    |
-   = note: `-D clippy::floating-point-improvements` implied by `-D warnings`
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
   --> $DIR/floating_point_log.rs:10:13

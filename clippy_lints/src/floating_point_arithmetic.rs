@@ -4,10 +4,10 @@ use crate::consts::{
 };
 use crate::utils::*;
 use if_chain::if_chain;
-use rustc_hir::*;
-use rustc_lint::{LateContext, LateLintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
+use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
@@ -16,11 +16,10 @@ use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
-    /// can be expressed using built-in methods to improve accuracy,
-    /// performance and/or succinctness.
+    /// can be expressed using built-in methods to improve both
+    /// accuracy and performance.
     ///
-    /// **Why is this bad?** Negatively affects accuracy, performance
-    /// and/or readability.
+    /// **Why is this bad?** Negatively impacts accuracy and performance.
     ///
     /// **Known problems:** None
     ///
@@ -59,16 +58,16 @@ declare_clippy_lint! {
     /// let _ = a.exp_m1();
     /// let _ = a.powi(2);
     /// ```
-    pub FLOATING_POINT_IMPROVEMENTS,
+    pub SUBOPTIMAL_FLOPS,
     nursery,
-    "looks for improvements to floating-point expressions"
+    "usage of sub-optimal floating point operations"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [FLOATING_POINT_IMPROVEMENTS]);
+declare_lint_pass!(FloatingPointArithmetic => [SUBOPTIMAL_FLOPS]);
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
-fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr) -> Option<&'static str> {
+fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr<'_>) -> Option<&'static str> {
     if let Some((value, _)) = constant(cx, cx.tables, base) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
@@ -124,7 +123,7 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) 
     if let Some(method) = get_specialized_log_method(cx, &args[1]) {
         span_lint_and_sugg(
             cx,
-            FLOATING_POINT_IMPROVEMENTS,
+            SUBOPTIMAL_FLOPS,
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
@@ -136,7 +135,7 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) 
 
 // TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
 // suggest usage of `(x + (y - 1)).ln_1p()` instead
-fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
+fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     if_chain! {
         if let ExprKind::Binary(op, ref lhs, ref rhs) = &args[0].kind;
         if op.node == BinOpKind::Add;
@@ -149,7 +148,7 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
             span_lint_and_sugg(
                 cx,
-                FLOATING_POINT_IMPROVEMENTS,
+                SUBOPTIMAL_FLOPS,
                 expr.span,
                 "ln(1 + x) can be computed more accurately",
                 "consider using",
@@ -185,7 +184,7 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i64> {
     }
 }
 
-fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
+fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
     if let Some((value, _)) = constant(cx, cx.tables, &args[0]) {
         let method;
@@ -200,7 +199,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
         span_lint_and_sugg(
             cx,
-            FLOATING_POINT_IMPROVEMENTS,
+            SUBOPTIMAL_FLOPS,
             expr.span,
             "exponent for bases 2 and e can be computed more accurately",
             "consider using",
@@ -223,7 +222,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             span_lint_and_sugg(
                 cx,
-                FLOATING_POINT_IMPROVEMENTS,
+                SUBOPTIMAL_FLOPS,
                 expr.span,
                 "exponentiation with integer powers can be computed more efficiently",
                 "consider using",
@@ -238,7 +237,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
         span_lint_and_sugg(
             cx,
-            FLOATING_POINT_IMPROVEMENTS,
+            SUBOPTIMAL_FLOPS,
             expr.span,
             help,
             "consider using",
@@ -250,7 +249,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
 
 // TODO: Lint expressions of the form `x.exp() - y` where y > 1
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
-fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
+fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Binary(op, ref lhs, ref rhs) = expr.kind;
         if op.node == BinOpKind::Sub;
@@ -263,7 +262,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
         then {
             span_lint_and_sugg(
                 cx,
-                FLOATING_POINT_IMPROVEMENTS,
+                SUBOPTIMAL_FLOPS,
                 expr.span,
                 "(e.pow(x) - 1) can be computed more accurately",
                 "consider using",
@@ -278,7 +277,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args) = &expr.kind {
             let recv_ty = cx.tables.expr_ty(&args[0]);
 

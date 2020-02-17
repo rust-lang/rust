@@ -1961,6 +1961,13 @@ pub const ALL_LINTS: [Lint; 357] = [
         module: "excessive_bools",
     },
     Lint {
+        name: "suboptimal_flops",
+        group: "nursery",
+        desc: "usage of sub-optimal floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
+    },
+    Lint {
         name: "suspicious_arithmetic_impl",
         group: "correctness",
         desc: "suspicious use of operators in impl of arithmetic trait",
