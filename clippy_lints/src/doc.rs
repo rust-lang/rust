@@ -1,6 +1,8 @@
-use crate::utils::{is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use crate::utils::{get_trait_def_id, implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
+use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -152,11 +154,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
-            hir::ItemKind::Fn(ref sig, ..) => {
+            hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id))
                     || in_external_macro(cx.tcx.sess, item.span))
                 {
-                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
                 }
             },
             hir::ItemKind::Impl {
@@ -179,7 +181,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Method(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, None);
             }
         }
     }
@@ -189,8 +191,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
-        if let hir::ImplItemKind::Method(ref sig, ..) = item.kind {
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+        if let hir::ImplItemKind::Method(ref sig, body_id) = item.kind {
+            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
         }
     }
 }
@@ -201,6 +203,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
     span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
+    body_id: Option<hir::BodyId>,
 ) {
     if !cx.access_levels.is_exported(hir_id) {
         return; // Private functions do not require doc comments
@@ -213,13 +216,36 @@ fn lint_for_missing_headers<'a, 'tcx>(
             "unsafe function's docs miss `# Safety` section",
         );
     }
-    if !headers.errors && match_type(cx, return_ty(cx, hir_id), &paths::RESULT) {
-        span_lint(
-            cx,
-            MISSING_ERRORS_DOC,
-            span,
-            "docs for function returning `Result` missing `# Errors` section",
-        );
+    if !headers.errors {
+        if match_type(cx, return_ty(cx, hir_id), &paths::RESULT) {
+            span_lint(
+                cx,
+                MISSING_ERRORS_DOC,
+                span,
+                "docs for function returning `Result` missing `# Errors` section",
+            );
+        } else {
+            if_chain! {
+                if let Some(body_id) = body_id;
+                if let Some(future) = get_trait_def_id(cx, &paths::FUTURE);
+                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+                let mir = cx.tcx.optimized_mir(def_id);
+                let ret_ty = mir.return_ty();
+                if implements_trait(cx, ret_ty, future, &[]);
+                if let ty::Opaque(_, subs) = ret_ty.kind;
+                if let Some(gen) = subs.types().next();
+                if let ty::Generator(_, subs, _) = gen.kind;
+                if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT);
+                then {
+                    span_lint(
+                        cx,
+                        MISSING_ERRORS_DOC,
+                        span,
+                        "docs for function returning `Result` missing `# Errors` section",
+                    );
+                }
+            }
+        }
     }
 }
 

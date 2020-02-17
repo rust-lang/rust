@@ -36,6 +36,7 @@ pub const FMT_ARGUMENTS_NEW_V1_FORMATTED: [&str; 4] = ["core", "fmt", "Arguments
 pub const FMT_ARGUMENTV1_NEW: [&str; 4] = ["core", "fmt", "ArgumentV1", "new"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_TRAIT: [&str; 3] = ["core", "convert", "From"];
+pub const FUTURE: [&str; 3] = ["std", "future", "Future"];
 pub const HASH: [&str; 2] = ["hash", "Hash"];
 pub const HASHMAP: [&str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
