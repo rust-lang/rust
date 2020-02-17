@@ -1045,7 +1045,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// This is conservative: in doubt, it will answer `true`.
     ///
     /// FIXME: Once we removed all the conservatism, we could alternatively
-    /// create an all-0/all-undef constant and run the vonst value validator to see if
+    /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
     pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
     where
@@ -1067,59 +1067,22 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             }
         };
 
-        // Abi is the most informative here.
-        let res = match &self.abi {
+        // Check the ABI.
+        let valid = match &self.abi {
             Abi::Uninhabited => false, // definitely UB
             Abi::Scalar(s) => scalar_allows_raw_init(s),
             Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
             Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
-            Abi::Aggregate { .. } => {
-                match self.variants {
-                    Variants::Multiple { .. } => {
-                        if zero {
-                            // FIXME(#66151):
-                            // could we identify the variant with discriminant 0, check that?
-                            true
-                        } else {
-                            // FIXME(#66151): This needs to have some sort of discriminant,
-                            // which cannot be undef. But for now we are conservative.
-                            true
-                        }
-                    }
-                    Variants::Single { .. } => {
-                        // For aggregates, recurse.
-                        match self.fields {
-                            FieldPlacement::Union(..) => true, // An all-0 unit is fine.
-                            FieldPlacement::Array { .. } =>
-                            // FIXME(#66151): The widely use smallvec 0.6 creates uninit arrays
-                            // with any element type, so let us not (yet) complain about that.
-                            /* count == 0 ||
-                            self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? */
-                            {
-                                true
-                            }
-                            FieldPlacement::Arbitrary { .. } => {
-                                // FIXME(#66151) cargo depends on sized-chunks 0.3.0 which
-                                // has some illegal zero-initialization, so let us not (yet)
-                                // complain about aggregates either.
-                                /* let mut res = true;
-                                // Check that all fields accept zero-init.
-                                for idx in 0..offsets.len() {
-                                    let field = self.field(cx, idx).to_result()?;
-                                    if !field.might_permit_raw_init(cx, zero)? {
-                                        res = false;
-                                        break;
-                                    }
-                                }
-                                res */
-                                true
-                            }
-                        }
-                    }
-                }
-            }
+            Abi::Aggregate { .. } => true, // Cannot be excluded *right now*.
         };
-        trace!("might_permit_raw_init({:?}, zero={}) = {}", self.details, zero, res);
-        Ok(res)
+        if !valid {
+            // This is definitely not okay.
+            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.details, zero);
+            return Ok(false);
+        }
+
+        // If we have not found an error yet, we need to recursively descend.
+        // FIXME(#66151): For now, we are conservative and do not do this.
+        Ok(true)
     }
 }

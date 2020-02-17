@@ -7,9 +7,10 @@
 #![allow(deprecated, invalid_value)]
 
 use std::{
-    mem::{self, MaybeUninit},
+    mem::{self, MaybeUninit, ManuallyDrop},
     panic,
     ptr::NonNull,
+    num,
 };
 
 #[allow(dead_code)]
@@ -23,6 +24,18 @@ enum Bar {}
 #[allow(dead_code)]
 enum OneVariant { Variant(i32) }
 
+// An enum with ScalarPair layout
+#[allow(dead_code)]
+enum LR {
+    Left(i64),
+    Right(i64),
+}
+#[allow(dead_code, non_camel_case_types)]
+enum LR_NonZero {
+    Left(num::NonZeroI64),
+    Right(num::NonZeroI64),
+}
+
 fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
     let err = panic::catch_unwind(op).err();
     assert_eq!(
@@ -33,7 +46,7 @@ fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
 
 fn main() {
     unsafe {
-        // Uninitialized types
+        // Uninhabited types
         test_panic_msg(
             || mem::uninitialized::<!>(),
             "attempted to instantiate uninhabited type `!`"
@@ -94,6 +107,26 @@ fn main() {
 
         /* FIXME(#66151) we conservatively do not error here yet.
         test_panic_msg(
+            || mem::uninitialized::<LR_NonZero>(),
+            "attempted to leave type `LR_NonZero` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::zeroed::<LR_NonZero>(),
+            "attempted to zero-initialize type `LR_NonZero`, which is invalid"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<ManuallyDrop<LR_NonZero>>(),
+            "attempted to leave type `std::mem::ManuallyDrop<LR_NonZero>` uninitialized, \
+             which is invalid"
+        );
+        test_panic_msg(
+            || mem::zeroed::<ManuallyDrop<LR_NonZero>>(),
+            "attempted to zero-initialize type `std::mem::ManuallyDrop<LR_NonZero>`, \
+             which is invalid"
+        );
+
+        test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
             "attempted to leave type `(std::ptr::NonNull<u32>, u32, u32)` uninitialized, \
                 which is invalid"
@@ -105,13 +138,24 @@ fn main() {
         );
         */
 
+        // Types that can be zero, but not uninit.
         test_panic_msg(
             || mem::uninitialized::<bool>(),
             "attempted to leave type `bool` uninitialized, which is invalid"
         );
+        test_panic_msg(
+            || mem::uninitialized::<LR>(),
+            "attempted to leave type `LR` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<ManuallyDrop<LR>>(),
+            "attempted to leave type `std::mem::ManuallyDrop<LR>` uninitialized, which is invalid"
+        );
 
         // Some things that should work.
         let _val = mem::zeroed::<bool>();
+        let _val = mem::zeroed::<LR>();
+        let _val = mem::zeroed::<ManuallyDrop<LR>>();
         let _val = mem::zeroed::<OneVariant>();
         let _val = mem::zeroed::<Option<&'static i32>>();
         let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
