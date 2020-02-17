@@ -987,9 +987,7 @@ macro_rules! define_queries_inner {
             #[allow(unused)]
             #[inline(always)]
             fn to_dep_node(tcx: TyCtxt<$tcx>, key: &Self::Key) -> DepNode {
-                use crate::dep_graph::DepConstructor::*;
-
-                DepNode::new(tcx, $node(*key))
+                DepConstructor::$node(tcx, *key)
             }
 
             #[inline(always)]
