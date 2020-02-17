@@ -1,43 +1,24 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import { strict as assert } from "assert";
 
 import { Config } from './config';
 import { createClient } from './client';
 
 export class Ctx {
-    readonly config: Config;
-    // Because we have "reload server" action, various listeners **will** face a
-    // situation where the client is not ready yet, and should be prepared to
-    // deal with it.
-    //
-    // Ideally, this should be replaced with async getter though.
-    // FIXME: this actually needs syncronization of some kind (check how
-    // vscode deals with `deactivate()` call when extension has some work scheduled
-    // on the event loop to get a better picture of what we can do here)
-    client: lc.LanguageClient | null = null;
-    private extCtx: vscode.ExtensionContext;
+    private constructor(
+        readonly config: Config,
+        private readonly extCtx: vscode.ExtensionContext,
+        readonly client: lc.LanguageClient
+    ) {
 
-    constructor(extCtx: vscode.ExtensionContext) {
-        this.config = new Config(extCtx);
-        this.extCtx = extCtx;
     }
 
-    async startServer() {
-        assert(this.client == null);
-
-        const client = await createClient(this.config);
-        if (!client) {
-            throw new Error(
-                "Rust Analyzer Language Server is not available. " +
-                "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
-            );
-        }
-
-        this.pushCleanup(client.start());
+    static async create(config: Config, extCtx: vscode.ExtensionContext, serverPath: string): Promise<Ctx> {
+        const client = await createClient(config, serverPath);
+        const res = new Ctx(config, extCtx, client);
+        res.pushCleanup(client.start());
         await client.onReady();
-
-        this.client = client;
+        return res;
     }
 
     get activeRustEditor(): vscode.TextEditor | undefined {

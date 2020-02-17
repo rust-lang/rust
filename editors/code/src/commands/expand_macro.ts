@@ -42,12 +42,10 @@ function code_format(expanded: ExpandedMacro): string {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-    private ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer://expandMacro/[EXPANSION].rs');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
-    constructor(ctx: Ctx) {
-        this.ctx = ctx;
+    constructor(private readonly ctx: Ctx) {
     }
 
     async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {

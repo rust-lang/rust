@@ -5,21 +5,27 @@ import { activateInlayHints } from './inlay_hints';
 import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
+import { ensureServerBinary } from './installation/server';
+import { Config } from './config';
 
 let ctx: Ctx | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
-    ctx = new Ctx(context);
+    const config = new Config(context)
+
+    const serverPath = await ensureServerBinary(config.serverSource);
+    if (serverPath == null) {
+        throw new Error(
+            "Rust Analyzer Language Server is not available. " +
+            "Please, ensure its [proper installation](https://rust-analyzer.github.io/manual.html#installation)."
+        );
+    }
 
     // Note: we try to start the server before we activate type hints so that it
     // registers its `onDidChangeDocument` handler before us.
     //
     // This a horribly, horribly wrong way to deal with this problem.
-    try {
-        await ctx.startServer();
-    } catch (e) {
-        vscode.window.showErrorMessage(e.message);
-    }
+    ctx = await Ctx.create(config, context, serverPath);
 
     // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand('reload', (ctx) => {

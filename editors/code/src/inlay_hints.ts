@@ -92,8 +92,6 @@ class HintsUpdater {
 
     async refresh() {
         if (!this.enabled) return;
-        console.log("freshin!");
-
         await Promise.all(this.allEditors.map(it => this.refreshEditor(it)));
     }
 

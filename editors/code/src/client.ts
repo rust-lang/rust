@@ -2,17 +2,13 @@ import * as lc from 'vscode-languageclient';
 import * as vscode from 'vscode';
 
 import { Config } from './config';
-import { ensureServerBinary } from './installation/server';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 
-export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
+export async function createClient(config: Config, serverPath: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
-
-    const serverPath = await ensureServerBinary(config.serverSource);
-    if (!serverPath) return null;
 
     const run: lc.Executable = {
         command: serverPath,
