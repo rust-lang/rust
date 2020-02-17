@@ -78,8 +78,8 @@ fn verify_stack_usage(before_ptr: *mut Vec<Big>) {
     let stack_usage = isize::abs(
         (&mut stack_var as *mut _ as isize) -
             (before_ptr as isize)) as usize;
-    // give space for 2 copies of `Big` + 128 "misc" bytes.
-    if stack_usage > mem::size_of::<Big>() * 2 + 128 {
+    // give space for 2 copies of `Big` + 256 "misc" bytes.
+    if stack_usage > mem::size_of::<Big>() * 2 + 256 {
         panic!("used {} bytes of stack, but `struct Big` is only {} bytes",
                stack_usage, mem::size_of::<Big>());
     }
