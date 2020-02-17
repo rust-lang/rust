@@ -5,7 +5,7 @@ mod analysis_stats;
 mod analysis_bench;
 mod progress_report;
 
-use std::{error::Error, fmt::Write, io::Read, path::PathBuf};
+use std::{error::Error, fmt::Write, io::Read, path::PathBuf, str::FromStr};
 
 use pico_args::Arguments;
 use ra_ide::{file_structure, Analysis};
@@ -51,12 +51,35 @@ fn main() -> Result<()> {
                 randomize,
             )?;
         }
-        Command::Bench { verbosity, path, op } => {
-            analysis_bench::run(verbosity, path.as_ref(), op)?;
+        Command::Bench { verbosity, path, what } => {
+            analysis_bench::run(verbosity, path.as_ref(), what)?;
         }
     }
 
     Ok(())
+}
+
+enum Command {
+    Parse {
+        no_dump: bool,
+    },
+    Symbols,
+    Highlight {
+        rainbow: bool,
+    },
+    Stats {
+        verbosity: Verbosity,
+        randomize: bool,
+        memory_usage: bool,
+        only: Option<String>,
+        with_deps: bool,
+        path: PathBuf,
+    },
+    Bench {
+        verbosity: Verbosity,
+        path: PathBuf,
+        what: BenchWhat,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -82,27 +105,30 @@ impl Verbosity {
     }
 }
 
-enum Command {
-    Parse {
-        no_dump: bool,
-    },
-    Symbols,
-    Highlight {
-        rainbow: bool,
-    },
-    Stats {
-        verbosity: Verbosity,
-        randomize: bool,
-        memory_usage: bool,
-        only: Option<String>,
-        with_deps: bool,
-        path: PathBuf,
-    },
-    Bench {
-        verbosity: Verbosity,
-        path: PathBuf,
-        op: analysis_bench::Op,
-    },
+enum BenchWhat {
+    Highlight { path: PathBuf },
+    Complete(Position),
+    GotoDef(Position),
+}
+
+pub(crate) struct Position {
+    path: PathBuf,
+    line: u32,
+    column: u32,
+}
+
+impl FromStr for Position {
+    type Err = Box<dyn std::error::Error + Send + Sync>;
+    fn from_str(s: &str) -> Result<Self> {
+        let (path_line, column) = rsplit_at_char(s, ':')?;
+        let (path, line) = rsplit_at_char(path_line, ':')?;
+        Ok(Position { path: path.into(), line: line.parse()?, column: column.parse()? })
+    }
+}
+
+fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
+    let idx = s.rfind(':').ok_or_else(|| format!("no `{}` in {}", c, s))?;
+    Ok((&s[..idx], &s[idx + 1..]))
 }
 
 struct HelpPrinted;
@@ -248,17 +274,17 @@ ARGS:
 
                 let path: PathBuf = matches.opt_value_from_str("--path")?.unwrap_or_default();
                 let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
-                let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
-                let goto_def_path: Option<String> = matches.opt_value_from_str("--goto-def")?;
-                let op = match (highlight_path, complete_path, goto_def_path) {
-                    (Some(path), None, None) => analysis_bench::Op::Highlight { path: path.into() },
-                    (None, Some(position), None) => analysis_bench::Op::Complete(position.parse()?),
-                    (None, None, Some(position)) => analysis_bench::Op::GotoDef(position.parse()?),
+                let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
+                let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
+                let what = match (highlight_path, complete_path, goto_def_path) {
+                    (Some(path), None, None) => BenchWhat::Highlight { path: path.into() },
+                    (None, Some(position), None) => BenchWhat::Complete(position),
+                    (None, None, Some(position)) => BenchWhat::GotoDef(position),
                     _ => panic!(
                         "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
                     ),
                 };
-                Command::Bench { verbosity, path, op }
+                Command::Bench { verbosity, path, what }
             }
             _ => {
                 eprintln!(
