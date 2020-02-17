@@ -68,12 +68,10 @@ interface SyntaxTreeParams {
 
 class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
-    private ctx: Ctx;
     uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
-    constructor(ctx: Ctx) {
-        this.ctx = ctx;
+    constructor(private readonly ctx: Ctx) {
     }
 
     provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
