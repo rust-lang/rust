@@ -25,6 +25,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) use_item_syntax: Option<ast::UseItem>,
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
     pub(super) record_lit_pat: Option<ast::RecordPat>,
+    pub(super) impl_block: Option<ast::ImplBlock>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -72,6 +73,7 @@ impl<'a> CompletionContext<'a> {
             use_item_syntax: None,
             record_lit_syntax: None,
             record_lit_pat: None,
+            impl_block: None,
             is_param: false,
             is_pat_binding: false,
             is_trivial_path: false,
@@ -147,6 +149,13 @@ impl<'a> CompletionContext<'a> {
         if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
             self.record_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
         }
+
+        self.impl_block = self
+            .token
+            .parent()
+            .ancestors()
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::ImplBlock::cast);
 
         let top_node = name_ref
             .syntax()

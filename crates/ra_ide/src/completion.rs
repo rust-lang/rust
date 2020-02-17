@@ -15,6 +15,7 @@ mod complete_path;
 mod complete_scope;
 mod complete_postfix;
 mod complete_macro_in_item_position;
+mod complete_trait_impl;
 
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
@@ -74,5 +75,7 @@ pub(crate) fn completions(db: &RootDatabase, position: FilePosition) -> Option<C
     complete_pattern::complete_pattern(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
+    complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
+
     Some(acc)
 }

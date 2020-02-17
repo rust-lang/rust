@@ -9,7 +9,7 @@ mod assist_ctx;
 mod marks;
 #[cfg(test)]
 mod doc_tests;
-mod utils;
+pub mod utils;
 pub mod ast_transform;
 
 use ra_db::FileRange;
