@@ -104,7 +104,8 @@ impl Emitter for JsonEmitter {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
             writeln!(&mut self.dst, "{}", as_json(&data))
-        };
+        }
+        .and_then(|_| self.dst.flush());
         if let Err(e) = result {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -116,7 +117,8 @@ impl Emitter for JsonEmitter {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
             writeln!(&mut self.dst, "{}", as_json(&data))
-        };
+        }
+        .and_then(|_| self.dst.flush());
         if let Err(e) = result {
             panic!("failed to print notification: {:?}", e);
         }
