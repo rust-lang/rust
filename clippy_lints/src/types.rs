@@ -794,32 +794,43 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                 if !args_to_recover.is_empty() {
                     let mut applicability = Applicability::MachineApplicable;
                     span_lint_and_then(cx, UNIT_ARG, expr.span, "passing a unit value to a function", |db| {
+                        let sugg = args_to_recover
+                            .iter()
+                            .enumerate()
+                            .map(|(i, arg)| {
+                                let indent = if i == 0 {
+                                    0
+                                } else {
+                                    indent_of(cx, expr.span).unwrap_or(0)
+                                };
+                                format!(
+                                    "{}{};",
+                                    " ".repeat(indent),
+                                    snippet_block_with_applicability(
+                                        cx,
+                                        arg.span,
+                                        "..",
+                                        Some(expr.span),
+                                        &mut applicability
+                                    )
+                                )
+                            })
+                            .collect::<Vec<String>>()
+                            .join("\n");
                         db.span_suggestion(
                             expr.span.with_hi(expr.span.lo()),
-                            "move the expressions in front of the call...",
-                            format!(
-                                "{} ",
-                                args_to_recover
-                                    .iter()
-                                    .map(|arg| {
-                                        format!(
-                                            "{};",
-                                            snippet_with_applicability(cx, arg.span, "..", &mut applicability)
-                                        )
-                                    })
-                                    .collect::<Vec<String>>()
-                                    .join(" ")
-                            ),
+                            &format!("{}move the expressions in front of the call...", or),
+                            format!("{}\n", sugg),
                             applicability,
                         );
-                        for arg in args_to_recover {
-                            db.span_suggestion(
-                                arg.span,
-                                "...and use unit literals instead",
-                                "()".to_string(),
-                                applicability,
-                            );
-                        }
+                        db.multipart_suggestion(
+                            "...and use unit literals instead",
+                            args_to_recover
+                                .iter()
+                                .map(|arg| (arg.span, "()".to_string()))
+                                .collect::<Vec<_>>(),
+                            applicability,
+                        );
                     });
                 }
             },
