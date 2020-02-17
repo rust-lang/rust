@@ -1345,7 +1345,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
 
-        // FIXME(ecstaticmorse): Can this use `find_by_name_and_kind` instead?
+        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // of calling `filter_by_name_and_kind`.
         let assoc_ty = tcx
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
@@ -2198,7 +2199,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
 
-        // FIXME(ecstaticmorse): Can this use `find_by_name_and_namespace` instead?
+        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // of calling `filter_by_name_and_kind`.
         let item = tcx
             .associated_items(trait_did)
             .in_definition_order()
