@@ -20,23 +20,13 @@ error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:18:20
    |
 LL | unsafe fn bad3() { unsafe {} }
-   | ----------------   ^^^^^^ unnecessary `unsafe` block
-   | |
-   | because it's nested under this `unsafe` fn
+   |                    ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:19:13
    |
 LL | fn bad4() { unsafe { callback(||{}) } }
    |             ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:20:20
-   |
-LL | unsafe fn bad5() { unsafe { unsf() } }
-   | ----------------   ^^^^^^ unnecessary `unsafe` block
-   | |
-   | because it's nested under this `unsafe` fn
 
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:23:9
@@ -47,21 +37,12 @@ LL |         unsafe {
    |         ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:29:5
-   |
-LL | unsafe fn bad7() {
-   | ---------------- because it's nested under this `unsafe` fn
-LL |     unsafe {
-   |     ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:30:9
    |
-LL | unsafe fn bad7() {
-   | ---------------- because it's nested under this `unsafe` fn
 LL |     unsafe {
+   |     ------ because it's nested under this `unsafe` block
 LL |         unsafe {
    |         ^^^^^^ unnecessary `unsafe` block
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

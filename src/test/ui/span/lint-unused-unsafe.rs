@@ -17,7 +17,7 @@ fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
 fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary `unsafe` block
 unsafe fn bad3() { unsafe {} }           //~ ERROR: unnecessary `unsafe` block
 fn bad4() { unsafe { callback(||{}) } }  //~ ERROR: unnecessary `unsafe` block
-unsafe fn bad5() { unsafe { unsf() } }   //~ ERROR: unnecessary `unsafe` block
+unsafe fn bad5() { unsafe { unsf() } }
 fn bad6() {
     unsafe {                             // don't put the warning here
         unsafe {                         //~ ERROR: unnecessary `unsafe` block
@@ -26,7 +26,7 @@ fn bad6() {
     }
 }
 unsafe fn bad7() {
-    unsafe {                             //~ ERROR: unnecessary `unsafe` block
+    unsafe {
         unsafe {                         //~ ERROR: unnecessary `unsafe` block
             unsf()
         }

@@ -210,7 +210,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BlockSafety::ExplicitUnsafe(hir_id) => {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
-                    Safety::Safe => {}
+                    Safety::Safe | Safety::FnUnsafe => {}
                     _ => return,
                 }
                 self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);
