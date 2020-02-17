@@ -7,6 +7,8 @@
 //! state, and `main_loop` module defines the rules for modifying it.
 #![recursion_limit = "512"]
 
+pub mod cli;
+
 #[allow(unused)]
 macro_rules! println {
     ($($tt:tt)*) => {

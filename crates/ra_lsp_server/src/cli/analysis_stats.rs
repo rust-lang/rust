@@ -13,9 +13,9 @@ use ra_db::SourceDatabaseExt;
 use ra_syntax::AstNode;
 use rand::{seq::SliceRandom, thread_rng};
 
-use crate::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
+use crate::cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
 
-pub fn run(
+pub fn analysis_stats(
     verbosity: Verbosity,
     memory_usage: bool,
     path: &Path,

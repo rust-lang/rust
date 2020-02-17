@@ -942,30 +942,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "env_logger",
- "itertools",
- "log",
- "pico-args",
- "ra_db",
- "ra_hir",
- "ra_hir_def",
- "ra_hir_ty",
- "ra_ide",
- "ra_prof",
- "ra_project_model",
- "ra_syntax",
- "ra_vfs",
- "ra_vfs_glob",
- "rand",
- "rustc-hash",
-]
-
-[[package]]
 name = "ra_db"
 version = "0.1.0"
 dependencies = [
@@ -1122,15 +1098,22 @@ dependencies = [
 name = "ra_lsp_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "either",
  "env_logger",
+ "itertools",
  "jod-thread",
  "log",
  "lsp-server",
  "lsp-types",
  "parking_lot",
+ "pico-args",
  "ra_cargo_watch",
+ "ra_db",
+ "ra_hir",
+ "ra_hir_def",
+ "ra_hir_ty",
  "ra_ide",
  "ra_prof",
  "ra_project_model",
@@ -1138,6 +1121,7 @@ dependencies = [
  "ra_text_edit",
  "ra_vfs",
  "ra_vfs_glob",
+ "rand",
  "relative-path",
  "rustc-hash",
  "serde",

@@ -8,13 +8,17 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
+anyhow = "1.0"
 crossbeam-channel = "0.4"
 either = "1.5"
 env_logger = { version = "0.7.1", default-features = false }
+itertools = "0.8.0"
 jod-thread = "0.1.0"
 log = "0.4.3"
 lsp-types = { version = "0.70.0", features = ["proposed"] }
 parking_lot = "0.10.0"
+pico-args = "0.3.0"
+rand = { version = "0.7.0", features = ["small_rng"] }
 relative-path = "1.0.0"
 rustc-hash = "1.0"
 serde = { version = "1.0.83", features = ["derive"] }
@@ -30,6 +34,13 @@ ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_vfs = "0.5.0"
 ra_vfs_glob = { path = "../ra_vfs_glob" }
+
+# This should only be used in CLI
+ra_db = { path = "../ra_db" }
+hir = { path = "../ra_hir", package = "ra_hir" }
+hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
+
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3"

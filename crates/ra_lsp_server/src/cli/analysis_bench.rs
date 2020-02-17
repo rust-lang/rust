@@ -1,17 +1,48 @@
 //! FIXME: write short doc here
 
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+    time::Instant,
+};
 
-use anyhow::format_err;
+use anyhow::{format_err, Result};
 use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
-use crate::{load_cargo::load_cargo, BenchWhat, Result, Verbosity};
+use crate::cli::{load_cargo::load_cargo, Verbosity};
 
-pub(crate) fn run(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Result<()> {
+pub enum BenchWhat {
+    Highlight { path: PathBuf },
+    Complete(Position),
+    GotoDef(Position),
+}
+
+pub struct Position {
+    pub path: PathBuf,
+    pub line: u32,
+    pub column: u32,
+}
+
+impl FromStr for Position {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let (path_line, column) = rsplit_at_char(s, ':')?;
+        let (path, line) = rsplit_at_char(path_line, ':')?;
+        Ok(Position { path: path.into(), line: line.parse()?, column: column.parse()? })
+    }
+}
+
+fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
+    let idx = s.rfind(c).ok_or_else(|| format_err!("no `{}` in {}", c, s))?;
+    Ok((&s[..idx], &s[idx + 1..]))
+}
+
+pub fn analysis_bench(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Result<()> {
     ra_prof::init();
 
     let start = Instant::now();
