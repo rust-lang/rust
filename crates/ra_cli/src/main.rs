@@ -48,8 +48,8 @@ fn main() -> Result<()> {
                 randomize,
             )?;
         }
-        Command::Bench { verbose, path, op } => {
-            analysis_bench::run(verbose, path.as_ref(), op)?;
+        Command::Bench { verbosity, path, op } => {
+            analysis_bench::run(verbosity, path.as_ref(), op)?;
         }
         Command::HelpPrinted => (),
     }
@@ -97,7 +97,7 @@ enum Command {
         path: PathBuf,
     },
     Bench {
-        verbose: bool,
+        verbosity: Verbosity,
         path: PathBuf,
         op: analysis_bench::Op,
     },
@@ -108,6 +108,19 @@ impl Command {
     fn from_args() -> Result<Command> {
         let mut matches = Arguments::from_env();
         let subcommand = matches.subcommand()?.unwrap_or_default();
+
+        let verbosity = match (
+            matches.contains(["-vv", "--spammy"]),
+            matches.contains(["-v", "--verbose"]),
+            matches.contains(["-q", "--quiet"]),
+        ) {
+            (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
+            (true, _, false) => Verbosity::Spammy,
+            (false, false, false) => Verbosity::Normal,
+            (false, false, true) => Verbosity::Quiet,
+            (false, true, false) => Verbosity::Verbose,
+            (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
+        };
 
         let command = match subcommand.as_str() {
             "parse" => {
@@ -193,18 +206,6 @@ ARGS:
                     return Ok(Command::HelpPrinted);
                 }
 
-                let verbosity = match (
-                    matches.contains(["-vv", "--spammy"]),
-                    matches.contains(["-v", "--verbose"]),
-                    matches.contains(["-q", "--quiet"]),
-                ) {
-                    (true, _, true) => Err("Invalid flags: -q conflicts with -vv")?,
-                    (true, _, false) => Verbosity::Spammy,
-                    (false, false, false) => Verbosity::Normal,
-                    (false, false, true) => Verbosity::Quiet,
-                    (false, true, false) => Verbosity::Verbose,
-                    (false, true, true) => Err("Invalid flags: -q conflicts with -v")?,
-                };
                 let randomize = matches.contains("--randomize");
                 let memory_usage = matches.contains("--memory-usage");
                 let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
@@ -242,7 +243,6 @@ ARGS:
                     return Ok(Command::HelpPrinted);
                 }
 
-                let verbose = matches.contains(["-v", "--verbose"]);
                 let path: PathBuf = matches.opt_value_from_str("--path")?.unwrap_or_default();
                 let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
                 let complete_path: Option<String> = matches.opt_value_from_str("--complete")?;
@@ -255,7 +255,7 @@ ARGS:
                         "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
                     ),
                 };
-                Command::Bench { verbose, path, op }
+                Command::Bench { verbosity, path, op }
             }
             _ => {
                 eprintln!(

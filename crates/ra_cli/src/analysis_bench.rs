@@ -13,7 +13,7 @@ use ra_db::{
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
-use crate::{load_cargo::load_cargo, Result};
+use crate::{load_cargo::load_cargo, Result, Verbosity};
 
 pub(crate) struct Position {
     path: PathBuf,
@@ -41,7 +41,7 @@ pub(crate) enum Op {
     GotoDef(Position),
 }
 
-pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
+pub(crate) fn run(verbosity: Verbosity, path: &Path, op: Op) -> Result<()> {
     ra_prof::init();
 
     let start = Instant::now();
@@ -79,7 +79,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
                 analysis.diagnostics(file_id).unwrap();
                 analysis.highlight_as_html(file_id, false).unwrap()
             });
-            if verbose {
+            if verbosity.is_verbose() {
                 println!("\n{}", res);
             }
         }
@@ -98,13 +98,13 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             if is_completion {
                 let res =
                     do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
-                if verbose {
+                if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
             } else {
                 let res =
                     do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_postion));
-                if verbose {
+                if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
             }
