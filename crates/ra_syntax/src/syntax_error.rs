@@ -27,9 +27,6 @@ impl SyntaxError {
         Self(message.into(), TextRange::offset_len(offset, 0.into()))
     }
 
-    pub fn message(&self) -> &str {
-        &self.0
-    }
     pub fn range(&self) -> TextRange {
         self.1
     }

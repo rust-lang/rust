@@ -115,7 +115,7 @@ impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
         for err in self.errors.iter() {
-            writeln!(buf, "error {:?}: {}", err.range(), err.message()).unwrap();
+            writeln!(buf, "error {:?}: {}", err.range(), err).unwrap();
         }
         buf
     }
