@@ -1,4 +1,3 @@
-// run-rustfix
 #![warn(clippy::unit_arg)]
 #![allow(clippy::no_effect, unused_must_use, unused_variables)]
 
@@ -36,6 +35,20 @@ fn bad() {
         1;
     });
     taking_multiple_units(foo(0), foo(1));
+    taking_multiple_units(foo(0), {
+        foo(1);
+        foo(2);
+    });
+    taking_multiple_units(
+        {
+            foo(0);
+            foo(1);
+        },
+        {
+            foo(2);
+            foo(3);
+        },
+    );
 }
 
 fn ok() {
