@@ -8,27 +8,28 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
-threadpool = "1.7.1"
-relative-path = "1.0.0"
-serde_json = "1.0.34"
-serde = { version = "1.0.83", features = ["derive"] }
 crossbeam-channel = "0.4"
+either = "1.5"
+env_logger = { version = "0.7.1", default-features = false }
+jod-thread = "0.1.0"
 log = "0.4.3"
 lsp-types = { version = "0.70.0", features = ["proposed"] }
-rustc-hash = "1.0"
 parking_lot = "0.10.0"
-jod-thread = "0.1.0"
-ra_vfs = "0.5.0"
+relative-path = "1.0.0"
+rustc-hash = "1.0"
+serde = { version = "1.0.83", features = ["derive"] }
+serde_json = "1.0.34"
+threadpool = "1.7.1"
+
+lsp-server = "0.3.0"
+ra_cargo_watch = { path = "../ra_cargo_watch" }
+ra_ide = { path = "../ra_ide" }
+ra_prof = { path = "../ra_prof" }
+ra_project_model = { path = "../ra_project_model" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
-ra_ide = { path = "../ra_ide" }
-lsp-server = "0.3.0"
-ra_project_model = { path = "../ra_project_model" }
-ra_prof = { path = "../ra_prof" }
+ra_vfs = "0.5.0"
 ra_vfs_glob = { path = "../ra_vfs_glob" }
-env_logger = { version = "0.7.1", default-features = false }
-ra_cargo_watch = { path = "../ra_cargo_watch" }
-either = "1.5"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3"
