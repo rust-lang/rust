@@ -191,14 +191,14 @@ SOURCE_FILE@[0; 293)
         WHITESPACE@[290; 291) "\n"
         R_CURLY@[291; 292) "}"
   WHITESPACE@[292; 293) "\n"
-error [52; 53): expected `[`
-error [52; 53): expected pattern
-error [53; 54): expected FAT_ARROW
-error [78; 79): expected COMMA
-error [161; 162): expected `[`
-error [161; 162): expected pattern
-error [162; 163): expected FAT_ARROW
-error [232; 233): expected `[`
-error [232; 233): expected pattern
-error [233; 234): expected FAT_ARROW
-error [250; 251): expected COMMA
+error [52; 52): expected `[`
+error [52; 52): expected pattern
+error [53; 53): expected FAT_ARROW
+error [78; 78): expected COMMA
+error [161; 161): expected `[`
+error [161; 161): expected pattern
+error [162; 162): expected FAT_ARROW
+error [232; 232): expected `[`
+error [232; 232): expected pattern
+error [233; 233): expected FAT_ARROW
+error [250; 250): expected COMMA

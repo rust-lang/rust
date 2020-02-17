@@ -33,4 +33,4 @@ SOURCE_FILE@[0; 24)
         WHITESPACE@[21; 22) "\n"
         R_CURLY@[22; 23) "}"
   WHITESPACE@[23; 24) "\n"
-error [21; 22): expected field name or number
+error [21; 21): expected field name or number

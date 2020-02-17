@@ -148,36 +148,36 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[109; 110) " "
         R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
-error [16; 17): expected expression
-error [17; 18): expected R_BRACK
-error [17; 18): expected SEMI
-error [17; 18): expected expression
-error [18; 19): expected SEMI
-error [25; 26): expected a name
-error [26; 27): expected `;`, `{`, or `(`
-error [30; 31): expected pattern
-error [31; 32): expected SEMI
-error [53; 54): expected expression
-error [54; 55): expected SEMI
-error [54; 55): expected expression
-error [55; 56): expected SEMI
-error [60; 61): expected type
-error [60; 61): expected `{`
-error [60; 61): expected expression
-error [61; 62): expected SEMI
-error [65; 66): expected pattern
-error [65; 66): expected SEMI
-error [65; 66): expected expression
-error [92; 93): expected expression
-error [93; 94): expected SEMI
-error [93; 94): expected expression
-error [94; 95): expected SEMI
-error [95; 96): expected expression
-error [96; 97): expected SEMI
-error [96; 97): expected expression
-error [97; 98): expected SEMI
-error [103; 104): expected a name
-error [104; 105): expected `{`
-error [108; 109): expected pattern
-error [108; 109): expected SEMI
-error [108; 109): expected expression
+error [16; 16): expected expression
+error [17; 17): expected R_BRACK
+error [17; 17): expected SEMI
+error [17; 17): expected expression
+error [18; 18): expected SEMI
+error [25; 25): expected a name
+error [26; 26): expected `;`, `{`, or `(`
+error [30; 30): expected pattern
+error [31; 31): expected SEMI
+error [53; 53): expected expression
+error [54; 54): expected SEMI
+error [54; 54): expected expression
+error [55; 55): expected SEMI
+error [60; 60): expected type
+error [60; 60): expected `{`
+error [60; 60): expected expression
+error [61; 61): expected SEMI
+error [65; 65): expected pattern
+error [65; 65): expected SEMI
+error [65; 65): expected expression
+error [92; 92): expected expression
+error [93; 93): expected SEMI
+error [93; 93): expected expression
+error [94; 94): expected SEMI
+error [95; 95): expected expression
+error [96; 96): expected SEMI
+error [96; 96): expected expression
+error [97; 97): expected SEMI
+error [103; 103): expected a name
+error [104; 104): expected `{`
+error [108; 108): expected pattern
+error [108; 108): expected SEMI
+error [108; 108): expected expression

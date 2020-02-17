@@ -20,8 +20,8 @@ SOURCE_FILE@[0; 18)
   ERROR@[16; 17)
     SEMI@[16; 17) ";"
   WHITESPACE@[17; 18) "\n"
-error [12; 13): expected `;` or `]`
-error [12; 13): expected SEMI
-error [13; 14): expected an item
-error [15; 16): expected an item
-error [16; 17): expected an item
+error [12; 12): expected `;` or `]`
+error [12; 12): expected SEMI
+error [13; 13): expected an item
+error [15; 15): expected an item
+error [16; 16): expected an item

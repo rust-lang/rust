@@ -45,14 +45,14 @@ SOURCE_FILE@[0; 43)
       IDENT@[40; 41) "T"
     SEMI@[41; 42) ";"
   WHITESPACE@[42; 43) "\n"
-error [9; 10): expected type parameter
-error [11; 12): expected COMMA
-error [11; 12): expected R_ANGLE
-error [11; 12): expected `;`, `{`, or `(`
-error [12; 13): expected an item
-error [14; 15): expected an item
-error [15; 16): expected an item
-error [17; 18): expected an item
-error [24; 25): expected SEMI
-error [24; 25): expected expression
-error [25; 26): expected SEMI
+error [9; 9): expected type parameter
+error [11; 11): expected COMMA
+error [11; 11): expected R_ANGLE
+error [11; 11): expected `;`, `{`, or `(`
+error [12; 12): expected an item
+error [14; 14): expected an item
+error [15; 15): expected an item
+error [17; 17): expected an item
+error [24; 24): expected SEMI
+error [24; 24): expected expression
+error [25; 25): expected SEMI

@@ -18,4 +18,4 @@ SOURCE_FILE@[0; 19)
       INT_NUMBER@[16; 17) "5"
     SEMI@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"
-error [7; 8): expected a name
+error [7; 7): expected a name

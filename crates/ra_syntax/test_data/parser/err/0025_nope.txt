@@ -191,14 +191,14 @@ SOURCE_FILE@[0; 575)
         WHITESPACE@[572; 573) "\n"
         R_CURLY@[573; 574) "}"
   WHITESPACE@[574; 575) "\n"
-error [95; 96): expected type
-error [95; 96): expected COMMA
-error [96; 97): expected field
-error [98; 99): expected field declaration
-error [371; 372): expected COMMA
-error [372; 373): expected a type
-error [372; 373): expected R_PAREN
-error [372; 373): expected COMMA
-error [372; 373): expected enum variant
-error [374; 375): expected enum variant
-error [508; 509): expected expression
+error [95; 95): expected type
+error [95; 95): expected COMMA
+error [96; 96): expected field
+error [98; 98): expected field declaration
+error [371; 371): expected COMMA
+error [372; 372): expected a type
+error [372; 372): expected R_PAREN
+error [372; 372): expected COMMA
+error [372; 372): expected enum variant
+error [374; 374): expected enum variant
+error [508; 508): expected expression

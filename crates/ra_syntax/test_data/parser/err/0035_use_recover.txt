@@ -48,7 +48,7 @@ SOURCE_FILE@[0; 48)
         L_CURLY@[45; 46) "{"
         R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"
-error [17; 18): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
-error [17; 18): expected SEMI
-error [37; 38): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
-error [37; 38): expected SEMI
+error [17; 17): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error [17; 17): expected SEMI
+error [37; 37): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error [37; 37): expected SEMI

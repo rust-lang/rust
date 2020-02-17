@@ -64,11 +64,11 @@ SOURCE_FILE@[0; 74)
       WHITESPACE@[71; 72) "\n"
       R_CURLY@[72; 73) "}"
   WHITESPACE@[73; 74) "\n"
-error [31; 32): expected field declaration
-error [33; 34): expected COMMA
-error [38; 39): expected field declaration
-error [39; 40): expected COMMA
-error [40; 41): expected field declaration
-error [41; 42): expected COMMA
-error [42; 43): expected field declaration
-error [43; 44): expected COMMA
+error [31; 31): expected field declaration
+error [33; 33): expected COMMA
+error [38; 38): expected field declaration
+error [39; 39): expected COMMA
+error [40; 40): expected field declaration
+error [41; 41): expected COMMA
+error [42; 42): expected field declaration
+error [43; 43): expected COMMA

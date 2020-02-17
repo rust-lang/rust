@@ -73,7 +73,7 @@ SOURCE_FILE@[0; 87)
       L_CURLY@[84; 85) "{"
       R_CURLY@[85; 86) "}"
   WHITESPACE@[86; 87) "\n"
-error [38; 39): expected trait or type
-error [38; 39): expected `{`
-error [70; 71): expected trait or type
-error [70; 71): expected `{`
+error [38; 38): expected trait or type
+error [38; 38): expected `{`
+error [70; 70): expected trait or type
+error [70; 70): expected `{`

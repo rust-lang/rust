@@ -16,9 +16,9 @@ SOURCE_FILE@[0; 14)
     WHITESPACE@[11; 12) "\n"
     R_CURLY@[12; 13) "}"
   WHITESPACE@[13; 14) "\n"
-error [7; 8): expected value parameter
-error [7; 8): expected R_PAREN
-error [7; 8): expected a block
-error [7; 8): unmatched `}`
-error [8; 9): expected an item
-error [10; 11): expected an item
+error [7; 7): expected value parameter
+error [7; 7): expected R_PAREN
+error [7; 7): expected a block
+error [7; 7): unmatched `}`
+error [8; 8): expected an item
+error [10; 10): expected an item
