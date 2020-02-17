@@ -27,6 +27,7 @@ pub trait StableHasherResult: Sized {
 }
 
 impl StableHasher {
+    #[inline]
     pub fn new() -> Self {
         StableHasher { state: SipHasher128::new_with_keys(0, 0) }
     }
