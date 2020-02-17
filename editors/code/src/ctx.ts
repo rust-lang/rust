@@ -17,7 +17,6 @@ export class Ctx {
     // on the event loop to get a better picture of what we can do here)
     client: lc.LanguageClient | null = null;
     private extCtx: vscode.ExtensionContext;
-    private onStartHooks: Array<(client: lc.LanguageClient) => void> = [];
 
     constructor(extCtx: vscode.ExtensionContext) {
         this.config = new Config(extCtx);
@@ -39,9 +38,6 @@ export class Ctx {
         await client.onReady();
 
         this.client = client;
-        for (const hook of this.onStartHooks) {
-            hook(client);
-        }
     }
 
     get activeRustEditor(): vscode.TextEditor | undefined {
@@ -68,15 +64,6 @@ export class Ctx {
 
     pushCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
-    }
-
-    onStart(hook: (client: lc.LanguageClient) => void) {
-        const client = this.client;
-        if (client == null) {
-            this.onStartHooks.push(hook);
-        } else {
-            hook(client)
-        }
     }
 }
 

@@ -33,9 +33,9 @@ export function activateInlayHints(ctx: Ctx) {
         }
     })
 
-    // We pass async function though it will not be awaited when called,
-    // thus Promise rejections won't be handled, but this should never throw in fact...
-    ctx.onStart(async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints));
+    // XXX: we don't await this, thus Promise rejections won't be handled, but
+    // this should never throw in fact...
+    hintsUpdater.setEnabled(ctx.config.displayInlayHints)
 }
 
 interface InlayHintsParams {
