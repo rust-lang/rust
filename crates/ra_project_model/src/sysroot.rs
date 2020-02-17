@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -48,17 +48,6 @@ impl Sysroot {
 
     pub fn discover(cargo_toml: &Path) -> Result<Sysroot> {
         let src = get_or_install_rust_src(cargo_toml)?;
-
-        if !src.exists() {
-            Err(anyhow!(
-                "can't load standard library from sysroot\n\
-                {}\n\
-                (discovered via `rustc --print sysroot`)\n\
-                try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-                src.display(),
-            ))?;
-        }
-
         let mut sysroot = Sysroot { crates: Arena::default() };
         for name in SYSROOT_CRATES.trim().lines() {
             let root = src.join(format!("lib{}", name)).join("lib.rs");
@@ -91,33 +80,7 @@ impl Sysroot {
 }
 
 fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
-    fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
-        if let Ok(path) = env::var("RUST_SRC_PATH") {
-            return Ok(path.into());
-        }
-
-        let rustc_output = Command::new("rustc")
-            .current_dir(cargo_toml.parent().unwrap())
-            .args(&["--print", "sysroot"])
-            .output()
-            .context("rustc --print sysroot failed")?;
-        if !rustc_output.status.success() {
-            match rustc_output.status.code() {
-                Some(code) => bail!(
-                    "failed to locate sysroot: rustc --print sysroot exited with code {}",
-                    code
-                ),
-                None => {
-                    bail!("failed to locate sysroot: rustc --print sysroot terminated by signal")
-                }
-            };
-        }
-        let stdout = String::from_utf8(rustc_output.stdout)?;
-        let sysroot_path = Path::new(stdout.trim());
-        Ok(sysroot_path.join("lib/rustlib/src/rust/src"))
-    }
-
-    fn try_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
+    fn try_install_rust_src(cargo_toml: &Path) -> Result<()> {
         let rustup_output = Command::new("rustup")
             .current_dir(cargo_toml.parent().unwrap())
             .args(&["component", "add", "rust-src"])
@@ -134,15 +97,42 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
                 ),
             };
         }
-        try_find_src_path(cargo_toml)
+        Ok(())
     }
 
-    let src = try_find_src_path(cargo_toml)?;
-    if !src.exists() {
-        try_install_rust_src(cargo_toml)
-    } else {
-        Ok(src)
+    if let Ok(path) = env::var("RUST_SRC_PATH") {
+        return Ok(path.into());
     }
+    let rustc_output = Command::new("rustc")
+        .current_dir(cargo_toml.parent().unwrap())
+        .args(&["--print", "sysroot"])
+        .output()
+        .context("rustc --print sysroot failed")?;
+    if !rustc_output.status.success() {
+        match rustc_output.status.code() {
+            Some(code) => {
+                bail!("failed to locate sysroot: rustc --print sysroot exited with code {}", code)
+            }
+            None => bail!("failed to locate sysroot: rustc --print sysroot terminated by signal"),
+        };
+    }
+    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let sysroot_path = Path::new(stdout.trim());
+    let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
+
+    if !src_path.exists() {
+        try_install_rust_src(cargo_toml)?
+    }
+    if !src_path.exists() {
+        bail!(
+            "can't load standard library from sysroot\n\
+            {}\n\
+            (discovered via `rustc --print sysroot`)\n\
+            try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
+            src_path.display(),
+        )
+    }
+    Ok(src_path)
 }
 
 impl SysrootCrate {
