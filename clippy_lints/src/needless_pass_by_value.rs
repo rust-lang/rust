@@ -5,13 +5,14 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::traits;
-use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::*;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits;
+use rustc_infer::traits::misc::can_type_implement_copy;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, Symbol};

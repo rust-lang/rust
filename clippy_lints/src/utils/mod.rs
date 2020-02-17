@@ -27,7 +27,6 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir::map::Map;
 use rustc::traits;
-use rustc::traits::predicate_for_trait_def;
 use rustc::ty::{
     self,
     layout::{self, IntegerExt},
@@ -42,6 +41,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::*;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::predicate_for_trait_def;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;

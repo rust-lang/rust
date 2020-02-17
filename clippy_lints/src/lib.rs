@@ -33,6 +33,8 @@ extern crate rustc_hir;
 #[allow(unused_extern_crates)]
 extern crate rustc_index;
 #[allow(unused_extern_crates)]
+extern crate rustc_infer;
+#[allow(unused_extern_crates)]
 extern crate rustc_lexer;
 #[allow(unused_extern_crates)]
 extern crate rustc_lint;
