@@ -424,7 +424,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-static LEAVE_MAIN_PATTERNS: &[&str] = &["static", "fn main() {}", "extern crate"];
+static LEAVE_MAIN_PATTERNS: &[&str] = &["static", "fn main() {}", "extern crate", "async fn main() {"];
 
 fn check_code(cx: &LateContext<'_, '_>, text: &str, span: Span) {
     if text.contains("fn main() {") && !LEAVE_MAIN_PATTERNS.iter().any(|p| text.contains(p)) {
