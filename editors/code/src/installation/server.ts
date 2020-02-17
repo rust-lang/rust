@@ -43,7 +43,6 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
             console.log("Installed version:", installedVersion, "required:", requiredVersion);
 
             if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion == requiredVersion) {
-                // FIXME: check for new releases and notify the user to update if possible
                 return prebuiltBinaryPath;
             }
 
