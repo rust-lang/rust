@@ -23,16 +23,10 @@ export class Ctx {
         this.extCtx = extCtx;
     }
 
-    async startServer() {
+    async startServer(serverPath: string) {
         assert(this.client == null);
 
-        const client = await createClient(this.config);
-        if (!client) {
-            throw new Error(
-                "Rust Analyzer Language Server is not available. " +
-                "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
-            );
-        }
+        const client = await createClient(this.config, serverPath);
 
         this.pushCleanup(client.start());
         await client.onReady();
