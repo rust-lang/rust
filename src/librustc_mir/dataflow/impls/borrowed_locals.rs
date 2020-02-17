@@ -62,7 +62,7 @@ impl<K> MaybeBorrowedLocals<K> {
     ///
     /// In some contexts, we know that this borrow will never occur. For example, during
     /// const-eval, custom drop glue cannot be run. Code that calls this should document the
-    /// assumptions that justify `Drop` terminators in this way.
+    /// assumptions that justify ignoring `Drop` terminators in this way.
     ///
     /// [#61069]: https://github.com/rust-lang/rust/pull/61069
     pub fn unsound_ignore_borrow_on_drop(self) -> Self {
