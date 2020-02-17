@@ -953,7 +953,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
         }
 
-        if let hir::FunctionRetTy::Return(ref ret_hir) = decl.output {
+        if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false);

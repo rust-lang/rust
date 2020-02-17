@@ -1,7 +1,7 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FunctionRetTy, Generic, GenericArg,
+    inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
     GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, MacroKind, Path,
     PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type, TypeBinding,
     TypeKind, Visibility, WherePredicate,
@@ -273,7 +273,7 @@ pub fn get_all_types(
     }
 
     let ret_types = match decl.output {
-        FunctionRetTy::Return(ref return_type) => {
+        FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
                 ret.insert(return_type.clone());

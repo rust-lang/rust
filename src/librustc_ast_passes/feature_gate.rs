@@ -419,8 +419,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
-        if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
+    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
+        if let ast::FnRetTy::Ty(ref output_ty) = *ret_ty {
             if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
