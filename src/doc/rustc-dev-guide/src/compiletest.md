@@ -58,9 +58,8 @@ Here is an example, specifying the `must-compile-successfully` header command,
 which takes no arguments, followed by the `failure-status` header command,
 which takes a single argument (which, in this case is a value of 1).
 `failure-status` is instructing `compiletest` to expect a failure status of 1
-(rather than the current Rust default of 101 at the time of this writing).  The
-header command and the argument list (if present) are typically separated by a
-colon:
+(rather than the current Rust default of 101). The header command and
+the argument list (if present) are typically separated by a colon:
 
 ```rust,ignore
 // must-compile-successfully
