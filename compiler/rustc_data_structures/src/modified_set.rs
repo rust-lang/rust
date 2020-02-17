@@ -63,14 +63,12 @@ impl<T: Idx> ModifiedSet<T> {
             self.modified_set.remove(index);
         }
         self.modified.truncate(snapshot.modified_len);
-        let mut offsets = self.offsets.iter_mut();
-        for (offset, &saved_offset) in offsets.by_ref().zip(
+        let (offsets, offsets_rest) = self.offsets.split_at_mut(snapshot.offsets_len);
+        offsets.copy_from_slice(
             &self.undo_offsets
                 [snapshot.offsets_start..snapshot.offsets_start + snapshot.offsets_len],
-        ) {
-            *offset = saved_offset;
-        }
-        for offset in offsets {
+        );
+        for offset in offsets_rest {
             *offset = self.modified.len().min(*offset);
         }
         self.undo_offsets.truncate(snapshot.offsets_start);
