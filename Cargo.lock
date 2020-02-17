@@ -498,7 +498,7 @@ dependencies = [
  "itertools 0.8.0",
  "lazy_static 1.4.0",
  "matches",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark 0.7.0",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
