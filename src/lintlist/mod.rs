@@ -492,7 +492,7 @@ pub const ALL_LINTS: [Lint; 355] = [
     },
     Lint {
         name: "excessive_precision",
-        group: "style",
+        group: "correctness",
         desc: "excessive precision for float literal",
         deprecation: None,
         module: "excessive_precision",

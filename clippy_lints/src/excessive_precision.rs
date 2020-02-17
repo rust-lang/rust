@@ -22,15 +22,15 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// // Bad
-    /// let v: f32 = 0.123_456_789_9;
-    /// println!("{}", v); //  0.123_456_789
+    /// let a: f32 = 0.123_456_789_9; // 0.123_456_789
+    /// let b: f32 = 16_777_217.0; // 16_777_216.0
     ///
     /// // Good
-    /// let v: f64 = 0.123_456_789_9;
-    /// println!("{}", v); //  0.123_456_789_9
+    /// let a: f64 = 0.123_456_789_9;
+    /// let b: f64 = 16_777_216.0;
     /// ```
     pub EXCESSIVE_PRECISION,
-    style,
+    correctness,
     "excessive precision for float literal"
 }
 
