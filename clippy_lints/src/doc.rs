@@ -1,4 +1,5 @@
 use crate::utils::{get_trait_def_id, implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
 use rustc::ty::TyKind;
@@ -223,27 +224,26 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 span,
                 "docs for function returning `Result` missing `# Errors` section",
             );
-        } else if let (Some(body_id), Some(future)) = (body_id, get_trait_def_id(cx, &paths::FUTURE)) {
-            let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-            let mir = cx.tcx.optimized_mir(def_id);
-            let ret_ty = mir.return_ty();
-
-            if implements_trait(cx, ret_ty, future, &[]) {
-                use TyKind::*;
-
-                if let Opaque(_, subs) = ret_ty.kind {
-                    if let Some(ty) = subs.types().next() {
-                        if let Generator(_, subs, _) = ty.kind {
-                            if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT) {
-                                span_lint(
-                                    cx,
-                                    MISSING_ERRORS_DOC,
-                                    span,
-                                    "docs for function returning `Result` missing `# Errors` section",
-                                );
-                            }
-                        }
-                    }
+        } else {
+            use TyKind::*;
+            if_chain! {
+                if let Some(body_id) = body_id;
+                if let Some(future) = get_trait_def_id(cx, &paths::FUTURE);
+                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+                let mir = cx.tcx.optimized_mir(def_id);
+                let ret_ty = mir.return_ty();
+                if implements_trait(cx, ret_ty, future, &[]);
+                if let Opaque(_, subs) = ret_ty.kind;
+                if let Some(ty) = subs.types().next();
+                if let Generator(_, subs, _) = ty.kind;
+                if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT);
+                then {
+                    span_lint(
+                        cx,
+                        MISSING_ERRORS_DOC,
+                        span,
+                        "docs for function returning `Result` missing `# Errors` section",
+                    );
                 }
             }
         }
