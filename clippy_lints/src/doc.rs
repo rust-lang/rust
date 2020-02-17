@@ -2,7 +2,7 @@ use crate::utils::{get_trait_def_id, implements_trait, is_entrypoint_fn, match_t
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
-use rustc::ty::TyKind;
+use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -225,7 +225,6 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 "docs for function returning `Result` missing `# Errors` section",
             );
         } else {
-            use TyKind::*;
             if_chain! {
                 if let Some(body_id) = body_id;
                 if let Some(future) = get_trait_def_id(cx, &paths::FUTURE);
@@ -233,9 +232,9 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 let mir = cx.tcx.optimized_mir(def_id);
                 let ret_ty = mir.return_ty();
                 if implements_trait(cx, ret_ty, future, &[]);
-                if let Opaque(_, subs) = ret_ty.kind;
-                if let Some(ty) = subs.types().next();
-                if let Generator(_, subs, _) = ty.kind;
+                if let ty::Opaque(_, subs) = ret_ty.kind;
+                if let Some(gen) = subs.types().next();
+                if let ty::Generator(_, subs, _) = gen.kind;
                 if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT);
                 then {
                     span_lint(
