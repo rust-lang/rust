@@ -11,7 +11,34 @@ let ctx: Ctx | undefined;
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
 
+    // Note: we try to start the server before we activate type hints so that it
+    // registers its `onDidChangeDocument` handler before us.
+    //
+    // This a horribly, horribly wrong way to deal with this problem.
+    try {
+        await ctx.startServer();
+    } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+    }
+
     // Commands which invokes manually via command palette, shortcut, etc.
+    ctx.registerCommand('reload', (ctx) => {
+        return async () => {
+            vscode.window.showInformationMessage('Reloading rust-analyzer...');
+            // @DanTup maneuver
+            // https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
+            await deactivate()
+            for (const sub of ctx.subscriptions) {
+                try {
+                    sub.dispose();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            await activate(context)
+        }
+    })
+
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
@@ -20,7 +47,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
-    ctx.registerCommand('reload', commands.reload);
     ctx.registerCommand('onEnter', commands.onEnter);
     ctx.registerCommand('ssr', commands.ssr)
 
@@ -33,18 +59,10 @@ export async function activate(context: vscode.ExtensionContext) {
     activateStatusDisplay(ctx);
 
     activateHighlighting(ctx);
-    // Note: we try to start the server before we activate type hints so that it
-    // registers its `onDidChangeDocument` handler before us.
-    //
-    // This a horribly, horribly wrong way to deal with this problem.
-    try {
-        await ctx.restartServer();
-    } catch (e) {
-        vscode.window.showErrorMessage(e.message);
-    }
     activateInlayHints(ctx);
 }
 
 export async function deactivate() {
     await ctx?.client?.stop();
+    ctx = undefined;
 }

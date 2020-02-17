@@ -51,10 +51,3 @@ export function selectAndApplySourceChange(ctx: Ctx): Cmd {
         }
     };
 }
-
-export function reload(ctx: Ctx): Cmd {
-    return async () => {
-        vscode.window.showInformationMessage('Reloading rust-analyzer...');
-        await ctx.restartServer();
-    };
-}

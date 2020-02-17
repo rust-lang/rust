@@ -7,7 +7,8 @@ import { Ctx, sendRequestWithRetry } from './ctx';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
-    ctx.onDidRestart(client => {
+    const client = ctx.client;
+    if (client != null) {
         client.onNotification(
             'rust-analyzer/publishDecorations',
             (params: PublishDecorationsParams) => {
@@ -28,7 +29,7 @@ export function activateHighlighting(ctx: Ctx) {
                 highlighter.setHighlights(targetEditor, params.decorations);
             },
         );
-    });
+    };
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),

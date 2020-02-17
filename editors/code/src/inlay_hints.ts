@@ -27,9 +27,15 @@ export function activateInlayHints(ctx: Ctx) {
         ctx.subscriptions
     );
 
-    // We pass async function though it will not be awaited when called,
-    // thus Promise rejections won't be handled, but this should never throw in fact...
-    ctx.onDidRestart(async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints));
+    ctx.pushCleanup({
+        dispose() {
+            hintsUpdater.clear()
+        }
+    })
+
+    // XXX: we don't await this, thus Promise rejections won't be handled, but
+    // this should never throw in fact...
+    hintsUpdater.setEnabled(ctx.config.displayInlayHints)
 }
 
 interface InlayHintsParams {
@@ -61,16 +67,23 @@ class HintsUpdater {
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
-        this.enabled = ctx.config.displayInlayHints;
+        this.enabled = false;
     }
 
     async setEnabled(enabled: boolean): Promise<void> {
+        console.log({ enabled, prev: this.enabled });
+
         if (this.enabled == enabled) return;
         this.enabled = enabled;
 
         if (this.enabled) {
             return await this.refresh();
+        } else {
+            return this.clear();
         }
+    }
+
+    clear() {
         this.allEditors.forEach(it => {
             this.setTypeDecorations(it, []);
             this.setParameterDecorations(it, []);
@@ -79,6 +92,8 @@ class HintsUpdater {
 
     async refresh() {
         if (!this.enabled) return;
+        console.log("freshin!");
+
         await Promise.all(this.allEditors.map(it => this.refreshEditor(it)));
     }
 
