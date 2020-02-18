@@ -63,6 +63,15 @@ including:
 
   Example: `./x.py test src/tools/tidy`
 
+- **Formatting** – Rustfmt is integrated with the build system to enforce
+  uniform style across the compiler. In the CI, we check that the formatting
+  is correct.
+
+  Example: `./x.py fmt --check` checks formatting an exits with an error if
+  formatting is needed.
+
+  Example: `./x.py fmt` runs rustfmt on the codebase.
+
 - **Unit tests** – The Rust standard library and many of the Rust packages
   include typical Rust `#[test]` unittests.  Under the hood, `x.py` will run
   `cargo test` on each package to run all the tests.
