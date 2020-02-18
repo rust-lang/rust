@@ -21,6 +21,7 @@
 //! those FSTs.
 
 use std::{
+    cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
     mem,
@@ -187,29 +188,34 @@ impl Hash for SymbolIndex {
 
 impl SymbolIndex {
     fn new(mut symbols: Vec<FileSymbol>) -> SymbolIndex {
-        fn cmp_key<'a>(s1: &'a FileSymbol) -> impl Ord + 'a {
-            unicase::Ascii::new(s1.name.as_str())
+        fn cmp(lhs: &FileSymbol, rhs: &FileSymbol) -> Ordering {
+            let lhs_chars = lhs.name.chars().map(|c| c.to_ascii_lowercase());
+            let rhs_chars = rhs.name.chars().map(|c| c.to_ascii_lowercase());
+            lhs_chars.cmp(rhs_chars)
         }
+
         #[cfg(not(feature = "wasm"))]
-        symbols.par_sort_by(|s1, s2| cmp_key(s1).cmp(&cmp_key(s2)));
+        symbols.par_sort_by(cmp);
 
         #[cfg(feature = "wasm")]
-        symbols.sort_by(|s1, s2| cmp_key(s1).cmp(&cmp_key(s2)));
+        symbols.sort_by(cmp);
 
         let mut builder = fst::MapBuilder::memory();
 
         let mut last_batch_start = 0;
 
         for idx in 0..symbols.len() {
-            if symbols.get(last_batch_start).map(cmp_key) == symbols.get(idx + 1).map(cmp_key) {
-                continue;
+            if let Some(next_symbol) = symbols.get(idx + 1) {
+                if cmp(&symbols[last_batch_start], next_symbol) == Ordering::Equal {
+                    continue;
+                }
             }
 
             let start = last_batch_start;
             let end = idx + 1;
             last_batch_start = end;
 
-            let key = symbols[start].name.as_str().to_lowercase();
+            let key = symbols[start].name.as_str().to_ascii_lowercase();
             let value = SymbolIndex::range_to_map_value(start, end);
 
             builder.insert(key, value).unwrap();
