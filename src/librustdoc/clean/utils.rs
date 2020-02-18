@@ -457,7 +457,7 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
+pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
             let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
@@ -487,15 +487,18 @@ pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
 }
 
 pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    let value =
-        cx.tcx.const_eval_poly(def_id).ok().and_then(|value| match (value.val, &value.ty.kind) {
-            (_, ty::Ref(..)) => None,
-            (ty::ConstKind::Value(ConstValue::Scalar(_)), ty::Adt(_, _)) => None,
-            (ty::ConstKind::Value(ConstValue::Scalar(_)), _) => {
-                Some(print_const_with_custom_print_scalar(cx, value))
+    let value = cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
+        let ty = cx.tcx.type_of(def_id);
+        match (val, &ty.kind) {
+            (_, &ty::Ref(..)) => None,
+            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (ConstValue::Scalar(_), _) => {
+                let const_ = ty::Const::from_value(cx.tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(cx, const_))
             }
             _ => None,
-        });
+        }
+    });
 
     value
 }

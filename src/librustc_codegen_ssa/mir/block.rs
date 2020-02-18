@@ -991,7 +991,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 caller.line as u32,
                 caller.col_display as u32 + 1,
             ));
-            OperandRef::from_const(bx, const_loc)
+            OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
         })
     }
 

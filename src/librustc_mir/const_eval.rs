@@ -26,7 +26,7 @@ pub(crate) fn const_field<'tcx>(
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstValue<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     // get the operand again
@@ -46,19 +46,13 @@ pub(crate) fn const_field<'tcx>(
 pub(crate) fn const_caller_location<'tcx>(
     tcx: TyCtxt<'tcx>,
     (file, line, col): (Symbol, u32, u32),
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstValue<'tcx> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
-    let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
-    let loc_const = ty::Const {
-        ty: loc_ty,
-        val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),
-    };
-
-    tcx.mk_const(loc_const)
+    ConstValue::Scalar(loc_place.ptr.into())
 }
 
 // this function uses `unwrap` copiously, because an already validated constant
@@ -84,7 +78,8 @@ pub(crate) fn destructure_const<'tcx>(
     let down = ecx.operand_downcast(op, variant).unwrap();
     let fields_iter = (0..field_count).map(|i| {
         let field_op = ecx.operand_field(down, i).unwrap();
-        op_to_const(&ecx, field_op)
+        let val = op_to_const(&ecx, field_op);
+        ty::Const::from_value(tcx, val, field_op.layout.ty)
     });
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 

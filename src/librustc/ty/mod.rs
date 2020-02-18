@@ -2388,10 +2388,10 @@ impl<'tcx> AdtDef {
         let repr_type = self.repr.discr_type();
         match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
-                // FIXME: Find the right type and use it instead of `val.ty` here
-                if let Some(b) = val.try_eval_bits(tcx, param_env, val.ty) {
+                let ty = repr_type.to_ty(tcx);
+                if let Some(b) = val.try_to_bits_for_ty(tcx, param_env, ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
-                    Some(Discr { val: b, ty: val.ty })
+                    Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
                     crate::mir::interpret::struct_error(

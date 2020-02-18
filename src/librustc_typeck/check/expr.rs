@@ -1012,6 +1012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
             tcx.const_eval_poly(count_def_id)
+                .map(|val| ty::Const::from_value(tcx, val, tcx.type_of(count_def_id)))
         };
 
         let uty = match expected {
