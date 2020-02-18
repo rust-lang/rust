@@ -73,7 +73,7 @@ Note that installing via `xtask install` does not work for VS Code Remote, inste
 
 Other editors generally require `ra_lsp_server` binary to be in `$PATH`.
 You can download pre-build binary from
-https://github.com/rust-analyzer/rust-analyzer/releases[relases]
+https://github.com/rust-analyzer/rust-analyzer/releases[releases]
 page, or you can install it from source using the following command:
 
 [source,bash]
