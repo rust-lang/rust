@@ -77,7 +77,6 @@ fn no_docs_comments() {
         "ra_hir",
         "ra_hir_expand",
         "ra_ide",
-        "ra_lsp_server",
         "ra_mbe",
         "ra_parser",
         "ra_prof",
