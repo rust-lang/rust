@@ -3,40 +3,44 @@ error[E0599]: no method named `test_mut` found for struct `std::vec::Vec<{intege
    |
 LL |     a.test_mut();
    |       ^^^^^^^^ help: there is a method with a similar name: `get_mut`
+...
+LL | trait MyIter {
+   | ------------ this trait defines an item `test_mut`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `test_mut`, perhaps you need to implement it:
-           candidate #1: `MyIter`
 
 error[E0599]: no method named `test` found for struct `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7
    |
 LL |     a.test();
    |       ^^^^ method not found in `std::vec::Vec<{integer}>`
+...
+LL | trait MyIter {
+   | ------------ this trait defines an item `test`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `test`, perhaps you need to implement it:
-           candidate #1: `MyIter`
 
 error[E0599]: no method named `test` found for array `[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:10:11
    |
 LL |     ([1]).test();
    |           ^^^^ method not found in `[{integer}; 1]`
+...
+LL | trait MyIter {
+   | ------------ this trait defines an item `test`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `test`, perhaps you need to implement it:
-           candidate #1: `MyIter`
 
 error[E0599]: no method named `test` found for reference `&[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:11:12
    |
 LL |     (&[1]).test();
    |            ^^^^ method not found in `&[{integer}; 1]`
+...
+LL | trait MyIter {
+   | ------------ this trait defines an item `test`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `test`, perhaps you need to implement it:
-           candidate #1: `MyIter`
 
 error: aborting due to 4 previous errors
 

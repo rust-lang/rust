@@ -846,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let message = |action| {
                 format!(
                     "the following {traits_define} an item `{name}`, perhaps you need to {action} \
-                 {one_of_them}:",
+                     {one_of_them}:",
                     traits_define =
                         if candidates.len() == 1 { "trait defines" } else { "traits define" },
                     action = action,
@@ -944,19 +944,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if !suggested {
-                let mut msg = message(if let Some(param) = param_type {
+                let action = if let Some(param) = param_type {
                     format!("restrict type parameter `{}` with", param)
                 } else {
                     "implement".to_string()
-                });
-                for (i, trait_info) in candidates.iter().enumerate() {
-                    msg.push_str(&format!(
-                        "\ncandidate #{}: `{}`",
-                        i + 1,
-                        self.tcx.def_path_str(trait_info.def_id),
-                    ));
+                };
+                let mut use_note = true;
+                if let [trait_info] = &candidates[..] {
+                    if let Some(span) = self.tcx.hir().span_if_local(trait_info.def_id) {
+                        err.span_label(
+                            self.tcx.sess.source_map().def_span(span),
+                            &format!("this trait defines an item `{}`", item_name),
+                        );
+                        use_note = false
+                    }
                 }
-                err.note(&msg[..]);
+                if use_note {
+                    let mut msg = message(action);
+                    for (i, trait_info) in candidates.iter().enumerate() {
+                        msg.push_str(&format!(
+                            "\ncandidate #{}: `{}`",
+                            i + 1,
+                            self.tcx.def_path_str(trait_info.def_id),
+                        ));
+                    }
+                    err.note(&msg[..]);
+                }
             }
         }
     }

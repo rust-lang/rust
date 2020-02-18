@@ -1,12 +1,13 @@
 error[E0599]: no function or associated item named `make_g` found for fn pointer `for<'r> fn(&'r ())` in the current scope
   --> $DIR/issue-57362-2.rs:22:25
    |
+LL | trait X {
+   | ------- this trait defines an item `make_g`
+...
 LL |     let x = <fn (&())>::make_g();
    |                         ^^^^^^ function or associated item not found in `for<'r> fn(&'r ())`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `make_g`, perhaps you need to implement it:
-           candidate #1: `X`
 
 error: aborting due to previous error
 
