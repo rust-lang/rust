@@ -5,7 +5,6 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::hir::map::Map;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit;
 use rustc_hir::intravisit::*;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -60,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
-        _: intravisit::FnKind<'tcx>,
+        _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
@@ -359,7 +358,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
                 simplified.push(simple_negated);
             }
-            let mut improvements = Vec::new();
+            let mut improvements = Vec::with_capacity(simplified.len());
             'simplified: for suggestion in &simplified {
                 let simplified_stats = terminal_stats(suggestion);
                 let mut improvement = false;

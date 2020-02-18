@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::utils::{snippet_opt, span_lint, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PtrOffsetWithCast {
 
         let msg = format!("use of `{}` with a `usize` casted to an `isize`", method);
         if let Some(sugg) = build_suggestion(cx, method, receiver_expr, cast_lhs_expr) {
-            utils::span_lint_and_sugg(
+            span_lint_and_sugg(
                 cx,
                 PTR_OFFSET_WITH_CAST,
                 expr.span,
@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PtrOffsetWithCast {
                 Applicability::MachineApplicable,
             );
         } else {
-            utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
+            span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
         }
     }
 }
@@ -119,8 +119,8 @@ fn build_suggestion<'a, 'tcx>(
     receiver_expr: &Expr<'_>,
     cast_lhs_expr: &Expr<'_>,
 ) -> Option<String> {
-    let receiver = utils::snippet_opt(cx, receiver_expr.span)?;
-    let cast_lhs = utils::snippet_opt(cx, cast_lhs_expr.span)?;
+    let receiver = snippet_opt(cx, receiver_expr.span)?;
+    let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
     Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
 }
 

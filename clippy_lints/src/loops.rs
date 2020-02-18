@@ -18,7 +18,6 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_infer::infer::TyCtxtInferExt;

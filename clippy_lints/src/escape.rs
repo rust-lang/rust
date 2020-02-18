@@ -1,7 +1,6 @@
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
-use rustc_hir::intravisit as visit;
-use rustc_hir::HirIdSet;
+use rustc_hir::intravisit;
 use rustc_hir::{self, *};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -54,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
-        _: visit::FnKind<'tcx>,
+        _: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
