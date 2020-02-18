@@ -6,11 +6,9 @@ use ra_project_model::{self, ProjectWorkspace, TargetKind};
 use crate::{world::WorldSnapshot, Result};
 
 pub(crate) fn runnable_args(
-    world: &WorldSnapshot,
-    file_id: FileId,
+    spec: Option<CargoTargetSpec>,
     kind: &RunnableKind,
 ) -> Result<Vec<String>> {
-    let spec = CargoTargetSpec::for_file(world, file_id)?;
     let mut res = Vec::new();
     match kind {
         RunnableKind::Test { test_id } => {

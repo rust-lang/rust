@@ -921,7 +921,8 @@ fn to_lsp_runnable(
     file_id: FileId,
     runnable: Runnable,
 ) -> Result<req::Runnable> {
-    let args = runnable_args(world, file_id, &runnable.kind)?;
+    let spec: Option<CargoTargetSpec> = CargoTargetSpec::for_file(world, file_id)?;
+    let args = runnable_args(spec, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
         RunnableKind::Test { test_id } => format!("test {}", test_id),
