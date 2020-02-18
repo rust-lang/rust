@@ -1008,6 +1008,29 @@ fn test() { foo.call()<|>; }
 }
 
 #[test]
+fn method_resolution_non_parameter_type() {
+    let t = type_at(
+        r#"
+//- /main.rs
+mod a {
+    pub trait Foo {
+        fn foo(&self);
+    }
+}
+
+struct Wrapper<T>(T);
+fn foo<T>(t: Wrapper<T>)
+where
+    Wrapper<T>: a::Foo,
+{
+    t.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn method_resolution_slow() {
     // this can get quite slow if we set the solver size limit too high
     let t = type_at(
