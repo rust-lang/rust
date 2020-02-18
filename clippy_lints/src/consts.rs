@@ -226,7 +226,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             return self.ifthenelse(cond, then, otherwise);
         }
         match e.kind {
-            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
+            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.tables.expr_ty(e)),
             ExprKind::Block(ref block, _) => self.block(block),
             ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty_opt(e))),
             ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
@@ -319,7 +319,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// Lookup a possibly constant expression from a `ExprKind::Path`.
-    fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId) -> Option<Constant> {
+    fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'cc>) -> Option<Constant> {
         let res = self.tables.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
@@ -334,7 +334,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     .lcx
                     .tcx
                     .const_eval_resolve(self.param_env, def_id, substs, None, None)
-                    .ok()?;
+                    .ok()
+                    .map(|val| rustc::ty::Const::from_value(self.lcx.tcx, val, ty))?;
                 let result = miri_to_const(&result);
                 if result.is_some() {
                     self.needed_resolution = true;
