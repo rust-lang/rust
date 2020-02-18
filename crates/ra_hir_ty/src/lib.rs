@@ -167,7 +167,7 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
             => 1,
             TypeCtor::Adt(adt) => {
-                let generic_params = generics(db, AdtId::from(adt).into());
+                let generic_params = generics(db, adt.into());
                 generic_params.len()
             }
             TypeCtor::FnDef(callable) => {
@@ -247,7 +247,7 @@ pub struct ProjectionTy {
 
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef { trait_: self.trait_(db).into(), substs: self.parameters.clone() }
+        TraitRef { trait_: self.trait_(db), substs: self.parameters.clone() }
     }
 
     fn trait_(&self, db: &impl HirDatabase) -> TraitId {
@@ -763,8 +763,8 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.walk_mut_binders(
-            &mut |ty, binders| match ty {
-                &mut Ty::Bound(idx) => {
+            &mut |ty, binders| {
+                if let &mut Ty::Bound(idx) = ty {
                     if idx as usize >= binders && (idx as usize - binders) < substs.len() {
                         *ty = substs.0[idx as usize - binders].clone();
                     } else if idx as usize >= binders + substs.len() {
@@ -772,7 +772,6 @@ pub trait TypeWalk {
                         *ty = Ty::Bound(idx - substs.len() as u32);
                     }
                 }
-                _ => {}
             },
             0,
         );

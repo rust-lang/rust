@@ -54,9 +54,8 @@ impl FunctionSignature {
 
     pub(crate) fn from_struct(db: &RootDatabase, st: hir::Struct) -> Option<Self> {
         let node: ast::StructDef = st.source(db).value;
-        match node.kind() {
-            ast::StructKind::Record(_) => return None,
-            _ => (),
+        if let ast::StructKind::Record(_) = node.kind() {
+            return None;
         };
 
         let params = st

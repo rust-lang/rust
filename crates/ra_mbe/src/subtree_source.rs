@@ -124,7 +124,7 @@ fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
 
     let idx = closing as usize;
     let kind = kinds[idx];
-    let text = if texts.len() > 0 { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    let text = if !texts.is_empty() { &texts[idx..texts.len() - (1 - idx)] } else { "" };
     TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text) }
 }
 

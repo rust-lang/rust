@@ -460,7 +460,7 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
-        Some(def.as_call_id(db, MacroCallKind::FnLike(self.ast_id.clone())))
+        Some(def.as_call_id(db, MacroCallKind::FnLike(self.ast_id)))
     }
 }
 
@@ -471,6 +471,6 @@ impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
-        Some(def.as_call_id(db, MacroCallKind::Attr(self.ast_id.clone())))
+        Some(def.as_call_id(db, MacroCallKind::Attr(self.ast_id)))
     }
 }

@@ -48,7 +48,7 @@ impl<'t> TokenSource for TextTokenSource<'t> {
 
     fn is_keyword(&self, kw: &str) -> bool {
         let pos = self.curr.1;
-        if !(pos < self.tokens.len()) {
+        if pos >= self.tokens.len() {
             return false;
         }
         let range = TextRange::offset_len(self.start_offsets[pos], self.tokens[pos].len);

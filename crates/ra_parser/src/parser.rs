@@ -126,13 +126,13 @@ impl<'t> Parser<'t> {
     }
 
     fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
-        let t1 = self.token_source.lookahead_nth(n + 0);
+        let t1 = self.token_source.lookahead_nth(n);
         let t2 = self.token_source.lookahead_nth(n + 1);
         t1.kind == k1 && t1.is_jointed_to_next && t2.kind == k2
     }
 
     fn at_composite3(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind, k3: SyntaxKind) -> bool {
-        let t1 = self.token_source.lookahead_nth(n + 0);
+        let t1 = self.token_source.lookahead_nth(n);
         let t2 = self.token_source.lookahead_nth(n + 1);
         let t3 = self.token_source.lookahead_nth(n + 2);
         (t1.kind == k1 && t1.is_jointed_to_next)

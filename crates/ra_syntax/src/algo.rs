@@ -95,16 +95,17 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
         lhs: SyntaxElement,
         rhs: SyntaxElement,
     ) {
-        if lhs.kind() == rhs.kind() && lhs.text_range().len() == rhs.text_range().len() {
-            if match (&lhs, &rhs) {
+        if lhs.kind() == rhs.kind()
+            && lhs.text_range().len() == rhs.text_range().len()
+            && match (&lhs, &rhs) {
                 (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => {
                     lhs.green() == rhs.green() || lhs.text() == rhs.text()
                 }
                 (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
                 _ => false,
-            } {
-                return;
             }
+        {
+            return;
         }
         if let (Some(lhs), Some(rhs)) = (lhs.as_node(), rhs.as_node()) {
             if lhs.children_with_tokens().count() == rhs.children_with_tokens().count() {

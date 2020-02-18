@@ -448,7 +448,7 @@ where
             // FIXME expand to statements in statement position
             ast::Expr::MacroCall(e) => {
                 let macro_call = self.expander.to_source(AstPtr::new(&e));
-                match self.expander.enter_expand(self.db, e.clone()) {
+                match self.expander.enter_expand(self.db, e) {
                     Some((mark, expansion)) => {
                         self.source_map
                             .expansions

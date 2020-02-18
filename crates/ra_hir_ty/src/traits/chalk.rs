@@ -409,8 +409,7 @@ where
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
         let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
         let value = self.value.to_chalk(db);
-        let canonical = chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] };
-        canonical
+        chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] }
     }
 
     fn from_chalk(db: &impl HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
@@ -565,10 +564,10 @@ where
         // and will panic if the trait can't be resolved.
         let mut result: Vec<_> = self
             .db
-            .impls_for_trait(self.krate, trait_.into())
+            .impls_for_trait(self.krate, trait_)
             .iter()
             .copied()
-            .map(|it| Impl::ImplBlock(it.into()))
+            .map(Impl::ImplBlock)
             .map(|impl_| impl_.to_chalk(self.db))
             .collect();
 
@@ -586,7 +585,7 @@ where
         false // FIXME
     }
     fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
-        self.db.associated_ty_value(self.krate.into(), id)
+        self.db.associated_ty_value(self.krate, id)
     }
     fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause<TypeFamily>> {
         vec![]
@@ -674,7 +673,7 @@ pub(crate) fn struct_datum_query(
     let where_clauses = type_ctor
         .as_generic_def()
         .map(|generic_def| {
-            let generic_params = generics(db, generic_def.into());
+            let generic_params = generics(db, generic_def);
             let bound_vars = Substs::bound_vars(&generic_params);
             convert_where_clauses(db, generic_def, &bound_vars)
         })
@@ -805,7 +804,7 @@ fn type_alias_associated_ty_value(
     let ty = db.ty(type_alias.into());
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
-        impl_id: Impl::ImplBlock(impl_id.into()).to_chalk(db),
+        impl_id: Impl::ImplBlock(impl_id).to_chalk(db),
         associated_ty_id: assoc_ty.to_chalk(db),
         value: make_binders(value_bound, ty.num_binders),
     };

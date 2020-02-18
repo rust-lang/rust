@@ -159,7 +159,7 @@ impl CompletionItem {
 
     /// Short one-line additional information, like a type
     pub fn detail(&self) -> Option<&str> {
-        self.detail.as_ref().map(|it| it.as_str())
+        self.detail.as_deref()
     }
     /// A doc-comment
     pub fn documentation(&self) -> Option<Documentation> {
@@ -167,7 +167,7 @@ impl CompletionItem {
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
-        self.lookup.as_ref().map(|it| it.as_str()).unwrap_or_else(|| self.label())
+        self.lookup.as_deref().unwrap_or_else(|| self.label())
     }
 
     pub fn kind(&self) -> Option<CompletionItemKind> {

@@ -43,9 +43,9 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         .clone();
 
     let trait_token =
-        ctx.token_at_offset().filter(|t| t.kind() == IDENT && *t.text() != attr_name).next()?;
+        ctx.token_at_offset().find(|t| t.kind() == IDENT && *t.text() != attr_name)?;
 
-    let annotated = attr.syntax().siblings(Direction::Next).find_map(|s| ast::Name::cast(s))?;
+    let annotated = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
     let annotated_name = annotated.syntax().text().to_string();
     let start_offset = annotated.syntax().parent()?.text_range().end();
 
@@ -62,7 +62,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
             .filter_map(|t| t.into_token().map(|t| t.text().clone()))
             .filter(|t| t != trait_token.text())
             .collect::<Vec<SmolStr>>();
-        let has_more_derives = new_attr_input.len() > 0;
+        let has_more_derives = !new_attr_input.is_empty();
         let new_attr_input =
             join(new_attr_input.iter()).separator(", ").surround_with("(", ")").to_string();
         let new_attr_input_len = new_attr_input.len();
@@ -86,7 +86,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
                 .next_sibling_or_token()
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
-                .unwrap_or(TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+                .unwrap_or_else(|| TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
             edit.delete(line_break_range);
 
             attr_range.len() + line_break_range.len()

@@ -8,8 +8,8 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
-log = "0.4.5"
-either = "1.5"
+log = "0.4.8"
+either = "1.5.3"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }

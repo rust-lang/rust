@@ -128,7 +128,7 @@ impl FnCallNode {
             }),
 
             FnCallNode::MethodCallExpr(call_expr) => {
-                call_expr.syntax().children().filter_map(ast::NameRef::cast).nth(0)
+                call_expr.syntax().children().filter_map(ast::NameRef::cast).next()
             }
 
             FnCallNode::MacroCallExpr(call_expr) => call_expr.path()?.segment()?.name_ref(),

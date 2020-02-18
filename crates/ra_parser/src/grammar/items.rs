@@ -21,7 +21,7 @@ use super::*;
 // struct S;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
-    while !p.at(EOF) && !(stop_on_r_curly && p.at(T!['}'])) {
+    while !(stop_on_r_curly && p.at(T!['}']) || p.at(EOF)) {
         item_or_macro(p, stop_on_r_curly, ItemFlavor::Mod)
     }
 }

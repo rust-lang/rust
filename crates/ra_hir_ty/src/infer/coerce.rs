@@ -26,7 +26,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Note that it is only possible that one type are coerced to another.
     /// Coercing both types to another least upper bound type is not possible in rustc,
     /// which will simply result in "incompatible types" error.
-    pub(super) fn coerce_merge_branch<'t>(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
+    pub(super) fn coerce_merge_branch(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
         if self.coerce(ty1, ty2) {
             ty2.clone()
         } else if self.coerce(ty2, ty1) {
@@ -44,10 +44,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         resolver: &Resolver,
     ) -> FxHashMap<(TypeCtor, TypeCtor), usize> {
         let krate = resolver.krate().unwrap();
-        let impls = match db.lang_item(krate.into(), "coerce_unsized".into()) {
-            Some(LangItemTarget::TraitId(trait_)) => {
-                db.impls_for_trait(krate.into(), trait_.into())
-            }
+        let impls = match db.lang_item(krate, "coerce_unsized".into()) {
+            Some(LangItemTarget::TraitId(trait_)) => db.impls_for_trait(krate, trait_),
             _ => return FxHashMap::default(),
         };
 
@@ -254,15 +252,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let unsize_generic_index = {
                     let mut index = None;
                     let mut multiple_param = false;
-                    field_tys[last_field_id].value.walk(&mut |ty| match ty {
-                        &Ty::Bound(idx) => {
+                    field_tys[last_field_id].value.walk(&mut |ty| {
+                        if let &Ty::Bound(idx) = ty {
                             if index.is_none() {
                                 index = Some(idx);
                             } else if Some(idx) != index {
                                 multiple_param = true;
                             }
                         }
-                        _ => {}
                     });
 
                     if multiple_param {

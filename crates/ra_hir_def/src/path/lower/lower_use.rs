@@ -32,9 +32,7 @@ pub(crate) fn lower_use_tree(
         }
     } else {
         let alias = tree.alias().map(|a| {
-            a.name()
-                .map(|it| it.as_name())
-                .map_or(ImportAlias::Underscore, |a| ImportAlias::Alias(a))
+            a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
         });
         let is_glob = tree.has_star();
         if let Some(ast_path) = tree.path() {

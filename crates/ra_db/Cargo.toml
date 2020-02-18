@@ -10,7 +10,7 @@ doctest = false
 [dependencies]
 salsa = "0.14.1"
 relative-path = "1.0.0"
-rustc-hash = "1.0"
+rustc-hash = "1.1.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_cfg = { path = "../ra_cfg" }

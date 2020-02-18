@@ -361,9 +361,8 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Expansion> {
-        let macro_call_id = macro_call.as_call_id(db, |path| {
-            self.resolver.resolve_path_as_macro(db, &path).map(|it| it.into())
-        })?;
+        let macro_call_id =
+            macro_call.as_call_id(db, |path| self.resolver.resolve_path_as_macro(db, &path))?;
         Some(Expansion { macro_call_id })
     }
 }

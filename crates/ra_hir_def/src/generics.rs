@@ -71,7 +71,7 @@ impl GenericParams {
         db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
-        let (params, _source_map) = GenericParams::new(db, def.into());
+        let (params, _source_map) = GenericParams::new(db, def);
         Arc::new(params)
     }
 

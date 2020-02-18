@@ -52,7 +52,7 @@ impl<'a> Project<'a> {
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| TempDir::new().unwrap());
         static INIT: Once = Once::new();
         INIT.call_once(|| {
-            let _ = env_logger::builder().is_test(true).try_init().unwrap();
+            env_logger::builder().is_test(true).try_init().unwrap();
             ra_prof::set_filter(if crate::PROFILE.is_empty() {
                 ra_prof::Filter::disabled()
             } else {

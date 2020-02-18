@@ -155,14 +155,11 @@ fn compile_error_expand(
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     if tt.count() == 1 {
-        match &tt.token_trees[0] {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => {
-                let s = it.text.as_str();
-                if s.contains(r#"""#) {
-                    return Ok(quote! { loop { #it }});
-                }
+        if let tt::TokenTree::Leaf(tt::Leaf::Literal(it)) = &tt.token_trees[0] {
+            let s = it.text.as_str();
+            if s.contains('"') {
+                return Ok(quote! { loop { #it }});
             }
-            _ => {}
         };
     }
 
@@ -222,7 +219,7 @@ mod tests {
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let macro_calls: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(|it| ast::MacroCall::cast(it)).collect();
+            parsed.syntax_node().descendants().filter_map(ast::MacroCall::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 

@@ -234,7 +234,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         let child = map_rust_child_diagnostic(&child, workspace_root);
         match child {
             MappedRustChildDiagnostic::Related(related) => related_information.push(related),
-            MappedRustChildDiagnostic::SuggestedFix(code_action) => fixes.push(code_action.into()),
+            MappedRustChildDiagnostic::SuggestedFix(code_action) => fixes.push(code_action),
             MappedRustChildDiagnostic::MessageLine(message_line) => {
                 write!(&mut message, "\n{}", message_line).unwrap();
 

@@ -206,17 +206,17 @@ pub fn main_loop(
             let event = select! {
                 recv(&connection.receiver) -> msg => match msg {
                     Ok(msg) => Event::Msg(msg),
-                    Err(RecvError) => Err("client exited without shutdown")?,
+                    Err(RecvError) => return Err("client exited without shutdown".into()),
                 },
                 recv(task_receiver) -> task => Event::Task(task.unwrap()),
                 recv(world_state.task_receiver) -> task => match task {
                     Ok(task) => Event::Vfs(task),
-                    Err(RecvError) => Err("vfs died")?,
+                    Err(RecvError) => return Err("vfs died".into()),
                 },
                 recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
                 recv(world_state.check_watcher.task_recv) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
-                    Err(RecvError) => Err("check watcher died")?,
+                    Err(RecvError) => return Err("check watcher died".into()),
                 }
             };
             if let Event::Msg(Message::Request(req)) = &event {

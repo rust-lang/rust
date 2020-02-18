@@ -156,7 +156,7 @@ impl ModuleOrigin {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 let file_id = *definition;
                 let sf = db.parse(file_id).tree();
-                return InFile::new(file_id.into(), ModuleSource::SourceFile(sf));
+                InFile::new(file_id.into(), ModuleSource::SourceFile(sf))
             }
             ModuleOrigin::Inline { definition } => {
                 InFile::new(definition.file_id, ModuleSource::Module(definition.to_node(db)))

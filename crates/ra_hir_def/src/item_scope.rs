@@ -138,7 +138,7 @@ impl ItemScope {
 
     pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(name.clone()).or_default();
+        let existing = self.visible.entry(name).or_default();
 
         if existing.types.is_none() && def.types.is_some() {
             existing.types = def.types;
@@ -157,7 +157,7 @@ impl ItemScope {
     }
 
     pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
-        self.visible.iter().map(|(name, res)| (name.clone(), res.clone()))
+        self.visible.iter().map(|(name, res)| (name.clone(), *res))
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {

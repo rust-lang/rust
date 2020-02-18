@@ -35,8 +35,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
-        let ty = self.resolve_ty_as_possible(ty);
-        ty
+        self.resolve_ty_as_possible(ty)
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
@@ -127,10 +126,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
                     Substs(sig_tys.into()),
                 );
-                let closure_ty = Ty::apply_one(
-                    TypeCtor::Closure { def: self.owner.into(), expr: tgt_expr },
-                    sig_ty,
-                );
+                let closure_ty =
+                    Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -157,15 +154,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 self.register_obligations_for_call(&callee_ty);
                 self.check_call_arguments(args, &param_tys);
-                let ret_ty = self.normalize_associated_types_in(ret_ty);
-                ret_ty
+                self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
                 .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let mut result_ty = if arms.len() == 0 {
+                let mut result_ty = if arms.is_empty() {
                     Ty::simple(TypeCtor::Never)
                 } else {
                     self.table.new_type_var()
@@ -188,7 +184,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = resolver_for_expr(self.db, self.owner.into(), tgt_expr);
+                let resolver = resolver_for_expr(self.db, self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
@@ -217,8 +213,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.unify(&ty, &expected.ty);
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                let field_types =
-                    def_id.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+                let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| variant_data(self.db, it));
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_def =
@@ -264,7 +259,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
                         TypeCtor::Adt(AdtId::StructId(s)) => {
                             self.db.struct_data(s).variant_data.field(name).map(|local_id| {
-                                let field = StructFieldId { parent: s.into(), local_id }.into();
+                                let field = StructFieldId { parent: s.into(), local_id };
                                 self.write_field_resolution(tgt_expr, field);
                                 self.db.field_types(s.into())[field.local_id]
                                     .clone()
@@ -283,14 +278,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty =
-                    self.resolve_associated_type(inner_ty, self.resolve_future_future_output());
-                ty
+                self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
             Expr::Try { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty = self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok());
-                ty
+                self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
@@ -614,8 +606,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.unify(&expected_receiver_ty, &actual_receiver_ty);
 
         self.check_call_arguments(args, &param_tys);
-        let ret_ty = self.normalize_associated_types_in(ret_ty);
-        ret_ty
+        self.normalize_associated_types_in(ret_ty)
     }
 
     fn check_call_arguments(&mut self, args: &[ExprId], param_tys: &[Ty]) {
@@ -700,10 +691,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             // construct a TraitDef
                             let substs =
                                 a_ty.parameters.prefix(generics(self.db, trait_.into()).len());
-                            self.obligations.push(Obligation::Trait(TraitRef {
-                                trait_: trait_.into(),
-                                substs,
-                            }));
+                            self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
                     }
                     CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {}

@@ -214,7 +214,7 @@ impl Drop for Profiler {
                     let start = stack.starts.pop().unwrap();
                     let duration = start.elapsed();
                     let level = stack.starts.len();
-                    stack.messages.push(Message { level, duration, label: label });
+                    stack.messages.push(Message { level, duration, label });
                     if level == 0 {
                         let stdout = stderr();
                         let longer_than = stack.filter_data.longer_than;

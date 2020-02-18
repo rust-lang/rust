@@ -61,7 +61,7 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
 
         edit.target(if_expr.syntax().text_range());
         edit.set_cursor(if_expr.syntax().text_range().start());
-        edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr.into());
+        edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
     })
 }
 

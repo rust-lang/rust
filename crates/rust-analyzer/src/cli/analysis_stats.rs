@@ -130,7 +130,7 @@ pub fn analysis_stats(
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
         if verbosity.is_spammy() {
-            bar.println(format!("{}", msg));
+            bar.println(msg.to_string());
         }
         bar.set_message(&msg);
         let f_id = FunctionId::from(f);

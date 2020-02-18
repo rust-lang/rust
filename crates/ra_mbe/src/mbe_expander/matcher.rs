@@ -101,7 +101,7 @@ fn match_subtree(
                         tt::Leaf::Literal(tt::Literal { text: lhs, .. }),
                         tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
                     ) if lhs == rhs => (),
-                    _ => Err(ExpandError::UnexpectedToken)?,
+                    _ => return Err(ExpandError::UnexpectedToken),
                 }
             }
             Op::TokenTree(tt::TokenTree::Subtree(lhs)) => {

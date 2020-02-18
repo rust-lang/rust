@@ -152,7 +152,7 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
             format!("    {}{}\n", arm.syntax(), comma)
         })
         .collect::<String>();
-    return from_text(&format!("{}", arms_str));
+    return from_text(&arms_str);
 
     fn from_text(text: &str) -> ast::MatchArmList {
         ast_from_text(&format!("fn f() {{ match () {{\n{}}} }}", text))

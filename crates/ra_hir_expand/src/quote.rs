@@ -15,14 +15,13 @@ macro_rules! __quote {
     ( @SUBTREE $delim:ident $($tt:tt)* ) => {
         {
             let children = $crate::__quote!($($tt)*);
-            let subtree = tt::Subtree {
+            tt::Subtree {
                 delimiter: Some(tt::Delimiter {
                     kind: tt::DelimiterKind::$delim,
                     id: tt::TokenId::unspecified(),
                 }),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
-            };
-            subtree
+            }
         }
     };
 
@@ -259,8 +258,7 @@ mod tests {
         // }
         let struct_name = mk_ident("Foo");
         let fields = [mk_ident("name"), mk_ident("id")];
-        let fields =
-            fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
+        let fields = fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees).flatten();
 
         let list = tt::Subtree {
             delimiter: Some(tt::Delimiter {

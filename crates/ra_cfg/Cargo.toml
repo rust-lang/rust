@@ -8,7 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
-rustc-hash = "1.0.1"
+rustc-hash = "1.1.0"
 
 ra_syntax = { path = "../ra_syntax" }
 tt = { path = "../ra_tt", package = "ra_tt" }

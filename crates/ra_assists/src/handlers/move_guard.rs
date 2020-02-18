@@ -44,7 +44,7 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
         edit.target(guard.syntax().text_range());
         let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
             Some(tok) => {
-                if let Some(_) = ast::Whitespace::cast(tok.clone()) {
+                if ast::Whitespace::cast(tok.clone()).is_some() {
                     let ele = tok.text_range();
                     edit.delete(ele);
                     ele.len()
@@ -98,11 +98,11 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
     let then_block = if_expr.then_branch()?;
 
     // Not support if with else branch
-    if let Some(_) = if_expr.else_branch() {
+    if if_expr.else_branch().is_some() {
         return None;
     }
     // Not support moving if let to arm guard
-    if let Some(_) = cond.pat() {
+    if cond.pat().is_some() {
         return None;
     }
 

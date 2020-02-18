@@ -104,8 +104,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
                 let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-                let trait_ref =
-                    TraitRef::from_resolved_path(&ctx, trait_.into(), resolved_segment, None);
+                let trait_ref = TraitRef::from_resolved_path(&ctx, trait_, resolved_segment, None);
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
@@ -144,30 +143,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
-        let item = self
-            .db
-            .trait_data(trait_)
-            .items
-            .iter()
-            .map(|(_name, id)| (*id).into())
-            .find_map(|item| match item {
-                AssocItemId::FunctionId(func) => {
-                    if segment.name == &self.db.function_data(func).name {
-                        Some(AssocItemId::FunctionId(func))
-                    } else {
-                        None
+        let item =
+            self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
+                match item {
+                    AssocItemId::FunctionId(func) => {
+                        if segment.name == &self.db.function_data(func).name {
+                            Some(AssocItemId::FunctionId(func))
+                        } else {
+                            None
+                        }
                     }
-                }
 
-                AssocItemId::ConstId(konst) => {
-                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == segment.name)
-                    {
-                        Some(AssocItemId::ConstId(konst))
-                    } else {
-                        None
+                    AssocItemId::ConstId(konst) => {
+                        if self
+                            .db
+                            .const_data(konst)
+                            .name
+                            .as_ref()
+                            .map_or(false, |n| n == segment.name)
+                        {
+                            Some(AssocItemId::ConstId(konst))
+                        } else {
+                            None
+                        }
                     }
+                    AssocItemId::TypeAliasId(_) => None,
                 }
-                AssocItemId::TypeAliasId(_) => None,
             })?;
         let def = match item {
             AssocItemId::FunctionId(f) => ValueNs::FunctionId(f),
@@ -233,7 +234,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     AssocContainerId::ContainerId(_) => None,
                 };
 
-                self.write_assoc_resolution(id, item.into());
+                self.write_assoc_resolution(id, item);
                 Some((def, substs))
             },
         )

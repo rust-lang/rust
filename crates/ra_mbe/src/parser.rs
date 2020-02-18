@@ -45,15 +45,15 @@ impl PartialEq for Separator {
     }
 }
 
-pub(crate) fn parse_template<'a>(
-    template: &'a tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+pub(crate) fn parse_template(
+    template: &tt::Subtree,
+) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     parse_inner(template, Mode::Template)
 }
 
-pub(crate) fn parse_pattern<'a>(
-    pattern: &'a tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+pub(crate) fn parse_pattern(
+    pattern: &tt::Subtree,
+) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     parse_inner(pattern, Mode::Pattern)
 }
 
@@ -63,10 +63,7 @@ enum Mode {
     Template,
 }
 
-fn parse_inner<'a>(
-    src: &'a tt::Subtree,
-    mode: Mode,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+fn parse_inner(src: &tt::Subtree, mode: Mode) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     let mut src = TtIter::new(src);
     std::iter::from_fn(move || {
         let first = src.next()?;
@@ -100,7 +97,7 @@ fn next_op<'a>(
                     Op::Repeat { subtree, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Punct(..) => Err(ExpandError::UnexpectedToken)?,
+                    tt::Leaf::Punct(..) => return Err(ExpandError::UnexpectedToken),
                     tt::Leaf::Ident(ident) => {
                         let name = &ident.text;
                         let kind = eat_fragment_kind(src, mode)?;
@@ -147,15 +144,15 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Exp
     for tt in src {
         let tt = match tt {
             tt::TokenTree::Leaf(leaf) => leaf,
-            tt::TokenTree::Subtree(_) => Err(ExpandError::InvalidRepeat)?,
+            tt::TokenTree::Subtree(_) => return Err(ExpandError::InvalidRepeat),
         };
         let has_sep = match &separator {
-            Separator::Puncts(puncts) => puncts.len() != 0,
+            Separator::Puncts(puncts) => !puncts.is_empty(),
             _ => true,
         };
         match tt {
             tt::Leaf::Ident(_) | tt::Leaf::Literal(_) if has_sep => {
-                Err(ExpandError::InvalidRepeat)?
+                return Err(ExpandError::InvalidRepeat)
             }
             tt::Leaf::Ident(ident) => separator = Separator::Ident(ident.clone()),
             tt::Leaf::Literal(lit) => separator = Separator::Literal(lit.clone()),
@@ -168,11 +165,11 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Exp
                         match &mut separator {
                             Separator::Puncts(puncts) => {
                                 if puncts.len() == 3 {
-                                    Err(ExpandError::InvalidRepeat)?
+                                    return Err(ExpandError::InvalidRepeat);
                                 }
                                 puncts.push(punct.clone())
                             }
-                            _ => Err(ExpandError::InvalidRepeat)?,
+                            _ => return Err(ExpandError::InvalidRepeat),
                         }
                         continue;
                     }
