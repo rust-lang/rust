@@ -96,23 +96,35 @@ error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it
 LL |     let my_log2_e = 1.4426950408889634;
    |                     ^^^^^^^^^^^^^^^^^^
 
+error: approximate value of `f{32, 64}::consts::LOG2_10` found. Consider using it directly
+  --> $DIR/approx_const.rs:48:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+
+error: approximate value of `f{32, 64}::consts::LOG10_2` found. Consider using it directly
+  --> $DIR/approx_const.rs:51:19
+   |
+LL |     let log10_2 = 0.301029995663981;
+   |                   ^^^^^^^^^^^^^^^^^
+
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:48:17
+  --> $DIR/approx_const.rs:54:17
    |
 LL |     let my_pi = 3.1415;
    |                 ^^^^^^
 
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:49:21
+  --> $DIR/approx_const.rs:55:21
    |
 LL |     let almost_pi = 3.14;
    |                     ^^^^
 
 error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:52:18
+  --> $DIR/approx_const.rs:58:18
    |
 LL |     let my_sq2 = 1.4142;
    |                  ^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 21 previous errors
 
