@@ -5,8 +5,6 @@ LL | fn main() { let x = true * false; }
    |                     ---- ^ ----- bool
    |                     |
    |                     bool
-   |
-   = note: an implementation of `std::ops::Mul` might be missing for `bool`
 
 error: aborting due to previous error
 
