@@ -1374,8 +1374,9 @@ impl<'a> Parser<'a> {
     }
 
     fn report_invalid_macro_expansion_item(&self, args: &MacArgs) {
+        let span = args.span().expect("undelimited macro call");
         let mut err = self.struct_span_err(
-            self.prev_span,
+            span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
         if self.unclosed_delims.is_empty() {
@@ -1390,14 +1391,14 @@ impl<'a> Parser<'a> {
             );
         } else {
             err.span_suggestion(
-                self.prev_span,
+                span,
                 "change the delimiters to curly braces",
                 " { /* items */ }".to_string(),
                 Applicability::HasPlaceholders,
             );
         }
         err.span_suggestion(
-            self.prev_span.shrink_to_hi(),
+            span.shrink_to_hi(),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,

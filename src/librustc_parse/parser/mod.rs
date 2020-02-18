@@ -93,18 +93,16 @@ pub struct Parser<'a> {
     /// Use span from this token if you need an isolated span.
     pub token: Token,
     /// The current non-normalized token if it's different from `token`.
-    /// Preferable use is through the `unnormalized_token()` getter.
     /// Use span from this token if you need to concatenate it with some neighbouring spans.
-    unnormalized_token: Option<Token>,
+    unnormalized_token: Token,
     /// The previous normalized token.
     /// Use span from this token if you need an isolated span.
     prev_token: Token,
     /// The previous non-normalized token if it's different from `prev_token`.
-    /// Preferable use is through the `unnormalized_prev_token()` getter.
     /// Use span from this token if you need to concatenate it with some neighbouring spans.
-    unnormalized_prev_token: Option<Token>,
-    /// Equivalent to `unnormalized_prev_token().span`.
-    /// FIXME: Remove in favor of `(unnormalized_)prev_token().span`.
+    unnormalized_prev_token: Token,
+    /// Equivalent to `unnormalized_prev_token.span`.
+    /// FIXME: Remove in favor of `(unnormalized_)prev_token.span`.
     pub prev_span: Span,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
@@ -378,9 +376,9 @@ impl<'a> Parser<'a> {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
-            unnormalized_token: None,
+            unnormalized_token: Token::dummy(),
             prev_token: Token::dummy(),
-            unnormalized_prev_token: None,
+            unnormalized_prev_token: Token::dummy(),
             prev_span: DUMMY_SP,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
@@ -404,7 +402,8 @@ impl<'a> Parser<'a> {
             subparser_name,
         };
 
-        parser.token = parser.next_tok();
+        // Make parser point to the first token.
+        parser.bump();
 
         if let Some(directory) = directory {
             parser.directory = directory;
@@ -418,19 +417,10 @@ impl<'a> Parser<'a> {
             }
         }
 
-        parser.process_potential_macro_variable();
         parser
     }
 
-    fn unnormalized_token(&self) -> &Token {
-        self.unnormalized_token.as_ref().unwrap_or(&self.token)
-    }
-
-    fn unnormalized_prev_token(&self) -> &Token {
-        self.unnormalized_prev_token.as_ref().unwrap_or(&self.prev_token)
-    }
-
-    fn next_tok(&mut self) -> Token {
+    fn next_tok(&mut self, fallback_span: Span) -> Token {
         let mut next = if self.desugar_doc_comments {
             self.token_cursor.next_desugared()
         } else {
@@ -438,7 +428,7 @@ impl<'a> Parser<'a> {
         };
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.span = self.unnormalized_token().span.with_ctxt(next.span.ctxt());
+            next.span = fallback_span.with_ctxt(next.span.ctxt());
         }
         next
     }
@@ -896,6 +886,23 @@ impl<'a> Parser<'a> {
         self.parse_delim_comma_seq(token::Paren, f)
     }
 
+    // Interpolated identifier (`$i: ident`) and lifetime (`$l: lifetime`)
+    // tokens are replaced with usual identifier and lifetime tokens,
+    // so the former are never encountered during normal parsing.
+    crate fn set_token(&mut self, token: Token) {
+        self.unnormalized_token = token;
+        self.token = match &self.unnormalized_token.kind {
+            token::Interpolated(nt) => match **nt {
+                token::NtIdent(ident, is_raw) => {
+                    Token::new(token::Ident(ident.name, is_raw), ident.span)
+                }
+                token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
+                _ => self.unnormalized_token.clone(),
+            },
+            _ => self.unnormalized_token.clone(),
+        }
+    }
+
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
         if self.prev_token.kind == TokenKind::Eof {
@@ -905,16 +912,15 @@ impl<'a> Parser<'a> {
         }
 
         // Update the current and previous tokens.
-        let next_token = self.next_tok();
-        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.prev_token = self.token.take();
         self.unnormalized_prev_token = self.unnormalized_token.take();
+        let next_token = self.next_tok(self.unnormalized_prev_token.span);
+        self.set_token(next_token);
 
         // Update fields derived from the previous token.
-        self.prev_span = self.unnormalized_prev_token().span;
+        self.prev_span = self.unnormalized_prev_token.span;
 
         self.expected_tokens.clear();
-        // Check after each token.
-        self.process_potential_macro_variable();
     }
 
     /// Advances the parser using provided token as a next one. Use this when
@@ -924,12 +930,12 @@ impl<'a> Parser<'a> {
     /// Correct token kinds and spans need to be calculated instead.
     fn bump_with(&mut self, next: TokenKind, span: Span) {
         // Update the current and previous tokens.
-        let next_token = Token::new(next, span);
-        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.prev_token = self.token.take();
         self.unnormalized_prev_token = self.unnormalized_token.take();
+        self.set_token(Token::new(next, span));
 
         // Update fields derived from the previous token.
-        self.prev_span = self.unnormalized_prev_token().span.with_hi(span.lo());
+        self.prev_span = self.unnormalized_prev_token.span.with_hi(span.lo());
 
         self.expected_tokens.clear();
     }
@@ -1066,39 +1072,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn process_potential_macro_variable(&mut self) {
-        let normalized_token = match self.token.kind {
-            token::Dollar
-                if self.token.span.from_expansion() && self.look_ahead(1, |t| t.is_ident()) =>
-            {
-                self.bump();
-                let name = match self.token.kind {
-                    token::Ident(name, _) => name,
-                    _ => unreachable!(),
-                };
-                let span = self.prev_span.to(self.token.span);
-                self.struct_span_err(span, &format!("unknown macro variable `{}`", name))
-                    .span_label(span, "unknown macro variable")
-                    .emit();
-                self.bump();
-                return;
-            }
-            token::Interpolated(ref nt) => {
-                // Interpolated identifier and lifetime tokens are replaced with usual identifier
-                // and lifetime tokens, so the former are never encountered during normal parsing.
-                match **nt {
-                    token::NtIdent(ident, is_raw) => {
-                        Token::new(token::Ident(ident.name, is_raw), ident.span)
-                    }
-                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
-                    _ => return,
-                }
-            }
-            _ => return,
-        };
-        self.unnormalized_token = Some(mem::replace(&mut self.token, normalized_token));
-    }
-
     /// Parses a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
@@ -1107,15 +1080,14 @@ impl<'a> Parser<'a> {
                     &mut self.token_cursor.frame,
                     self.token_cursor.stack.pop().unwrap(),
                 );
-                self.token.span = frame.span.entire();
+                self.set_token(Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close));
                 self.bump();
                 TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream.into())
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = self.token.clone();
                 self.bump();
-                TokenTree::Token(token)
+                TokenTree::Token(self.prev_token.clone())
             }
         }
     }
