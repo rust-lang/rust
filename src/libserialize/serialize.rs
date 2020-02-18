@@ -36,6 +36,7 @@ pub trait Encoder {
     fn emit_str(&mut self, v: &str) -> Result<(), Self::Error>;
 
     // Compound types:
+    #[inline]
     fn emit_enum<F>(&mut self, _name: &str, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -57,6 +58,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_enum_variant_arg<F>(&mut self, _a_idx: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -89,6 +91,7 @@ pub trait Encoder {
         self.emit_enum_variant_arg(f_idx, f)
     }
 
+    #[inline]
     fn emit_struct<F>(&mut self, _name: &str, _len: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -96,6 +99,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_struct_field<F>(
         &mut self,
         _f_name: &str,
@@ -108,6 +112,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_tuple<F>(&mut self, _len: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -115,6 +120,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_tuple_arg<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -164,6 +170,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -179,6 +186,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -186,6 +194,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -218,6 +227,7 @@ pub trait Decoder {
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error>;
 
     // Compound types:
+    #[inline]
     fn read_enum<T, F>(&mut self, _name: &str, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -225,6 +235,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> Result<T, Self::Error>
     where
         F: FnMut(&mut Self, usize) -> Result<T, Self::Error>,
@@ -233,6 +244,7 @@ pub trait Decoder {
         f(self, disr)
     }
 
+    #[inline]
     fn read_enum_variant_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -259,6 +271,7 @@ pub trait Decoder {
         self.read_enum_variant_arg(f_idx, f)
     }
 
+    #[inline]
     fn read_struct<T, F>(&mut self, _s_name: &str, _len: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -266,6 +279,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_struct_field<T, F>(
         &mut self,
         _f_name: &str,
@@ -278,6 +292,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -285,6 +300,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_tuple_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -328,6 +344,7 @@ pub trait Decoder {
         f(self, len)
     }
 
+    #[inline]
     fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -343,6 +360,7 @@ pub trait Decoder {
         f(self, len)
     }
 
+    #[inline]
     fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
@@ -350,6 +368,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
