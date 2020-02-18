@@ -2,6 +2,7 @@
 
 #![feature(fn_traits,
            step_trait,
+           step_trait_ext,
            unboxed_closures,
 )]
 
@@ -10,7 +11,6 @@
 //! Originally converted to Rust by [Daniel Keep](https://github.com/DanielKeep).
 
 use std::fmt::Write;
-use std::mem;
 
 /// Date representation.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -156,32 +156,16 @@ impl<'a, 'b> std::ops::Add<&'b NaiveDate> for &'a NaiveDate {
     }
 }
 
-impl std::iter::Step for NaiveDate {
+unsafe impl std::iter::Step for NaiveDate {
     fn steps_between(_: &Self, _: &Self) -> Option<usize> {
         unimplemented!()
     }
 
-    fn replace_one(&mut self) -> Self {
-        mem::replace(self, NaiveDate(0, 0, 1))
+    fn forward_checked(start: Self, n: usize) -> Option<Self> {
+        Some((0..n).fold(start, |x, _| x.succ()))
     }
 
-    fn replace_zero(&mut self) -> Self {
-        mem::replace(self, NaiveDate(0, 0, 0))
-    }
-
-    fn add_one(&self) -> Self {
-        self.succ()
-    }
-
-    fn sub_one(&self) -> Self {
-        unimplemented!()
-    }
-
-    fn add_usize(&self, _: usize) -> Option<Self> {
-        unimplemented!()
-    }
-
-    fn sub_usize(&self, _: usize) -> Option<Self> {
+    fn backward_checked(_: Self, _: usize) -> Option<Self> {
         unimplemented!()
     }
 }
