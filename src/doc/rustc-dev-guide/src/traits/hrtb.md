@@ -40,8 +40,8 @@ subtyping, we recommend you read the paper). There are a few parts:
 2. Match the impl against the [placeholder] obligation.
 3. Check for _placeholder leaks_.
 
+[hrsubtype]: ./hrtb.md
 [placeholder]: ../appendix/glossary.html#appendix-c-glossary
-[hrsubtype]: https://github.com/rust-lang/rust/tree/master/src/librustc/infer/higher_ranked/README.md
 [paper by SPJ]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
 So let's work through our example.
