@@ -94,8 +94,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
             })
     };
 
-    let installed_extensions;
-    if cfg!(unix) {
+    let installed_extensions = if cfg!(unix) {
         run!("npm --version").context("`npm` is required to build the VS Code plugin")?;
         run!("npm install")?;
 
@@ -103,7 +102,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
         let code = find_code(|bin| run!("{} --version", bin).is_ok())?;
         run!("{} --install-extension rust-analyzer.vsix --force", code)?;
-        installed_extensions = run!("{} --list-extensions", code; echo = false)?;
+        run!("{} --list-extensions", code; echo = false)?
     } else {
         run!("cmd.exe /c npm --version")
             .context("`npm` is required to build the VS Code plugin")?;
@@ -113,8 +112,8 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
         let code = find_code(|bin| run!("cmd.exe /c {}.cmd --version", bin).is_ok())?;
         run!(r"cmd.exe /c {}.cmd --install-extension rust-analyzer.vsix --force", code)?;
-        installed_extensions = run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?;
-    }
+        run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?
+    };
 
     if !installed_extensions.contains("rust-analyzer") {
         bail!(

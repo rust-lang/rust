@@ -157,7 +157,7 @@ impl ItemScope {
     }
 
     pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
-        self.visible.iter().map(|(name, res)| (name.clone(), res.clone()))
+        self.visible.iter().map(|(name, res)| (name.clone(), *res))
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {

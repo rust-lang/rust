@@ -248,12 +248,9 @@ fn solution_from_chalk(
         let value = subst
             .value
             .into_iter()
-            .map(|p| {
-                let ty = match p.ty() {
-                    Some(ty) => from_chalk(db, ty.clone()),
-                    None => unimplemented!(),
-                };
-                ty
+            .map(|p| match p.ty() {
+                Some(ty) => from_chalk(db, ty.clone()),
+                None => unimplemented!(),
             })
             .collect();
         let result = Canonical { value, num_vars: subst.binders.len() };

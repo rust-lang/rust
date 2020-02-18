@@ -85,8 +85,11 @@ impl FromStr for SsrQuery {
     fn from_str(query: &str) -> Result<SsrQuery, SsrError> {
         let mut it = query.split("==>>");
         let pattern = it.next().expect("at least empty string").trim();
-        let mut template =
-            it.next().ok_or(SsrError("Cannot find delemiter `==>>`".into()))?.trim().to_string();
+        let mut template = it
+            .next()
+            .ok_or_else(|| SsrError("Cannot find delemiter `==>>`".into()))?
+            .trim()
+            .to_string();
         if it.next().is_some() {
             return Err(SsrError("More than one delimiter found".into()));
         }
@@ -131,11 +134,12 @@ fn traverse(node: &SyntaxNode, go: &mut impl FnMut(&SyntaxNode) -> bool) {
 }
 
 fn split_by_var(s: &str) -> Result<(&str, &str, &str), SsrError> {
-    let end_of_name = s.find(":").ok_or(SsrError("Use $<name>:expr".into()))?;
+    let end_of_name = s.find(':').ok_or_else(|| SsrError("Use $<name>:expr".into()))?;
     let name = &s[0..end_of_name];
     is_name(name)?;
     let type_begin = end_of_name + 1;
-    let type_length = s[type_begin..].find(|c| !char::is_ascii_alphanumeric(&c)).unwrap_or(s.len());
+    let type_length =
+        s[type_begin..].find(|c| !char::is_ascii_alphanumeric(&c)).unwrap_or_else(|| s.len());
     let type_name = &s[type_begin..type_begin + type_length];
     Ok((name, type_name, &s[type_begin + type_length..]))
 }
@@ -182,7 +186,7 @@ fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
                 pattern.text() == code.text()
             }
             (SyntaxElement::Node(ref pattern), SyntaxElement::Node(ref code)) => {
-                if placeholders.iter().find(|&n| n.0.as_str() == pattern.text()).is_some() {
+                if placeholders.iter().any(|n| n.0.as_str() == pattern.text()) {
                     match_.binding.insert(Var(pattern.text().to_string()), code.clone());
                     true
                 } else {

@@ -64,11 +64,11 @@ impl NavigationTarget {
     }
 
     pub fn docs(&self) -> Option<&str> {
-        self.docs.as_ref().map(String::as_str)
+        self.docs.as_deref()
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_ref().map(String::as_str)
+        self.description.as_deref()
     }
 
     /// A "most interesting" range withing the `full_range`.

@@ -409,8 +409,7 @@ where
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
         let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
         let value = self.value.to_chalk(db);
-        let canonical = chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] };
-        canonical
+        chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] }
     }
 
     fn from_chalk(db: &impl HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {

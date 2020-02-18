@@ -268,7 +268,7 @@ fn decl_access(
     };
 
     let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
-    if let Some(_) = stmt.initializer() {
+    if stmt.initializer().is_some() {
         let pat = stmt.pat()?;
         if let ast::Pat::BindPat(it) = pat {
             if it.name()?.text().as_str() == name {

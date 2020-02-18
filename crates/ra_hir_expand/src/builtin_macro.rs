@@ -155,14 +155,11 @@ fn compile_error_expand(
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     if tt.count() == 1 {
-        match &tt.token_trees[0] {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => {
-                let s = it.text.as_str();
-                if s.contains('"') {
-                    return Ok(quote! { loop { #it }});
-                }
+        if let tt::TokenTree::Leaf(tt::Leaf::Literal(it)) = &tt.token_trees[0] {
+            let s = it.text.as_str();
+            if s.contains('"') {
+                return Ok(quote! { loop { #it }});
             }
-            _ => {}
         };
     }
 

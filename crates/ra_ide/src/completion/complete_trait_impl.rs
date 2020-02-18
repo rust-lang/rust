@@ -59,7 +59,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
         .as_ref()
         .and_then(|node| node.parent())
         .and_then(|node| node.parent())
-        .and_then(|node| ast::ImplBlock::cast(node));
+        .and_then(ast::ImplBlock::cast);
 
     if let (Some(trigger), Some(impl_block)) = (trigger, impl_block) {
         match trigger.kind() {
@@ -110,17 +110,17 @@ fn add_function_impl(
     ctx: &CompletionContext,
     func: &hir::Function,
 ) {
-    let display = FunctionSignature::from_hir(ctx.db, func.clone());
+    let display = FunctionSignature::from_hir(ctx.db, *func);
 
     let fn_name = func.name(ctx.db).to_string();
 
-    let label = if func.params(ctx.db).len() > 0 {
+    let label = if !func.params(ctx.db).is_empty() {
         format!("fn {}(..)", fn_name)
     } else {
         format!("fn {}()", fn_name)
     };
 
-    let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label.clone())
+    let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
         .lookup_by(fn_name)
         .set_documentation(func.docs(ctx.db));
 

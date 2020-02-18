@@ -15,14 +15,13 @@ macro_rules! __quote {
     ( @SUBTREE $delim:ident $($tt:tt)* ) => {
         {
             let children = $crate::__quote!($($tt)*);
-            let subtree = tt::Subtree {
+            tt::Subtree {
                 delimiter: Some(tt::Delimiter {
                     kind: tt::DelimiterKind::$delim,
                     id: tt::TokenId::unspecified(),
                 }),
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
-            };
-            subtree
+            }
         }
     };
 

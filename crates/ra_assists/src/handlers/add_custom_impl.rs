@@ -43,7 +43,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         .clone();
 
     let trait_token =
-        ctx.token_at_offset().filter(|t| t.kind() == IDENT && *t.text() != attr_name).next()?;
+        ctx.token_at_offset().find(|t| t.kind() == IDENT && *t.text() != attr_name)?;
 
     let annotated = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
     let annotated_name = annotated.syntax().text().to_string();
@@ -86,7 +86,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
                 .next_sibling_or_token()
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
-                .unwrap_or(TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+                .unwrap_or_else(|| TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
             edit.delete(line_break_range);
 
             attr_range.len() + line_break_range.len()

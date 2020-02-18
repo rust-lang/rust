@@ -35,8 +35,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
-        let ty = self.resolve_ty_as_possible(ty);
-        ty
+        self.resolve_ty_as_possible(ty)
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
@@ -155,8 +154,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 self.register_obligations_for_call(&callee_ty);
                 self.check_call_arguments(args, &param_tys);
-                let ret_ty = self.normalize_associated_types_in(ret_ty);
-                ret_ty
+                self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
                 .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
@@ -280,14 +278,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty =
-                    self.resolve_associated_type(inner_ty, self.resolve_future_future_output());
-                ty
+                self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
             Expr::Try { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let ty = self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok());
-                ty
+                self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
@@ -611,8 +606,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.unify(&expected_receiver_ty, &actual_receiver_ty);
 
         self.check_call_arguments(args, &param_tys);
-        let ret_ty = self.normalize_associated_types_in(ret_ty);
-        ret_ty
+        self.normalize_associated_types_in(ret_ty)
     }
 
     fn check_call_arguments(&mut self, args: &[ExprId], param_tys: &[Ty]) {

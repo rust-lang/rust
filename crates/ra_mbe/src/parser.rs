@@ -45,15 +45,15 @@ impl PartialEq for Separator {
     }
 }
 
-pub(crate) fn parse_template<'a>(
-    template: &'a tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+pub(crate) fn parse_template(
+    template: &tt::Subtree,
+) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     parse_inner(template, Mode::Template)
 }
 
-pub(crate) fn parse_pattern<'a>(
-    pattern: &'a tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+pub(crate) fn parse_pattern(
+    pattern: &tt::Subtree,
+) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     parse_inner(pattern, Mode::Pattern)
 }
 
@@ -63,10 +63,7 @@ enum Mode {
     Template,
 }
 
-fn parse_inner<'a>(
-    src: &'a tt::Subtree,
-    mode: Mode,
-) -> impl Iterator<Item = Result<Op<'a>, ExpandError>> {
+fn parse_inner(src: &tt::Subtree, mode: Mode) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
     let mut src = TtIter::new(src);
     std::iter::from_fn(move || {
         let first = src.next()?;

@@ -122,7 +122,7 @@ fn closure_fn_trait_impl_datum(
         substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
     };
 
-    let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data.clone());
+    let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data);
 
     BuiltinImplData {
         num_vars: num_args as usize + 1,
@@ -137,7 +137,7 @@ fn closure_fn_trait_output_assoc_ty_value(
     krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> BuiltinImplAssocTyValueData {
-    let impl_ = Impl::ClosureFnTraitImpl(data.clone());
+    let impl_ = Impl::ClosureFnTraitImpl(data);
 
     let num_args: u16 = match &db.body(data.def)[data.expr] {
         Expr::Lambda { args, .. } => args.len() as u16,

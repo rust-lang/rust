@@ -988,20 +988,17 @@ impl Type {
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<(StructField, Type)> {
         if let Ty::Apply(a_ty) = &self.ty.value {
-            match a_ty.ctor {
-                TypeCtor::Adt(AdtId::StructId(s)) => {
-                    let var_def = s.into();
-                    return db
-                        .field_types(var_def)
-                        .iter()
-                        .map(|(local_id, ty)| {
-                            let def = StructField { parent: var_def.into(), id: local_id };
-                            let ty = ty.clone().subst(&a_ty.parameters);
-                            (def, self.derived(ty))
-                        })
-                        .collect();
-                }
-                _ => {}
+            if let TypeCtor::Adt(AdtId::StructId(s)) = a_ty.ctor {
+                let var_def = s.into();
+                return db
+                    .field_types(var_def)
+                    .iter()
+                    .map(|(local_id, ty)| {
+                        let def = StructField { parent: var_def.into(), id: local_id };
+                        let ty = ty.clone().subst(&a_ty.parameters);
+                        (def, self.derived(ty))
+                    })
+                    .collect();
             }
         };
         Vec::new()
@@ -1010,14 +1007,11 @@ impl Type {
     pub fn tuple_fields(&self, _db: &impl HirDatabase) -> Vec<Type> {
         let mut res = Vec::new();
         if let Ty::Apply(a_ty) = &self.ty.value {
-            match a_ty.ctor {
-                TypeCtor::Tuple { .. } => {
-                    for ty in a_ty.parameters.iter() {
-                        let ty = ty.clone();
-                        res.push(self.derived(ty));
-                    }
+            if let TypeCtor::Tuple { .. } = a_ty.ctor {
+                for ty in a_ty.parameters.iter() {
+                    let ty = ty.clone();
+                    res.push(self.derived(ty));
                 }
-                _ => {}
             }
         };
         res

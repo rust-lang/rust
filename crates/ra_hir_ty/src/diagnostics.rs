@@ -40,7 +40,7 @@ impl Diagnostic for MissingFields {
         use std::fmt::Write;
         let mut message = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
-            write!(message, "- {}\n", field).unwrap();
+            writeln!(message, "- {}", field).unwrap();
         }
         message
     }

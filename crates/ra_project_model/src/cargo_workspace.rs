@@ -197,7 +197,7 @@ impl CargoWorkspace {
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_pkg.targets {
-                let is_proc_macro = meta_tgt.kind.as_slice() == &["proc-macro"];
+                let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
                 let tgt = targets.alloc(TargetData {
                     pkg,
                     name: meta_tgt.name,

@@ -86,15 +86,14 @@ impl TestDB {
     pub fn diagnostics(&self) -> String {
         let mut buf = String::new();
         let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter().next() {
+        for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
 
             let mut fns = Vec::new();
             for (module_id, _) in crate_def_map.modules.iter() {
                 for decl in crate_def_map[module_id].scope.declarations() {
-                    match decl {
-                        ModuleDefId::FunctionId(f) => fns.push(f),
-                        _ => (),
+                    if let ModuleDefId::FunctionId(f) = decl {
+                        fns.push(f)
                     }
                 }
 

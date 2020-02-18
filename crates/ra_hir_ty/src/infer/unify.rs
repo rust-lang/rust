@@ -140,13 +140,12 @@ where
 impl<T> Canonicalized<T> {
     pub fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
-            &mut |ty, binders| match ty {
-                &mut Ty::Bound(idx) => {
+            &mut |ty, binders| {
+                if let &mut Ty::Bound(idx) = ty {
                     if idx as usize >= binders && (idx as usize - binders) < self.free_vars.len() {
                         *ty = Ty::Infer(self.free_vars[idx as usize - binders]);
                     }
                 }
-                _ => {}
             },
             0,
         );
