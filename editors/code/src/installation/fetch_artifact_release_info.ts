@@ -14,7 +14,7 @@ export async function fetchArtifactReleaseInfo(
 ): Promise<null | ArtifactReleaseInfo> {
 
     const repoOwner = encodeURIComponent(repo.owner);
-    const repoName  = encodeURIComponent(repo.name);
+    const repoName = encodeURIComponent(repo.name);
 
     const apiEndpointPath = releaseTag
         ? `/repos/${repoOwner}/${repoName}/releases/tags/${releaseTag}`
@@ -28,8 +28,8 @@ export async function fetchArtifactReleaseInfo(
 
     // FIXME: handle non-ok response
     const response: GithubRelease = await fetch(requestUrl, {
-            headers: { Accept: "application/vnd.github.v3+json" }
-        })
+        headers: { Accept: "application/vnd.github.v3+json" }
+    })
         .then(res => res.json());
 
     const artifact = response.assets.find(artifact => artifact.name === artifactFileName);

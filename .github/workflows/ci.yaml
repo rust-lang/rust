@@ -95,5 +95,7 @@ jobs:
 
       - run: npm ci
         working-directory: ./editors/code
+      - run: npm run fmt
+        working-directory: ./editors/code
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
