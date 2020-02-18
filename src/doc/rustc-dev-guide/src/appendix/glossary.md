@@ -6,6 +6,7 @@ them better.
 
 Term                    | Meaning
 ------------------------|--------
+arena/arena allocation  |  an _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _area allocation_. See [this chapter](../memory.md) for more info.
 AST                     |  the abstract syntax tree produced by the syntax crate; reflects user syntax very closely.
 binder                  |  a "binder" is a place where a variable or type is declared; for example, the `<T>` is a binder for the generic type parameter `T` in `fn foo<T>(..)`, and \|`a`\|` ...` is a binder for the parameter `a`. See [the background chapter for more](./background.html#free-vs-bound)
 bound variable          |  a "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expression \|`a`\|` a * 2`. See [the background chapter for more](./background.html#free-vs-bound)
@@ -33,7 +34,7 @@ ICE                     |  internal compiler error. When the compiler crashes.
 ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
 inference variable      |  when doing type or region inference, an "inference variable" is a kind of special type/region that represents what you are trying to infer. Think of X in algebra. For example, if we are trying to infer the type of a variable in a program, we create an inference variable to represent that unknown type.
 infcx                   |  the inference context (see `librustc/infer`)
-intern                  |  interning refers to storing certain frequently-used constant data, such as strings, and then referring to the data by an identifier (e.g. a `Symbol`) rather than the data itself, to reduce memory usage.
+intern                  |  interning refers to storing certain frequently-used constant data, such as strings, and then referring to the data by an identifier (e.g. a `Symbol`) rather than the data itself, to reduce memory usage and number of allocations. See [this chapter](../memory.md) for more info.
 IR                      |  Intermediate Representation. A general term in compilers. During compilation, the code is transformed from raw source (ASCII text) to various IRs. In Rust, these are primarily HIR, MIR, and LLVM IR. Each IR is well-suited for some set of computations. For example, MIR is well-suited for the borrow checker, and LLVM IR is well-suited for codegen because LLVM accepts it.
 IRLO                    |  `IRLO` or `irlo` is sometimes used as an abbreviation for [internals.rust-lang.org](https://internals.rust-lang.org).
 item                    |  a kind of "definition" in the language, such as a static, const, use statement, module, struct, etc. Concretely, this corresponds to the `Item` type.
