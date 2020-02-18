@@ -11,12 +11,12 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 doctest = false
 
 [dependencies]
-itertools = "0.8.0"
+itertools = "0.8.2"
 rowan = "0.9.0"
 rustc_lexer = "0.1.0"
-rustc-hash = "1.0.1"
+rustc-hash = "1.1.0"
 arrayvec = "0.5.1"
-once_cell = "1.2.0"
+once_cell = "1.3.1"
 
 ra_text_edit = { path = "../ra_text_edit" }
 ra_parser = { path = "../ra_parser" }
@@ -24,9 +24,9 @@ ra_parser = { path = "../ra_parser" }
 # This crate transitively depends on `smol_str` via `rowan`.
 # ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here
 # to reduce number of compilations
-smol_str = { version = "0.1.12", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
+smol_str = { version = "0.1.15", features = ["serde"] }
+serde = { version = "1.0.104", features = ["derive"] }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
-walkdir = "2.2.0"
+walkdir = "2.3.1"

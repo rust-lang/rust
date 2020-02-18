@@ -13,32 +13,32 @@ name = "rust-analyzer"
 path = "./src/bin/main.rs"
 
 [dependencies]
-anyhow = "1.0"
-crossbeam-channel = "0.4"
-either = "1.5"
+anyhow = "1.0.26"
+crossbeam-channel = "0.4.0"
+either = "1.5.3"
 env_logger = { version = "0.7.1", default-features = false }
 globset = "0.4.4"
-itertools = "0.8.0"
+itertools = "0.8.2"
 jod-thread = "0.1.0"
-log = "0.4.3"
-lsp-types = { version = "0.70.0", features = ["proposed"] }
+log = "0.4.8"
+lsp-types = { version = "0.70.1", features = ["proposed"] }
 parking_lot = "0.10.0"
-pico-args = "0.3.0"
-rand = { version = "0.7.0", features = ["small_rng"] }
+pico-args = "0.3.1"
+rand = { version = "0.7.3", features = ["small_rng"] }
 relative-path = "1.0.0"
-rustc-hash = "1.0"
-serde = { version = "1.0.83", features = ["derive"] }
-serde_json = "1.0.34"
+rustc-hash = "1.1.0"
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.48"
 threadpool = "1.7.1"
 
-lsp-server = "0.3.0"
+lsp-server = "0.3.1"
 ra_cargo_watch = { path = "../ra_cargo_watch" }
 ra_ide = { path = "../ra_ide" }
 ra_prof = { path = "../ra_prof" }
 ra_project_model = { path = "../ra_project_model" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
-ra_vfs = "0.5.0"
+ra_vfs = "0.5.2"
 
 # This should only be used in CLI
 ra_db = { path = "../ra_db" }
@@ -48,10 +48,10 @@ hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 
 
 [target.'cfg(windows)'.dependencies]
-winapi = "0.3"
+winapi = "0.3.8"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = "3.1.0"
 test_utils = { path = "../test_utils" }
 
 [features]

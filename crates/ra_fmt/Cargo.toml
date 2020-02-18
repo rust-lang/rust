@@ -9,6 +9,6 @@ publish = false
 doctest = false
 
 [dependencies]
-itertools = "0.8.0"
+itertools = "0.8.2"
 
 ra_syntax = { path = "../ra_syntax" }

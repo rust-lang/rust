@@ -9,9 +9,9 @@ doctest = false
 
 [dependencies]
 arrayvec = "0.5.1"
-ena = "0.13"
-log = "0.4.5"
-rustc-hash = "1.0"
+ena = "0.13.1"
+log = "0.4.8"
+rustc-hash = "1.1.0"
 
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
@@ -28,4 +28,4 @@ chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "af48f30
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]
-insta = "0.13.0"
+insta = "0.13.1"

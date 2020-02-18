@@ -9,8 +9,8 @@ publish = false
 doctest = false
 
 [dependencies]
-walkdir = "2.1.3"
-pico-args = "0.3.0"
+walkdir = "2.3.1"
+pico-args = "0.3.1"
 quote = "1.0.2"
-proc-macro2 = "1.0.1"
-anyhow = "1.0.19"
+proc-macro2 = "1.0.8"
+anyhow = "1.0.26"
