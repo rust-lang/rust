@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Benchmark operations like highlighting or goto definition.
 
 use std::{
     path::{Path, PathBuf},

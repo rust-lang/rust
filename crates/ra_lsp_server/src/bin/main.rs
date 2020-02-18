@@ -1,4 +1,6 @@
-//! `ra_lsp_server` binary
+//! Driver for rust-analyzer.
+//!
+//! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 mod args;
 
 use lsp_server::Connection;

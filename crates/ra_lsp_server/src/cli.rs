@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Various batch processing tasks, intended primarily for debugging.
 
 mod load_cargo;
 mod analysis_stats;

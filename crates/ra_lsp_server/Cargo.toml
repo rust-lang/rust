@@ -3,9 +3,14 @@ edition = "2018"
 name = "ra_lsp_server"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
+autobins = false
 
 [lib]
 doctest = false
+
+[[bin]]
+name = "ra_lsp_server"
+path = "./src/bin/main.rs"
 
 [dependencies]
 anyhow = "1.0"

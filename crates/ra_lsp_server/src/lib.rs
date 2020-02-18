@@ -1,10 +1,13 @@
 //! Implementation of the LSP for rust-analyzer.
 //!
-//! This crate takes Rust-specific analysis results from ra_ide and
-//! translates into LSP types.
+//! This crate takes Rust-specific analysis results from ra_ide and translates
+//! into LSP types.
 //!
 //! It also is the root of all state. `world` module defines the bulk of the
 //! state, and `main_loop` module defines the rules for modifying it.
+//!
+//! The `cli` submodule implements some batch-processing analysis, primarily as
+//! a debugging aid.
 #![recursion_limit = "512"]
 
 pub mod cli;

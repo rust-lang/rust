@@ -1,5 +1,6 @@
-//! This module is responsible for implementing handlers for Lanuage Server Protocol.
-//! The majority of requests are fulfilled by calling into the `ra_ide` crate.
+//! This module is responsible for implementing handlers for Language Server
+//! Protocol. The majority of requests are fulfilled by calling into the
+//! `ra_ide` crate.
 
 use std::{
     collections::hash_map::Entry,
@@ -29,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 
 use crate::{
-    cargo_target_spec::{runnable_args, CargoTargetSpec},
+    cargo_target_spec::CargoTargetSpec,
     conv::{
         to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
         TryConvWithToVec,
@@ -921,7 +922,8 @@ fn to_lsp_runnable(
     file_id: FileId,
     runnable: Runnable,
 ) -> Result<req::Runnable> {
-    let args = runnable_args(world, file_id, &runnable.kind)?;
+    let spec = CargoTargetSpec::for_file(world, file_id)?;
+    let args = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
         RunnableKind::Test { test_id } => format!("test {}", test_id),

@@ -1,4 +1,4 @@
-//! Datastructures that keep track of inflight requests.
+//! Data structures that keep track of inflight requests.
 
 use std::time::{Duration, Instant};
 

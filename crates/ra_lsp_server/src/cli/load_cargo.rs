@@ -1,17 +1,17 @@
-//! FIXME: write short doc here
+//! Loads a Cargo project into a static instance of analysis, without support
+//! for incorporating changes.
 
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
+use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::vfs_glob::RustPackageFilterBuilder;
-
-use anyhow::Result;
 
 fn vfs_file_to_id(f: ra_vfs::VfsFile) -> FileId {
     FileId(f.0)
@@ -20,7 +20,9 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0)
 }
 
-pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
+pub(crate) fn load_cargo(
+    root: &Path,
+) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(root.as_ref(), &Default::default())?;
     let project_roots = ws.to_roots();
@@ -74,7 +76,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
     Ok((host, source_roots))
 }
 
-pub fn load(
+pub(crate) fn load(
     source_roots: &FxHashMap<SourceRootId, PackageRoot>,
     crate_graph: CrateGraph,
     vfs: &mut Vfs,
@@ -86,7 +88,7 @@ pub fn load(
     analysis_change.set_crate_graph(crate_graph);
 
     // wait until Vfs has loaded all roots
-    let mut roots_loaded = HashSet::new();
+    let mut roots_loaded = FxHashSet::default();
     for task in receiver {
         vfs.handle_task(task);
         let mut done = false;

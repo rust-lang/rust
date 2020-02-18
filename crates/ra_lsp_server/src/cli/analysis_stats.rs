@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Fully type-check project and print various stats, like the number of type
+//! errors.
 
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 

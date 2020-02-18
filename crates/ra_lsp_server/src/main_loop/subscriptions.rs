@@ -1,4 +1,5 @@
-//! Keeps track of file subscriptions.
+//! Keeps track of file subscriptions -- the set of currently opened files for
+//! which we want to publish diagnostics, syntax highlighting, etc.
 
 use ra_ide::FileId;
 use rustc_hash::FxHashSet;
