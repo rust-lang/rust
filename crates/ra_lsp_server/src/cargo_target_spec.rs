@@ -54,14 +54,17 @@ pub(crate) fn runnable_args(
     Ok(res)
 }
 
-pub struct CargoTargetSpec {
-    pub package: String,
-    pub target: String,
-    pub target_kind: TargetKind,
+pub(crate) struct CargoTargetSpec {
+    pub(crate) package: String,
+    pub(crate) target: String,
+    pub(crate) target_kind: TargetKind,
 }
 
 impl CargoTargetSpec {
-    pub fn for_file(world: &WorldSnapshot, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
+    pub(crate) fn for_file(
+        world: &WorldSnapshot,
+        file_id: FileId,
+    ) -> Result<Option<CargoTargetSpec>> {
         let &crate_id = match world.analysis().crate_for(file_id)?.first() {
             Some(crate_id) => crate_id,
             None => return Ok(None),
@@ -82,7 +85,7 @@ impl CargoTargetSpec {
         Ok(res)
     }
 
-    pub fn push_to(self, buf: &mut Vec<String>) {
+    pub(crate) fn push_to(self, buf: &mut Vec<String>) {
         buf.push("--package".to_string());
         buf.push(self.package);
         match self.target_kind {
