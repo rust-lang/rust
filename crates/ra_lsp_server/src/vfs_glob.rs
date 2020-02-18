@@ -1,4 +1,4 @@
-//! `ra_vfs_glob` crate implements exclusion rules for vfs.
+//! Exclusion rules for vfs.
 //!
 //! By default, we include only `.rs` files, and skip some know offenders like
 //! `/target` or `/node_modules` altogether.
