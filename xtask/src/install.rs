@@ -39,7 +39,7 @@ impl InstallCmd {
                 "
     Installation complete.
 
-    Add `\"rust-analyzer.raLspServerPath\": \"rust-analyzer\",` to VS Code settings,
+    Add `\"rust-analyzer.serverPath\": \"rust-analyzer\",` to VS Code settings,
     otherwise it will use the latest release from GitHub.
 "
             )

@@ -111,7 +111,7 @@ export class Config {
     }
 
     get serverSource(): null | BinarySource {
-        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("raLspServerPath");
+        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("serverPath");
 
         if (serverPath) {
             return {

@@ -92,7 +92,7 @@ launch configuration from `launch.json`. Notably, this uses the usual
 in `setting.json` file:
 ```json
 {
-    "rust-analyzer.raLspServerPath": "rust-analyzer"
+    "rust-analyzer.serverPath": "rust-analyzer"
 }
 ```
 After I am done with the fix, I use `cargo

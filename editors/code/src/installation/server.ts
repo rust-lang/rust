@@ -29,7 +29,7 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
 
             vscode.window.showErrorMessage(
                 `Unable to run ${source.path} binary. ` +
-                `To use the pre-built language server, set "rust-analyzer.raLspServerPath" ` +
+                `To use the pre-built language server, set "rust-analyzer.serverPath" ` +
                 "value to `null` or remove it from the settings to use it by default."
             );
             return null;
