@@ -7,7 +7,7 @@ use lsp_types::{
     PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
     WorkDoneProgressParams,
 };
-use ra_lsp_server::req::{
+use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
     Formatting, OnEnter, Runnables, RunnablesParams,
 };

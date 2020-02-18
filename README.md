@@ -35,7 +35,7 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer && cd rust-analyzer
 # install both the language server and VS Code extension
 $ cargo xtask install
 
-# alternatively, install only the server. Binary name is `ra_lsp_server`.
+# alternatively, install only the server. Binary name is `rust-analyzer`.
 $ cargo xtask install --server
 ```
 

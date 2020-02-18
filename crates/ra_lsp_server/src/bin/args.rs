@@ -5,7 +5,7 @@
 
 use anyhow::{bail, Result};
 use pico_args::Arguments;
-use ra_lsp_server::cli::{BenchWhat, Position, Verbosity};
+use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
 
 use std::{fmt::Write, path::PathBuf};
 
@@ -74,7 +74,7 @@ impl Args {
 ra-cli-parse
 
 USAGE:
-    ra_lsp_server parse [FLAGS]
+    rust-analyzer parse [FLAGS]
 
 FLAGS:
     -h, --help       Prints help inforamtion
@@ -94,7 +94,7 @@ FLAGS:
 ra-cli-symbols
 
 USAGE:
-    ra_lsp_server highlight [FLAGS]
+    rust-analyzer highlight [FLAGS]
 
 FLAGS:
     -h, --help    Prints help inforamtion"
@@ -113,7 +113,7 @@ FLAGS:
 ra-cli-highlight
 
 USAGE:
-    ra_lsp_server highlight [FLAGS]
+    rust-analyzer highlight [FLAGS]
 
 FLAGS:
     -h, --help       Prints help information
@@ -133,7 +133,7 @@ FLAGS:
 ra-cli-analysis-stats
 
 USAGE:
-    ra_lsp_server analysis-stats [FLAGS] [OPTIONS] [PATH]
+    rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
     -h, --help            Prints help information
@@ -168,10 +168,10 @@ ARGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra_lsp_server-analysis-bench
+rust-analyzer-analysis-bench
 
 USAGE:
-    ra_lsp_server analysis-bench [FLAGS] [OPTIONS] [PATH]
+    rust-analyzer analysis-bench [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
     -h, --help        Prints help information
@@ -207,7 +207,7 @@ ARGS:
 ra-cli
 
 USAGE:
-    ra_lsp_server <SUBCOMMAND>
+    rust-analyzer <SUBCOMMAND>
 
 FLAGS:
     -h, --help        Prints help information

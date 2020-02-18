@@ -22,8 +22,8 @@ where **only** the `rust-analyzer` extension being debugged is enabled.
 
 ## Debug TypeScript VSCode extension
 
-- `Run Extension` - runs the extension with the globally installed `ra_lsp_server` binary.
-- `Run Extension (Dev Server)` - runs extension with the locally built LSP server (`target/debug/ra_lsp_server`).
+- `Run Extension` - runs the extension with the globally installed `rust-analyzer` binary.
+- `Run Extension (Dev Server)` - runs extension with the locally built LSP server (`target/debug/rust-analyzer`).
 
 TypeScript debugging is configured to watch your source edits and recompile.
 To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
@@ -47,13 +47,13 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
     debug = 2
   ```
 
-- Select `Run Extension (Dev Server)` to run your locally built `target/debug/ra_lsp_server`.
+- Select `Run Extension (Dev Server)` to run your locally built `target/debug/rust-analyzer`.
 
 - In the original VSCode window once again select the `Attach To Server` debug configuration.
 
-- A list of running processes should appear. Select the `ra_lsp_server` from this repo.
+- A list of running processes should appear. Select the `rust-analyzer` from this repo.
 
-- Navigate to `crates/ra_lsp_server/src/main_loop.rs` and add a breakpoint to the `on_task` function.
+- Navigate to `crates/rust-analyzer/src/main_loop.rs` and add a breakpoint to the `on_task` function.
 
 - Go back to the `[Extension Development Host]` instance and hover over a Rust variable and your breakpoint should hit.
 
@@ -64,15 +64,15 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
 
 ## Troubleshooting
 
-### Can't find the `ra_lsp_server` process
+### Can't find the `rust-analyzer` process
 
 It could be a case of just jumping the gun.
 
-The `ra_lsp_server` is only started once the `onLanguage:rust` activation.
+The `rust-analyzer` is only started once the `onLanguage:rust` activation.
 
 Make sure you open a rust file in the `[Extension Development Host]` and try again.
 
-### Can't connect to `ra_lsp_server`
+### Can't connect to `rust-analyzer`
 
 Make sure you have run `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`.
 

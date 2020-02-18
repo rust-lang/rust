@@ -19,7 +19,7 @@
       "label": "Build Server",
       "group": "build",
       "type": "shell",
-      "command": "cargo build --package ra_lsp_server",
+      "command": "cargo build --package rust-analyzer",
       "problemMatcher": "$rustc"
     },
   ]

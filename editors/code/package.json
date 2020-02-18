@@ -185,7 +185,7 @@
                         "string"
                     ],
                     "default": null,
-                    "description": "Path to ra_lsp_server executable (points to bundled binary by default)"
+                    "description": "Path to rust-analyzer executable (points to bundled binary by default)"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",
@@ -245,7 +245,7 @@
                         "Full log"
                     ],
                     "default": "off",
-                    "description": "Trace requests to the ra_lsp_server"
+                    "description": "Trace requests to the rust-analyzer"
                 },
                 "rust-analyzer.lruCapacity": {
                     "type": [

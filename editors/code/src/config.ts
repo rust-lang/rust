@@ -76,7 +76,7 @@ export class Config {
     }
 
     /**
-     * Name of the binary artifact for `ra_lsp_server` that is published for
+     * Name of the binary artifact for `rust-analyzer` that is published for
      * `platform` on GitHub releases. (It is also stored under the same name when
      * downloaded by the extension).
      */
@@ -91,12 +91,12 @@ export class Config {
                     case "arm":
                     case "arm64": return null;
 
-                    default: return "ra_lsp_server-linux";
+                    default: return "rust-analyzer-linux";
                 }
             }
 
-            case "darwin": return "ra_lsp_server-mac";
-            case "win32": return "ra_lsp_server-windows.exe";
+            case "darwin": return "rust-analyzer-mac";
+            case "win32": return "rust-analyzer-windows.exe";
 
             // Users on these platforms yet need to manually build from sources
             case "aix":

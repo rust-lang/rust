@@ -64,14 +64,14 @@ To make VS Code use the freshly build server, add this to the settings:
 
 [source,json]
 ----
-{ "rust-analyzer.raLspServerPath": "ra_lsp_server" }
+{ "rust-analyzer.raLspServerPath": "rust-analyzer" }
 ----
 
 Note that installing via `xtask install` does not work for VS Code Remote, instead you'll need to install the `.vsix` manually.
 
 === Language Server Binary
 
-Other editors generally require `ra_lsp_server` binary to be in `$PATH`.
+Other editors generally require `rust-analyzer` binary to be in `$PATH`.
 You can download pre-build binary from
 https://github.com/rust-analyzer/rust-analyzer/releases[releases]
 page, or you can install it from source using the following command:
@@ -117,7 +117,7 @@ The are several LSP client implementations for vim:
 [source,vim]
 ----
 let g:LanguageClient_serverCommands = {
-\ 'rust': ['ra_lsp_server'],
+\ 'rust': ['rust-analyzer'],
 \ }
 ----
 
@@ -142,7 +142,7 @@ Installation:
 [source,json]
 ----
 "rust-analyzer": {
-    "command": ["ra_lsp_server"],
+    "command": ["rust-analyzer"],
     "languageId": "rust",
     "scopes": ["source.rust"],
     "syntaxes": [
