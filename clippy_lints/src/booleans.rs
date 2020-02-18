@@ -359,7 +359,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
                 simplified.push(simple_negated);
             }
-            let mut improvements = Vec::new();
+            let mut improvements = Vec::with_capacity(simplified.len());
             'simplified: for suggestion in &simplified {
                 let simplified_stats = terminal_stats(suggestion);
                 let mut improvement = false;
