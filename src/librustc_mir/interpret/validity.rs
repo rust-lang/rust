@@ -362,12 +362,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         );
                         match err.kind {
                             err_unsup!(InvalidNullPointerUsage) => {
-                                throw_validation_failure!("NULL reference", self.path)
+                                throw_validation_failure!("a NULL reference", self.path)
                             }
                             err_unsup!(AlignmentCheckFailed { required, has }) => {
                                 throw_validation_failure!(
                                     format_args!(
-                                        "unaligned reference \
+                                        "an unaligned reference \
                                          (required {} byte alignment but found {})",
                                         required.bytes(),
                                         has.bytes()
@@ -376,11 +376,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                                 )
                             }
                             err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
-                                "dangling reference (created from integer)",
+                                "a dangling reference (created from integer)",
                                 self.path
                             ),
                             _ => throw_validation_failure!(
-                                "dangling reference (not entirely in bounds)",
+                                "a dangling reference (not entirely in bounds)",
                                 self.path
                             ),
                         }
