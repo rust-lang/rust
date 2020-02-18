@@ -1,31 +1,31 @@
 //! FIXME: write short doc here
 
-use hir::db::AstDatabase;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
-use crate::{
-    display::ToNav, expand::descend_into_macros, FilePosition, NavigationTarget, RangeInfo,
-};
+use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let file = db.parse_or_expand(position.file_id.into())?;
-    let token = pick_best(file.token_at_offset(position.offset))?;
-    let token = descend_into_macros(db, position.file_id, token);
+    let sema = hir::Semantics::new(db);
 
-    let node = token
-        .value
-        .ancestors()
-        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+    let file: ast::SourceFile = sema.parse(position.file_id);
+    let token: SyntaxToken = pick_best(file.syntax().token_at_offset(position.offset))?;
+    let token: SyntaxToken = sema.descend_into_macros(token);
 
-    let analyzer = hir::SourceAnalyzer::new(db, token.with_value(&node), None);
+    let (ty, node) = sema.ancestors_with_macros(token.parent()).find_map(|node| {
+        let ty = match_ast! {
+            match node {
+                ast::Expr(expr) => { sema.type_of_expr(&expr)? },
+                ast::Pat(pat) => { sema.type_of_pat(&pat)? },
+                _ => { return None },
+            }
+        };
 
-    let ty: hir::Type = ast::Expr::cast(node.clone())
-        .and_then(|e| analyzer.type_of(db, &e))
-        .or_else(|| ast::Pat::cast(node.clone()).and_then(|p| analyzer.type_of_pat(db, &p)))?;
+        Some((ty, node))
+    })?;
 
     let adt_def = ty.autoderef(db).find_map(|ty| ty.as_adt())?;
 

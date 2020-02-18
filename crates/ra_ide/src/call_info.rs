@@ -1,5 +1,5 @@
 //! FIXME: write short doc here
-use hir::db::AstDatabase;
+use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, ArgListOwner},
@@ -7,24 +7,23 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use crate::{expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature};
+use crate::{CallInfo, FilePosition, FunctionSignature};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
-    let file = db.parse_or_expand(position.file_id.into())?;
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id);
+    let file = file.syntax();
     let token = file.token_at_offset(position.offset).next()?;
-    let token = descend_into_macros(db, position.file_id, token);
+    let token = sema.descend_into_macros(token);
 
     // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(&token.value.parent())?;
-    let name_ref = calling_node.name_ref()?;
-    let name_ref = token.with_value(name_ref.syntax());
+    let calling_node = FnCallNode::with_node(&token.parent())?;
 
-    let analyzer = hir::SourceAnalyzer::new(db, name_ref, None);
     let (mut call_info, has_self) = match &calling_node {
-        FnCallNode::CallExpr(expr) => {
+        FnCallNode::CallExpr(call) => {
             //FIXME: Type::as_callable is broken
-            let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
+            let callable_def = sema.type_of_expr(&call.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
                     let fn_def = it.into();
@@ -36,12 +35,12 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 }
             }
         }
-        FnCallNode::MethodCallExpr(expr) => {
-            let function = analyzer.resolve_method_call(&expr)?;
+        FnCallNode::MethodCallExpr(method_call) => {
+            let function = sema.resolve_method_call(&method_call)?;
             (CallInfo::with_fn(db, function), function.has_self_param(db))
         }
-        FnCallNode::MacroCallExpr(expr) => {
-            let macro_def = analyzer.resolve_macro_call(db, name_ref.with_value(&expr))?;
+        FnCallNode::MacroCallExpr(macro_call) => {
+            let macro_def = sema.resolve_macro_call(&macro_call)?;
             (CallInfo::with_macro(db, macro_def)?, false)
         }
     };

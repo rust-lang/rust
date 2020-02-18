@@ -2,13 +2,13 @@
 
 use indexmap::IndexMap;
 
-use hir::db::AstDatabase;
+use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{
-    call_info::FnCallNode, display::ToNav, expand::descend_into_macros, goto_definition,
-    references, FilePosition, NavigationTarget, RangeInfo,
+    call_info::FnCallNode, display::ToNav, goto_definition, references, FilePosition,
+    NavigationTarget, RangeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -38,30 +38,31 @@ pub(crate) fn call_hierarchy(
 }
 
 pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
+    let sema = Semantics::new(db);
     // 1. Find all refs
     // 2. Loop through refs and determine unique fndef. This will become our `from: CallHierarchyItem,` in the reply.
     // 3. Add ranges relative to the start of the fndef.
     let refs = references::find_all_refs(db, position, None)?;
 
     let mut calls = CallLocations::default();
-    let mut sb = hir::SourceBinder::new(db);
 
     for reference in refs.info.references() {
         let file_id = reference.file_range.file_id;
-        let file = db.parse_or_expand(file_id.into())?;
+        let file = sema.parse(file_id);
+        let file = file.syntax();
         let token = file.token_at_offset(reference.file_range.range.start()).next()?;
-        let token = descend_into_macros(db, file_id, token);
-        let syntax = token.value.parent();
+        let token = sema.descend_into_macros(token);
+        let syntax = token.parent();
 
         // This target is the containing function
         if let Some(nav) = syntax.ancestors().find_map(|node| {
             match_ast! {
                 match node {
                     ast::FnDef(it) => {
-                        let def = sb.to_def(token.with_value(it))?;
-                        Some(def.to_nav(sb.db))
+                        let def = sema.to_def(&it)?;
+                        Some(def.to_nav(sema.db))
                     },
-                    _ => { None },
+                    _ => None,
                 }
             }
         }) {
@@ -74,11 +75,13 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 }
 
 pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
+    let sema = Semantics::new(db);
     let file_id = position.file_id;
-    let file = db.parse_or_expand(file_id.into())?;
+    let file = sema.parse(file_id);
+    let file = file.syntax();
     let token = file.token_at_offset(position.offset).next()?;
-    let token = descend_into_macros(db, file_id, token);
-    let syntax = token.value.parent();
+    let token = sema.descend_into_macros(token);
+    let syntax = token.parent();
 
     let mut calls = CallLocations::default();
 
@@ -87,14 +90,11 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         .filter_map(|node| FnCallNode::with_node_exact(&node))
         .filter_map(|call_node| {
             let name_ref = call_node.name_ref()?;
-            let name_ref = token.with_value(name_ref.syntax());
-
-            let analyzer = hir::SourceAnalyzer::new(db, name_ref, None);
 
             if let Some(func_target) = match &call_node {
                 FnCallNode::CallExpr(expr) => {
                     //FIXME: Type::as_callable is broken
-                    let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
+                    let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
                     match callable_def {
                         hir::CallableDef::FunctionId(it) => {
                             let fn_def: hir::Function = it.into();
@@ -105,15 +105,15 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                     }
                 }
                 FnCallNode::MethodCallExpr(expr) => {
-                    let function = analyzer.resolve_method_call(&expr)?;
+                    let function = sema.resolve_method_call(&expr)?;
                     Some(function.to_nav(db))
                 }
-                FnCallNode::MacroCallExpr(expr) => {
-                    let macro_def = analyzer.resolve_macro_call(db, name_ref.with_value(&expr))?;
+                FnCallNode::MacroCallExpr(macro_call) => {
+                    let macro_def = sema.resolve_macro_call(&macro_call)?;
                     Some(macro_def.to_nav(db))
                 }
             } {
-                Some((func_target, name_ref.value.text_range()))
+                Some((func_target, name_ref.syntax().text_range()))
             } else {
                 None
             }

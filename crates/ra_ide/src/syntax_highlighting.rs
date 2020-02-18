@@ -1,8 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{HirFileId, InFile, Name, SourceAnalyzer, SourceBinder};
+use hir::{Name, Semantics};
 use ra_db::SourceDatabase;
-use ra_ide_db::{defs::NameDefinition, RootDatabase};
+use ra_ide_db::{
+    defs::{classify_name, NameDefinition},
+    RootDatabase,
+};
 use ra_prof::profile;
 use ra_syntax::{
     ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken,
@@ -10,11 +13,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    expand::descend_into_macros_with_analyzer,
-    references::{classify_name, classify_name_ref},
-    FileId,
-};
+use crate::{references::classify_name_ref, FileId};
 
 pub mod tags {
     pub const FIELD: &str = "field";
@@ -73,14 +72,11 @@ pub(crate) fn highlight(
     range: Option<TextRange>,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
+    let sema = Semantics::new(db);
+    let root = sema.parse(file_id).syntax().clone();
 
-    let parse = db.parse(file_id);
-    let root = parse.tree().syntax().clone();
-
-    let mut sb = SourceBinder::new(db);
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
     let mut res = Vec::new();
-    let analyzer = sb.analyze(InFile::new(file_id.into(), &root), None);
 
     let mut in_macro_call = None;
 
@@ -105,7 +101,7 @@ pub(crate) fn highlight(
                 match node.kind() {
                     MACRO_CALL => {
                         in_macro_call = Some(node.clone());
-                        if let Some(range) = highlight_macro(InFile::new(file_id.into(), node)) {
+                        if let Some(range) = highlight_macro(node) {
                             res.push(HighlightedRange {
                                 range,
                                 tag: tags::MACRO,
@@ -116,10 +112,9 @@ pub(crate) fn highlight(
                     _ if in_macro_call.is_some() => {
                         if let Some(token) = node.as_token() {
                             if let Some((tag, binding_hash)) = highlight_token_tree(
-                                &mut sb,
-                                &analyzer,
+                                &sema,
                                 &mut bindings_shadow_count,
-                                InFile::new(file_id.into(), token.clone()),
+                                token.clone(),
                             ) {
                                 res.push(HighlightedRange {
                                     range: node.text_range(),
@@ -130,11 +125,9 @@ pub(crate) fn highlight(
                         }
                     }
                     _ => {
-                        if let Some((tag, binding_hash)) = highlight_node(
-                            &mut sb,
-                            &mut bindings_shadow_count,
-                            InFile::new(file_id.into(), node.clone()),
-                        ) {
+                        if let Some((tag, binding_hash)) =
+                            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+                        {
                             res.push(HighlightedRange {
                                 range: node.text_range(),
                                 tag,
@@ -161,8 +154,8 @@ pub(crate) fn highlight(
     res
 }
 
-fn highlight_macro(node: InFile<SyntaxElement>) -> Option<TextRange> {
-    let macro_call = ast::MacroCall::cast(node.value.as_node()?.clone())?;
+fn highlight_macro(node: SyntaxElement) -> Option<TextRange> {
+    let macro_call = ast::MacroCall::cast(node.as_node()?.clone())?;
     let path = macro_call.path()?;
     let name_ref = path.segment()?.name_ref()?;
 
@@ -179,35 +172,34 @@ fn highlight_macro(node: InFile<SyntaxElement>) -> Option<TextRange> {
 }
 
 fn highlight_token_tree(
-    sb: &mut SourceBinder<RootDatabase>,
-    analyzer: &SourceAnalyzer,
+    sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
-    token: InFile<SyntaxToken>,
+    token: SyntaxToken,
 ) -> Option<(&'static str, Option<u64>)> {
-    if token.value.parent().kind() != TOKEN_TREE {
+    if token.parent().kind() != TOKEN_TREE {
         return None;
     }
-    let token = descend_into_macros_with_analyzer(sb.db, analyzer, token);
+    let token = sema.descend_into_macros(token.clone());
     let expanded = {
-        let parent = token.value.parent();
+        let parent = token.parent();
         // We only care Name and Name_ref
-        match (token.value.kind(), parent.kind()) {
-            (IDENT, NAME) | (IDENT, NAME_REF) => token.with_value(parent.into()),
-            _ => token.map(|it| it.into()),
+        match (token.kind(), parent.kind()) {
+            (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
+            _ => token.into(),
         }
     };
 
-    highlight_node(sb, bindings_shadow_count, expanded)
+    highlight_node(sema, bindings_shadow_count, expanded)
 }
 
 fn highlight_node(
-    sb: &mut SourceBinder<RootDatabase>,
+    sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
-    node: InFile<SyntaxElement>,
+    node: SyntaxElement,
 ) -> Option<(&'static str, Option<u64>)> {
-    let db = sb.db;
+    let db = sema.db;
     let mut binding_hash = None;
-    let tag = match node.value.kind() {
+    let tag = match node.kind() {
         FN_DEF => {
             bindings_shadow_count.clear();
             return None;
@@ -216,19 +208,18 @@ fn highlight_node(
         STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
         ATTR => tags::LITERAL_ATTRIBUTE,
         // Special-case field init shorthand
-        NAME_REF if node.value.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
-        NAME_REF if node.value.ancestors().any(|it| it.kind() == ATTR) => return None,
+        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
+        NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => return None,
         NAME_REF => {
-            let name_ref = node.value.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-            let name_kind = classify_name_ref(sb, node.with_value(&name_ref));
+            let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
+            let name_kind = classify_name_ref(sema, &name_ref);
             match name_kind {
                 Some(name_kind) => {
                     if let NameDefinition::Local(local) = &name_kind {
                         if let Some(name) = local.name(db) {
                             let shadow_count =
                                 bindings_shadow_count.entry(name.clone()).or_default();
-                            binding_hash =
-                                Some(calc_binding_hash(node.file_id, &name, *shadow_count))
+                            binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                         }
                     };
 
@@ -238,14 +229,14 @@ fn highlight_node(
             }
         }
         NAME => {
-            let name = node.value.as_node().cloned().and_then(ast::Name::cast).unwrap();
-            let name_kind = classify_name(sb, node.with_value(&name));
+            let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
+            let name_kind = classify_name(sema, &name);
 
             if let Some(NameDefinition::Local(local)) = &name_kind {
                 if let Some(name) = local.name(db) {
                     let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
                     *shadow_count += 1;
-                    binding_hash = Some(calc_binding_hash(node.file_id, &name, *shadow_count))
+                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                 }
             };
 
@@ -272,7 +263,7 @@ fn highlight_node(
 
     return Some((tag, binding_hash));
 
-    fn calc_binding_hash(file_id: HirFileId, name: &Name, shadow_count: u32) -> u64 {
+    fn calc_binding_hash(name: &Name, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
             use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
@@ -281,7 +272,7 @@ fn highlight_node(
             hasher.finish()
         }
 
-        hash((file_id, name, shadow_count))
+        hash((name, shadow_count))
     }
 }
 

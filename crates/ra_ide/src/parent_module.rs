@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use ra_db::{CrateId, FileId, FilePosition, SourceDatabase};
+use hir::Semantics;
+use ra_db::{CrateId, FileId, FilePosition};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -13,10 +14,10 @@ use crate::NavigationTarget;
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
-    let mut sb = hir::SourceBinder::new(db);
-    let parse = db.parse(position.file_id);
+    let sema = Semantics::new(db);
+    let source_file = sema.parse(position.file_id);
 
-    let mut module = find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset);
+    let mut module = find_node_at_offset::<ast::Module>(source_file.syntax(), position.offset);
 
     // If cursor is literally on `mod foo`, go to the grandpa.
     if let Some(m) = &module {
@@ -30,8 +31,8 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     }
 
     let module = match module {
-        Some(module) => sb.to_def(hir::InFile::new(position.file_id.into(), module)),
-        None => sb.to_module_def(position.file_id),
+        Some(module) => sema.to_def(&module),
+        None => sema.to_module_def(position.file_id),
     };
     let module = match module {
         None => return Vec::new(),
@@ -43,8 +44,8 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
-    let mut sb = hir::SourceBinder::new(db);
-    let module = match sb.to_module_def(file_id) {
+    let sema = Semantics::new(db);
+    let module = match sema.to_module_def(file_id) {
         Some(it) => it,
         None => return Vec::new(),
     };

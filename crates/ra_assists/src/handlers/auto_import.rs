@@ -3,8 +3,8 @@ use crate::{
     insert_use_statement, AssistId,
 };
 use hir::{
-    db::HirDatabase, AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution,
-    SourceAnalyzer, Trait, Type,
+    AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
+    Type,
 };
 use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
 use ra_prof::profile;
@@ -78,14 +78,9 @@ impl AutoImportAssets {
 
     fn for_method_call(method_call: ast::MethodCallExpr, ctx: &AssistCtx) -> Option<Self> {
         let syntax_under_caret = method_call.syntax().to_owned();
-        let source_analyzer = ctx.source_analyzer(&syntax_under_caret, None);
-        let module_with_name_to_import = source_analyzer.module()?;
+        let module_with_name_to_import = ctx.sema.scope(&syntax_under_caret).module()?;
         Some(Self {
-            import_candidate: ImportCandidate::for_method_call(
-                &method_call,
-                &source_analyzer,
-                ctx.db,
-            )?,
+            import_candidate: ImportCandidate::for_method_call(&ctx.sema, &method_call)?,
             module_with_name_to_import,
             syntax_under_caret,
         })
@@ -97,14 +92,9 @@ impl AutoImportAssets {
             return None;
         }
 
-        let source_analyzer = ctx.source_analyzer(&syntax_under_caret, None);
-        let module_with_name_to_import = source_analyzer.module()?;
+        let module_with_name_to_import = ctx.sema.scope(&syntax_under_caret).module()?;
         Some(Self {
-            import_candidate: ImportCandidate::for_regular_path(
-                &path_under_caret,
-                &source_analyzer,
-                ctx.db,
-            )?,
+            import_candidate: ImportCandidate::for_regular_path(&ctx.sema, &path_under_caret)?,
             module_with_name_to_import,
             syntax_under_caret,
         })
@@ -229,25 +219,23 @@ enum ImportCandidate {
 
 impl ImportCandidate {
     fn for_method_call(
+        sema: &Semantics<RootDatabase>,
         method_call: &ast::MethodCallExpr,
-        source_analyzer: &SourceAnalyzer,
-        db: &impl HirDatabase,
     ) -> Option<Self> {
-        if source_analyzer.resolve_method_call(method_call).is_some() {
+        if sema.resolve_method_call(method_call).is_some() {
             return None;
         }
         Some(Self::TraitMethod(
-            source_analyzer.type_of(db, &method_call.expr()?)?,
+            sema.type_of_expr(&method_call.expr()?)?,
             method_call.name_ref()?.syntax().to_string(),
         ))
     }
 
     fn for_regular_path(
+        sema: &Semantics<RootDatabase>,
         path_under_caret: &ast::Path,
-        source_analyzer: &SourceAnalyzer,
-        db: &impl HirDatabase,
     ) -> Option<Self> {
-        if source_analyzer.resolve_path(db, path_under_caret).is_some() {
+        if sema.resolve_path(path_under_caret).is_some() {
             return None;
         }
 
@@ -256,17 +244,15 @@ impl ImportCandidate {
             let qualifier_start = qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
             let qualifier_start_path =
                 qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
-            if let Some(qualifier_start_resolution) =
-                source_analyzer.resolve_path(db, &qualifier_start_path)
-            {
+            if let Some(qualifier_start_resolution) = sema.resolve_path(&qualifier_start_path) {
                 let qualifier_resolution = if qualifier_start_path == qualifier {
                     qualifier_start_resolution
                 } else {
-                    source_analyzer.resolve_path(db, &qualifier)?
+                    sema.resolve_path(&qualifier)?
                 };
                 if let PathResolution::Def(ModuleDef::Adt(assoc_item_path)) = qualifier_resolution {
                     Some(ImportCandidate::TraitAssocItem(
-                        assoc_item_path.ty(db),
+                        assoc_item_path.ty(sema.db),
                         segment.syntax().to_string(),
                     ))
                 } else {

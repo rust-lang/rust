@@ -2,26 +2,26 @@
 
 use std::iter::successors;
 
-use hir::db::AstDatabase;
-use ra_db::SourceDatabase;
+use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    algo::find_covering_element,
+    algo::{self, find_covering_element},
     ast::{self, AstNode, AstToken},
-    Direction, NodeOrToken, SyntaxElement,
+    Direction, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
-use crate::{expand::descend_into_macros, FileId, FileRange};
+use crate::FileRange;
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
-    let src = db.parse(frange.file_id).tree();
-    try_extend_selection(db, src.syntax(), frange).unwrap_or(frange.range)
+    let sema = Semantics::new(db);
+    let src = sema.parse(frange.file_id);
+    try_extend_selection(&sema, src.syntax(), frange).unwrap_or(frange.range)
 }
 
 fn try_extend_selection(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     root: &SyntaxNode,
     frange: FileRange,
 ) -> Option<TextRange> {
@@ -86,7 +86,7 @@ fn try_extend_selection(
     // if we are in single token_tree, we maybe live in macro or attr
     if node.kind() == TOKEN_TREE {
         if let Some(macro_call) = node.ancestors().find_map(ast::MacroCall::cast) {
-            if let Some(range) = extend_tokens_from_range(db, frange.file_id, macro_call, range) {
+            if let Some(range) = extend_tokens_from_range(sema, macro_call, range) {
                 return Some(range);
             }
         }
@@ -96,7 +96,7 @@ fn try_extend_selection(
         return Some(node.text_range());
     }
 
-    let node = shallowest_node(&node.into()).unwrap();
+    let node = shallowest_node(&node.into());
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
         if let Some(range) = extend_list_item(&node) {
@@ -108,8 +108,7 @@ fn try_extend_selection(
 }
 
 fn extend_tokens_from_range(
-    db: &RootDatabase,
-    file_id: FileId,
+    sema: &Semantics<RootDatabase>,
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {
@@ -130,25 +129,21 @@ fn extend_tokens_from_range(
     }
 
     // compute original mapped token range
-    let expanded = {
-        let first_node = descend_into_macros(db, file_id, first_token.clone());
-        let first_node = first_node.map(|it| it.text_range());
-
-        let last_node = descend_into_macros(db, file_id, last_token.clone());
-        if last_node.file_id == file_id.into() || first_node.file_id != last_node.file_id {
-            return None;
+    let extended = {
+        let fst_expanded = sema.descend_into_macros(first_token.clone());
+        let lst_expanded = sema.descend_into_macros(last_token.clone());
+        let mut lca = algo::least_common_ancestor(&fst_expanded.parent(), &lst_expanded.parent())?;
+        lca = shallowest_node(&lca);
+        if lca.first_token() == Some(fst_expanded) && lca.last_token() == Some(lst_expanded) {
+            lca = lca.parent()?;
         }
-        first_node.map(|it| union_range(it, last_node.value.text_range()))
+        lca
     };
 
     // Compute parent node range
-    let src = db.parse_or_expand(expanded.file_id)?;
-    let parent = shallowest_node(&find_covering_element(&src, expanded.value))?.parent()?;
-
     let validate = |token: &SyntaxToken| {
-        let node = descend_into_macros(db, file_id, token.clone());
-        node.file_id == expanded.file_id
-            && node.value.text_range().is_subrange(&parent.text_range())
+        let expanded = sema.descend_into_macros(token.clone());
+        algo::least_common_ancestor(&extended, &expanded.parent()).as_ref() == Some(&extended)
     };
 
     // Find the first and last text range under expanded parent
@@ -191,8 +186,8 @@ fn union_range(range: TextRange, r: TextRange) -> TextRange {
 }
 
 /// Find the shallowest node with same range, which allows us to traverse siblings.
-fn shallowest_node(node: &SyntaxElement) -> Option<SyntaxNode> {
-    node.ancestors().take_while(|n| n.text_range() == node.text_range()).last()
+fn shallowest_node(node: &SyntaxNode) -> SyntaxNode {
+    node.ancestors().take_while(|n| n.text_range() == node.text_range()).last().unwrap()
 }
 
 fn extend_single_word_in_comment_or_string(

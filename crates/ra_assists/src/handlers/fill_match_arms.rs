@@ -2,10 +2,11 @@
 
 use std::iter;
 
-use hir::{db::HirDatabase, Adt, HasSource};
+use hir::{db::HirDatabase, Adt, HasSource, Semantics};
 use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
+use ra_ide_db::RootDatabase;
 
 // Assist: fill_match_arms
 //
@@ -46,10 +47,9 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let expr = match_expr.expr()?;
-    let (enum_def, module) = {
-        let analyzer = ctx.source_analyzer(expr.syntax(), None);
-        (resolve_enum_def(ctx.db, &analyzer, &expr)?, analyzer.module()?)
-    };
+    let enum_def = resolve_enum_def(&ctx.sema, &expr)?;
+    let module = ctx.sema.scope(expr.syntax()).module()?;
+
     let variants = enum_def.variants(ctx.db);
     if variants.is_empty() {
         return None;
@@ -81,18 +81,11 @@ fn is_trivial(arm: &ast::MatchArm) -> bool {
     }
 }
 
-fn resolve_enum_def(
-    db: &impl HirDatabase,
-    analyzer: &hir::SourceAnalyzer,
-    expr: &ast::Expr,
-) -> Option<hir::Enum> {
-    let expr_ty = analyzer.type_of(db, &expr)?;
-
-    let result = expr_ty.autoderef(db).find_map(|ty| match ty.as_adt() {
+fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Enum> {
+    sema.type_of_expr(&expr)?.autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(e),
         _ => None,
-    });
-    result
+    })
 }
 
 fn build_pat(

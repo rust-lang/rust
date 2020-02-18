@@ -1,4 +1,4 @@
-use hir::{HasSource, InFile};
+use hir::HasSource;
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
@@ -104,9 +104,7 @@ fn add_missing_impl_members_inner(
     let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
-    let analyzer = ctx.source_analyzer(impl_node.syntax(), None);
-
-    let trait_ = resolve_target_trait(ctx.db, &analyzer, &impl_node)?;
+    let trait_ = resolve_target_trait(&ctx.sema, &impl_node)?;
 
     let def_name = |item: &ast::ImplItem| -> Option<SmolStr> {
         match item {
@@ -117,7 +115,7 @@ fn add_missing_impl_members_inner(
         .map(|it| it.text().clone())
     };
 
-    let missing_items = get_missing_impl_items(ctx.db, &analyzer, &impl_node)
+    let missing_items = get_missing_impl_items(&ctx.sema, &impl_node)
         .iter()
         .map(|i| match i {
             hir::AssocItem::Function(i) => ast::ImplItem::FnDef(i.source(ctx.db).value),
@@ -138,23 +136,17 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    let db = ctx.db;
-    let file_id = ctx.frange.file_id;
-    let trait_file_id = trait_.source(db).file_id;
+    let sema = ctx.sema;
 
     ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let module = hir::SourceAnalyzer::new(
-            db,
-            hir::InFile::new(file_id.into(), impl_node.syntax()),
-            None,
-        )
-        .module();
-        let ast_transform = QualifyPaths::new(db, module)
-            .or(SubstituteTypeParams::for_trait_impl(db, trait_, impl_node));
+        let source_scope = sema.scope_for_def(trait_);
+        let target_scope = sema.scope(impl_item_list.syntax());
+        let ast_transform = QualifyPaths::new(&target_scope, &source_scope, sema.db)
+            .or(SubstituteTypeParams::for_trait_impl(&source_scope, sema.db, trait_, impl_node));
         let items = missing_items
             .into_iter()
-            .map(|it| ast_transform::apply(&*ast_transform, InFile::new(trait_file_id, it)))
+            .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
                 _ => it,
@@ -181,8 +173,9 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn test_add_missing_impl_members() {

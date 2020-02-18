@@ -7,9 +7,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    ctx.analyzer.process_all_names(ctx.db, &mut |name, res| {
-        acc.add_resolution(ctx, name.to_string(), &res)
-    });
+    ctx.scope().process_all_names(&mut |name, res| acc.add_resolution(ctx, name.to_string(), &res));
 }
 
 #[cfg(test)]

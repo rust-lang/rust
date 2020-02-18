@@ -64,11 +64,12 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     if let (Some(trigger), Some(impl_block)) = (trigger, impl_block) {
         match trigger.kind() {
             SyntaxKind::FN_DEF => {
-                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
-                    .iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::Function(fn_item) => Some(fn_item),
-                        _ => None,
+                for missing_fn in
+                    get_missing_impl_items(&ctx.sema, &impl_block).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::Function(fn_item) => Some(fn_item),
+                            _ => None,
+                        }
                     })
                 {
                     add_function_impl(&trigger, acc, ctx, &missing_fn);
@@ -76,11 +77,12 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             }
 
             SyntaxKind::TYPE_ALIAS_DEF => {
-                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
-                    .iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::TypeAlias(type_item) => Some(type_item),
-                        _ => None,
+                for missing_fn in
+                    get_missing_impl_items(&ctx.sema, &impl_block).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::TypeAlias(type_item) => Some(type_item),
+                            _ => None,
+                        }
                     })
                 {
                     add_type_alias_impl(&trigger, acc, ctx, &missing_fn);
@@ -88,11 +90,12 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             }
 
             SyntaxKind::CONST_DEF => {
-                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
-                    .iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::Const(const_item) => Some(const_item),
-                        _ => None,
+                for missing_fn in
+                    get_missing_impl_items(&ctx.sema, &impl_block).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::Const(const_item) => Some(const_item),
+                            _ => None,
+                        }
                     })
                 {
                     add_const_impl(&trigger, acc, ctx, &missing_fn);

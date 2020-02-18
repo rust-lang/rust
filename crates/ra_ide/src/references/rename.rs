@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use hir::ModuleSource;
-use ra_db::{RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt};
+use hir::{ModuleSource, Semantics};
+use ra_db::{RelativePath, RelativePathBuf, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset, ast, lex_single_valid_syntax_kind, AstNode, SyntaxKind, SyntaxNode,
@@ -24,15 +24,16 @@ pub(crate) fn rename(
         _ => return None,
     }
 
-    let parse = db.parse(position.file_id);
+    let sema = Semantics::new(db);
+    let source_file = sema.parse(position.file_id);
     if let Some((ast_name, ast_module)) =
-        find_name_and_module_at_offset(parse.tree().syntax(), position)
+        find_name_and_module_at_offset(source_file.syntax(), position)
     {
         let range = ast_name.syntax().text_range();
-        rename_mod(db, &ast_name, &ast_module, position, new_name)
+        rename_mod(&sema, &ast_name, &ast_module, position, new_name)
             .map(|info| RangeInfo::new(range, info))
     } else {
-        rename_reference(db, position, new_name)
+        rename_reference(sema.db, position, new_name)
     }
 }
 
@@ -54,7 +55,7 @@ fn source_edit_from_file_id_range(
 }
 
 fn rename_mod(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     ast_name: &ast::Name,
     ast_module: &ast::Module,
     position: FilePosition,
@@ -62,13 +63,12 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    let module_src = hir::InFile { file_id: position.file_id.into(), value: ast_module.clone() };
-    if let Some(module) = hir::SourceBinder::new(db).to_def(module_src) {
-        let src = module.definition_source(db);
-        let file_id = src.file_id.original_file(db);
+    if let Some(module) = sema.to_def(ast_module) {
+        let src = module.definition_source(sema.db);
+        let file_id = src.file_id.original_file(sema.db);
         match src.value {
             ModuleSource::SourceFile(..) => {
-                let mod_path: RelativePathBuf = db.file_relative_path(file_id);
+                let mod_path: RelativePathBuf = sema.db.file_relative_path(file_id);
                 // mod is defined in path/to/dir/mod.rs
                 let dst_path = if mod_path.file_stem() == Some("mod") {
                     mod_path
@@ -82,7 +82,7 @@ fn rename_mod(
                 if let Some(path) = dst_path {
                     let move_file = FileSystemEdit::MoveFile {
                         src: file_id,
-                        dst_source_root: db.file_source_root(position.file_id),
+                        dst_source_root: sema.db.file_source_root(position.file_id),
                         dst_path: path,
                     };
                     file_system_edits.push(move_file);
@@ -98,7 +98,7 @@ fn rename_mod(
     };
     source_file_edits.push(edit);
 
-    if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(db, position, None) {
+    if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(sema.db, position, None) {
         let ref_edits = refs.references.into_iter().map(|reference| {
             source_edit_from_file_id_range(
                 reference.file_range.file_id,

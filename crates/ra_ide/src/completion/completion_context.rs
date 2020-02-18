@@ -1,9 +1,11 @@
 //! FIXME: write short doc here
 
+use hir::{Semantics, SemanticsScope};
+use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast, AstNode, Parse, SourceFile,
+    ast, AstNode, SourceFile,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
@@ -15,8 +17,8 @@ use crate::FilePosition;
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
+    pub(super) sema: Semantics<'a, RootDatabase>,
     pub(super) db: &'a RootDatabase,
-    pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken,
     pub(super) module: Option<hir::Module>,
@@ -51,20 +53,26 @@ pub(crate) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
-        original_parse: &'a Parse<ast::SourceFile>,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
-        let mut sb = hir::SourceBinder::new(db);
-        let module = sb.to_module_def(position.file_id);
-        let token =
-            original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
-        let analyzer = sb.analyze(
-            hir::InFile::new(position.file_id.into(), &token.parent()),
-            Some(position.offset),
-        );
+        let sema = Semantics::new(db);
+
+        let original_file = sema.parse(position.file_id);
+
+        // Insert a fake ident to get a valid parse tree. We will use this file
+        // to determine context, though the original_file will be used for
+        // actual completion.
+        let file_with_fake_ident = {
+            let parse = db.parse(position.file_id);
+            let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
+            parse.reparse(&edit).tree()
+        };
+
+        let module = sema.to_module_def(position.file_id);
+        let token = original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let mut ctx = CompletionContext {
+            sema,
             db,
-            analyzer,
             token,
             offset: position.offset,
             module,
@@ -87,7 +95,7 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
         };
-        ctx.fill(&original_parse, position.offset);
+        ctx.fill(&original_file, file_with_fake_ident, position.offset);
         Some(ctx)
     }
 
@@ -100,29 +108,33 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn fill(&mut self, original_parse: &'a Parse<ast::SourceFile>, offset: TextUnit) {
-        // Insert a fake ident to get a valid parse tree. We will use this file
-        // to determine context, though the original_file will be used for
-        // actual completion.
-        let file = {
-            let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
-            original_parse.reparse(&edit).tree()
-        };
+    pub(crate) fn scope(&self) -> SemanticsScope<'_, RootDatabase> {
+        self.sema.scope_at_offset(&self.token.parent(), self.offset)
+    }
 
+    fn fill(
+        &mut self,
+        original_file: &ast::SourceFile,
+        file_with_fake_ident: ast::SourceFile,
+        offset: TextUnit,
+    ) {
         // First, let's try to complete a reference to some declaration.
-        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), offset) {
+        if let Some(name_ref) =
+            find_node_at_offset::<ast::NameRef>(file_with_fake_ident.syntax(), offset)
+        {
             // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.
             // See RFC#1685.
             if is_node::<ast::Param>(name_ref.syntax()) {
                 self.is_param = true;
                 return;
             }
-            self.classify_name_ref(original_parse.tree(), name_ref);
+            self.classify_name_ref(original_file, name_ref);
         }
 
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
-        if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
+        if let Some(name) = find_node_at_offset::<ast::Name>(file_with_fake_ident.syntax(), offset)
+        {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 let parent = bind_pat.syntax().parent();
                 if parent.clone().and_then(ast::MatchArm::cast).is_some()
@@ -136,13 +148,12 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
-                self.record_lit_pat =
-                    find_node_at_offset(original_parse.tree().syntax(), self.offset);
+                self.record_lit_pat = find_node_at_offset(original_file.syntax(), self.offset);
             }
         }
     }
 
-    fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
+    fn classify_name_ref(&mut self, original_file: &SourceFile, name_ref: ast::NameRef) {
         self.name_ref_syntax =
             find_node_at_offset(original_file.syntax(), name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();

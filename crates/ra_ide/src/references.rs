@@ -13,25 +13,22 @@ mod classify;
 mod rename;
 mod search_scope;
 
-use crate::expand::descend_into_macros_with_analyzer;
-use hir::{InFile, SourceBinder};
+use hir::Semantics;
 use once_cell::unsync::Lazy;
-use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_db::SourceDatabaseExt;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
+    match_ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
 };
+use test_utils::tested_by;
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
-pub(crate) use self::{
-    classify::{classify_name, classify_name_ref},
-    rename::rename,
-};
-pub(crate) use ra_ide_db::defs::NameDefinition;
+pub(crate) use self::{classify::classify_name_ref, rename::rename};
+pub(crate) use ra_ide_db::defs::{classify_name, NameDefinition};
 
 pub use self::search_scope::SearchScope;
 
@@ -114,8 +111,8 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
-    let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax().clone();
+    let sema = Semantics::new(db);
+    let syntax = sema.parse(position.file_id).syntax().clone();
 
     let (opt_name, search_kind) =
         if let Some(name) = get_struct_def_name_for_struc_litetal_search(&syntax, position) {
@@ -124,7 +121,7 @@ pub(crate) fn find_all_refs(
             (find_node_at_offset::<ast::Name>(&syntax, position.offset), ReferenceKind::Other)
         };
 
-    let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position, opt_name)?;
+    let RangeInfo { range, info: (name, def) } = find_name(&sema, &syntax, position, opt_name)?;
     let declaration = def.try_to_nav(db)?;
 
     let search_scope = {
@@ -152,19 +149,18 @@ pub(crate) fn find_all_refs(
 }
 
 fn find_name(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
     opt_name: Option<ast::Name>,
 ) -> Option<RangeInfo<(String, NameDefinition)>> {
-    let mut sb = SourceBinder::new(db);
     if let Some(name) = opt_name {
-        let def = classify_name(&mut sb, InFile::new(position.file_id.into(), &name))?;
+        let def = classify_name(sema, &name)?;
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }
     let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(&mut sb, InFile::new(position.file_id.into(), &name_ref))?;
+    let def = classify_name_ref(sema, &name_ref)?;
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
@@ -182,64 +178,53 @@ fn process_definition(
 
     for (file_id, search_range) in scope {
         let text = db.file_text(file_id);
+        let search_range =
+            search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
 
-        let parse = Lazy::new(|| SourceFile::parse(&text));
-        let mut sb = Lazy::new(|| SourceBinder::new(db));
-        let mut analyzer = None;
+        let sema = Semantics::new(db);
+        let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
-
-            let (name_ref, range) = if let Some(name_ref) =
-                find_node_at_offset::<ast::NameRef>(parse.tree().syntax(), offset)
-            {
-                let range = name_ref.syntax().text_range();
-                (InFile::new(file_id.into(), name_ref), range)
-            } else {
-                // Handle macro token cases
-                let t = match parse.tree().syntax().token_at_offset(offset) {
-                    TokenAtOffset::None => continue,
-                    TokenAtOffset::Single(t) => t,
-                    TokenAtOffset::Between(_, t) => t,
-                };
-                let range = t.text_range();
-                let analyzer = analyzer.get_or_insert_with(|| {
-                    sb.analyze(InFile::new(file_id.into(), parse.tree().syntax()), None)
-                });
-                let expanded = descend_into_macros_with_analyzer(
-                    db,
-                    &analyzer,
-                    InFile::new(file_id.into(), t),
-                );
-                if let Some(token) = ast::NameRef::cast(expanded.value.parent()) {
-                    (expanded.with_value(token), range)
-                } else {
-                    continue;
-                }
-            };
-
-            if let Some(search_range) = search_range {
-                if !range.is_subrange(&search_range) {
-                    continue;
-                }
+            if !search_range.contains_inclusive(offset) {
+                tested_by!(search_filters_by_range);
+                continue;
             }
+
+            let name_ref =
+                if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&tree, offset) {
+                    name_ref
+                } else {
+                    // Handle macro token cases
+                    let token = match tree.token_at_offset(offset) {
+                        TokenAtOffset::None => continue,
+                        TokenAtOffset::Single(t) => t,
+                        TokenAtOffset::Between(_, t) => t,
+                    };
+                    let expanded = sema.descend_into_macros(token);
+                    match ast::NameRef::cast(expanded.parent()) {
+                        Some(name_ref) => name_ref,
+                        _ => continue,
+                    }
+                };
+
             // FIXME: reuse sb
             // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
-            if let Some(d) = classify_name_ref(&mut sb, name_ref.as_ref()) {
+            if let Some(d) = classify_name_ref(&sema, &name_ref) {
                 if d == def {
-                    let kind = if is_record_lit_name_ref(&name_ref.value)
-                        || is_call_expr_name_ref(&name_ref.value)
-                    {
-                        ReferenceKind::StructLiteral
-                    } else {
-                        ReferenceKind::Other
-                    };
+                    let kind =
+                        if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
+                            ReferenceKind::StructLiteral
+                        } else {
+                            ReferenceKind::Other
+                        };
 
+                    let file_range = sema.original_range(name_ref.syntax());
                     refs.push(Reference {
-                        file_range: FileRange { file_id, range },
+                        file_range,
                         kind,
-                        access: reference_access(&d, &name_ref.value),
+                        access: reference_access(&d, &name_ref),
                     });
                 }
             }
@@ -348,6 +333,8 @@ fn is_call_expr_name_ref(name_ref: &ast::NameRef) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use test_utils::covers;
+
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
         Declaration, Reference, ReferenceSearchResult, SearchScope,
@@ -452,6 +439,27 @@ mod tests {
                 "FileId(1) [101; 102) Other Write",
                 "FileId(1) [127; 128) Other Write",
             ],
+        );
+    }
+
+    #[test]
+    fn search_filters_by_range() {
+        covers!(search_filters_by_range);
+        let code = r#"
+            fn foo() {
+                let spam<|> = 92;
+                spam + spam
+            }
+            fn bar() {
+                let spam = 92;
+                spam + spam
+            }
+        "#;
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "spam BIND_PAT FileId(1) [44; 48) Other Write",
+            &["FileId(1) [71; 75) Other Read", "FileId(1) [78; 82) Other Read"],
         );
     }
 

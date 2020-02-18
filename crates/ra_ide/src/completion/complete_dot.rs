@@ -16,7 +16,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    let receiver_ty = match ctx.analyzer.type_of(ctx.db, &dot_receiver) {
+    let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
         Some(ty) => ty,
         _ => return,
     };
@@ -55,7 +55,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     if let Some(krate) = ctx.module.map(|it| it.krate()) {
         let mut seen_methods = FxHashSet::default();
-        let traits_in_scope = ctx.analyzer.traits_in_scope(ctx.db);
+        let traits_in_scope = ctx.scope().traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
             if func.has_self_param(ctx.db) && seen_methods.insert(func.name(ctx.db)) {
                 acc.add_function(ctx, func);

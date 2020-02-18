@@ -2,7 +2,10 @@
 
 use std::cell::RefCell;
 
-use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
+use hir::{
+    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink},
+    Semantics,
+};
 use itertools::Itertools;
 use ra_db::{RelativePath, SourceDatabase, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
@@ -24,7 +27,7 @@ pub enum Severity {
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let _p = profile("diagnostics");
-    let mut sb = hir::SourceBinder::new(db);
+    let sema = Semantics::new(db);
     let parse = db.parse(file_id);
     let mut res = Vec::new();
 
@@ -110,7 +113,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             fix: Some(fix),
         })
     });
-    if let Some(m) = sb.to_module_def(file_id) {
+    if let Some(m) = sema.to_module_def(file_id) {
         m.diagnostics(db, &mut sink);
     };
     drop(sink);

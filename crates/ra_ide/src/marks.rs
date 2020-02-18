@@ -11,4 +11,5 @@ test_utils::marks!(
     call_info_bad_offset
     dont_complete_current_use
     test_resolve_parent_module_on_module_decl
+    search_filters_by_range
 );

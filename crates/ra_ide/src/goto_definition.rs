@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, InFile, SourceBinder};
-use ra_ide_db::{symbol_index, RootDatabase};
+use hir::Semantics;
+use ra_ide_db::{defs::classify_name, symbol_index, RootDatabase};
 use ra_syntax::{
     ast::{self},
     match_ast, AstNode,
@@ -11,8 +11,7 @@ use ra_syntax::{
 
 use crate::{
     display::{ToNav, TryToNav},
-    expand::descend_into_macros,
-    references::{classify_name, classify_name_ref},
+    references::classify_name_ref,
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -20,18 +19,18 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let file = db.parse_or_expand(position.file_id.into())?;
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
     let original_token = pick_best(file.token_at_offset(position.offset))?;
-    let token = descend_into_macros(db, position.file_id, original_token.clone());
+    let token = sema.descend_into_macros(original_token.clone());
 
-    let mut sb = SourceBinder::new(db);
     let nav_targets = match_ast! {
-        match (token.value.parent()) {
+        match (token.parent()) {
             ast::NameRef(name_ref) => {
-                reference_definition(&mut sb, token.with_value(&name_ref)).to_vec()
+                reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                name_definition(&mut sb, token.with_value(&name))?
+                name_definition(&sema, &name)?
             },
             _ => return None,
         }
@@ -68,33 +67,33 @@ impl ReferenceResult {
 }
 
 pub(crate) fn reference_definition(
-    sb: &mut SourceBinder<RootDatabase>,
-    name_ref: InFile<&ast::NameRef>,
+    sema: &Semantics<RootDatabase>,
+    name_ref: &ast::NameRef,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(sb, name_ref);
+    let name_kind = classify_name_ref(sema, name_ref);
     if let Some(def) = name_kind {
-        return match def.try_to_nav(sb.db) {
+        return match def.try_to_nav(sema.db) {
             Some(nav) => ReferenceResult::Exact(nav),
             None => ReferenceResult::Approximate(Vec::new()),
         };
     }
 
     // Fallback index based approach:
-    let navs = symbol_index::index_resolve(sb.db, name_ref.value)
+    let navs = symbol_index::index_resolve(sema.db, name_ref)
         .into_iter()
-        .map(|s| s.to_nav(sb.db))
+        .map(|s| s.to_nav(sema.db))
         .collect();
     Approximate(navs)
 }
 
 fn name_definition(
-    sb: &mut SourceBinder<RootDatabase>,
-    name: InFile<&ast::Name>,
+    sema: &Semantics<RootDatabase>,
+    name: &ast::Name,
 ) -> Option<Vec<NavigationTarget>> {
-    let def = classify_name(sb, name)?;
-    let nav = def.try_to_nav(sb.db)?;
+    let def = classify_name(sema, name)?;
+    let nav = def.try_to_nav(sema.db)?;
     Some(vec![nav])
 }
 

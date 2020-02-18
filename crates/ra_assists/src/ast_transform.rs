@@ -1,15 +1,12 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
 use rustc_hash::FxHashMap;
 
-use hir::{InFile, PathResolution};
+use hir::{PathResolution, SemanticsScope};
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode};
 
 pub trait AstTransform<'a> {
-    fn get_substitution(
-        &self,
-        node: InFile<&ra_syntax::SyntaxNode>,
-    ) -> Option<ra_syntax::SyntaxNode>;
+    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode>;
 
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a>;
     fn or<T: AstTransform<'a> + 'a>(self, other: T) -> Box<dyn AstTransform<'a> + 'a>
@@ -23,10 +20,7 @@ pub trait AstTransform<'a> {
 struct NullTransformer;
 
 impl<'a> AstTransform<'a> for NullTransformer {
-    fn get_substitution(
-        &self,
-        _node: InFile<&ra_syntax::SyntaxNode>,
-    ) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, _node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
         None
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {
@@ -35,14 +29,16 @@ impl<'a> AstTransform<'a> for NullTransformer {
 }
 
 pub struct SubstituteTypeParams<'a> {
-    db: &'a RootDatabase,
+    source_scope: &'a SemanticsScope<'a, RootDatabase>,
     substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
 impl<'a> SubstituteTypeParams<'a> {
     pub fn for_trait_impl(
+        source_scope: &'a SemanticsScope<'a, RootDatabase>,
         db: &'a RootDatabase,
+        // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
         impl_block: ast::ImplBlock,
     ) -> SubstituteTypeParams<'a> {
@@ -56,7 +52,7 @@ impl<'a> SubstituteTypeParams<'a> {
             .zip(substs.into_iter())
             .collect();
         return SubstituteTypeParams {
-            db,
+            source_scope,
             substs: substs_by_param,
             previous: Box::new(NullTransformer),
         };
@@ -80,15 +76,15 @@ impl<'a> SubstituteTypeParams<'a> {
     }
     fn get_substitution_inner(
         &self,
-        node: InFile<&ra_syntax::SyntaxNode>,
+        node: &ra_syntax::SyntaxNode,
     ) -> Option<ra_syntax::SyntaxNode> {
-        let type_ref = ast::TypeRef::cast(node.value.clone())?;
+        let type_ref = ast::TypeRef::cast(node.clone())?;
         let path = match &type_ref {
             ast::TypeRef::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
-        let analyzer = hir::SourceAnalyzer::new(self.db, node, None);
-        let resolution = analyzer.resolve_path(self.db, &path)?;
+        let path = hir::Path::from_ast(path)?;
+        let resolution = self.source_scope.resolve_hir_path(&path)?;
         match resolution {
             hir::PathResolution::TypeParam(tp) => Some(self.substs.get(&tp)?.syntax().clone()),
             _ => None,
@@ -97,10 +93,7 @@ impl<'a> SubstituteTypeParams<'a> {
 }
 
 impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
-    fn get_substitution(
-        &self,
-        node: InFile<&ra_syntax::SyntaxNode>,
-    ) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
         self.get_substitution_inner(node).or_else(|| self.previous.get_substitution(node))
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {
@@ -109,29 +102,34 @@ impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
 }
 
 pub struct QualifyPaths<'a> {
+    target_scope: &'a SemanticsScope<'a, RootDatabase>,
+    source_scope: &'a SemanticsScope<'a, RootDatabase>,
     db: &'a RootDatabase,
-    from: Option<hir::Module>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
 impl<'a> QualifyPaths<'a> {
-    pub fn new(db: &'a RootDatabase, from: Option<hir::Module>) -> Self {
-        Self { db, from, previous: Box::new(NullTransformer) }
+    pub fn new(
+        target_scope: &'a SemanticsScope<'a, RootDatabase>,
+        source_scope: &'a SemanticsScope<'a, RootDatabase>,
+        db: &'a RootDatabase,
+    ) -> Self {
+        Self { target_scope, source_scope, db, previous: Box::new(NullTransformer) }
     }
 
     fn get_substitution_inner(
         &self,
-        node: InFile<&ra_syntax::SyntaxNode>,
+        node: &ra_syntax::SyntaxNode,
     ) -> Option<ra_syntax::SyntaxNode> {
         // FIXME handle value ns?
-        let from = self.from?;
-        let p = ast::Path::cast(node.value.clone())?;
+        let from = self.target_scope.module()?;
+        let p = ast::Path::cast(node.clone())?;
         if p.segment().and_then(|s| s.param_list()).is_some() {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             return None;
         }
-        let analyzer = hir::SourceAnalyzer::new(self.db, node, None);
-        let resolution = analyzer.resolve_path(self.db, &p)?;
+        let hir_path = hir::Path::from_ast(p.clone());
+        let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.db, def)?;
@@ -140,7 +138,7 @@ impl<'a> QualifyPaths<'a> {
                 let type_args = p
                     .segment()
                     .and_then(|s| s.type_arg_list())
-                    .map(|arg_list| apply(self, node.with_value(arg_list)));
+                    .map(|arg_list| apply(self, arg_list));
                 if let Some(type_args) = type_args {
                     let last_segment = path.segment().unwrap();
                     path = path.with_segment(last_segment.with_type_args(type_args))
@@ -157,11 +155,11 @@ impl<'a> QualifyPaths<'a> {
     }
 }
 
-pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: InFile<N>) -> N {
-    let syntax = node.value.syntax();
+pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
+    let syntax = node.syntax();
     let result = ra_syntax::algo::replace_descendants(syntax, &|element| match element {
         ra_syntax::SyntaxElement::Node(n) => {
-            let replacement = transformer.get_substitution(node.with_value(&n))?;
+            let replacement = transformer.get_substitution(&n)?;
             Some(replacement.into())
         }
         _ => None,
@@ -170,10 +168,7 @@ pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: InFile<N>
 }
 
 impl<'a> AstTransform<'a> for QualifyPaths<'a> {
-    fn get_substitution(
-        &self,
-        node: InFile<&ra_syntax::SyntaxNode>,
-    ) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
         self.get_substitution_inner(node).or_else(|| self.previous.get_substitution(node))
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {

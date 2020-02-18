@@ -17,7 +17,6 @@ mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
 
-use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 
 #[cfg(test)]
@@ -57,8 +56,7 @@ pub use crate::completion::completion_item::{
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
 pub(crate) fn completions(db: &RootDatabase, position: FilePosition) -> Option<Completions> {
-    let original_parse = db.parse(position.file_id);
-    let ctx = CompletionContext::new(db, &original_parse, position)?;
+    let ctx = CompletionContext::new(db, position)?;
 
     let mut acc = Completions::default();
 

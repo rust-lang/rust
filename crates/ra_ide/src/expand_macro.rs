@@ -1,7 +1,6 @@
 //! This modules implements "expand macro" functionality in the IDE
 
-use hir::db::AstDatabase;
-use ra_db::SourceDatabase;
+use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_node_at_offset, replace_descendants},
@@ -17,13 +16,12 @@ pub struct ExpandedMacro {
 }
 
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
-    let parse = db.parse(position.file_id);
-    let file = parse.tree();
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id);
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
     let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
 
-    let source = hir::InFile::new(position.file_id.into(), mac.syntax());
-    let expanded = expand_macro_recur(db, source, source.with_value(&mac))?;
+    let expanded = expand_macro_recur(&sema, &mac)?;
 
     // FIXME:
     // macro expansion may lose all white space information
@@ -33,21 +31,16 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 }
 
 fn expand_macro_recur(
-    db: &RootDatabase,
-    source: hir::InFile<&SyntaxNode>,
-    macro_call: hir::InFile<&ast::MacroCall>,
+    sema: &Semantics<RootDatabase>,
+    macro_call: &ast::MacroCall,
 ) -> Option<SyntaxNode> {
-    let analyzer = hir::SourceAnalyzer::new(db, source, None);
-    let expansion = analyzer.expand(db, macro_call)?;
-    let macro_file_id = expansion.file_id();
-    let mut expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
+    let mut expanded = sema.expand(macro_call)?;
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
     let mut replaces: FxHashMap<SyntaxElement, SyntaxElement> = FxHashMap::default();
 
     for child in children.into_iter() {
-        let node = hir::InFile::new(macro_file_id, &child);
-        if let Some(new_node) = expand_macro_recur(db, source, node) {
+        if let Some(new_node) = expand_macro_recur(sema, &child) {
             // Replace the whole node if it is root
             // `replace_descendants` will not replace the parent node
             // but `SyntaxNode::descendants include itself
@@ -120,9 +113,11 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mock_analysis::analysis_and_position;
     use insta::assert_snapshot;
+
+    use crate::mock_analysis::analysis_and_position;
+
+    use super::*;
 
     fn check_expand_macro(fixture: &str) -> ExpandedMacro {
         let (analysis, pos) = analysis_and_position(fixture);

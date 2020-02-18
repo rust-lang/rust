@@ -1,8 +1,10 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, SourceBinder};
-use ra_db::SourceDatabase;
-use ra_ide_db::{defs::NameDefinition, RootDatabase};
+use hir::{Adt, HasSource, HirDisplay, Semantics};
+use ra_ide_db::{
+    defs::{classify_name, NameDefinition},
+    RootDatabase,
+};
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
@@ -13,8 +15,7 @@ use ra_syntax::{
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
-    expand::{descend_into_macros, original_range},
-    references::{classify_name, classify_name_ref},
+    references::classify_name_ref,
     FilePosition, FileRange, RangeInfo,
 };
 
@@ -143,25 +144,25 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: NameDefinition) -> Option<S
 }
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
-    let file = db.parse_or_expand(position.file_id.into())?;
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
-    let token = descend_into_macros(db, position.file_id, token);
+    let token = sema.descend_into_macros(token);
 
     let mut res = HoverResult::new();
 
-    let mut sb = SourceBinder::new(db);
     if let Some((node, name_kind)) = match_ast! {
-        match (token.value.parent()) {
+        match (token.parent()) {
             ast::NameRef(name_ref) => {
-                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().clone(), d))
+                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d))
             },
             ast::Name(name) => {
-                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().clone(), d))
+                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d))
             },
             _ => None,
         }
     } {
-        let range = original_range(db, token.with_value(&node)).range;
+        let range = sema.original_range(&node).range;
         res.extend(hover_text_from_name_kind(db, name_kind));
 
         if !res.is_empty() {
@@ -170,11 +171,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     }
 
     let node = token
-        .value
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
-    let frange = original_range(db, token.with_value(&node));
+    let frange = sema.original_range(&node);
     res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
         return None;
@@ -197,19 +197,17 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
-    let parse = db.parse(frange.file_id);
-    let leaf_node = find_covering_element(parse.tree().syntax(), frange.range);
+    let sema = Semantics::new(db);
+    let source_file = sema.parse(frange.file_id);
+    let leaf_node = find_covering_element(source_file.syntax(), frange.range);
     // if we picked identifier, expand to pattern/expression
     let node = leaf_node
         .ancestors()
         .take_while(|it| it.text_range() == leaf_node.text_range())
         .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
-    let analyzer =
-        hir::SourceAnalyzer::new(db, hir::InFile::new(frange.file_id.into(), &node), None);
-    let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
-    {
+    let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| sema.type_of_expr(&e)) {
         ty
-    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| analyzer.type_of_pat(db, &p)) {
+    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| sema.type_of_pat(&p)) {
         ty
     } else {
         return None;
@@ -219,11 +217,12 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use ra_db::FileLoader;
+    use ra_syntax::TextRange;
+
     use crate::mock_analysis::{
         analysis_and_position, single_file_with_position, single_file_with_range,
     };
-    use ra_db::FileLoader;
-    use ra_syntax::TextRange;
 
     fn trim_markup(s: &str) -> &str {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")
