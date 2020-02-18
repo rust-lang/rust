@@ -10,7 +10,6 @@ LL | pub struct Filter<I, P> {
    | ----------------------- this type doesn't satisfy the bound `std::iter::Iterator`
    |
    = note: the method `count` exists but the following trait bounds were not satisfied:
-           `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
            `[closure@$DIR/issue-36053-2.rs:11:39: 11:53]: std::ops::FnMut<(&_,)>`
            `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
 

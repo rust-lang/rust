@@ -394,7 +394,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.sess.diagnostic().struct_dummy()
                 };
 
-                // FIXME: Unify with unmet bound label.
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
                         let def_sp = tcx.sess.source_map().def_span(full_sp);
@@ -576,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bound_list.sort();
                     bound_list.dedup(); // #35677
                     bound_spans.sort();
-                    bound_spans.dedup(); // #35677
+                    bound_spans.dedup();
                     for (span, msg) in bound_spans.into_iter() {
                         err.span_label(span, &msg);
                     }
