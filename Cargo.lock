@@ -1043,7 +1043,6 @@ version = "0.1.0"
 dependencies = [
  "either",
  "format-buf",
- "fst",
  "indexmap",
  "insta",
  "itertools",
@@ -1060,11 +1059,8 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "rand",
- "rayon",
  "rustc-hash",
- "superslice",
  "test_utils",
- "unicase",
 ]
 
 [[package]]
