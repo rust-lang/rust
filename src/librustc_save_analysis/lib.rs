@@ -151,7 +151,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Const(ref ty, _) | ast::ForeignItemKind::Static(ref ty, _, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -173,7 +173,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
-            ast::ForeignItemKind::Ty => None,
+            ast::ForeignItemKind::TyAlias(..) => None,
             ast::ForeignItemKind::Macro(..) => None,
         }
     }

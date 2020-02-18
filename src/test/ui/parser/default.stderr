@@ -1,8 +1,8 @@
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/default.rs:22:12
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }
-   |            ^ missing `fn`, `type`, or `const`
+   |            ^ missing `fn`, `type`, `const`, or `static`
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/default.rs:16:5

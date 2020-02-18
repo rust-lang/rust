@@ -1,8 +1,12 @@
 error: extern items cannot be `const`
-  --> $DIR/extern-const.rs:16:5
+  --> $DIR/extern-const.rs:16:11
    |
 LL |     const rust_dbg_static_mut: libc::c_int;
-   |     ^^^^^ help: try using a static value: `static`
+   |     ------^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: try using a static value: `static`
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: aborting due to previous error
 

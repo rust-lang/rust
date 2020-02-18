@@ -890,13 +890,9 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _mut, expr) => {
+        ItemKind::Static(ty, _, expr) | ItemKind::Const(ty, expr) => {
             vis.visit_ty(ty);
-            vis.visit_expr(expr);
-        }
-        ItemKind::Const(ty, expr) => {
-            vis.visit_ty(ty);
-            vis.visit_expr(expr);
+            visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ItemKind::Fn(sig, generics, body) => {
             visit_fn_sig(sig, vis);
@@ -951,31 +947,43 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let AssocItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
+    let AssocItem { id, ident, vis, defaultness: _, attrs, kind, span, tokens: _ } =
         item.deref_mut();
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
+    smallvec![item]
+}
+
+pub fn walk_nested_item(
+    visitor: &mut impl MutVisitor,
+    id: &mut NodeId,
+    span: &mut Span,
+    ident: &mut Ident,
+    vis: &mut Visibility,
+    attrs: &mut Vec<Attribute>,
+    kind: &mut AssocItemKind,
+) {
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
-    visitor.visit_generics(generics);
     match kind {
-        AssocItemKind::Const(ty, expr) => {
+        AssocItemKind::Const(ty, expr) | AssocItemKind::Static(ty, _, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Fn(sig, body) => {
+        AssocItemKind::Fn(sig, generics, body) => {
+            visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(bounds, ty) => {
+        AssocItemKind::TyAlias(generics, bounds, ty) => {
+            visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
         AssocItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
-
-    smallvec![item]
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
@@ -1041,22 +1049,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
     let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
-    visitor.visit_ident(ident);
-    visit_attrs(attrs, visitor);
-    match kind {
-        ForeignItemKind::Fn(sig, generics, body) => {
-            visit_fn_sig(sig, visitor);
-            visitor.visit_generics(generics);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        ForeignItemKind::Static(t, _m) => visitor.visit_ty(t),
-        ForeignItemKind::Ty => {}
-        ForeignItemKind::Macro(mac) => visitor.visit_mac(mac),
-    }
-    visitor.visit_id(id);
-    visitor.visit_span(span);
-    visitor.visit_vis(vis);
-
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
     smallvec![item]
 }
 
