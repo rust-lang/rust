@@ -4,8 +4,8 @@
 mod args;
 
 use lsp_server::Connection;
-use ra_lsp_server::{cli, from_json, show_message, Result, ServerConfig};
 use ra_prof;
+use rust_analyzer::{cli, from_json, show_message, Result, ServerConfig};
 
 use crate::args::HelpPrinted;
 
@@ -51,7 +51,7 @@ fn run_server() -> Result<()> {
     log::info!("lifecycle: server started");
 
     let (connection, io_threads) = Connection::stdio();
-    let server_capabilities = serde_json::to_value(ra_lsp_server::server_capabilities()).unwrap();
+    let server_capabilities = serde_json::to_value(rust_analyzer::server_capabilities()).unwrap();
 
     let initialize_params = connection.initialize(server_capabilities)?;
     let initialize_params =
@@ -84,7 +84,7 @@ fn run_server() -> Result<()> {
         })
         .unwrap_or_default();
 
-    ra_lsp_server::main_loop(
+    rust_analyzer::main_loop(
         workspace_roots,
         initialize_params.capabilities,
         server_config,

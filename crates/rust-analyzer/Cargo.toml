@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_lsp_server"
+name = "rust-analyzer"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 autobins = false
@@ -9,7 +9,7 @@ autobins = false
 doctest = false
 
 [[bin]]
-name = "ra_lsp_server"
+name = "rust-analyzer"
 path = "./src/bin/main.rs"
 
 [dependencies]

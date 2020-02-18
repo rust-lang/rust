@@ -44,29 +44,29 @@ jobs:
           CC: clang
         with:
           command: build
-          args: --package ra_lsp_server --bin ra_lsp_server --release --target x86_64-unknown-linux-musl
+          args: --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
 
       - name: Build
         if: matrix.os != 'ubuntu-latest'
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --package ra_lsp_server --bin ra_lsp_server --release
+          args: --package rust-analyzer --bin rust-analyzer --release
 
       - name: Create distribution dir
         run: mkdir ./dist
 
       - name: Copy binary
         if: matrix.os == 'ubuntu-latest'
-        run: cp ./target/x86_64-unknown-linux-musl/release/ra_lsp_server ./dist/ra_lsp_server-linux && strip ./dist/ra_lsp_server-linux
+        run: cp ./target/x86_64-unknown-linux-musl/release/rust-analyzer ./dist/rust-analyzer-linux && strip ./dist/rust-analyzer-linux
 
       - name: Copy binary
         if: matrix.os == 'macos-latest'
-        run: cp ./target/release/ra_lsp_server ./dist/ra_lsp_server-mac
+        run: cp ./target/release/rust-analyzer ./dist/rust-analyzer-mac
 
       - name: Copy binary
         if: matrix.os == 'windows-latest'
-        run: copy ./target/release/ra_lsp_server.exe ./dist/ra_lsp_server-windows.exe
+        run: copy ./target/release/rust-analyzer.exe ./dist/rust-analyzer-windows.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
@@ -153,8 +153,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/ra_lsp_server-linux
-          asset_name: ra_lsp_server-linux
+          asset_path: ./dist/rust-analyzer-linux
+          asset_name: rust-analyzer-linux
           asset_content_type: application/octet-stream
 
       - uses: actions/upload-release-asset@v1.0.1
@@ -162,8 +162,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/ra_lsp_server-mac
-          asset_name: ra_lsp_server-mac
+          asset_path: ./dist/rust-analyzer-mac
+          asset_name: rust-analyzer-mac
           asset_content_type: application/octet-stream
 
       - uses: actions/upload-release-asset@v1.0.1
@@ -171,8 +171,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/ra_lsp_server-windows.exe
-          asset_name: ra_lsp_server-windows.exe
+          asset_path: ./dist/rust-analyzer-windows.exe
+          asset_name: rust-analyzer-windows.exe
           asset_content_type: application/octet-stream
 
       - uses: actions/upload-release-asset@v1.0.1

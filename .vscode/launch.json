@@ -45,7 +45,7 @@
         "<node_internals>/**/*.js"
       ],
       "env": {
-        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/rust-analyzer"
       }
     },
     {
@@ -59,7 +59,7 @@
       "name": "Attach To Server",
       "type": "lldb",
       "request": "attach",
-      "program": "${workspaceFolder}/target/debug/ra_lsp_server",
+      "program": "${workspaceFolder}/target/debug/rust-analyzer",
       "pid": "${command:pickMyProcess}",
       "sourceLanguages": [
         "rust"

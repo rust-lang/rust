@@ -80,7 +80,7 @@ In general, I use one of the following workflows for fixing bugs and
 implementing features.
 
 If the problem concerns only internal parts of rust-analyzer (ie, I don't need
-to touch `ra_lsp_server` crate or typescript code), there is a unit-test for it.
+to touch `rust-analyzer` crate or typescript code), there is a unit-test for it.
 So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and
 then just do printf-driven development/debugging. As a sanity check after I'm
 done, I use `cargo xtask install --server` and **Reload Window** action in VS
@@ -88,17 +88,17 @@ Code to sanity check that the thing works as I expect.
 
 If the problem concerns only the VS Code extension, I use **Run Extension**
 launch configuration from `launch.json`. Notably, this uses the usual
-`ra_lsp_server` binary from `PATH`. For this it is important to have the following
+`rust-analyzer` binary from `PATH`. For this it is important to have the following
 in `setting.json` file:
 ```json
 {
-    "rust-analyzer.raLspServerPath": "ra_lsp_server"
+    "rust-analyzer.serverPath": "rust-analyzer"
 }
 ```
 After I am done with the fix, I use `cargo
 xtask install --client-code` to try the new extension for real.
 
-If I need to fix something in the `ra_lsp_server` crate, I feel sad because it's
+If I need to fix something in the `rust-analyzer` crate, I feel sad because it's
 on the boundary between the two processes, and working there is slow. I usually
 just `cargo xtask install --server` and poke changes from my live environment.
 Note that this uses `--release`, which is usually faster overall, because
@@ -113,7 +113,7 @@ communication, and `print!` would break it.
 If I need to fix something simultaneously in the server and in the client, I
 feel even more sad. I don't have a specific workflow for this case.
 
-Additionally, I use `cargo run --release -p ra_lsp_server -- analysis-stats
+Additionally, I use `cargo run --release -p rust-analyzer -- analysis-stats
 path/to/some/rust/crate` to run a batch analysis. This is primarily useful for
 performance optimizations, or for bug minimization.
 
@@ -148,7 +148,7 @@ There's also two VS Code commands which might be of interest:
 * `Rust Analyzer: Status` shows some memory-usage statistics. To take full
   advantage of it, you need to compile rust-analyzer with jemalloc support:
   ```
-  $ cargo install --path crates/ra_lsp_server --force --features jemalloc
+  $ cargo install --path crates/rust-analyzer --force --features jemalloc
   ```
 
   There's an alias for this: `cargo xtask install --server --jemalloc`.
@@ -170,12 +170,12 @@ In particular, I have `export RA_PROFILE='*>10'` in my shell profile.
 To measure time for from-scratch analysis, use something like this:
 
 ```
-$ cargo run --release -p ra_lsp_server -- analysis-stats ../chalk/
+$ cargo run --release -p rust-analyzer -- analysis-stats ../chalk/
 ```
 
 For measuring time of incremental analysis, use either of these:
 
 ```
-$ cargo run --release -p ra_lsp_server -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
-$ cargo run --release -p ra_lsp_server -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
+$ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
+$ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
 ```

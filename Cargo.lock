@@ -1095,44 +1095,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_lsp_server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "either",
- "env_logger",
- "globset",
- "itertools",
- "jod-thread",
- "log",
- "lsp-server",
- "lsp-types",
- "parking_lot",
- "pico-args",
- "ra_cargo_watch",
- "ra_db",
- "ra_hir",
- "ra_hir_def",
- "ra_hir_ty",
- "ra_ide",
- "ra_prof",
- "ra_project_model",
- "ra_syntax",
- "ra_text_edit",
- "ra_vfs",
- "rand",
- "relative-path",
- "rustc-hash",
- "serde",
- "serde_json",
- "tempfile",
- "test_utils",
- "threadpool",
- "winapi 0.3.8",
-]
-
-[[package]]
 name = "ra_mbe"
 version = "0.1.0"
 dependencies = [
@@ -1351,6 +1313,44 @@ dependencies = [
  "smol_str",
  "text_unit",
  "thin-dst",
+]
+
+[[package]]
+name = "rust-analyzer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossbeam-channel",
+ "either",
+ "env_logger",
+ "globset",
+ "itertools",
+ "jod-thread",
+ "log",
+ "lsp-server",
+ "lsp-types",
+ "parking_lot",
+ "pico-args",
+ "ra_cargo_watch",
+ "ra_db",
+ "ra_hir",
+ "ra_hir_def",
+ "ra_hir_ty",
+ "ra_ide",
+ "ra_prof",
+ "ra_project_model",
+ "ra_syntax",
+ "ra_text_edit",
+ "ra_vfs",
+ "rand",
+ "relative-path",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "test_utils",
+ "threadpool",
+ "winapi 0.3.8",
 ]
 
 [[package]]

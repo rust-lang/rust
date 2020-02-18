@@ -1,4 +1,4 @@
-//! The main loop of `ra_lsp_server` responsible for dispatching LSP
+//! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 
 mod handlers;

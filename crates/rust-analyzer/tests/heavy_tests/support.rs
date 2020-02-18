@@ -19,7 +19,7 @@ use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
-use ra_lsp_server::{main_loop, req, ServerConfig};
+use rust_analyzer::{main_loop, req, ServerConfig};
 
 pub struct Project<'a> {
     fixture: &'a str,

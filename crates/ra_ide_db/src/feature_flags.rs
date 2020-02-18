@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 /// checked at compile time, to keep things simple and flexible.
 ///
 /// Also note that, at the moment, `FeatureFlags` also store features for
-/// `ra_lsp_server`. This should be benign layering violation.
+/// `rust-analyzer`. This should be benign layering violation.
 #[derive(Debug)]
 pub struct FeatureFlags {
     flags: FxHashMap<String, bool>,

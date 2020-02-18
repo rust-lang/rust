@@ -39,7 +39,7 @@ impl InstallCmd {
                 "
     Installation complete.
 
-    Add `\"rust-analyzer.raLspServerPath\": \"ra_lsp_server\",` to VS Code settings,
+    Add `\"rust-analyzer.serverPath\": \"rust-analyzer\",` to VS Code settings,
     otherwise it will use the latest release from GitHub.
 "
             )
@@ -142,7 +142,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
     }
 
     let jemalloc = if opts.jemalloc { "--features jemalloc" } else { "" };
-    let res = run!("cargo install --path crates/ra_lsp_server --locked --force {}", jemalloc);
+    let res = run!("cargo install --path crates/rust-analyzer --locked --force {}", jemalloc);
 
     if res.is_err() && old_rust {
         eprintln!(
