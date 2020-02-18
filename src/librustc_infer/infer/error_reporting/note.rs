@@ -645,8 +645,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0491,
-                    "in type `{}`, reference has a longer lifetime \
-                                                than the data it references",
+                    "in type `{}`, reference has a longer lifetime than the data it references",
                     self.ty_to_string(ty)
                 );
                 note_and_explain_region(

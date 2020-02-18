@@ -1,11 +1,24 @@
 error[E0599]: no method named `clone` found for struct `std::boxed::Box<dyn Foo>` in the current scope
-  --> $DIR/unique-object-noncopyable.rs:24:16
+  --> $DIR/unique-object-noncopyable.rs:28:16
    |
+LL | trait Foo {
+   | ---------
+   | |
+   | this trait doesn't satisfy the bound `std::clone::Clone`
+   | this trait doesn't satisfy the bound `std::marker::Sized`
+...
 LL |     let _z = y.clone();
    |                ^^^^^ method not found in `std::boxed::Box<dyn Foo>`
+   | 
+  ::: $SRC_DIR/liballoc/boxed.rs:LL:COL
+   |
+LL | pub struct Box<T: ?Sized>(Unique<T>);
+   | ------------------------------------- this type doesn't satisfy the bound `std::clone::Clone`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `std::boxed::Box<dyn Foo> : std::clone::Clone`
+           `dyn Foo: std::clone::Clone`
+           `dyn Foo: std::marker::Sized`
+           `std::boxed::Box<dyn Foo>: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`
