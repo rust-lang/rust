@@ -473,12 +473,10 @@ fn locals_live_across_suspend_points(
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let storage_live_analysis = MaybeStorageLive::new(body_ref);
-    let storage_live_results =
-        do_dataflow(tcx, body_ref, def_id, &[], &dead_unwinds, storage_live_analysis, |bd, p| {
-            DebugFormatted::new(&bd.body().local_decls[p])
-        });
-    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body_ref);
+    let mut storage_live = MaybeStorageLive
+        .into_engine(tcx, body_ref, def_id)
+        .iterate_to_fixpoint()
+        .into_results_cursor(body_ref);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -534,8 +532,8 @@ fn locals_live_across_suspend_points(
                 liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            storage_live_cursor.seek(loc);
-            let storage_liveness = storage_live_cursor.get();
+            storage_live.seek_before(loc);
+            let storage_liveness = storage_live.get();
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point

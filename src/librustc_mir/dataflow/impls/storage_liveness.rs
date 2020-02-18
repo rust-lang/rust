@@ -1,47 +1,39 @@
 pub use super::*;
 
-use crate::dataflow::generic::{Results, ResultsRefCursor};
-use crate::dataflow::BitDenotation;
-use crate::dataflow::MaybeBorrowedLocals;
+use crate::dataflow::generic::{self as dataflow, GenKill, Results, ResultsRefCursor};
+use crate::dataflow::BottomValue;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use std::cell::RefCell;
 
 #[derive(Copy, Clone)]
-pub struct MaybeStorageLive<'a, 'tcx> {
-    body: &'a Body<'tcx>,
-}
+pub struct MaybeStorageLive;
 
-impl<'a, 'tcx> MaybeStorageLive<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>) -> Self {
-        MaybeStorageLive { body }
-    }
-
-    pub fn body(&self) -> &Body<'tcx> {
-        self.body
-    }
-}
-
-impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
+impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     type Idx = Local;
-    fn name() -> &'static str {
-        "maybe_storage_live"
-    }
-    fn bits_per_block(&self) -> usize {
-        self.body.local_decls.len()
+
+    const NAME: &'static str = "maybe_storage_live";
+
+    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
+        body.local_decls.len()
     }
 
-    fn start_block_effect(&self, on_entry: &mut BitSet<Local>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut BitSet<Self::Idx>) {
         // The resume argument is live on function entry (we don't care about
         // the `self` argument)
-        for arg in self.body.args_iter().skip(1) {
+        for arg in body.args_iter().skip(1) {
             on_entry.insert(arg);
         }
     }
+}
 
-    fn statement_effect(&self, trans: &mut GenKillSet<Local>, loc: Location) {
-        let stmt = &self.body[loc.block].statements[loc.statement_index];
-
+impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
+    fn statement_effect(
+        &self,
+        trans: &mut impl GenKill<Self::Idx>,
+        stmt: &mir::Statement<'tcx>,
+        _: Location,
+    ) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.gen(l),
             StatementKind::StorageDead(l) => trans.kill(l),
@@ -49,22 +41,28 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         }
     }
 
-    fn terminator_effect(&self, _trans: &mut GenKillSet<Local>, _loc: Location) {
+    fn terminator_effect(
+        &self,
+        _trans: &mut impl GenKill<Self::Idx>,
+        _: &mir::Terminator<'tcx>,
+        _: Location,
+    ) {
         // Terminators have no effect
     }
 
-    fn propagate_call_return(
+    fn call_return_effect(
         &self,
-        _in_out: &mut BitSet<Local>,
-        _call_bb: mir::BasicBlock,
-        _dest_bb: mir::BasicBlock,
-        _dest_place: &mir::Place<'tcx>,
+        _trans: &mut impl GenKill<Self::Idx>,
+        _block: BasicBlock,
+        _func: &mir::Operand<'tcx>,
+        _args: &[mir::Operand<'tcx>],
+        _return_place: &mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
 }
 
-impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
+impl BottomValue for MaybeStorageLive {
     /// bottom = dead
     const BOTTOM_VALUE: bool = false;
 }
