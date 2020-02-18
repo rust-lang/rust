@@ -5,55 +5,6 @@ use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
 use crate::{world::WorldSnapshot, Result};
 
-pub(crate) fn runnable_args(
-    spec: Option<CargoTargetSpec>,
-    kind: &RunnableKind,
-) -> Result<Vec<String>> {
-    let mut res = Vec::new();
-    match kind {
-        RunnableKind::Test { test_id } => {
-            res.push("test".to_string());
-            if let Some(spec) = spec {
-                spec.push_to(&mut res);
-            }
-            res.push("--".to_string());
-            res.push(test_id.to_string());
-            if let TestId::Path(_) = test_id {
-                res.push("--exact".to_string());
-            }
-            res.push("--nocapture".to_string());
-        }
-        RunnableKind::TestMod { path } => {
-            res.push("test".to_string());
-            if let Some(spec) = spec {
-                spec.push_to(&mut res);
-            }
-            res.push("--".to_string());
-            res.push(path.to_string());
-            res.push("--nocapture".to_string());
-        }
-        RunnableKind::Bench { test_id } => {
-            res.push("bench".to_string());
-            if let Some(spec) = spec {
-                spec.push_to(&mut res);
-            }
-            res.push("--".to_string());
-            res.push(test_id.to_string());
-            if let TestId::Path(_) = test_id {
-                res.push("--exact".to_string());
-            }
-            res.push("--nocapture".to_string());
-        }
-        RunnableKind::Bin => {
-            res.push("run".to_string());
-            if let Some(spec) = spec {
-                spec.push_to(&mut res);
-            }
-        }
-    }
-    Ok(res)
-}
-
 pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
@@ -61,6 +12,55 @@ pub(crate) struct CargoTargetSpec {
 }
 
 impl CargoTargetSpec {
+    pub(crate) fn runnable_args(
+        spec: Option<CargoTargetSpec>,
+        kind: &RunnableKind,
+    ) -> Result<Vec<String>> {
+        let mut res = Vec::new();
+        match kind {
+            RunnableKind::Test { test_id } => {
+                res.push("test".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
+                }
+                res.push("--".to_string());
+                res.push(test_id.to_string());
+                if let TestId::Path(_) = test_id {
+                    res.push("--exact".to_string());
+                }
+                res.push("--nocapture".to_string());
+            }
+            RunnableKind::TestMod { path } => {
+                res.push("test".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
+                }
+                res.push("--".to_string());
+                res.push(path.to_string());
+                res.push("--nocapture".to_string());
+            }
+            RunnableKind::Bench { test_id } => {
+                res.push("bench".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
+                }
+                res.push("--".to_string());
+                res.push(test_id.to_string());
+                if let TestId::Path(_) = test_id {
+                    res.push("--exact".to_string());
+                }
+                res.push("--nocapture".to_string());
+            }
+            RunnableKind::Bin => {
+                res.push("run".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
+                }
+            }
+        }
+        Ok(res)
+    }
+
     pub(crate) fn for_file(
         world: &WorldSnapshot,
         file_id: FileId,
