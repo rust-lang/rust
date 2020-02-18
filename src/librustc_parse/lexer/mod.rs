@@ -1,5 +1,5 @@
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticBuilder, FatalError};
+use rustc_errors::{error_code, DiagnosticBuilder, FatalError};
 use rustc_lexer::unescape;
 use rustc_lexer::Base;
 use rustc_session::parse::ParseSess;
@@ -495,7 +495,11 @@ impl<'a> StringReader<'a> {
     }
 
     fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
-        let mut err = self.struct_span_fatal(start, start, "unterminated raw string");
+        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+            self.mk_sp(start, start),
+            "unterminated raw string",
+            error_code!(E0748),
+        );
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
