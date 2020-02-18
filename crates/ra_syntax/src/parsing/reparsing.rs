@@ -173,7 +173,6 @@ fn merge_errors(
 
     for old_err in old_errors {
         let old_err_range = old_err.range();
-        // FIXME: make sure that .start() was here previously by a mistake
         if old_err_range.end() <= range_before_reparse.start() {
             res.push(old_err);
         } else if old_err_range.start() >= range_before_reparse.end() {
