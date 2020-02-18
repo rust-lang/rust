@@ -1890,17 +1890,15 @@ where
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         // Can't just add n + self.n due to overflow.
-        if self.n == 0 {
-            self.iter.nth(n)
-        } else {
+        if self.n > 0 {
             let to_skip = self.n;
             self.n = 0;
             // nth(n) skips n+1
             if self.iter.nth(to_skip - 1).is_none() {
                 return None;
             }
-            self.iter.nth(n)
         }
+        self.iter.nth(n)
     }
 
     #[inline]
@@ -1916,17 +1914,13 @@ where
 
     #[inline]
     fn last(mut self) -> Option<I::Item> {
-        if self.n == 0 {
-            self.iter.last()
-        } else {
-            let next = self.next();
-            if next.is_some() {
-                // recurse. n should be 0.
-                self.last().or(next)
-            } else {
-                None
+        if self.n > 0 {
+            // nth(n) skips n+1
+            if self.iter.nth(self.n - 1).is_none() {
+                return None;
             }
         }
+        self.iter.last()
     }
 
     #[inline]
