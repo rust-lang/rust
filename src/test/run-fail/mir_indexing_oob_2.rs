@@ -2,7 +2,7 @@
 
 const C: &'static [u8; 5] = b"hello";
 
-#[allow(panic, const_err)]
+#[allow(unconditional_panic)]
 fn test() -> u8 {
     C[10]
 }

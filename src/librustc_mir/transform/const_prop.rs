@@ -531,7 +531,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
             self.report_assert_as_lint(
-                lint::builtin::OVERFLOW,
+                lint::builtin::ARITHMETIC_OVERFLOW,
                 source_info,
                 "this arithmetic operation will overflow",
                 AssertKind::OverflowNeg,
@@ -560,7 +560,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
             if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
                 self.report_assert_as_lint(
-                    lint::builtin::EXCEEDING_BITSHIFTS,
+                    lint::builtin::ARITHMETIC_OVERFLOW,
                     source_info,
                     "this arithmetic operation will overflow",
                     AssertKind::Overflow(op),
@@ -575,7 +575,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(overflow)
         })? {
             self.report_assert_as_lint(
-                lint::builtin::OVERFLOW,
+                lint::builtin::ARITHMETIC_OVERFLOW,
                 source_info,
                 "this arithmetic operation will overflow",
                 AssertKind::Overflow(op),
@@ -937,7 +937,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             _ => return,
                         };
                         self.report_assert_as_lint(
-                            lint::builtin::PANIC,
+                            lint::builtin::UNCONDITIONAL_PANIC,
                             source_info,
                             "this operation will panic at runtime",
                             msg,

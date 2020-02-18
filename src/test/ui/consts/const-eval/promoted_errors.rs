@@ -6,23 +6,23 @@
 // build-pass
 // ignore-pass (emit codegen-time warnings and verify that they are indeed warnings and not errors)
 
-#![warn(const_err, overflow, panic)]
+#![warn(const_err, arithmetic_overflow, unconditional_panic)]
 
 fn main() {
     println!("{}", 0u32 - 1);
-    //[opt_with_overflow_checks,noopt]~^ WARN [overflow]
+    //[opt_with_overflow_checks,noopt]~^ WARN [arithmetic_overflow]
     let _x = 0u32 - 1;
-    //~^ WARN [overflow]
+    //~^ WARN [arithmetic_overflow]
     println!("{}", 1 / (1 - 1));
-    //~^ WARN [panic]
+    //~^ WARN [unconditional_panic]
     //~| WARN panic or abort [const_err]
     //~| WARN erroneous constant used [const_err]
     let _x = 1 / (1 - 1);
-    //~^ WARN [panic]
+    //~^ WARN [unconditional_panic]
     println!("{}", 1 / (false as u32));
-    //~^ WARN [panic]
+    //~^ WARN [unconditional_panic]
     //~| WARN panic or abort [const_err]
     //~| WARN erroneous constant used [const_err]
     let _x = 1 / (false as u32);
-    //~^ WARN [panic]
+    //~^ WARN [unconditional_panic]
 }

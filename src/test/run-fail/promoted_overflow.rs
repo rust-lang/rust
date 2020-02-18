@@ -1,4 +1,4 @@
-#![allow(overflow)]
+#![allow(arithmetic_overflow)]
 
 // error-pattern: overflow
 // compile-flags: -C overflow-checks=yes

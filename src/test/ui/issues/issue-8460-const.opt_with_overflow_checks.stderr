@@ -4,7 +4,7 @@ error: this arithmetic operation will overflow
 LL |     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^^ attempt to divide with overflow
    |
-   = note: `#[deny(overflow)]` on by default
+   = note: `#[deny(arithmetic_overflow)]` on by default
 
 error: this arithmetic operation will overflow
   --> $DIR/issue-8460-const.rs:16:36
@@ -42,7 +42,7 @@ error: this operation will panic at runtime
 LL |     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
    |                                    ^^^^^^^^^^ attempt to divide by zero
    |
-   = note: `#[deny(panic)]` on by default
+   = note: `#[deny(unconditional_panic)]` on by default
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:28:36

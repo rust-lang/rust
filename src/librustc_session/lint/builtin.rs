@@ -41,19 +41,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub EXCEEDING_BITSHIFTS,
-    Deny,
-    "shift exceeds the type's number of bits"
-}
-
-declare_lint! {
-    pub OVERFLOW,
+    pub ARITHMETIC_OVERFLOW,
     Deny,
     "arithmetic operation overflows"
 }
 
 declare_lint! {
-    pub PANIC,
+    pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime"
 }
@@ -507,9 +501,8 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-        EXCEEDING_BITSHIFTS,
-        OVERFLOW,
-        PANIC,
+        ARITHMETIC_OVERFLOW,
+        UNCONDITIONAL_PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
         UNUSED_QUALIFICATIONS,

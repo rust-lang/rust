@@ -7,7 +7,7 @@ LL |     let _ = x << 42;
 note: the lint level is defined here
   --> $DIR/lint-exceeding-bitshifts.rs:9:9
    |
-LL | #![deny(exceeding_bitshifts, const_err)]
+LL | #![deny(arithmetic_overflow, const_err)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: this arithmetic operation will overflow
