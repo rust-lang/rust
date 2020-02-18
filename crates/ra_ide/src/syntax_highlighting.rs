@@ -1,7 +1,5 @@
 //! FIXME: write short doc here
 
-use rustc_hash::FxHashMap;
-
 use hir::{HirFileId, InFile, Name, SourceAnalyzer, SourceBinder};
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
@@ -10,13 +8,11 @@ use ra_syntax::{
     ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken, TextRange,
     WalkEvent, T,
 };
+use rustc_hash::FxHashMap;
 
 use crate::{
     expand::descend_into_macros_with_analyzer,
-    references::{
-        classify_name, classify_name_ref,
-        NameKind::{self, *},
-    },
+    references::{classify_name, classify_name_ref, NameKind},
     FileId,
 };
 
@@ -193,7 +189,7 @@ fn highlight_node(
             let name_kind = classify_name_ref(sb, node.with_value(&name_ref)).map(|d| d.kind);
             match name_kind {
                 Some(name_kind) => {
-                    if let Local(local) = &name_kind {
+                    if let NameKind::Local(local) = &name_kind {
                         if let Some(name) = local.name(db) {
                             let shadow_count =
                                 bindings_shadow_count.entry(name.clone()).or_default();
@@ -211,7 +207,7 @@ fn highlight_node(
             let name = node.value.as_node().cloned().and_then(ast::Name::cast).unwrap();
             let name_kind = classify_name(sb, node.with_value(&name)).map(|d| d.kind);
 
-            if let Some(Local(local)) = &name_kind {
+            if let Some(NameKind::Local(local)) = &name_kind {
                 if let Some(name) = local.name(db) {
                     let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
                     *shadow_count += 1;
@@ -316,20 +312,20 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 
 fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
     match name_kind {
-        Macro(_) => tags::MACRO,
-        StructField(_) => tags::FIELD,
-        ModuleDef(hir::ModuleDef::Module(_)) => tags::MODULE,
-        ModuleDef(hir::ModuleDef::Function(_)) => tags::FUNCTION,
-        ModuleDef(hir::ModuleDef::Adt(_)) => tags::TYPE,
-        ModuleDef(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
-        ModuleDef(hir::ModuleDef::Const(_)) => tags::CONSTANT,
-        ModuleDef(hir::ModuleDef::Static(_)) => tags::CONSTANT,
-        ModuleDef(hir::ModuleDef::Trait(_)) => tags::TYPE,
-        ModuleDef(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
-        ModuleDef(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
-        SelfType(_) => tags::TYPE_SELF,
-        TypeParam(_) => tags::TYPE_PARAM,
-        Local(local) => {
+        NameKind::Macro(_) => tags::MACRO,
+        NameKind::StructField(_) => tags::FIELD,
+        NameKind::ModuleDef(hir::ModuleDef::Module(_)) => tags::MODULE,
+        NameKind::ModuleDef(hir::ModuleDef::Function(_)) => tags::FUNCTION,
+        NameKind::ModuleDef(hir::ModuleDef::Adt(_)) => tags::TYPE,
+        NameKind::ModuleDef(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
+        NameKind::ModuleDef(hir::ModuleDef::Const(_)) => tags::CONSTANT,
+        NameKind::ModuleDef(hir::ModuleDef::Static(_)) => tags::CONSTANT,
+        NameKind::ModuleDef(hir::ModuleDef::Trait(_)) => tags::TYPE,
+        NameKind::ModuleDef(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
+        NameKind::ModuleDef(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
+        NameKind::SelfType(_) => tags::TYPE_SELF,
+        NameKind::TypeParam(_) => tags::TYPE_PARAM,
+        NameKind::Local(local) => {
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 tags::VARIABLE_MUT
             } else {
