@@ -255,28 +255,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             | "pthread_attr_init"
             | "pthread_attr_destroy"
             | "pthread_self"
-            | "pthread_attr_setstacksize" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
-                this.write_null(dest)?;
-            }
-            | "pthread_mutexattr_init"
-            | "pthread_mutexattr_settype"
-            | "pthread_mutex_init"
-            | "pthread_mutexattr_destroy"
-            | "pthread_mutex_lock"
-            | "pthread_mutex_trylock"
-            | "pthread_mutex_unlock"
-            | "pthread_mutex_destroy"
-            | "pthread_rwlock_rdlock"
-            | "pthread_rwlock_tryrdlock"
-            | "pthread_rwlock_unlock"
-            | "pthread_rwlock_wrlock"
-            | "pthread_rwlock_trywrlock"
-            | "pthread_rwlock_destroy"
+            | "pthread_attr_setstacksize"
             | "pthread_condattr_init"
             | "pthread_condattr_setclock"
             | "pthread_cond_init"
@@ -285,6 +269,77 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             => {
                 this.write_null(dest)?;
             }
+
+            "pthread_mutexattr_init" => {
+                let result = this.pthread_mutexattr_init(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutexattr_settype" => {
+                let result = this.pthread_mutexattr_settype(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutexattr_destroy" => {
+                let result = this.pthread_mutexattr_destroy(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutex_init" => {
+                let result = this.pthread_mutex_init(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutex_lock" => {
+                let result = this.pthread_mutex_lock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutex_trylock" => {
+                let result = this.pthread_mutex_trylock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutex_unlock" => {
+                let result = this.pthread_mutex_unlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_mutex_destroy" => {
+                let result = this.pthread_mutex_destroy(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_rdlock" => {
+                let result = this.pthread_rwlock_rdlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_tryrdlock" => {
+                let result = this.pthread_rwlock_tryrdlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_wrlock" => {
+                let result = this.pthread_rwlock_wrlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_trywrlock" => {
+                let result = this.pthread_rwlock_trywrlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_unlock" => {
+                let result = this.pthread_rwlock_unlock(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "pthread_rwlock_destroy" => {
+                let result = this.pthread_rwlock_destroy(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             | "signal"
             | "sigaction"
             | "sigaltstack"
