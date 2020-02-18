@@ -1,5 +1,5 @@
-//! The main loop of `ra_lsp_server` responsible for dispatching LSP requests/replies and
-//! notifications back to the client.
+//! The main loop of `ra_lsp_server` responsible for dispatching LSP
+//! requests/replies and notifications back to the client.
 
 mod handlers;
 mod subscriptions;

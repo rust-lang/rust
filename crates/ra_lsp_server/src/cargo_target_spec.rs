@@ -1,10 +1,14 @@
-//! FIXME: write short doc here
+//! See `CargoTargetSpec`
 
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
 use crate::{world::WorldSnapshot, Result};
 
+/// Abstract representation of Cargo target.
+///
+/// We use it to cook up the set of cli args we need to pass to Cargo to
+/// build/test/run the target.
 pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,

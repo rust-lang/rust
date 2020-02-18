@@ -1,7 +1,9 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
+
+use std::{collections::HashMap, sync::Arc};
+
 use lsp_types::{CodeActionOrCommand, Diagnostic, Range};
 use ra_ide::FileId;
-use std::{collections::HashMap, sync::Arc};
 
 pub type CheckFixes = Arc<HashMap<FileId, Vec<Fix>>>;
 

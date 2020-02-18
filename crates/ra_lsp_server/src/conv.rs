@@ -1,4 +1,5 @@
-//! Convenience module responsible for translating between rust-analyzer's types and LSP types.
+//! Convenience module responsible for translating between rust-analyzer's types
+//! and LSP types.
 
 use lsp_types::{
     self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,

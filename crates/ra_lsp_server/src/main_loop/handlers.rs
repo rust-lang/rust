@@ -1,5 +1,6 @@
-//! This module is responsible for implementing handlers for Lanuage Server Protocol.
-//! The majority of requests are fulfilled by calling into the `ra_ide` crate.
+//! This module is responsible for implementing handlers for Language Server
+//! Protocol. The majority of requests are fulfilled by calling into the
+//! `ra_ide` crate.
 
 use std::{
     collections::hash_map::Entry,
