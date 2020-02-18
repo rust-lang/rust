@@ -2,13 +2,11 @@ error[E0599]: no method named `clone` found for struct `std::boxed::Box<R>` in t
   --> $DIR/unique-pinned-nocopy.rs:12:16
    |
 LL | struct R {
-   | -------- this type doesn't satisfy the bound `std::clone::Clone`
+   | -------- the method `clone` exists but this type doesn't satisfy the bound `R: std::clone::Clone`
 ...
 LL |     let _j = i.clone();
    |                ^^^^^ method not found in `std::boxed::Box<R>`
    |
-   = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `R: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

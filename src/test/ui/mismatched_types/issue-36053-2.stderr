@@ -7,11 +7,10 @@ LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
   ::: $SRC_DIR/libcore/iter/adapters/mod.rs:LL:COL
    |
 LL | pub struct Filter<I, P> {
-   | ----------------------- this type doesn't satisfy the bound `std::iter::Iterator`
+   | ----------------------- the method `count` exists but this type doesn't satisfy the bound `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
    |
    = note: the method `count` exists but the following trait bounds were not satisfied:
            `[closure@$DIR/issue-36053-2.rs:11:39: 11:53]: std::ops::FnMut<(&_,)>`
-           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-36053-2.rs:11:32

@@ -538,16 +538,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_spans = vec![];
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .map(|p| {
+                        .filter_map(|p| {
                             let self_ty = p.self_ty();
                             match &self_ty.kind {
-                                ty::Adt(def, _) => bound_spans.push((
-                                    self.tcx.sess.source_map().def_span(self.tcx.def_span(def.did)),
-                                    format!(
-                                        "this type doesn't satisfy the bound `{}`",
-                                        p.print_only_trait_path()
-                                    ),
-                                )),
+                                ty::Adt(def, _) => {
+                                    bound_spans.push((
+                                        self.tcx
+                                            .sess
+                                            .source_map()
+                                            .def_span(self.tcx.def_span(def.did)),
+                                        format!(
+                                            "the method `{}` exists but this type doesn't satisfy \
+                                             the bound `{}: {}`",
+                                            item_name,
+                                            p.self_ty(),
+                                            p.print_only_trait_path()
+                                        ),
+                                    ));
+                                    None
+                                }
                                 ty::Dynamic(preds, _) => {
                                     for pred in *preds.skip_binder() {
                                         match pred {
@@ -558,7 +567,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                         .source_map()
                                                         .def_span(self.tcx.def_span(tr.def_id)),
                                                     format!(
-                                                        "this trait doesn't satisfy the bound `{}`",
+                                                        "the method `{}` exists but this trait \
+                                                         doesn't satisfy the bound `{}: {}`",
+                                                        item_name,
+                                                        p.self_ty(),
                                                         p.print_only_trait_path()
                                                     ),
                                                 )),
@@ -566,10 +578,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             | ty::ExistentialPredicate::AutoTrait(_) => {}
                                         }
                                     }
+                                    None
                                 }
-                                _ => {}
-                            };
-                            format!("`{}: {}`", p.self_ty(), p.print_only_trait_path())
+                                _ => Some(format!(
+                                    "`{}: {}`",
+                                    p.self_ty(),
+                                    p.print_only_trait_path()
+                                )),
+                            }
                         })
                         .collect::<Vec<_>>();
                     bound_list.sort();
@@ -579,12 +595,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     for (span, msg) in bound_spans.into_iter() {
                         err.span_label(span, &msg);
                     }
-                    let bound_list = bound_list.join("\n");
-                    err.note(&format!(
-                        "the method `{}` exists but the following trait bounds were not \
-                         satisfied:\n{}",
-                        item_name, bound_list
-                    ));
+                    if !bound_list.is_empty() {
+                        let bound_list = bound_list.join("\n");
+                        err.note(&format!(
+                            "the method `{}` exists but the following trait bounds were not \
+                             satisfied:\n{}",
+                            item_name, bound_list
+                        ));
+                    }
                 }
 
                 if actual.is_numeric() && actual.is_fresh() {
