@@ -4,7 +4,7 @@ error: this arithmetic operation will overflow
 LL |     let a = -std::i8::MIN;
    |             ^^^^^^^^^^^^^ attempt to negate with overflow
    |
-   = note: `#[deny(overflow)]` on by default
+   = note: `#[deny(arithmetic_overflow)]` on by default
 
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:21:18
@@ -42,7 +42,7 @@ error: this operation will panic at runtime
 LL |     let _e = [5u8][1];
    |              ^^^^^^^^ index out of bounds: the len is 1 but the index is 1
    |
-   = note: `#[deny(panic)]` on by default
+   = note: `#[deny(unconditional_panic)]` on by default
 
 error: aborting due to 7 previous errors
 

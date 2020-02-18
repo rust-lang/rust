@@ -6,7 +6,7 @@
 // build-fail
 
 #![crate_type="lib"]
-#![deny(exceeding_bitshifts, const_err)]
+#![deny(arithmetic_overflow, const_err)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

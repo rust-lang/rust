@@ -1,7 +1,7 @@
 // build-pass
 // ignore-pass (emit codegen-time warnings and verify that they are indeed warnings and not errors)
 
-#![warn(const_err, panic)]
+#![warn(const_err, unconditional_panic)]
 
 fn main() {
     &{ [1, 2, 3][4] };
