@@ -43,13 +43,6 @@ tcx.infer_ctxt().enter(|infcx| {
 })
 ```
 
-Each inference context creates a short-lived type arena to store the
-fresh types and things that it will create, as described in the
-[chapter on the `ty` module][ty-ch]. This arena is created by the `enter`
-function and disposed of after it returns.
-
-[ty-ch]: ty.html
-
 Within the closure, `infcx` has the type `InferCtxt<'cx, 'tcx>` for some
 fresh `'cx`, while `'tcx` is the same as outside the inference context.
 (Again, see the [`ty` chapter][ty-ch] for more details on this setup.)

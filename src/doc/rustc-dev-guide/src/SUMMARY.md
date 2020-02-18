@@ -43,6 +43,7 @@
         - [Debugging and Testing](./incrcomp-debugging.md)
         - [Profiling Queries](./queries/profiling.md)
         - [Salsa](./salsa.md)
+    - [Memory Management in Rustc](./memory.md)
     - [Lexing and Parsing](./the-parser.md)
     - [`#[test]` Implementation](./test-implementation.md)
     - [Panic Implementation](./panic-implementation.md)

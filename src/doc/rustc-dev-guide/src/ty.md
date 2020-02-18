@@ -119,11 +119,40 @@ field of type [`TyKind`][tykind], which represents the key type information. `Ty
 which represents different kinds of types (e.g. primitives, references, abstract data types,
 generics, lifetimes, etc). `TyS` also has 2 more fields, `flags` and `outer_exclusive_binder`. They
 are convenient hacks for efficiency and summarize information about the type that we may want to
-know, but they don’t come into the picture as much here.
+know, but they don’t come into the picture as much here. Finally, `ty::TyS`s
+are [interned](./memory.md), so that the `ty::Ty` can be a thin pointer-like
+type. This allows us to do cheap comparisons for equality, along with the other
+benefits of interning.
 
 [tys]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyS.html
 [kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyS.html#structfield.kind
 [tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html
+
+## Allocating and working with types
+
+To allocate a new type, you can use the various `mk_` methods defined on the `tcx`. These have names
+that correspond mostly to the various kinds of types. For example:
+
+```rust,ignore
+let array_ty = tcx.mk_array(elem_ty, len * 2);
+```
+
+These methods all return a `Ty<'tcx>` – note that the lifetime you get back is the lifetime of the
+arena that this `tcx` has access to. Types are always canonicalized and interned (so we never
+allocate exactly the same type twice).
+
+> NB. Because types are interned, it is possible to compare them for equality efficiently using `==`
+> – however, this is almost never what you want to do unless you happen to be hashing and looking
+> for duplicates. This is because often in Rust there are multiple ways to represent the same type,
+> particularly once inference is involved. If you are going to be testing for type equality, you
+> probably need to start looking into the inference code to do it right.
+
+You can also find various common types in the `tcx` itself by accessing `tcx.types.bool`,
+`tcx.types.char`, etc (see [`CommonTypes`] for more).
+
+[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/context/struct.CommonTypes.html
+
+## `ty::TyKind` Variants
 
 Note: `TyKind` is **NOT** the functional programming concept of *Kind*.
 
@@ -146,8 +175,6 @@ types in the compiler.
 
 There are a lot of related types, and we’ll cover them in time (e.g regions/lifetimes,
 “substitutions”, etc).
-
-## `ty::TyKind` Variants
 
 There are a bunch of variants on the `TyKind` enum, which you can see by looking at the rustdocs.
 Here is a sampling:
@@ -190,90 +217,6 @@ will discuss this more later.
 [kindparam]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Param
 [kinderr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Error
 [kindvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variants
-
-## Interning
-
-We create a LOT of types during compilation. For performance reasons, we allocate them from a global
-memory pool, they are each allocated once from a long-lived *arena*. This is called _arena
-allocation_. This system reduces allocations/deallocations of memory. It also allows for easy
-comparison of types for equality: we implemented [`PartialEq for TyS`][peqimpl], so we can just
-compare pointers. The [`CtxtInterners`] type contains a bunch of maps of interned types and the
-arena itself.
-
-[peqimpl]: https://github.com/rust-lang/rust/blob/3ee936378662bd2e74be951d6a7011a95a6bd84d/src/librustc/ty/mod.rs#L528-L534
-[`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.CtxtInterners.html#structfield.arena
-
-Each time we want to construct a type, the compiler doesn’t naively allocate from the buffer.
-Instead, we check if that type was already constructed. If it was, we just get the same pointer we
-had before, otherwise we make a fresh pointer. With this schema if we want to know if two types are
-the same, all we need to do is compare the pointers which is efficient. `TyS` which represents types
-is carefully setup so you never construct them on the stack. You always allocate them from this
-arena and you always intern them so they are unique.
-
-At the beginning of the compilation we make a buffer and each time we need to allocate a type we use
-some of this memory buffer. If we run out of space we get another one. The lifetime of that buffer
-is `'tcx`. Our types are tied to that lifetime, so when compilation finishes all the memory related
-to that buffer is freed and our `'tcx` references would be invalid.
-
-
-## The tcx and how it uses lifetimes
-
-The `tcx` ("typing context") is the central data structure in the compiler. It is the context that
-you use to perform all manner of queries. The struct `TyCtxt` defines a reference to this shared
-context:
-
-```rust,ignore
-tcx: TyCtxt<'tcx>
-//          ----
-//          |
-//          arena lifetime
-```
-
-As you can see, the `TyCtxt` type takes a lifetime parameter. When you see a reference with a
-lifetime like `'tcx`, you know that it refers to arena-allocated data (or data that lives as long as
-the arenas, anyhow).
-
-## Allocating and working with types
-
-To allocate a new type, you can use the various `mk_` methods defined on the `tcx`. These have names
-that correspond mostly to the various kinds of types. For example:
-
-```rust,ignore
-let array_ty = tcx.mk_array(elem_ty, len * 2);
-```
-
-These methods all return a `Ty<'tcx>` – note that the lifetime you get back is the lifetime of the
-arena that this `tcx` has access to. Types are always canonicalized and interned (so we never
-allocate exactly the same type twice).
-
-> NB. Because types are interned, it is possible to compare them for equality efficiently using `==`
-> – however, this is almost never what you want to do unless you happen to be hashing and looking
-> for duplicates. This is because often in Rust there are multiple ways to represent the same type,
-> particularly once inference is involved. If you are going to be testing for type equality, you
-> probably need to start looking into the inference code to do it right.
-
-You can also find various common types in the `tcx` itself by accessing `tcx.types.bool`,
-`tcx.types.char`, etc (see [`CommonTypes`] for more).
-
-[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/context/struct.CommonTypes.html
-
-## Beyond types: other kinds of arena-allocated data structures
-
-In addition to types, there are a number of other arena-allocated data structures that you can
-allocate, and which are found in this module. Here are a few examples:
-
-- [`Substs`][subst], allocated with `mk_substs` – this will intern a slice of types, often used to
-  specify the values to be substituted for generics (e.g. `HashMap<i32, u32>` would be represented
-  as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
-- [`TraitRef`], typically passed by value – a **trait reference** consists of a reference to a trait
-  along with its various type parameters (including `Self`), like `i32: Display` (here, the def-id
-  would reference the `Display` trait, and the substs would contain `i32`). Note that `def-id` is
-  defined and discussed in depth in the `AdtDef and DefId` section.
-- [`Predicate`] defines something the trait system has to prove (see `traits` module).
-
-[subst]: ./generic_arguments.html#subst
-[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TraitRef.html
-[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.Predicate.html
 
 ## Import conventions
 

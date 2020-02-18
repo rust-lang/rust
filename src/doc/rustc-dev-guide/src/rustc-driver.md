@@ -32,19 +32,6 @@ replaces this functionality.
 > **Warning:** By its very nature, the internal compiler APIs are always going
 > to be unstable. That said, we do try not to break things unnecessarily.
 
-## A Note On Lifetimes
-
-The Rust compiler is a fairly large program containing lots of big data
-structures (e.g. the AST, HIR, and the type system) and as such, arenas and
-references are heavily relied upon to minimize unnecessary memory use. This
-manifests itself in the way people can plug into the compiler, preferring a
-"push"-style API (callbacks) instead of the more Rust-ic "pull" style (think
-the `Iterator` trait).
-
-Thread-local storage and interning are used a lot through the compiler to reduce
-duplication while also preventing a lot of the ergonomic issues due to many
-pervasive lifetimes. The `rustc::ty::tls` module is used to access these
-thread-locals, although you should rarely need to touch it.
 
 [cb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [rd_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.run_compiler.html
