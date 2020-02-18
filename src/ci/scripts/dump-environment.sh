@@ -17,3 +17,9 @@ set +o pipefail
 du . | sort -nr | head -n100
 set -o pipefail
 echo
+
+echo "biggest files:"
+set +o pipefail
+du -h / 2>/dev/null | sort -hr | head -n100
+set -o pipefail
+echo
