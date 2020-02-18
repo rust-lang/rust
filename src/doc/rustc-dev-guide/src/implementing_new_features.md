@@ -66,7 +66,7 @@ it would end up de facto stable and we'll not be able to make changes
 in it without breaking people's code.
 
 The way we do that is that we make sure all new features are feature
-gated - they can't be used without a enabling a feature gate
+gated - they can't be used without enabling a feature gate
 (`#[feature(foo)]`), which can't be done in a stable/beta compiler.
 See the [stability in code] section for the technical details.
 
