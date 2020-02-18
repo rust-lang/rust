@@ -10,4 +10,4 @@ SOURCE_FILE@[0; 19)
       IDENT@[14; 17) "Foo"
     SEMI@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"
-error 6: expected existential, fn, trait or impl
+error [6; 6): expected existential, fn, trait or impl

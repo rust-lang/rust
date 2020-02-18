@@ -6,13 +6,9 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! module just wraps its API.
 
-use ra_parser::ParseError;
 use rowan::{GreenNodeBuilder, Language};
 
-use crate::{
-    syntax_error::{SyntaxError, SyntaxErrorKind},
-    Parse, SmolStr, SyntaxKind, TextUnit,
-};
+use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextUnit};
 
 pub(crate) use rowan::{GreenNode, GreenToken};
 
@@ -73,8 +69,7 @@ impl SyntaxTreeBuilder {
         self.inner.finish_node()
     }
 
-    pub fn error(&mut self, error: ParseError, text_pos: TextUnit) {
-        let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), text_pos);
-        self.errors.push(error)
+    pub fn error(&mut self, error: ra_parser::ParseError, text_pos: TextUnit) {
+        self.errors.push(SyntaxError::new_at_offset(error.0, text_pos))
     }
 }

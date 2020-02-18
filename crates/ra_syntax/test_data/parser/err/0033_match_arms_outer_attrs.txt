@@ -62,6 +62,6 @@ SOURCE_FILE@[0; 89)
         WHITESPACE@[86; 87) "\n"
         R_CURLY@[87; 88) "}"
   WHITESPACE@[88; 89) "\n"
-error 80: expected pattern
-error 80: expected FAT_ARROW
-error 80: expected expression
+error [80; 80): expected pattern
+error [80; 80): expected FAT_ARROW
+error [80; 80): expected expression

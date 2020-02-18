@@ -37,5 +37,5 @@ SOURCE_FILE@[0; 50)
         L_CURLY@[47; 48) "{"
         R_CURLY@[48; 49) "}"
   WHITESPACE@[49; 50) "\n"
-error 6: expected existential, fn, trait or impl
-error 31: expected existential, fn, trait or impl
+error [6; 6): expected existential, fn, trait or impl
+error [31; 31): expected existential, fn, trait or impl

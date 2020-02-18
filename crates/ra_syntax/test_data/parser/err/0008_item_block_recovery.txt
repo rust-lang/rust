@@ -76,6 +76,6 @@ SOURCE_FILE@[0; 95)
         WHITESPACE@[92; 93) "\n"
         R_CURLY@[93; 94) "}"
   WHITESPACE@[94; 95) "\n"
-error 17: expected EXCL
-error 19: expected SEMI
-error 20: expected an item
+error [17; 17): expected EXCL
+error [19; 19): expected SEMI
+error [20; 20): expected an item

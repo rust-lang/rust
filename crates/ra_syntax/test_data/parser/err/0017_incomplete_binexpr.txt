@@ -44,4 +44,4 @@ SOURCE_FILE@[0; 47)
         WHITESPACE@[44; 45) "\n"
         R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"
-error 44: expected expression
+error [44; 44): expected expression

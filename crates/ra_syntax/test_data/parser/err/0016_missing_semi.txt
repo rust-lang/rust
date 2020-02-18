@@ -41,4 +41,4 @@ SOURCE_FILE@[0; 56)
         WHITESPACE@[53; 54) "\n"
         R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) "\n"
-error 38: expected SEMI
+error [38; 38): expected SEMI

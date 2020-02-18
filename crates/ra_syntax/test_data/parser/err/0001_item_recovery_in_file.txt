@@ -14,5 +14,5 @@ SOURCE_FILE@[0; 21)
     RECORD_FIELD_DEF_LIST@[19; 21)
       L_CURLY@[19; 20) "{"
       R_CURLY@[20; 21) "}"
-error 0: expected an item
-error 3: expected an item
+error [0; 0): expected an item
+error [3; 3): expected an item

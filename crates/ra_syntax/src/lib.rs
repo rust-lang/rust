@@ -41,11 +41,9 @@ use crate::syntax_node::GreenNode;
 pub use crate::{
     algo::InsertPosition,
     ast::{AstNode, AstToken},
-    parsing::{
-        lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token, TokenizeError,
-    },
+    parsing::{lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
-    syntax_error::{Location, SyntaxError, SyntaxErrorKind},
+    syntax_error::SyntaxError,
     syntax_node::{
         Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
     },
@@ -117,7 +115,7 @@ impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
         for err in self.errors.iter() {
-            writeln!(buf, "error {:?}: {}", err.location(), err.kind()).unwrap();
+            writeln!(buf, "error {:?}: {}", err.range(), err).unwrap();
         }
         buf
     }

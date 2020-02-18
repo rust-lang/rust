@@ -1,9 +1,8 @@
-//! FIXME: write short doc here
+//! Logic for validating block expressions i.e. `ast::BlockExpr`.
 
 use crate::{
     ast::{self, AstNode, AttrsOwner},
     SyntaxError,
-    SyntaxErrorKind::*,
     SyntaxKind::*,
 };
 
@@ -15,10 +14,11 @@ pub(crate) fn validate_block_expr(expr: ast::BlockExpr, errors: &mut Vec<SyntaxE
         }
     }
     if let Some(block) = expr.block() {
-        errors.extend(
-            block
-                .attrs()
-                .map(|attr| SyntaxError::new(InvalidBlockAttr, attr.syntax().text_range())),
-        )
+        errors.extend(block.attrs().map(|attr| {
+            SyntaxError::new(
+                "A block in this position cannot accept inner attributes",
+                attr.syntax().text_range(),
+            )
+        }))
     }
 }

@@ -290,32 +290,32 @@ SOURCE_FILE@[0; 240)
         WHITESPACE@[237; 238) "\n"
         R_CURLY@[238; 239) "}"
   WHITESPACE@[239; 240) "\n"
-error 88: expected COMMA
-error 88: expected R_ANGLE
-error 121: expected SEMI
-error 121: expected expression
-error 140: expected type
-error 141: expected R_PAREN
-error 141: expected COMMA
-error 141: expected R_ANGLE
-error 141: expected SEMI
-error 146: expected SEMI
-error 146: expected expression
-error 147: expected SEMI
-error 148: expected expression
-error 149: expected SEMI
-error 154: expected pattern
-error 155: expected IN_KW
-error 155: expected expression
-error 157: expected a block
-error 165: expected expression
-error 168: expected expression
-error 179: expected expression
-error 180: expected COMMA
-error 180: expected expression
-error 180: expected R_PAREN
-error 180: expected SEMI
-error 215: expected COMMA
-error 215: expected R_ANGLE
-error 235: expected SEMI
-error 235: expected expression
+error [88; 88): expected COMMA
+error [88; 88): expected R_ANGLE
+error [121; 121): expected SEMI
+error [121; 121): expected expression
+error [140; 140): expected type
+error [141; 141): expected R_PAREN
+error [141; 141): expected COMMA
+error [141; 141): expected R_ANGLE
+error [141; 141): expected SEMI
+error [146; 146): expected SEMI
+error [146; 146): expected expression
+error [147; 147): expected SEMI
+error [148; 148): expected expression
+error [149; 149): expected SEMI
+error [154; 154): expected pattern
+error [155; 155): expected IN_KW
+error [155; 155): expected expression
+error [157; 157): expected a block
+error [165; 165): expected expression
+error [168; 168): expected expression
+error [179; 179): expected expression
+error [180; 180): expected COMMA
+error [180; 180): expected expression
+error [180; 180): expected R_PAREN
+error [180; 180): expected SEMI
+error [215; 215): expected COMMA
+error [215; 215): expected R_ANGLE
+error [235; 235): expected SEMI
+error [235; 235): expected expression
