@@ -6,3 +6,4 @@ crates/*/target
 *.log
 *.iml
 .vscode/settings.json
+cargo-timing*.html
