@@ -993,6 +993,7 @@ impl Encodable for Symbol {
 }
 
 impl Decodable for Symbol {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Symbol, D::Error> {
         Ok(Symbol::intern(&d.read_str()?))
     }
@@ -1031,6 +1032,7 @@ impl Interner {
         }
     }
 
+    #[inline]
     pub fn intern(&mut self, string: &str) -> Symbol {
         if let Some(&name) = self.names.get(string) {
             return name;
