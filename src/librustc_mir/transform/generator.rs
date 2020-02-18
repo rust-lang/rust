@@ -50,7 +50,7 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::dataflow::generic::{self as dataflow, Analysis};
-use crate::dataflow::{MaybeBorrowedLocals, MaybeStorageLive, RequiresStorage};
+use crate::dataflow::{MaybeBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
@@ -490,7 +490,7 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_results = RequiresStorage::new(body, &borrowed_locals_results)
+    let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
         .into_engine(tcx, body_ref, def_id)
         .iterate_to_fixpoint();
     let mut requires_storage_cursor =
@@ -600,7 +600,7 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
-    requires_storage: dataflow::Results<'tcx, RequiresStorage<'mir, 'tcx>>,
+    requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
