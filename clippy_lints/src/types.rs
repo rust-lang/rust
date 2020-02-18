@@ -779,94 +779,105 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 
         match expr.kind {
             ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
-                let mut args_to_recover = vec![];
-                for arg in args {
-                    if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
-                        if let ExprKind::Match(.., match_source) = &arg.kind {
-                            if *match_source == MatchSource::TryDesugar {
-                                continue;
+                let args_to_recover = args
+                    .iter()
+                    .filter(|arg| {
+                        if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
+                            if let ExprKind::Match(.., MatchSource::TryDesugar) = &arg.kind {
+                                false
+                            } else {
+                                true
                             }
+                        } else {
+                            false
                         }
-
-                        args_to_recover.push(arg);
-                    }
-                }
+                    })
+                    .collect::<Vec<_>>();
                 if !args_to_recover.is_empty() {
-                    let mut applicability = Applicability::MachineApplicable;
-                    span_lint_and_then(cx, UNIT_ARG, expr.span, "passing a unit value to a function", |db| {
-                        let mut or = "";
-                        args_to_recover
-                            .iter()
-                            .filter_map(|arg| {
-                                if_chain! {
-                                    if let ExprKind::Block(block, _) = arg.kind;
-                                    if block.expr.is_none();
-                                    if let Some(last_stmt) = block.stmts.iter().last();
-                                    if let StmtKind::Semi(last_expr) = last_stmt.kind;
-                                    if let Some(snip) = snippet_opt(cx, last_expr.span);
-                                    then {
-                                        Some((
-                                            last_stmt.span,
-                                            snip,
-                                        ))
-                                    }
-                                    else {
-                                        None
-                                    }
-                                }
-                            })
-                            .for_each(|(span, sugg)| {
-                                db.span_suggestion(
-                                    span,
-                                    "remove the semicolon from the last statement in the block",
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
-                                or = "or ";
-                            });
-                        let sugg = args_to_recover
-                            .iter()
-                            .enumerate()
-                            .map(|(i, arg)| {
-                                let indent = if i == 0 {
-                                    0
-                                } else {
-                                    indent_of(cx, expr.span).unwrap_or(0)
-                                };
-                                format!(
-                                    "{}{};",
-                                    " ".repeat(indent),
-                                    snippet_block_with_applicability(
-                                        cx,
-                                        arg.span,
-                                        "..",
-                                        Some(expr.span),
-                                        &mut applicability
-                                    )
-                                )
-                            })
-                            .collect::<Vec<String>>()
-                            .join("\n");
-                        db.span_suggestion(
-                            expr.span.with_hi(expr.span.lo()),
-                            &format!("{}move the expressions in front of the call...", or),
-                            format!("{}\n", sugg),
-                            applicability,
-                        );
-                        db.multipart_suggestion(
-                            "...and use unit literals instead",
-                            args_to_recover
-                                .iter()
-                                .map(|arg| (arg.span, "()".to_string()))
-                                .collect::<Vec<_>>(),
-                            applicability,
-                        );
-                    });
+                    lint_unit_args(cx, expr, &args_to_recover);
                 }
             },
             _ => (),
         }
     }
+}
+
+fn lint_unit_args(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
+    let mut applicability = Applicability::MachineApplicable;
+    let (singular, plural) = if args_to_recover.len() > 1 {
+        ("", "s")
+    } else {
+        ("a ", "")
+    };
+    span_lint_and_then(
+        cx,
+        UNIT_ARG,
+        expr.span,
+        &format!("passing {}unit value{} to a function", singular, plural),
+        |db| {
+            let mut or = "";
+            args_to_recover
+                .iter()
+                .filter_map(|arg| {
+                    if_chain! {
+                        if let ExprKind::Block(block, _) = arg.kind;
+                        if block.expr.is_none();
+                        if let Some(last_stmt) = block.stmts.iter().last();
+                        if let StmtKind::Semi(last_expr) = last_stmt.kind;
+                        if let Some(snip) = snippet_opt(cx, last_expr.span);
+                        then {
+                            Some((
+                                last_stmt.span,
+                                snip,
+                            ))
+                        }
+                        else {
+                            None
+                        }
+                    }
+                })
+                .for_each(|(span, sugg)| {
+                    db.span_suggestion(
+                        span,
+                        "remove the semicolon from the last statement in the block",
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                    or = "or ";
+                });
+            let sugg = args_to_recover
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| {
+                    let indent = if i == 0 {
+                        0
+                    } else {
+                        indent_of(cx, expr.span).unwrap_or(0)
+                    };
+                    format!(
+                        "{}{};",
+                        " ".repeat(indent),
+                        snippet_block_with_applicability(cx, arg.span, "..", Some(expr.span), &mut applicability)
+                    )
+                })
+                .collect::<Vec<String>>()
+                .join("\n");
+            db.span_suggestion(
+                expr.span.with_hi(expr.span.lo()),
+                &format!("{}move the expression{} in front of the call...", or, plural),
+                format!("{}\n", sugg),
+                applicability,
+            );
+            db.multipart_suggestion(
+                &format!("...and use {}unit literal{} instead", singular, plural),
+                args_to_recover
+                    .iter()
+                    .map(|arg| (arg.span, "()".to_string()))
+                    .collect::<Vec<_>>(),
+                applicability,
+            );
+        },
+    );
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
