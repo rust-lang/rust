@@ -27,8 +27,8 @@ pub(crate) fn incremental_reparse(
     edit: &AtomTextEdit,
     errors: Vec<SyntaxError>,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    if let Some((green, old_range)) = reparse_token(node, &edit) {
-        return Some((green, merge_errors(errors, Vec::new(), old_range, edit), old_range));
+    if let Some((green, new_errors, old_range)) = reparse_token(node, &edit) {
+        return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }
 
     if let Some((green, new_errors, old_range)) = reparse_block(node, &edit) {
@@ -40,7 +40,7 @@ pub(crate) fn incremental_reparse(
 fn reparse_token<'node>(
     root: &'node SyntaxNode,
     edit: &AtomTextEdit,
-) -> Option<(GreenNode, TextRange)> {
+) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let prev_token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
@@ -54,7 +54,7 @@ fn reparse_token<'node>(
             }
 
             let mut new_text = get_text_after_edit(prev_token.clone().into(), &edit);
-            let (new_token_kind, _error) = lex_single_syntax_kind(&new_text)?;
+            let (new_token_kind, new_err) = lex_single_syntax_kind(&new_text)?;
 
             if new_token_kind != prev_token_kind
                 || (new_token_kind == IDENT && is_contextual_kw(&new_text))
@@ -76,7 +76,11 @@ fn reparse_token<'node>(
 
             let new_token =
                 GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), new_text.into());
-            Some((prev_token.replace_with(new_token), prev_token.text_range()))
+            Some((
+                prev_token.replace_with(new_token),
+                new_err.into_iter().collect(),
+                prev_token.text_range(),
+            ))
         }
         _ => None,
     }
@@ -200,9 +204,9 @@ mod tests {
 
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed: Parse<SourceFile> = {
-            let f = SourceFile::parse(&before);
+            let before = SourceFile::parse(&before);
             let (green, new_errors, range) =
-                incremental_reparse(f.tree().syntax(), &edit, f.errors.to_vec()).unwrap();
+                incremental_reparse(before.tree().syntax(), &edit, before.errors.to_vec()).unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
             Parse::new(green, new_errors)
         };
@@ -211,6 +215,7 @@ mod tests {
             &format!("{:#?}", fully_reparsed.tree().syntax()),
             &format!("{:#?}", incrementally_reparsed.tree().syntax()),
         );
+        assert_eq!(fully_reparsed.errors(), incrementally_reparsed.errors());
     }
 
     #[test] // FIXME: some test here actually test token reparsing
@@ -408,5 +413,43 @@ enum Foo {
             "Clone",
             4,
         );
+    }
+
+    #[test]
+    fn reparse_str_token_with_error_unchanged() {
+        do_check(r#""<|>Unclosed<|> string literal"#, "Still unclosed", 24);
+    }
+
+    #[test]
+    fn reparse_str_token_with_error_fixed() {
+        do_check(r#""unterinated<|><|>"#, "\"", 12);
+    }
+
+    #[test]
+    fn reparse_block_with_error_in_middle_unchanged() {
+        do_check(
+            r#"fn main() {
+                if {}
+                32 + 4<|><|>
+                return
+                if {}
+            }"#,
+            "23",
+            105,
+        )
+    }
+
+    #[test]
+    fn reparse_block_with_error_in_middle_fixed() {
+        do_check(
+            r#"fn main() {
+                if {}
+                32 + 4<|><|>
+                return
+                if {}
+            }"#,
+            ";",
+            105,
+        )
     }
 }
