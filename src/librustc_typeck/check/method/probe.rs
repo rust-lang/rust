@@ -1404,15 +1404,40 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             // `potentially_unsatisfied_predicates`.
                             return ProbeResult::NoMatch;
                         } else {
-                            // Some nested subobligation of this predicate
-                            // failed.
-                            //
-                            // FIXME: try to find the exact nested subobligation
-                            // and point at it rather than reporting the entire
-                            // trait-ref?
-                            result = ProbeResult::NoMatch;
-                            let trait_ref = self.resolve_vars_if_possible(&trait_ref);
-                            possibly_unsatisfied_predicates.push(trait_ref);
+                            self.probe(|_| {
+                                match self.select_trait_candidate(trait_ref) {
+                                    Ok(Some(traits::VtableImpl(traits::VtableImplData {
+                                        nested,
+                                        ..
+                                    }))) if !nested.is_empty() => {
+                                        for obligation in nested {
+                                            // Determine exactly which obligation wasn't met, so
+                                            // that we can give more context in the error.
+                                            if !self.predicate_may_hold(&obligation) {
+                                                result = ProbeResult::NoMatch;
+                                                if let Some(poly_trait_ref) =
+                                                    obligation.predicate.to_opt_poly_trait_ref()
+                                                {
+                                                    let trait_ref = poly_trait_ref.clone();
+                                                    let trait_ref = trait_ref.skip_binder();
+                                                    possibly_unsatisfied_predicates
+                                                        .push(*trait_ref);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                                // Some nested subobligation of this predicate
+                                // failed.
+                                //
+                                // FIXME: try to find the exact nested subobligation
+                                // and point at it rather than reporting the entire
+                                // trait-ref?
+                                result = ProbeResult::NoMatch;
+                                let trait_ref = self.resolve_vars_if_possible(&trait_ref);
+                                possibly_unsatisfied_predicates.push(trait_ref);
+                            });
                         }
                     }
                     vec![]

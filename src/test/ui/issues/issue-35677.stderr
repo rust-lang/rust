@@ -5,8 +5,8 @@ LL |     this.is_subset(other)
    |          ^^^^^^^^^ method not found in `&std::collections::HashSet<T>`
    |
    = note: the method `is_subset` exists but the following trait bounds were not satisfied:
-           `T : std::cmp::Eq`
-           `T : std::hash::Hash`
+           `T: std::cmp::Eq`
+           `T: std::hash::Hash`
 
 error: aborting due to previous error
 

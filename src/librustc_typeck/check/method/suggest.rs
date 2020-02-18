@@ -394,6 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.sess.diagnostic().struct_dummy()
                 };
 
+                // FIXME: Unify with unmet bound label.
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
                         let def_sp = tcx.sess.source_map().def_span(full_sp);
@@ -535,16 +536,54 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if !unsatisfied_predicates.is_empty() {
+                    let mut bound_spans = vec![];
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .map(|p| format!("`{} : {}`", p.self_ty(), p.print_only_trait_path()))
+                        .map(|p| {
+                            let self_ty = p.self_ty();
+                            match &self_ty.kind {
+                                ty::Adt(def, _) => bound_spans.push((
+                                    self.tcx.sess.source_map().def_span(self.tcx.def_span(def.did)),
+                                    format!(
+                                        "this type doesn't satisfy the bound `{}`",
+                                        p.print_only_trait_path()
+                                    ),
+                                )),
+                                ty::Dynamic(preds, _) => {
+                                    for pred in *preds.skip_binder() {
+                                        match pred {
+                                            ty::ExistentialPredicate::Trait(tr) => bound_spans
+                                                .push((
+                                                    self.tcx
+                                                        .sess
+                                                        .source_map()
+                                                        .def_span(self.tcx.def_span(tr.def_id)),
+                                                    format!(
+                                                        "this trait doesn't satisfy the bound `{}`",
+                                                        p.print_only_trait_path()
+                                                    ),
+                                                )),
+                                            ty::ExistentialPredicate::Projection(_)
+                                            | ty::ExistentialPredicate::AutoTrait(_) => {}
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            };
+                            format!("`{}: {}`", p.self_ty(), p.print_only_trait_path())
+                        })
                         .collect::<Vec<_>>();
                     bound_list.sort();
                     bound_list.dedup(); // #35677
+                    bound_spans.sort();
+                    bound_spans.dedup(); // #35677
+                    for (span, msg) in bound_spans.into_iter() {
+                        err.span_label(span, &msg);
+                    }
                     let bound_list = bound_list.join("\n");
                     err.note(&format!(
-                        "the method `{}` exists but the following trait bounds \
-                                       were not satisfied:\n{}",
+                        "the method `{}` exists but the following trait bounds were not \
+                         satisfied:\n{}",
                         item_name, bound_list
                     ));
                 }
