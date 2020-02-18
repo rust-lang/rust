@@ -255,8 +255,9 @@ pub mod guard {
 
     #[cfg(target_os = "macos")]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
-        let stackaddr = libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize
-            - libc::pthread_get_stacksize_np(libc::pthread_self());
+        let th = libc::pthread_self();
+        let stackaddr =
+            libc::pthread_get_stackaddr_np(th) as usize - libc::pthread_get_stacksize_np(th);
         Some(stackaddr as *mut libc::c_void)
     }
 
