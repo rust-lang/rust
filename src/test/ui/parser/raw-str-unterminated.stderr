@@ -1,4 +1,4 @@
-error: unterminated raw string
+error[E0748]: unterminated raw string
   --> $DIR/raw-str-unterminated.rs:2:5
    |
 LL |     r#" string literal goes on
@@ -8,3 +8,4 @@ LL |     r#" string literal goes on
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0748`.
