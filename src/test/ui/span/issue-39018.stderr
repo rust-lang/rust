@@ -136,8 +136,6 @@ LL |     let _ = &c + &d;
    |             -- ^ -- &&str
    |             |
    |             &&str
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `&&str`
 
 error[E0369]: cannot add `&str` to `&&str`
   --> $DIR/issue-39018.rs:35:16
@@ -146,8 +144,6 @@ LL |     let _ = &c + d;
    |             -- ^ - &str
    |             |
    |             &&str
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `&&str`
 
 error[E0369]: cannot add `&&str` to `&str`
   --> $DIR/issue-39018.rs:36:15

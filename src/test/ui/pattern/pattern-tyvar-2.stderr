@@ -5,8 +5,6 @@ LL | fn foo(t: Bar) -> isize { match t { Bar::T1(_, Some(x)) => { return x * 3; 
    |                                                                     - ^ - {integer}
    |                                                                     |
    |                                                                     std::vec::Vec<isize>
-   |
-   = note: an implementation of `std::ops::Mul` might be missing for `std::vec::Vec<isize>`
 
 error: aborting due to previous error
 

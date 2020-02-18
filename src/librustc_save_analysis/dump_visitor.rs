@@ -400,7 +400,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         &mut self,
         item: &'l ast::Item,
         typ: &'l ast::Ty,
-        expr: &'l ast::Expr,
+        expr: Option<&'l ast::Expr>,
     ) {
         let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
@@ -409,7 +409,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), var_data);
             }
             v.visit_ty(&typ);
-            v.visit_expr(expr);
+            walk_list!(v, visit_expr, expr);
         });
     }
 
@@ -1004,7 +1004,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Static(ref ty, _, ref expr)
+            | ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     trait_item.id,
                     trait_item.ident,
@@ -1015,18 +1016,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &trait_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref generics, ref body) => {
                 self.process_method(
                     sig,
                     body.as_ref().map(|x| &**x),
                     trait_item.id,
                     trait_item.ident,
-                    &trait_item.generics,
+                    generics,
                     respan(vis_span, ast::VisibilityKind::Public),
                     trait_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(ref bounds, ref default_ty) => {
+            ast::AssocItemKind::TyAlias(_, ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!(
@@ -1074,7 +1075,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_impl_item(&mut self, impl_item: &'l ast::AssocItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
         match impl_item.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => {
+            ast::AssocItemKind::Static(ref ty, _, ref expr)
+            | ast::AssocItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     impl_item.id,
                     impl_item.ident,
@@ -1085,19 +1087,19 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &impl_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref generics, ref body) => {
                 self.process_method(
                     sig,
                     body.as_deref(),
                     impl_item.id,
                     impl_item.ident,
-                    &impl_item.generics,
+                    generics,
                     impl_item.vis.clone(),
                     impl_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(_, None) => {}
-            ast::AssocItemKind::TyAlias(_, Some(ref ty)) => {
+            ast::AssocItemKind::TyAlias(_, _, None) => {}
+            ast::AssocItemKind::TyAlias(_, _, Some(ref ty)) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
@@ -1293,8 +1295,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
             Fn(ref sig, ref ty_params, ref body) => {
                 self.process_fn(item, &sig.decl, &sig.header, ty_params, body.as_deref())
             }
-            Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
-            Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
+            Static(ref typ, _, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
+            Const(ref typ, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
             Struct(ref def, ref ty_params) | Union(ref def, ref ty_params) => {
                 self.process_struct(item, def, ty_params)
             }
@@ -1532,7 +1534,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     self.visit_ty(&ret_ty);
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Const(ref ty, _) | ast::ForeignItemKind::Static(ref ty, _, _) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);
@@ -1540,7 +1542,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
 
                 self.visit_ty(ty);
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);

@@ -5,8 +5,6 @@ LL |     let k = i + j;
    |             - ^ - std::vec::Vec<R>
    |             |
    |             std::vec::Vec<R>
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `std::vec::Vec<R>`
 
 error: aborting due to previous error
 

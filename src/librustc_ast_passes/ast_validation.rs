@@ -22,6 +22,9 @@ use syntax::expand::is_proc_macro_attr;
 use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use syntax::walk_list;
 
+const MORE_EXTERN: &str =
+    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
+
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
     Yes,
@@ -423,14 +426,62 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_impl_assoc_type_no_bounds(&self, bounds: &[GenericBound]) {
+    fn check_type_no_bounds(&self, bounds: &[GenericBound], ctx: &str) {
         let span = match bounds {
             [] => return,
             [b0] => b0.span(),
             [b0, .., bl] => b0.span().to(bl.span()),
         };
         self.err_handler()
-            .struct_span_err(span, "bounds on associated `type`s in `impl`s have no effect")
+            .struct_span_err(span, &format!("bounds on `type`s in {} have no effect", ctx))
+            .emit();
+    }
+
+    fn check_foreign_ty_genericless(&self, generics: &Generics) {
+        let cannot_have = |span, descr, remove_descr| {
+            self.err_handler()
+                .struct_span_err(
+                    span,
+                    &format!("`type`s inside `extern` blocks cannot have {}", descr),
+                )
+                .span_suggestion(
+                    span,
+                    &format!("remove the {}", remove_descr),
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                )
+                .span_label(self.current_extern_span(), "`extern` block begins here")
+                .note(MORE_EXTERN)
+                .emit();
+        };
+
+        if !generics.params.is_empty() {
+            cannot_have(generics.span, "generic parameters", "generic parameters");
+        }
+
+        if !generics.where_clause.predicates.is_empty() {
+            cannot_have(generics.where_clause.span, "`where` clauses", "`where` clause");
+        }
+    }
+
+    fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
+        let body = match body {
+            None => return,
+            Some(body) => body,
+        };
+        self.err_handler()
+            .struct_span_err(ident.span, &format!("incorrect `{}` inside `extern` block", kind))
+            .span_label(ident.span, "cannot have a body")
+            .span_label(body, "the invalid body")
+            .span_label(
+                self.current_extern_span(),
+                format!(
+                    "`extern` blocks define existing foreign {0}s and {0}s \
+                    inside of them cannot have a body",
+                    kind
+                ),
+            )
+            .note(MORE_EXTERN)
             .emit();
     }
 
@@ -458,7 +509,7 @@ impl<'a> AstValidator<'a> {
                 "`extern` blocks define existing foreign functions and functions \
                 inside of them cannot have a body",
             )
-            .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
+            .note(MORE_EXTERN)
             .emit();
     }
 
@@ -530,6 +581,16 @@ impl<'a> AstValidator<'a> {
                 }
             }
         }
+    }
+
+    fn check_item_named(&self, ident: Ident, kind: &str) {
+        if ident.name != kw::Underscore {
+            return;
+        }
+        self.err_handler()
+            .struct_span_err(ident.span, &format!("`{}` items in this context need a name", kind))
+            .span_label(ident.span, format!("`_` is not a valid name for this `{}` item", kind))
+            .emit();
     }
 }
 
@@ -900,6 +961,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
+            ItemKind::Const(.., None) => {
+                let msg = "free constant item without body";
+                self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
+            }
+            ItemKind::Static(.., None) => {
+                let msg = "free static item without body";
+                self.error_item_without_body(item.span, "static", msg, " = <expr>;");
+            }
             _ => {}
         }
 
@@ -912,7 +981,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
-            ForeignItemKind::Static(..) | ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::TyAlias(generics, bounds, body) => {
+                self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
+                self.check_type_no_bounds(bounds, "`extern` blocks");
+                self.check_foreign_ty_genericless(generics);
+            }
+            ForeignItemKind::Static(_, _, body) => {
+                self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+            }
+            ForeignItemKind::Const(..) | ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)
@@ -1154,12 +1231,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Const(_, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
-                AssocItemKind::Fn(_, body) => {
+                AssocItemKind::Fn(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(bounds, body) => {
+                AssocItemKind::TyAlias(_, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
-                    self.check_impl_assoc_type_no_bounds(bounds);
+                    self.check_type_no_bounds(bounds, "`impl`s");
                 }
                 _ => {}
             }
@@ -1167,10 +1244,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(sig, _) = &item.kind {
+            if let AssocItemKind::Fn(sig, _, _) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }
+        }
+
+        if let AssocItemKind::Const(..) = item.kind {
+            self.check_item_named(item.ident, "const");
         }
 
         self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));

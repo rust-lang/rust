@@ -1,4 +1,5 @@
-extern { //~ ERROR missing `fn`, `type`, or `static` for extern-item declaration
+extern {
+//~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
     f();
 }
 

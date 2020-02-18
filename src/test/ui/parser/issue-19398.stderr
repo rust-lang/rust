@@ -1,11 +1,11 @@
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-19398.rs:1:10
    |
 LL |   trait T {
    |  __________^
 LL | |
 LL | |     extern "Rust" unsafe fn foo();
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
 error: aborting due to previous error
 

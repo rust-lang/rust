@@ -9,7 +9,7 @@ use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 use syntax::ast;
-use syntax::token::{self, Nonterminal};
+use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use std::path::{Path, PathBuf};
@@ -170,8 +170,9 @@ fn maybe_source_file_to_parser(
     let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
-    if parser.token == token::Eof && parser.token.span.is_dummy() {
-        parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
+    if parser.token == token::Eof {
+        let span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
+        parser.set_token(Token::new(token::Eof, span));
     }
 
     Ok(parser)

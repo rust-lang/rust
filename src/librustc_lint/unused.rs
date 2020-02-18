@@ -603,7 +603,7 @@ impl EarlyLintPass for UnusedParens {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(.., ref expr) | Static(.., ref expr) = item.kind {
+        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
             self.check_unused_parens_expr(cx, expr, "assigned value", false, None, None);
         }
     }

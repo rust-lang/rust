@@ -912,7 +912,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
+    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
             self.print_foreign_item(item);
@@ -1016,59 +1016,73 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+        let ast::ForeignItem { id, span, ident, attrs, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, ast::Defaultness::Final, kind, vis);
+    }
+
+    fn print_nested_item_kind(
+        &mut self,
+        id: ast::NodeId,
+        span: Span,
+        ident: ast::Ident,
+        attrs: &[Attribute],
+        defaultness: ast::Defaultness,
+        kind: &ast::AssocItemKind,
+        vis: &ast::Visibility,
+    ) {
+        self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
-        match item.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref gen, ref body) => {
-                self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
+        self.maybe_print_comment(span.lo());
+        self.print_outer_attributes(attrs);
+        self.print_defaultness(defaultness);
+        match kind {
+            ast::ForeignItemKind::Fn(sig, gen, body) => {
+                self.print_fn_full(sig, ident, gen, vis, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(ref t, m) => {
-                self.head(visibility_qualified(&item.vis, "static"));
-                if m == ast::Mutability::Mut {
-                    self.word_space("mut");
-                }
-                self.print_ident(item.ident);
-                self.word_space(":");
-                self.print_type(t);
-                self.s.word(";");
-                self.end(); // end the head-ibox
-                self.end(); // end the outer cbox
+            ast::ForeignItemKind::Const(ty, body) => {
+                self.print_item_const(ident, None, ty, body.as_deref(), vis);
             }
-            ast::ForeignItemKind::Ty => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.s.word(";");
-                self.end(); // end the head-ibox
-                self.end(); // end the outer cbox
+            ast::ForeignItemKind::Static(ty, mutbl, body) => {
+                self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis);
             }
-            ast::ForeignItemKind::Macro(ref m) => {
+            ast::ForeignItemKind::TyAlias(generics, bounds, ty) => {
+                self.print_associated_type(ident, generics, bounds, ty.as_deref());
+            }
+            ast::ForeignItemKind::Macro(m) => {
                 self.print_mac(m);
                 if m.args.need_semicolon() {
                     self.s.word(";");
                 }
             }
         }
+        self.ann.post(self, AnnNode::SubItem(id))
     }
 
-    fn print_associated_const(
+    fn print_item_const(
         &mut self,
         ident: ast::Ident,
+        mutbl: Option<ast::Mutability>,
         ty: &ast::Ty,
-        default: Option<&ast::Expr>,
+        body: Option<&ast::Expr>,
         vis: &ast::Visibility,
     ) {
-        self.s.word(visibility_qualified(vis, ""));
-        self.word_space("const");
+        let leading = match mutbl {
+            None => "const",
+            Some(ast::Mutability::Not) => "static",
+            Some(ast::Mutability::Mut) => "static mut",
+        };
+        self.head(visibility_qualified(vis, leading));
         self.print_ident(ident);
         self.word_space(":");
         self.print_type(ty);
-        if let Some(expr) = default {
-            self.s.space();
+        self.s.space();
+        self.end(); // end the head-ibox
+        if let Some(body) = body {
             self.word_space("=");
-            self.print_expr(expr);
+            self.print_expr(body);
         }
-        self.s.word(";")
+        self.s.word(";");
+        self.end(); // end the outer cbox
     }
 
     fn print_associated_type(
@@ -1118,34 +1132,11 @@ impl<'a> State<'a> {
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            ast::ItemKind::Static(ref ty, m, ref expr) => {
-                self.head(visibility_qualified(&item.vis, "static"));
-                if m == ast::Mutability::Mut {
-                    self.word_space("mut");
-                }
-                self.print_ident(item.ident);
-                self.word_space(":");
-                self.print_type(ty);
-                self.s.space();
-                self.end(); // end the head-ibox
-
-                self.word_space("=");
-                self.print_expr(expr);
-                self.s.word(";");
-                self.end(); // end the outer cbox
+            ast::ItemKind::Static(ref ty, mutbl, ref body) => {
+                self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis);
             }
-            ast::ItemKind::Const(ref ty, ref expr) => {
-                self.head(visibility_qualified(&item.vis, "const"));
-                self.print_ident(item.ident);
-                self.word_space(":");
-                self.print_type(ty);
-                self.s.space();
-                self.end(); // end the head-ibox
-
-                self.word_space("=");
-                self.print_expr(expr);
-                self.s.word(";");
-                self.end(); // end the outer cbox
+            ast::ItemKind::Const(ref ty, ref body) => {
+                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis);
             }
             ast::ItemKind::Fn(ref sig, ref gen, ref body) => {
                 self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
@@ -1464,30 +1455,8 @@ impl<'a> State<'a> {
     }
 
     crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
-        self.ann.pre(self, AnnNode::SubItem(item.id));
-        self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
-        self.print_defaultness(item.defaultness);
-        match &item.kind {
-            ast::AssocItemKind::Const(ty, expr) => {
-                self.print_associated_const(item.ident, ty, expr.as_deref(), &item.vis);
-            }
-            ast::AssocItemKind::Fn(sig, body) => {
-                let body = body.as_deref();
-                self.print_fn_full(sig, item.ident, &item.generics, &item.vis, body, &item.attrs);
-            }
-            ast::AssocItemKind::TyAlias(bounds, ty) => {
-                self.print_associated_type(item.ident, &item.generics, bounds, ty.as_deref());
-            }
-            ast::AssocItemKind::Macro(mac) => {
-                self.print_mac(mac);
-                if mac.args.need_semicolon() {
-                    self.s.word(";");
-                }
-            }
-        }
-        self.ann.post(self, AnnNode::SubItem(item.id))
+        let ast::AssocItem { id, span, ident, attrs, defaultness, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, *defaultness, kind, vis);
     }
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {

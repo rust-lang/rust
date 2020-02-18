@@ -13,7 +13,7 @@ use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind
 use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, Unsafe};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
+use syntax::ast::{FnHeader, ForeignItem, Mutability, Visibility, VisibilityKind};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -333,29 +333,19 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
-    fn missing_assoc_item_kind_err(
-        &self,
-        item_type: &str,
-        prev_span: Span,
-    ) -> DiagnosticBuilder<'a> {
-        let expected_kinds = if item_type == "extern" {
-            "missing `fn`, `type`, or `static`"
-        } else {
-            "missing `fn`, `type`, or `const`"
-        };
-
-        // Given this code `path(`, it seems like this is not
-        // setting the visibility of a macro invocation, but rather
-        // a mistyped method declaration.
-        // Create a diagnostic pointing out that `fn` is missing.
-        //
-        // x |     pub path(&self) {
-        //   |        ^ missing `fn`, `type`, or `const`
-        //     pub  path(
-        //        ^^ `sp` below will point to this
+    /// Given this code `path(`, it seems like this is not
+    /// setting the visibility of a macro invocation,
+    /// but rather a mistyped method declaration.
+    /// Create a diagnostic pointing out that `fn` is missing.
+    ///
+    /// ```
+    /// x |     pub   path(&self) {
+    ///   |         ^ missing `fn`, `type`, `const`, or `static`
+    /// ```
+    fn missing_nested_item_kind_err(&self, prev_span: Span) -> DiagnosticBuilder<'a> {
         let sp = prev_span.between(self.token.span);
-        let mut err = self
-            .struct_span_err(sp, &format!("{} for {}-item declaration", expected_kinds, item_type));
+        let expected_kinds = "missing `fn`, `type`, `const`, or `static`";
+        let mut err = self.struct_span_err(sp, &format!("{} for item declaration", expected_kinds));
         err.span_label(sp, expected_kinds);
         err
     }
@@ -546,6 +536,7 @@ impl<'a> Parser<'a> {
                 1,
                 &[
                     kw::Impl,
+                    kw::Static,
                     kw::Const,
                     kw::Async,
                     kw::Fn,
@@ -638,7 +629,7 @@ impl<'a> Parser<'a> {
     fn parse_assoc_item(
         &mut self,
         at_end: &mut bool,
-        req_name: fn(&token::Token) -> bool,
+        req_name: ReqName,
     ) -> PResult<'a, P<AssocItem>> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
@@ -652,59 +643,67 @@ impl<'a> Parser<'a> {
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
         }
+        self.error_on_assoc_static(&item);
         Ok(P(item))
+    }
+
+    fn error_on_assoc_static(&self, item: &AssocItem) {
+        if let AssocItemKind::Static(..) = item.kind {
+            self.struct_span_err(item.span, "associated `static` items are not allowed").emit();
+        }
     }
 
     fn parse_assoc_item_(
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
-        req_name: fn(&token::Token) -> bool,
+        req_name: ReqName,
     ) -> PResult<'a, AssocItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
+        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, req_name, &vis)?;
+        let span = lo.to(self.prev_span);
+        let id = DUMMY_NODE_ID;
+        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
+    }
 
-        let (ident, kind, generics) = if self.eat_keyword(kw::Type) {
-            self.parse_assoc_ty()?
+    fn parse_assoc_item_kind(
+        &mut self,
+        at_end: &mut bool,
+        attrs: &mut Vec<Attribute>,
+        req_name: ReqName,
+        vis: &Visibility,
+    ) -> PResult<'a, (Ident, AssocItemKind)> {
+        if self.eat_keyword(kw::Type) {
+            self.parse_assoc_ty()
         } else if self.check_fn_front_matter() {
-            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
-            (ident, AssocItemKind::Fn(sig, body), generics)
-        } else if self.check_keyword(kw::Const) {
-            self.parse_assoc_const()?
+            let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, req_name)?;
+            Ok((ident, AssocItemKind::Fn(sig, generics, body)))
+        } else if self.is_static_global() {
+            self.bump(); // `static`
+            let mutbl = self.parse_mutability();
+            let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
+            Ok((ident, AssocItemKind::Static(ty, mutbl, expr)))
+        } else if self.eat_keyword(kw::Const) {
+            let (ident, ty, expr) = self.parse_item_const_common(None)?;
+            Ok((ident, AssocItemKind::Const(ty, expr)))
         } else if self.isnt_macro_invocation() {
-            return Err(self.missing_assoc_item_kind_err("associated", self.prev_span));
+            Err(self.missing_nested_item_kind_err(self.prev_span))
         } else if self.token.is_path_start() {
             let mac = self.parse_item_macro(&vis)?;
             *at_end = true;
-            (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
+            Ok((Ident::invalid(), AssocItemKind::Macro(mac)))
         } else {
-            self.recover_attrs_no_item(&attrs)?;
-            self.unexpected()?
-        };
-
-        let span = lo.to(self.prev_span);
-        let id = DUMMY_NODE_ID;
-        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, generics, kind, tokens: None })
-    }
-
-    /// This parses the grammar:
-    ///
-    ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
-    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
-        self.expect_keyword(kw::Const)?;
-        let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
-        self.expect_semi()?;
-        Ok((ident, AssocItemKind::Const(ty, expr), Generics::default()))
+            self.recover_attrs_no_item(attrs)?;
+            self.unexpected()
+        }
     }
 
     /// Parses the following grammar:
     ///
     ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
+    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -716,7 +715,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, AssocItemKind::TyAlias(bounds, default), generics))
+        Ok((ident, AssocItemKind::TyAlias(generics, bounds, default)))
     }
 
     /// Parses a `UseTree`.
@@ -875,60 +874,26 @@ impl<'a> Parser<'a> {
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
+        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, |_| true, &vis)?;
+        let item = self.mk_item(lo, ident, kind, vis, attrs);
+        self.error_on_foreign_const(&item);
+        Ok(P(item))
+    }
 
-        let (ident, kind) = if self.check_keyword(kw::Type) {
-            // FOREIGN TYPE ITEM
-            self.parse_item_foreign_type()?
-        } else if self.check_fn_front_matter() {
-            // FOREIGN FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, |_| true)?;
-            (ident, ForeignItemKind::Fn(sig, generics, body))
-        } else if self.is_static_global() {
-            // FOREIGN STATIC ITEM
-            self.bump(); // `static`
-            self.parse_item_foreign_static()?
-        } else if self.token.is_keyword(kw::Const) {
-            // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
-            self.bump(); // `const`
-            self.struct_span_err(self.prev_span, "extern items cannot be `const`")
+    fn error_on_foreign_const(&self, item: &ForeignItem) {
+        if let AssocItemKind::Const(..) = item.kind {
+            self.struct_span_err(item.ident.span, "extern items cannot be `const`")
                 .span_suggestion(
-                    self.prev_span,
+                    item.span.with_hi(item.ident.span.lo()),
                     "try using a static value",
-                    "static".to_owned(),
+                    "static ".to_string(),
                     Applicability::MachineApplicable,
                 )
+                .note(
+                    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html",
+                )
                 .emit();
-            self.parse_item_foreign_static()?
-        } else if self.isnt_macro_invocation() {
-            return Err(self.missing_assoc_item_kind_err("extern", self.prev_span));
-        } else if self.token.is_path_start() {
-            let mac = self.parse_item_macro(&vis)?;
-            *at_end = true;
-            (Ident::invalid(), ForeignItemKind::Macro(mac))
-        } else {
-            self.recover_attrs_no_item(&attrs)?;
-            self.unexpected()?
-        };
-        Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
-    }
-
-    /// Parses a static item from a foreign module.
-    /// Assumes that the `static` keyword is already parsed.
-    fn parse_item_foreign_static(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
-        let mutbl = self.parse_mutability();
-        let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        self.expect_semi()?;
-        Ok((ident, ForeignItemKind::Static(ty, mutbl)))
-    }
-
-    /// Parses a type from a foreign module.
-    fn parse_item_foreign_type(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
-        self.expect_keyword(kw::Type)?;
-        let ident = self.parse_ident()?;
-        self.expect_semi()?;
-        Ok((ident, ForeignItemKind::Ty))
+        }
     }
 
     fn is_static_global(&mut self) -> bool {
@@ -964,34 +929,43 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty = $expr` with
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
     /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
     ///
     /// When `m` is `"const"`, `$ident` may also be `"_"`.
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
-        let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
-
-        // Parse the type of a `const` or `static mut?` item.
-        // That is, the `":" $ty` fragment.
-        let ty = if self.token == token::Eq {
-            self.recover_missing_const_type(id, m)
-        } else {
-            // Not `=` so expect `":"" $ty` as usual.
-            self.expect(&token::Colon)?;
-            self.parse_ty()?
-        };
-
-        self.expect(&token::Eq)?;
-        let e = self.parse_expr()?;
-        self.expect_semi()?;
+        let (id, ty, expr) = self.parse_item_const_common(m)?;
         let item = match m {
-            Some(m) => ItemKind::Static(ty, m, e),
-            None => ItemKind::Const(ty, e),
+            Some(m) => ItemKind::Static(ty, m, expr),
+            None => ItemKind::Const(ty, expr),
         };
         Ok((id, item))
     }
 
-    /// We were supposed to parse `:` but instead, we're already at `=`.
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
+    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
+    ///
+    /// When `m` is `"const"`, `$ident` may also be `"_"`.
+    fn parse_item_const_common(
+        &mut self,
+        m: Option<Mutability>,
+    ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
+        let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
+
+        // Parse the type of a `const` or `static mut?` item.
+        // That is, the `":" $ty` fragment.
+        let ty = if self.eat(&token::Colon) {
+            self.parse_ty()?
+        } else {
+            self.recover_missing_const_type(id, m)
+        };
+
+        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
+        self.expect_semi()?;
+        Ok((id, ty, expr))
+    }
+
+    /// We were supposed to parse `:` but the `:` was missing.
     /// This means that the type is missing.
     fn recover_missing_const_type(&mut self, id: Ident, m: Option<Mutability>) -> P<Ty> {
         // Construct the error and stash it away with the hope
@@ -1400,8 +1374,9 @@ impl<'a> Parser<'a> {
     }
 
     fn report_invalid_macro_expansion_item(&self, args: &MacArgs) {
+        let span = args.span().expect("undelimited macro call");
         let mut err = self.struct_span_err(
-            self.prev_span,
+            span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
         if self.unclosed_delims.is_empty() {
@@ -1416,14 +1391,14 @@ impl<'a> Parser<'a> {
             );
         } else {
             err.span_suggestion(
-                self.prev_span,
+                span,
                 "change the delimiters to curly braces",
                 " { /* items */ }".to_string(),
                 Applicability::HasPlaceholders,
             );
         }
         err.span_suggestion(
-            self.prev_span.shrink_to_hi(),
+            span.shrink_to_hi(),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,
