@@ -283,7 +283,7 @@ impl StructField {
         };
         let substs = Substs::type_params(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
-        Type::new(db, self.parent.module(db).id.krate.into(), var_id, ty)
+        Type::new(db, self.parent.module(db).id.krate, var_id, ty)
     }
 
     pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
@@ -315,11 +315,11 @@ impl Struct {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
-        db.struct_data(self.id.into()).name.clone()
+        db.struct_data(self.id).name.clone()
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
-        db.struct_data(self.id.into())
+        db.struct_data(self.id)
             .variant_data
             .fields()
             .iter()
@@ -332,7 +332,7 @@ impl Struct {
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
-        db.struct_data(self.id.into()).variant_data.clone()
+        db.struct_data(self.id).variant_data.clone()
     }
 }
 
@@ -1049,7 +1049,7 @@ impl Type {
         // FIXME check that?
         let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
         let environment = self.ty.environment.clone();
-        let ty = InEnvironment { value: canonical, environment: environment.clone() };
+        let ty = InEnvironment { value: canonical, environment };
         autoderef(db, Some(self.krate), ty)
             .map(|canonical| canonical.value)
             .map(move |ty| self.derived(ty))

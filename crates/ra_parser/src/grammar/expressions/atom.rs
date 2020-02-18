@@ -230,10 +230,8 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(T![async]);
     p.eat(T![move]);
     params::param_list_closure(p);
-    if opt_fn_ret_type(p) {
-        if !p.at(T!['{']) {
-            p.error("expected `{`");
-        }
+    if opt_fn_ret_type(p) && !p.at(T!['{']) {
+        p.error("expected `{`");
     }
 
     if p.at_ts(EXPR_FIRST) {

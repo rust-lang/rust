@@ -53,7 +53,7 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
         }
 
         let vis = strukt.visibility().map(|v| format!("{} ", v.syntax()));
-        let vis = vis.as_ref().map(String::as_str).unwrap_or("");
+        let vis = vis.as_deref().unwrap_or("");
         write!(&mut buf, "    {}fn new(", vis).unwrap();
 
         join(field_list.fields().filter_map(|f| {

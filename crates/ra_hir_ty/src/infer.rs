@@ -225,14 +225,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
-            body: db.body(owner.into()),
+            body: db.body(owner),
             resolver,
         }
     }
 
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
-        let mut result = mem::replace(&mut self.result, InferenceResult::default());
+        let mut result = std::mem::take(&mut self.result);
         for ty in result.type_of_expr.values_mut() {
             let resolved = self.table.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
             *ty = resolved;
@@ -261,7 +261,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: AssocItemId) {
-        self.result.assoc_resolutions.insert(id, item.into());
+        self.result.assoc_resolutions.insert(id, item);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -312,9 +312,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for obligation in obligations {
             let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
             let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
-            let solution = self
-                .db
-                .trait_solve(self.resolver.krate().unwrap().into(), canonicalized.value.clone());
+            let solution =
+                self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
             match solution {
                 Some(Solution::Unique(substs)) => {

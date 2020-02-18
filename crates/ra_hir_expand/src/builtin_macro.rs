@@ -158,7 +158,7 @@ fn compile_error_expand(
         match &tt.token_trees[0] {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => {
                 let s = it.text.as_str();
-                if s.contains(r#"""#) {
+                if s.contains('"') {
                     return Ok(quote! { loop { #it }});
                 }
             }
@@ -222,7 +222,7 @@ mod tests {
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let macro_calls: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(|it| ast::MacroCall::cast(it)).collect();
+            parsed.syntax_node().descendants().filter_map(ast::MacroCall::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 

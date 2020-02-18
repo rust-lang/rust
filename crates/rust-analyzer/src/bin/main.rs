@@ -4,7 +4,7 @@
 mod args;
 
 use lsp_server::Connection;
-use ra_prof;
+
 use rust_analyzer::{cli, from_json, show_message, Result, ServerConfig};
 
 use crate::args::HelpPrinted;

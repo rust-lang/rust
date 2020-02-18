@@ -409,7 +409,7 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         }
         curr = path.parent();
     }
-    Err(CargoTomlNotFoundError(path.to_path_buf()))?
+    Err(CargoTomlNotFoundError(path.to_path_buf()).into())
 }
 
 pub fn get_rustc_cfg_options() -> CfgOptions {

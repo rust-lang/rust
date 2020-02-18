@@ -214,7 +214,7 @@ pub fn iterate_method_candidates<T>(
             // the methods by autoderef order of *receiver types*, not *self
             // types*.
 
-            let deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty.clone()).collect();
+            let deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
             for i in 0..deref_chain.len() {
                 if let Some(result) = iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
@@ -290,7 +290,7 @@ fn iterate_method_candidates_with_autoref<T>(
         &ref_muted,
         deref_chain,
         db,
-        env.clone(),
+        env,
         krate,
         &traits_in_scope,
         name,
@@ -391,17 +391,17 @@ fn iterate_trait_method_candidates<T>(
         // iteration
         let mut known_implemented = false;
         for (_name, item) in data.items.iter() {
-            if !is_valid_candidate(db, name, receiver_ty, (*item).into(), self_ty) {
+            if !is_valid_candidate(db, name, receiver_ty, *item, self_ty) {
                 continue;
             }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, self_ty.clone());
-                if db.trait_solve(krate.into(), goal).is_none() {
+                if db.trait_solve(krate, goal).is_none() {
                     continue 'traits;
                 }
             }
             known_implemented = true;
-            if let Some(result) = callback(&self_ty.value, (*item).into()) {
+            if let Some(result) = callback(&self_ty.value, *item) {
                 return Some(result);
             }
         }
@@ -521,7 +521,7 @@ pub fn implements_trait(
         return true;
     }
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate.into(), goal);
+    let solution = db.trait_solve(krate, goal);
 
     solution.is_some()
 }

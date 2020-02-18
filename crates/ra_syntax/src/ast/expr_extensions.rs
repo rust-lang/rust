@@ -30,7 +30,7 @@ pub enum ElseBranch {
 
 impl ast::IfExpr {
     pub fn then_branch(&self) -> Option<ast::BlockExpr> {
-        self.blocks().nth(0)
+        self.blocks().next()
     }
     pub fn else_branch(&self) -> Option<ElseBranch> {
         let res = match self.blocks().nth(1) {
@@ -208,7 +208,7 @@ impl ast::BinExpr {
     }
 
     pub fn lhs(&self) -> Option<ast::Expr> {
-        children(self).nth(0)
+        children(self).next()
     }
 
     pub fn rhs(&self) -> Option<ast::Expr> {
@@ -271,7 +271,7 @@ impl ast::RangeExpr {
 
 impl ast::IndexExpr {
     pub fn base(&self) -> Option<ast::Expr> {
-        children(self).nth(0)
+        children(self).next()
     }
     pub fn index(&self) -> Option<ast::Expr> {
         children(self).nth(1)
@@ -287,7 +287,7 @@ impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
         if self.is_repeat() {
             ArrayExprKind::Repeat {
-                initializer: children(self).nth(0),
+                initializer: children(self).next(),
                 repeat: children(self).nth(1),
             }
         } else {
@@ -328,10 +328,10 @@ impl ast::Literal {
     }
 
     pub fn kind(&self) -> LiteralKind {
-        const INT_SUFFIXES: [&'static str; 12] = [
+        const INT_SUFFIXES: [&str; 12] = [
             "u64", "u32", "u16", "u8", "usize", "isize", "i64", "i32", "i16", "i8", "u128", "i128",
         ];
-        const FLOAT_SUFFIXES: [&'static str; 2] = ["f32", "f64"];
+        const FLOAT_SUFFIXES: [&str; 2] = ["f32", "f64"];
 
         let token = self.token();
 

@@ -259,8 +259,7 @@ mod tests {
         // }
         let struct_name = mk_ident("Foo");
         let fields = [mk_ident("name"), mk_ident("id")];
-        let fields =
-            fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees.clone()).flatten();
+        let fields = fields.iter().map(|it| quote!(#it: self.#it.clone(), ).token_trees).flatten();
 
         let list = tt::Subtree {
             delimiter: Some(tt::Delimiter {

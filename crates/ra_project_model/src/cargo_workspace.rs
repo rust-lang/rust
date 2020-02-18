@@ -164,7 +164,7 @@ impl CargoWorkspace {
             // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
             // https://github.com/oli-obk/cargo_metadata/issues/79
             meta.features(CargoOpt::NoDefaultFeatures);
-        } else if cargo_features.features.len() > 0 {
+        } else if !cargo_features.features.is_empty() {
             meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
         }
         if let Some(parent) = cargo_toml.parent() {

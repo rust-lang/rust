@@ -127,10 +127,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
                     Substs(sig_tys.into()),
                 );
-                let closure_ty = Ty::apply_one(
-                    TypeCtor::Closure { def: self.owner.into(), expr: tgt_expr },
-                    sig_ty,
-                );
+                let closure_ty =
+                    Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -165,7 +163,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let mut result_ty = if arms.len() == 0 {
+                let mut result_ty = if arms.is_empty() {
                     Ty::simple(TypeCtor::Never)
                 } else {
                     self.table.new_type_var()
@@ -188,7 +186,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = resolver_for_expr(self.db, self.owner.into(), tgt_expr);
+                let resolver = resolver_for_expr(self.db, self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
@@ -217,8 +215,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.unify(&ty, &expected.ty);
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                let field_types =
-                    def_id.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+                let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| variant_data(self.db, it));
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_def =
@@ -264,7 +261,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
                         TypeCtor::Adt(AdtId::StructId(s)) => {
                             self.db.struct_data(s).variant_data.field(name).map(|local_id| {
-                                let field = StructFieldId { parent: s.into(), local_id }.into();
+                                let field = StructFieldId { parent: s.into(), local_id };
                                 self.write_field_resolution(tgt_expr, field);
                                 self.db.field_types(s.into())[field.local_id]
                                     .clone()
@@ -700,10 +697,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             // construct a TraitDef
                             let substs =
                                 a_ty.parameters.prefix(generics(self.db, trait_.into()).len());
-                            self.obligations.push(Obligation::Trait(TraitRef {
-                                trait_: trait_.into(),
-                                substs,
-                            }));
+                            self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
                     }
                     CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {}

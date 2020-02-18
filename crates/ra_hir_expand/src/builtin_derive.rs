@@ -235,7 +235,7 @@ mod tests {
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let items: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(|it| ast::ModuleItem::cast(it)).collect();
+            parsed.syntax_node().descendants().filter_map(ast::ModuleItem::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 

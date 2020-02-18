@@ -17,7 +17,7 @@ use test_utils::skip_slow_tests;
 
 use crate::support::{project, Project};
 
-const PROFILE: &'static str = "";
+const PROFILE: &str = "";
 // const PROFILE: &'static str = "*@3>100";
 
 #[test]

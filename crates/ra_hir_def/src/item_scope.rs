@@ -138,7 +138,7 @@ impl ItemScope {
 
     pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(name.clone()).or_default();
+        let existing = self.visible.entry(name).or_default();
 
         if existing.types.is_none() && def.types.is_some() {
             existing.types = def.types;

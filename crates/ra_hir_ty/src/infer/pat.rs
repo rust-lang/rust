@@ -28,7 +28,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
-        let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+        let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
 
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = var_data
@@ -60,7 +60,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
-        let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+        let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
             let expected_ty =

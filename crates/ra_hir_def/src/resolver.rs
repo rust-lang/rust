@@ -474,7 +474,7 @@ impl Scope {
                     f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_, Visibility::Public)));
                 });
                 m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
-                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def.into(), Visibility::Public)));
+                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
@@ -499,10 +499,10 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(name![Self], ScopeDef::ImplSelfType((*i).into()));
+                f(name![Self], ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                f(name![Self], ScopeDef::AdtSelfType((*i).into()));
+                f(name![Self], ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(scope) => {
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {

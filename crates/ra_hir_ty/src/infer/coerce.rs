@@ -44,10 +44,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         resolver: &Resolver,
     ) -> FxHashMap<(TypeCtor, TypeCtor), usize> {
         let krate = resolver.krate().unwrap();
-        let impls = match db.lang_item(krate.into(), "coerce_unsized".into()) {
-            Some(LangItemTarget::TraitId(trait_)) => {
-                db.impls_for_trait(krate.into(), trait_.into())
-            }
+        let impls = match db.lang_item(krate, "coerce_unsized".into()) {
+            Some(LangItemTarget::TraitId(trait_)) => db.impls_for_trait(krate, trait_),
             _ => return FxHashMap::default(),
         };
 

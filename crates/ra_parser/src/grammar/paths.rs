@@ -94,7 +94,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
 
 fn opt_path_type_args(p: &mut Parser, mode: Mode) {
     match mode {
-        Mode::Use => return,
+        Mode::Use => {}
         Mode::Type => {
             // test path_fn_trait_args
             // type F = Box<Fn(i32) -> ()>;

@@ -167,7 +167,7 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
             => 1,
             TypeCtor::Adt(adt) => {
-                let generic_params = generics(db, AdtId::from(adt).into());
+                let generic_params = generics(db, adt.into());
                 generic_params.len()
             }
             TypeCtor::FnDef(callable) => {
@@ -247,7 +247,7 @@ pub struct ProjectionTy {
 
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef { trait_: self.trait_(db).into(), substs: self.parameters.clone() }
+        TraitRef { trait_: self.trait_(db), substs: self.parameters.clone() }
     }
 
     fn trait_(&self, db: &impl HirDatabase) -> TraitId {

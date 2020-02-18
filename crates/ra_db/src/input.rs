@@ -249,7 +249,7 @@ impl FromStr for Edition {
         let res = match s {
             "2015" => Edition::Edition2015,
             "2018" => Edition::Edition2018,
-            _ => Err(ParseEditionError { invalid_input: s.to_string() })?,
+            _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
         };
         Ok(res)
     }

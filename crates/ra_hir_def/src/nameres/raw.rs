@@ -357,9 +357,7 @@ impl RawItemsCollector {
             let visibility =
                 RawVisibility::from_ast_with_hygiene(extern_crate.visibility(), &self.hygiene);
             let alias = extern_crate.alias().map(|a| {
-                a.name()
-                    .map(|it| it.as_name())
-                    .map_or(ImportAlias::Underscore, |a| ImportAlias::Alias(a))
+                a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
             });
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
