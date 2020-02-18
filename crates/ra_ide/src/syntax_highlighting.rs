@@ -95,7 +95,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 _ if in_macro_call.is_some() => {
                     if let Some(token) = node.as_token() {
                         if let Some((tag, binding_hash)) = highlight_token_tree(
-                            db,
                             &mut sb,
                             &analyzer,
                             &mut bindings_shadow_count,
@@ -111,7 +110,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 }
                 _ => {
                     if let Some((tag, binding_hash)) = highlight_node(
-                        db,
                         &mut sb,
                         &mut bindings_shadow_count,
                         InFile::new(file_id.into(), node.clone()),
@@ -151,7 +149,6 @@ fn highlight_macro(node: InFile<SyntaxElement>) -> Option<TextRange> {
 }
 
 fn highlight_token_tree(
-    db: &RootDatabase,
     sb: &mut SourceBinder<RootDatabase>,
     analyzer: &SourceAnalyzer,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
@@ -160,7 +157,7 @@ fn highlight_token_tree(
     if token.value.parent().kind() != TOKEN_TREE {
         return None;
     }
-    let token = descend_into_macros_with_analyzer(db, analyzer, token);
+    let token = descend_into_macros_with_analyzer(sb.db, analyzer, token);
     let expanded = {
         let parent = token.value.parent();
         // We only care Name and Name_ref
@@ -170,15 +167,15 @@ fn highlight_token_tree(
         }
     };
 
-    highlight_node(db, sb, bindings_shadow_count, expanded)
+    highlight_node(sb, bindings_shadow_count, expanded)
 }
 
 fn highlight_node(
-    db: &RootDatabase,
     sb: &mut SourceBinder<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     node: InFile<SyntaxElement>,
 ) -> Option<(&'static str, Option<u64>)> {
+    let db = sb.db;
     let mut binding_hash = None;
     let tag = match node.value.kind() {
         FN_DEF => {
