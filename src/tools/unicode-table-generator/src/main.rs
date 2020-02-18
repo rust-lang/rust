@@ -219,7 +219,27 @@ fn version() -> String {
 }
 
 fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
-    let pieces = values.into_iter().map(|b| format!("{:?}, ", b)).collect::<Vec<_>>();
+    // This closure is used to prevent having numbers emitted without an underscore
+    let insert_underscores = |number: V| -> String {
+        let number_as_string = format!("{:?}", number);
+        if number_as_string.len() >= 6
+            && !number_as_string.contains(",")
+            && !number_as_string.contains(" ")
+        {
+            let mut final_number = String::new();
+            for (index, digit) in number_as_string.chars().rev().enumerate() {
+                if index % 3 == 0 && index != 0 {
+                    final_number.push('_');
+                }
+                final_number.push(digit);
+            }
+            final_number.chars().rev().collect::<String>()
+        } else {
+            number_as_string
+        }
+    };
+    let pieces =
+        values.into_iter().map(|b| format!("{}, ", insert_underscores(b))).collect::<Vec<_>>();
     let mut out = String::new();
     let mut line = format!("\n    ");
     for piece in pieces {
