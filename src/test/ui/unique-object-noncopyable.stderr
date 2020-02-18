@@ -4,15 +4,12 @@ error[E0599]: no method named `clone` found for struct `std::boxed::Box<dyn Foo>
 LL | trait Foo {
    | ---------
    | |
-   | this trait doesn't satisfy the bound `std::clone::Clone`
-   | this trait doesn't satisfy the bound `std::marker::Sized`
+   | the method `clone` exists but this trait doesn't satisfy the bound `dyn Foo: std::clone::Clone`
+   | the method `clone` exists but this trait doesn't satisfy the bound `dyn Foo: std::marker::Sized`
 ...
 LL |     let _z = y.clone();
    |                ^^^^^ method not found in `std::boxed::Box<dyn Foo>`
    |
-   = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `dyn Foo: std::clone::Clone`
-           `dyn Foo: std::marker::Sized`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

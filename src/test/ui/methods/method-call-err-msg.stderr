@@ -38,13 +38,11 @@ LL | pub struct Foo;
    | ---------------
    | |
    | method `take` not found for this
-   | this type doesn't satisfy the bound `std::iter::Iterator`
+   | the method `take` exists but this type doesn't satisfy the bound `Foo: std::iter::Iterator`
 ...
 LL |      .take()
    |       ^^^^ method not found in `Foo`
    |
-   = note: the method `take` exists but the following trait bounds were not satisfied:
-           `Foo: std::iter::Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `take`, perhaps you need to implement one of them:
            candidate #1: `std::io::Read`
