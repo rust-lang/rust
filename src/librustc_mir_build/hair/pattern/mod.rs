@@ -769,7 +769,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     Some(span),
                 ) {
                     Ok(value) => {
-                        let pattern = self.const_to_pat(value, id, span);
+                        let const_ =
+                            ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
+
+                        let pattern = self.const_to_pat(&const_, id, span);
                         if !is_associated_const {
                             return pattern;
                         }
@@ -789,7 +792,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                         user_ty_span: span,
                                     },
                                 }),
-                                ty: value.ty,
+                                ty: const_.ty,
                             }
                         } else {
                             pattern

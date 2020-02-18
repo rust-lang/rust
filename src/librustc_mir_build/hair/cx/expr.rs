@@ -418,7 +418,17 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 None,
                 Some(span),
             ) {
-                Ok(cv) => cv.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()),
+                Ok(cv) => {
+                    if let Some(count) = cv.try_to_bits_for_ty(
+                        cx.tcx,
+                        ty::ParamEnv::reveal_all(),
+                        cx.tcx.types.usize,
+                    ) {
+                        count as u64
+                    } else {
+                        bug!("repeat count constant value can't be converted to usize");
+                    }
+                }
                 Err(ErrorHandled::Reported) => 0,
                 Err(ErrorHandled::TooGeneric) => {
                     let span = cx.tcx.def_span(def_id);

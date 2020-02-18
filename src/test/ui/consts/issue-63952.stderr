@@ -1,0 +1,17 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/issue-63952.rs:18:1
+   |
+LL | / const SLICE_WAY_TOO_LONG: &[u8] = unsafe {
+LL | |     SliceTransmute {
+LL | |         repr: SliceRepr {
+LL | |             ptr: &42,
+...  |
+LL | |     .slice
+LL | | };
+   | |__^ invalid slice: total size is bigger than largest supported object
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

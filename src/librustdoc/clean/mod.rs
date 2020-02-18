@@ -1332,7 +1332,9 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
                 let length = match cx.tcx.const_eval_poly(def_id) {
-                    Ok(length) => print_const(cx, length),
+                    Ok(length) => {
+                        print_const(cx, ty::Const::from_value(cx.tcx, length, cx.tcx.types.usize))
+                    }
                     Err(_) => cx
                         .sess()
                         .source_map()

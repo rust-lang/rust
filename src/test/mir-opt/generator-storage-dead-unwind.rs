@@ -49,7 +49,7 @@ fn main() {
 //     StorageLive(_4);
 //     _4 = Bar(const 6i32,);
 //     ...
-//     _1 = suspend(move _6) -> [resume: bb2, drop: bb4];
+//     _5 = yield(move _6) -> [resume: bb2, drop: bb4];
 // }
 // bb1 (cleanup): {
 //     resume;

@@ -1,7 +1,7 @@
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 use rustc::mir;
-use rustc::mir::interpret::ErrorHandled;
+use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::ty::layout::{self, HasTyCtxt};
 use rustc::ty::{self, Ty};
 use rustc_index::vec::Idx;
@@ -30,7 +30,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => {
                 let val = self.eval_mir_constant(constant)?;
-                Ok(OperandRef::from_const(bx, val))
+                let ty = self.monomorphize(&constant.literal.ty);
+                Ok(OperandRef::from_const(bx, val.clone(), ty))
             }
         }
     }
@@ -38,7 +39,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &mut self,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match constant.literal.val {
             ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
                 let substs = self.monomorphize(&substs);
@@ -55,7 +56,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         err
                     })
             }
-            _ => Ok(self.monomorphize(&constant.literal)),
+            ty::ConstKind::Value(value) => Ok(value),
+            _ => {
+                let const_ = self.monomorphize(&constant.literal);
+                if let ty::ConstKind::Value(value) = const_.val {
+                    Ok(value)
+                } else {
+                    span_bug!(constant.span, "encountered bad ConstKind in codegen: {:?}", const_);
+                }
+            }
         }
     }
 
@@ -65,21 +74,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
+        constant: Result<ConstValue<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
-            .map(|c| {
-                let field_ty = c.ty.builtin_index().unwrap();
-                let fields = match c.ty.kind {
+            .map(|val| {
+                let field_ty = ty.builtin_index().unwrap();
+                let fields = match ty.kind {
                     ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
-                    _ => bug!("invalid simd shuffle type: {}", c.ty),
+                    _ => bug!("invalid simd shuffle type: {}", ty),
                 };
+                let c = ty::Const::from_value(bx.tcx(), val, ty);
                 let values: Vec<_> = (0..fields)
                     .map(|field| {
                         let field = bx.tcx().const_field(
                             ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize))),
                         );
-                        if let Some(prim) = field.val.try_to_scalar() {
+                        if let Some(prim) = field.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
                                 layout::Abi::Scalar(ref x) => x,
