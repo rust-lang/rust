@@ -1,5 +1,4 @@
-use crate::utils::is_adjusted;
-use crate::utils::span_lint;
+use crate::utils::{is_adjusted, span_lint};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

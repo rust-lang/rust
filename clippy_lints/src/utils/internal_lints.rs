@@ -11,12 +11,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::declare_tool_lint;
-use rustc_session::{declare_lint_pass, impl_lint_pass};
+use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::SymbolStr;
-use syntax::ast;
-use syntax::ast::{Crate as AstCrate, ItemKind, LitKind, Name};
+use syntax::ast::{Crate as AstCrate, ItemKind, LitKind, Name, NodeId};
 use syntax::visit::FnKind;
 
 declare_clippy_lint! {
@@ -380,7 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
 declare_lint_pass!(ProduceIce => [PRODUCE_ICE]);
 
 impl EarlyLintPass for ProduceIce {
-    fn check_fn(&mut self, _: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: ast::NodeId) {
+    fn check_fn(&mut self, _: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
         if is_trigger_fn(fn_kind) {
             panic!("Would you like some help with that?");
         }

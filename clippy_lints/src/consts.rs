@@ -11,7 +11,6 @@ use rustc_hir::*;
 use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
-use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};

@@ -1,9 +1,7 @@
 //! lint on indexing and slicing operations
 
 use crate::consts::{constant, Constant};
-use crate::utils;
-use crate::utils::higher;
-use crate::utils::higher::Range;
+use crate::utils::{higher, span_lint, span_lint_and_help};
 use rustc::ty;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -100,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 
                     if let (Some(start), _) = const_range {
                         if start > size {
-                            utils::span_lint(
+                            span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
                                 range.start.map_or(expr.span, |start| start.span),
@@ -112,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 
                     if let (_, Some(end)) = const_range {
                         if end > size {
-                            utils::span_lint(
+                            span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
                                 range.end.map_or(expr.span, |end| end.span),
@@ -136,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
-                utils::span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
+                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind {
@@ -147,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                     }
                 }
 
-                utils::span_lint_and_help(
+                span_lint_and_help(
                     cx,
                     INDEXING_SLICING,
                     expr.span,
@@ -163,7 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 /// the range. If the start or end is not constant, None is returned.
 fn to_const_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    range: Range<'_>,
+    range: higher::Range<'_>,
     array_size: u128,
 ) -> (Option<u128>, Option<u128>) {
     let s = range.start.map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));

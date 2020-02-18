@@ -12,9 +12,8 @@ use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
-use syntax::ast;
-use syntax::token;
 use syntax::util::parser::AssocOp;
+use syntax::{ast, token};
 
 pub use crate::literal_representation::format_numeric_literal;
 
