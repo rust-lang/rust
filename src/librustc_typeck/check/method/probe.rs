@@ -1426,17 +1426,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                             }
                                         }
                                     }
-                                    _ => {}
+                                    _ => {
+                                        // Some nested subobligation of this predicate
+                                        // failed.
+                                        //
+                                        // FIXME: try to find the exact nested subobligation
+                                        // and point at it rather than reporting the entire
+                                        // trait-ref?
+                                        result = ProbeResult::NoMatch;
+                                        let trait_ref = self.resolve_vars_if_possible(&trait_ref);
+                                        possibly_unsatisfied_predicates.push(trait_ref);
+                                    }
                                 }
-                                // Some nested subobligation of this predicate
-                                // failed.
-                                //
-                                // FIXME: try to find the exact nested subobligation
-                                // and point at it rather than reporting the entire
-                                // trait-ref?
-                                result = ProbeResult::NoMatch;
-                                let trait_ref = self.resolve_vars_if_possible(&trait_ref);
-                                possibly_unsatisfied_predicates.push(trait_ref);
                             });
                         }
                     }

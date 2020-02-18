@@ -11,10 +11,7 @@ error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the c
   --> $DIR/union-derive-clone.rs:37:15
    |
 LL | union U5<T> {
-   | -----------
-   | |
-   | method `clone` not found for this
-   | this type doesn't satisfy the bound `std::clone::Clone`
+   | ----------- method `clone` not found for this
 ...
 LL | struct CloneNoCopy;
    | ------------------- this type doesn't satisfy the bound `std::marker::Copy`
@@ -24,7 +21,6 @@ LL |     let w = u.clone();
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `CloneNoCopy: std::marker::Copy`
-           `U5<CloneNoCopy>: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`
