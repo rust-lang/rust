@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::Idx;
 
 use crate::modified_set as ms;
 use crate::unify as ut;
@@ -10,7 +10,6 @@ pub struct LoggedUnificationTable<K: ut::UnifyKey, I: Idx = K> {
     relations: ut::UnificationTable<ut::InPlace<K>>,
     unify_log: ul::UnifyLog<I>,
     modified_set: ms::ModifiedSet<I>,
-    reference_counts: IndexVec<I, u32>,
 }
 
 impl<K, I> LoggedUnificationTable<K, I>
@@ -23,7 +22,6 @@ where
             relations: ut::UnificationTable::new(),
             unify_log: ul::UnifyLog::new(),
             modified_set: ms::ModifiedSet::new(),
-            reference_counts: IndexVec::new(),
         }
     }
 
@@ -38,7 +36,7 @@ where
     where
         K::Value: ut::UnifyValue<Error = ut::NoError>,
     {
-        if self.needs_log(vid) {
+        if self.unify_log.needs_log(vid) {
             warn!("ModifiedSet {:?} => {:?}", vid, ty);
             self.modified_set.set(vid);
         }
@@ -59,7 +57,7 @@ where
         value: K::Value,
     ) -> Result<(), <K::Value as ut::UnifyValue>::Error> {
         let vid = self.find(vid).into();
-        if self.needs_log(vid) {
+        if self.unify_log.needs_log(vid) {
             self.modified_set.set(vid);
         }
         self.relations.unify_var_value(vid, value)
@@ -75,22 +73,11 @@ where
         self.relations.unify_var_var(a, b)?;
 
         if a == self.relations.find(a) {
-            if self.needs_log(b.into()) {
-                warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
-                self.unify_log.unify(a.into(), b.into());
-            }
+            self.unify_log.unify(a.into(), b.into());
         } else {
-            if self.needs_log(a.into()) {
-                warn!("Log: {:?} {:?} => {:?}", a, b, I::from(self.relations.find(a)));
-                self.unify_log.unify(b.into(), a.into());
-            }
+            self.unify_log.unify(b.into(), a.into());
         }
         Ok(())
-    }
-
-    fn needs_log(&self, vid: I) -> bool {
-        !self.unify_log.get(vid).is_empty()
-            || self.reference_counts.get(vid).map_or(false, |c| *c != 0)
     }
 
     pub fn union_value(&mut self, vid: I, value: K::Value)
@@ -154,12 +141,11 @@ where
 
     pub fn watch_variable(&mut self, index: I) {
         debug_assert!(index == self.relations.find(index).into());
-        self.reference_counts.ensure_contains_elem(index, || 0);
-        self.reference_counts[index] += 1;
+        self.unify_log.watch_variable(index)
     }
 
     pub fn unwatch_variable(&mut self, index: I) {
-        self.reference_counts[index] -= 1;
+        self.unify_log.unwatch_variable(index)
     }
 
     pub fn drain_modified_set(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I) -> bool) {
