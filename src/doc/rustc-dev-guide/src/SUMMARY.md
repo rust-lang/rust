@@ -53,6 +53,8 @@
         - [Debugging](./hir-debugging.md)
     - [Closure expansion](./closure.md)
     - [The `ty` module: representing types](./ty.md)
+        - [Generics and substitutions](./generics.md)
+        - [`TypeFolder` and `TypeFoldable`](./ty-fold.md)
     - [Generic arguments](./generic_arguments.md)
     - [Type inference](./type-inference.md)
     - [Trait solving (old-style)](./traits/resolution.md)
