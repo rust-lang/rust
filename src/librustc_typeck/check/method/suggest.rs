@@ -7,7 +7,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::Map;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -537,10 +537,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !unsatisfied_predicates.is_empty() {
                     let def_span =
                         |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
+                    let mut type_params = FxHashMap::default();
                     let mut bound_spans = vec![];
+                    let mut collect_type_param_suggestions =
+                        |self_ty: Ty<'_>, parent_pred: &ty::Predicate<'_>, obligation: &str| {
+                            if let (ty::Param(_), ty::Predicate::Trait(p, _)) =
+                                (&self_ty.kind, parent_pred)
+                            {
+                                if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
+                                    let id = self.tcx.hir().as_local_hir_id(def.did).unwrap();
+                                    let node = self.tcx.hir().get(id);
+                                    match node {
+                                        hir::Node::Item(hir::Item { kind, .. }) => {
+                                            if let Some(g) = kind.generics() {
+                                                let key = match &g.where_clause.predicates[..] {
+                                                    [.., pred] => {
+                                                        (pred.span().shrink_to_hi(), false)
+                                                    }
+                                                    [] => (
+                                                        g.where_clause
+                                                            .span_for_predicates_or_empty_place(),
+                                                        true,
+                                                    ),
+                                                };
+                                                type_params
+                                                    .entry(key)
+                                                    .or_insert_with(FxHashSet::default)
+                                                    .insert(obligation.to_owned());
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        };
                     let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
                         let msg = format!(
-                            "doesn't satisfy {}",
+                            "doesn't satisfy `{}`",
                             if obligation.len() > 50 { quiet } else { obligation }
                         );
                         match &self_ty.kind {
@@ -560,7 +593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             // Point at the closure that couldn't satisfy the bound.
                             ty::Closure(def_id, _) => bound_spans
-                                .push((def_span(*def_id), format!("doesn't satisfy {}", quiet))),
+                                .push((def_span(*def_id), format!("doesn't satisfy `{}`", quiet))),
                             _ => {}
                         }
                     };
@@ -574,25 +607,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .tcx
                                     .associated_item(pred.skip_binder().projection_ty.item_def_id);
                                 let ty = pred.skip_binder().ty;
-                                let obligation =
-                                    format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
+                                let obligation = format!("{}::{} = {}", trait_ref, assoc.ident, ty);
                                 let quiet = format!(
-                                    "`<_ as {}>::{} = {}`",
+                                    "<_ as {}>::{} = {}",
                                     trait_ref.print_only_trait_path(),
                                     assoc.ident,
                                     ty
                                 );
                                 bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
-                                Some(obligation)
+                                Some((obligation, trait_ref.self_ty()))
                             }
                             ty::Predicate::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.skip_binder().trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
-                                let obligation = format!("`{}: {}`", self_ty, path);
-                                let quiet = format!("`_: {}`", path);
+                                let obligation = format!("{}: {}", self_ty, path);
+                                let quiet = format!("_: {}", path);
                                 bound_span_label(self_ty, &obligation, &quiet);
-                                Some(obligation)
+                                Some((obligation, self_ty))
                             }
                             _ => None,
                         }
@@ -600,17 +632,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_list = unsatisfied_predicates
                         .iter()
                         .filter_map(|(pred, parent_pred)| {
-                            format_pred(*pred).map(|pred| match parent_pred {
-                                None => pred,
+                            format_pred(*pred).map(|(p, self_ty)| match parent_pred {
+                                None => format!("`{}`", p),
                                 Some(parent_pred) => match format_pred(*parent_pred) {
-                                    None => pred,
-                                    Some(parent_pred) => {
-                                        format!("{} which is required by {}", pred, parent_pred)
+                                    None => format!("`{}`", p),
+                                    Some((parent_p, _)) => {
+                                        collect_type_param_suggestions(self_ty, parent_pred, &p);
+                                        format!("`{}` which is required by `{}`", p, parent_p)
                                     }
                                 },
                             })
                         })
                         .collect::<Vec<String>>();
+                    for ((span, empty_where), obligations) in type_params.into_iter() {
+                        err.span_suggestion_verbose(
+                            span,
+                            &format!(
+                                "consider restricting the type parameter{s} to satisfy the \
+                                 obligation{s}",
+                                s = pluralize!(obligations.len())
+                            ),
+                            format!(
+                                "{} {}",
+                                if empty_where { " where" } else { "," },
+                                obligations.into_iter().collect::<Vec<_>>().join(", ")
+                            ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+
                     bound_list.sort();
                     bound_list.dedup(); // #35677
                     bound_spans.sort();
