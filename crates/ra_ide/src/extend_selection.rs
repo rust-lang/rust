@@ -44,6 +44,7 @@ fn try_extend_selection(
         ARRAY_EXPR,
         TUPLE_EXPR,
         TUPLE_TYPE,
+        TUPLE_PAT,
         WHERE_CLAUSE,
     ];
 
@@ -603,6 +604,32 @@ fn main() { let var = (
     _crate_def_map<|>,
     module_id
 ); }"#,
+            &[
+                "_crate_def_map",
+                "_crate_def_map,",
+                "(\n    krate,\n    _crate_def_map,\n    module_id\n)",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_on_tuple_pat() {
+        do_check(
+            r#"fn main() { let (krate, _crate_def_map<|>, module_id) = var; }"#,
+            &["_crate_def_map", "_crate_def_map, ", "(krate, _crate_def_map, module_id)"],
+        );
+        // white space variations
+        do_check(
+            r#"fn main() { let (krate,_crate<|>_def_map,module_id) = var; }"#,
+            &["_crate_def_map", "_crate_def_map,", "(krate,_crate_def_map,module_id)"],
+        );
+        do_check(
+            r#"
+fn main() { let (
+    krate,
+    _crate_def_map<|>,
+    module_id
+) = var; }"#,
             &[
                 "_crate_def_map",
                 "_crate_def_map,",
