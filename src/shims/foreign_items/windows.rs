@@ -196,6 +196,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.gen_random(ptr, len as usize)?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
+            // We don't support threading.
+            "CreateThread" => {
+                throw_unsup_format!("Miri does not support threading");
+            }
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }
 

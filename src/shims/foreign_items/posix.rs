@@ -240,10 +240,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // We don't support threading. (Also for Windows.)
-            | "pthread_create"
-            | "CreateThread"
-            => {
+            // We don't support threading.
+            "pthread_create" => {
                 throw_unsup_format!("Miri does not support threading");
             }
 
