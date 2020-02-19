@@ -835,13 +835,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Option<EvaluationResult> {
         let tcx = self.tcx();
-        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+        // FIXME(eddyb) pass in the `ty::PolyTraitPredicate` instead.
+        let predicate = trait_ref.map_bound(|trait_ref| ty::TraitPredicate { trait_ref });
+        // FIXME(eddyb) reuse the key between checking the cache and inserting.
+        let cache_key = param_env.and(predicate);
+        let cache = if self.can_use_global_caches(&cache_key) {
             &tcx.evaluation_cache
         } else {
             &self.infcx.evaluation_cache
         };
 
-        cache.hashmap.borrow().get(&param_env.and(trait_ref)).map(|v| v.get(tcx))
+        cache.hashmap.borrow().get(&cache_key).map(|v| v.get(tcx))
     }
 
     fn insert_evaluation_cache(
@@ -857,7 +861,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+        // FIXME(eddyb) pass in the `ty::PolyTraitPredicate` instead.
+        let predicate = trait_ref.map_bound(|trait_ref| ty::TraitPredicate { trait_ref });
+        // FIXME(eddyb) reuse the key between checking the cache and inserting.
+        let cache_key = param_env.and(predicate);
+        let cache = if self.can_use_global_caches(&cache_key) {
             debug!(
                 "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
                 trait_ref, result,
@@ -872,10 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &self.infcx.evaluation_cache
         };
 
-        cache
-            .hashmap
-            .borrow_mut()
-            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
+        cache.hashmap.borrow_mut().insert(cache_key, WithDepNode::new(dep_node, result));
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -950,7 +955,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
         if let Some(c) =
-            self.check_candidate_cache(stack.obligation.param_env, &cache_fresh_trait_pred)
+            self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
         {
             debug!("CACHE HIT: SELECT({:?})={:?}", cache_fresh_trait_pred, c);
             return c;
@@ -1208,13 +1213,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Returns `true` if the global caches can be used.
-    /// Do note that if the type itself is not in the
-    /// global tcx, the local caches will be used.
-    fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
-        // If there are any e.g. inference variables in the `ParamEnv`, then we
-        // always use a cache local to this particular scope. Otherwise, we
-        // switch to a global cache.
-        if param_env.has_local_value() {
+    fn can_use_global_caches(
+        &self,
+        cache_key: &ty::ParamEnvAnd<'tcx, ty::PolyTraitPredicate<'tcx>>,
+    ) -> bool {
+        // If there are any e.g. inference variables in the `ParamEnv` or predicate,
+        // then we always use a cache local to this particular inference context.
+        // Otherwise, we switch to a global cache.
+        if cache_key.has_local_value() {
             return false;
         }
 
@@ -1236,17 +1242,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_candidate_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>,
+        cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         let tcx = self.tcx();
-        let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
-        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+        // FIXME(eddyb) reuse the key between checking the cache and inserting.
+        let cache_key = param_env.and(cache_fresh_trait_pred);
+        let cache = if self.can_use_global_caches(&cache_key) {
             &tcx.selection_cache
         } else {
             &self.infcx.selection_cache
         };
 
-        cache.hashmap.borrow().get(&param_env.and(*trait_ref)).map(|v| v.get(tcx))
+        cache.hashmap.borrow().get(&cache_key).map(|v| v.get(tcx))
     }
 
     /// Determines whether can we safely cache the result
@@ -1284,13 +1291,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         span: rustc_span::Span,
     ) {
         let tcx = self.tcx();
-        let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
 
         if !self.can_cache_candidate(&candidate) {
             debug!(
-                "insert_candidate_cache(trait_ref={:?}, candidate={:?} -\
+                "insert_candidate_cache(predicate={:?}, candidate={:?} -\
                  candidate is not cacheable",
-                trait_ref, candidate
+                cache_fresh_trait_pred, candidate
             );
             return;
         }
@@ -1300,33 +1306,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+        // FIXME(eddyb) reuse the key between checking the cache and inserting.
+        let cache_key = param_env.and(cache_fresh_trait_pred);
+        let cache = if self.can_use_global_caches(&cache_key) {
             if candidate.has_local_value() {
                 span_bug!(
                     span,
-                    "selecting inference-free `{}` resulted in `{:?}`?!",
-                    trait_ref,
+                    "selecting inference-free `{:?}` resulted in `{:?}`?!",
+                    cache_fresh_trait_pred,
                     candidate,
                 );
             }
             debug!(
-                "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
-                trait_ref, candidate,
+                "insert_candidate_cache(predicate={:?}, candidate={:?}) global",
+                cache_fresh_trait_pred, candidate,
             );
             // This may overwrite the cache with the same value.
             &tcx.selection_cache
         } else {
             debug!(
-                "insert_candidate_cache(trait_ref={:?}, candidate={:?}) local",
-                trait_ref, candidate,
+                "insert_candidate_cache(predicate={:?}, candidate={:?}) local",
+                cache_fresh_trait_pred, candidate,
             );
             &self.infcx.selection_cache
         };
 
-        cache
-            .hashmap
-            .borrow_mut()
-            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
+        cache.hashmap.borrow_mut().insert(cache_key, WithDepNode::new(dep_node, candidate));
     }
 
     fn assemble_candidates<'o>(

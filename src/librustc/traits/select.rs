@@ -17,7 +17,7 @@ use rustc_hir::def_id::DefId;
 pub struct SelectionCache<'tcx> {
     pub hashmap: Lock<
         FxHashMap<
-            ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>,
+            ty::ParamEnvAnd<'tcx, ty::PolyTraitPredicate<'tcx>>,
             WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>,
         >,
     >,
@@ -261,7 +261,10 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
 #[derive(Clone, Default)]
 pub struct EvaluationCache<'tcx> {
     pub hashmap: Lock<
-        FxHashMap<ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>, WithDepNode<EvaluationResult>>,
+        FxHashMap<
+            ty::ParamEnvAnd<'tcx, ty::PolyTraitPredicate<'tcx>>,
+            WithDepNode<EvaluationResult>,
+        >,
     >,
 }
 
