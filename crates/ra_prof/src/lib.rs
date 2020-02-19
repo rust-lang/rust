@@ -315,6 +315,7 @@ fn idx_to_children(msgs: &[Message]) -> Vec<Vec<usize>> {
 }
 
 /// Prints backtrace to stderr, useful for debugging.
+#[cfg(feature = "backtrace")]
 pub fn print_backtrace() {
     let bt = backtrace::Backtrace::new();
     eprintln!("{:?}", bt);
