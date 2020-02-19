@@ -57,6 +57,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         execute_command_provider: None,
         workspace: None,
         call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
+        semantic_tokens_provider: None,
         experimental: Default::default(),
     }
 }
