@@ -2,7 +2,7 @@ error[E0599]: no method named `foo` found for reference `&dyn Foo` in the curren
   --> $DIR/issue-5153.rs:10:27
    |
 LL | trait Foo {
-   | --------- this trait defines an item `foo`
+   | --------- `Foo` defines an item `foo`
 ...
 LL |     (&5isize as &dyn Foo).foo();
    |                           ^^^ method not found in `&dyn Foo`

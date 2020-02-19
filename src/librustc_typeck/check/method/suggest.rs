@@ -574,14 +574,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .tcx
                                     .associated_item(pred.skip_binder().projection_ty.item_def_id);
                                 let ty = pred.skip_binder().ty;
-                                let msg = format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
+                                let obligation =
+                                    format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
                                 let quiet = format!(
                                     "`<_ as {}>::{} = {}`",
                                     trait_ref.print_only_trait_path(),
                                     assoc.ident,
                                     ty
                                 );
-                                bound_span_label(trait_ref.self_ty(), &msg, &quiet);
+                                bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
                                 Some(obligation)
                             }
                             ty::Predicate::Trait(poly_trait_ref, _) => {
@@ -994,7 +995,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(span) = self.tcx.hir().span_if_local(trait_info.def_id) {
                         err.span_label(
                             self.tcx.sess.source_map().def_span(span),
-                            &format!("this trait defines an item `{}`", item_name),
+                            &format!(
+                                "`{}` defines an item `{}`",
+                                self.tcx.def_path_str(trait_info.def_id),
+                                item_name
+                            ),
                         );
                         use_note = false
                     }
