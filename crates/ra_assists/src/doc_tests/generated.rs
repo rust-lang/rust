@@ -549,6 +549,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_remove_mut() {
+    check(
+        "remove_mut",
+        r#####"
+impl Walrus {
+    fn feed(&mut<|> self, amount: u32) {}
+}
+"#####,
+        r#####"
+impl Walrus {
+    fn feed(&self, amount: u32) {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_if_let_with_match() {
     check(
         "replace_if_let_with_match",

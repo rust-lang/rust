@@ -527,6 +527,22 @@ fn main() {
 }
 ```
 
+## `remove_mut`
+
+Removes the `mut` keyword.
+
+```rust
+// BEFORE
+impl Walrus {
+    fn feed(&mut┃ self, amount: u32) {}
+}
+
+// AFTER
+impl Walrus {
+    fn feed(&self, amount: u32) {}
+}
+```
+
 ## `replace_if_let_with_match`
 
 Replaces `if let` with an else branch with a `match` expression.
