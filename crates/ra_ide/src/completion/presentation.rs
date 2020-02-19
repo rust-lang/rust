@@ -135,11 +135,7 @@ impl Completions {
             let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
             // Ensure to match the full word
             if after.starts_with('!')
-                && before
-                    .chars()
-                    .rev()
-                    .next()
-                    .map_or(true, |c| c != '_' && !c.is_ascii_alphanumeric())
+                && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
             {
                 // It may have spaces before the braces like `foo! {}`
                 match after[1..].chars().find(|&c| !c.is_whitespace()) {

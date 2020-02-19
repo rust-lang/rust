@@ -743,4 +743,21 @@ fn func(foo: i32) { if true { <|>foo; }; }
             &["u32"],
         );
     }
+
+    #[test]
+    fn test_hover_non_ascii_space_doc() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            ///　<- `\u{3000}` here
+            fn foo() {
+            }
+
+            fn bar() {
+                fo<|>o();
+            }
+            ",
+            &["fn foo()\n```\n\n<- `\u{3000}` here"],
+        );
+    }
 }
