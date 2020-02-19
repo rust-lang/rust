@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::fs::{remove_file, rename, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -18,18 +18,48 @@ pub struct FileHandle {
     writable: bool,
 }
 
+#[derive(Debug, Default)]
 pub struct FileHandler {
-    handles: HashMap<i32, FileHandle>,
-    low: i32,
+    handles: BTreeMap<i32, FileHandle>,
 }
 
-impl Default for FileHandler {
-    fn default() -> Self {
-        FileHandler {
-            handles: Default::default(),
-            // 0, 1 and 2 are reserved for stdin, stdout and stderr.
-            low: 3,
-        }
+// fd numbers 0, 1, and 2 are reserved for stdin, stdout, and stderr
+const MIN_NORMAL_FILE_FD: i32 = 3;
+
+impl FileHandler {
+    fn insert_fd(&mut self, file_handle: FileHandle) -> i32 {
+        self.insert_fd_with_min_fd(file_handle, 0)
+    }
+
+    fn insert_fd_with_min_fd(&mut self, file_handle: FileHandle, min_fd: i32) -> i32 {
+        let min_fd = std::cmp::max(min_fd, MIN_NORMAL_FILE_FD);
+
+        // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
+        // between used FDs, the find_map combinator will return it. If the first such unused FD
+        // is after all other used FDs, the find_map combinator will return None, and we will use
+        // the FD following the greatest FD thus far.
+        let candidate_new_fd = self
+            .handles
+            .range(min_fd..)
+            .zip(min_fd..)
+            .find_map(|((fd, _fh), counter)| {
+                if *fd != counter {
+                    // There was a gap in the fds stored, return the first unused one
+                    // (note that this relies on BTreeMap iterating in key order)
+                    Some(counter)
+                } else {
+                    // This fd is used, keep going
+                    None
+                }
+            });
+        let new_fd = candidate_new_fd.unwrap_or_else(|| {
+            // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
+            // maximum fd in the map
+            self.handles.last_entry().map(|entry| entry.key() + 1).unwrap_or(min_fd)
+        });
+
+        self.handles.insert(new_fd, file_handle).unwrap_none();
+        new_fd
     }
 }
 
@@ -107,10 +137,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let fd = options.open(&path).map(|file| {
-            let mut fh = &mut this.machine.file_handler;
-            fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file, writable }).unwrap_none();
-            fh.low
+            let fh = &mut this.machine.file_handler;
+            fh.insert_fd(FileHandle { file, writable })
         });
 
         this.try_unwrap_io_result(fd)
@@ -120,7 +148,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        _arg1_op: Option<OpTy<'tcx, Tag>>,
+        start_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -139,6 +167,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             } else {
                 this.handle_not_found()
             }
+        } else if cmd == this.eval_libc_i32("F_DUPFD")?
+            || cmd == this.eval_libc_i32("F_DUPFD_CLOEXEC")?
+        {
+            // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
+            // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
+            // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
+            // thus they can share the same implementation here.
+            if fd < MIN_NORMAL_FILE_FD {
+                throw_unsup_format!("Duplicating file descriptors for stdin, stdout, or stderr is not supported")
+            }
+            let start_op = start_op.ok_or_else(|| {
+                err_unsup_format!(
+                    "fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"
+                )
+            })?;
+            let start = this.read_scalar(start_op)?.to_i32()?;
+            let fh = &mut this.machine.file_handler;
+            let (file_result, writable) = match fh.handles.get(&fd) {
+                Some(FileHandle { file, writable }) => (file.try_clone(), *writable),
+                None => return this.handle_not_found(),
+            };
+            let fd_result = file_result.map(|duplicated| {
+                fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
+            });
+            this.try_unwrap_io_result(fd_result)
         } else {
             throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
@@ -151,23 +204,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.remove(&fd) {
             // We sync the file if it was opened in a mode different than read-only.
-            if handle.writable {
+            if writable {
                 // `File::sync_all` does the checks that are done when closing a file. We do this to
                 // to handle possible errors correctly.
-                let result = this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32));
+                let result = this.try_unwrap_io_result(file.sync_all().map(|_| 0i32));
                 // Now we actually close the file.
-                drop(handle);
+                drop(file);
                 // And return the result.
                 result
             } else {
                 // We drop the file, this closes it but ignores any errors produced when closing
-                // it. This is done because `File::sync_call` cannot be done over files like
+                // it. This is done because `File::sync_all` cannot be done over files like
                 // `/dev/urandom` which are read-only. Check
                 // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
                 // discussion.
-                drop(handle);
+                drop(file);
                 Ok(0)
             }
         } else {
@@ -200,7 +253,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
-        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             // This can never fail because `count` was capped to be smaller than
             // `isize::max_value()`.
             let count = isize::try_from(count).unwrap();
@@ -208,8 +261,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because it was a target's `usize`. Also we are sure that its smaller than
             // `usize::max_value()` because it is a host's `isize`.
             let mut bytes = vec![0; count as usize];
-            let result = handle
-                .file
+            let result = file
                 .read(&mut bytes)
                 // `File::read` never returns a value larger than `count`, so this cannot fail.
                 .map(|c| i64::try_from(c).unwrap());
@@ -255,9 +307,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
 
-        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
-            let result = handle.file.write(&bytes).map(|c| i64::try_from(c).unwrap());
+            let result = file.write(&bytes).map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -290,8 +342,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         };
 
-        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
-            let result = handle.file.seek(seek_from).map(|offset| offset as i64);
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+            let result = file.seek(seek_from).map(|offset| offset as i64);
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -652,11 +704,11 @@ impl FileMetadata {
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
-        let handle = match option {
-            Some(handle) => handle,
+        let file = match option {
+            Some(FileHandle { file, writable: _ }) => file,
             None => return ecx.handle_not_found().map(|_: i32| None),
         };
-        let metadata = handle.file.metadata();
+        let metadata = file.metadata();
 
         FileMetadata::from_meta(ecx, metadata)
     }

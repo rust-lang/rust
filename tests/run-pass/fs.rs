@@ -5,25 +5,23 @@ use std::fs::{File, remove_file, rename};
 use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
-fn test_metadata(bytes: &[u8], path: &Path) -> Result<()> {
-    // Test that the file metadata is correct.
-    let metadata = path.metadata()?;
-    // `path` should point to a file.
-    assert!(metadata.is_file());
-    // The size of the file must be equal to the number of written bytes.
-    assert_eq!(bytes.len() as u64, metadata.len());
-    Ok(())
+fn main() {
+    test_file();
+    test_file_clone();
+    test_seek();
+    test_metadata();
+    test_symlink();
+    test_errors();
+    test_rename();
 }
 
-fn main() {
+fn test_file() {
     let tmp = std::env::temp_dir();
-    let filename = PathBuf::from("miri_test_fs.txt");
+    let filename = PathBuf::from("miri_test_fs_file.txt");
     let path = tmp.join(&filename);
-    let symlink_path = tmp.join("miri_test_fs_symlink.txt");
     let bytes = b"Hello, World!\n";
     // Clean the paths for robustness.
     remove_file(&path).ok();
-    remove_file(&symlink_path).ok();
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
@@ -42,6 +40,47 @@ fn main() {
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
 
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_clone() {
+    let tmp = std::env::temp_dir();
+    let filename = PathBuf::from("miri_test_fs_file_clone.txt");
+    let path = tmp.join(&filename);
+    let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).ok();
+
+    let mut file = File::create(&path).unwrap();
+    file.write(bytes).unwrap();
+
+    // Cloning a file should be successful.
+    let file = File::open(&path).unwrap();
+    let mut cloned = file.try_clone().unwrap();
+    // Reading from a cloned file should get the same text.
+    let mut contents = Vec::new();
+    cloned.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_seek() {
+    let tmp = std::env::temp_dir();
+    let filename = PathBuf::from("miri_test_fs_seek.txt");
+    let path = tmp.join(&filename);
+    let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).ok();
+
+    let mut file = File::create(&path).unwrap();
+    file.write(bytes).unwrap();
+
+    let mut file = File::open(&path).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
     // Test that seeking to the beginning and reading until EOF gets the text again.
     file.seek(SeekFrom::Start(0)).unwrap();
     let mut contents = Vec::new();
@@ -59,11 +98,53 @@ fn main() {
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(&bytes[2..], contents.as_slice());
 
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn check_metadata(bytes: &[u8], path: &Path) -> Result<()> {
+    // Test that the file metadata is correct.
+    let metadata = path.metadata()?;
+    // `path` should point to a file.
+    assert!(metadata.is_file());
+    // The size of the file must be equal to the number of written bytes.
+    assert_eq!(bytes.len() as u64, metadata.len());
+    Ok(())
+}
+
+fn test_metadata() {
+    let tmp = std::env::temp_dir();
+    let filename = PathBuf::from("miri_test_fs_metadata.txt");
+    let path = tmp.join(&filename);
+    let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).ok();
+
+    let mut file = File::create(&path).unwrap();
+    file.write(bytes).unwrap();
+
     // Test that metadata of an absolute path is correct.
-    test_metadata(bytes, &path).unwrap();
+    check_metadata(bytes, &path).unwrap();
     // Test that metadata of a relative path is correct.
     std::env::set_current_dir(&tmp).unwrap();
-    test_metadata(bytes, &filename).unwrap();
+    check_metadata(bytes, &filename).unwrap();
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_symlink() {
+    let tmp = std::env::temp_dir();
+    let filename = PathBuf::from("miri_test_fs_link_target.txt");
+    let path = tmp.join(&filename);
+    let symlink_path = tmp.join("miri_test_fs_symlink.txt");
+    let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).ok();
+    remove_file(&symlink_path).ok();
+
+    let mut file = File::create(&path).unwrap();
+    file.write(bytes).unwrap();
 
     // Creating a symbolic link should succeed.
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
@@ -73,7 +154,7 @@ fn main() {
     symlink_file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     // Test that metadata of a symbolic link is correct.
-    test_metadata(bytes, &symlink_path).unwrap();
+    check_metadata(bytes, &symlink_path).unwrap();
     // Test that the metadata of a symbolic link is correct when not following it.
     assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
     // Removing symbolic link should succeed.
@@ -81,10 +162,30 @@ fn main() {
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
+}
 
+fn test_errors() {
+    let tmp = std::env::temp_dir();
+    let filename = PathBuf::from("miri_test_fs_errors.txt");
+    let path = tmp.join(&filename);
+    let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).ok();
+
+    // The following tests also check that the `__errno_location()` shim is working properly.
+    // Opening a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
+    // Removing a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
+    // Reading the metadata of a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, check_metadata(bytes, &path).unwrap_err().kind());
+}
+
+fn test_rename() {
+    let tmp = std::env::temp_dir();
     // Renaming a file should succeed.
-    let path1 = tmp.join("rename_source.txt");
-    let path2 = tmp.join("rename_destination.txt");
+    let path1 = tmp.join("miri_test_fs_rename_source.txt");
+    let path2 = tmp.join("miri_test_fs_rename_destination.txt");
     // Clean files for robustness.
     remove_file(&path1).ok();
     remove_file(&path2).ok();
@@ -94,12 +195,4 @@ fn main() {
     assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
     assert!(path2.metadata().unwrap().is_file());
     remove_file(&path2).unwrap();
-
-    // The two following tests also check that the `__errno_location()` shim is working properly.
-    // Opening a non-existing file should fail with a "not found" error.
-    assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
-    // Removing a non-existing file should fail with a "not found" error.
-    assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
-    // Reading the metadata of a non-existing file should fail with a "not found" error.
-    assert_eq!(ErrorKind::NotFound, test_metadata(bytes, &path).unwrap_err().kind());
 }
