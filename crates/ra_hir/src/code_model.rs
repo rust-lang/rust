@@ -30,6 +30,7 @@ use ra_syntax::{
     ast::{self, AttrsOwner},
     AstNode,
 };
+use rustc_hash::FxHashSet;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
@@ -123,10 +124,25 @@ impl_froms!(
     BuiltinType
 );
 
+impl ModuleDef {
+    pub fn module(self, db: &impl HirDatabase) -> Option<Module> {
+        match self {
+            ModuleDef::Module(it) => it.parent(db),
+            ModuleDef::Function(it) => Some(it.module(db)),
+            ModuleDef::Adt(it) => Some(it.module(db)),
+            ModuleDef::EnumVariant(it) => Some(it.module(db)),
+            ModuleDef::Const(it) => Some(it.module(db)),
+            ModuleDef::Static(it) => Some(it.module(db)),
+            ModuleDef::Trait(it) => Some(it.module(db)),
+            ModuleDef::TypeAlias(it) => Some(it.module(db)),
+            ModuleDef::BuiltinType(_) => None,
+        }
+    }
+}
+
 pub use hir_def::{
     attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
 };
-use rustc_hash::FxHashSet;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
@@ -647,6 +663,17 @@ impl TypeAlias {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) id: MacroDefId,
+}
+
+impl MacroDef {
+    /// FIXME: right now, this just returns the root module of the crate that
+    /// defines this macro. The reasons for this is that macros are expanded
+    /// early, in `ra_hir_expand`, where modules simply do not exist yet.
+    pub fn module(self, db: &impl HirDatabase) -> Option<Module> {
+        let krate = self.id.krate?;
+        let module_id = db.crate_def_map(krate).root;
+        Some(Module::new(Crate { id: krate }, module_id))
+    }
 }
 
 /// Invariant: `inner.as_assoc_item(db).is_some()`
