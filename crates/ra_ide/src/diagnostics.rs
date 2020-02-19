@@ -470,6 +470,35 @@ mod tests {
     }
 
     #[test]
+    fn test_fill_struct_fields_enum() {
+        let before = r"
+            enum Expr {
+                Bin { lhs: Box<Expr>, rhs: Box<Expr> }
+            }
+
+            impl Expr {
+                fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
+                    Expr::Bin { <|> }
+                }
+            }
+
+        ";
+        let after = r"
+            enum Expr {
+                Bin { lhs: Box<Expr>, rhs: Box<Expr> }
+            }
+
+            impl Expr {
+                fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
+                    Expr::Bin { lhs: (), rhs: () <|> }
+                }
+            }
+
+        ";
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
     fn test_fill_struct_fields_partial() {
         let before = r"
             struct TestStruct {
