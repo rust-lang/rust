@@ -1,4 +1,4 @@
-use crate::dep_graph::{self, DepNode};
+use crate::dep_graph::{self, DepConstructor, DepNode};
 use crate::hir::exports::Export;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
@@ -52,7 +52,6 @@ use rustc_target::spec::PanicStrategy;
 use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use std::any::type_name;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::ops::Deref;
@@ -63,6 +62,9 @@ use syntax::ast;
 mod plumbing;
 use self::plumbing::*;
 pub use self::plumbing::{force_from_dep_node, CycleError};
+
+mod stats;
+pub use self::stats::print_stats;
 
 mod job;
 #[cfg(parallel_compiler)]
@@ -75,6 +77,9 @@ use self::keys::Key;
 
 mod values;
 use self::values::Value;
+
+mod caches;
+use self::caches::CacheSelector;
 
 mod config;
 use self::config::QueryAccessors;

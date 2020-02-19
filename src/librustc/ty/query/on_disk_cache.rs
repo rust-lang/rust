@@ -1035,20 +1035,22 @@ where
         .prof
         .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
-    let shards = Q::query_cache(tcx).lock_shards();
-    assert!(shards.iter().all(|shard| shard.active.is_empty()));
-    for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
-        if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
-            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+    let state = Q::query_state(tcx);
+    assert!(state.all_inactive());
 
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+    state.iter_results(|results| {
+        for (key, value, dep_node) in results {
+            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &entry.value)?;
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &value)?;
+            }
         }
-    }
-
-    Ok(())
+        Ok(())
+    })
 }

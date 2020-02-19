@@ -2,7 +2,7 @@
 
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
-use crate::dep_graph::{self, DepConstructor, DepNode};
+use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
@@ -1347,7 +1347,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We cannot use the query versions of crates() and crate_hash(), since
         // those would need the DepNodes that we are allocating here.
         for cnum in self.cstore.crates_untracked() {
-            let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
+            let dep_node = DepConstructor::CrateMetadata(self, cnum);
             let crate_hash = self.cstore.crate_hash_untracked(cnum);
             self.dep_graph.with_task(
                 dep_node,
@@ -1688,6 +1688,7 @@ pub mod tls {
 
     /// Gets the pointer to the current `ImplicitCtxt`.
     #[cfg(not(parallel_compiler))]
+    #[inline]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
