@@ -16,10 +16,10 @@ LL |         .collect();
   ::: $SRC_DIR/libcore/iter/adapters/mod.rs:LL:COL
    |
 LL | pub struct Cloned<I> {
-   | -------------------- doesn't satisfy `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>: std::iter::Iterator`
+   | -------------------- doesn't satisfy `_: std::iter::Iterator`
 ...
 LL | pub struct TakeWhile<I, P> {
-   | -------------------------- doesn't satisfy `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]> as std::iter::Iterator>::Item = &_`
+   | -------------------------- doesn't satisfy `<_ as std::iter::Iterator>::Item = &_`
    |
    = note: the method `collect` exists but the following trait bounds were not satisfied:
            `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]> as std::iter::Iterator>::Item = &_` which is required by `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>: std::iter::Iterator`
