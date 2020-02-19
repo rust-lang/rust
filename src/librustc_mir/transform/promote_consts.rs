@@ -105,11 +105,10 @@ pub enum Candidate {
     /// Promotion of the `x` in `[x; 32]`.
     Repeat(Location),
 
-    /// Currently applied to function calls where the callee has the unstable
-    /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
-    /// intrinsic. The intrinsic requires the arguments are indeed constant and
-    /// the attribute currently provides the semantic requirement that arguments
-    /// must be constant.
+    /// Function calls where the callee has the unstable
+    /// `#[rustc_args_required_const]` attribute. The attribute requires that
+    /// the arguments be constant, usually because they are encoded as an
+    /// immediate operand in a platform intrinsic.
     Argument { bb: BasicBlock, index: usize },
 }
 
@@ -718,8 +717,7 @@ pub fn validate_candidates(
         .filter(|&candidate| {
             validator.explicit = candidate.forces_explicit_promotion();
 
-            // FIXME(eddyb) also emit the errors for shuffle indices
-            // and `#[rustc_args_required_const]` arguments here.
+            // FIXME(eddyb) also emit the errors for `#[rustc_args_required_const]` arguments here.
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
             match candidate {
