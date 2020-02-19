@@ -1,4 +1,4 @@
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, platform_intrinsics, rustc_attrs)]
 
 // revisions:rpass1 rpass2
 
@@ -6,6 +6,7 @@
 struct I32x2(i32, i32);
 
 extern "platform-intrinsic" {
+    #[rustc_args_required_const(2)]
     fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
 }
 
