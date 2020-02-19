@@ -18,7 +18,7 @@ passes are only turned on in `release` mode.
 
 The [`optimized_mir`][optmir] [query] is called to produce the optimized MIR
 for a given [`DefId`][defid]. This query makes sure that the borrow checker has
-run and that some validation has occurred. Then, it [steals][steal] the MIR
+run and that some validation has occurred. Then, it [steals][steal] the MIR,
 optimizes it, and returns the improved MIR.
 
 [optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html
