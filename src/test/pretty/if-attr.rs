@@ -24,5 +24,14 @@ fn if_let() {
     if let Some(_) = Some(true) { }
 }
 
+#[cfg(FALSE)]
+fn let_attr_if() {
+    let _ = #[attr] if let _ = 0 { };
+    let _ = #[attr] if true { };
+
+    let _ = #[attr] if let _ = 0 { } else { };
+    let _ = #[attr] if true { } else { };
+}
+
 
 fn main() { }
