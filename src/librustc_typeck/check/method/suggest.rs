@@ -988,6 +988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let action = if let Some(param) = param_type {
                     format!("restrict type parameter `{}` with", param)
                 } else {
+                    // FIXME: it might only need to be imported into scope, not implemented.
                     "implement".to_string()
                 };
                 let mut use_note = true;
@@ -996,9 +997,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_label(
                             self.tcx.sess.source_map().def_span(span),
                             &format!(
-                                "`{}` defines an item `{}`",
+                                "`{}` defines an item `{}`, perhaps you need to {} it",
                                 self.tcx.def_path_str(trait_info.def_id),
-                                item_name
+                                item_name,
+                                action
                             ),
                         );
                         use_note = false

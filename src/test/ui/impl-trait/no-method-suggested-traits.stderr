@@ -123,7 +123,7 @@ error[E0599]: no method named `method2` found for type `u64` in the current scop
   --> $DIR/no-method-suggested-traits.rs:45:10
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     1u64.method2();
    |          ^^^^^^^ method not found in `u64`
@@ -134,7 +134,7 @@ error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::
   --> $DIR/no-method-suggested-traits.rs:47:44
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
    |                                            ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&u64>>`
@@ -145,7 +145,7 @@ error[E0599]: no method named `method2` found for struct `no_method_suggested_tr
   --> $DIR/no-method-suggested-traits.rs:50:37
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     no_method_suggested_traits::Foo.method2();
    |                                     ^^^^^^^ method not found in `no_method_suggested_traits::Foo`
@@ -156,7 +156,7 @@ error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::
   --> $DIR/no-method-suggested-traits.rs:52:71
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
    |                                                                       ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>`
@@ -167,7 +167,7 @@ error[E0599]: no method named `method2` found for enum `no_method_suggested_trai
   --> $DIR/no-method-suggested-traits.rs:54:40
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     no_method_suggested_traits::Bar::X.method2();
    |                                        ^^^^^^^ method not found in `no_method_suggested_traits::Bar`
@@ -178,7 +178,7 @@ error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::
   --> $DIR/no-method-suggested-traits.rs:56:74
    |
 LL |     pub trait Bar {
-   |     ------------- `foo::Bar` defines an item `method2`
+   |     ------------- `foo::Bar` defines an item `method2`, perhaps you need to implement it
 ...
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
    |                                                                          ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>`
