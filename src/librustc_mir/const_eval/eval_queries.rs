@@ -72,8 +72,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     Ok(ret)
 }
 
-/// The `InterpCx` is only meant to be used to do field and index projections into constants for
-/// `simd_shuffle` and const patterns in match arms.
+/// The `InterpCx` is only meant to be used to do field and index projections into promoteds
+/// and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
