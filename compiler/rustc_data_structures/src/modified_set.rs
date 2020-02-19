@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, marker::PhantomData};
 
-use rustc_index::{bit_set::BitSet, vec::Idx};
+use rustc_index::vec::Idx;
 
 #[derive(Copy, Clone, Debug)]
 enum Undo<T> {
@@ -12,18 +12,12 @@ enum Undo<T> {
 pub struct ModifiedSet<T: Idx> {
     modified: VecDeque<Undo<T>>,
     snapshots: usize,
-    modified_set: BitSet<T>,
     offsets: Vec<usize>,
 }
 
 impl<T: Idx> Default for ModifiedSet<T> {
     fn default() -> Self {
-        Self {
-            modified: Default::default(),
-            snapshots: 0,
-            modified_set: BitSet::new_empty(0),
-            offsets: Vec::new(),
-        }
+        Self { modified: Default::default(), snapshots: 0, offsets: Vec::new() }
     }
 }
 
@@ -33,12 +27,7 @@ impl<T: Idx> ModifiedSet<T> {
     }
 
     pub fn set(&mut self, index: T) {
-        if index.index() >= self.modified_set.domain_size() {
-            self.modified_set.resize(index.index() + 1);
-        }
-        if self.modified_set.insert(index) {
-            self.modified.push_back(Undo::Add(index));
-        }
+        self.modified.push_back(Undo::Add(index));
     }
 
     pub fn drain(&mut self, index: &Offset<T>, mut f: impl FnMut(T) -> bool) {
@@ -66,9 +55,7 @@ impl<T: Idx> ModifiedSet<T> {
                 self.modified.iter().rev().take(self.modified.len() - snapshot.modified_len)
             {
                 match undo {
-                    Undo::Add(index) => {
-                        self.modified_set.remove(index);
-                    }
+                    Undo::Add(_) => {}
                     Undo::Drain { index, offset } => {
                         if let Some(o) = self.offsets.get_mut(index) {
                             *o = offset;
