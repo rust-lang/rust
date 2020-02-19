@@ -5,7 +5,7 @@ LL | struct S;
    | --------- method `a` not found for this
 ...
 LL |     trait A {
-   |     ------- this trait defines an item `a`
+   |     ------- `method::A` defines an item `a`
 ...
 LL |     S.a();
    |       ^ method not found in `S`
@@ -47,7 +47,7 @@ LL | struct S;
    | --------- function or associated item `a` not found for this
 ...
 LL |     trait A {
-   |     ------- this trait defines an item `a`
+   |     ------- `method::A` defines an item `a`
 ...
 LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
@@ -82,7 +82,7 @@ LL | struct S;
    | --------- associated item `A` not found for this
 ...
 LL |     trait A {
-   |     ------- this trait defines an item `A`
+   |     ------- `assoc_const::A` defines an item `A`
 ...
 LL |     S::A;
    |        ^ associated item not found in `S`

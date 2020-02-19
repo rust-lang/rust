@@ -10,7 +10,7 @@ error[E0599]: no method named `bind` found for array `[&str; 1]` in the current 
   --> $DIR/issue-2149.rs:13:12
    |
 LL | trait VecMonad<A> {
-   | ----------------- this trait defines an item `bind`
+   | ----------------- `VecMonad` defines an item `bind`
 ...
 LL |     ["hi"].bind(|x| [x] );
    |            ^^^^ method not found in `[&str; 1]`

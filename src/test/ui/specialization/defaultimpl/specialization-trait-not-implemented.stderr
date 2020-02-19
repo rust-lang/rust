@@ -2,7 +2,7 @@ error[E0599]: no method named `foo_one` found for struct `MyStruct` in the curre
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | trait Foo {
-   | --------- this trait defines an item `foo_one`
+   | --------- `Foo` defines an item `foo_one`
 ...
 LL | struct MyStruct;
    | ----------------
