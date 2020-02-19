@@ -2,10 +2,13 @@ error[E0599]: no method named `unwrap` found for enum `std::result::Result<(), F
   --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
 LL | struct Foo;
-   | ----------- the method `unwrap` exists but this type doesn't satisfy the bound `Foo: std::fmt::Debug`
+   | ----------- doesn't satisfy `Foo: std::fmt::Debug`
 ...
 LL |     a.unwrap();
    |       ^^^^^^ method not found in `std::result::Result<(), Foo>`
+   |
+   = note: the method `unwrap` exists but the following trait bounds were not satisfied:
+           `Foo: std::fmt::Debug`
 
 error: aborting due to previous error
 

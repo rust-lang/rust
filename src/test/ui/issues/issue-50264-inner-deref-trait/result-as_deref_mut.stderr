@@ -5,6 +5,7 @@ LL |     let _result = &mut Ok(42).as_deref_mut();
    |                               ^^^^^^^^^^^^ help: there is a method with a similar name: `as_deref_err`
    |
    = note: the method `as_deref_mut` exists but the following trait bounds were not satisfied:
+           `<{integer} as std::ops::Deref>::Target = _`
            `{integer}: std::ops::DerefMut`
 
 error: aborting due to previous error

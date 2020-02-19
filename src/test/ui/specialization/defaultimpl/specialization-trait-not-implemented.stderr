@@ -8,11 +8,13 @@ LL | struct MyStruct;
    | ----------------
    | |
    | method `foo_one` not found for this
-   | the method `foo_one` exists but this type doesn't satisfy the bound `MyStruct: Foo`
+   | doesn't satisfy `MyStruct: Foo`
 ...
 LL |     println!("{}", MyStruct.foo_one());
    |                             ^^^^^^^ method not found in `MyStruct`
    |
+   = note: the method `foo_one` exists but the following trait bounds were not satisfied:
+           `MyStruct: Foo`
    = help: items from traits can only be used if the trait is implemented and in scope
 
 error: aborting due to previous error
