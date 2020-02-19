@@ -186,18 +186,24 @@ fn self_arg() -> Local {
     Local::new(1)
 }
 
-/// Generator have not been resumed yet
+/// Generator has not been resumed yet.
 const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
-/// Generator has returned / is completed
+/// Generator has returned / is completed.
 const RETURNED: usize = GeneratorSubsts::RETURNED;
-/// Generator has been poisoned
+/// Generator has panicked and is poisoned.
 const POISONED: usize = GeneratorSubsts::POISONED;
 
+/// A `yield` point in the generator.
 struct SuspensionPoint<'tcx> {
+    /// State discriminant used when suspending or resuming at this point.
     state: usize,
+    /// The block to jump to after resumption.
     resume: BasicBlock,
+    /// Where to move the resume argument after resumption.
     resume_arg: Place<'tcx>,
+    /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
+    /// Set of locals that have live storage while at this suspension point.
     storage_liveness: liveness::LiveVarSet,
 }
 
