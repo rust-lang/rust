@@ -538,28 +538,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let def_span =
                         |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
                     let mut bound_spans = vec![];
-                    let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str| {
+                    let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
+                        let msg = format!(
+                            "doesn't satisfy {}",
+                            if obligation.len() > 50 { quiet } else { obligation }
+                        );
                         match &self_ty.kind {
-                            ty::Adt(def, _) => {
-                                // Point at the type that couldn't satisfy the bound.
-                                bound_spans.push((
-                                    def_span(def.did),
-                                    format!("doesn't satisfy {}", obligation),
-                                ));
-                            }
+                            // Point at the type that couldn't satisfy the bound.
+                            ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
+                            // Point at the trait object that couldn't satisfy the bound.
                             ty::Dynamic(preds, _) => {
-                                // Point at the trait object that couldn't satisfy the bound.
                                 for pred in *preds.skip_binder() {
                                     match pred {
-                                        ty::ExistentialPredicate::Trait(tr) => bound_spans.push((
-                                            def_span(tr.def_id),
-                                            format!("doesn't satisfy {}", obligation),
-                                        )),
+                                        ty::ExistentialPredicate::Trait(tr) => {
+                                            bound_spans.push((def_span(tr.def_id), msg.clone()))
+                                        }
                                         ty::ExistentialPredicate::Projection(_)
                                         | ty::ExistentialPredicate::AutoTrait(_) => {}
                                     }
                                 }
                             }
+                            // Point at the closure that couldn't satisfy the bound.
+                            ty::Closure(def_id, _) => bound_spans
+                                .push((def_span(*def_id), format!("doesn't satisfy {}", quiet))),
                             _ => {}
                         }
                     };
@@ -573,9 +574,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .tcx
                                     .associated_item(pred.skip_binder().projection_ty.item_def_id);
                                 let ty = pred.skip_binder().ty;
-                                let obligation =
-                                    format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
-                                bound_span_label(trait_ref.self_ty(), &obligation);
+                                let msg = format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
+                                let quiet = format!(
+                                    "`<_ as {}>::{} = {}`",
+                                    trait_ref.print_only_trait_path(),
+                                    assoc.ident,
+                                    ty
+                                );
+                                bound_span_label(trait_ref.self_ty(), &msg, &quiet);
                                 Some(obligation)
                             }
                             ty::Predicate::Trait(poly_trait_ref, _) => {
@@ -583,7 +589,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
                                 let obligation = format!("`{}: {}`", self_ty, path);
-                                bound_span_label(self_ty, &obligation);
+                                let quiet = format!("`_: {}`", path);
+                                bound_span_label(self_ty, &obligation, &quiet);
                                 Some(obligation)
                             }
                             _ => None,

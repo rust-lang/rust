@@ -34,7 +34,7 @@ LL |     writeln!(fp, "hello world").unwrap();
   ::: $SRC_DIR/libstd/io/buffered.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
-   | ------------------------------ doesn't satisfy `std::io::BufWriter<&dyn std::io::Write>: std::io::Write`
+   | ------------------------------ doesn't satisfy `_: std::io::Write`
    |
    = note: the method `write_fmt` exists but the following trait bounds were not satisfied:
            `&dyn std::io::Write: std::io::Write` which is required by `std::io::BufWriter<&dyn std::io::Write>: std::io::Write`
