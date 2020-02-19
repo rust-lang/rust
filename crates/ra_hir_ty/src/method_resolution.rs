@@ -377,12 +377,17 @@ fn iterate_trait_method_candidates<T>(
 ) -> Option<T> {
     // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait = self_ty.value.inherent_trait().into_iter();
-    // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
-    let traits_from_env = env
-        .trait_predicates_for_self_ty(&self_ty.value)
-        .map(|tr| tr.trait_)
-        .flat_map(|t| all_super_traits(db, t));
-    let traits = inherent_trait.chain(traits_from_env).chain(traits_in_scope.iter().copied());
+    let env_traits = if let Ty::Placeholder(_) = self_ty.value {
+        // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+        env.trait_predicates_for_self_ty(&self_ty.value)
+            .map(|tr| tr.trait_)
+            .flat_map(|t| all_super_traits(db, t))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let traits =
+        inherent_trait.chain(env_traits.into_iter()).chain(traits_in_scope.iter().copied());
     'traits: for t in traits {
         let data = db.trait_data(t);
 
