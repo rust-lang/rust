@@ -535,57 +535,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if !unsatisfied_predicates.is_empty() {
+                    let def_span =
+                        |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
                     let mut bound_spans = vec![];
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .filter_map(|p| {
-                            let self_ty = p.self_ty();
-                            match &self_ty.kind {
-                                ty::Adt(def, _) => {
-                                    bound_spans.push((
-                                        self.tcx
-                                            .sess
-                                            .source_map()
-                                            .def_span(self.tcx.def_span(def.did)),
-                                        format!(
-                                            "the method `{}` exists but this type doesn't satisfy \
-                                             the bound `{}: {}`",
-                                            item_name,
-                                            p.self_ty(),
-                                            p.print_only_trait_path()
-                                        ),
-                                    ));
-                                    None
-                                }
-                                ty::Dynamic(preds, _) => {
-                                    for pred in *preds.skip_binder() {
-                                        match pred {
-                                            ty::ExistentialPredicate::Trait(tr) => bound_spans
-                                                .push((
-                                                    self.tcx
-                                                        .sess
-                                                        .source_map()
-                                                        .def_span(self.tcx.def_span(tr.def_id)),
-                                                    format!(
-                                                        "the method `{}` exists but this trait \
-                                                         doesn't satisfy the bound `{}: {}`",
-                                                        item_name,
-                                                        p.self_ty(),
-                                                        p.print_only_trait_path()
-                                                    ),
-                                                )),
-                                            ty::ExistentialPredicate::Projection(_)
-                                            | ty::ExistentialPredicate::AutoTrait(_) => {}
+                        .filter_map(|pred| match pred {
+                            ty::Predicate::Projection(pred) => {
+                                // `<Foo as Iterator>::Item = String`.
+                                let trait_ref =
+                                    pred.skip_binder().projection_ty.trait_ref(self.tcx);
+                                let assoc = self
+                                    .tcx
+                                    .associated_item(pred.skip_binder().projection_ty.item_def_id);
+                                let ty = pred.skip_binder().ty;
+                                Some(format!("`{}::{} = {}`", trait_ref, assoc.ident, ty))
+                            }
+                            ty::Predicate::Trait(poly_trait_ref, _) => {
+                                let p = poly_trait_ref.skip_binder().trait_ref;
+                                let self_ty = p.self_ty();
+                                let path = p.print_only_trait_path();
+                                match &self_ty.kind {
+                                    ty::Adt(def, _) => {
+                                        // Point at the type that couldn't satisfy the bound.
+                                        bound_spans.push((
+                                            def_span(def.did),
+                                            format!("doesn't satisfy `{}: {}`", self_ty, path),
+                                        ));
+                                    }
+                                    ty::Dynamic(preds, _) => {
+                                        // Point at the trait object that couldn't satisfy the bound.
+                                        for pred in *preds.skip_binder() {
+                                            match pred {
+                                                ty::ExistentialPredicate::Trait(tr) => bound_spans
+                                                    .push((
+                                                        def_span(tr.def_id),
+                                                        format!(
+                                                            "doesn't satisfy `{}: {}`",
+                                                            self_ty, path
+                                                        ),
+                                                    )),
+                                                ty::ExistentialPredicate::Projection(_)
+                                                | ty::ExistentialPredicate::AutoTrait(_) => {}
+                                            }
                                         }
                                     }
-                                    None
+                                    _ => {}
                                 }
-                                _ => Some(format!(
-                                    "`{}: {}`",
-                                    p.self_ty(),
-                                    p.print_only_trait_path()
-                                )),
+                                Some(format!("`{}: {}`", self_ty, path))
                             }
+                            _ => None,
                         })
                         .collect::<Vec<_>>();
                     bound_list.sort();

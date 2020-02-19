@@ -5,11 +5,13 @@ LL | struct Bar<T: Foo> {
    | ------------------ method `clone` not found for this
 ...
 LL | struct NotClone;
-   | ---------------- the method `clone` exists but this type doesn't satisfy the bound `NotClone: std::clone::Clone`
+   | ---------------- doesn't satisfy `NotClone: std::clone::Clone`
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method not found in `Bar<NotClone>`
    |
+   = note: the method `clone` exists but the following trait bounds were not satisfied:
+           `NotClone: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`
