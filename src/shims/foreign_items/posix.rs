@@ -45,6 +45,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
+            "open" | "open64" => {
+                let result = this.open(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             "fcntl" => {
                 let result = this.fcntl(args[0], args[1], args.get(2).cloned())?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
@@ -101,6 +106,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "rename" => {
                 let result = this.rename(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "lseek" | "lseek64" => {
+                let result = this.lseek64(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 

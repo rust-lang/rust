@@ -19,18 +19,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
-            "open64" => {
-                let result = this.open(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
             "close" => {
                 let result = this.close(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "lseek64" => {
-                let result = this.lseek64(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
