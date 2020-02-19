@@ -538,9 +538,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let def_span =
                         |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
                     let mut bound_spans = vec![];
-                    let mut bound_list = unsatisfied_predicates
-                        .iter()
-                        .filter_map(|pred| match pred {
+                    let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str| {
+                        match &self_ty.kind {
+                            ty::Adt(def, _) => {
+                                // Point at the type that couldn't satisfy the bound.
+                                bound_spans.push((
+                                    def_span(def.did),
+                                    format!("doesn't satisfy {}", obligation),
+                                ));
+                            }
+                            ty::Dynamic(preds, _) => {
+                                // Point at the trait object that couldn't satisfy the bound.
+                                for pred in *preds.skip_binder() {
+                                    match pred {
+                                        ty::ExistentialPredicate::Trait(tr) => bound_spans.push((
+                                            def_span(tr.def_id),
+                                            format!("doesn't satisfy {}", obligation),
+                                        )),
+                                        ty::ExistentialPredicate::Projection(_)
+                                        | ty::ExistentialPredicate::AutoTrait(_) => {}
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    };
+                    let mut format_pred = |pred| {
+                        match pred {
                             ty::Predicate::Projection(pred) => {
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
@@ -549,44 +573,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .tcx
                                     .associated_item(pred.skip_binder().projection_ty.item_def_id);
                                 let ty = pred.skip_binder().ty;
-                                Some(format!("`{}::{} = {}`", trait_ref, assoc.ident, ty))
+                                let obligation =
+                                    format!("`{}::{} = {}`", trait_ref, assoc.ident, ty);
+                                bound_span_label(trait_ref.self_ty(), &obligation);
+                                Some(obligation)
                             }
                             ty::Predicate::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.skip_binder().trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
-                                match &self_ty.kind {
-                                    ty::Adt(def, _) => {
-                                        // Point at the type that couldn't satisfy the bound.
-                                        bound_spans.push((
-                                            def_span(def.did),
-                                            format!("doesn't satisfy `{}: {}`", self_ty, path),
-                                        ));
-                                    }
-                                    ty::Dynamic(preds, _) => {
-                                        // Point at the trait object that couldn't satisfy the bound.
-                                        for pred in *preds.skip_binder() {
-                                            match pred {
-                                                ty::ExistentialPredicate::Trait(tr) => bound_spans
-                                                    .push((
-                                                        def_span(tr.def_id),
-                                                        format!(
-                                                            "doesn't satisfy `{}: {}`",
-                                                            self_ty, path
-                                                        ),
-                                                    )),
-                                                ty::ExistentialPredicate::Projection(_)
-                                                | ty::ExistentialPredicate::AutoTrait(_) => {}
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                                Some(format!("`{}: {}`", self_ty, path))
+                                let obligation = format!("`{}: {}`", self_ty, path);
+                                bound_span_label(self_ty, &obligation);
+                                Some(obligation)
                             }
                             _ => None,
+                        }
+                    };
+                    let mut bound_list = unsatisfied_predicates
+                        .iter()
+                        .filter_map(|(pred, parent_pred)| {
+                            format_pred(*pred).map(|pred| match parent_pred {
+                                None => pred,
+                                Some(parent_pred) => match format_pred(*parent_pred) {
+                                    None => pred,
+                                    Some(parent_pred) => {
+                                        format!("{} which is required by {}", pred, parent_pred)
+                                    }
+                                },
+                            })
                         })
-                        .collect::<Vec<_>>();
+                        .collect::<Vec<String>>();
                     bound_list.sort();
                     bound_list.dedup(); // #35677
                     bound_spans.sort();

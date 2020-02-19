@@ -30,9 +30,14 @@ error[E0599]: no method named `write_fmt` found for struct `std::io::BufWriter<&
    |
 LL |     writeln!(fp, "hello world").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `std::io::BufWriter<&dyn std::io::Write>`
+   | 
+  ::: $SRC_DIR/libstd/io/buffered.rs:LL:COL
+   |
+LL | pub struct BufWriter<W: Write> {
+   | ------------------------------ doesn't satisfy `std::io::BufWriter<&dyn std::io::Write>: std::io::Write`
    |
    = note: the method `write_fmt` exists but the following trait bounds were not satisfied:
-           `&dyn std::io::Write: std::io::Write`
+           `&dyn std::io::Write: std::io::Write` which is required by `std::io::BufWriter<&dyn std::io::Write>: std::io::Write`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors

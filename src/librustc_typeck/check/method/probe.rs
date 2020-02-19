@@ -77,7 +77,7 @@ struct ProbeContext<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: Vec<ty::Predicate<'tcx>>,
+    unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
 }
@@ -1223,7 +1223,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probes: ProbesIter,
-        possibly_unsatisfied_predicates: &mut Vec<ty::Predicate<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
         unstable_candidates: Option<&mut Vec<(&'b Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>>
     where
@@ -1342,7 +1345,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probe: &Candidate<'tcx>,
-        possibly_unsatisfied_predicates: &mut Vec<ty::Predicate<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
     ) -> ProbeResult {
         debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
 
@@ -1409,20 +1415,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                         if !self.predicate_may_hold(&obligation) {
                                             result = ProbeResult::NoMatch;
                                             let o = self.resolve_vars_if_possible(obligation);
-                                            possibly_unsatisfied_predicates.push(o.predicate);
+                                            let predicate =
+                                                self.resolve_vars_if_possible(&predicate);
+                                            let p = if predicate == o.predicate {
+                                                // Avoid "`MyStruct: Foo` which is required by
+                                                // `MyStruct: Foo`" in E0599.
+                                                None
+                                            } else {
+                                                Some(predicate)
+                                            };
+                                            possibly_unsatisfied_predicates.push((o.predicate, p));
                                         }
                                     }
                                 }
                                 _ => {
                                     // Some nested subobligation of this predicate
                                     // failed.
-                                    //
-                                    // FIXME: try to find the exact nested subobligation
-                                    // and point at it rather than reporting the entire
-                                    // trait-ref?
                                     result = ProbeResult::NoMatch;
                                     let predicate = self.resolve_vars_if_possible(&predicate);
-                                    possibly_unsatisfied_predicates.push(predicate);
+                                    possibly_unsatisfied_predicates.push((predicate, None));
                                 }
                             }
                             false
@@ -1447,7 +1458,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    possibly_unsatisfied_predicates.push(o.predicate);
+                    possibly_unsatisfied_predicates.push((o.predicate, None));
                 }
             }
 
