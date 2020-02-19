@@ -13,7 +13,7 @@ use ra_syntax::{
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
-    expand::descend_into_macros,
+    expand::{descend_into_macros, original_range},
     references::{classify_name, classify_name_ref, NameKind, NameKind::*},
     FilePosition, FileRange, RangeInfo,
 };
@@ -148,17 +148,18 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let mut res = HoverResult::new();
 
     let mut sb = SourceBinder::new(db);
-    if let Some((range, name_kind)) = match_ast! {
+    if let Some((node, name_kind)) = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().text_range(), d.kind))
+                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().clone(), d.kind))
             },
             ast::Name(name) => {
-                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().text_range(), d.kind))
+                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().clone(), d.kind))
             },
             _ => None,
         }
     } {
+        let range = original_range(db, token.with_value(&node)).range;
         res.extend(hover_text_from_name_kind(db, name_kind));
 
         if !res.is_empty() {
@@ -171,8 +172,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
-    // The following logic will not work if token is coming from a macro
-    let frange = FileRange { file_id: position.file_id, range: node.text_range() };
+    let frange = original_range(db, token.with_value(&node));
     res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
         return None;
@@ -220,6 +220,7 @@ mod tests {
     use crate::mock_analysis::{
         analysis_and_position, single_file_with_position, single_file_with_range,
     };
+    use ra_db::FileLoader;
     use ra_syntax::TextRange;
 
     fn trim_markup(s: &str) -> &str {
@@ -230,7 +231,7 @@ mod tests {
         s.map(trim_markup)
     }
 
-    fn check_hover_result(fixture: &str, expected: &[&str]) {
+    fn check_hover_result(fixture: &str, expected: &[&str]) -> String {
         let (analysis, position) = analysis_and_position(fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
         let mut results = Vec::from(hover.info.results());
@@ -243,6 +244,9 @@ mod tests {
         }
 
         assert_eq!(hover.info.len(), expected.len());
+
+        let content = analysis.db.file_text(position.file_id);
+        content[hover.range].to_string()
     }
 
     #[test]
@@ -711,7 +715,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_macro() {
-        check_hover_result(
+        let hover_on = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id {
@@ -726,11 +730,13 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
             &["fn foo()"],
         );
+
+        assert_eq!(hover_on, "foo")
     }
 
     #[test]
     fn test_hover_through_expr_in_macro() {
-        check_hover_result(
+        let hover_on = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id {
@@ -742,6 +748,8 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
             &["u32"],
         );
+
+        assert_eq!(hover_on, "bar")
     }
 
     #[test]
