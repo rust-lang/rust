@@ -24,7 +24,6 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::LitKind;
 
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
 use std::{cmp, iter, mem, usize};
@@ -218,17 +217,6 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         if let TerminatorKind::Call { ref func, .. } = *kind {
             if let ty::FnDef(def_id, _) = func.ty(self.body, self.tcx).kind {
-                let fn_sig = self.tcx.fn_sig(def_id);
-                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                    let name = self.tcx.item_name(def_id);
-                    // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
-                    if name.as_str().starts_with("simd_shuffle") {
-                        self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
-
-                        return; // Don't double count `simd_shuffle` candidates
-                    }
-                }
-
                 if let Some(constant_args) = args_required_const(self.tcx, def_id) {
                     for index in constant_args {
                         self.candidates.push(Candidate::Argument { bb: location.block, index });
