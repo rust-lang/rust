@@ -32,8 +32,20 @@ pub struct NameDefinition {
     pub visibility: Option<ast::Visibility>,
     /// FIXME: this doesn't really make sense. For example, builtin types don't
     /// really have a module.
-    pub container: Module,
     pub kind: NameKind,
+}
+
+impl NameDefinition {
+    pub fn module(&self, db: &RootDatabase) -> Option<Module> {
+        match self.kind {
+            NameKind::Macro(it) => it.module(db),
+            NameKind::StructField(it) => Some(it.parent_def(db).module(db)),
+            NameKind::ModuleDef(it) => it.module(db),
+            NameKind::SelfType(it) => Some(it.module(db)),
+            NameKind::Local(it) => Some(it.module(db)),
+            NameKind::TypeParam(it) => Some(it.module(db)),
+        }
+    }
 }
 
 pub fn classify_name(
@@ -50,7 +62,6 @@ pub fn classify_name(
                 let local = sb.to_def(src)?;
                 Some(NameDefinition {
                     visibility: None,
-                    container: local.module(sb.db),
                     kind: NameKind::Local(local),
                 })
             },
@@ -61,57 +72,54 @@ pub fn classify_name(
             },
             ast::Module(it) => {
                 let def = sb.to_def(name.with_value(it))?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::StructDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Struct = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::EnumDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Enum = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::TraitDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Trait = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::StaticDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Static = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::EnumVariant(it) => {
                 let src = name.with_value(it);
                 let def: hir::EnumVariant = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::FnDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Function = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::ConstDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Const = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::TypeAliasDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::TypeAlias = sb.to_def(src)?;
-                Some(from_module_def(sb.db, def.into(), None))
+                Some(from_module_def(sb.db, def.into()))
             },
             ast::MacroCall(it) => {
                 let src = name.with_value(it);
                 let def = sb.to_def(src.clone())?;
 
-                let module = sb.to_module_def(src.file_id.original_file(sb.db))?;
-
                 Some(NameDefinition {
                     visibility: None,
-                    container: module,
                     kind: NameKind::Macro(def),
                 })
             },
@@ -120,7 +128,6 @@ pub fn classify_name(
                 let def = sb.to_def(src)?;
                 Some(NameDefinition {
                     visibility: None,
-                    container: def.module(sb.db),
                     kind: NameKind::TypeParam(def),
                 })
             },
@@ -132,41 +139,28 @@ pub fn classify_name(
 pub fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDefinition {
     let kind = NameKind::StructField(field);
     let parent = field.parent_def(db);
-    let container = parent.module(db);
     let visibility = match parent {
         VariantDef::Struct(s) => s.source(db).value.visibility(),
         VariantDef::Union(e) => e.source(db).value.visibility(),
         VariantDef::EnumVariant(e) => e.source(db).value.parent_enum().visibility(),
     };
-    NameDefinition { kind, container, visibility }
+    NameDefinition { kind, visibility }
 }
 
-pub fn from_module_def(
-    db: &RootDatabase,
-    def: ModuleDef,
-    module: Option<Module>,
-) -> NameDefinition {
+pub fn from_module_def(db: &RootDatabase, def: ModuleDef) -> NameDefinition {
     let kind = NameKind::ModuleDef(def);
-    let (container, visibility) = match def {
-        ModuleDef::Module(it) => {
-            let container = it.parent(db).or_else(|| Some(it)).unwrap();
-            let visibility = it.declaration_source(db).and_then(|s| s.value.visibility());
-            (container, visibility)
-        }
-        ModuleDef::EnumVariant(it) => {
-            let container = it.module(db);
-            let visibility = it.source(db).value.parent_enum().visibility();
-            (container, visibility)
-        }
-        ModuleDef::Function(it) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Const(it) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Static(it) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Trait(it) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::TypeAlias(it) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Adt(Adt::Struct(it)) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Adt(Adt::Union(it)) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::Adt(Adt::Enum(it)) => (it.module(db), it.source(db).value.visibility()),
-        ModuleDef::BuiltinType(..) => (module.unwrap(), None),
+    let visibility = match def {
+        ModuleDef::Module(it) => it.declaration_source(db).and_then(|s| s.value.visibility()),
+        ModuleDef::EnumVariant(it) => it.source(db).value.parent_enum().visibility(),
+        ModuleDef::Function(it) => it.source(db).value.visibility(),
+        ModuleDef::Const(it) => it.source(db).value.visibility(),
+        ModuleDef::Static(it) => it.source(db).value.visibility(),
+        ModuleDef::Trait(it) => it.source(db).value.visibility(),
+        ModuleDef::TypeAlias(it) => it.source(db).value.visibility(),
+        ModuleDef::Adt(Adt::Struct(it)) => it.source(db).value.visibility(),
+        ModuleDef::Adt(Adt::Union(it)) => it.source(db).value.visibility(),
+        ModuleDef::Adt(Adt::Enum(it)) => it.source(db).value.visibility(),
+        ModuleDef::BuiltinType(..) => None,
     };
-    NameDefinition { kind, container, visibility }
+    NameDefinition { kind, visibility }
 }
