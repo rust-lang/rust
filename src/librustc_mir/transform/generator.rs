@@ -325,6 +325,15 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 // Yield
                 let state = 3 + self.suspension_points.len();
 
+                // The resume arg target location might itself be remapped if its base local is
+                // live across a yield.
+                let resume_arg =
+                    if let Some(&(ty, variant, idx)) = self.remap.get(&resume_arg.local) {
+                        self.make_field(variant, idx, ty)
+                    } else {
+                        resume_arg
+                    };
+
                 self.suspension_points.push(SuspensionPoint {
                     state,
                     resume,
