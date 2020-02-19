@@ -277,7 +277,7 @@ pub struct AssociatedItems {
 
 impl AssociatedItems {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
-    pub fn new(items_in_def_order: Vec<ty::AssocItem>) -> Self {
+    pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
         let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
         AssociatedItems { items }
     }
