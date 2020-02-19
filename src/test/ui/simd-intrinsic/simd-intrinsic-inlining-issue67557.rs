@@ -3,9 +3,10 @@
 //
 // run-pass
 // compile-flags: -Zmir-opt-level=3
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(platform_intrinsics, repr_simd, rustc_attrs)]
 
 extern "platform-intrinsic" {
+    #[rustc_args_required_const(2)]
     fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
 }
 
