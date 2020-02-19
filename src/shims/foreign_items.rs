@@ -178,6 +178,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(None)
     }
 
+    /// Emulates calling a foreign item using its name, failing if the item is not supported.
+    /// Returns Ok(false) if after calling this function, the call should return earlier instead of
+    /// going to the next block.
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
