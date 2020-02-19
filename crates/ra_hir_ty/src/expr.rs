@@ -15,6 +15,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
+    utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
 
@@ -27,6 +28,7 @@ pub use hir_def::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
+    VariantId,
 };
 
 pub struct ExprValidator<'a, 'b: 'a> {
@@ -69,17 +71,19 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     ) {
         if spread.is_some() {
             return;
+        };
+        let variant_def: VariantId = match self.infer.variant_resolution_for_expr(id) {
+            Some(VariantId::UnionId(_)) | None => return,
+            Some(it) => it,
+        };
+        if let VariantId::UnionId(_) = variant_def {
+            return;
         }
 
-        let struct_def = match self.infer[id].as_adt() {
-            Some((AdtId::StructId(s), _)) => s,
-            _ => return,
-        };
-        let struct_data = db.struct_data(struct_def);
+        let variant_data = variant_data(db, variant_def);
 
         let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
-        let missed_fields: Vec<Name> = struct_data
-            .variant_data
+        let missed_fields: Vec<Name> = variant_data
             .fields()
             .iter()
             .filter_map(|(_f, d)| {
