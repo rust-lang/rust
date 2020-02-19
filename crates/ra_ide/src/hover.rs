@@ -2,7 +2,7 @@
 
 use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, SourceBinder};
 use ra_db::SourceDatabase;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{defs::NameDefinition, RootDatabase};
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
@@ -14,7 +14,7 @@ use ra_syntax::{
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     expand::{descend_into_macros, original_range},
-    references::{classify_name, classify_name_ref, NameKind, NameKind::*},
+    references::{classify_name, classify_name_ref},
     FilePosition, FileRange, RangeInfo,
 };
 
@@ -92,20 +92,20 @@ fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
     }
 }
 
-fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<String> {
-    return match name_kind {
-        Macro(it) => {
+fn hover_text_from_name_kind(db: &RootDatabase, def: NameDefinition) -> Option<String> {
+    return match def {
+        NameDefinition::Macro(it) => {
             let src = it.source(db);
             hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)))
         }
-        StructField(it) => {
+        NameDefinition::StructField(it) => {
             let src = it.source(db);
             match src.value {
                 hir::FieldSource::Named(it) => hover_text(it.doc_comment_text(), it.short_label()),
                 _ => None,
             }
         }
-        ModuleDef(it) => match it {
+        NameDefinition::ModuleDef(it) => match it {
             hir::ModuleDef::Module(it) => match it.definition_source(db).value {
                 hir::ModuleSource::Module(it) => {
                     hover_text(it.doc_comment_text(), it.short_label())
@@ -123,8 +123,10 @@ fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<S
             hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
             hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Local(it) => Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string())),
-        TypeParam(_) | SelfType(_) => {
+        NameDefinition::Local(it) => {
+            Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string()))
+        }
+        NameDefinition::TypeParam(_) | NameDefinition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }
@@ -151,10 +153,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     if let Some((node, name_kind)) = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().clone(), d.kind))
+                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().clone(), d))
             },
             ast::Name(name) => {
-                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().clone(), d.kind))
+                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().clone(), d))
             },
             _ => None,
         }

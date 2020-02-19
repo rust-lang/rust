@@ -18,7 +18,7 @@ use ra_syntax::{
 use crate::RootDatabase;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum NameKind {
+pub enum NameDefinition {
     Macro(MacroDef),
     StructField(StructField),
     ModuleDef(ModuleDef),
@@ -27,33 +27,26 @@ pub enum NameKind {
     TypeParam(TypeParam),
 }
 
-#[derive(PartialEq, Eq)]
-pub struct NameDefinition {
-    /// FIXME: this doesn't really make sense. For example, builtin types don't
-    /// really have a module.
-    pub kind: NameKind,
-}
-
 impl NameDefinition {
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
-        match self.kind {
-            NameKind::Macro(it) => it.module(db),
-            NameKind::StructField(it) => Some(it.parent_def(db).module(db)),
-            NameKind::ModuleDef(it) => it.module(db),
-            NameKind::SelfType(it) => Some(it.module(db)),
-            NameKind::Local(it) => Some(it.module(db)),
-            NameKind::TypeParam(it) => Some(it.module(db)),
+        match self {
+            NameDefinition::Macro(it) => it.module(db),
+            NameDefinition::StructField(it) => Some(it.parent_def(db).module(db)),
+            NameDefinition::ModuleDef(it) => it.module(db),
+            NameDefinition::SelfType(it) => Some(it.module(db)),
+            NameDefinition::Local(it) => Some(it.module(db)),
+            NameDefinition::TypeParam(it) => Some(it.module(db)),
         }
     }
 
     pub fn visibility(&self, db: &RootDatabase) -> Option<ast::Visibility> {
-        match self.kind {
-            NameKind::Macro(_) => None,
-            NameKind::StructField(sf) => match sf.source(db).value {
+        match self {
+            NameDefinition::Macro(_) => None,
+            NameDefinition::StructField(sf) => match sf.source(db).value {
                 FieldSource::Named(it) => it.visibility(),
                 FieldSource::Pos(it) => it.visibility(),
             },
-            NameKind::ModuleDef(def) => match def {
+            NameDefinition::ModuleDef(def) => match def {
                 ModuleDef::Module(it) => it.declaration_source(db)?.value.visibility(),
                 ModuleDef::Function(it) => it.source(db).value.visibility(),
                 ModuleDef::Adt(adt) => match adt {
@@ -68,9 +61,9 @@ impl NameDefinition {
                 ModuleDef::EnumVariant(_) => None,
                 ModuleDef::BuiltinType(_) => None,
             },
-            NameKind::SelfType(_) => None,
-            NameKind::Local(_) => None,
-            NameKind::TypeParam(_) => None,
+            NameDefinition::SelfType(_) => None,
+            NameDefinition::Local(_) => None,
+            NameDefinition::TypeParam(_) => None,
         }
     }
 }
@@ -87,9 +80,7 @@ pub fn classify_name(
             ast::BindPat(it) => {
                 let src = name.with_value(it);
                 let local = sb.to_def(src)?;
-                Some(NameDefinition {
-                    kind: NameKind::Local(local),
-                })
+                Some(NameDefinition::Local(local))
             },
             ast::RecordFieldDef(it) => {
                 let src = name.with_value(it);
@@ -144,16 +135,12 @@ pub fn classify_name(
                 let src = name.with_value(it);
                 let def = sb.to_def(src.clone())?;
 
-                Some(NameDefinition {
-                    kind: NameKind::Macro(def),
-                })
+                Some(NameDefinition::Macro(def))
             },
             ast::TypeParam(it) => {
                 let src = name.with_value(it);
                 let def = sb.to_def(src)?;
-                Some(NameDefinition {
-                    kind: NameKind::TypeParam(def),
-                })
+                Some(NameDefinition::TypeParam(def))
             },
             _ => None,
         }
@@ -161,11 +148,9 @@ pub fn classify_name(
 }
 
 pub fn from_struct_field(field: StructField) -> NameDefinition {
-    let kind = NameKind::StructField(field);
-    NameDefinition { kind }
+    NameDefinition::StructField(field)
 }
 
 pub fn from_module_def(def: ModuleDef) -> NameDefinition {
-    let kind = NameKind::ModuleDef(def);
-    NameDefinition { kind }
+    NameDefinition::ModuleDef(def)
 }

@@ -31,7 +31,7 @@ pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
     rename::rename,
 };
-pub(crate) use ra_ide_db::defs::{NameDefinition, NameKind};
+pub(crate) use ra_ide_db::defs::NameDefinition;
 
 pub use self::search_scope::SearchScope;
 
@@ -126,13 +126,13 @@ pub(crate) fn find_all_refs(
 
     let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position, opt_name)?;
 
-    let declaration = match def.kind {
-        NameKind::Macro(mac) => mac.to_nav(db),
-        NameKind::StructField(field) => field.to_nav(db),
-        NameKind::ModuleDef(def) => NavigationTarget::from_def(db, def)?,
-        NameKind::SelfType(imp) => imp.to_nav(db),
-        NameKind::Local(local) => local.to_nav(db),
-        NameKind::TypeParam(_) => return None,
+    let declaration = match def {
+        NameDefinition::Macro(mac) => mac.to_nav(db),
+        NameDefinition::StructField(field) => field.to_nav(db),
+        NameDefinition::ModuleDef(def) => NavigationTarget::from_def(db, def)?,
+        NameDefinition::SelfType(imp) => imp.to_nav(db),
+        NameDefinition::Local(local) => local.to_nav(db),
+        NameDefinition::TypeParam(_) => return None,
     };
 
     let search_scope = {
@@ -148,7 +148,7 @@ pub(crate) fn find_all_refs(
     let declaration = Declaration {
         nav: declaration,
         kind: ReferenceKind::Other,
-        access: decl_access(&def.kind, &name, &syntax, decl_range),
+        access: decl_access(&def, &name, &syntax, decl_range),
     };
 
     let references = process_definition(db, def, name, search_scope)
@@ -247,7 +247,7 @@ fn process_definition(
                     refs.push(Reference {
                         file_range: FileRange { file_id, range },
                         kind,
-                        access: reference_access(&d.kind, &name_ref.value),
+                        access: reference_access(&d, &name_ref.value),
                     });
                 }
             }
@@ -257,13 +257,13 @@ fn process_definition(
 }
 
 fn decl_access(
-    kind: &NameKind,
+    def: &NameDefinition,
     name: &str,
     syntax: &SyntaxNode,
     range: TextRange,
 ) -> Option<ReferenceAccess> {
-    match kind {
-        NameKind::Local(_) | NameKind::StructField(_) => {}
+    match def {
+        NameDefinition::Local(_) | NameDefinition::StructField(_) => {}
         _ => return None,
     };
 
@@ -280,10 +280,10 @@ fn decl_access(
     None
 }
 
-fn reference_access(kind: &NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+fn reference_access(def: &NameDefinition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
-    match kind {
-        NameKind::Local(_) | NameKind::StructField(_) => {}
+    match def {
+        NameDefinition::Local(_) | NameDefinition::StructField(_) => {}
         _ => return None,
     };
 
