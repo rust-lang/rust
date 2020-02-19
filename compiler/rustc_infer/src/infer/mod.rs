@@ -12,7 +12,6 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::logged_unification_table as lut;
-use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
