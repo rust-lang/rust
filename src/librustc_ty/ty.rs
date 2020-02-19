@@ -211,8 +211,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
 }
 
 fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::AssociatedItems {
-    let items =
-        tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did)).collect();
+    let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
     tcx.arena.alloc(ty::AssociatedItems::new(items))
 }
 
