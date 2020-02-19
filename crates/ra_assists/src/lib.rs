@@ -108,6 +108,7 @@ mod handlers {
     mod introduce_variable;
     mod inline_local_variable;
     mod raw_string;
+    mod remove_mut;
     mod replace_if_let_with_match;
     mod split_import;
     mod remove_dbg;
@@ -147,6 +148,7 @@ mod handlers {
             raw_string::make_raw_string,
             raw_string::make_usual_string,
             raw_string::remove_hash,
+            remove_mut::remove_mut,
             early_return::convert_to_guarded_return,
             auto_import::auto_import,
         ]
