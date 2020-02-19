@@ -43,7 +43,7 @@ impl SearchScope {
             return SearchScope::new(res);
         }
 
-        let vis = def.visibility.as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
+        let vis = def.visibility(db).as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
 
         if vis.as_str() == "pub(super)" {
             if let Some(parent_module) = module.parent(db) {
