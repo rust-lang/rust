@@ -38,7 +38,7 @@ pub struct GroupLabel(pub String);
 impl AssistLabel {
     pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
-        assert!(label.chars().next().unwrap().is_uppercase());
+        assert!(label.starts_with(|c: char| c.is_uppercase()));
         AssistLabel { label, id }
     }
 }

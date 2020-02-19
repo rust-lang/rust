@@ -141,7 +141,7 @@ fn convert_literal(l: &tt::Literal) -> TtToken {
 }
 
 fn convert_ident(ident: &tt::Ident) -> TtToken {
-    let kind = if let Some('\'') = ident.text.chars().next() {
+    let kind = if ident.text.starts_with('\'') {
         LIFETIME
     } else {
         SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT)
