@@ -23,13 +23,16 @@ pub struct FileHandler {
     handles: BTreeMap<i32, FileHandle>,
 }
 
+// fd numbers 0, 1, and 2 are reserved for stdin, stdout, and stderr
+const MIN_NORMAL_FILE_FD: i32 = 3;
+
 impl FileHandler {
     fn insert_fd(&mut self, file_handle: FileHandle) -> i32 {
-        self.insert_fd_with_min_fd(file_handle, 3)
+        self.insert_fd_with_min_fd(file_handle, 0)
     }
 
     fn insert_fd_with_min_fd(&mut self, file_handle: FileHandle, min_fd: i32) -> i32 {
-        let min_fd = std::cmp::max(min_fd, 3);
+        let min_fd = std::cmp::max(min_fd, MIN_NORMAL_FILE_FD);
 
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
@@ -171,7 +174,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            if fd <= 2 {
+            if fd < MIN_NORMAL_FILE_FD {
                 throw_unsup_format!("Duplicating file descriptors for stdin, stdout, or stderr is not supported")
             }
             let start_op = start_op.ok_or_else(|| {
