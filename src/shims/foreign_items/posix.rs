@@ -157,24 +157,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "memrchr" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_i32()? as u8;
-                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                if let Some(idx) = this
-                    .memory
-                    .read_bytes(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .rev()
-                    .position(|&c| c == val)
-                {
-                    let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), this)?;
-                    this.write_scalar(new_ptr, dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
-            }
-
             // Hook pthread calls that go to the thread-local storage memory subsystem.
             "pthread_key_create" => {
                 let key_place = this.deref_operand(args[0])?;
