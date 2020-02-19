@@ -772,10 +772,6 @@ fn contains_illegal_self_type_reference<'tcx>(
     error
 }
 
-fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    tcx.object_safety_violations(trait_def_id).is_empty()
-}
-
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    *providers = ty::query::Providers { is_object_safe, object_safety_violations, ..*providers };
+    *providers = ty::query::Providers { object_safety_violations, ..*providers };
 }
