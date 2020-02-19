@@ -532,9 +532,6 @@ declare_features! (
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
 
-    // Allows limiting the evaluation steps of const expressions
-    (active, const_eval_limit, "1.41.0", Some(67217), None),
-
     /// Allows the use of `loop` and `while` in constants.
     (active, const_loop, "1.41.0", Some(52000), None),
 
@@ -554,6 +551,9 @@ declare_features! (
 
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
+
+    // Allows limiting the evaluation steps of const expressions
+    (active, const_eval_limit, "1.43.0", Some(67217), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

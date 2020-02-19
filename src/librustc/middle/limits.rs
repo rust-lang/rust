@@ -38,10 +38,8 @@ fn update_limit(
                     return;
                 }
                 Err(e) => {
-                    let mut err = sess.struct_span_err(
-                        attr.span,
-                        "`recursion_limit` must be a non-negative integer",
-                    );
+                    let mut err =
+                        sess.struct_span_err(attr.span, "`limit` must be a non-negative integer");
 
                     let value_span = attr
                         .meta()
@@ -50,11 +48,11 @@ fn update_limit(
                         .unwrap_or(attr.span);
 
                     let error_str = match e.kind() {
-                        IntErrorKind::Overflow => "`recursion_limit` is too large",
-                        IntErrorKind::Empty => "`recursion_limit` must be a non-negative integer",
+                        IntErrorKind::Overflow => "`limit` is too large",
+                        IntErrorKind::Empty => "`limit` must be a non-negative integer",
                         IntErrorKind::InvalidDigit => "not a valid integer",
-                        IntErrorKind::Underflow => bug!("`recursion_limit` should never underflow"),
-                        IntErrorKind::Zero => bug!("zero is a valid `recursion_limit`"),
+                        IntErrorKind::Underflow => bug!("`limit` should never underflow"),
+                        IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
 
