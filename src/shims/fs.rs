@@ -340,7 +340,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(create_link(target, linkpath).map(|_| 0))
     }
 
-    fn stat(
+    fn macos_stat(
         &mut self,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
@@ -349,11 +349,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("stat")?;
         this.check_platform("macos", "stat")?;
         // `stat` always follows symlinks.
-        this.stat_or_lstat(true, path_op, buf_op)
+        this.macos_stat_or_lstat(true, path_op, buf_op)
     }
 
     // `lstat` is used to get symlink metadata.
-    fn lstat(
+    fn macos_lstat(
         &mut self,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
@@ -361,10 +361,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.check_no_isolation("lstat")?;
         this.check_platform("macos", "lstat")?;
-        this.stat_or_lstat(false, path_op, buf_op)
+        this.macos_stat_or_lstat(false, path_op, buf_op)
     }
 
-    fn fstat(
+    fn macos_fstat(
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
@@ -380,10 +380,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_macos_write_buf(this, metadata, buf_op)
+        macos_stat_write_buf(this, metadata, buf_op)
     }
 
-    fn stat_or_lstat(
+    fn macos_stat_or_lstat(
         &mut self,
         follow_symlink: bool,
         path_op: OpTy<'tcx, Tag>,
@@ -398,10 +398,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_macos_write_buf(this, metadata, buf_op)
+        macos_stat_write_buf(this, metadata, buf_op)
     }
 
-    fn statx(
+    fn linux_statx(
         &mut self,
         dirfd_op: OpTy<'tcx, Tag>,    // Should be an `int`
         pathname_op: OpTy<'tcx, Tag>, // Should be a `const char *`
@@ -688,7 +688,7 @@ impl FileMetadata {
     }
 }
 
-fn stat_macos_write_buf<'tcx, 'mir>(
+fn macos_stat_write_buf<'tcx, 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     metadata: FileMetadata,
     buf_op: OpTy<'tcx, Tag>,

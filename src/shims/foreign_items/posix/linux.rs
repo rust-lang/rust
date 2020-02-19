@@ -57,7 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     id if id == sys_statx => {
                         // The first argument is the syscall id,
                         // so skip over it.
-                        let result = this.statx(args[1], args[2], args[3], args[4], args[5])?;
+                        let result = this.linux_statx(args[1], args[2], args[3], args[4], args[5])?;
                         this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
                     }
                     id => throw_unsup_format!("miri does not support syscall ID {}", id),
