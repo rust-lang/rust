@@ -106,9 +106,6 @@ mod llvm_libunwind {
         }
 
         if target_env == "musl" {
-            // use the same C compiler command to compile C++ code so we do not need to setup the
-            // C++ compiler env variables on the builders
-            cfg.cpp(false);
             // linking for musl is handled in lib.rs
             cfg.cargo_metadata(false);
             println!("cargo:rustc-link-search=native={}", env::var("OUT_DIR").unwrap());
