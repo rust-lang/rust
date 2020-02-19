@@ -6,8 +6,7 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
-    defs::classify_name,
-    defs::NameKind,
+    defs::{classify_name, NameDefinition},
     symbol_index::{self, FileSymbol, Query},
     RootDatabase,
 };
@@ -44,7 +43,7 @@ impl<'a> ImportsLocator<'a> {
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(db, &import_candidate))
             .filter_map(|name_definition_to_import| match name_definition_to_import {
-                NameKind::ModuleDef(module_def) => Some(module_def),
+                NameDefinition::ModuleDef(module_def) => Some(module_def),
                 _ => None,
             })
             .collect()
@@ -54,7 +53,7 @@ impl<'a> ImportsLocator<'a> {
         &mut self,
         db: &impl HirDatabase,
         import_candidate: &FileSymbol,
-    ) -> Option<NameKind> {
+    ) -> Option<NameDefinition> {
         let _p = profile("get_name_definition");
         let file_id = import_candidate.file_id.into();
         let candidate_node = import_candidate.ptr.to_node(&db.parse_or_expand(file_id)?);
@@ -67,6 +66,5 @@ impl<'a> ImportsLocator<'a> {
             &mut self.source_binder,
             hir::InFile { file_id, value: &ast::Name::cast(candidate_name_node)? },
         )
-        .map(|it| it.kind)
     }
 }

@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{db::AstDatabase, InFile, SourceBinder};
-use ra_ide_db::{symbol_index, RootDatabase};
+use ra_ide_db::{defs::NameDefinition, symbol_index, RootDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
@@ -12,7 +12,7 @@ use ra_syntax::{
 use crate::{
     display::{ShortLabel, ToNav},
     expand::descend_into_macros,
-    references::{classify_name_ref, NameKind::*},
+    references::classify_name_ref,
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -73,17 +73,17 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(sb, name_ref).map(|d| d.kind);
+    let name_kind = classify_name_ref(sb, name_ref);
     match name_kind {
-        Some(Macro(it)) => return Exact(it.to_nav(sb.db)),
-        Some(StructField(it)) => return Exact(it.to_nav(sb.db)),
-        Some(TypeParam(it)) => return Exact(it.to_nav(sb.db)),
-        Some(Local(it)) => return Exact(it.to_nav(sb.db)),
-        Some(ModuleDef(def)) => match NavigationTarget::from_def(sb.db, def) {
+        Some(NameDefinition::Macro(it)) => return Exact(it.to_nav(sb.db)),
+        Some(NameDefinition::StructField(it)) => return Exact(it.to_nav(sb.db)),
+        Some(NameDefinition::TypeParam(it)) => return Exact(it.to_nav(sb.db)),
+        Some(NameDefinition::Local(it)) => return Exact(it.to_nav(sb.db)),
+        Some(NameDefinition::ModuleDef(def)) => match NavigationTarget::from_def(sb.db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },
-        Some(SelfType(imp)) => {
+        Some(NameDefinition::SelfType(imp)) => {
             // FIXME: ideally, this should point to the type in the impl, and
             // not at the whole impl. And goto **type** definition should bring
             // us to the actual type

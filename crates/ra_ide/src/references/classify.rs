@@ -5,7 +5,7 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode};
 use test_utils::tested_by;
 
-use super::{NameDefinition, NameKind};
+use super::NameDefinition;
 use ra_ide_db::RootDatabase;
 
 pub use ra_ide_db::defs::{classify_name, from_module_def, from_struct_field};
@@ -46,8 +46,7 @@ pub(crate) fn classify_name_ref(
         if let Some(macro_def) =
             analyzer.resolve_macro_call(sb.db, name_ref.with_value(&macro_call))
         {
-            let kind = NameKind::Macro(macro_def);
-            return Some(NameDefinition { kind });
+            return Some(NameDefinition::Macro(macro_def));
         }
     }
 
@@ -63,22 +62,10 @@ pub(crate) fn classify_name_ref(
             };
             from_module_def(def)
         }
-        PathResolution::Local(local) => {
-            let kind = NameKind::Local(local);
-            NameDefinition { kind }
-        }
-        PathResolution::TypeParam(par) => {
-            let kind = NameKind::TypeParam(par);
-            NameDefinition { kind }
-        }
-        PathResolution::Macro(def) => {
-            let kind = NameKind::Macro(def);
-            NameDefinition { kind }
-        }
-        PathResolution::SelfType(impl_block) => {
-            let kind = NameKind::SelfType(impl_block);
-            NameDefinition { kind }
-        }
+        PathResolution::Local(local) => NameDefinition::Local(local),
+        PathResolution::TypeParam(par) => NameDefinition::TypeParam(par),
+        PathResolution::Macro(def) => NameDefinition::Macro(def),
+        PathResolution::SelfType(impl_block) => NameDefinition::SelfType(impl_block),
     };
     Some(res)
 }
