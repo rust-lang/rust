@@ -55,7 +55,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
-            // macOS API stubs.
+            // Other shims
             "pthread_attr_get_np" => {
                 this.write_null(dest)?;
             }

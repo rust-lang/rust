@@ -16,6 +16,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = &{ this.tcx.tcx };
 
         match link_name {
+            // Windows API stubs.
+            // HANDLE = isize
+            // DWORD = ULONG = u32
+            // BOOL = i32
+
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
@@ -70,10 +75,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     dest,
                 )?;
             }
-            // Windows API stubs.
-            // HANDLE = isize
-            // DWORD = ULONG = u32
-            // BOOL = i32
+
+            // Other shims
             "GetProcessHeap" => {
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;

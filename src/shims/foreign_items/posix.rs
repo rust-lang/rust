@@ -104,6 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            // Other shims
             "posix_memalign" => {
                 let ret = this.deref_operand(args[0])?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
