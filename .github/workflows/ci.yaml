@@ -17,6 +17,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       RUSTFLAGS: -D warnings
+      CC: deny_c
       CARGO_INCREMENTAL: 0
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
