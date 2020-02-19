@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// let { a: _, b: ref b, c: _ } = ..
     /// ```
     pub UNNEEDED_FIELD_PATTERN,
-    style,
+    restriction,
     "struct fields bound to a wildcard instead of using `..`"
 }
 
