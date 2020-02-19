@@ -126,8 +126,8 @@ pub trait DocCommentsOwner: AstNode {
 
                 // Determine if the prefix or prefix + 1 char is stripped
                 let pos =
-                    if line.chars().nth(prefix_len).map(|c| c.is_whitespace()).unwrap_or(false) {
-                        prefix_len + 1
+                    if let Some(ws) = line.chars().nth(prefix_len).filter(|c| c.is_whitespace()) {
+                        prefix_len + ws.len_utf8()
                     } else {
                         prefix_len
                     };
