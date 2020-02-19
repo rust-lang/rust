@@ -16,6 +16,7 @@ use rustc_hir::intravisit;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
+use rustc_span::symbol::kw;
 use rustc_span::{source_map, FileName, Span};
 use syntax::ast;
 use syntax::util::lev_distance;
@@ -893,6 +894,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let type_is_local = self.type_derefs_to_local(span, rcvr_ty, source);
 
+        let mut arbitrary_rcvr = vec![];
         // There are no traits implemented, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
@@ -909,12 +911,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self
                         .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
+                            if let ty::AssocKind::Method = item.kind {
+                                let id = self.tcx.hir().as_local_hir_id(item.def_id);
+                                if let Some(hir::Node::TraitItem(hir::TraitItem {
+                                    kind: hir::TraitItemKind::Method(fn_sig, method),
+                                    ..
+                                })) = id.map(|id| self.tcx.hir().get(id))
+                                {
+                                    let self_first_arg = match method {
+                                        hir::TraitMethod::Required([ident, ..]) => {
+                                            ident.name == kw::SelfLower
+                                        }
+                                        hir::TraitMethod::Provided(body_id) => {
+                                            match &self.tcx.hir().body(*body_id).params[..] {
+                                                [hir::Param {
+                                                    pat:
+                                                        hir::Pat {
+                                                            kind:
+                                                                hir::PatKind::Binding(
+                                                                    _,
+                                                                    _,
+                                                                    ident,
+                                                                    ..,
+                                                                ),
+                                                            ..
+                                                        },
+                                                    ..
+                                                }, ..] => ident.name == kw::SelfLower,
+                                                _ => false,
+                                            }
+                                        }
+                                        _ => false,
+                                    };
+
+                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                        && self_first_arg
+                                    {
+                                        if let Some(ty) = fn_sig.decl.inputs.get(0) {
+                                            arbitrary_rcvr.push(ty.span);
+                                        }
+                                        return false;
+                                    }
+                                }
+                            }
                             // We only want to suggest public or local traits (#45781).
                             item.vis == ty::Visibility::Public || info.def_id.is_local()
                         })
                         .is_some()
             })
             .collect::<Vec<_>>();
+        for span in &arbitrary_rcvr {
+            err.span_label(
+                *span,
+                "the method might not be found because of this arbitrary self type",
+            );
+        }
 
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
