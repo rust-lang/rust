@@ -25,7 +25,7 @@ jobs:
 # - job: macOS
 #   timeoutInMinutes: 600
 #   pool:
-#     vmImage: macos-10.13
+#     vmImage: macos-10.15
 #   steps:
 #   - template: steps/run.yml
 #   strategy:

@@ -51,10 +51,6 @@ steps:
   displayName: Install clang
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- bash: src/ci/scripts/switch-xcode.sh
-  displayName: Switch to Xcode 9.3
-  condition: and(succeeded(), not(variables.SKIP_JOB))
-
 - bash: src/ci/scripts/install-wix.sh
   displayName: Install wix
   condition: and(succeeded(), not(variables.SKIP_JOB))
