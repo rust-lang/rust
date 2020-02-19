@@ -24,9 +24,17 @@ fn prepare(filename: &str) -> PathBuf {
     path
 }
 
+/// Prepare like above, and also write some initial content to the file.
+fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
+    let path = prepare(filename);
+    let mut file = File::create(&path).unwrap();
+    file.write(content).unwrap();
+    path
+}
+
 fn test_file() {
-    let path = prepare("miri_test_fs_file.txt");
     let bytes = b"Hello, World!\n";
+    let path = prepare("miri_test_fs_file.txt");
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
@@ -50,11 +58,8 @@ fn test_file() {
 }
 
 fn test_file_clone() {
-    let path = prepare("miri_test_fs_file_clone.txt");
     let bytes = b"Hello, World!\n";
-
-    let mut file = File::create(&path).unwrap();
-    file.write(bytes).unwrap();
+    let path = prepare_with_content("miri_test_fs_file_clone.txt", bytes);
 
     // Cloning a file should be successful.
     let file = File::open(&path).unwrap();
@@ -69,11 +74,8 @@ fn test_file_clone() {
 }
 
 fn test_seek() {
-    let path = prepare("miri_test_fs_seek.txt");
-    let bytes = b"Hello, World!\n";
-
-    let mut file = File::create(&path).unwrap();
-    file.write(bytes).unwrap();
+    let bytes = b"Hello, entire World!\n";
+    let path = prepare_with_content("miri_test_fs_seek.txt", bytes);
 
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
@@ -110,11 +112,8 @@ fn check_metadata(bytes: &[u8], path: &Path) -> Result<()> {
 }
 
 fn test_metadata() {
-    let path = prepare("miri_test_fs_metadata.txt");
-    let bytes = b"Hello, World!\n";
-
-    let mut file = File::create(&path).unwrap();
-    file.write(bytes).unwrap();
+    let bytes = b"Hello, meta-World!\n";
+    let path = prepare_with_content("miri_test_fs_metadata.txt", bytes);
 
     // Test that metadata of an absolute path is correct.
     check_metadata(bytes, &path).unwrap();
@@ -127,12 +126,9 @@ fn test_metadata() {
 }
 
 fn test_symlink() {
-    let path = prepare("miri_test_fs_link_target.txt");
-    let symlink_path = prepare("miri_test_fs_symlink.txt");
     let bytes = b"Hello, World!\n";
-
-    let mut file = File::create(&path).unwrap();
-    file.write(bytes).unwrap();
+    let path = prepare_with_content("miri_test_fs_link_target.txt", bytes);
+    let symlink_path = prepare("miri_test_fs_symlink.txt");
 
     // Creating a symbolic link should succeed.
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
@@ -153,8 +149,8 @@ fn test_symlink() {
 }
 
 fn test_errors() {
-    let path = prepare("miri_test_fs_errors.txt");
     let bytes = b"Hello, World!\n";
+    let path = prepare("miri_test_fs_errors.txt");
 
     // The following tests also check that the `__errno_location()` shim is working properly.
     // Opening a non-existing file should fail with a "not found" error.
