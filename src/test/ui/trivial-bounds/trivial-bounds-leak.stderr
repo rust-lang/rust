@@ -12,7 +12,7 @@ error[E0599]: no method named `test` found for type `i32` in the current scope
   --> $DIR/trivial-bounds-leak.rs:24:10
    |
 LL | pub trait Foo {
-   | ------------- `Foo` defines an item `test`
+   | ------------- `Foo` defines an item `test`, perhaps you need to implement it
 ...
 LL |     3i32.test();
    |          ^^^^ method not found in `i32`

@@ -2,7 +2,7 @@ error[E0599]: no method named `owned` found for reference `&dyn Foo` in the curr
   --> $DIR/object-pointer-types.rs:11:7
    |
 LL | trait Foo {
-   | --------- `Foo` defines an item `owned`
+   | --------- `Foo` defines an item `owned`, perhaps you need to implement it
 ...
 LL |     x.owned();
    |       ^^^^^ method not found in `&dyn Foo`
@@ -13,7 +13,7 @@ error[E0599]: no method named `owned` found for mutable reference `&mut dyn Foo`
   --> $DIR/object-pointer-types.rs:17:7
    |
 LL | trait Foo {
-   | --------- `Foo` defines an item `owned`
+   | --------- `Foo` defines an item `owned`, perhaps you need to implement it
 ...
 LL |     x.owned();
    |       ^^^^^ method not found in `&mut dyn Foo`
