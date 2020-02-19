@@ -725,7 +725,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             return AllocationRelocations { relative_relocations: Vec::new() };
         }
 
-        let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+        let mut new_relocations = Vec::with_capacity(relocations.len().checked_mul(length as usize).expect("capacity overflow"));
 
         for i in 0..length {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
