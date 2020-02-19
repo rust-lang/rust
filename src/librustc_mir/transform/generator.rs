@@ -49,9 +49,10 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::dataflow::generic::{Analysis, ResultsCursor};
 use crate::dataflow::{do_dataflow, DataflowResultsCursor, DebugFormatted};
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{HaveBeenBorrowedLocals, MaybeStorageLive, RequiresStorage};
+use crate::dataflow::{MaybeBorrowedLocals, MaybeStorageLive, RequiresStorage};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
@@ -471,17 +472,10 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body_ref);
-    let borrowed_locals_results = do_dataflow(
-        tcx,
-        body_ref,
-        def_id,
-        &[],
-        &dead_unwinds,
-        borrowed_locals_analysis,
-        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]),
-    );
-    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body_ref);
+    let borrowed_locals_results =
+        MaybeBorrowedLocals::all_borrows().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
+
+    let mut borrowed_locals_cursor = ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
@@ -521,7 +515,7 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor.seek(loc);
+                borrowed_locals_cursor.seek_before(loc);
                 liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 

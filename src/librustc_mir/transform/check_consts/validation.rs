@@ -16,17 +16,19 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::ops::Deref;
 
-use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
-use dataflow::Analysis;
+use crate::dataflow::generic::{self as dataflow, Analysis};
+use crate::dataflow::MaybeMutBorrowedLocals;
 
+// We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
+// through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
+// kills locals upon `StorageDead` because a local will never be used after a `StorageDead`.
 pub type IndirectlyMutableResults<'mir, 'tcx> =
-    old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
+    dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
 
 struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
     cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
@@ -59,7 +61,7 @@ pub struct Qualifs<'a, 'mir, 'tcx> {
 
 impl Qualifs<'a, 'mir, 'tcx> {
     fn indirectly_mutable(&mut self, local: Local, location: Location) -> bool {
-        self.indirectly_mutable.seek(location);
+        self.indirectly_mutable.seek_before(location);
         self.indirectly_mutable.get().contains(local)
     }
 
@@ -135,22 +137,21 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
 
 impl Validator<'a, 'mir, 'tcx> {
     pub fn new(item: &'a Item<'mir, 'tcx>) -> Self {
+        let Item { tcx, body, def_id, param_env, .. } = *item;
+
         let needs_drop = QualifCursor::new(NeedsDrop, item);
         let has_mut_interior = QualifCursor::new(HasMutInterior, item);
 
-        let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
-        let indirectly_mutable = old_dataflow::do_dataflow(
-            item.tcx,
-            &*item.body,
-            item.def_id,
-            &item.tcx.get_attrs(item.def_id),
-            &dead_unwinds,
-            old_dataflow::IndirectlyMutableLocals::new(item.tcx, *item.body, item.param_env),
-            |_, local| old_dataflow::DebugFormatted::new(&local),
-        );
-
-        let indirectly_mutable =
-            old_dataflow::DataflowResultsCursor::new(indirectly_mutable, *item.body);
+        // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
+        // allowed in a const.
+        //
+        // FIXME(ecstaticmorse): Someday we want to allow custom drop impls. How do we do this
+        // without breaking stable code?
+        let indirectly_mutable = MaybeMutBorrowedLocals::mut_borrows_only(tcx, *body, param_env)
+            .unsound_ignore_borrow_on_drop()
+            .into_engine(tcx, *body, def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*body);
 
         let qualifs = Qualifs { needs_drop, has_mut_interior, indirectly_mutable };
 

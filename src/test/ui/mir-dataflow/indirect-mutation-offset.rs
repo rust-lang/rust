@@ -1,6 +1,11 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
-// ignore-test Temporarily ignored while this analysis is migrated to the new framework.
+// This test demonstrates a shortcoming of the `MaybeMutBorrowedLocals` analysis. It does not
+// handle code that takes a reference to one field of a struct, then use pointer arithmetic to
+// transform it to another field of that same struct that may have interior mutability. For now,
+// this is UB, but this may change in the future. See [rust-lang/unsafe-code-guidelines#134].
+//
+// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
 
 #![feature(core_intrinsics, rustc_attrs, const_raw_ptr_deref)]
 

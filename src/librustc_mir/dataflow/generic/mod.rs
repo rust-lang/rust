@@ -395,5 +395,16 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
     }
 }
 
+// For compatibility with old framework
+impl<T: Idx> GenKill<T> for crate::dataflow::GenKillSet<T> {
+    fn gen(&mut self, elem: T) {
+        self.gen(elem);
+    }
+
+    fn kill(&mut self, elem: T) {
+        self.kill(elem);
+    }
+}
+
 #[cfg(test)]
 mod tests;
