@@ -162,7 +162,7 @@ impl EarlyLintPass for ExcessiveBools {
             }
             | ItemKind::Trait(_, _, _, _, items) => {
                 for item in items {
-                    if let AssocItemKind::Fn(fn_sig, _) = &item.kind {
+                    if let AssocItemKind::Fn(fn_sig, _, _) = &item.kind {
                         self.check_fn_sig(cx, fn_sig, item.span);
                     }
                 }
