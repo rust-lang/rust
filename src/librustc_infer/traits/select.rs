@@ -835,18 +835,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Option<EvaluationResult> {
         let tcx = self.tcx();
-        if self.can_use_global_caches(param_env) {
-            let cache = tcx.evaluation_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&param_env.and(trait_ref)) {
-                return Some(cached.get(tcx));
-            }
-        }
-        self.infcx
-            .evaluation_cache
-            .hashmap
-            .borrow()
-            .get(&param_env.and(trait_ref))
-            .map(|v| v.get(tcx))
+        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+            &tcx.evaluation_cache
+        } else {
+            &self.infcx.evaluation_cache
+        };
+
+        cache.hashmap.borrow().get(&param_env.and(trait_ref)).map(|v| v.get(tcx))
     }
 
     fn insert_evaluation_cache(
@@ -862,28 +857,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) {
-            if !trait_ref.has_local_value() {
-                debug!(
-                    "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
-                    trait_ref, result,
-                );
-                // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
-                self.tcx()
-                    .evaluation_cache
-                    .hashmap
-                    .borrow_mut()
-                    .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
-                return;
-            }
-        }
+        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+            debug!(
+                "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
+                trait_ref, result,
+            );
+            // This may overwrite the cache with the same value
+            // FIXME: Due to #50507 this overwrites the different values
+            // This should be changed to use HashMapExt::insert_same
+            // when that is fixed
+            &self.tcx().evaluation_cache
+        } else {
+            debug!("insert_evaluation_cache(trait_ref={:?}, candidate={:?})", trait_ref, result,);
+            &self.infcx.evaluation_cache
+        };
 
-        debug!("insert_evaluation_cache(trait_ref={:?}, candidate={:?})", trait_ref, result,);
-        self.infcx
-            .evaluation_cache
+        cache
             .hashmap
             .borrow_mut()
             .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
@@ -982,6 +971,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             cache_fresh_trait_pred,
             dep_node,
             candidate.clone(),
+            stack.obligation.cause.span,
         );
         candidate
     }
@@ -1250,18 +1240,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         let tcx = self.tcx();
         let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
-        if self.can_use_global_caches(param_env) {
-            let cache = tcx.selection_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&param_env.and(*trait_ref)) {
-                return Some(cached.get(tcx));
-            }
-        }
-        self.infcx
-            .selection_cache
-            .hashmap
-            .borrow()
-            .get(&param_env.and(*trait_ref))
-            .map(|v| v.get(tcx))
+        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+            &tcx.selection_cache
+        } else {
+            &self.infcx.selection_cache
+        };
+
+        cache.hashmap.borrow().get(&param_env.and(*trait_ref)).map(|v| v.get(tcx))
     }
 
     /// Determines whether can we safely cache the result
@@ -1296,6 +1281,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
+        span: rustc_span::Span,
     ) {
         let tcx = self.tcx();
         let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
@@ -1309,31 +1295,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) {
-            if let Err(Overflow) = candidate {
-                // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !trait_ref.has_local_value() {
-                if !candidate.has_local_value() {
-                    debug!(
-                        "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
-                        trait_ref, candidate,
-                    );
-                    // This may overwrite the cache with the same value.
-                    tcx.selection_cache
-                        .hashmap
-                        .borrow_mut()
-                        .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
-                    return;
-                }
-            }
+        // HACK(eddyb) never cache overflow (this check used to be global-only).
+        if let Err(Overflow) = candidate {
+            return;
         }
 
-        debug!(
-            "insert_candidate_cache(trait_ref={:?}, candidate={:?}) local",
-            trait_ref, candidate,
-        );
-        self.infcx
-            .selection_cache
+        let cache = if self.can_use_global_caches(param_env) && !trait_ref.has_local_value() {
+            if candidate.has_local_value() {
+                span_bug!(
+                    span,
+                    "selecting inference-free `{}` resulted in `{:?}`?!",
+                    trait_ref,
+                    candidate,
+                );
+            }
+            debug!(
+                "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
+                trait_ref, candidate,
+            );
+            // This may overwrite the cache with the same value.
+            &tcx.selection_cache
+        } else {
+            debug!(
+                "insert_candidate_cache(trait_ref={:?}, candidate={:?}) local",
+                trait_ref, candidate,
+            );
+            &self.infcx.selection_cache
+        };
+
+        cache
             .hashmap
             .borrow_mut()
             .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
