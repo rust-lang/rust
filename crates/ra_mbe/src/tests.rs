@@ -1374,14 +1374,22 @@ pub(crate) struct MacroFixture {
 
 impl MacroFixture {
     pub(crate) fn expand_tt(&self, invocation: &str) -> tt::Subtree {
-        let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
+        self.try_expand_tt(invocation).unwrap()
+    }
+
+    fn try_expand_tt(&self, invocation: &str) -> Result<tt::Subtree, ExpandError> {
+        let source_file = ast::SourceFile::parse(invocation).tree();
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        self.rules.expand(&invocation_tt).unwrap()
+        self.rules.expand(&invocation_tt)
+    }
+
+    fn assert_expand_err(&self, invocation: &str, err: &ExpandError) {
+        assert_eq!(self.try_expand_tt(invocation).as_ref(), Err(err));
     }
 
     fn expand_items(&self, invocation: &str) -> SyntaxNode {
@@ -1448,7 +1456,7 @@ impl MacroFixture {
 
 pub(crate) fn parse_macro(macro_definition: &str) -> MacroFixture {
     let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
-    let macro_definition =
+    let macro_definition: ast::MacroCall =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
     let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
@@ -1538,4 +1546,14 @@ fn test_repeat_bad_var() {
     "#,
     )
     .assert_expand_items("foo!(b0 b1);", "b0 b1");
+}
+
+#[test]
+fn test_expand_bad_literal() {
+    parse_macro(
+        r#"
+        macro_rules! foo { ($i:literal) => {}; }
+    "#,
+    )
+    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::NoMatchingRule);
 }
