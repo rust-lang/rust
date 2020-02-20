@@ -111,9 +111,9 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 trace!("missing hir id {:#?}", hir_id);
 
                 missing_items.push(format!(
-                    "[local_id: {}, node:{}]",
+                    "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.node_to_string(hir_id)
+                    self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate()
                 ));
             }
             self.error(|| {
