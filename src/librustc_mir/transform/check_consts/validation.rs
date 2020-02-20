@@ -4,7 +4,7 @@ use rustc::middle::lang_items;
 use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
@@ -502,8 +502,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(*self.body, self.tcx);
 
-                let def_id = match fn_ty.kind {
-                    ty::FnDef(def_id, _) => def_id,
+                let (def_id, substs) = match fn_ty.kind {
+                    ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
                         self.check_op(ops::FnCallIndirect);
@@ -518,6 +518,20 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 // At this point, we are calling a function whose `DefId` is known...
                 if is_const_fn(self.tcx, def_id) {
                     return;
+                }
+
+                // See if this is a trait method for a concrete type whose impl of that trait is
+                // `const`.
+                if self.tcx.features().const_trait_impl {
+                    let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs);
+                    debug!("Resolving ({:?}) -> {:?}", def_id, instance);
+                    if let Some(func) = instance {
+                        if let InstanceDef::Item(def_id) = func.def {
+                            if is_const_fn(self.tcx, def_id) {
+                                return;
+                            }
+                        }
+                    }
                 }
 
                 if is_lang_panic_fn(self.tcx, def_id) {
