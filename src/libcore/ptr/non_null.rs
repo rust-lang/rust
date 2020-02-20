@@ -27,8 +27,8 @@ use crate::ptr::Unique;
 /// such as `Box`, `Rc`, `Arc`, `Vec`, and `LinkedList`. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 ///
-/// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
-/// not change the fact that mutating through a (pointer derived from a) shared
+/// Notice that `NonNull<T>` has `From` instances for `&T` and `&[T]`. However, this
+/// does not change the fact that mutating through a (pointer derived from a) shared
 /// reference is undefined behavior unless the mutation happens inside an
 /// [`UnsafeCell<T>`]. The same goes for creating a mutable reference from a shared
 /// reference. When using this `From` instance without an `UnsafeCell<T>`,
@@ -222,5 +222,21 @@ impl<T: ?Sized> From<&T> for NonNull<T> {
     #[inline]
     fn from(reference: &T) -> Self {
         unsafe { NonNull { pointer: reference as *const T } }
+    }
+}
+
+#[stable(feature = "nonnull_from_slice", since = "1.43.0")]
+impl<T> From<&mut [T]> for NonNull<T> {
+    #[inline]
+    fn from(slice: &mut [T]) -> Self {
+        unsafe { NonNull { pointer: slice.as_mut_ptr() } }
+    }
+}
+
+#[stable(feature = "nonnull_from_slice", since = "1.43.0")]
+impl<T> From<&[T]> for NonNull<T> {
+    #[inline]
+    fn from(slice: &[T]) -> Self {
+        unsafe { NonNull { pointer: slice.as_ptr() } }
     }
 }
