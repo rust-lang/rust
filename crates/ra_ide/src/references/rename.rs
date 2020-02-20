@@ -99,17 +99,13 @@ fn rename_mod(
     source_file_edits.push(edit);
 
     if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(db, position, None) {
-        let ref_edits = refs
-            .references
-            .into_iter()
-            .map(|reference| {
-                source_edit_from_file_id_range(
-                    reference.file_range.file_id,
-                    reference.file_range.range,
-                    new_name,
-                )
-            })
-            .collect::<Vec<_>>();
+        let ref_edits = refs.references.into_iter().map(|reference| {
+            source_edit_from_file_id_range(
+                reference.file_range.file_id,
+                reference.file_range.range,
+                new_name,
+            )
+        });
         source_file_edits.extend(ref_edits);
     }
 
