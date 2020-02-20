@@ -89,6 +89,10 @@ Shows the full macro expansion of the macro at current cursor.
 
 Shows internal statistic about memory usage of rust-analyzer
 
+#### Show RA Version
+
+Show current rust-analyzer version
+
 #### Run garbage collection
 
 Manually triggers GC
