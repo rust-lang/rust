@@ -1075,7 +1075,7 @@ impl SourceFile {
         unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
-    ) -> Result<SourceFile, OffsetOverflowError> {
+    ) -> Self {
         let normalized_pos = normalize_src(&mut src, start_pos);
 
         let src_hash = {
@@ -1089,14 +1089,12 @@ impl SourceFile {
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        if end_pos > u32::max_value() as usize {
-            return Err(OffsetOverflowError);
-        }
+        assert!(end_pos <= u32::max_value() as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);
 
-        Ok(SourceFile {
+        SourceFile {
             name,
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
@@ -1111,7 +1109,7 @@ impl SourceFile {
             non_narrow_chars,
             normalized_pos,
             name_hash,
-        })
+        }
     }
 
     /// Returns the `BytePos` of the beginning of the current line.
