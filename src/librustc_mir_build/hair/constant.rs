@@ -1,7 +1,7 @@
 use rustc::mir::interpret::{
     truncate, Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc::ty::{self, layout::Size, ParamEnv, TyCtxt};
+use rustc::ty::{self, layout::Size, ParamEnv, TyCtxt, TyS};
 use rustc_span::symbol::Symbol;
 use syntax::ast;
 
@@ -20,50 +20,35 @@ crate fn lit_to_const<'tcx>(
         Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };
 
-    let lit = match *lit {
-        ast::LitKind::Str(ref s, _) => {
+    let lit = match (lit, &ty.kind) {
+        (ast::LitKind::Str(s, _), ty::Ref(_, TyS { kind: ty::Str, .. }, _)) => {
             let s = s.as_str();
             let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes());
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: s.len() }
         }
-        ast::LitKind::ByteStr(ref data) => {
-            if let ty::Ref(_, ref_ty, _) = ty.kind {
-                match ref_ty.kind {
-                    ty::Slice(_) => {
-                        let allocation = Allocation::from_byte_aligned_bytes(data as &Vec<u8>);
-                        let allocation = tcx.intern_const_alloc(allocation);
-                        ConstValue::Slice { data: allocation, start: 0, end: data.len() }
-                    }
-                    ty::Array(_, _) => {
-                        let id = tcx.allocate_bytes(data);
-                        ConstValue::Scalar(Scalar::Ptr(id.into()))
-                    }
-                    _ => {
-                        bug!("bytestring should have type of either &[u8] or &[u8; _], not {}", ty)
-                    }
-                }
-            } else {
-                bug!("bytestring should have type of either &[u8] or &[u8; _], not {}", ty)
-            }
+        (ast::LitKind::ByteStr(data), ty::Ref(_, TyS { kind: ty::Slice(_), .. }, _)) => {
+            let allocation = Allocation::from_byte_aligned_bytes(data as &Vec<u8>);
+            let allocation = tcx.intern_const_alloc(allocation);
+            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
         }
-        ast::LitKind::Byte(n) => ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1))),
-        ast::LitKind::Int(n, _) if neg => {
-            let n = n as i128;
-            let n = n.overflowing_neg().0;
-            trunc(n as u128)?
+        (ast::LitKind::ByteStr(data), ty::Ref(_, TyS { kind: ty::Array(_, _), .. }, _)) => {
+            let id = tcx.allocate_bytes(data);
+            ConstValue::Scalar(Scalar::Ptr(id.into()))
         }
-        ast::LitKind::Int(n, _) => trunc(n)?,
-        ast::LitKind::Float(n, _) => {
-            let fty = match ty.kind {
-                ty::Float(fty) => fty,
-                _ => bug!(),
-            };
-            parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
+        (ast::LitKind::Byte(n), ty::Uint(ast::UintTy::U8)) => {
+            ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
-        ast::LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
-        ast::LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
-        ast::LitKind::Err(_) => return Err(LitToConstError::Reported),
+        (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
+            trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
+        }
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            parse_float(*n, *fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
+        }
+        (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
+        (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
+        (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
+        _ => return Err(LitToConstError::TypeError),
     };
     Ok(ty::Const::from_value(tcx, lit, ty))
 }
