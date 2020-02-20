@@ -5,5 +5,5 @@ macro_rules! m {
 }
 
 macro_rules! n {
-    () => { unsafe { llvm_asm!(include_str!("file.txt")); } }
+    () => { unsafe { asm!(include_str!("file.txt")); } }
 }
