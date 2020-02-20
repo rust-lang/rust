@@ -65,7 +65,8 @@ including:
 
 - **Formatting** – Rustfmt is integrated with the build system to enforce
   uniform style across the compiler. In the CI, we check that the formatting
-  is correct.
+  is correct. The formatting check is also automatically run by the Tidy tool
+  mentioned above.
 
   Example: `./x.py fmt --check` checks formatting an exits with an error if
   formatting is needed.
