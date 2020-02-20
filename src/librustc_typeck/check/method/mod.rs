@@ -11,7 +11,6 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use crate::namespace::Namespace;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
@@ -19,7 +18,7 @@ use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable, W
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_infer::traits;
@@ -342,7 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::Value) {
+        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::ValueNS) {
             Some(method_item) => method_item,
             None => {
                 tcx.sess.delay_span_bug(
@@ -484,11 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .iter()
-            .find(|item| {
-                Namespace::from(item.kind) == ns
-                    && self.tcx.hygienic_eq(item_name, item.ident, def_id)
-            })
+            .find_by_name_and_namespace(self.tcx, item_name, ns, def_id)
             .copied()
     }
 }

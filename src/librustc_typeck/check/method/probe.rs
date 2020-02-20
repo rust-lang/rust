@@ -7,7 +7,6 @@ use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
-use crate::namespace::Namespace;
 
 use rustc::lint;
 use rustc::middle::stability;
@@ -22,6 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1696,20 +1696,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .iter()
+                    .in_definition_order()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
-                        Namespace::from(x.kind) == Namespace::Value && dist > 0 && dist <= max_dist
+                        x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
                     })
                     .copied()
                     .collect()
             } else {
                 self.fcx
-                    .associated_item(def_id, name, Namespace::Value)
+                    .associated_item(def_id, name, Namespace::ValueNS)
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).to_vec()
+            self.tcx.associated_items(def_id).in_definition_order().copied().collect()
         }
     }
 }

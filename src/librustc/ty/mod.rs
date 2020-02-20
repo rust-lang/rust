@@ -30,10 +30,11 @@ use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
@@ -216,6 +217,13 @@ impl AssocKind {
             ty::AssocKind::Const => "associated constant",
         }
     }
+
+    pub fn namespace(&self) -> Namespace {
+        match *self {
+            ty::AssocKind::OpaqueTy | ty::AssocKind::Type => Namespace::TypeNS,
+            ty::AssocKind::Const | ty::AssocKind::Method => Namespace::ValueNS,
+        }
+    }
 }
 
 impl AssocItem {
@@ -254,6 +262,81 @@ impl AssocItem {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
         }
+    }
+}
+
+/// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.
+///
+/// When doing lookup by name, we try to postpone hygienic comparison for as long as possible since
+/// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
+/// done only on items with the same name.
+#[derive(Debug, Clone, PartialEq, HashStable)]
+pub struct AssociatedItems {
+    items: SortedIndexMultiMap<u32, Symbol, ty::AssocItem>,
+}
+
+impl AssociatedItems {
+    /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
+    pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
+        let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
+        AssociatedItems { items }
+    }
+
+    /// Returns a slice of associated items in the order they were defined.
+    ///
+    /// New code should avoid relying on definition order. If you need a particular associated item
+    /// for a known trait, make that trait a lang item instead of indexing this array.
+    pub fn in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.items.iter().map(|(_, v)| v)
+    }
+
+    /// Returns an iterator over all associated items with the given name, ignoring hygiene.
+    pub fn filter_by_name_unhygienic(
+        &self,
+        name: Symbol,
+    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.items.get_by_key(&name)
+    }
+
+    /// Returns an iterator over all associated items with the given name.
+    ///
+    /// Multiple items may have the same name if they are in different `Namespace`s. For example,
+    /// an associated type can have the same name as a method. Use one of the `find_by_name_and_*`
+    /// methods below if you know which item you are looking for.
+    pub fn filter_by_name(
+        &'a self,
+        tcx: TyCtxt<'a>,
+        ident: Ident,
+        parent_def_id: DefId,
+    ) -> impl 'a + Iterator<Item = &'a ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(move |item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+    }
+
+    /// Returns the associated item with the given name and `AssocKind`, if one exists.
+    pub fn find_by_name_and_kind(
+        &self,
+        tcx: TyCtxt<'_>,
+        ident: Ident,
+        kind: AssocKind,
+        parent_def_id: DefId,
+    ) -> Option<&ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(|item| item.kind == kind)
+            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+    }
+
+    /// Returns the associated item with the given name in the given `Namespace`, if one exists.
+    pub fn find_by_name_and_namespace(
+        &self,
+        tcx: TyCtxt<'_>,
+        ident: Ident,
+        ns: Namespace,
+        parent_def_id: DefId,
+    ) -> Option<&ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(|item| item.kind.namespace() == ns)
+            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
     }
 }
 
@@ -2731,14 +2814,14 @@ impl<'tcx> TyCtxt<'tcx> {
             .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> impl Iterator<Item = &'tcx AssocItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
-            .iter()
+            .in_definition_order()
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {
-        self.associated_items(did).iter().any(|item| item.relevant_for_never())
+        self.associated_items(did).in_definition_order().any(|item| item.relevant_for_never())
     }
 
     pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {

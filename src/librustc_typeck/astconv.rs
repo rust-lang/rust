@@ -9,7 +9,6 @@ use crate::collect::PlaceholderHirTyCollector;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
-use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -20,7 +19,7 @@ use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::print;
@@ -1109,10 +1108,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         assoc_name: ast::Ident,
     ) -> bool {
-        self.tcx().associated_items(trait_def_id).iter().any(|item| {
-            item.kind == ty::AssocKind::Type
-                && self.tcx().hygienic_eq(assoc_name, item.ident, trait_def_id)
-        })
+        self.tcx()
+            .associated_items(trait_def_id)
+            .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
+            .is_some()
     }
 
     // Returns `true` if a bounds list includes `?Sized`.
@@ -1345,9 +1344,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
+
+        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // of calling `filter_by_name_and_kind`.
         let assoc_ty = tcx
             .associated_items(candidate.def_id())
-            .iter()
+            .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| i.kind == ty::AssocKind::Type && i.ident.modern() == assoc_ident)
             .expect("missing associated type");
 
@@ -1513,7 +1515,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Predicate::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
-                                .iter()
+                                .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
                                 .map(|item| item.def_id),
                         );
@@ -1968,14 +1970,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut where_bounds = vec![];
             for bound in bounds {
+                let bound_id = bound.def_id();
                 let bound_span = self
                     .tcx()
-                    .associated_items(bound.def_id())
-                    .iter()
-                    .find(|item| {
-                        item.kind == ty::AssocKind::Type
-                            && self.tcx().hygienic_eq(assoc_name, item.ident, bound.def_id())
-                    })
+                    .associated_items(bound_id)
+                    .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, bound_id)
                     .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {
@@ -2053,7 +2052,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         let all_candidate_names: Vec<_> = all_candidates()
-            .map(|r| self.tcx().associated_items(r.def_id()))
+            .map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .flatten()
             .filter_map(
                 |item| if item.kind == ty::AssocKind::Type { Some(item.ident.name) } else { None },
@@ -2199,10 +2198,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let trait_did = bound.def_id();
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
+
+        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // of calling `filter_by_name_and_kind`.
         let item = tcx
             .associated_items(trait_did)
-            .iter()
-            .find(|i| Namespace::from(i.kind) == Namespace::Type && i.ident.modern() == assoc_ident)
+            .in_definition_order()
+            .find(|i| i.kind.namespace() == Namespace::TypeNS && i.ident.modern() == assoc_ident)
             .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);

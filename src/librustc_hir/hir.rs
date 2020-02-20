@@ -1,4 +1,4 @@
-use crate::def::{DefKind, Res};
+use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
@@ -1895,6 +1895,15 @@ pub enum ImplItemKind<'hir> {
     TyAlias(&'hir Ty<'hir>),
     /// An associated `type = impl Trait`.
     OpaqueTy(GenericBounds<'hir>),
+}
+
+impl ImplItemKind<'_> {
+    pub fn namespace(&self) -> Namespace {
+        match self {
+            ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
+            ImplItemKind::Const(..) | ImplItemKind::Method(..) => Namespace::ValueNS,
+        }
+    }
 }
 
 // The name of the associated type for `Fn` return types.

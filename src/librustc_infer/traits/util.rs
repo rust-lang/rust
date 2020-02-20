@@ -586,7 +586,7 @@ pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'
     let mut entries = 0;
     // Count number of methods and add them to the total offset.
     // Skip over associated types and constants.
-    for trait_item in tcx.associated_items(trait_ref.def_id()) {
+    for trait_item in tcx.associated_items(trait_ref.def_id()).in_definition_order() {
         if trait_item.kind == ty::AssocKind::Method {
             entries += 1;
         }
@@ -606,7 +606,7 @@ pub fn get_vtable_index_of_object_method<N>(
     // add them to the total offset.
     // Skip over associated types and constants.
     let mut entries = object.vtable_base;
-    for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()) {
+    for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()).in_definition_order() {
         if trait_item.def_id == method_def_id {
             // The item with the ID we were given really ought to be a method.
             assert_eq!(trait_item.kind, ty::AssocKind::Method);

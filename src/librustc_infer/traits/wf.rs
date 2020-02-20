@@ -318,7 +318,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             };
 
         if let Elaborate::All = elaborate {
-            let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
+            // FIXME: Make `extend_cause_with_original_assoc_item_obligation` take an iterator
+            // instead of a slice.
+            let trait_assoc_items: Vec<_> =
+                tcx.associated_items(trait_ref.def_id).in_definition_order().copied().collect();
 
             let predicates = obligations.iter().map(|obligation| obligation.predicate).collect();
             let implied_obligations = traits::elaborate_predicates(tcx, predicates);
@@ -327,7 +330,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 extend_cause_with_original_assoc_item_obligation(
                     &mut cause,
                     &pred,
-                    trait_assoc_items,
+                    &*trait_assoc_items,
                 );
                 traits::Obligation::new(cause, param_env, pred)
             });

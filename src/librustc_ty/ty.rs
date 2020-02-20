@@ -210,10 +210,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [ty::AssocItem] {
-    tcx.arena.alloc_from_iter(
-        tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did)),
-    )
+fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::AssociatedItems {
+    let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
+    tcx.arena.alloc(ty::AssociatedItems::new(items))
 }
 
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
