@@ -1,0 +1,30 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020.rs:21:22
+   |
+LL |     const NEG: i32 = -i32::MIN + T::NEG;
+   |                      ^^^^^^^^^ attempt to negate with overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020.rs:23:22
+   |
+LL |     const ADD: i32 = (i32::MAX+1) + T::ADD;
+   |                      ^^^^^^^^^^^^ attempt to add with overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020.rs:25:22
+   |
+LL |     const DIV: i32 = (1/0) + T::DIV;
+   |                      ^^^^^ attempt to divide by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020.rs:27:22
+   |
+LL |     const OOB: i32 = [1][1] + T::OOB;
+   |                      ^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 4 previous errors
+

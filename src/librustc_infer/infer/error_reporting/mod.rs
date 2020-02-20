@@ -1781,14 +1781,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             bound_kind: GenericKind<'tcx>,
             sub: S,
         ) {
-            let consider = format!(
-                "consider adding an explicit lifetime bound {}",
-                if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
-                    format!(" `{}` to `{}`...", sub, bound_kind)
-                } else {
-                    format!("`{}: {}`...", bound_kind, sub)
-                },
-            );
+            let msg = "consider adding an explicit lifetime bound";
             if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
                 let suggestion = if is_impl_trait {
                     format!("{} + {}", bound_kind, sub)
@@ -1796,13 +1789,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let tail = if has_lifetimes { " + " } else { "" };
                     format!("{}: {}{}", bound_kind, sub, tail)
                 };
-                err.span_suggestion_short(
+                err.span_suggestion(
                     sp,
-                    &consider,
+                    &format!("{}...", msg),
                     suggestion,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
+                let consider = format!(
+                    "{} {}...",
+                    msg,
+                    if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
+                        format!(" `{}` to `{}`", sub, bound_kind)
+                    } else {
+                        format!("`{}: {}`", bound_kind, sub)
+                    },
+                );
                 err.help(&consider);
             }
         }
