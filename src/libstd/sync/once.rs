@@ -331,14 +331,14 @@ impl Once {
     ///   * `call_once` was called, but has not yet completed,
     ///   * the `Once` instance is poisoned
     ///
-    /// It is also possible that immediately after `is_completed`
-    /// returns false, some other thread finishes executing
-    /// `call_once`.
+    /// This function returning `false` does not mean that `Once` has not been
+    /// executed. For example, it may have been executed in the time between
+    /// when `is_completed` starts executing and when it returns, in which case
+    /// the `false` return value would be stale (but still permissible).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_is_completed)]
     /// use std::sync::Once;
     ///
     /// static INIT: Once = Once::new();
@@ -351,7 +351,6 @@ impl Once {
     /// ```
     ///
     /// ```
-    /// #![feature(once_is_completed)]
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -364,7 +363,7 @@ impl Once {
     /// assert!(handle.join().is_err());
     /// assert_eq!(INIT.is_completed(), false);
     /// ```
-    #[unstable(feature = "once_is_completed", issue = "54890")]
+    #[stable(feature = "once_is_completed", since = "1.44.0")]
     #[inline]
     pub fn is_completed(&self) -> bool {
         // An `Acquire` load is enough because that makes all the initialization
