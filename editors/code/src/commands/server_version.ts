@@ -7,3 +7,4 @@ export function serverVersion(): Cmd {
         vscode.window.showInformationMessage('rust-analyzer version : ' + ServerVersion);
     };
 }
+
