@@ -17,6 +17,7 @@ type D = (u8, u8)::AssocTy;
 type E = _::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 type F = &'static (u8)::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
