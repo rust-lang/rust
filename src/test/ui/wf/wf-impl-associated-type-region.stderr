@@ -2,7 +2,7 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/wf-impl-associated-type-region.rs:10:5
    |
 LL | impl<'a, T> Foo<'a> for T {
-   |          - help: consider adding an explicit lifetime bound `T: 'a`...
+   |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Bar = &'a T;
    |     ^^^^^^^^^^^^^^^^^
    |

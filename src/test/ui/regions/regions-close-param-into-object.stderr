@@ -2,7 +2,7 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-param-into-object.rs:6:5
    |
 LL | fn p1<T>(v: T) -> Box<dyn X + 'static>
-   |       - help: consider adding an explicit lifetime bound `T: 'static`...
+   |       - help: consider adding an explicit lifetime bound...: `T: 'static`
 ...
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
@@ -17,7 +17,7 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-param-into-object.rs:12:5
    |
 LL | fn p2<T>(v: Box<T>) -> Box<dyn X + 'static>
-   |       - help: consider adding an explicit lifetime bound `T: 'static`...
+   |       - help: consider adding an explicit lifetime bound...: `T: 'static`
 ...
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
@@ -32,7 +32,7 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-param-into-object.rs:18:5
    |
 LL | fn p3<'a,T>(v: T) -> Box<dyn X + 'a>
-   |          - help: consider adding an explicit lifetime bound `T: 'a`...
+   |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 ...
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
@@ -47,7 +47,7 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-param-into-object.rs:24:5
    |
 LL | fn p4<'a,T>(v: Box<T>) -> Box<dyn X + 'a>
-   |          - help: consider adding an explicit lifetime bound `T: 'a`...
+   |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 ...
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
