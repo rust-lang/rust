@@ -7,7 +7,7 @@ error: breaking changes in `ghi`
 16 | |     }
    | |_____^
    |
-   = warning: type error: expected type parameter `A`, found u8 (breaking)
+   = warning: type error: expected type parameter `A`, found `u8` (breaking)
 
 error: breaking changes in `def`
   --> inherent_impls/old.rs:26:5
@@ -27,7 +27,7 @@ error: breaking changes in `def`
 35 | |     }
    | |_____^
    |
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `ghi`
   --> inherent_impls/old.rs:37:5

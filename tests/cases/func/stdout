@@ -15,7 +15,7 @@ error: breaking changes in `cde`
 8 | | }
   | |_^
   |
-  = warning: type error: expected (), found u16 (breaking)
+  = warning: type error: expected `()`, found `u16` (breaking)
 
 error: breaking changes in `def`
   --> func/new.rs:10:1
@@ -43,7 +43,7 @@ error: breaking changes in `fgh`
 18 | | }
    | |_^
    |
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `ghi`
   --> func/new.rs:20:1
@@ -53,7 +53,7 @@ error: breaking changes in `ghi`
 22 | | }
    | |_^
    |
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 warning: non-breaking changes in `hij`
   --> func/new.rs:24:1

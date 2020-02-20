@@ -21,7 +21,7 @@ error: breaking changes in `abc`
 13 | pub fn abc(_: &bool) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected bool, found reference (breaking)
+   = warning: type error: expected `bool`, found `&bool` (breaking)
 
 error: breaking changes in `def`
   --> regions/new.rs:15:1
@@ -29,7 +29,7 @@ error: breaking changes in `def`
 15 | pub fn def(_: bool) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected reference, found bool (breaking)
+   = warning: type error: expected `&bool`, found `bool` (breaking)
 
 error: breaking changes in `efg`
   --> regions/new.rs:17:1

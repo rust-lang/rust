@@ -5,7 +5,7 @@ error: breaking changes in `A`
 3 | pub type A = u16;
   | ^^^^^^^^^^^^^^^^^
   |
-  = warning: type error: expected u8, found u16 (breaking)
+  = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `B`
  --> ty_alias/new.rs:4:1
@@ -30,7 +30,7 @@ error: breaking changes in `D`
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = note: defaulted type parameter added (non-breaking)
-  = warning: type error: expected reference, found tuple (breaking)
+  = warning: type error: expected `&T`, found tuple (breaking)
 
 error: breaking changes in `E`
  --> ty_alias/new.rs:7:1

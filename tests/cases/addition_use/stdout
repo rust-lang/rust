@@ -8,8 +8,8 @@ error: breaking changes in `Def`
 8 | | }
   | |_^
   |
-  = warning: type error: expected (), found struct `new::Abc` (breaking)
-  = warning: type error: expected (), found trait new::Bcd (breaking)
+  = warning: type error: expected `()`, found struct `new::Abc` (breaking)
+  = warning: type error: expected `()`, found trait object `dyn new::Bcd` (breaking)
 
 warning: path changes to `Abc`
  --> addition_use/new.rs:1:1

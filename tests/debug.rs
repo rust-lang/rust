@@ -17,7 +17,9 @@ fn debug() {
             let _ = dump.set_permissions(permissions);
         }
 
-        let _ = writeln!(dump, r#"#!/usr/bin/env sh
+        let _ = writeln!(
+            dump,
+            r#"#!/usr/bin/env sh
 export PATH=./target/debug:$PATH
 export LD_LIBRARY_PATH={}
 export RUST_BACKTRACE=full
@@ -50,6 +52,8 @@ rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
 
 if [ $del = 1 ]; then
     rm "$1/lib*.rlib"
-fi"#, path);
+fi"#,
+            path
+        );
     }
 }

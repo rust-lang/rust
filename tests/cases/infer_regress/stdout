@@ -6,7 +6,7 @@ error: breaking changes in `abc`
   | ^^^^^^^^^^^^^^^^^^^^^^^
   |
   = note: variance loosened (non-breaking)
-  = warning: type error: expected type parameter `A`, found () (breaking)
+  = warning: type error: expected type parameter `A`, found `()` (breaking)
 
 error: breaking changes in `Abc`
  --> infer_regress/new.rs:3:1
@@ -14,7 +14,7 @@ error: breaking changes in `Abc`
 3 | pub struct Abc<A>(pub A, pub ());
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: type error: expected type parameter `A`, found () (breaking)
+  = warning: type error: expected type parameter `A`, found `()` (breaking)
 
 error: aborting due to 2 previous errors
 

@@ -42,7 +42,7 @@ error: breaking changes in `test7`
 11 |     fn test7() -> u16;
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `test8`
   --> traits/new.rs:12:5

@@ -9,19 +9,17 @@
 //! complicated by the fact that we still group changes by the item they refer to, even if it's
 //! path changes.
 
-use rustc::{
-    hir::def_id::DefId,
-    session::Session,
-    ty::{error::TypeError, Predicate},
-};
+use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{error::TypeError, Predicate};
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+use rustc_span::{FileName, Span};
 use semver::Version;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt,
 };
-use syntax::symbol::Symbol;
-use syntax_pos::{FileName, Span};
 
 use serde::ser::{SerializeSeq, SerializeStruct, Serializer};
 use serde::Serialize;
@@ -306,11 +304,19 @@ pub enum ChangeType<'tcx> {
     /// A possibly public field has been added to a variant or struct.
     ///
     /// This also records whether all fields are public were public before the change.
-    VariantFieldAdded { public: bool, total_public: bool, is_enum: bool },
+    VariantFieldAdded {
+        public: bool,
+        total_public: bool,
+        is_enum: bool,
+    },
     /// A possibly public field has been removed from a variant or struct.
     ///
     /// This also records whether all fields were public before the change.
-    VariantFieldRemoved { public: bool, total_public: bool, is_enum: bool },
+    VariantFieldRemoved {
+        public: bool,
+        total_public: bool,
+        is_enum: bool,
+    },
     /// A variant or struct has changed it's style.
     ///
     /// The style could have been changed from a tuple variant/struct to a regular
@@ -671,7 +677,7 @@ impl<'a> fmt::Display for ChangeType<'a> {
             VariantFieldRemoved {
                 public: true,
                 total_public: false,
-                is_enum: true
+                is_enum: true,
             } => "public field removed from variant with private fields",
             VariantFieldRemoved {
                 public: true,
@@ -1219,13 +1225,13 @@ pub mod tests {
     extern crate quickcheck;
     use quickcheck::*;
 
-    use rustc::hir::def_id::DefId;
+    use rustc_hir::def_id::DefId;
 
     use std::cmp::{max, min};
 
-    use syntax_pos::hygiene::SyntaxContext;
-    use syntax_pos::symbol::Interner;
-    use syntax_pos::BytePos;
+    use rustc_span::hygiene::SyntaxContext;
+    use rustc_span::symbol::Interner;
+    use rustc_span::BytePos;
 
     /// A wrapper for `Span` that can be randomly generated.
     #[derive(Clone, Debug)]
@@ -1257,7 +1263,7 @@ pub mod tests {
 
     impl Arbitrary for DefId_ {
         fn arbitrary<G: Gen>(g: &mut G) -> DefId_ {
-            use rustc::hir::def_id::{CrateNum, DefIndex};
+            use rustc_hir::def_id::{CrateNum, DefIndex};
 
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);

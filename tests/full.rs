@@ -98,7 +98,7 @@ mod full {
                         !log_enabled!(Level::Debug))
                 .map(|line| {
                     // sanitize paths for reproducibility
-                    (match line.find("-->") {
+                    match line.find("-->") {
                         Some(idx) => {
                             let (start, end) = line.split_at(idx);
                             match end.find(crate_name) {
@@ -107,7 +107,7 @@ mod full {
                             }
                         }
                         None => line.to_string(),
-                    })
+                    }
                 })
                 .map(|l| l + "\n")
                 .collect::<String>()

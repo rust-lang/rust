@@ -107,7 +107,7 @@ mod features {
                 .map(|l| l.trim_end())
                 .map(|line| {
                     // sanitize paths for reproducibility
-                    (match line.find("-->") {
+                    match line.find("-->") {
                         Some(idx) => {
                             let (start, end) = line.split_at(idx);
                             match end.find(name) {
@@ -116,7 +116,7 @@ mod features {
                             }
                         }
                         None => line.to_string(),
-                    })
+                    }
                 })
                 .map(|l| {
                     if cfg!(target_os = "windows") {

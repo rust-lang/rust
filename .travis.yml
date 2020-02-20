@@ -28,7 +28,7 @@ matrix:
         fi
     - name: "clippy"
       script: |
-        if rustup component add clippy-preview; then
+        if rustup component add clippy-preview rustc-dev; then
             cargo clippy --all -- -D clippy::pedantic
         fi
     - name: "Shellcheck"

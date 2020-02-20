@@ -20,7 +20,7 @@ error: breaking changes in `PTRACE_O_EXITKILL`
 738 | pub const PTRACE_O_EXITKILL: ::c_int = 0x00100000;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACECLONE`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:733:1
@@ -28,7 +28,7 @@ error: breaking changes in `PTRACE_O_TRACECLONE`
 733 | pub const PTRACE_O_TRACECLONE: ::c_int = 0x00000008;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACEEXEC`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:734:1
@@ -36,7 +36,7 @@ error: breaking changes in `PTRACE_O_TRACEEXEC`
 734 | pub const PTRACE_O_TRACEEXEC: ::c_int = 0x00000010;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACEEXIT`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:736:1
@@ -44,7 +44,7 @@ error: breaking changes in `PTRACE_O_TRACEEXIT`
 736 | pub const PTRACE_O_TRACEEXIT: ::c_int = 0x00000040;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACEFORK`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:731:1
@@ -52,7 +52,7 @@ error: breaking changes in `PTRACE_O_TRACEFORK`
 731 | pub const PTRACE_O_TRACEFORK: ::c_int = 0x00000002;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACESYSGOOD`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:730:1
@@ -60,7 +60,7 @@ error: breaking changes in `PTRACE_O_TRACESYSGOOD`
 730 | pub const PTRACE_O_TRACESYSGOOD: ::c_int = 0x00000001;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACEVFORK`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:732:1
@@ -68,7 +68,7 @@ error: breaking changes in `PTRACE_O_TRACEVFORK`
 732 | pub const PTRACE_O_TRACEVFORK: ::c_int = 0x00000004;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACEVFORKDONE`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:735:1
@@ -76,7 +76,7 @@ error: breaking changes in `PTRACE_O_TRACEVFORKDONE`
 735 | pub const PTRACE_O_TRACEVFORKDONE: ::c_int = 0x00000020;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_TRACESECCOMP`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:737:1
@@ -84,7 +84,7 @@ error: breaking changes in `PTRACE_O_TRACESECCOMP`
 737 | pub const PTRACE_O_TRACESECCOMP: ::c_int = 0x00000080;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 error: breaking changes in `PTRACE_O_SUSPEND_SECCOMP`
    --> libc-0.2.31/src/unix/notbsd/mod.rs:739:1
@@ -92,7 +92,7 @@ error: breaking changes in `PTRACE_O_SUSPEND_SECCOMP`
 739 | pub const PTRACE_O_SUSPEND_SECCOMP: ::c_int = 0x00200000;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = warning: type error: expected u32, found i32 (breaking)
+    = warning: type error: expected `u32`, found `i32` (breaking)
 
 warning: path changes to `INADDR_LOOPBACK`
    --> libc-0.2.31/src/unix/mod.rs:227:1

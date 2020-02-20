@@ -3,14 +3,12 @@
 
 use crate::mapping::{IdMapping, InherentEntry};
 use log::{debug, info};
-use rustc::{
-    hir::def_id::DefId,
-    infer::InferCtxt,
-    ty::{
-        fold::{BottomUpFolder, TypeFoldable, TypeFolder},
-        subst::{GenericArg, InternalSubsts, SubstsRef},
-        GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
-    },
+use rustc_hir::def_id::DefId;
+use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::{
+    fold::{BottomUpFolder, TypeFoldable, TypeFolder},
+    subst::{GenericArg, InternalSubsts, SubstsRef},
+    GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
 };
 use std::collections::HashMap;
 
@@ -103,8 +101,8 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
         orig_def_id: DefId,
         orig_substs: SubstsRef<'tcx>,
     ) -> Option<(DefId, SubstsRef<'tcx>)> {
-        use rustc::ty::subst::GenericArgKind;
-        use rustc::ty::ReEarlyBound;
+        use rustc_middle::ty::subst::GenericArgKind;
+        use rustc_middle::ty::ReEarlyBound;
         use std::cell::Cell;
 
         debug!(
@@ -163,10 +161,10 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
 
     /// Fold a structure, translating all `DefId`s reachable by the folder.
     fn translate<T: TypeFoldable<'tcx>>(&self, index_map: &HashMap<u32, DefId>, orig: &T) -> T {
-        use rustc::ty::ExistentialPredicate::*;
-        use rustc::ty::TyKind;
-        use rustc::ty::TypeAndMut;
-        use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
+        use rustc_middle::ty::ExistentialPredicate::*;
+        use rustc_middle::ty::TyKind;
+        use rustc_middle::ty::TypeAndMut;
+        use rustc_middle::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
 
         orig.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -201,7 +199,7 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                     }
                     TyKind::Dynamic(preds, region) => {
                         // hacky error catching mechanism
-                        use rustc::hir::def_id::CRATE_DEF_INDEX;
+                        use rustc_hir::def_id::CRATE_DEF_INDEX;
                         use std::cell::Cell;
 
                         let success = Cell::new(true);
@@ -293,7 +291,7 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                             // `Self` is special
                             let orig_def_id = index_map[&param.index];
                             if self.needs_translation(orig_def_id) {
-                                use rustc::ty::subst::GenericArgKind;
+                                use rustc_middle::ty::subst::GenericArgKind;
 
                                 let target_def_id = self.translate_orig(orig_def_id);
                                 debug!("translating type param: {:?}", param);
@@ -320,9 +318,9 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
 
     /// Translate a region.
     fn translate_region(&self, region: Region<'tcx>) -> Region<'tcx> {
-        use rustc::ty::BoundRegion::BrNamed;
-        use rustc::ty::RegionKind::*;
-        use rustc::ty::{EarlyBoundRegion, FreeRegion};
+        use rustc_middle::ty::BoundRegion::BrNamed;
+        use rustc_middle::ty::RegionKind::*;
+        use rustc_middle::ty::{EarlyBoundRegion, FreeRegion};
 
         if !self.translate_params {
             return region;
@@ -363,28 +361,31 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
         index_map: &HashMap<u32, DefId>,
         predicate: Predicate<'tcx>,
     ) -> Option<Predicate<'tcx>> {
-        use rustc::ty::{
+        use rustc_middle::ty::{
             Binder, /*EquatePredicate,*/ OutlivesPredicate, ProjectionPredicate, ProjectionTy,
             SubtypePredicate, TraitPredicate,
         };
 
         Some(match predicate {
-            Predicate::Trait(trait_predicate) => Predicate::Trait(Binder::bind(
-                if let Some((target_def_id, target_substs)) = self.translate_orig_substs(
-                    index_map,
-                    trait_predicate.skip_binder().trait_ref.def_id,
-                    trait_predicate.skip_binder().trait_ref.substs,
-                ) {
-                    TraitPredicate {
-                        trait_ref: TraitRef {
-                            def_id: target_def_id,
-                            substs: target_substs,
-                        },
-                    }
-                } else {
-                    return None;
-                },
-            )),
+            Predicate::Trait(trait_predicate, constness) => Predicate::Trait(
+                Binder::bind(
+                    if let Some((target_def_id, target_substs)) = self.translate_orig_substs(
+                        index_map,
+                        trait_predicate.skip_binder().trait_ref.def_id,
+                        trait_predicate.skip_binder().trait_ref.substs,
+                    ) {
+                        TraitPredicate {
+                            trait_ref: TraitRef {
+                                def_id: target_def_id,
+                                substs: target_substs,
+                            },
+                        }
+                    } else {
+                        return None;
+                    },
+                ),
+                constness,
+            ),
             /*Predicate::Equate(equate_predicate) => {
                 Predicate::Equate(equate_predicate.map_bound(|e_pred| {
                     let l = self.translate(index_map, &e_pred.0);
@@ -538,8 +539,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceCleanupFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        use rustc::ty::TyKind;
-        use rustc::ty::TypeAndMut;
+        use rustc_middle::ty::TyKind;
+        use rustc_middle::ty::TypeAndMut;
 
         let t1 = ty.super_fold_with(self);
         match t1.kind {

@@ -23,7 +23,7 @@ error: breaking changes in `Def2`
    | |_^
    |
    = note: defaulted type parameter added (non-breaking)
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `Efg`
   --> structs/new.rs:14:1
@@ -33,7 +33,7 @@ error: breaking changes in `Efg`
 16 | | }
    | |_^
    |
-   = warning: type error: expected u8, found u16 (breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
 
 warning: technically breaking changes in `Fgh`
   --> structs/new.rs:18:1

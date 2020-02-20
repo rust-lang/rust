@@ -5,7 +5,7 @@ error: breaking changes in `A`
 1 | pub const A: u16 = 0;
   | ^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: type error: expected u8, found u16 (breaking)
+  = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `B`
  --> consts/new.rs:3:1
@@ -13,7 +13,7 @@ error: breaking changes in `B`
 3 | pub static B: u16 = 1;
   | ^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: type error: expected u8, found u16 (breaking)
+  = warning: type error: expected `u8`, found `u16` (breaking)
 
 error: breaking changes in `D`
  --> consts/new.rs:7:1

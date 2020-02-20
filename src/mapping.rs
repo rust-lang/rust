@@ -3,17 +3,18 @@
 //! This module provides facilities to record item correspondence of various kinds, as well as a
 //! map used to temporarily match up unsorted item sequences' elements by name.
 
-use rustc::{
-    hir::{
-        def::{Export, Res},
-        def_id::{CrateNum, DefId},
-        HirId,
-    },
+use rustc_ast::ast::Name;
+use rustc_hir::{
+    def::Res,
+    def_id::{CrateNum, DefId},
+    HirId,
+};
+use rustc_middle::{
+    hir::exports::Export,
     ty::{AssocKind, GenericParamDef, GenericParamDefKind},
 };
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
-use syntax::ast::Name;
 
 /// A description of an item found in an inherent impl.
 #[derive(Debug, PartialEq)]
@@ -40,6 +41,7 @@ fn assert_inherent_entry_members_impl_eq() {
     assert_impl_eq::<Name>();
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for InherentEntry {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.parent_def_id.hash(hasher);
@@ -111,14 +113,19 @@ impl IdMapping {
 
     /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Res, new: Res) -> bool {
-        let old_def_id = old.def_id();
+        let (old_def_id, new_def_id) =
+            if let (Some(old_def_id), Some(new_def_id)) = (old.opt_def_id(), new.opt_def_id()) {
+                (old_def_id, new_def_id)
+            } else {
+                return false;
+            };
 
         if !self.in_old_crate(old_def_id) || self.toplevel_mapping.contains_key(&old_def_id) {
             return false;
         }
 
         self.toplevel_mapping.insert(old_def_id, (old, new));
-        self.reverse_mapping.insert(new.def_id(), old_def_id);
+        self.reverse_mapping.insert(new_def_id, old_def_id);
 
         true
     }
@@ -343,8 +350,8 @@ pub struct NameMapping {
 impl NameMapping {
     /// Insert a single export in the appropriate map, at the appropriate position.
     fn insert(&mut self, item: Export<HirId>, old: bool) {
-        use rustc::hir::def::DefKind::*;
-        use rustc::hir::def::Res::*;
+        use rustc_hir::def::DefKind::*;
+        use rustc_hir::def::Res::*;
 
         let map = match item.res {
             Def(kind, _) => match kind {
@@ -366,7 +373,7 @@ impl NameMapping {
                 ConstParam |
                 Static |
                 Ctor(_, _) |
-                Method |
+                AssocFn |
                 AssocConst => Some(&mut self.value_map),
                 Macro(_) => Some(&mut self.macro_map),
             },

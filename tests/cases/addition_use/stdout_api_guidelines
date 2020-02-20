@@ -8,8 +8,8 @@ error: breaking changes in `Def`
 8 | | }
   | |_^
   |
-  = warning: type error: expected (), found struct `new::Abc` (breaking)
-  = warning: type error: expected (), found trait new::Bcd (breaking)
+  = warning: type error: expected `()`, found struct `new::Abc` (breaking)
+  = warning: type error: expected `()`, found trait object `dyn new::Bcd` (breaking)
 
 error: aborting due to previous error
 
