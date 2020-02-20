@@ -73,6 +73,9 @@ including:
 
   Example: `./x.py fmt` runs rustfmt on the codebase.
 
+  Example: `./x.py test src/tools/tidy --bless` does formatting before doing
+  other tidy checks.
+
 - **Unit tests** – The Rust standard library and many of the Rust packages
   include typical Rust `#[test]` unittests.  Under the hood, `x.py` will run
   `cargo test` on each package to run all the tests.
