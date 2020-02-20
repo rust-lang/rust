@@ -3,4 +3,4 @@
 fn foo(a: usize) {}
 //~^ defined here
 fn main() { foo(5, 6) }
-//~^ ERROR this function takes 1 parameter but 2 parameters were supplied
+//~^ ERROR this function takes 1 argument but 2 arguments were supplied

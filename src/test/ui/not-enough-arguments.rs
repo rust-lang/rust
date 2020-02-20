@@ -8,5 +8,5 @@ fn foo(a: isize, b: isize, c: isize, d:isize) {
 
 fn main() {
   foo(1, 2, 3);
-  //~^ ERROR this function takes 4 parameters but 3
+  //~^ ERROR this function takes 4 arguments but 3
 }

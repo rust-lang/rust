@@ -3843,17 +3843,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  error_code: &str,
                                  c_variadic: bool,
                                  sugg_unit: bool| {
+            let (span, start_span, args) = match &expr.kind {
+                hir::ExprKind::Call(hir::Expr { span, .. }, args) => (*span, *span, &args[..]),
+                hir::ExprKind::MethodCall(path_segment, span, args) => (
+                    *span,
+                    // `sp` doesn't point at the whole `foo.bar()`, only at `bar`.
+                    path_segment
+                        .args
+                        .and_then(|args| args.args.iter().last())
+                        // Account for `foo.bar::<T>()`.
+                        .map(|arg| {
+                            // Skip the closing `>`.
+                            tcx.sess
+                                .source_map()
+                                .next_point(tcx.sess.source_map().next_point(arg.span()))
+                        })
+                        .unwrap_or(*span),
+                    &args[1..], // Skip the receiver.
+                ),
+                k => span_bug!(sp, "checking argument types on a non-call: `{:?}`", k),
+            };
+            let arg_spans = if args.is_empty() {
+                // foo()
+                // ^^^-- supplied 0 arguments
+                // |
+                // expected 2 arguments
+                vec![tcx.sess.source_map().next_point(start_span).with_hi(sp.hi())]
+            } else {
+                // foo(1, 2, 3)
+                // ^^^ -  -  - supplied 3 arguments
+                // |
+                // expected 2 arguments
+                args.iter().map(|arg| arg.span).collect::<Vec<Span>>()
+            };
+
             let mut err = tcx.sess.struct_span_err_with_code(
-                sp,
+                span,
                 &format!(
                     "this function takes {}{} but {} {} supplied",
                     if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(expected_count, "parameter"),
-                    potentially_plural_count(arg_count, "parameter"),
+                    potentially_plural_count(expected_count, "argument"),
+                    potentially_plural_count(arg_count, "argument"),
                     if arg_count == 1 { "was" } else { "were" }
                 ),
                 DiagnosticId::Error(error_code.to_owned()),
             );
+            let label = format!("supplied {}", potentially_plural_count(arg_count, "argument"));
+            for (i, span) in arg_spans.into_iter().enumerate() {
+                err.span_label(
+                    span,
+                    if arg_count == 0 || i + 1 == arg_count { &label } else { "" },
+                );
+            }
 
             if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().def_span(sp)) {
                 err.span_label(def_s, "defined here");
@@ -3870,11 +3911,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 err.span_label(
-                    sp,
+                    span,
                     format!(
                         "expected {}{}",
                         if c_variadic { "at least " } else { "" },
-                        potentially_plural_count(expected_count, "parameter")
+                        potentially_plural_count(expected_count, "argument")
                     ),
                 );
             }
@@ -5622,8 +5663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.tcx.sess.span_err(
             span,
-            "this function can only be invoked \
-                                      directly, not through a function pointer",
+            "this function can only be invoked directly, not through a function pointer",
         );
     }
 
