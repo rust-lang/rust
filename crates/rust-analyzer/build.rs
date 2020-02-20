@@ -3,7 +3,7 @@
 use std::{env, path::PathBuf, process::Command};
 
 fn main() {
-    let _ = set_rerun();
+    set_rerun();
 
     let rev = rev().unwrap_or_else(|| "???????".to_string());
     println!("cargo:rustc-env=REV={}", rev)
