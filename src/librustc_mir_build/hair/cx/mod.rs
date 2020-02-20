@@ -148,6 +148,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             }
+            Err(LitToConstError::TypeError) => bug!("const_eval_literal: had type error"),
         }
     }
 
