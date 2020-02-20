@@ -42,7 +42,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 
     let prefix = comment.prefix();
     let comment_range = comment.syntax().text_range();
-    if position.offset < comment_range.start() + TextUnit::of_str(prefix) + TextUnit::from(1) {
+    if position.offset < comment_range.start() + TextUnit::of_str(prefix) {
         return None;
     }
 
@@ -264,6 +264,19 @@ fn main() {
     // Fix
     // <|> me
     let x = 1 + 1;
+}
+",
+        );
+        do_check(
+            r"
+///<|> Some docs
+fn foo() {
+}
+",
+            r"
+///
+/// <|> Some docs
+fn foo() {
 }
 ",
         );
