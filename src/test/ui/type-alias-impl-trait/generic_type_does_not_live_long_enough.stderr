@@ -25,7 +25,7 @@ LL | type WrongGeneric<T> = impl 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
-   |                  - help: consider adding an explicit lifetime bound `T: 'static`...
+   |                  - help: consider adding an explicit lifetime bound...: `T: 'static`
    |
 note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/generic_type_does_not_live_long_enough.rs:9:1
