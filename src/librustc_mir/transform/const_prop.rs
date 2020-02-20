@@ -4,7 +4,8 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpError, InterpResult, Scalar};
+use rustc::lint;
+use rustc::mir::interpret::{InterpResult, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
@@ -292,7 +293,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
-    source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, ConstPropMode>,
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
@@ -372,7 +372,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         ConstPropagator {
             ecx,
             tcx,
-            source,
             param_env,
             can_const_prop,
             // FIXME(eddyb) avoid cloning these two fields more than once,
@@ -501,19 +500,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn report_panic_as_lint(&self, source_info: SourceInfo, panic: AssertKind<u64>) -> Option<()> {
-        // Somewhat convoluted way to re-use the CTFE error reporting code.
+    fn report_assert_as_lint(
+        &self,
+        lint: &'static lint::Lint,
+        source_info: SourceInfo,
+        message: &'static str,
+        panic: AssertKind<u64>,
+    ) -> Option<()> {
         let lint_root = self.lint_root(source_info)?;
-        let error = InterpError::MachineStop(Box::new(format!("{:?}", panic)));
-        let mut diagnostic = error_to_const_error(&self.ecx, error.into());
-        diagnostic.span = source_info.span; // fix the span
-        diagnostic.report_as_lint(
-            self.tcx.at(source_info.span),
-            "this expression will panic at runtime",
-            lint_root,
-            None,
-        );
-        None
+        self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
+            let mut err = lint.build(message);
+            err.span_label(source_info.span, format!("{:?}", panic));
+            err.emit()
+        });
+        return None;
     }
 
     fn check_unary_op(
@@ -530,7 +530,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            self.report_panic_as_lint(source_info, AssertKind::OverflowNeg)?;
+            self.report_assert_as_lint(
+                lint::builtin::ARITHMETIC_OVERFLOW,
+                source_info,
+                "this arithmetic operation will overflow",
+                AssertKind::OverflowNeg,
+            )?;
         }
 
         Some(())
@@ -542,27 +547,24 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
         source_info: SourceInfo,
-        place_layout: TyLayout<'tcx>,
     ) -> Option<()> {
         let r =
             self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
-            let left_bits = place_layout.size.bits();
+            // We need the type of the LHS. We cannot use `place_layout` as that is the type
+            // of the result, which for checked binops is not the same!
+            let left_ty = left.ty(&self.local_decls, self.tcx);
+            let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-            if r_bits.map_or(false, |b| b >= left_bits as u128) {
-                let lint_root = self.lint_root(source_info)?;
-                self.tcx.struct_span_lint_hir(
-                    ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                    lint_root,
-                    source_info.span,
-                    |lint| {
-                        let dir = if op == BinOp::Shr { "right" } else { "left" };
-                        lint.build(&format!("attempt to shift {} with overflow", dir)).emit()
-                    },
-                );
-                return None;
+            if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
+                self.report_assert_as_lint(
+                    lint::builtin::ARITHMETIC_OVERFLOW,
+                    source_info,
+                    "this arithmetic operation will overflow",
+                    AssertKind::Overflow(op),
+                )?;
             }
         }
 
@@ -572,7 +574,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
             Ok(overflow)
         })? {
-            self.report_panic_as_lint(source_info, AssertKind::Overflow(op))?;
+            self.report_assert_as_lint(
+                lint::builtin::ARITHMETIC_OVERFLOW,
+                source_info,
+                "this arithmetic operation will overflow",
+                AssertKind::Overflow(op),
+            )?;
         }
 
         Some(())
@@ -595,8 +602,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        let overflow_check = self.tcx.sess.overflow_checks();
-
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -606,20 +611,25 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         //        - In this case, we'll return `None` from this function to stop evaluation.
         match rvalue {
             // Additional checking: give lints to the user if an overflow would occur.
-            // If `overflow_check` is set, running const-prop on the `Assert` terminators
-            // will already generate the appropriate messages.
-            Rvalue::UnaryOp(op, arg) if !overflow_check => {
+            // We do this here and not in the `Assert` terminator as that terminator is
+            // only sometimes emitted (overflow checks can be disabled), but we want to always
+            // lint.
+            Rvalue::UnaryOp(op, arg) => {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, source_info)?;
             }
-
-            // Additional checking: check for overflows on integer binary operations and report
-            // them to the user as lints.
-            // If `overflow_check` is set, running const-prop on the `Assert` terminators
-            // will already generate the appropriate messages.
-            Rvalue::BinaryOp(op, left, right) if !overflow_check => {
+            Rvalue::BinaryOp(op, left, right) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right, source_info, place_layout)?;
+                self.check_binary_op(*op, left, right, source_info)?;
+            }
+            Rvalue::CheckedBinaryOp(op, left, right) => {
+                trace!(
+                    "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
+                    op,
+                    left,
+                    right
+                );
+                self.check_binary_op(*op, left, right, source_info)?;
             }
 
             // Do not try creating references (#67862)
@@ -898,54 +908,39 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             }
                             Operand::Constant(_) => {}
                         }
-                        let span = terminator.source_info.span;
-                        let hir_id = self
-                            .tcx
-                            .hir()
-                            .as_local_hir_id(self.source.def_id())
-                            .expect("some part of a failing const eval must be local");
-                        self.tcx.struct_span_lint_hir(
-                            ::rustc::lint::builtin::CONST_ERR,
-                            hir_id,
-                            span,
-                            |lint| {
-                                let msg = match msg {
-                                    AssertKind::Overflow(_)
-                                    | AssertKind::OverflowNeg
-                                    | AssertKind::DivisionByZero
-                                    | AssertKind::RemainderByZero => msg.description().to_owned(),
-                                    AssertKind::BoundsCheck { ref len, ref index } => {
-                                        let len = self
-                                            .eval_operand(len, source_info)
-                                            .expect("len must be const");
-                                        let len = match self.ecx.read_scalar(len) {
-                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw {
-                                                data,
-                                                ..
-                                            })) => data,
-                                            other => bug!("const len not primitive: {:?}", other),
-                                        };
-                                        let index = self
-                                            .eval_operand(index, source_info)
-                                            .expect("index must be const");
-                                        let index = match self.ecx.read_scalar(index) {
-                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw {
-                                                data,
-                                                ..
-                                            })) => data,
-                                            other => bug!("const index not primitive: {:?}", other),
-                                        };
-                                        format!(
-                                            "index out of bounds: \
-                                            the len is {} but the index is {}",
-                                            len, index,
-                                        )
-                                    }
-                                    // Need proper const propagator for these
-                                    _ => return,
-                                };
-                                lint.build(&msg).emit()
-                            },
+                        let msg = match msg {
+                            AssertKind::DivisionByZero => AssertKind::DivisionByZero,
+                            AssertKind::RemainderByZero => AssertKind::RemainderByZero,
+                            AssertKind::BoundsCheck { ref len, ref index } => {
+                                let len =
+                                    self.eval_operand(len, source_info).expect("len must be const");
+                                let len = self
+                                    .ecx
+                                    .read_scalar(len)
+                                    .unwrap()
+                                    .to_machine_usize(&self.tcx)
+                                    .unwrap();
+                                let index = self
+                                    .eval_operand(index, source_info)
+                                    .expect("index must be const");
+                                let index = self
+                                    .ecx
+                                    .read_scalar(index)
+                                    .unwrap()
+                                    .to_machine_usize(&self.tcx)
+                                    .unwrap();
+                                AssertKind::BoundsCheck { len, index }
+                            }
+                            // Overflow is are already covered by checks on the binary operators.
+                            AssertKind::Overflow(_) | AssertKind::OverflowNeg => return,
+                            // Need proper const propagator for these.
+                            _ => return,
+                        };
+                        self.report_assert_as_lint(
+                            lint::builtin::UNCONDITIONAL_PANIC,
+                            source_info,
+                            "this operation will panic at runtime",
+                            msg,
                         );
                     } else {
                         if self.should_const_prop(value) {
