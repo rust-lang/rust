@@ -110,9 +110,7 @@ fn rename_mod(
                 )
             })
             .collect::<Vec<_>>();
-        for ref_edit in ref_edits {
-            source_file_edits.push(ref_edit);
-        }
+        source_file_edits.extend(ref_edits);
     }
 
     Some(SourceChange::from_edits("rename", source_file_edits, file_system_edits))
