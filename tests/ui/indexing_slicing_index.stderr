@@ -1,22 +1,22 @@
-error: index out of bounds: the len is 4 but the index is 4
+error: this operation will panic at runtime
   --> $DIR/indexing_slicing_index.rs:11:5
    |
 LL |     x[4]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
-   |     ^^^^
+   |     ^^^^ index out of bounds: the len is 4 but the index is 4
    |
-   = note: `#[deny(const_err)]` on by default
+   = note: `#[deny(unconditional_panic)]` on by default
 
-error: index out of bounds: the len is 4 but the index is 8
+error: this operation will panic at runtime
   --> $DIR/indexing_slicing_index.rs:12:5
    |
 LL |     x[1 << 3]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ index out of bounds: the len is 4 but the index is 8
 
-error: index out of bounds: the len is 4 but the index is 15
+error: this operation will panic at runtime
   --> $DIR/indexing_slicing_index.rs:27:5
    |
 LL |     x[N]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
-   |     ^^^^
+   |     ^^^^ index out of bounds: the len is 4 but the index is 15
 
 error: indexing may panic.
   --> $DIR/indexing_slicing_index.rs:10:5
