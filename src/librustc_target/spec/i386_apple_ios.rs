@@ -1,4 +1,4 @@
-use super::apple_sdk_base::{opts, Arch, AppleOS};
+use super::apple_sdk_base::{opts, AppleOS, Arch};
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {

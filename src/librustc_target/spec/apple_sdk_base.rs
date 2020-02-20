@@ -1,4 +1,3 @@
-
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 use std::env;
 use std::io;
@@ -102,14 +101,14 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
 
 fn build_pre_link_args(arch: Arch, os: AppleOS) -> Result<LinkArgs, String> {
     let sdk_name = match (arch, os) {
-        (Arm64,                 AppleOS::tvOS) => "appletvos",
-        (X86_64,                AppleOS::tvOS) => "appletvsimulator",
-        (Armv7,                  AppleOS::iOS) => "iphoneos",
-        (Armv7s,                 AppleOS::iOS) => "iphoneos",
-        (Arm64,                  AppleOS::iOS) => "iphoneos",
-        (I386,                   AppleOS::iOS) => "iphonesimulator",
-        (X86_64,                 AppleOS::iOS) => "iphonesimulator",
-        (X86_64_macabi,          AppleOS::iOS) => "macosx10.15",
+        (Arm64, AppleOS::tvOS) => "appletvos",
+        (X86_64, AppleOS::tvOS) => "appletvsimulator",
+        (Armv7, AppleOS::iOS) => "iphoneos",
+        (Armv7s, AppleOS::iOS) => "iphoneos",
+        (Arm64, AppleOS::iOS) => "iphoneos",
+        (I386, AppleOS::iOS) => "iphonesimulator",
+        (X86_64, AppleOS::iOS) => "iphonesimulator",
+        (X86_64_macabi, AppleOS::iOS) => "macosx10.15",
         _ => unreachable!(),
     };
 
@@ -145,11 +144,10 @@ fn target_cpu(arch: Arch) -> String {
     .to_string()
 }
 
-
 fn link_env_remove(arch: Arch) -> Vec<String> {
     match arch {
         Armv7 | Armv7s | Arm64 | I386 | X86_64 => vec!["MACOSX_DEPLOYMENT_TARGET".to_string()],
-        X86_64_macabi => vec![ "IPHONEOS_DEPLOYMENT_TARGET".to_string() ,],
+        X86_64_macabi => vec!["IPHONEOS_DEPLOYMENT_TARGET".to_string()],
     }
 }
 
