@@ -47,6 +47,8 @@ Within the closure, `infcx` has the type `InferCtxt<'cx, 'tcx>` for some
 fresh `'cx`, while `'tcx` is the same as outside the inference context.
 (Again, see the [`ty` chapter][ty-ch] for more details on this setup.)
 
+[ty-ch]: ty.html
+
 The `tcx.infer_ctxt` method actually returns a builder, which means
 there are some kinds of configuration you can do before the `infcx` is
 created. See `InferCtxtBuilder` for more information.
