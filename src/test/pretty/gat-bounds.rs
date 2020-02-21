@@ -2,7 +2,6 @@
 // See issue #67509.
 
 // pretty-compare-only
-// pp-exact:gat-bounds.pp
 
 #![feature(generic_associated_types)]
 
