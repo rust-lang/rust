@@ -2742,6 +2742,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // mir.
             if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
                 return c;
+            } else {
+                tcx.sess.delay_span_bug(expr.span, "ast_const_to_const: couldn't lit_to_const");
             }
         }
 
