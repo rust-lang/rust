@@ -2228,7 +2228,7 @@ pub const ALL_LINTS: [Lint; 355] = [
     },
     Lint {
         name: "unneeded_field_pattern",
-        group: "style",
+        group: "restriction",
         desc: "struct fields bound to a wildcard instead of using `..`",
         deprecation: None,
         module: "misc_early",
