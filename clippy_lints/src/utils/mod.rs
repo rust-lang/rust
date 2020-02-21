@@ -40,7 +40,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
-use rustc_hir::*;
+use rustc_hir::{
+    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
+    MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
+};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::predicate_for_trait_def;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -52,7 +55,7 @@ use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
 
 use crate::consts::{constant, Constant};
-use crate::reexport::*;
+use crate::reexport::Name;
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -1289,7 +1292,7 @@ pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use ty::TyKind::*;
+    use ty::TyKind::{Adt, Array, Dynamic, Foreign, Opaque, RawPtr, Ref, Slice, Tuple};
     match ty.kind {
         Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
         Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),

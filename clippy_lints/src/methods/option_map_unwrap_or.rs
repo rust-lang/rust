@@ -4,7 +4,7 @@ use rustc::hir::map::Map;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc_hir::{self, *};
+use rustc_hir::{self, HirId, Path};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;

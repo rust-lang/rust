@@ -3,7 +3,7 @@
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::*;
+use syntax::ast::{BinOpKind, Expr, ExprKind, Lit, LitKind};
 
 use crate::utils::{snippet_opt, span_lint_and_then};
 

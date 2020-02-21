@@ -1,6 +1,6 @@
 use crate::utils::{span_lint, SpanlessEq};
 use if_chain::if_chain;
-use rustc_hir::*;
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 

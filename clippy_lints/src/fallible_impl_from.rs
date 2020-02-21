@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
 
 fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-    use rustc_hir::*;
+    use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'a, 'tcx>,

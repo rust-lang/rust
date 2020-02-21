@@ -1,6 +1,6 @@
 use crate::consts::{constant_simple, Constant};
 use crate::utils::{match_def_path, paths, span_lint};
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::cmp::Ordering;

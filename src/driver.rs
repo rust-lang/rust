@@ -15,7 +15,7 @@ extern crate rustc_interface;
 
 use rustc::ty::TyCtxt;
 use rustc_interface::interface;
-use rustc_tools_util::*;
+use rustc_tools_util::VersionInfo;
 
 use lazy_static::lazy_static;
 use std::borrow::Cow;
@@ -93,7 +93,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 
 #[allow(clippy::find_map, clippy::filter_map)]
 fn describe_lints() {
-    use lintlist::*;
+    use lintlist::{Level, Lint, ALL_LINTS, LINT_LEVELS};
     use std::collections::HashSet;
 
     println!(

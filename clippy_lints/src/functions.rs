@@ -497,7 +497,7 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
 fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
-    use ty::TyKind::*;
+    use ty::TyKind::{Adt, Array, Bool, Char, Float, Int, RawPtr, Ref, Slice, Str, Tuple, Uint};
     match ty.kind {
         // primitive types are never mutable
         Bool | Char | Int(_) | Uint(_) | Float(_) | Str => false,
@@ -593,7 +593,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        use hir::ExprKind::*;
+        use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
         if self.mutates_static {
             return;
@@ -631,7 +631,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
 }
 
 fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) -> bool {
-    use hir::ExprKind::*;
+    use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
         Path(ref qpath) => {

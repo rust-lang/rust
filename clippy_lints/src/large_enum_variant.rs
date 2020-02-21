@@ -3,7 +3,7 @@
 use crate::utils::{snippet_opt, span_lint_and_then};
 use rustc::ty::layout::LayoutOf;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Item, ItemKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 

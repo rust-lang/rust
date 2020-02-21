@@ -1,6 +1,6 @@
 use crate::utils::span_lint;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::*;
+use rustc_hir::{Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 

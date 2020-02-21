@@ -4,7 +4,7 @@ use crate::utils::span_lint;
 use matches::matches;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::*;
+use syntax::ast::{Block, ItemKind, StmtKind};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items declared after some statement in a block.

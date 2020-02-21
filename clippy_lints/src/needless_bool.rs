@@ -5,7 +5,7 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_sugg};
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -62,7 +62,7 @@ declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        use self::Expression::*;
+        use self::Expression::{Bool, RetBool};
         if let Some((ref pred, ref then_block, Some(ref else_expr))) = higher::if_block(&e) {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
@@ -191,7 +191,7 @@ fn check_comparison<'a, 'tcx>(
     right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
     no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &str)>,
 ) {
-    use self::Expression::*;
+    use self::Expression::{Bool, Other};
 
     if let ExprKind::Binary(_, ref left_side, ref right_side) = e.kind {
         let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));

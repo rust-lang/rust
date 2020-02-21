@@ -4,7 +4,9 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;
 use std::cmp::Ordering;
-use syntax::ast::*;
+use syntax::ast::{
+    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Ident, Item, ItemKind, Local, Mac, Pat, PatKind,
+};
 use syntax::attr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 

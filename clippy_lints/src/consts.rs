@@ -7,13 +7,13 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::*;
+use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use syntax::ast::{FloatTy, LitKind};
+use syntax::ast::{FloatTy, LitFloatType, LitKind};
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -152,8 +152,6 @@ impl Constant {
 
 /// Parses a `LitKind` to a `Constant`.
 pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
-    use syntax::ast::*;
-
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
@@ -277,7 +275,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     #[allow(clippy::cast_possible_wrap)]
     fn constant_not(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
-        use self::Constant::*;
+        use self::Constant::{Bool, Int};
         match *o {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
@@ -293,7 +291,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     fn constant_negate(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
-        use self::Constant::*;
+        use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
                 let ity = match ty.kind {

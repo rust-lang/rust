@@ -1,5 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::reexport::*;
+use crate::reexport::Name;
 use crate::utils::paths;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
@@ -19,13 +19,16 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use rustc_hir::*;
+use rustc_hir::{
+    def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, LoopSource,
+    MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::{BytePos, Symbol};
-use rustc_typeck::expr_use_visitor::*;
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 use std::iter::{once, Iterator};
 use std::mem;
 use syntax::ast;

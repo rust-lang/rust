@@ -1,6 +1,6 @@
 use crate::utils::{in_macro, snippet, span_lint_and_help, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::*;
+use rustc_hir::{GenericBound, Generics, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 

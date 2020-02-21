@@ -12,7 +12,11 @@ use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use rustc_hir::*;
+use rustc_hir::{
+    BinOpKind, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitItem,
+    TraitItemKind, TraitMethod, TyKind, UnOp,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -1679,9 +1683,9 @@ fn detect_absurd_comparison<'a, 'tcx>(
     lhs: &'tcx Expr<'_>,
     rhs: &'tcx Expr<'_>,
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
-    use crate::types::AbsurdComparisonResult::*;
-    use crate::types::ExtremeType::*;
-    use crate::utils::comparisons::*;
+    use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
+    use crate::types::ExtremeType::{Maximum, Minimum};
+    use crate::utils::comparisons::{normalize_comparison, Rel};
 
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
@@ -1726,7 +1730,7 @@ fn detect_absurd_comparison<'a, 'tcx>(
 }
 
 fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
-    use crate::types::ExtremeType::*;
+    use crate::types::ExtremeType::{Maximum, Minimum};
 
     let ty = cx.tables.expr_ty(expr);
 
@@ -1755,8 +1759,8 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        use crate::types::AbsurdComparisonResult::*;
-        use crate::types::ExtremeType::*;
+        use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
+        use crate::types::ExtremeType::{Maximum, Minimum};
 
         if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
@@ -1863,7 +1867,7 @@ impl Ord for FullInt {
 }
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
-    use std::*;
+    use std::{i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize};
 
     if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
@@ -1963,7 +1967,7 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
     rhs: &'tcx Expr<'_>,
     invert: bool,
 ) {
-    use crate::utils::comparisons::*;
+    use crate::utils::comparisons::Rel;
 
     if let Some((lb, ub)) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {

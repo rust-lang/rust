@@ -3,15 +3,21 @@ use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::*;
+use rustc_hir::intravisit::{
+    walk_fn_decl, walk_generic_param, walk_generics, walk_param_bound, walk_ty, NestedVisitorMap, Visitor,
+};
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::*;
+use rustc_hir::{
+    BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
+    ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitItem, TraitItemKind, TraitMethod, Ty,
+    TyKind, WhereClause, WherePredicate,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 
-use crate::reexport::*;
+use crate::reexport::Name;
 use crate::utils::{last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {

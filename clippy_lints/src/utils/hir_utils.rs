@@ -3,7 +3,11 @@ use crate::utils::differing_macro_contexts;
 use rustc::ich::StableHashingContextProvider;
 use rustc::ty::TypeckTables;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::*;
+use rustc_hir::{
+    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FnRetTy, GenericArg,
+    GenericArgs, Guard, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, Ty,
+    TyKind, TypeBinding,
+};
 use rustc_lint::LateContext;
 use std::hash::Hash;
 use syntax::ast::Name;

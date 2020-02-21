@@ -12,7 +12,10 @@ use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
-use rustc_hir::*;
+use rustc_hir::{
+    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, PatKind, QPath,
+    RangeEnd,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;

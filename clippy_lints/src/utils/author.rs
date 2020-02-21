@@ -157,7 +157,7 @@ impl PrintVisitor {
     }
 
     fn next(&mut self, s: &'static str) -> String {
-        use std::collections::hash_map::Entry::*;
+        use std::collections::hash_map::Entry::{Occupied, Vacant};
         match self.ids.entry(s) {
             // already there: start numbering from `1`
             Occupied(mut occ) => {

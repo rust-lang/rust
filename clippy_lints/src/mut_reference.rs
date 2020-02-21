@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
-use rustc_hir::*;
+use rustc_hir::{print, BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 

@@ -23,7 +23,10 @@ pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<
     };
 
     if ty.is_signed() {
-        use self::{MinMax::*, Sign::*};
+        use self::{
+            MinMax::{Max, Min},
+            Sign::{Neg, Pos},
+        };
 
         let sign = if let Some(sign) = lit_sign(arith_rhs) {
             sign

@@ -7,7 +7,7 @@ use std::ptr;
 use rustc::ty::adjustment::Adjust;
 use rustc::ty::{Ty, TypeFlags};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};

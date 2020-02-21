@@ -1,9 +1,12 @@
-use crate::reexport::*;
+use crate::reexport::Name;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 use rustc::lint::in_external_macro;
 use rustc::ty;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::*;
+use rustc_hir::{
+    Block, Body, Expr, ExprKind, FnDecl, Guard, HirId, Local, MutTy, Pat, PatKind, Path, QPath, StmtKind, Ty, TyKind,
+    UnOp,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;

@@ -1,9 +1,9 @@
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::*;
+use crate::utils::{snippet, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions of the form `a * b + c`

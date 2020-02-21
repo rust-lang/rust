@@ -1,6 +1,6 @@
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, ConstKind};
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
