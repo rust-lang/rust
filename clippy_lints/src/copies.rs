@@ -2,7 +2,7 @@ use crate::utils::{get_parent_expr, higher, if_sequence, same_tys, snippet, span
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::ty::Ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::*;
+use rustc_hir::{Arm, Block, Expr, ExprKind, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;

@@ -9,7 +9,7 @@ use rustc_parse::parser;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
-use syntax::ast::*;
+use syntax::ast::{Expr, ExprKind, Mac, StrLit, StrStyle};
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 
@@ -317,7 +317,9 @@ fn newline_span(fmtstr: &StrLit) -> Span {
 /// ```
 #[allow(clippy::too_many_lines)]
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
-    use fmt_macros::*;
+    use fmt_macros::{
+        AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, Parser, Piece,
+    };
     let tts = tts.clone();
 
     let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false, None);

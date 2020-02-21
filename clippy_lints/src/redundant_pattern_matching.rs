@@ -1,6 +1,6 @@
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;

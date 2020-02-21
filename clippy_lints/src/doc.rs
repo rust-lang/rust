@@ -350,7 +350,7 @@ fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, a
     let parser = pulldown_cmark::Parser::new(&doc).into_offset_iter();
     // Iterate over all `Events` and combine consecutive events into one
     let events = parser.coalesce(|previous, current| {
-        use pulldown_cmark::Event::*;
+        use pulldown_cmark::Event::Text;
 
         let previous_range = previous.1;
         let current_range = current.1;
@@ -374,8 +374,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     spans: &[(usize, Span)],
 ) -> DocHeaders {
     // true if a safety header was found
-    use pulldown_cmark::Event::*;
-    use pulldown_cmark::Tag::*;
+    use pulldown_cmark::Event::{
+        Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
+    };
+    use pulldown_cmark::Tag::{CodeBlock, Heading, Link};
 
     let mut headers = DocHeaders {
         safety: false,

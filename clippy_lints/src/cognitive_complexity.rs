@@ -2,7 +2,7 @@
 
 use rustc::hir::map::Map;
 use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
-use rustc_hir::*;
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;

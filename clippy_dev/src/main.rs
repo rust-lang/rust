@@ -1,7 +1,10 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, SubCommand};
-use clippy_dev::*;
+use clippy_dev::{
+    gather_all, gen_changelog_lint_list, gen_deprecated, gen_lint_group_list, gen_modules_list, gen_register_lint_list,
+    replace_region_in_file, Lint, DOCS_LINK,
+};
 use std::path::Path;
 
 mod fmt;

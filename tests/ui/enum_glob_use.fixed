@@ -4,17 +4,17 @@
 #![allow(unused)]
 #![warn(unused_imports)]
 
-use std::cmp::Ordering::*;
+use std::cmp::Ordering::Less;
 
 enum Enum {
     Foo,
 }
 
-use self::Enum::*;
+use self::Enum::Foo;
 
 mod in_fn_test {
     fn blarg() {
-        use crate::Enum::*;
+        use crate::Enum::Foo;
 
         let _ = Foo;
     }

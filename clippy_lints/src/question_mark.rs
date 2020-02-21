@@ -1,11 +1,11 @@
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::*;
+use rustc_hir::{def, Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::paths::*;
+use crate::utils::paths::{OPTION, OPTION_NONE};
 use crate::utils::sugg::Sugg;
 use crate::utils::{higher, match_def_path, match_type, span_lint_and_then, SpanlessEq};
 

@@ -9,7 +9,10 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use syntax::ast::*;
+use syntax::ast::{
+    Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind,
+    StmtKind, UnOp,
+};
 use syntax::visit::{walk_expr, FnKind, Visitor};
 
 declare_clippy_lint! {

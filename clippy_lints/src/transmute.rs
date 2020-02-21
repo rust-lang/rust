@@ -4,7 +4,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::borrow::Cow;

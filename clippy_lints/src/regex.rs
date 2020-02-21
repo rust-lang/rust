@@ -2,7 +2,7 @@ use crate::consts::{constant, Constant};
 use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::*;
+use rustc_hir::{Block, BorrowKind, Crate, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, Span};
@@ -145,8 +145,8 @@ fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<
 }
 
 fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
-    use regex_syntax::hir::Anchor::*;
-    use regex_syntax::hir::HirKind::*;
+    use regex_syntax::hir::Anchor::{EndText, StartText};
+    use regex_syntax::hir::HirKind::{Alternation, Anchor, Concat, Empty, Literal};
 
     let is_literal = |e: &[regex_syntax::hir::Hir]| {
         e.iter().all(|e| match *e.kind() {
