@@ -24,6 +24,7 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::LitKind;
 
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
 use std::{cmp, iter, mem, usize};
@@ -105,10 +106,11 @@ pub enum Candidate {
     /// Promotion of the `x` in `[x; 32]`.
     Repeat(Location),
 
-    /// Function calls where the callee has the unstable
-    /// `#[rustc_args_required_const]` attribute. The attribute requires that
-    /// the arguments be constant, usually because they are encoded as an
-    /// immediate operand in a platform intrinsic.
+    /// Currently applied to function calls where the callee has the unstable
+    /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
+    /// intrinsic. The intrinsic requires the arguments are indeed constant and
+    /// the attribute currently provides the semantic requirement that arguments
+    /// must be constant.
     Argument { bb: BasicBlock, index: usize },
 }
 
@@ -216,6 +218,17 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         if let TerminatorKind::Call { ref func, .. } = *kind {
             if let ty::FnDef(def_id, _) = func.ty(self.body, self.tcx).kind {
+                let fn_sig = self.tcx.fn_sig(def_id);
+                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
+                    let name = self.tcx.item_name(def_id);
+                    // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
+                    if name.as_str().starts_with("simd_shuffle") {
+                        self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
+
+                        return; // Don't double count `simd_shuffle` candidates
+                    }
+                }
+
                 if let Some(constant_args) = args_required_const(self.tcx, def_id) {
                     for index in constant_args {
                         self.candidates.push(Candidate::Argument { bb: location.block, index });
@@ -717,7 +730,8 @@ pub fn validate_candidates(
         .filter(|&candidate| {
             validator.explicit = candidate.forces_explicit_promotion();
 
-            // FIXME(eddyb) also emit the errors for `#[rustc_args_required_const]` arguments here.
+            // FIXME(eddyb) also emit the errors for shuffle indices
+            // and `#[rustc_args_required_const]` arguments here.
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
             match candidate {
