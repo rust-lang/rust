@@ -1,4 +1,4 @@
-use super::infer;
+use super::{infer, infer_with_mismatches};
 use insta::assert_snapshot;
 use test_utils::covers;
 
@@ -233,6 +233,50 @@ fn test(a1: A<u32>, o: Option<u64>) {
     [217; 218) 't': u64
     [228; 229) '_': Option<u64>
     [233; 234) '1': u64
+    "###
+    );
+}
+
+#[test]
+fn infer_const_pattern() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+enum Option<T> { None }
+use Option::None;
+struct Foo;
+const Bar: usize = 1;
+
+fn test() {
+    let a: Option<u32> = None;
+    let b: Option<i64> = match a {
+        None => None,
+    };
+    let _: () = match () { Foo => Foo }; // Expected mismatch
+    let _: () = match () { Bar => Bar }; // Expected mismatch
+}
+"#, true),
+        @r###"
+    [74; 75) '1': usize
+    [88; 310) '{     ...atch }': ()
+    [98; 99) 'a': Option<u32>
+    [115; 119) 'None': Option<u32>
+    [129; 130) 'b': Option<i64>
+    [146; 183) 'match ...     }': Option<i64>
+    [152; 153) 'a': Option<u32>
+    [164; 168) 'None': Option<u32>
+    [172; 176) 'None': Option<i64>
+    [193; 194) '_': ()
+    [201; 224) 'match ... Foo }': Foo
+    [207; 209) '()': ()
+    [212; 215) 'Foo': Foo
+    [219; 222) 'Foo': Foo
+    [255; 256) '_': ()
+    [263; 286) 'match ... Bar }': usize
+    [269; 271) '()': ()
+    [274; 277) 'Bar': usize
+    [281; 284) 'Bar': usize
+    [201; 224): expected (), got Foo
+    [263; 286): expected (), got usize
     "###
     );
 }

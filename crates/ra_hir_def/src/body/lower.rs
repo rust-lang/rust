@@ -15,6 +15,7 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
+    adt::StructKind,
     body::{Body, BodySourceMap, Expander, PatPtr},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -22,11 +23,12 @@ use crate::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
+    item_scope::BuiltinShadowMode,
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId, StaticLoc,
-    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
+    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -571,7 +573,37 @@ where
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let annotation = BindingAnnotation::new(bp.is_mutable(), bp.is_ref());
                 let subpat = bp.pat().map(|subpat| self.collect_pat(subpat));
-                Pat::Bind { name, mode: annotation, subpat }
+                if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
+                    // This could also be a single-segment path pattern. To
+                    // decide that, we need to try resolving the name.
+                    let (resolved, _) = self.expander.crate_def_map.resolve_path(
+                        self.db,
+                        self.expander.module.local_id,
+                        &name.clone().into(),
+                        BuiltinShadowMode::Other,
+                    );
+                    match resolved.take_values() {
+                        Some(ModuleDefId::ConstId(_)) => Pat::Path(name.into()),
+                        Some(ModuleDefId::EnumVariantId(_)) => {
+                            // this is only really valid for unit variants, but
+                            // shadowing other enum variants with a pattern is
+                            // an error anyway
+                            Pat::Path(name.into())
+                        }
+                        Some(ModuleDefId::AdtId(AdtId::StructId(s)))
+                            if self.db.struct_data(s).variant_data.kind() != StructKind::Record =>
+                        {
+                            // Funnily enough, record structs *can* be shadowed
+                            // by pattern bindings (but unit or tuple structs
+                            // can't).
+                            Pat::Path(name.into())
+                        }
+                        // shadowing statics is an error as well, so we just ignore that case here
+                        _ => Pat::Bind { name, mode: annotation, subpat },
+                    }
+                } else {
+                    Pat::Bind { name, mode: annotation, subpat }
+                }
             }
             ast::Pat::TupleStructPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));

@@ -189,7 +189,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        self.unify(&ty, expected);
+        if !self.unify(&ty, expected) {
+            // FIXME record mismatch, we need to change the type of self.type_mismatches for that
+        }
         let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());
         ty
