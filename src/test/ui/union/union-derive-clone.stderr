@@ -23,7 +23,8 @@ LL |     let w = u.clone();
    |               ^^^^^ method not found in `U5<CloneNoCopy>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `CloneNoCopy: std::marker::Copy` which is required by `U5<CloneNoCopy>: std::clone::Clone`
+           `CloneNoCopy: std::marker::Copy`
+           which is required by `U5<CloneNoCopy>: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

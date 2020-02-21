@@ -639,7 +639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     None => format!("`{}`", p),
                                     Some((parent_p, _)) => {
                                         collect_type_param_suggestions(self_ty, parent_pred, &p);
-                                        format!("`{}` which is required by `{}`", p, parent_p)
+                                        format!("`{}`\nwhich is required by `{}`", p, parent_p)
                                     }
                                 },
                             })
