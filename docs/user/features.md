@@ -1,10 +1,10 @@
-This documents is an index of features that rust-analyzer language server
+This document is an index of features that the rust-analyzer language server
 provides. Shortcuts are for the default VS Code layout. If there's no shortcut,
 you can use <kbd>Ctrl+Shift+P</kbd> to search for the corresponding action.
 
 ### Workspace Symbol <kbd>ctrl+t</kbd>
 
-Uses fuzzy-search to find types, modules and function by name across your
+Uses fuzzy-search to find types, modules and functions by name across your
 project and dependencies. This is **the** most useful feature, which improves code
 navigation tremendously. It mostly works on top of the built-in LSP
 functionality, however `#` and `*` symbols can be used to narrow down the
@@ -13,7 +13,7 @@ search. Specifically,
 - `Foo` searches for `Foo` type in the current workspace
 - `foo#` searches for `foo` function in the current workspace
 - `Foo*` searches for `Foo` type among dependencies, including `stdlib`
-- `foo#*` searches for `foo` function among dependencies.
+- `foo#*` searches for `foo` function among dependencies
 
 That is, `#` switches from "types" to all symbols, `*` switches from the current
 workspace to dependencies.
@@ -30,7 +30,7 @@ Provides a tree of the symbols defined in the file. Can be used to
 
 Some features trigger on typing certain characters:
 
-- typing `let =` tries to smartly add `;` if `=` is followed by an existing expression.
+- typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
 - Enter inside comments automatically inserts `///`
 - typing `.` in a chain method call auto-indents
 
@@ -58,7 +58,7 @@ Navigates to the type of an identifier.
 
 #### Run
 
-Shows popup suggesting to run a test/benchmark/binary **at the current cursor
+Shows a popup suggesting to run a test/benchmark/binary **at the current cursor
 location**. Super useful for repeatedly running just a single test. Do bind this
 to a shortcut!
 
@@ -87,15 +87,15 @@ Shows the full macro expansion of the macro at current cursor.
 
 #### Status
 
-Shows internal statistic about memory usage of rust-analyzer
+Shows internal statistic about memory usage of rust-analyzer.
 
 #### Show RA Version
 
-Show current rust-analyzer version
+Show current rust-analyzer version.
 
-#### Run garbage collection
+#### Run Garbage Collection
 
-Manually triggers GC
+Manually triggers GC.
 
 #### Start Cargo Watch
 
@@ -103,7 +103,7 @@ Start `cargo watch` for live error highlighting. Will prompt to install if it's 
 
 #### Stop Cargo Watch
 
-Stop `cargo watch`
+Stop `cargo watch`.
 
 ### Assists (Code Actions)
 
@@ -122,11 +122,11 @@ is placed at the appropriate position. Even though `if` is easy to type, you
 still want to complete it, to get ` { }` for free! `return` is inserted with a
 space or `;` depending on the return type of the function.
 
-When completing a function call, `()` are automatically inserted. If function
-takes arguments, cursor is positioned inside the parenthesis.
+When completing a function call, `()` are automatically inserted. If a function
+takes arguments, the cursor is positioned inside the parenthesis.
 
 There are postifx completions, which can be triggerd by typing something like
-`foo().if`. The word after `.` determines postifx completion, possible variants are:
+`foo().if`. The word after `.` determines postifx completion. Possible variants are:
 
 - `expr.if` -> `if expr {}`
 - `expr.match` -> `match expr {}`
@@ -147,12 +147,12 @@ There also snippet completions:
 
 - `tfn` -> `#[test] fn f(){}`
 
-### Code highlighting
+### Code Highlighting
 
 Experimental feature to let rust-analyzer highlight Rust code instead of using the
 default highlighter.
 
-#### Rainbow highlighting
+#### Rainbow Highlighting
 
 Experimental feature that, given code highlighting using rust-analyzer is
 active, will pick unique colors for identifiers.
