@@ -14,8 +14,7 @@ export function serverVersion(ctx: Ctx): Cmd {
             );
         }
 
-        const res = spawnSync(binaryPath, ["--version"]);
-        const version = res.output?.filter(x => x !== null).map(String).join(" ");
+        const version = spawnSync(binaryPath, ["--version"], { encoding: "utf8" }).stdout;
         vscode.window.showInformationMessage('rust-analyzer version : ' + version);
     };
 }
