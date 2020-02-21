@@ -79,7 +79,8 @@ fn make_mir_scope(
             parent_scope.scope_metadata.unwrap(),
             file_metadata,
             loc.line as c_uint,
-            loc.col.to_usize() as c_uint,
+            // Loc column is 0-based while debug one is 1-based.
+            loc.col.to_usize() as c_uint + 1,
         ))
     };
     debug_context.scopes[scope] = DebugScope {

@@ -19,7 +19,8 @@ impl CodegenCx<'ll, '_> {
         let col_used = if self.sess().target.target.options.is_like_msvc {
             UNKNOWN_COLUMN_NUMBER
         } else {
-            loc.col.to_usize() as c_uint
+            // Loc column is 0-based while debug one is 1-based.
+            loc.col.to_usize() as c_uint + 1
         };
 
         unsafe {
