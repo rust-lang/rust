@@ -55,6 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('onEnter', commands.onEnter);
     ctx.registerCommand('ssr', commands.ssr);
+    ctx.registerCommand('serverVersion', commands.serverVersion);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
