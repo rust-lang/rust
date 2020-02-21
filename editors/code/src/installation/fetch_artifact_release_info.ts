@@ -46,6 +46,7 @@ export async function fetchArtifactReleaseInfo(
         name: string;
         assets: Array<{
             name: string;
+            // eslint-disable-next-line camelcase
             browser_download_url: string;
         }>;
     }

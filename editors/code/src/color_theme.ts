@@ -83,11 +83,11 @@ function loadThemeNamed(themeName: string): ColorTheme {
         res.mergeFrom(loadThemeFile(themePath));
     }
 
-    const global_customizations: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
-    res.mergeFrom(ColorTheme.fromRules(global_customizations?.textMateRules ?? []));
+    const globalCustomizations: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
+    res.mergeFrom(ColorTheme.fromRules(globalCustomizations?.textMateRules ?? []));
 
-    const theme_customizations: any = vscode.workspace.getConfiguration('editor.tokenColorCustomizations').get(`[${themeName}]`);
-    res.mergeFrom(ColorTheme.fromRules(theme_customizations?.textMateRules ?? []));
+    const themeCustomizations: any = vscode.workspace.getConfiguration('editor.tokenColorCustomizations').get(`[${themeName}]`);
+    res.mergeFrom(ColorTheme.fromRules(themeCustomizations?.textMateRules ?? []));
 
 
     return res;

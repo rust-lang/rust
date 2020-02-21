@@ -12,6 +12,7 @@ module.exports = {
         "@typescript-eslint"
     ],
     "rules": {
+        "camelcase": ["error"],
         "@typescript-eslint/member-delimiter-style": [
             "error",
             {
