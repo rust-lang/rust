@@ -171,11 +171,10 @@ Several `-Z` flags are relevant for Miri:
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for validation.
-* `-Zmiri-track-pointer-tag=<tag>` aborts interpretation with a backtrace when the
-  given pointer tag is popped from a borrow stack (which is where the tag
-  becomes invalid and any future use of it will error anyway).  This helps you
-  in finding out why UB is happening and where in your code would be a good
-  place to look for it.
+* `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
+  is popped from a borrow stack (which is where the tag becomes invalid and any
+  future use of it will error).  This helps you in finding out why UB is
+  happening and where in your code would be a good place to look for it.
 
 Moreover, Miri recognizes some environment variables:
 
