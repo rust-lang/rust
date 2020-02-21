@@ -560,7 +560,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
-        if let Ok(_) = self.get_fn_alloc(id) {
+        if let Some(_) = self.get_fn_alloc(id) {
             return if let AllocCheck::Dereferenceable = liveness {
                 // The caller requested no function pointers.
                 throw_unsup!(DerefFunctionPointer)
@@ -602,14 +602,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    fn get_fn_alloc(&self, id: AllocId) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+    fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
         trace!("reading fn ptr: {}", id);
         if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
-            Ok(FnVal::Other(*extra))
+            Some(FnVal::Other(*extra))
         } else {
             match self.tcx.alloc_map.lock().get(id) {
-                Some(GlobalAlloc::Function(instance)) => Ok(FnVal::Instance(instance)),
-                _ => throw_unsup!(ExecuteMemory),
+                Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
+                _ => None,
             }
         }
     }
@@ -622,7 +622,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if ptr.offset.bytes() != 0 {
             throw_unsup!(InvalidFunctionPointer)
         }
-        self.get_fn_alloc(ptr.alloc_id)
+        self.get_fn_alloc(ptr.alloc_id).ok_or_else(|| err_unsup!(ExecuteMemory).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
