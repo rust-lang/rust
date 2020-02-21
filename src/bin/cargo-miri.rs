@@ -381,8 +381,6 @@ path = "lib.rs"
     command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
-    // In bootstrap, make sure we don't get debug assertons into our libstd.
-    command.env("RUSTC_DEBUG_ASSERTIONS", "false");
     // Handle target flag.
     if let Some(ref target) = target {
         command.arg("--target").arg(&target);
