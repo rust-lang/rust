@@ -6,7 +6,7 @@ use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
 use rustc_errors::PResult;
 use rustc_span::source_map::{FileName, SourceMap, Span, DUMMY_SP};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
 use syntax::attr;
 use syntax::token::{self, TokenKind};
@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
                         &format!(
                             "... or maybe `use` the module `{}` instead \
                                             of possibly redeclaring it",
-                            paths.name
+                            Symbol::intern(&paths.name).to_stringified_ident_guess()
                         ),
                     );
                 }

@@ -33,12 +33,12 @@ type Res = def::Res<ast::NodeId>;
 crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
 
 crate struct TypoSuggestion {
-    pub candidate: Ident,
+    pub candidate: Symbol,
     pub res: Res,
 }
 
 impl TypoSuggestion {
-    crate fn from_res(candidate: Ident, res: Res) -> TypoSuggestion {
+    crate fn from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
         TypoSuggestion { candidate, res }
     }
 }
@@ -107,7 +107,7 @@ impl<'a> Resolver<'a> {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) {
-                    names.push(TypoSuggestion::from_res(key.ident, res));
+                    names.push(TypoSuggestion::from_res(key.ident.name, res));
                 }
             }
         }
@@ -273,7 +273,7 @@ impl<'a> Resolver<'a> {
                     let help_msg = format!(
                         "if you meant to match on a variant or a `const` item, consider \
                          making the path in the pattern qualified: `?::{}`",
-                        name,
+                        name.to_stringified_ident_guess(),
                     );
                     err.span_help(span, &help_msg);
                 }
@@ -509,7 +509,7 @@ impl<'a> Resolver<'a> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|ident| TypoSuggestion::from_res(*ident, res)),
+                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
                         );
                     }
                 }
@@ -525,9 +525,11 @@ impl<'a> Resolver<'a> {
                                 false,
                                 false,
                             ) {
-                                suggestions.extend(ext.helper_attrs.iter().map(|name| {
-                                    TypoSuggestion::from_res(Ident::new(*name, derive.span), res)
-                                }));
+                                suggestions.extend(
+                                    ext.helper_attrs
+                                        .iter()
+                                        .map(|name| TypoSuggestion::from_res(*name, res)),
+                                );
                             }
                         }
                     }
@@ -536,7 +538,8 @@ impl<'a> Resolver<'a> {
                     if let LegacyScope::Binding(legacy_binding) = legacy_scope {
                         let res = legacy_binding.binding.res();
                         if filter_fn(res) {
-                            suggestions.push(TypoSuggestion::from_res(legacy_binding.ident, res))
+                            suggestions
+                                .push(TypoSuggestion::from_res(legacy_binding.ident.name, res))
                         }
                     }
                 }
@@ -554,7 +557,7 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             this.registered_attrs
                                 .iter()
-                                .map(|ident| TypoSuggestion::from_res(*ident, res)),
+                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
                         );
                     }
                 }
@@ -562,24 +565,24 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
                             let res = binding.res();
-                            let span = binding.span;
-                            filter_fn(res)
-                                .then_some(TypoSuggestion::from_res(Ident::new(*name, span), res))
+                            filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                         },
                     ));
                 }
                 Scope::BuiltinAttrs => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
                     if filter_fn(res) {
-                        suggestions.extend(BUILTIN_ATTRIBUTES.iter().map(|(name, ..)| {
-                            TypoSuggestion::from_res(Ident::with_dummy_span(*name), res)
-                        }));
+                        suggestions.extend(
+                            BUILTIN_ATTRIBUTES
+                                .iter()
+                                .map(|(name, ..)| TypoSuggestion::from_res(*name, res)),
+                        );
                     }
                 }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                        filter_fn(res).then_some(TypoSuggestion::from_res(*ident, res))
+                        filter_fn(res).then_some(TypoSuggestion::from_res(ident.name, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -587,7 +590,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         this.registered_tools
                             .iter()
-                            .map(|ident| TypoSuggestion::from_res(*ident, res)),
+                            .map(|ident| TypoSuggestion::from_res(ident.name, res)),
                     );
                 }
                 Scope::StdLibPrelude => {
@@ -605,8 +608,7 @@ impl<'a> Resolver<'a> {
                     let primitive_types = &this.primitive_type_table.primitive_types;
                     suggestions.extend(primitive_types.iter().flat_map(|(name, prim_ty)| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res)
-                            .then_some(TypoSuggestion::from_res(Ident::with_dummy_span(*name), res))
+                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                     }))
                 }
             }
@@ -618,12 +620,12 @@ impl<'a> Resolver<'a> {
         suggestions.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
 
         match find_best_match_for_name(
-            suggestions.iter().map(|suggestion| &suggestion.candidate.name),
+            suggestions.iter().map(|suggestion| &suggestion.candidate),
             &ident.as_str(),
             None,
         ) {
             Some(found) if found != ident.name => {
-                suggestions.into_iter().find(|suggestion| suggestion.candidate.name == found)
+                suggestions.into_iter().find(|suggestion| suggestion.candidate == found)
             }
             _ => None,
         }
@@ -803,7 +805,7 @@ impl<'a> Resolver<'a> {
     ) -> bool {
         if let Some(suggestion) = suggestion {
             // We shouldn't suggest underscore.
-            if suggestion.candidate.name == kw::Underscore {
+            if suggestion.candidate == kw::Underscore {
                 return false;
             }
 
@@ -822,10 +824,10 @@ impl<'a> Resolver<'a> {
             });
             let candidate = def_span
                 .as_ref()
-                .map(|span| Ident::new(suggestion.candidate.name, *span))
-                .unwrap_or(suggestion.candidate);
+                .map(|span| Ident::new(suggestion.candidate, *span).to_string())
+                .unwrap_or_else(|| suggestion.candidate.to_stringified_ident_guess());
 
-            err.span_suggestion(span, &msg, candidate.to_string(), Applicability::MaybeIncorrect);
+            err.span_suggestion(span, &msg, candidate.clone(), Applicability::MaybeIncorrect);
 
             if let Some(span) = def_span {
                 err.span_label(
@@ -833,7 +835,7 @@ impl<'a> Resolver<'a> {
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),
-                        candidate.to_string(),
+                        candidate,
                     ),
                 );
             }
@@ -1477,7 +1479,11 @@ crate fn show_candidates(
             // produce an additional newline to separate the new use statement
             // from the directly following item.
             let additional_newline = if found_use { "" } else { "\n" };
-            *candidate = format!("use {};\n{}", candidate, additional_newline);
+            *candidate = format!(
+                "use {};\n{}",
+                Symbol::intern(candidate).to_stringified_ident_guess(),
+                additional_newline
+            );
         }
 
         err.span_suggestions(span, &msg, path_strings.into_iter(), Applicability::Unspecified);

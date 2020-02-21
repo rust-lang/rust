@@ -966,6 +966,13 @@ impl Symbol {
         })
     }
 
+    /// Represent as stringified identifier, guessing raw formatting
+    /// (`r#`) if ident can be interpreted as a raw identifier according
+    /// to the edition used by current crate.
+    pub fn to_stringified_ident_guess(&self) -> String {
+        Ident::with_dummy_span(*self).to_string()
+    }
+
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }

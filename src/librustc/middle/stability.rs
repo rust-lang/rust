@@ -161,7 +161,7 @@ pub fn deprecation_suggestion(
         diag.span_suggestion(
             span,
             "replace the use of the deprecated item",
-            suggestion.to_string(),
+            suggestion.to_stringified_ident_guess(),
             Applicability::MachineApplicable,
         );
     }

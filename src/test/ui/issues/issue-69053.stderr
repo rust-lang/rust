@@ -1,0 +1,25 @@
+warning: type `struct` should have an upper camel case name
+  --> $DIR/issue-69053.rs:1:8
+   |
+LL | struct r#struct<r#fn>;
+   |        ^^^^^^^^ help: convert the identifier to upper camel case: `Struct`
+   |
+   = note: `#[warn(non_camel_case_types)]` on by default
+
+warning: type parameter `fn` should have an upper camel case name
+  --> $DIR/issue-69053.rs:1:17
+   |
+LL | struct r#struct<r#fn>;
+   |                 ^^^^ help: convert the identifier to upper camel case: `Fn`
+
+error[E0392]: parameter `fn` is never used
+  --> $DIR/issue-69053.rs:1:17
+   |
+LL | struct r#struct<r#fn>;
+   |                 ^^^^ unused parameter
+   |
+   = help: consider removing `r#fn`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0392`.

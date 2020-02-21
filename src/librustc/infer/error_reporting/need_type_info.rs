@@ -9,8 +9,8 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::symbol::kw;
 use rustc_span::Span;
+use rustc_span::{symbol::kw, Symbol};
 use std::borrow::Cow;
 
 struct FindLocalByTypeVisitor<'a, 'tcx> {
@@ -108,7 +108,7 @@ fn closure_return_type_suggestion(
     output: &FunctionRetTy<'_>,
     body: &Body<'_>,
     descr: &str,
-    name: &str,
+    name: Symbol,
     ret: &str,
     parent_name: Option<String>,
     parent_descr: Option<&str>,
@@ -129,7 +129,7 @@ fn closure_return_type_suggestion(
         suggestion,
         Applicability::HasPlaceholders,
     );
-    err.span_label(span, InferCtxt::missing_type_msg(&name, &descr, parent_name, parent_descr));
+    err.span_label(span, InferCtxt::missing_type_msg(name, &descr, parent_name, parent_descr));
 }
 
 /// Given a closure signature, return a `String` containing a list of all its argument types.
@@ -320,7 +320,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             &decl.output,
                             &body,
                             &descr,
-                            &name,
+                            Symbol::intern(&name),
                             &ret,
                             parent_name,
                             parent_descr,
@@ -444,7 +444,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Avoid multiple labels pointing at `span`.
             err.span_label(
                 span,
-                InferCtxt::missing_type_msg(&name, &descr, parent_name, parent_descr),
+                InferCtxt::missing_type_msg(
+                    Symbol::intern(&name),
+                    &descr,
+                    parent_name,
+                    parent_descr,
+                ),
             );
         }
 
@@ -518,17 +523,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "type inside {} must be known in this context",
             kind,
         );
-        err.span_label(span, InferCtxt::missing_type_msg(&name, &descr, parent_name, parent_descr));
+        err.span_label(
+            span,
+            InferCtxt::missing_type_msg(Symbol::intern(&name), &descr, parent_name, parent_descr),
+        );
         err
     }
 
     fn missing_type_msg(
-        type_name: &str,
+        type_name: Symbol,
         descr: &str,
         parent_name: Option<String>,
         parent_descr: Option<&str>,
     ) -> Cow<'static, str> {
-        if type_name == "_" {
+        if type_name == kw::Underscore {
             "cannot infer type".into()
         } else {
             let parent_desc = if let Some(parent_name) = parent_name {

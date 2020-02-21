@@ -1100,11 +1100,14 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) {
     let msg = if let Some(def_id) = suggested_marker_id {
         format!(
             "consider removing `{}`, referring to it in a field, or using a marker such as `{}`",
-            param_name,
+            param_name.to_stringified_ident_guess(),
             tcx.def_path_str(def_id),
         )
     } else {
-        format!("consider removing `{}` or referring to it in a field", param_name)
+        format!(
+            "consider removing `{}` or referring to it in a field",
+            param_name.to_stringified_ident_guess()
+        )
     };
     err.help(&msg);
     err.emit();
@@ -1218,8 +1221,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) -> DiagnosticBuilder<'_> {
-    let mut err =
-        struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        span,
+        E0392,
+        "parameter `{}` is never used",
+        param_name.to_stringified_ident_guess()
+    );
     err.span_label(span, "unused parameter");
     err
 }

@@ -36,7 +36,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                err.span_note(span, &format!("...so that closure can access `{}`", var_name));
+                err.span_note(
+                    span,
+                    &format!(
+                        "...so that closure can access `{}`",
+                        var_name.to_stringified_ident_guess()
+                    ),
+                );
             }
             infer::InfStackClosure(span) => {
                 err.span_note(span, "...so that closure does not outlive its stack frame");
@@ -53,7 +59,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &format!(
                         "...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
-                        self.tcx.hir().name(id)
+                        self.tcx.hir().name(id).to_stringified_ident_guess()
                     ),
                 );
             }

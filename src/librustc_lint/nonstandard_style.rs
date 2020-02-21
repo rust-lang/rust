@@ -107,7 +107,8 @@ impl NonCamelCaseTypes {
         let name = &ident.name.as_str();
 
         if !is_camel_case(name) {
-            let msg = format!("{} `{}` should have an upper camel case name", sort, name);
+            let msg =
+                format!("{} `{}` should have an upper camel case name", sort, name.to_string());
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, &msg)
                 .span_suggestion(
                     ident.span,

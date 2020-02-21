@@ -107,7 +107,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             &format!(
                                 "closure cannot be invoked more than once because it moves the \
                                  variable `{}` out of its environment",
-                                name,
+                                name.to_stringified_ident_guess(),
                             ),
                         );
                         return;
@@ -129,7 +129,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &format!(
                             "closure cannot be moved more than once as it is not `Copy` due to \
                              moving the variable `{}` out of its environment",
-                            name
+                            name.to_stringified_ident_guess()
                         ),
                     );
                 }

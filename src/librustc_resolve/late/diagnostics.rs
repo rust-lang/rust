@@ -647,7 +647,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) {
-                        names.push(TypoSuggestion::from_res(*ident, res));
+                        names.push(TypoSuggestion::from_res(ident.name, res));
                     }
                 }
                 // Items in scope
@@ -672,7 +672,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                                         );
 
                                         if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion::from_res(*ident, crate_mod))
+                                            Some(TypoSuggestion::from_res(ident.name, crate_mod))
                                         } else {
                                             None
                                         }
@@ -689,14 +689,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             }
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
-                names.extend(self.r.primitive_type_table.primitive_types.iter().map(
-                    |(name, prim_ty)| {
-                        TypoSuggestion::from_res(
-                            Ident::with_dummy_span(*name),
-                            Res::PrimTy(*prim_ty),
-                        )
-                    },
-                ))
+                names.extend(
+                    self.r.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
+                        TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
+                    }),
+                )
             }
         } else {
             // Search in module.
@@ -715,12 +712,12 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
 
         match find_best_match_for_name(
-            names.iter().map(|suggestion| &suggestion.candidate.name),
+            names.iter().map(|suggestion| &suggestion.candidate),
             &name.as_str(),
             None,
         ) {
             Some(found) if found != name => {
-                names.into_iter().find(|suggestion| suggestion.candidate.name == found)
+                names.into_iter().find(|suggestion| suggestion.candidate == found)
             }
             _ => None,
         }

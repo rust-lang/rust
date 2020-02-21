@@ -17,7 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -143,12 +143,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
+                    let param = Symbol::intern(&param_name);
                     let constraint = trait_ref.print_only_trait_path().to_string();
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,
                         &mut err,
-                        &param_name,
+                        param,
                         &constraint,
                         self.tcx.sess.source_map(),
                         *span,
@@ -1657,7 +1658,7 @@ pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
     err: &mut DiagnosticBuilder<'_>,
-    param_name: &str,
+    param_name: Symbol,
     constraint: &str,
     source_map: &SourceMap,
     span: Span,
@@ -1665,7 +1666,7 @@ pub fn suggest_constraining_type_param(
 ) -> bool {
     let restrict_msg = "consider further restricting this bound";
     if let Some(param) =
-        generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next()
+        generics.params.iter().filter(|p| p.name.ident().as_str() == param_name.as_str()).next()
     {
         if def_id == tcx.lang_items().sized_trait() {
             // Type parameters are already `Sized` by default.
@@ -1673,14 +1674,14 @@ pub fn suggest_constraining_type_param(
                 param.span,
                 &format!("this type parameter needs to be `{}`", constraint),
             );
-        } else if param_name.starts_with("impl ") {
+        } else if param_name.as_str().starts_with("impl ") {
             // `impl Trait` in argument:
             // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
             err.span_suggestion(
                 param.span,
                 restrict_msg,
                 // `impl CurrentTrait + MissingTrait`
-                format!("{} + {}", param_name, constraint),
+                format!("{} + {}", param_name.to_stringified_ident_guess(), constraint),
                 Applicability::MachineApplicable,
             );
         } else if generics.where_clause.predicates.is_empty() && param.bounds.is_empty() {
@@ -1690,7 +1691,7 @@ pub fn suggest_constraining_type_param(
             err.span_suggestion(
                 param.span,
                 "consider restricting this bound",
-                format!("{}: {}", param_name, constraint),
+                format!("{}: {}", param_name.to_stringified_ident_guess(), constraint),
                 Applicability::MachineApplicable,
             );
         } else if !generics.where_clause.predicates.is_empty() {
@@ -1699,8 +1700,11 @@ pub fn suggest_constraining_type_param(
             // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
             err.span_suggestion(
                 generics.where_clause.span().unwrap().shrink_to_hi(),
-                &format!("consider further restricting type parameter `{}`", param_name),
-                format!(", {}: {}", param_name, constraint),
+                &format!(
+                    "consider further restricting type parameter `{}`",
+                    param_name.to_stringified_ident_guess()
+                ),
+                format!(", {}: {}", param_name.to_stringified_ident_guess(), constraint),
                 Applicability::MachineApplicable,
             );
         } else {
@@ -1716,13 +1720,17 @@ pub fn suggest_constraining_type_param(
                 err.span_suggestion(
                     span,
                     restrict_msg,
-                    format!("{}: {} + ", param_name, constraint),
+                    format!("{}: {} + ", param_name.to_stringified_ident_guess(), constraint),
                     Applicability::MachineApplicable,
                 );
             } else {
                 err.span_label(
                     param.span,
-                    &format!("consider adding a `where {}: {}` bound", param_name, constraint),
+                    &format!(
+                        "consider adding a `where {}: {}` bound",
+                        param_name.to_stringified_ident_guess(),
+                        constraint
+                    ),
                 );
             }
         }
