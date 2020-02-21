@@ -718,8 +718,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(ref ty, _) => {
-                let def_kind = match ty.kind.opaque_top_hack() {
+            ItemKind::TyAlias(_, _, ref ty) => {
+                let def_kind = match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                     None => DefKind::TyAlias,
                     Some(_) => DefKind::OpaqueTy,
                 };

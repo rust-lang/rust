@@ -312,9 +312,10 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
-        ItemKind::TyAlias(ref typ, ref generics) => {
-            visitor.visit_ty(typ);
-            visitor.visit_generics(generics)
+        ItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_param_bound, bounds);
+            walk_list!(visitor, visit_ty, ty);
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);

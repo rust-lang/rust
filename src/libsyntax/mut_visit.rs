@@ -902,9 +902,10 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::TyAlias(ty, generics) => {
-            vis.visit_ty(ty);
+        ItemKind::TyAlias(generics, bounds, ty) => {
             vis.visit_generics(generics);
+            visit_bounds(bounds, vis);
+            visit_opt(ty, |ty| vis.visit_ty(ty));
         }
         ItemKind::Enum(EnumDef { variants }, generics) => {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));

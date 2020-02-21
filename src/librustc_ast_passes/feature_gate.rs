@@ -372,7 +372,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(ref ty, ..) => self.check_impl_trait(&ty),
+            ast::ItemKind::TyAlias(_, _, Some(ref ty)) => self.check_impl_trait(&ty),
 
             _ => {}
         }
