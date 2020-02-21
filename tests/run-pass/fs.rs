@@ -169,8 +169,16 @@ fn test_rename() {
 
     let file = File::create(&path1).unwrap();
     drop(file);
+
+    // Renaming should succeed
     rename(&path1, &path2).unwrap();
+    // Check that the old file path isn't present
     assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
+    // Check that the file has moved successfully
     assert!(path2.metadata().unwrap().is_file());
+
+    // Renaming a nonexistent file should fail
+    assert_eq!(ErrorKind::NotFound, rename(&path1, &path2).unwrap_err().kind());
+
     remove_file(&path2).unwrap();
 }
