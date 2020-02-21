@@ -1,3 +1,13 @@
+Version 1.41.1 (2020-02-27)
+===========================
+
+* [Always check types of static items][69145]
+* [Always check lifetime bounds of `Copy` impls][69145]
+* [Fix miscompilation in callers of `Layout::repeat`][69225]
+
+[69225]: https://github.com/rust-lang/rust/issues/69225
+[69145]: https://github.com/rust-lang/rust/pull/69145
+
 Version 1.41.0 (2020-01-30)
 ===========================
 
@@ -208,7 +218,7 @@ Compatibility Notes
 - [Using `#[inline]` on function prototypes and consts now emits a warning under
   `unused_attribute` lint.][65294] Using `#[inline]` anywhere else inside traits
   or `extern` blocks now correctly emits a hard error.
-  
+
 [65294]: https://github.com/rust-lang/rust/pull/65294/
 [66103]: https://github.com/rust-lang/rust/pull/66103/
 [65843]: https://github.com/rust-lang/rust/pull/65843/
