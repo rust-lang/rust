@@ -162,7 +162,7 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align))
@@ -218,7 +218,7 @@ impl Layout {
     ///
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
@@ -258,19 +258,17 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the resulting layout will
-    /// satisfy the alignment properties of both `self` and `next`.
+    /// will be properly aligned, but no trailing padding. Note that
+    /// the resulting layout will satisfy the alignment properties of
+    /// both `self` and `next`, in order to ensure field alignment.
     ///
-    /// The resulting layout will be the same as that of a C struct containing
-    /// two fields with the layouts of `self` and `next`, in that order.
-    ///
-    /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
+    /// Returns `Ok((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
@@ -318,13 +316,12 @@ impl Layout {
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
-        Layout::new::<T>().repeat(n).map(|(k, offs)| {
-            debug_assert!(offs == mem::size_of::<T>());
-            k
-        })
+        let (layout, offset) = Layout::new::<T>().repeat(n)?;
+        debug_assert_eq!(offset, mem::size_of::<T>());
+        Ok(layout.pad_to_align())
     }
 }
 
