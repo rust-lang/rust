@@ -1,5 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
-#![allow(exceeding_bitshifts, const_err)]
+#![allow(arithmetic_overflow)]
 
 fn main() {
     let _n = 1i64 >> 64;

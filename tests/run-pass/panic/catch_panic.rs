@@ -1,7 +1,7 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
 // normalize-stderr-test "[^ ]*libcore/macros/mod.rs[0-9:]*" -> "$$LOC"
 #![feature(never_type)]
-#![allow(const_err)]
+#![allow(unconditional_panic)]
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;
 

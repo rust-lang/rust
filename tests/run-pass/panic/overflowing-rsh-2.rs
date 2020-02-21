@@ -1,5 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
-#![allow(exceeding_bitshifts, const_err)]
+#![allow(arithmetic_overflow)]
 
 fn main() {
     // Make sure we catch overflows that would be hidden by first casting the RHS to u32

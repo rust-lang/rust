@@ -1,1 +1,1 @@
-thread 'main' panicked at 'attempt to shift left with overflow', $DIR/overflowing-lsh-neg.rs:6:14
+thread 'main' panicked at 'attempt to shift left with overflow', $DIR/overflowing-lsh-neg.rs:5:14
