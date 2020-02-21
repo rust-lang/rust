@@ -1910,3 +1910,45 @@ fn test() -> impl Trait<i32> {
     "###
     );
 }
+
+#[test]
+fn assoc_types_from_bounds() {
+    assert_snapshot!(
+        infer(r#"
+//- /main.rs
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+trait T {
+    type O;
+}
+
+impl T for () {
+    type O = ();
+}
+
+fn f<X, F>(_v: F)
+where
+    X: T,
+    F: FnOnce(&X::O),
+{ }
+
+fn main() {
+    f::<(), _>(|z| { z; });
+}
+"#),
+        @r###"
+    [147; 149) '_v': F
+    [192; 195) '{ }': ()
+    [207; 238) '{     ... }); }': ()
+    [213; 223) 'f::<(), _>': fn f<(), |&()| -> ()>(|&()| -> ()) -> ()
+    [213; 235) 'f::<()... z; })': ()
+    [224; 234) '|z| { z; }': |&()| -> ()
+    [225; 226) 'z': &()
+    [228; 234) '{ z; }': ()
+    [230; 231) 'z': &()
+    "###
+    );
+}
