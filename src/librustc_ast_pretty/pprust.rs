@@ -1185,18 +1185,10 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.to_string());
                 self.end();
             }
-            ast::ItemKind::TyAlias(ref ty, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&generics.where_clause);
-                self.s.space();
-                self.word_space("=");
-                self.print_type(ty);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+            ast::ItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
+                let def = ast::Defaultness::Final;
+                let ty = ty.as_deref();
+                self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
             ast::ItemKind::Enum(ref enum_definition, ref params) => {
                 self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
