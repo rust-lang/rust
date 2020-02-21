@@ -1008,14 +1008,13 @@ fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
                 path.pop();
                 path.pop();
                 // Based on Clang MinGW driver
-                let probe_path = path.join(&mingw_dir).join("lib");
-                if probe_path.exists() {
-                    return Some(probe_path);
-                };
-                let probe_path = path.join(&mingw_dir).join("sys-root/mingw/lib");
-                if probe_path.exists() {
-                    return Some(probe_path);
-                };
+                let probe_paths = vec!["lib", "sys-root/mingw/lib"];
+                for probe_path in probe_paths {
+                    let probe_path = path.join(&mingw_dir).join(&probe_path);
+                    if probe_path.join("crt2.o").exists() {
+                        return Some(probe_path);
+                    };
+                }
             };
         };
         None
