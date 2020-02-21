@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import { GithubRepo, ArtifactReleaseInfo } from "./interfaces";
+import { log } from "../util";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
@@ -24,7 +25,7 @@ export async function fetchArtifactReleaseInfo(
 
     // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
 
-    console.log("Issuing request for released artifacts metadata to", requestUrl);
+    log.debug("Issuing request for released artifacts metadata to", requestUrl);
 
     // FIXME: handle non-ok response
     const response: GithubRelease = await fetch(requestUrl, {

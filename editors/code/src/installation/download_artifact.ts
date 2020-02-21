@@ -29,7 +29,6 @@ export async function downloadArtifact(
 
     const installationPath = path.join(installationDir, artifactFileName);
 
-    console.time(`Downloading ${artifactFileName}`);
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -54,5 +53,4 @@ export async function downloadArtifact(
             );
         }
     );
-    console.timeEnd(`Downloading ${artifactFileName}`);
 }

@@ -252,6 +252,11 @@
                     "default": "off",
                     "description": "Trace requests to the rust-analyzer"
                 },
+                "rust-analyzer.trace.extension": {
+                    "description": "Enable logging of VS Code extensions itself",
+                    "type": "boolean",
+                    "default": false
+                },
                 "rust-analyzer.lruCapacity": {
                     "type": [
                         "null",

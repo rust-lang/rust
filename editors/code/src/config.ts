@@ -1,6 +1,7 @@
 import * as os from "os";
 import * as vscode from 'vscode';
 import { BinarySource } from "./installation/interfaces";
+import { log } from "./util";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -46,7 +47,9 @@ export class Config {
 
     private refreshConfig() {
         this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
-        console.log("Using configuration:", this.cfg);
+        const enableLogging = this.cfg.get("trace.extension") as boolean;
+        log.setEnabled(enableLogging);
+        log.debug("Using configuration:", this.cfg);
     }
 
     private async onConfigChange(event: vscode.ConfigurationChangeEvent) {

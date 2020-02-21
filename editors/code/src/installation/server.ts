@@ -7,6 +7,7 @@ import { spawnSync } from "child_process";
 import { BinarySource } from "./interfaces";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 import { downloadArtifact } from "./download_artifact";
+import { log } from "../util";
 
 export async function ensureServerBinary(source: null | BinarySource): Promise<null | string> {
     if (!source) {
@@ -40,7 +41,7 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
             const installedVersion: null | string = getServerVersion(source.storage);
             const requiredVersion: string = source.version;
 
-            console.log("Installed version:", installedVersion, "required:", requiredVersion);
+            log.debug("Installed version:", installedVersion, "required:", requiredVersion);
 
             if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion === requiredVersion) {
                 return prebuiltBinaryPath;
@@ -72,16 +73,16 @@ async function downloadServer(source: BinarySource.GithubRelease): Promise<boole
             `GitHub repository: ${err.message}`
         );
 
-        console.error(err);
+        log.error(err);
 
         dns.resolve('example.com').then(
-            addrs => console.log("DNS resolution for example.com was successful", addrs),
+            addrs => log.debug("DNS resolution for example.com was successful", addrs),
             err => {
-                console.error(
+                log.error(
                     "DNS resolution for example.com failed, " +
                     "there might be an issue with Internet availability"
                 );
-                console.error(err);
+                log.error(err);
             }
         );
         return false;
@@ -105,19 +106,19 @@ function isBinaryAvailable(binaryPath: string): boolean {
     // ACHTUNG! `res` type declaration is inherently wrong, see
     // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/42221
 
-    console.log("Checked binary availablity via --version", res);
-    console.log(binaryPath, "--version output:", res.output?.map(String));
+    log.debug("Checked binary availablity via --version", res);
+    log.debug(binaryPath, "--version output:", res.output?.map(String));
 
     return res.status === 0;
 }
 
 function getServerVersion(storage: vscode.Memento): null | string {
     const version = storage.get<null | string>("server-version", null);
-    console.log("Get server-version:", version);
+    log.debug("Get server-version:", version);
     return version;
 }
 
 async function setServerVersion(storage: vscode.Memento, version: string): Promise<void> {
-    console.log("Set server-version:", version);
+    log.debug("Set server-version:", version);
     await storage.update("server-version", version.toString());
 }
