@@ -2,7 +2,7 @@ use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{dummy_spanned, SourceMap, Spanned};
+use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, FileName, Span};
 use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
@@ -1026,7 +1026,7 @@ impl<'a> State<'a> {
         span: Span,
         ident: ast::Ident,
         attrs: &[Attribute],
-        defaultness: ast::Defaultness,
+        def: ast::Defaultness,
         kind: &ast::AssocItemKind,
         vis: &ast::Visibility,
     ) {
@@ -1034,19 +1034,18 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
-        self.print_defaultness(defaultness);
         match kind {
             ast::ForeignItemKind::Fn(sig, gen, body) => {
-                self.print_fn_full(sig, ident, gen, vis, body.as_deref(), attrs);
+                self.print_fn_full(sig, ident, gen, vis, def, body.as_deref(), attrs);
             }
             ast::ForeignItemKind::Const(ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis);
+                self.print_item_const(ident, None, ty, body.as_deref(), vis, def);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
-                self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis);
+                self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
             }
             ast::ForeignItemKind::TyAlias(generics, bounds, ty) => {
-                self.print_associated_type(ident, generics, bounds, ty.as_deref());
+                self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, def);
             }
             ast::ForeignItemKind::Macro(m) => {
                 self.print_mac(m);
@@ -1065,13 +1064,17 @@ impl<'a> State<'a> {
         ty: &ast::Ty,
         body: Option<&ast::Expr>,
         vis: &ast::Visibility,
+        defaultness: ast::Defaultness,
     ) {
+        self.head("");
+        self.print_visibility(vis);
+        self.print_defaultness(defaultness);
         let leading = match mutbl {
             None => "const",
             Some(ast::Mutability::Not) => "static",
             Some(ast::Mutability::Mut) => "static mut",
         };
-        self.head(visibility_qualified(vis, leading));
+        self.word_space(leading);
         self.print_ident(ident);
         self.word_space(":");
         self.print_type(ty);
@@ -1091,7 +1094,12 @@ impl<'a> State<'a> {
         generics: &ast::Generics,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
+        vis: &ast::Visibility,
+        defaultness: ast::Defaultness,
     ) {
+        self.head("");
+        self.print_visibility(vis);
+        self.print_defaultness(defaultness);
         self.word_space("type");
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
@@ -1102,7 +1110,9 @@ impl<'a> State<'a> {
             self.word_space("=");
             self.print_type(ty);
         }
-        self.s.word(";")
+        self.s.word(";");
+        self.end(); // end inner head-block
+        self.end(); // end outer head-block
     }
 
     /// Pretty-prints an item.
@@ -1133,13 +1143,17 @@ impl<'a> State<'a> {
                 self.end(); // end outer head-block
             }
             ast::ItemKind::Static(ref ty, mutbl, ref body) => {
-                self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis);
+                let def = ast::Defaultness::Final;
+                self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis, def);
             }
             ast::ItemKind::Const(ref ty, ref body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis);
+                let def = ast::Defaultness::Final;
+                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
             }
             ast::ItemKind::Fn(ref sig, ref gen, ref body) => {
-                self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
+                let def = ast::Defaultness::Final;
+                let body = body.as_deref();
+                self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
             ast::ItemKind::Mod(ref _mod) => {
                 self.head(visibility_qualified(&item.vis, "mod"));
@@ -2370,13 +2384,16 @@ impl<'a> State<'a> {
         name: ast::Ident,
         generics: &ast::Generics,
         vis: &ast::Visibility,
+        defaultness: ast::Defaultness,
         body: Option<&ast::Block>,
         attrs: &[ast::Attribute],
     ) {
         if body.is_some() {
             self.head("");
         }
-        self.print_fn(&sig.decl, sig.header, Some(name), generics, vis);
+        self.print_visibility(vis);
+        self.print_defaultness(defaultness);
+        self.print_fn(&sig.decl, sig.header, Some(name), generics);
         if let Some(body) = body {
             self.nbsp();
             self.print_block_with_attrs(body, attrs);
@@ -2391,10 +2408,8 @@ impl<'a> State<'a> {
         header: ast::FnHeader,
         name: Option<ast::Ident>,
         generics: &ast::Generics,
-        vis: &ast::Visibility,
     ) {
-        self.print_fn_header_info(header, vis);
-
+        self.print_fn_header_info(header);
         if let Some(name) = name {
             self.nbsp();
             self.print_ident(name);
@@ -2672,8 +2687,7 @@ impl<'a> State<'a> {
             span: rustc_span::DUMMY_SP,
         };
         let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
-        let vis = dummy_spanned(ast::VisibilityKind::Inherited);
-        self.print_fn(decl, header, name, &generics, &vis);
+        self.print_fn(decl, header, name, &generics);
         self.end();
     }
 
@@ -2700,9 +2714,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_fn_header_info(&mut self, header: ast::FnHeader, vis: &ast::Visibility) {
-        self.s.word(visibility_qualified(vis, ""));
-
+    crate fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
         self.print_asyncness(header.asyncness);
         self.print_unsafety(header.unsafety);
