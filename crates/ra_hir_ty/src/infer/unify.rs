@@ -7,10 +7,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use test_utils::tested_by;
 
 use super::{InferenceContext, Obligation};
-use crate::{
-    db::HirDatabase, utils::make_mut_slice, Canonical, InEnvironment, InferTy, ProjectionPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
-};
+use crate::{db::HirDatabase, Canonical, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -50,42 +47,38 @@ where
         })
     }
 
-    fn do_canonicalize_ty(&mut self, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::Infer(tv) => {
-                let inner = tv.to_inner();
-                if self.var_stack.contains(&inner) {
-                    // recursive type
-                    return tv.fallback_value();
+    fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: usize) -> T {
+        t.fold_binders(
+            &mut |ty, binders| match ty {
+                Ty::Infer(tv) => {
+                    let inner = tv.to_inner();
+                    if self.var_stack.contains(&inner) {
+                        // recursive type
+                        return tv.fallback_value();
+                    }
+                    if let Some(known_ty) =
+                        self.ctx.table.var_unification_table.inlined_probe_value(inner).known()
+                    {
+                        self.var_stack.push(inner);
+                        let result = self.do_canonicalize(known_ty.clone(), binders);
+                        self.var_stack.pop();
+                        result
+                    } else {
+                        let root = self.ctx.table.var_unification_table.find(inner);
+                        let free_var = match tv {
+                            InferTy::TypeVar(_) => InferTy::TypeVar(root),
+                            InferTy::IntVar(_) => InferTy::IntVar(root),
+                            InferTy::FloatVar(_) => InferTy::FloatVar(root),
+                            InferTy::MaybeNeverTypeVar(_) => InferTy::MaybeNeverTypeVar(root),
+                        };
+                        let position = self.add(free_var);
+                        Ty::Bound((position + binders) as u32)
+                    }
                 }
-                if let Some(known_ty) =
-                    self.ctx.table.var_unification_table.inlined_probe_value(inner).known()
-                {
-                    self.var_stack.push(inner);
-                    let result = self.do_canonicalize_ty(known_ty.clone());
-                    self.var_stack.pop();
-                    result
-                } else {
-                    let root = self.ctx.table.var_unification_table.find(inner);
-                    let free_var = match tv {
-                        InferTy::TypeVar(_) => InferTy::TypeVar(root),
-                        InferTy::IntVar(_) => InferTy::IntVar(root),
-                        InferTy::FloatVar(_) => InferTy::FloatVar(root),
-                        InferTy::MaybeNeverTypeVar(_) => InferTy::MaybeNeverTypeVar(root),
-                    };
-                    let position = self.add(free_var);
-                    Ty::Bound(position as u32)
-                }
-            }
-            _ => ty,
-        })
-    }
-
-    fn do_canonicalize_trait_ref(&mut self, mut trait_ref: TraitRef) -> TraitRef {
-        for ty in make_mut_slice(&mut trait_ref.substs.0) {
-            *ty = self.do_canonicalize_ty(ty.clone());
-        }
-        trait_ref
+                _ => ty,
+            },
+            binders,
+        )
     }
 
     fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
@@ -95,28 +88,8 @@ where
         }
     }
 
-    fn do_canonicalize_projection_ty(&mut self, mut projection_ty: ProjectionTy) -> ProjectionTy {
-        for ty in make_mut_slice(&mut projection_ty.parameters.0) {
-            *ty = self.do_canonicalize_ty(ty.clone());
-        }
-        projection_ty
-    }
-
-    fn do_canonicalize_projection_predicate(
-        &mut self,
-        projection: ProjectionPredicate,
-    ) -> ProjectionPredicate {
-        let ty = self.do_canonicalize_ty(projection.ty);
-        let projection_ty = self.do_canonicalize_projection_ty(projection.projection_ty);
-
-        ProjectionPredicate { ty, projection_ty }
-    }
-
-    // FIXME: add some point, we need to introduce a `Fold` trait that abstracts
-    // over all the things that can be canonicalized (like Chalk and rustc have)
-
     pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
-        let result = self.do_canonicalize_ty(ty);
+        let result = self.do_canonicalize(ty, 0);
         self.into_canonicalized(result)
     }
 
@@ -125,10 +98,8 @@ where
         obligation: InEnvironment<Obligation>,
     ) -> Canonicalized<InEnvironment<Obligation>> {
         let result = match obligation.value {
-            Obligation::Trait(tr) => Obligation::Trait(self.do_canonicalize_trait_ref(tr)),
-            Obligation::Projection(pr) => {
-                Obligation::Projection(self.do_canonicalize_projection_predicate(pr))
-            }
+            Obligation::Trait(tr) => Obligation::Trait(self.do_canonicalize(tr, 0)),
+            Obligation::Projection(pr) => Obligation::Projection(self.do_canonicalize(pr, 0)),
         };
         self.into_canonicalized(InEnvironment {
             value: result,
