@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 355] = [
+pub const ALL_LINTS: [Lint; 356] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -492,10 +492,10 @@ pub const ALL_LINTS: [Lint; 355] = [
     },
     Lint {
         name: "excessive_precision",
-        group: "correctness",
+        group: "style",
         desc: "excessive precision for float literal",
         deprecation: None,
-        module: "excessive_precision",
+        module: "float_literal",
     },
     Lint {
         name: "exit",
@@ -1000,6 +1000,13 @@ pub const ALL_LINTS: [Lint; 355] = [
         desc: "boolean expressions that contain terminals which can be eliminated",
         deprecation: None,
         module: "booleans",
+    },
+    Lint {
+        name: "lossy_float_literal",
+        group: "restriction",
+        desc: "lossy whole number float literals",
+        deprecation: None,
+        module: "float_literal",
     },
     Lint {
         name: "main_recursion",

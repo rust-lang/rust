@@ -13,8 +13,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for float literals with a precision greater
     /// than that supported by the underlying type.
     ///
-    /// **Why is this bad?** Rust will silently lose precision during conversion
-    /// to a float.
+    /// **Why is this bad?** Rust will truncate the literal silently.
     ///
     /// **Known problems:** None.
     ///
@@ -22,21 +21,45 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// // Bad
-    /// let a: f32 = 0.123_456_789_9; // 0.123_456_789
-    /// let b: f32 = 16_777_217.0; // 16_777_216.0
+    /// let v: f32 = 0.123_456_789_9;
+    /// println!("{}", v); //  0.123_456_789
     ///
     /// // Good
-    /// let a: f64 = 0.123_456_789_9;
-    /// let b: f64 = 16_777_216.0;
+    /// let v: f64 = 0.123_456_789_9;
+    /// println!("{}", v); //  0.123_456_789_9
     /// ```
     pub EXCESSIVE_PRECISION,
-    correctness,
+    style,
     "excessive precision for float literal"
 }
 
-declare_lint_pass!(ExcessivePrecision => [EXCESSIVE_PRECISION]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for whole number float literals that
+    /// cannot be represented as the underlying type without loss.
+    ///
+    /// **Why is this bad?** Rust will silently lose precision during
+    /// conversion to a float.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let _: f32 = 16_777_217.0; // 16_777_216.0
+    ///
+    /// // Good
+    /// let _: f32 = 16_777_216.0;
+    /// let _: f64 = 16_777_217.0;
+    /// ```
+    pub LOSSY_FLOAT_LITERAL,
+    restriction,
+    "lossy whole number float literals"
+}
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
+declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
@@ -52,26 +75,41 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
                 // since we'll need the truncated string anyway.
                 let digits = count_digits(&sym_str);
                 let max = max_digits(fty);
-                let float_str = match fty {
-                    FloatTy::F32 => sym_str.parse::<f32>().map(|f| formatter.format(f)),
-                    FloatTy::F64 => sym_str.parse::<f64>().map(|f| formatter.format(f)),
-                }.unwrap();
                 let type_suffix = match lit_float_ty {
                     LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
                     LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
                     _ => None
                 };
+                let (is_whole, mut float_str) = match fty {
+                    FloatTy::F32 => {
+                        let value = sym_str.parse::<f32>().unwrap();
 
-                if is_whole_number(&sym_str, fty) {
+                        (value.fract() == 0.0, formatter.format(value))
+                    },
+                    FloatTy::F64 => {
+                        let value = sym_str.parse::<f64>().unwrap();
+
+                        (value.fract() == 0.0, formatter.format(value))
+                    },
+                };
+
+                if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
                     // Normalize the literal by stripping the fractional portion
                     if sym_str.split('.').next().unwrap() != float_str {
+                        // If the type suffix is missing the suggestion would be
+                        // incorrectly interpreted as an integer so adding a `.0`
+                        // suffix to prevent that.
+                        if type_suffix.is_none() {
+                            float_str.push_str(".0");
+                        }
+
                         span_lint_and_sugg(
                             cx,
-                            EXCESSIVE_PRECISION,
+                            LOSSY_FLOAT_LITERAL,
                             expr.span,
                             "literal cannot be represented as the underlying type without loss of precision",
                             "consider changing the type or replacing it with",
-                            format_numeric_literal(format!("{}.0", float_str).as_str(), type_suffix, true),
+                            format_numeric_literal(&float_str, type_suffix, true),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -88,15 +126,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
                 }
             }
         }
-    }
-}
-
-// Checks whether a float literal is a whole number
-#[must_use]
-fn is_whole_number(sym_str: &str, fty: FloatTy) -> bool {
-    match fty {
-        FloatTy::F32 => sym_str.parse::<f32>().unwrap().fract() == 0.0,
-        FloatTy::F64 => sym_str.parse::<f64>().unwrap().fract() == 0.0,
     }
 }
 

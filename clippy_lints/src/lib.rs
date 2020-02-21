@@ -205,10 +205,10 @@ pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
 pub mod excessive_bools;
-pub mod excessive_precision;
 pub mod exit;
 pub mod explicit_write;
 pub mod fallible_impl_from;
+pub mod float_literal;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -534,10 +534,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         &excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS,
         &excessive_bools::STRUCT_EXCESSIVE_BOOLS,
-        &excessive_precision::EXCESSIVE_PRECISION,
         &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
+        &float_literal::EXCESSIVE_PRECISION,
+        &float_literal::LOSSY_FLOAT_LITERAL,
         &format::USELESS_FORMAT,
         &formatting::POSSIBLE_MISSING_COMMA,
         &formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
@@ -836,7 +837,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_glob_use::EnumGlobUse);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
-    store.register_late_pass(|| box excessive_precision::ExcessivePrecision);
+    store.register_late_pass(|| box float_literal::FloatLiteral);
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
     store.register_late_pass(|| box ptr::Ptr);
@@ -1016,6 +1017,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(&exit::EXIT),
+        LintId::of(&float_literal::LOSSY_FLOAT_LITERAL),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),
@@ -1159,8 +1161,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE),
         LintId::of(&eval_order_dependence::DIVERGING_SUB_EXPRESSION),
         LintId::of(&eval_order_dependence::EVAL_ORDER_DEPENDENCE),
-        LintId::of(&excessive_precision::EXCESSIVE_PRECISION),
         LintId::of(&explicit_write::EXPLICIT_WRITE),
+        LintId::of(&float_literal::EXCESSIVE_PRECISION),
         LintId::of(&format::USELESS_FORMAT),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
@@ -1386,6 +1388,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&enum_variants::MODULE_INCEPTION),
         LintId::of(&eq_op::OP_REF),
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE),
+        LintId::of(&float_literal::EXCESSIVE_PRECISION),
         LintId::of(&formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
         LintId::of(&formatting::SUSPICIOUS_ELSE_FORMATTING),
         LintId::of(&formatting::SUSPICIOUS_UNARY_OP_FORMATTING),
@@ -1566,7 +1569,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT),
         LintId::of(&eq_op::EQ_OP),
         LintId::of(&erasing_op::ERASING_OP),
-        LintId::of(&excessive_precision::EXCESSIVE_PRECISION),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
