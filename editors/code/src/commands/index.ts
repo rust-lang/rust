@@ -13,6 +13,7 @@ export * from './syntax_tree';
 export * from './expand_macro';
 export * from './runnables';
 export * from './ssr';
+export * from './server_version';
 
 export function collectGarbage(ctx: Ctx): Cmd {
     return async () => {

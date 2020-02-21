@@ -131,6 +131,11 @@
                 "command": "rust-analyzer.ssr",
                 "title": "Structural Search Replace",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.serverVersion",
+                "title": "Show RA Version",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [
