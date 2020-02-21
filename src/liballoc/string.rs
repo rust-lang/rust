@@ -47,6 +47,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::convert::TryFrom;
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -2361,6 +2362,14 @@ impl fmt::Write for String {
     fn write_char(&mut self, c: char) -> fmt::Result {
         self.push(c);
         Ok(())
+    }
+}
+
+#[stable(feature = "string_try_from_vec", since = "1.43.0")]
+impl TryFrom<Vec<u8>> for String {
+    type Error = FromUtf8Error;
+    fn try_from(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
+        String::from_utf8(vec)
     }
 }
 
