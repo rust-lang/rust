@@ -3081,6 +3081,10 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         (ident, scope)
     }
+
+    pub fn is_object_safe(self, key: DefId) -> bool {
+        self.object_safety_violations(key).is_empty()
+    }
 }
 
 #[derive(Clone, HashStable)]

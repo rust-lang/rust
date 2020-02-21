@@ -661,7 +661,7 @@ rustc_queries! {
             desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query is_object_safe(key: DefId) -> bool {
+        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 
