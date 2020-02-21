@@ -147,7 +147,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
 
         let is_empty_method_found = current_and_super_traits
             .iter()
-            .flat_map(|&i| cx.tcx.associated_items(i))
+            .flat_map(|&i| cx.tcx.associated_items(i).in_definition_order())
             .any(|i| {
                 i.kind == ty::AssocKind::Method
                     && i.method_has_self_argument
@@ -276,10 +276,12 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 
     /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_, '_>, id: DefId) -> bool {
-        cx.tcx
-            .inherent_impls(id)
-            .iter()
-            .any(|imp| cx.tcx.associated_items(*imp).iter().any(|item| is_is_empty(cx, &item)))
+        cx.tcx.inherent_impls(id).iter().any(|imp| {
+            cx.tcx
+                .associated_items(*imp)
+                .in_definition_order()
+                .any(|item| is_is_empty(cx, &item))
+        })
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
@@ -288,7 +290,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
             if let Some(principal) = tt.principal() {
                 cx.tcx
                     .associated_items(principal.def_id())
-                    .iter()
+                    .in_definition_order()
                     .any(|item| is_is_empty(cx, &item))
             } else {
                 false
