@@ -18,6 +18,7 @@ use test_utils::tested_by;
 
 use crate::{
     db::DefDatabase,
+    item_scope::BUILTIN_SCOPE,
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
@@ -103,15 +104,6 @@ impl CrateDefMap {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
-        // if it is not the last segment, we prefer the module to the builtin
-        let prefer_module = |index| {
-            if index == path.segments.len() - 1 {
-                shadow
-            } else {
-                BuiltinShadowMode::Module
-            }
-        };
-
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
@@ -140,20 +132,29 @@ impl CrateDefMap {
                 if self.edition == Edition::Edition2015
                     && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
             {
-                let (idx, segment) = match segments.next() {
+                let (_, segment) = match segments.next() {
                     Some((idx, segment)) => (idx, segment),
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(&segment, prefer_module(idx))
+                self.resolve_name_in_crate_root_or_extern_prelude(&segment)
             }
             PathKind::Plain => {
-                let (idx, segment) = match segments.next() {
+                let (_, segment) = match segments.next() {
                     Some((idx, segment)) => (idx, segment),
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
+                // The first segment may be a builtin type. If the path has more
+                // than one segment, we first try resolving it as a module
+                // anyway.
+                // FIXME: If the next segment doesn't resolve in the module and
+                // BuiltinShadowMode wasn't Module, then we need to try
+                // resolving it as a builtin.
+                let prefer_module =
+                    if path.segments.len() == 1 { shadow } else { BuiltinShadowMode::Module };
+
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(db, original_module, &segment, prefer_module(idx))
+                self.resolve_name_in_module(db, original_module, &segment, prefer_module)
             }
             PathKind::Super(lvl) => {
                 let m = successors(Some(original_module), |m| self.modules[*m].parent)
@@ -216,7 +217,7 @@ impl CrateDefMap {
                     }
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    self[module.local_id].scope.get(&segment, prefer_module(i))
+                    self[module.local_id].scope.get(&segment)
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
@@ -275,33 +276,35 @@ impl CrateDefMap {
             .scope
             .get_legacy_macro(name)
             .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public));
-        let from_scope = self[module].scope.get(name, shadow);
+        let from_scope = self[module].scope.get(name);
+        let from_builtin = BUILTIN_SCOPE.get(name).copied().unwrap_or_else(PerNs::none);
+        let from_scope_or_builtin = match shadow {
+            BuiltinShadowMode::Module => from_scope.or(from_builtin),
+            BuiltinShadowMode::Other => {
+                if let Some(ModuleDefId::ModuleId(_)) = from_scope.take_types() {
+                    from_builtin.or(from_scope)
+                } else {
+                    from_scope.or(from_builtin)
+                }
+            }
+        };
         let from_extern_prelude = self
             .extern_prelude
             .get(name)
             .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public));
-        let from_prelude = self.resolve_in_prelude(db, name, shadow);
+        let from_prelude = self.resolve_in_prelude(db, name);
 
-        from_legacy_macro.or(from_scope).or(from_extern_prelude).or(from_prelude)
+        from_legacy_macro.or(from_scope_or_builtin).or(from_extern_prelude).or(from_prelude)
     }
 
-    fn resolve_name_in_crate_root_or_extern_prelude(
-        &self,
-        name: &Name,
-        shadow: BuiltinShadowMode,
-    ) -> PerNs {
-        let from_crate_root = self[self.root].scope.get(name, shadow);
+    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs {
+        let from_crate_root = self[self.root].scope.get(name);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(
-        &self,
-        db: &impl DefDatabase,
-        name: &Name,
-        shadow: BuiltinShadowMode,
-    ) -> PerNs {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {
@@ -311,7 +314,7 @@ impl CrateDefMap {
                 keep = db.crate_def_map(prelude.krate);
                 &keep
             };
-            def_map[prelude.local_id].scope.get(name, shadow)
+            def_map[prelude.local_id].scope.get(name)
         } else {
             PerNs::none()
         }

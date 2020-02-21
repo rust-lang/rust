@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Completion of paths, including when writing a single name.
 
 use hir::{Adt, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
@@ -20,10 +20,6 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             let module_scope = module.scope(ctx.db);
             for (name, def) in module_scope {
                 if ctx.use_item_syntax.is_some() {
-                    if let hir::ScopeDef::ModuleDef(hir::ModuleDef::BuiltinType(..)) = def {
-                        tested_by!(dont_complete_primitive_in_use);
-                        continue;
-                    }
                     if let ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
@@ -125,8 +121,13 @@ mod tests {
 
     #[test]
     fn dont_complete_primitive_in_use() {
-        covers!(dont_complete_primitive_in_use);
         let completions = do_completion(r"use self::<|>;", CompletionKind::BuiltinType);
+        assert!(completions.is_empty());
+    }
+
+    #[test]
+    fn dont_complete_primitive_in_module_scope() {
+        let completions = do_completion(r"fn foo() { self::<|> }", CompletionKind::BuiltinType);
         assert!(completions.is_empty());
     }
 
