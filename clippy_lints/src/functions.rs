@@ -497,18 +497,17 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
 fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
-    use ty::TyKind::{Adt, Array, Bool, Char, Float, Int, RawPtr, Ref, Slice, Str, Tuple, Uint};
     match ty.kind {
         // primitive types are never mutable
-        Bool | Char | Int(_) | Uint(_) | Float(_) | Str => false,
-        Adt(ref adt, ref substs) => {
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
+        ty::Adt(ref adt, ref substs) => {
             tys.insert(adt.did) && !ty.is_freeze(cx.tcx, cx.param_env, span)
                 || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
         },
-        Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
-        Array(ty, _) | Slice(ty) => is_mutable_ty(cx, ty, span, tys),
-        RawPtr(ty::TypeAndMut { ty, mutbl }) | Ref(_, ty, mutbl) => {
+        ty::Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
+        ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
+        ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
         },
         // calling something constitutes a side effect, so return true on all callables

@@ -1292,17 +1292,19 @@ pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use ty::TyKind::{Adt, Array, Dynamic, Foreign, Opaque, RawPtr, Ref, Slice, Tuple};
     match ty.kind {
-        Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
-        Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
-        Slice(ref ty) | Array(ref ty, _) | RawPtr(ty::TypeAndMut { ref ty, .. }) | Ref(_, ref ty, _) => {
+        ty::Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
+        ty::Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
+        ty::Slice(ref ty)
+        | ty::Array(ref ty, _)
+        | ty::RawPtr(ty::TypeAndMut { ref ty, .. })
+        | ty::Ref(_, ref ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
         },
-        Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
-        Opaque(ref def_id, _) => {
+        ty::Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
+        ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.predicates_of(*def_id).predicates {
                 if let ty::Predicate::Trait(ref poly_trait_predicate, _) = predicate {
                     if must_use_attr(&cx.tcx.get_attrs(poly_trait_predicate.skip_binder().trait_ref.def_id)).is_some() {
@@ -1312,7 +1314,7 @@ pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> boo
             }
             false
         },
-        Dynamic(binder, _) => {
+        ty::Dynamic(binder, _) => {
             for predicate in binder.skip_binder().iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
                     if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
