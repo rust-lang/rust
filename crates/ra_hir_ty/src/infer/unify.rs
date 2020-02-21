@@ -161,7 +161,10 @@ impl<T> Canonicalized<T> {
         let new_vars = Substs((0..solution.num_vars).map(|_| ctx.table.new_type_var()).collect());
         for (i, ty) in solution.value.into_iter().enumerate() {
             let var = self.free_vars[i];
-            ctx.table.unify(&Ty::Infer(var), &ty.subst_bound_vars(&new_vars));
+            // eagerly replace projections in the type; we may be getting types
+            // e.g. from where clauses where this hasn't happened yet
+            let ty = ctx.normalize_associated_types_in(ty.subst_bound_vars(&new_vars));
+            ctx.table.unify(&Ty::Infer(var), &ty);
         }
     }
 }
