@@ -38,8 +38,7 @@ You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
 By default, the plugin will prompt you to download the matching version of the server as well:
 
-// FIXME: update the image (its text has changed) (TODO: in pr update this then remove this comment.)
-image::https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png[]
+image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
 
 The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
 
