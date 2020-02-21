@@ -572,8 +572,10 @@ where
             .collect();
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref().clone());
+        let arg: Option<Ty> =
+            parameters.get(1).map(|p| from_chalk(self.db, p.assert_ty_ref().clone()));
 
-        builtin::get_builtin_impls(self.db, self.krate, &ty, trait_, |i| {
+        builtin::get_builtin_impls(self.db, self.krate, &ty, &arg, trait_, |i| {
             result.push(i.to_chalk(self.db))
         });
 

@@ -4,8 +4,12 @@ use hir_def::{expr::Expr, lang_item::LangItemTarget, TraitId, TypeAliasId};
 use hir_expand::name::name;
 use ra_db::CrateId;
 
-use super::{AssocTyValue, Impl};
-use crate::{db::HirDatabase, utils::generics, ApplicationTy, Substs, TraitRef, Ty, TypeCtor};
+use super::{AssocTyValue, Impl, UnsizeToSuperTraitObjectData};
+use crate::{
+    db::HirDatabase,
+    utils::{all_super_traits, generics},
+    ApplicationTy, GenericPredicate, Substs, TraitRef, Ty, TypeCtor,
+};
 
 pub(super) struct BuiltinImplData {
     pub num_vars: usize,
@@ -25,6 +29,8 @@ pub(super) fn get_builtin_impls(
     db: &impl HirDatabase,
     krate: CrateId,
     ty: &Ty,
+    // The first argument for the trait, if present
+    arg: &Option<Ty>,
     trait_: TraitId,
     mut callback: impl FnMut(Impl),
 ) {
@@ -43,14 +49,43 @@ pub(super) fn get_builtin_impls(
             }
         }
     }
+
+    let unsize_trait = get_unsize_trait(db, krate);
+    if let Some(actual_trait) = unsize_trait {
+        if trait_ == actual_trait {
+            get_builtin_unsize_impls(db, krate, ty, arg, callback);
+        }
+    }
+}
+
+fn get_builtin_unsize_impls(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    ty: &Ty,
+    // The first argument for the trait, if present
+    arg: &Option<Ty>,
+    mut callback: impl FnMut(Impl),
+) {
+    if !check_unsize_impl_prerequisites(db, krate) {
+        return;
+    }
+
     if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, .. }) = ty {
-        if let Some(actual_trait) = get_unsize_trait(db, krate) {
-            if trait_ == actual_trait {
-                if check_unsize_impl_prerequisites(db, krate) {
-                    callback(Impl::UnsizeArray);
-                }
+        callback(Impl::UnsizeArray);
+    }
+
+    if let Some(target_trait) = arg.as_ref().and_then(|t| t.dyn_trait_ref()) {
+        if let Some(trait_ref) = ty.dyn_trait_ref() {
+            let super_traits = all_super_traits(db, trait_ref.trait_);
+            if super_traits.contains(&target_trait.trait_) {
+                // callback(Impl::UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData {
+                //     trait_: trait_ref.trait_,
+                //     super_trait: target_trait.trait_,
+                // }));
             }
         }
+
+        callback(Impl::UnsizeToTraitObject(target_trait.trait_));
     }
 }
 
@@ -59,6 +94,10 @@ pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> 
         Impl::ImplBlock(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
         Impl::UnsizeArray => array_unsize_impl_datum(db, krate),
+        Impl::UnsizeToTraitObject(trait_) => trait_object_unsize_impl_datum(db, krate, trait_),
+        Impl::UnsizeToSuperTraitObject(data) => {
+            super_trait_object_unsize_impl_datum(db, krate, data)
+        }
     }
 }
 
@@ -207,6 +246,65 @@ fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImpl
         .build();
 
     let trait_ref = TraitRef { trait_, substs };
+
+    BuiltinImplData {
+        num_vars: 1,
+        trait_ref,
+        where_clauses: Vec::new(),
+        assoc_ty_values: Vec::new(),
+    }
+}
+
+// Trait object unsizing
+
+fn trait_object_unsize_impl_datum(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    trait_: TraitId,
+) -> BuiltinImplData {
+    // impl<T, T1, ...> Unsize<dyn Trait<T1, ...>> for T where T: Trait<T1, ...>
+
+    let unsize_trait = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let self_ty = Ty::Bound(0);
+
+    let substs = Substs::build_for_def(db, trait_)
+        // this fits together nicely: $0 is our self type, and the rest are the type
+        // args for the trait
+        .fill_with_bound_vars(0)
+        .build();
+    let trait_ref = TraitRef { trait_, substs };
+    // This is both the bound for the `dyn` type, *and* the bound for the impl!
+    // This works because the self type for `dyn` is always Ty::Bound(0), which
+    // we've also made the parameter for our impl self type.
+    let bounds = vec![GenericPredicate::Implemented(trait_ref)];
+
+    let impl_substs = Substs::builder(2).push(self_ty).push(Ty::Dyn(bounds.clone().into())).build();
+
+    let trait_ref = TraitRef { trait_: unsize_trait, substs: impl_substs };
+
+    BuiltinImplData { num_vars: 1, trait_ref, where_clauses: bounds, assoc_ty_values: Vec::new() }
+}
+
+fn super_trait_object_unsize_impl_datum(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    _data: UnsizeToSuperTraitObjectData,
+) -> BuiltinImplData {
+    // impl Unsize<dyn SuperTrait> for dyn Trait
+
+    let unsize_trait = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let substs = Substs::builder(2)
+        // .push(Ty::Dyn(todo!()))
+        // .push(Ty::Dyn(todo!()))
+        .build();
+
+    let trait_ref = TraitRef { trait_: unsize_trait, substs };
 
     BuiltinImplData {
         num_vars: 1,

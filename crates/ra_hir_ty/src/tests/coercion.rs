@@ -576,7 +576,6 @@ fn test() {
     );
 }
 
-#[ignore]
 #[test]
 fn coerce_unsize_trait_object() {
     assert_snapshot!(
@@ -600,6 +599,13 @@ fn test() {
 }
 "#, true),
         @r###"
+    [240; 300) '{     ...obj; }': ()
+    [250; 253) 'obj': &dyn Bar
+    [266; 268) '&S': &S
+    [267; 268) 'S': S
+    [278; 281) 'obj': &dyn Foo
+    [294; 297) 'obj': &dyn Bar
+    [294; 297): expected &dyn Foo, got &dyn Bar
     "###
     );
 }

@@ -661,6 +661,17 @@ impl Ty {
         }
     }
 
+    /// If this is a `dyn Trait` type, this returns the `Trait` part.
+    pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
+        match self {
+            Ty::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
+                GenericPredicate::Implemented(trait_ref) => Some(trait_ref),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
