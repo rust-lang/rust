@@ -145,3 +145,13 @@ fn test_reexported() {
     let _ = ExportedStruct;
     let _ = ExportedEnum::A;
 }
+
+#[rustfmt::skip]
+fn test_weird_formatting() {
+    use crate:: in_fn_test::  * ;
+    use crate:: fn_mod::
+        *;
+
+    exported();
+    foo();
+}

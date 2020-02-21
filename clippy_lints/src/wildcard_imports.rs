@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -46,6 +46,9 @@ declare_clippy_lint! {
     /// **Known problems:** If macros are imported through the wildcard, this macro is not included
     /// by the suggestion and has to be added by hand.
     ///
+    /// Applying the suggestion when explicit imports of the things imported with a glob import
+    /// exist, may result in `unused_imports` warnings.
+    ///
     /// **Example:**
     ///
     /// Bad:
@@ -82,16 +85,27 @@ impl LateLintPass<'_, '_> for WildcardImports {
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let import_source = snippet_with_applicability(cx, use_path.span, "..", &mut applicability);
-                let (span, braced_glob) = if import_source.is_empty() {
+                let import_source_snippet = snippet_with_applicability(cx, use_path.span, "..", &mut applicability);
+                let (span, braced_glob) = if import_source_snippet.is_empty() {
                     // This is a `_::{_, *}` import
+                    // In this case `use_path.span` is empty and ends directly in front of the `*`,
+                    // so we need to extend it by one byte.
                     (
                         use_path.span.with_hi(use_path.span.hi() + BytePos(1)),
                         true,
                     )
                 } else {
+                    // In this case, the `use_path.span` ends right before the `::*`, so we need to
+                    // extend it up to the `*`. Since it is hard to find the `*` in weird
+                    // formattings like `use _ ::  *;`, we extend it up to, but not including the
+                    // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
+                    // can just use the end of the item span
+                    let mut span = use_path.span.with_hi(item.span.hi());
+                    if snippet(cx, span, "").ends_with(';') {
+                        span = use_path.span.with_hi(item.span.hi() - BytePos(1));
+                    }
                     (
-                        use_path.span.with_hi(use_path.span.hi() + BytePos(3)),
+                        span,
                         false,
                     )
                 };
@@ -111,10 +125,10 @@ impl LateLintPass<'_, '_> for WildcardImports {
                     }
                 };
 
-                let sugg = if import_source.is_empty() {
+                let sugg = if braced_glob {
                     imports_string
                 } else {
-                    format!("{}::{}", import_source, imports_string)
+                    format!("{}::{}", import_source_snippet, imports_string)
                 };
 
                 let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res {

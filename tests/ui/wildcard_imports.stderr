@@ -78,5 +78,19 @@ error: usage of wildcard import
 LL |     use crate::in_fn_test::*;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`
 
-error: aborting due to 13 previous errors
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:151:9
+   |
+LL |     use crate:: in_fn_test::  * ;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:152:9
+   |
+LL |       use crate:: fn_mod::
+   |  _________^
+LL | |         *;
+   | |_________^ help: try: `crate:: fn_mod::foo`
+
+error: aborting due to 15 previous errors
 
