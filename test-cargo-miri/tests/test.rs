@@ -55,7 +55,7 @@ fn do_panic() { // In large, friendly letters :)
 
 // FIXME: see above
 #[test]
-#[allow(const_err)]
+#[allow(unconditional_panic)]
 #[cfg_attr(not(windows), should_panic(expected="the len is 0 but the index is 42"))]
 fn fail_index_check() {
     #[cfg(not(windows))]
