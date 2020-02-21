@@ -125,8 +125,8 @@ enum ConvertedBindingKind<'a, 'tcx> {
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
-#[derive(PartialEq)]
-enum GenericArgPosition {
+#[derive(PartialEq, Debug)]
+pub enum GenericArgPosition {
     Type,
     Value, // e.g., functions
     MethodCall,
@@ -195,6 +195,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
+        generic_arg_position: GenericArgPosition,
     ) -> SubstsRef<'tcx> {
         let (substs, assoc_bindings, _) = self.create_substs_for_ast_path(
             span,
@@ -203,6 +204,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_segment.generic_args(),
             item_segment.infer_args,
             None,
+            generic_arg_position,
         );
 
         assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
@@ -630,6 +632,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
+        generic_arg_position: GenericArgPosition,
     ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -661,7 +664,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             &generic_params,
             &generic_args,
-            GenericArgPosition::Type,
+            generic_arg_position,
             self_ty.is_some(),
             infer_args,
         );
@@ -804,6 +807,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
         parent_substs: SubstsRef<'tcx>,
+        generic_arg_position: GenericArgPosition,
     ) -> SubstsRef<'tcx> {
         if tcx.generics_of(item_def_id).params.is_empty() {
             self.prohibit_generics(slice::from_ref(item_segment));
@@ -817,6 +821,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 item_segment.generic_args(),
                 item_segment.infer_args,
                 None,
+                generic_arg_position,
             )
             .0
         }
@@ -1100,6 +1105,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_segment.generic_args(),
             trait_segment.infer_args,
             Some(self_ty),
+            GenericArgPosition::Type,
         )
     }
 
@@ -1416,8 +1422,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         did: DefId,
         item_segment: &hir::PathSegment<'_>,
+        generic_arg_position: GenericArgPosition,
     ) -> Ty<'tcx> {
-        let substs = self.ast_path_substs_for_ty(span, did, item_segment);
+        let substs = self.ast_path_substs_for_ty(span, did, item_segment, generic_arg_position);
         self.normalize_ty(span, self.tcx().at(span).type_of(did).subst(self.tcx(), substs))
     }
 
@@ -2253,6 +2260,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_def_id: DefId,
         trait_segment: &hir::PathSegment<'_>,
         item_segment: &hir::PathSegment<'_>,
+        generic_arg_position: GenericArgPosition,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -2305,11 +2313,34 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_def_id,
             item_segment,
             trait_ref.substs,
+            generic_arg_position,
         );
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
         self.normalize_ty(span, tcx.mk_projection(item_def_id, item_substs))
+    }
+
+    pub fn prohibit_multiple_params<'a, T: IntoIterator<Item = &'a hir::PathSegment<'a>>>(
+        &self,
+        segments: T,
+    ) -> bool {
+        let segments_with_params = segments
+            .into_iter()
+            .filter_map(|segment| segment.args.map(|_| segment.ident.span))
+            .collect::<Vec<_>>();
+        if segments_with_params.len() <= 1 {
+            return false;
+        }
+        self.tcx()
+            .sess
+            .struct_span_err(
+                segments_with_params,
+                "multiple segments with type parameters are not allowed",
+            )
+            .note("only a single path segment can specify type parameters")
+            .emit();
+        true
     }
 
     pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment<'a>>>(
@@ -2509,13 +2540,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'_>,
-        permit_variants: bool,
+        generic_arg_position: GenericArgPosition,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         debug!(
-            "res_to_ty(res={:?}, opt_self_ty={:?}, path_segments={:?})",
-            path.res, opt_self_ty, path.segments
+            "res_to_ty(res={:?}, opt_self_ty={:?}, path_segments={:?} generic_arg_pos={:?})",
+            path.res, opt_self_ty, path.segments, generic_arg_position
         );
 
         let span = path.span;
@@ -2525,7 +2556,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1);
-                let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
+                let substs =
+                    self.ast_path_substs_for_ty(span, did, item_segment.0, generic_arg_position);
                 self.normalize_ty(span, tcx.mk_opaque(did, substs))
             }
             Res::Def(DefKind::Enum, did)
@@ -2535,9 +2567,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             | Res::Def(DefKind::ForeignTy, did) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.split_last().unwrap().1);
-                self.ast_path_to_ty(span, did, path.segments.last().unwrap())
+                self.ast_path_to_ty(span, did, path.segments.last().unwrap(), generic_arg_position)
             }
-            Res::Def(kind @ DefKind::Variant, def_id) if permit_variants => {
+            Res::Def(kind @ DefKind::Variant, def_id)
+                if generic_arg_position == GenericArgPosition::Value =>
+            {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
@@ -2546,14 +2580,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.def_ids_for_value_path_segments(&path.segments, None, kind, def_id);
                 let generic_segs: FxHashSet<_> =
                     path_segs.iter().map(|PathSeg(_, index)| index).collect();
-                self.prohibit_generics(path.segments.iter().enumerate().filter_map(
-                    |(index, seg)| {
-                        if !generic_segs.contains(&index) { Some(seg) } else { None }
-                    },
-                ));
+
+                if !self.prohibit_multiple_params(path.segments.iter()) {
+                    self.prohibit_generics(path.segments.iter().enumerate().filter_map(
+                        |(index, seg)| {
+                            if !generic_segs.contains(&index) { Some(seg) } else { None }
+                        },
+                    ));
+                }
 
                 let PathSeg(def_id, index) = path_segs.last().unwrap();
-                self.ast_path_to_ty(span, *def_id, &path.segments[*index])
+                self.ast_path_to_ty(span, *def_id, &path.segments[*index], generic_arg_position)
             }
             Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
@@ -2588,6 +2625,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     def_id,
                     &path.segments[path.segments.len() - 2],
                     path.segments.last().unwrap(),
+                    generic_arg_position,
                 )
             }
             Res::PrimTy(prim_ty) => {
@@ -2642,7 +2680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
-                self.res_to_ty(opt_self_ty, path, false)
+                self.res_to_ty(opt_self_ty, path, GenericArgPosition::Type)
             }
             hir::TyKind::Def(item_id, ref lifetimes) => {
                 let did = tcx.hir().local_def_id(item_id.id);

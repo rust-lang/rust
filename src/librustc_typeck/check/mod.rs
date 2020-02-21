@@ -87,7 +87,7 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use crate::astconv::{AstConv, PathSeg};
+use crate::astconv::{AstConv, GenericArgPosition, PathSeg};
 use crate::middle::lang_items;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
@@ -2787,6 +2787,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             item_def_id,
             item_segment,
             trait_ref.substs,
+            GenericArgPosition::Type,
         );
 
         self.tcx().mk_projection(item_def_id, item_substs)
@@ -4381,7 +4382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::res_to_ty(self, self_ty, path, true);
+                let ty = AstConv::res_to_ty(self, self_ty, path, GenericArgPosition::Value);
                 (path.res, ty)
             }
             QPath::TypeRelative(ref qself, ref segment) => {

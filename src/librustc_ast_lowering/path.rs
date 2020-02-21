@@ -31,6 +31,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
 
         let proj_start = p.segments.len() - partial_res.unresolved_segments();
+        let mut type_param_in_enum = false;
         let path = self.arena.alloc(hir::Path {
             res: self.lower_res(partial_res.base_res()),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
@@ -55,7 +56,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
-                        Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                        Res::Def(DefKind::Variant, def_id)
+                            if i + 2 == proj_start && segment.args.is_some() =>
+                        {
+                            // Handle `Enum::<Param>::Variant {}`.
+                            // We need to choose one here so that the method `res_to_ty` in
+                            // `astconv` works correctly, but it has to be *only* one, so track
+                            // whether we've already set the `DefId` in the previous segment.
+                            type_param_in_enum = true;
+                            Some(parent_def_id(self, def_id))
+                        }
+                        Res::Def(DefKind::Variant, def_id)
+                            if i + 1 == proj_start
+                                && (segment.args.is_some() || !type_param_in_enum) =>
+                        {
+                            // Handle `Enum::Variant::<Param> {}`.
                             Some(parent_def_id(self, def_id))
                         }
                         Res::Def(DefKind::Struct, def_id)

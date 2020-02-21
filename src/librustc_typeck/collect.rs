@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use crate::astconv::{AstConv, Bounds, SizedByDefault};
+use crate::astconv::{AstConv, Bounds, GenericArgPosition, SizedByDefault};
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::lint;
@@ -349,6 +349,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                 item_def_id,
                 item_segment,
                 trait_ref.substs,
+                GenericArgPosition::Type,
             );
             self.tcx().mk_projection(item_def_id, item_substs)
         } else {
