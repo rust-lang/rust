@@ -301,6 +301,7 @@ where
 macro_rules! __impl_decoder_methods {
     ($($name:ident -> $ty:ty;)*) => {
         $(
+            #[inline]
             fn $name(&mut self) -> Result<$ty, Self::Error> {
                 self.opaque.$name()
             }
