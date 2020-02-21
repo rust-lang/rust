@@ -6,10 +6,10 @@
 
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
 
-At it's core, rust-analyzer is a *library* for semantic analysis of the Rust code as it changes over time.
+At its core, rust-analyzer is a *library* for semantic analysis of Rust code as it changes over time.
 This manual focuses on a specific usage of the library -- the implementation of
 https://microsoft.github.io/language-server-protocol/[Language Server Protocol].
-LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic feature like completion or goto definition by talking to an external language server process.
+LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
 
 To improve this document, send a pull request against
 https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
@@ -36,10 +36,9 @@ https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree]
 
 You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
-By default, the plugin will download the matching version of the server as well.
+By default, the plugin will prompt you to download the matching version of the server as well:
 
-// FIXME: update the image (its text has changed)
-image::https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png[]
+image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
 
 The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
 
@@ -60,7 +59,7 @@ $ cargo xtask install
 ----
 
 You'll need Cargo, nodejs and npm for this.
-To make VS Code use the freshly build server, add this to the settings:
+To make VS Code use the freshly built server, add this to the settings:
 
 [source,json]
 ----
@@ -72,7 +71,7 @@ Note that installing via `xtask install` does not work for VS Code Remote, inste
 === Language Server Binary
 
 Other editors generally require `rust-analyzer` binary to be in `$PATH`.
-You can download pre-build binary from
+You can download the pre-built binary from
 https://github.com/rust-analyzer/rust-analyzer/releases[releases]
 page, or you can install it from source using the following command:
 
@@ -85,7 +84,7 @@ $ cargo xtask install --server
 
 Emacs support is maintained https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[upstream].
 
-1. Install recent version of `emacs-lsp` package by following the instructions https://github.com/emacs-lsp/lsp-mode[here].
+1. Install the most recent version of `emacs-lsp` package by following the instructions https://github.com/emacs-lsp/lsp-mode[here].
 2. Set `lsp-rust-server` to `'rust-analyzer`.
 3. Run `lsp` in a Rust buffer.
 4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
@@ -112,7 +111,7 @@ The are several LSP client implementations for vim:
    https://github.com/autozimu/LanguageClient-neovim[here]
    * The github project wiki has extra tips on configuration
 
-2. Configure by adding this to your vim/neovim config file (replacing the existing rust specific line if it exists):
+2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
 +
 [source,vim]
 ----
@@ -123,7 +122,7 @@ let g:LanguageClient_serverCommands = {
 
 ==== nvim-lsp
 
-NeoVim 0.5 (not yet released) has built in language server support.
+NeoVim 0.5 (not yet released) has built-in language server support.
 For a quick start configuration of rust-analyzer, use https://github.com/neovim/nvim-lsp#rust_analyzer[neovim/nvim-lsp].
 Once `neovim/nvim-lsp` is installed, use `lua require'nvim_lsp'.rust_analyzer.setup({})` in your `init.vim`.
 
