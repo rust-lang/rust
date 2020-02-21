@@ -343,6 +343,8 @@ pub enum Impl {
     ImplBlock(ImplId),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
+    /// [T; n]: Unsize<[T]>
+    UnsizeArray,
 }
 /// This exists just for Chalk, because our ImplIds are only unique per module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

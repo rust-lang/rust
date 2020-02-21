@@ -4,11 +4,12 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AdtId};
-use rustc_hash::FxHashMap;
+use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
 use test_utils::tested_by;
 
-use crate::{autoderef, db::HirDatabase, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{
+    autoderef, db::HirDatabase, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor,
+};
 
 use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
 
@@ -37,44 +38,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // to be better recovery for `if` without `else`.
             ty2.clone()
         }
-    }
-
-    pub(super) fn init_coerce_unsized_map(
-        db: &'a D,
-        resolver: &Resolver,
-    ) -> FxHashMap<(TypeCtor, TypeCtor), usize> {
-        let krate = resolver.krate().unwrap();
-        let impls = match db.lang_item(krate, "coerce_unsized".into()) {
-            Some(LangItemTarget::TraitId(trait_)) => db.impls_for_trait(krate, trait_),
-            _ => return FxHashMap::default(),
-        };
-
-        impls
-            .iter()
-            .filter_map(|&impl_id| {
-                let trait_ref = db.impl_trait(impl_id)?;
-
-                // `CoerseUnsized` has one generic parameter for the target type.
-                let cur_from_ty = trait_ref.value.substs.0.get(0)?;
-                let cur_to_ty = trait_ref.value.substs.0.get(1)?;
-
-                match (&cur_from_ty, cur_to_ty) {
-                    (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) => {
-                        // FIXME: We return the first non-equal bound as the type parameter to coerce to unsized type.
-                        // This works for smart-pointer-like coercion, which covers all impls from std.
-                        st1.iter().zip(st2.iter()).enumerate().find_map(|(i, (ty1, ty2))| {
-                            match (ty1, ty2) {
-                                (Ty::Bound(idx1), Ty::Bound(idx2)) if idx1 != idx2 => {
-                                    Some(((*ctor1, *ctor2), i))
-                                }
-                                _ => None,
-                            }
-                        })
-                    }
-                    _ => None,
-                }
-            })
-            .collect()
     }
 
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
@@ -157,154 +120,38 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ///
     /// See: https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html
     fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> Option<bool> {
-        let (ctor1, st1, ctor2, st2) = match (from_ty, to_ty) {
-            (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) => (ctor1, st1, ctor2, st2),
+        let krate = self.resolver.krate().unwrap();
+        let coerce_unsized_trait = match self.db.lang_item(krate, "coerce_unsized".into()) {
+            Some(LangItemTarget::TraitId(trait_)) => trait_,
             _ => return None,
         };
 
-        let coerce_generic_index = *self.coerce_unsized_map.get(&(*ctor1, *ctor2))?;
-
-        // Check `Unsize` first
-        match self.check_unsize_and_coerce(
-            st1.0.get(coerce_generic_index)?,
-            st2.0.get(coerce_generic_index)?,
-            0,
-        ) {
-            Some(true) => {}
-            ret => return ret,
+        let generic_params = crate::utils::generics(self.db, coerce_unsized_trait.into());
+        if generic_params.len() != 2 {
+            // The CoerceUnsized trait should have two generic params: Self and T.
+            return None;
         }
 
-        let ret = st1
-            .iter()
-            .zip(st2.iter())
-            .enumerate()
-            .filter(|&(idx, _)| idx != coerce_generic_index)
-            .all(|(_, (ty1, ty2))| self.unify(ty1, ty2));
+        let substs = Substs::build_for_generics(&generic_params)
+            .push(from_ty.clone())
+            .push(to_ty.clone())
+            .build();
+        let trait_ref = TraitRef { trait_: coerce_unsized_trait, substs };
+        let goal = InEnvironment::new(self.trait_env.clone(), Obligation::Trait(trait_ref));
 
-        Some(ret)
-    }
+        let canonicalizer = self.canonicalizer();
+        let canonicalized = canonicalizer.canonicalize_obligation(goal);
 
-    /// Check if `from_ty: Unsize<to_ty>`, and coerce to `to_ty` if it holds.
-    ///
-    /// It should not be directly called. It is only used by `try_coerce_unsized`.
-    ///
-    /// See: https://doc.rust-lang.org/nightly/std/marker/trait.Unsize.html
-    fn check_unsize_and_coerce(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> Option<bool> {
-        if depth > 1000 {
-            panic!("Infinite recursion in coercion");
-        }
+        let solution = self.db.trait_solve(krate, canonicalized.value.clone())?;
 
-        match (&from_ty, &to_ty) {
-            // `[T; N]` -> `[T]`
-            (ty_app!(TypeCtor::Array, st1), ty_app!(TypeCtor::Slice, st2)) => {
-                Some(self.unify(&st1[0], &st2[0]))
+        match solution {
+            Solution::Unique(v) => {
+                canonicalized.apply_solution(self, v.0);
             }
+            _ => return None,
+        };
 
-            // `T` -> `dyn Trait` when `T: Trait`
-            (_, Ty::Dyn(_)) => {
-                // FIXME: Check predicates
-                Some(true)
-            }
-
-            // `(..., T)` -> `(..., U)` when `T: Unsize<U>`
-            (
-                ty_app!(TypeCtor::Tuple { cardinality: len1 }, st1),
-                ty_app!(TypeCtor::Tuple { cardinality: len2 }, st2),
-            ) => {
-                if len1 != len2 || *len1 == 0 {
-                    return None;
-                }
-
-                match self.check_unsize_and_coerce(
-                    st1.last().unwrap(),
-                    st2.last().unwrap(),
-                    depth + 1,
-                ) {
-                    Some(true) => {}
-                    ret => return ret,
-                }
-
-                let ret = st1[..st1.len() - 1]
-                    .iter()
-                    .zip(&st2[..st2.len() - 1])
-                    .all(|(ty1, ty2)| self.unify(ty1, ty2));
-
-                Some(ret)
-            }
-
-            // Foo<..., T, ...> is Unsize<Foo<..., U, ...>> if:
-            // - T: Unsize<U>
-            // - Foo is a struct
-            // - Only the last field of Foo has a type involving T
-            // - T is not part of the type of any other fields
-            // - Bar<T>: Unsize<Bar<U>>, if the last field of Foo has type Bar<T>
-            (
-                ty_app!(TypeCtor::Adt(AdtId::StructId(struct1)), st1),
-                ty_app!(TypeCtor::Adt(AdtId::StructId(struct2)), st2),
-            ) if struct1 == struct2 => {
-                let field_tys = self.db.field_types((*struct1).into());
-                let struct_data = self.db.struct_data(*struct1);
-
-                let mut fields = struct_data.variant_data.fields().iter();
-                let (last_field_id, _data) = fields.next_back()?;
-
-                // Get the generic parameter involved in the last field.
-                let unsize_generic_index = {
-                    let mut index = None;
-                    let mut multiple_param = false;
-                    field_tys[last_field_id].value.walk(&mut |ty| {
-                        if let &Ty::Bound(idx) = ty {
-                            if index.is_none() {
-                                index = Some(idx);
-                            } else if Some(idx) != index {
-                                multiple_param = true;
-                            }
-                        }
-                    });
-
-                    if multiple_param {
-                        return None;
-                    }
-                    index?
-                };
-
-                // Check other fields do not involve it.
-                let mut multiple_used = false;
-                fields.for_each(|(field_id, _data)| {
-                    field_tys[field_id].value.walk(&mut |ty| match ty {
-                        &Ty::Bound(idx) if idx == unsize_generic_index => multiple_used = true,
-                        _ => {}
-                    })
-                });
-                if multiple_used {
-                    return None;
-                }
-
-                let unsize_generic_index = unsize_generic_index as usize;
-
-                // Check `Unsize` first
-                match self.check_unsize_and_coerce(
-                    st1.get(unsize_generic_index)?,
-                    st2.get(unsize_generic_index)?,
-                    depth + 1,
-                ) {
-                    Some(true) => {}
-                    ret => return ret,
-                }
-
-                // Then unify other parameters
-                let ret = st1
-                    .iter()
-                    .zip(st2.iter())
-                    .enumerate()
-                    .filter(|&(idx, _)| idx != unsize_generic_index)
-                    .all(|(_, (ty1, ty2))| self.unify(ty1, ty2));
-
-                Some(ret)
-            }
-
-            _ => None,
-        }
+        Some(true)
     }
 
     /// Unify `from_ty` to `to_ty` with optional auto Deref

@@ -206,12 +206,6 @@ struct InferenceContext<'a, D: HirDatabase> {
     /// closures, but currently this is the only field that will change there,
     /// so it doesn't make sense.
     return_ty: Ty,
-
-    /// Impls of `CoerceUnsized` used in coercion.
-    /// (from_ty_ctor, to_ty_ctor) => coerce_generic_index
-    // FIXME: Use trait solver for this.
-    // Chalk seems unable to work well with builtin impl of `Unsize` now.
-    coerce_unsized_map: FxHashMap<(TypeCtor, TypeCtor), usize>,
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
@@ -222,7 +216,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             trait_env: TraitEnvironment::lower(db, &resolver),
-            coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
             body: db.body(owner),

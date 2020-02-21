@@ -5,7 +5,7 @@ use hir_expand::name::name;
 use ra_db::CrateId;
 
 use super::{AssocTyValue, Impl};
-use crate::{db::HirDatabase, ApplicationTy, Substs, TraitRef, Ty, TypeCtor};
+use crate::{db::HirDatabase, utils::generics, ApplicationTy, Substs, TraitRef, Ty, TypeCtor};
 
 pub(super) struct BuiltinImplData {
     pub num_vars: usize,
@@ -43,12 +43,22 @@ pub(super) fn get_builtin_impls(
             }
         }
     }
+    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, .. }) = ty {
+        if let Some(actual_trait) = get_unsize_trait(db, krate) {
+            if trait_ == actual_trait {
+                if check_unsize_impl_prerequisites(db, krate) {
+                    callback(Impl::UnsizeArray);
+                }
+            }
+        }
+    }
 }
 
 pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
     match impl_ {
         Impl::ImplBlock(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
+        Impl::UnsizeArray => array_unsize_impl_datum(db, krate),
     }
 }
 
@@ -64,6 +74,8 @@ pub(super) fn associated_ty_value(
         }
     }
 }
+
+// Closure Fn trait impls
 
 fn check_closure_fn_trait_impl_prerequisites(
     db: &impl HirDatabase,
@@ -165,12 +177,59 @@ fn closure_fn_trait_output_assoc_ty_value(
     }
 }
 
+// Array unsizing
+
+fn check_unsize_impl_prerequisites(db: &impl HirDatabase, krate: CrateId) -> bool {
+    // the Unsize trait needs to exist and have two type parameters (Self and T)
+    let unsize_trait = match get_unsize_trait(db, krate) {
+        Some(t) => t,
+        None => return false,
+    };
+    let generic_params = generics(db, unsize_trait.into());
+    if generic_params.len() != 2 {
+        return false;
+    }
+    true
+}
+
+fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImplData {
+    // impl<T> Unsize<[T]> for [T; _]
+    // (this can be a single impl because we don't distinguish array sizes currently)
+
+    let trait_ = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let var = Ty::Bound(0);
+    let substs = Substs::builder(2)
+        .push(Ty::apply_one(TypeCtor::Array, var.clone()))
+        .push(Ty::apply_one(TypeCtor::Slice, var))
+        .build();
+
+    let trait_ref = TraitRef { trait_, substs };
+
+    BuiltinImplData {
+        num_vars: 1,
+        trait_ref,
+        where_clauses: Vec::new(),
+        assoc_ty_values: Vec::new(),
+    }
+}
+
 fn get_fn_trait(
     db: &impl HirDatabase,
     krate: CrateId,
     fn_trait: super::FnTrait,
 ) -> Option<TraitId> {
     let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
+    match target {
+        LangItemTarget::TraitId(t) => Some(t),
+        _ => None,
+    }
+}
+
+fn get_unsize_trait(db: &impl HirDatabase, krate: CrateId) -> Option<TraitId> {
+    let target = db.lang_item(krate, "unsize".into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),
         _ => None,

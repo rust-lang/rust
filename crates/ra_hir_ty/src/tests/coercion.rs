@@ -548,3 +548,85 @@ impl<TT> S<TT> {
     "###
     );
 }
+
+#[test]
+fn coerce_unsize_array() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+fn test() {
+    let f: &[usize] = &[1, 2, 3];
+}
+"#, true),
+        @r###"
+    [162; 199) '{     ... 3]; }': ()
+    [172; 173) 'f': &[usize]
+    [186; 196) '&[1, 2, 3]': &[usize; _]
+    [187; 196) '[1, 2, 3]': [usize; _]
+    [188; 189) '1': usize
+    [191; 192) '2': usize
+    [194; 195) '3': usize
+    "###
+    );
+}
+
+#[ignore]
+#[test]
+fn coerce_unsize_trait_object() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+trait Foo {}
+trait Bar: Foo {}
+struct S;
+impl Foo for S {}
+impl Bar for S {}
+
+fn test() {
+    let obj: &dyn Bar = &S;
+    let obj: &dyn Foo = obj;
+}
+"#, true),
+        @r###"
+    "###
+    );
+}
+
+#[ignore]
+#[test]
+fn coerce_unsize_generic() {
+    // FIXME: Implement this
+    // https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+struct Foo<T> { t: T };
+struct Bar<T>(Foo<T>);
+
+fn test() {
+    let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
+    let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
+}
+"#, true),
+        @r###"
+    "###
+    );
+}
