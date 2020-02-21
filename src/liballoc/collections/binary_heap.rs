@@ -246,8 +246,37 @@ use super::SpecExtend;
 /// [peek]: #method.peek
 /// [peek\_mut]: #method.peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BinaryHeap<T> {
+pub struct BinaryHeap<T, C = MaxCmp> {
     data: Vec<T>,
+    cmp: C,
+}
+
+use core::cmp::Ordering;
+/// Default comparator
+#[unstable(feature = "bin-heap-cmp", issue = "00000")]
+#[derive(Default, Clone, Debug)]
+pub struct MaxCmp;
+
+#[unstable(feature = "bin-heap-cmp", issue = "00000")]
+impl<T: Ord> FnOnce<(&T, &T)> for MaxCmp {
+    type Output = Option<Ordering>;
+    extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
+    }
+}
+
+#[unstable(feature = "bin-heap-cmp", issue = "00000")]
+impl<T: Ord> FnMut<(&T, &T)> for MaxCmp {
+    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
+    }
+}
+
+#[unstable(feature = "bin-heap-cmp", issue = "00000")]
+impl<T: Ord> Fn<(&T, &T)> for MaxCmp {
+    extern "rust-call" fn call(&self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
+    }
 }
 
 /// Structure wrapping a mutable reference to the greatest item on a
@@ -312,7 +341,7 @@ impl<'a, T: Ord> PeekMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BinaryHeap<T> {
     fn clone(&self) -> Self {
-        BinaryHeap { data: self.data.clone() }
+        BinaryHeap { data: self.data.clone(), cmp: MaxCmp::default() }
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -350,7 +379,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BinaryHeap<T> {
-        BinaryHeap { data: vec![] }
+        BinaryHeap { data: vec![], cmp: MaxCmp::default() }
     }
 
     /// Creates an empty `BinaryHeap` with a specific capacity.
@@ -369,7 +398,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
-        BinaryHeap { data: Vec::with_capacity(capacity) }
+        BinaryHeap { data: Vec::with_capacity(capacity), cmp: MaxCmp::default() }
     }
 
     /// Returns a mutable reference to the greatest item in the binary heap, or
@@ -518,7 +547,8 @@ impl<T: Ord> BinaryHeap<T> {
 
             while hole.pos() > start {
                 let parent = (hole.pos() - 1) / 2;
-                if hole.element() <= hole.get(parent) {
+                let res = (self.cmp)(hole.element(), hole.get(parent));
+                if res == Some(Ordering::Less) || res == Some(Ordering::Equal) {
                     break;
                 }
                 hole.move_to(parent);
@@ -536,12 +566,13 @@ impl<T: Ord> BinaryHeap<T> {
             while child < end {
                 let right = child + 1;
                 // compare with the greater of the two children
-                if right < end && !(hole.get(child) > hole.get(right)) {
+                if right < end && (self.cmp)(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
                     child = right;
                 }
                 // if we are already in order, stop.
-                if hole.element() >= hole.get(child) {
-                    break;
+                let res = (self.cmp)(hole.element(), hole.get(child));
+                if res == Some(Ordering::Greater) || res == Some(Ordering::Equal) {
+                        break;
                 }
                 hole.move_to(child);
                 child = 2 * hole.pos() + 1;
@@ -568,7 +599,7 @@ impl<T: Ord> BinaryHeap<T> {
             while child < end {
                 let right = child + 1;
                 // compare with the greater of the two children
-                if right < end && !(hole.get(child) > hole.get(right)) {
+                if right < end && (self.cmp)(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
                     child = right;
                 }
                 hole.move_to(child);
@@ -1274,7 +1305,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     ///
     /// This conversion happens in-place, and has `O(n)` time complexity.
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
-        let mut heap = BinaryHeap { data: vec };
+        let mut heap = BinaryHeap { data: vec, cmp: MaxCmp::default() };
         heap.rebuild();
         heap
     }
