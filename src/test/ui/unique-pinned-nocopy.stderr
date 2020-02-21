@@ -13,7 +13,8 @@ LL | pub struct Box<T: ?Sized>(Unique<T>);
    | ------------------------------------- doesn't satisfy `std::boxed::Box<R>: std::clone::Clone`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `R: std::clone::Clone` which is required by `std::boxed::Box<R>: std::clone::Clone`
+           `R: std::clone::Clone`
+           which is required by `std::boxed::Box<R>: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

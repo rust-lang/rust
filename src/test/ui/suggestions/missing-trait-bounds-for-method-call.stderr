@@ -11,8 +11,10 @@ LL |         self.foo();
    |              ^^^ method not found in `&Foo<T>`
    |
    = note: the method `foo` exists but the following trait bounds were not satisfied:
-           `T: Bar` which is required by `Foo<T>: Bar`
-           `T: std::default::Default` which is required by `Foo<T>: Bar`
+           `T: Bar`
+           which is required by `Foo<T>: Bar`
+           `T: std::default::Default`
+           which is required by `Foo<T>: Bar`
    = help: items from traits can only be used if the trait is implemented and in scope
 help: consider restricting the type parameters to satisfy the obligations
    |
@@ -32,7 +34,8 @@ LL |         self.foo();
    |              ^^^ method not found in `&Fin<T>`
    |
    = note: the method `foo` exists but the following trait bounds were not satisfied:
-           `T: std::default::Default` which is required by `Fin<T>: Bar`
+           `T: std::default::Default`
+           which is required by `Fin<T>: Bar`
    = help: items from traits can only be used if the trait is implemented and in scope
 help: consider restricting the type parameter to satisfy the obligation
    |
