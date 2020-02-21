@@ -31,7 +31,7 @@ interface ExpandedMacro {
     expansion: string;
 }
 
-function code_format(expanded: ExpandedMacro): string {
+function codeFormat(expanded: ExpandedMacro): string {
     let result = `// Recursive expansion of ${expanded.name}! macro\n`;
     result += '// ' + '='.repeat(result.length - 3);
     result += '\n\n';
@@ -65,7 +65,7 @@ class TextDocumentContentProvider
 
         if (expanded == null) return 'Not available';
 
-        return code_format(expanded);
+        return codeFormat(expanded);
     }
 
     get onDidChange(): vscode.Event<vscode.Uri> {
