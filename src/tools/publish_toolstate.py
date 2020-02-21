@@ -211,14 +211,14 @@ def update_latest(
                 if new > old:
                     # things got fixed or at least the status quo improved
                     changed = True
-                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                    message += '🎉 {} on {}: {} → {} (cc {}).\n' \
                         .format(tool, os, old, new, maintainers)
                 elif new < old:
                     # tests or builds are failing and were not failing before
                     changed = True
                     title = '💔 {} on {}: {} → {}' \
                         .format(tool, os, old, new)
-                    message += '{} (cc {}, @rust-lang/infra).\n' \
+                    message += '{} (cc {}).\n' \
                         .format(title, maintainers)
                     # See if we need to create an issue.
                     if tool == 'miri':
