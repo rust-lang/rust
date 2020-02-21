@@ -42,13 +42,9 @@ extern "platform-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 
-    #[rustc_args_required_const(2)]
     fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
-    #[rustc_args_required_const(2)]
     fn simd_shuffle3<T, U>(x: T, y: T, idx: [u32; 3]) -> U;
-    #[rustc_args_required_const(2)]
     fn simd_shuffle4<T, U>(x: T, y: T, idx: [u32; 4]) -> U;
-    #[rustc_args_required_const(2)]
     fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
 }
 
