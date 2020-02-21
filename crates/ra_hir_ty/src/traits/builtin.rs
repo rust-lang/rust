@@ -8,7 +8,7 @@ use super::{AssocTyValue, Impl, UnsizeToSuperTraitObjectData};
 use crate::{
     db::HirDatabase,
     utils::{all_super_traits, generics},
-    ApplicationTy, GenericPredicate, Substs, TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, GenericPredicate, Substs, TraitRef, Ty, TypeCtor,
 };
 
 pub(super) struct BuiltinImplData {
@@ -72,20 +72,25 @@ fn get_builtin_unsize_impls(
 
     if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, .. }) = ty {
         callback(Impl::UnsizeArray);
+        return; // array is unsized, the rest of the impls shouldn't apply
     }
 
     if let Some(target_trait) = arg.as_ref().and_then(|t| t.dyn_trait_ref()) {
+        // FIXME what about more complicated dyn tys with marker traits?
         if let Some(trait_ref) = ty.dyn_trait_ref() {
-            let super_traits = all_super_traits(db, trait_ref.trait_);
-            if super_traits.contains(&target_trait.trait_) {
-                // callback(Impl::UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData {
-                //     trait_: trait_ref.trait_,
-                //     super_trait: target_trait.trait_,
-                // }));
+            if trait_ref.trait_ != target_trait.trait_ {
+                let super_traits = all_super_traits(db, trait_ref.trait_);
+                if super_traits.contains(&target_trait.trait_) {
+                    callback(Impl::UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData {
+                        trait_: trait_ref.trait_,
+                        super_trait: target_trait.trait_,
+                    }));
+                }
             }
+        } else {
+            // FIXME only for sized types
+            callback(Impl::UnsizeToTraitObject(target_trait.trait_));
         }
-
-        callback(Impl::UnsizeToTraitObject(target_trait.trait_));
     }
 }
 
@@ -270,48 +275,78 @@ fn trait_object_unsize_impl_datum(
 
     let self_ty = Ty::Bound(0);
 
-    let substs = Substs::build_for_def(db, trait_)
-        // this fits together nicely: $0 is our self type, and the rest are the type
-        // args for the trait
-        .fill_with_bound_vars(0)
+    let target_substs = Substs::build_for_def(db, trait_)
+        .push(Ty::Bound(0))
+        // starting from ^2 because we want to start with ^1 outside of the
+        // `dyn`, which is ^2 inside
+        .fill_with_bound_vars(2)
         .build();
-    let trait_ref = TraitRef { trait_, substs };
-    // This is both the bound for the `dyn` type, *and* the bound for the impl!
-    // This works because the self type for `dyn` is always Ty::Bound(0), which
-    // we've also made the parameter for our impl self type.
-    let bounds = vec![GenericPredicate::Implemented(trait_ref)];
+    let num_vars = target_substs.len();
+    let target_trait_ref = TraitRef { trait_, substs: target_substs };
+    let target_bounds = vec![GenericPredicate::Implemented(target_trait_ref)];
 
-    let impl_substs = Substs::builder(2).push(self_ty).push(Ty::Dyn(bounds.clone().into())).build();
+    let self_substs = Substs::build_for_def(db, trait_).fill_with_bound_vars(0).build();
+    let self_trait_ref = TraitRef { trait_, substs: self_substs };
+    let where_clauses = vec![GenericPredicate::Implemented(self_trait_ref)];
+
+    let impl_substs =
+        Substs::builder(2).push(self_ty).push(Ty::Dyn(target_bounds.clone().into())).build();
 
     let trait_ref = TraitRef { trait_: unsize_trait, substs: impl_substs };
 
-    BuiltinImplData { num_vars: 1, trait_ref, where_clauses: bounds, assoc_ty_values: Vec::new() }
+    BuiltinImplData { num_vars, trait_ref, where_clauses, assoc_ty_values: Vec::new() }
 }
 
 fn super_trait_object_unsize_impl_datum(
     db: &impl HirDatabase,
     krate: CrateId,
-    _data: UnsizeToSuperTraitObjectData,
+    data: UnsizeToSuperTraitObjectData,
 ) -> BuiltinImplData {
-    // impl Unsize<dyn SuperTrait> for dyn Trait
+    // impl<T1, ...> Unsize<dyn SuperTrait> for dyn Trait<T1, ...>
 
     let unsize_trait = get_unsize_trait(db, krate) // get unsize trait
         // the existence of the Unsize trait has been checked before
         .expect("Unsize trait missing");
 
+    let self_substs = Substs::build_for_def(db, data.trait_).fill_with_bound_vars(0).build();
+
+    let num_vars = self_substs.len() - 1;
+
+    let self_trait_ref = TraitRef { trait_: data.trait_, substs: self_substs.clone() };
+    let self_bounds = vec![GenericPredicate::Implemented(self_trait_ref.clone())];
+
+    // we need to go from our trait to the super trait, substituting type parameters
+    let mut path = crate::utils::find_super_trait_path(db, data.super_trait, data.trait_);
+    path.pop(); // the last one is our current trait, we don't need that
+    path.reverse(); // we want to go from trait to super trait
+
+    let mut current_trait_ref = self_trait_ref;
+    for t in path {
+        let bounds = db.generic_predicates(current_trait_ref.trait_.into());
+        let super_trait_ref = bounds
+            .iter()
+            .find_map(|b| match &b.value {
+                GenericPredicate::Implemented(tr)
+                    if tr.trait_ == t && tr.substs[0] == Ty::Bound(0) =>
+                {
+                    Some(Binders { value: tr, num_binders: b.num_binders })
+                }
+                _ => None,
+            })
+            .expect("trait bound for known super trait not found");
+        current_trait_ref = super_trait_ref.cloned().subst(&current_trait_ref.substs);
+    }
+
+    let super_bounds = vec![GenericPredicate::Implemented(current_trait_ref)];
+
     let substs = Substs::builder(2)
-        // .push(Ty::Dyn(todo!()))
-        // .push(Ty::Dyn(todo!()))
+        .push(Ty::Dyn(self_bounds.into()))
+        .push(Ty::Dyn(super_bounds.into()))
         .build();
 
     let trait_ref = TraitRef { trait_: unsize_trait, substs };
 
-    BuiltinImplData {
-        num_vars: 1,
-        trait_ref,
-        where_clauses: Vec::new(),
-        assoc_ty_values: Vec::new(),
-    }
+    BuiltinImplData { num_vars, trait_ref, where_clauses: Vec::new(), assoc_ty_values: Vec::new() }
 }
 
 fn get_fn_trait(

@@ -587,25 +587,37 @@ pub trait CoerceUnsized<T> {}
 
 impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
 
-trait Foo {}
-trait Bar: Foo {}
-struct S;
-impl Foo for S {}
-impl Bar for S {}
+trait Foo<T, U> {}
+trait Bar<U, T, X>: Foo<T, U> {}
+trait Baz<T, X>: Bar<usize, T, X> {}
+
+struct S<T, X>;
+impl<T, X> Foo<T, usize> for S<T, X> {}
+impl<T, X> Bar<usize, T, X> for S<T, X> {}
+impl<T, X> Baz<T, X> for S<T, X> {}
 
 fn test() {
-    let obj: &dyn Bar = &S;
-    let obj: &dyn Foo = obj;
+    let obj: &dyn Baz<i8, i16> = &S;
+    let obj: &dyn Bar<_, _, _> = obj;
+    let obj: &dyn Foo<_, _> = obj;
+    let obj2: &dyn Baz<i8, i16> = &S;
+    let _: &dyn Foo<_, _> = obj2;
 }
 "#, true),
         @r###"
-    [240; 300) '{     ...obj; }': ()
-    [250; 253) 'obj': &dyn Bar
-    [266; 268) '&S': &S
-    [267; 268) 'S': S
-    [278; 281) 'obj': &dyn Foo
-    [294; 297) 'obj': &dyn Bar
-    [294; 297): expected &dyn Foo, got &dyn Bar
+    [388; 573) '{     ...bj2; }': ()
+    [398; 401) 'obj': &dyn Baz<i8, i16>
+    [423; 425) '&S': &S<i8, i16>
+    [424; 425) 'S': S<i8, i16>
+    [435; 438) 'obj': &dyn Bar<usize, i8, i16>
+    [460; 463) 'obj': &dyn Baz<i8, i16>
+    [473; 476) 'obj': &dyn Foo<i8, usize>
+    [495; 498) 'obj': &dyn Bar<usize, i8, i16>
+    [508; 512) 'obj2': &dyn Baz<i8, i16>
+    [534; 536) '&S': &S<i8, i16>
+    [535; 536) 'S': S<i8, i16>
+    [546; 547) '_': &dyn Foo<i8, usize>
+    [566; 570) 'obj2': &dyn Baz<i8, i16>
     "###
     );
 }
