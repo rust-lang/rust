@@ -464,15 +464,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
     fn generic_arg_mismatch_err(sess: &Session, arg: &GenericArg<'_>, kind: &'static str) {
-        struct_span_err!(
+        let mut err = struct_span_err!(
             sess,
             arg.span(),
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
             kind,
-        )
-        .emit();
+        );
+        // This note will be true as long as generic parameters are strictly ordered by their kind.
+        err.note(&format!("{} arguments must be provided before {} arguments", kind, arg.descr()));
+        err.emit();
     }
 
     /// Creates the relevant generic argument substitutions
