@@ -179,8 +179,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Emulates calling a foreign item using its name, failing if the item is not supported.
-    /// Returns Ok(false) if after calling this function, the call should return earlier instead of
-    /// going to the next block.
+    /// Returns `true` if the caller is expected to jump to the return block, and `false` if
+    /// jumping has already been taken care of.
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
@@ -315,23 +315,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, Size::from_bits(32)), dest)?;
             }
 
-            "memchr" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_i32()? as u8;
-                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let idx = this
-                    .memory
-                    .read_bytes(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .position(|&c| c == val);
-                if let Some(idx) = idx {
-                    let new_ptr = ptr.ptr_offset(Size::from_bytes(idx as u64), this)?;
-                    this.write_scalar(new_ptr, dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
-            }
-
             "memrchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
@@ -344,6 +327,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .position(|&c| c == val)
                 {
                     let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), this)?;
+                    this.write_scalar(new_ptr, dest)?;
+                } else {
+                    this.write_null(dest)?;
+                }
+            }
+
+            "memchr" => {
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let val = this.read_scalar(args[1])?.to_i32()? as u8;
+                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let idx = this
+                    .memory
+                    .read_bytes(ptr, Size::from_bytes(num))?
+                    .iter()
+                    .position(|&c| c == val);
+                if let Some(idx) = idx {
+                    let new_ptr = ptr.ptr_offset(Size::from_bytes(idx as u64), this)?;
                     this.write_scalar(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

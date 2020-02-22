@@ -25,6 +25,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Time related shims
+
+            // This is a POSIX function but it has only been tested on linux.
             "clock_gettime" => {
                 let result = this.clock_gettime(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
@@ -80,7 +82,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-// Shims the posix 'getrandom()' syscall.
+// Shims the linux 'getrandom()' syscall.
 fn getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
     args: &[OpTy<'tcx, Tag>],
