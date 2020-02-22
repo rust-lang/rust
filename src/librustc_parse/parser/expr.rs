@@ -648,8 +648,6 @@ impl<'a> Parser<'a> {
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _))
             || after_hash != before_hash
         {
-            let expr_str = self.span_to_snippet(span);
-
             let msg = format!(
                 "casts cannot be followed by {}",
                 match with_postfix.kind {
@@ -663,22 +661,20 @@ impl<'a> Parser<'a> {
                 }
             );
             let mut err = self.struct_span_err(span, &msg);
-            let suggestion = "try surrounding the expression in parentheses";
             // if type ascription is "likely an error", the user will already be getting a useful
             // help message, and doesn't need a second.
             if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
                 self.maybe_annotate_with_ascription(&mut err, false);
             } else {
-                if let Ok(expr_str) = expr_str {
-                    err.span_suggestion(
-                        span,
-                        suggestion,
-                        format!("({})", expr_str),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    err.span_help(span, suggestion);
-                }
+                let suggestions = vec![
+                    (span.shrink_to_lo(), "(".to_string()),
+                    (span.shrink_to_hi(), ")".to_string()),
+                ];
+                err.multipart_suggestion(
+                    "try surrounding the expression in parentheses",
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
             }
             err.emit();
         };

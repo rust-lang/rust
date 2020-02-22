@@ -58,6 +58,13 @@ pub fn cast_cast_method_call() {
     //~^ ERROR: casts cannot be followed by a method call
 }
 
+pub fn multiline_error() {
+    let _ = 0
+        as i32
+        .count_ones();
+    //~^^^ ERROR: casts cannot be followed by a method call
+}
+
 // this tests that the precedence for `!x as Y.Z` is still what we expect
 pub fn precedence() {
     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];
