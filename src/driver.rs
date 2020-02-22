@@ -136,8 +136,15 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
                 return None;
             }
+            let dlsym_name = if cfg!(target_os = "macos") {
+                // On macOS `dlsym` expects the name without leading `_`.
+                assert!(name.starts_with("_"), "{:?}", name);
+                &name[1..]
+            } else {
+                &name
+            };
             let symbol: libloading::Symbol<*const u8> =
-                unsafe { lib.get(name.as_bytes()) }.unwrap();
+                unsafe { lib.get(dlsym_name.as_bytes()) }.unwrap();
             Some((name, *symbol))
         }));
         std::mem::forget(lib)
