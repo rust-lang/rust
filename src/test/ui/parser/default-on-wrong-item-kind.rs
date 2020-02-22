@@ -22,6 +22,8 @@ mod free_items {
     default impl foo {}
     default!();
     default::foo::bar!();
+    default default!(); //~ ERROR item cannot be `default`
+    default default::foo::bar!(); //~ ERROR item cannot be `default`
     default macro foo {} //~ ERROR item cannot be `default`
     default macro_rules! foo {} //~ ERROR item cannot be `default`
 }
@@ -55,6 +57,8 @@ extern "C" {
     //~^ ERROR item kind not supported in `extern` block
     default!();
     default::foo::bar!();
+    default default!(); //~ ERROR item cannot be `default`
+    default default::foo::bar!(); //~ ERROR item cannot be `default`
     default macro foo {} //~ ERROR item cannot be `default`
     //~^ ERROR item kind not supported in `extern` block
     default macro_rules! foo {} //~ ERROR item cannot be `default`
@@ -90,6 +94,8 @@ impl S {
     //~^ ERROR item kind not supported in `trait` or `impl`
     default!();
     default::foo::bar!();
+    default default!();
+    default default::foo::bar!();
     default macro foo {}
     //~^ ERROR item kind not supported in `trait` or `impl`
     default macro_rules! foo {}
@@ -125,6 +131,8 @@ trait T {
     //~^ ERROR item kind not supported in `trait` or `impl`
     default!();
     default::foo::bar!();
+    default default!();
+    default default::foo::bar!();
     default macro foo {}
     //~^ ERROR item kind not supported in `trait` or `impl`
     default macro_rules! foo {}
