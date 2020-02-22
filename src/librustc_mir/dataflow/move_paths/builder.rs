@@ -381,9 +381,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
 
             TerminatorKind::Yield { ref value, resume_arg: ref place, .. } => {
+                self.gather_operand(value);
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
-                self.gather_operand(value);
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {

@@ -186,18 +186,24 @@ fn self_arg() -> Local {
     Local::new(1)
 }
 
-/// Generator have not been resumed yet
+/// Generator has not been resumed yet.
 const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
-/// Generator has returned / is completed
+/// Generator has returned / is completed.
 const RETURNED: usize = GeneratorSubsts::RETURNED;
-/// Generator has been poisoned
+/// Generator has panicked and is poisoned.
 const POISONED: usize = GeneratorSubsts::POISONED;
 
+/// A `yield` point in the generator.
 struct SuspensionPoint<'tcx> {
+    /// State discriminant used when suspending or resuming at this point.
     state: usize,
+    /// The block to jump to after resumption.
     resume: BasicBlock,
+    /// Where to move the resume argument after resumption.
     resume_arg: Place<'tcx>,
+    /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
+    /// Set of locals that have live storage while at this suspension point.
     storage_liveness: liveness::LiveVarSet,
 }
 
@@ -324,6 +330,15 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             let state = if let Some((resume, resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
+
+                // The resume arg target location might itself be remapped if its base local is
+                // live across a yield.
+                let resume_arg =
+                    if let Some(&(ty, variant, idx)) = self.remap.get(&resume_arg.local) {
+                        self.make_field(variant, idx, ty)
+                    } else {
+                        resume_arg
+                    };
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
