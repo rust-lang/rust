@@ -1,0 +1,74 @@
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:7:5
+   |
+LL |     static IA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:8:5
+   |
+LL |     static IB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:9:5
+   |
+LL |     default static IC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:10:5
+   |
+LL |     pub(crate) default static ID: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:15:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:16:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:17:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:18:5
+   |
+LL |     pub(crate) default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:23:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:24:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:25:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:26:5
+   |
+LL |     pub default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

@@ -1,9 +1,9 @@
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::mir::{BodyAndCache, Location, PlaceElem, Promoted};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.

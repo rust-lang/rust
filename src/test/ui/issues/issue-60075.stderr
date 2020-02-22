@@ -4,7 +4,7 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
 LL |         });
    |          ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `;`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `static`, `type`, `unsafe`, `}`, or identifier, found `;`
   --> $DIR/issue-60075.rs:6:11
    |
 LL |     fn qux() -> Option<usize> {
@@ -13,11 +13,5 @@ LL |         let _ = if true {
 LL |         });
    |           ^ help: `}` may belong here
 
-error: expected identifier, found `;`
-  --> $DIR/issue-60075.rs:6:11
-   |
-LL |         });
-   |           ^ expected identifier
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

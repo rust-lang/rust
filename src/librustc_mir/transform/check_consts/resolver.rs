@@ -15,7 +15,7 @@ use crate::dataflow::{self as old_dataflow, generic as dataflow};
 /// `FlowSensitiveAnalysis`.
 ///
 /// This transfer does nothing when encountering an indirect assignment. Consumers should rely on
-/// the `IndirectlyMutableLocals` dataflow pass to see if a `Local` may have become qualified via
+/// the `MaybeMutBorrowedLocals` dataflow pass to see if a `Local` may have become qualified via
 /// an indirect assignment or function call.
 struct TransferFunction<'a, 'mir, 'tcx, Q> {
     item: &'a Item<'mir, 'tcx>,

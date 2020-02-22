@@ -340,24 +340,21 @@ pub struct RangeInclusive<Idx> {
     // support that mode.
     pub(crate) start: Idx,
     pub(crate) end: Idx,
-    pub(crate) is_empty: Option<bool>,
+
     // This field is:
-    //  - `None` when next() or next_back() was never called
-    //  - `Some(false)` when `start < end`
-    //  - `Some(true)` when `end < start`
-    //  - `Some(false)` when `start == end` and the range hasn't yet completed iteration
-    //  - `Some(true)` when `start == end` and the range has completed iteration
-    // The field cannot be a simple `bool` because the `..=` constructor can
-    // accept non-PartialOrd types, also we want the constructor to be const.
+    //  - `false` upon construction
+    //  - `false` when iteration has yielded an element and the iterator is not exhausted
+    //  - `true` when iteration has been used to exhaust the iterator
+    //
+    // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
+    pub(crate) exhausted: bool,
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.start == other.start
-            && self.end == other.end
-            && self.is_exhausted() == other.is_exhausted()
+        self.start == other.start && self.end == other.end && self.exhausted == other.exhausted
     }
 }
 
@@ -369,8 +366,7 @@ impl<Idx: Hash> Hash for RangeInclusive<Idx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.start.hash(state);
         self.end.hash(state);
-        // Ideally we would hash `is_exhausted` here as well, but there's no
-        // way for us to call it.
+        self.exhausted.hash(state);
     }
 }
 
@@ -389,7 +385,7 @@ impl<Idx> RangeInclusive<Idx> {
     #[rustc_promotable]
     #[rustc_const_stable(feature = "const_range_new", since = "1.32.0")]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self { start, end, is_empty: None }
+        Self { start, end, exhausted: false }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -465,15 +461,10 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
         self.start.fmt(fmt)?;
         write!(fmt, "..=")?;
         self.end.fmt(fmt)?;
+        if self.exhausted {
+            write!(fmt, " (exhausted)")?;
+        }
         Ok(())
-    }
-}
-
-impl<Idx: PartialEq<Idx>> RangeInclusive<Idx> {
-    // Returns true if this is a range that started non-empty, and was iterated
-    // to exhaustion.
-    fn is_exhausted(&self) -> bool {
-        Some(true) == self.is_empty && self.start == self.end
     }
 }
 
@@ -544,15 +535,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.is_empty.unwrap_or_else(|| !(self.start <= self.end))
-    }
-
-    // If this range's `is_empty` is field is unknown (`None`), update it to be a concrete value.
-    #[inline]
-    pub(crate) fn compute_is_empty(&mut self) {
-        if self.is_empty.is_none() {
-            self.is_empty = Some(!(self.start <= self.end));
-        }
+        self.exhausted || !(self.start <= self.end)
     }
 }
 

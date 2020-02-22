@@ -3,7 +3,7 @@ trait T {
     fn foo(&self);
 
 pub(crate) struct Bar<T>();
-//~^ ERROR expected one of
+//~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
 
 impl T for Bar<usize> {
 fn foo(&self) {}

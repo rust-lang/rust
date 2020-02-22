@@ -1,13 +1,5 @@
-error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/for.rs:6:13
-   |
-LL |     for (n, mut m) in &tups {
-   |          -  ^^^^^ by-move pattern here
-   |          |
-   |          by-ref pattern here
-
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/for.rs:6:23
+  --> $DIR/for.rs:8:23
    |
 LL |     for (n, mut m) in &tups {
    |             -----     ^^^^^
@@ -15,7 +7,6 @@ LL |     for (n, mut m) in &tups {
    |             data moved here
    |             move occurs because `m` has type `Foo`, which does not implement the `Copy` trait
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0009, E0507.
-For more information about an error, try `rustc --explain E0009`.
+For more information about this error, try `rustc --explain E0507`.

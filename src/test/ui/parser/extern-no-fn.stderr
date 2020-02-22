@@ -1,10 +1,11 @@
-error: missing `fn`, `type`, or `static` for extern-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/extern-no-fn.rs:1:9
    |
 LL |   extern {
    |  _________^
+LL | |
 LL | |     f();
-   | |____^ missing `fn`, `type`, or `static`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
 error: aborting due to previous error
 

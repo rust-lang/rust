@@ -1122,6 +1122,7 @@ impl CurrentDepGraph {
 }
 
 impl DepGraphData {
+    #[inline(never)]
     fn read_index(&self, source: DepNodeIndex) {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };

@@ -8,9 +8,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(rustc_attrs)]
 #![feature(specialization)]
-#![feature(step_trait)]
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -25,7 +23,8 @@ use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
-
+pub mod def_id;
+use def_id::DefId;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
@@ -1076,7 +1075,7 @@ impl SourceFile {
         unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
-    ) -> Result<SourceFile, OffsetOverflowError> {
+    ) -> Self {
         let normalized_pos = normalize_src(&mut src, start_pos);
 
         let src_hash = {
@@ -1090,14 +1089,12 @@ impl SourceFile {
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        if end_pos > u32::max_value() as usize {
-            return Err(OffsetOverflowError);
-        }
+        assert!(end_pos <= u32::max_value() as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);
 
-        Ok(SourceFile {
+        SourceFile {
             name,
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
@@ -1112,7 +1109,7 @@ impl SourceFile {
             non_narrow_chars,
             normalized_pos,
             name_hash,
-        })
+        }
     }
 
     /// Returns the `BytePos` of the beginning of the current line.
@@ -1561,6 +1558,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// instead of implementing everything in librustc.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
+    fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn byte_pos_to_line_and_col(
         &mut self,
         byte: BytePos,

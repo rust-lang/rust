@@ -6,18 +6,11 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![feature(libc)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
-#![feature(concat_idents)]
-#![feature(link_args)]
-#![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![recursion_limit = "256"]
 
@@ -39,7 +32,7 @@ use syntax::expand::allocator::AllocatorKind;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{OptLevel, OutputFilenames, PrintRequest};
+use rustc::session::config::{self, OptLevel, OutputFilenames, PrintRequest};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -51,6 +44,7 @@ mod back {
     pub mod archive;
     pub mod bytecode;
     pub mod lto;
+    mod profiling;
     pub mod write;
 }
 
@@ -196,7 +190,7 @@ unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
-        box LlvmCodegenBackend(())
+        Box::new(LlvmCodegenBackend(()))
     }
 }
 
@@ -245,7 +239,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        box metadata::LlvmMetadataLoader
+        Box::new(metadata::LlvmMetadataLoader)
     }
 
     fn provide(&self, providers: &mut ty::query::Providers<'_>) {
@@ -262,12 +256,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        box rustc_codegen_ssa::base::codegen_crate(
+        Box::new(rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()),
             tcx,
             metadata,
             need_metadata_module,
-        )
+        ))
     }
 
     fn join_codegen(
@@ -308,7 +302,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             let rlink_data = json::encode(&codegen_results).map_err(|err| {
                 sess.fatal(&format!("failed to encode rlink: {}", err));
             })?;
-            let rlink_file = outputs.with_extension("rlink");
+            let rlink_file = outputs.with_extension(config::RLINK_EXT);
             fs::write(&rlink_file, rlink_data).map_err(|err| {
                 sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
             })?;

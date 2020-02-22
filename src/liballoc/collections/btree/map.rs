@@ -227,7 +227,7 @@ impl<K: Clone, V: Clone> BTreeClone for BTreeMap<K, V> {
 impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
     fn clone_from(&mut self, other: &Self) {
         // This truncates `self` to `other.len()` by calling `split_off` on
-        // the first key after `other.len()` elements if it exists
+        // the first key after `other.len()` elements if it exists.
         let split_off_key = if self.len() > other.len() {
             let diff = self.len() - other.len();
             if diff <= other.len() {
@@ -247,11 +247,10 @@ impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
         // After truncation, `self` is at most as long as `other` so this loop
         // replaces every key-value pair in `self`. Since `oiter` is in sorted
         // order and the structure of the `BTreeMap` stays the same,
-        // the BTree invariants are maintained at the end of the loop
+        // the BTree invariants are maintained at the end of the loop.
         while !siter.is_empty() {
             if let Some((ok, ov)) = oiter.next() {
-                // SAFETY: This is safe because the `siter.front != siter.back` check
-                // ensures that `siter` is nonempty
+                // SAFETY: This is safe because `siter` is nonempty.
                 let (sk, sv) = unsafe { siter.next_unchecked() };
                 sk.clone_from(ok);
                 sv.clone_from(ov);
@@ -259,7 +258,7 @@ impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
                 break;
             }
         }
-        // If `other` is longer than `self`, the remaining elements are inserted
+        // If `other` is longer than `self`, the remaining elements are inserted.
         self.extend(oiter.map(|(k, v)| ((*k).clone(), (*v).clone())));
     }
 }
@@ -675,13 +674,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T>,
     {
-        match self.length {
-            0 => None,
-            _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().first_kv(),
+        let front = self.root.as_mut().first_leaf_edge();
+        if let Ok(kv) = front.right_kv() {
+            Some(OccupiedEntry {
+                handle: kv.forget_node_type(),
                 length: &mut self.length,
                 _marker: PhantomData,
-            }),
+            })
+        } else {
+            None
         }
     }
 
@@ -736,13 +737,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T>,
     {
-        match self.length {
-            0 => None,
-            _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().last_kv(),
+        let back = self.root.as_mut().last_leaf_edge();
+        if let Ok(kv) = back.left_kv() {
+            Some(OccupiedEntry {
+                handle: kv.forget_node_type(),
                 length: &mut self.length,
                 _marker: PhantomData,
-            }),
+            })
+        } else {
+            None
         }
     }
 

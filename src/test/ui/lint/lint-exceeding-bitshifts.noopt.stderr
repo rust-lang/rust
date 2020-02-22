@@ -1,0 +1,146 @@
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:22:13
+   |
+LL |     let _ = x << 42;
+   |             ^^^^^^^ attempt to shift left with overflow
+   |
+note: the lint level is defined here
+  --> $DIR/lint-exceeding-bitshifts.rs:9:9
+   |
+LL | #![deny(arithmetic_overflow, const_err)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:27:15
+   |
+LL |       let n = 1u8 << 8;
+   |               ^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:29:15
+   |
+LL |       let n = 1u16 << 16;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:31:15
+   |
+LL |       let n = 1u32 << 32;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:33:15
+   |
+LL |       let n = 1u64 << 64;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:35:15
+   |
+LL |       let n = 1i8 << 8;
+   |               ^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:37:15
+   |
+LL |       let n = 1i16 << 16;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:39:15
+   |
+LL |       let n = 1i32 << 32;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:41:15
+   |
+LL |       let n = 1i64 << 64;
+   |               ^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:44:15
+   |
+LL |       let n = 1u8 >> 8;
+   |               ^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:46:15
+   |
+LL |       let n = 1u16 >> 16;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:48:15
+   |
+LL |       let n = 1u32 >> 32;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:50:15
+   |
+LL |       let n = 1u64 >> 64;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:52:15
+   |
+LL |       let n = 1i8 >> 8;
+   |               ^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:54:15
+   |
+LL |       let n = 1i16 >> 16;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:56:15
+   |
+LL |       let n = 1i32 >> 32;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:58:15
+   |
+LL |       let n = 1i64 >> 64;
+   |               ^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:62:15
+   |
+LL |       let n = n << 8;
+   |               ^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:64:15
+   |
+LL |       let n = 1u8 << -8;
+   |               ^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:69:15
+   |
+LL |       let n = 1u8 << (4+4);
+   |               ^^^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:71:15
+   |
+LL |       let n = 1i64 >> [64][0];
+   |               ^^^^^^^^^^^^^^^ attempt to shift right with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:77:15
+   |
+LL |       let n = 1_isize << BITS;
+   |               ^^^^^^^^^^^^^^^ attempt to shift left with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:78:15
+   |
+LL |       let n = 1_usize << BITS;
+   |               ^^^^^^^^^^^^^^^ attempt to shift left with overflow
+
+error: aborting due to 23 previous errors
+

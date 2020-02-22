@@ -35,41 +35,41 @@ impl<'a> Parser<'a> {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.token.span),
+            // Filled in by proc_macro_harness::inject()
+            proc_macros: Vec::new(),
         });
         krate
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
-    pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
-        let (in_cfg, outer_attrs) =
-            crate::config::process_configure_mod(self.sess, self.cfg_mods, outer_attrs);
+    pub(super) fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+        let in_cfg = crate::config::process_configure_mod(self.sess, self.cfg_mods, attrs);
 
         let id_span = self.token.span;
         let id = self.parse_ident()?;
-        if self.eat(&token::Semi) {
+        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership } =
-                    self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, attrs) =
-                    self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
-                Ok((id, ItemKind::Mod(module), Some(attrs)))
+                    self.submod_path(id, &attrs, id_span)?;
+                self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?
             } else {
-                let placeholder = ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false };
-                Ok((id, ItemKind::Mod(placeholder), None))
+                (ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false }, Vec::new())
             }
         } else {
             let old_directory = self.directory.clone();
-            self.push_directory(id, &outer_attrs);
+            self.push_directory(id, &attrs);
 
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.token.span;
-            let attrs = self.parse_inner_attributes()?;
+            let inner_attrs = self.parse_inner_attributes()?;
             let module = self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)?;
 
             self.directory = old_directory;
-            Ok((id, ItemKind::Mod(module), Some(attrs)))
-        }
+            (module, inner_attrs)
+        };
+        attrs.append(&mut inner_attrs);
+        Ok((id, ItemKind::Mod(module)))
     }
 
     /// Given a termination token, parses all of the items in a module.
@@ -285,7 +285,7 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-            self.directory.path.to_mut().push(&*path.as_str());
+            self.directory.path.push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
             // We have to push on the current module name in the case of relative
@@ -297,10 +297,10 @@ impl<'a> Parser<'a> {
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
-                    self.directory.path.to_mut().push(&*ident.as_str());
+                    self.directory.path.push(&*ident.as_str());
                 }
             }
-            self.directory.path.to_mut().push(&*id.as_str());
+            self.directory.path.push(&*id.as_str());
         }
     }
 }

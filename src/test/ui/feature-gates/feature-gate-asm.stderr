@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'asm': inline assembly is not stab
 LL |         asm!("");
    |         ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29722
+   = note: see issue #29722 <https://github.com/rust-lang/rust/issues/29722> for more information
    = help: add `#![feature(asm)]` to the crate attributes to enable
 
 error: aborting due to previous error

@@ -5,9 +5,13 @@ LL | trait ExtraCopy<T:Copy> { }
    | ----------------------- required by `ExtraCopy`
 LL | 
 LL | trait SomeTrait<T>: ExtraCopy<T> {
-   |                 -   ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |                 |
-   |                 help: consider restricting this bound: `T: std::marker::Copy`
+   |                     ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: std::marker::Copy`
+  --> $DIR/wf-trait-superbound.rs:9:17
+   |
+LL | trait SomeTrait<T>: ExtraCopy<T> {
+   |                 ^
 
 error: aborting due to previous error
 

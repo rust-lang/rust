@@ -1,4 +1,4 @@
-#![allow(const_err)]
+#![allow(arithmetic_overflow)]
 
 // error-pattern: overflow
 // compile-flags: -C overflow-checks=yes

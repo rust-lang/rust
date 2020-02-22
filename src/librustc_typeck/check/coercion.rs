@@ -52,11 +52,7 @@
 
 use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::session::parse::feature_err;
-use rustc::traits::object_safety_violations;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -68,6 +64,9 @@ use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
@@ -1363,7 +1362,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         fcx: &FnCtxt<'a, 'tcx>,
         expected: Ty<'tcx>,
         sp: Span,
-        fn_output: &hir::FunctionRetTy<'_>,
+        fn_output: &hir::FnRetTy<'_>,
     ) {
         let return_sp = fn_output.span();
         err.span_label(return_sp, "expected because this return type...");
@@ -1389,7 +1388,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
         // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
         let mut is_object_safe = false;
-        if let hir::FunctionRetTy::Return(ty) = fn_output {
+        if let hir::FnRetTy::Return(ty) = fn_output {
             // Get the return type.
             if let hir::TyKind::Def(..) = ty.kind {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
@@ -1404,7 +1403,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         // Are of this `impl Trait`'s traits object safe?
                         is_object_safe = bounds.iter().all(|bound| {
                             bound.trait_def_id().map_or(false, |def_id| {
-                                object_safety_violations(fcx.tcx, def_id).is_empty()
+                                fcx.tcx.object_safety_violations(def_id).is_empty()
                             })
                         })
                     }
@@ -1430,7 +1429,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
-            if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
+            if let hir::FnRetTy::Return(ty) = fn_decl.output {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
                 if let ty::Dynamic(..) = ty.kind {
                     return true;

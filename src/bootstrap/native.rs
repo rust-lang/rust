@@ -262,7 +262,7 @@ impl Step for Llvm {
             cfg.define("PYTHON_EXECUTABLE", python);
         }
 
-        configure_cmake(builder, target, &mut cfg);
+        configure_cmake(builder, target, &mut cfg, true);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
@@ -301,7 +301,12 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=7.0\n\n", version)
 }
 
-fn configure_cmake(builder: &Builder<'_>, target: Interned<String>, cfg: &mut cmake::Config) {
+fn configure_cmake(
+    builder: &Builder<'_>,
+    target: Interned<String>,
+    cfg: &mut cmake::Config,
+    use_compiler_launcher: bool,
+) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
@@ -372,9 +377,11 @@ fn configure_cmake(builder: &Builder<'_>, target: Interned<String>, cfg: &mut cm
     } else {
         // If ccache is configured we inform the build a little differently how
         // to invoke ccache while also invoking our compilers.
-        if let Some(ref ccache) = builder.config.ccache {
-            cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
-                .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+        if use_compiler_launcher {
+            if let Some(ref ccache) = builder.config.ccache {
+                cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+                    .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+            }
         }
         cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
             .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
@@ -458,7 +465,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg);
+        configure_cmake(builder, target, &mut cfg, true);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -571,7 +578,7 @@ impl Step for Sanitizers {
         }
 
         let out_dir = builder.native_dir(self.target).join("sanitizers");
-        let runtimes = supported_sanitizers(&out_dir, self.target);
+        let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
         if runtimes.is_empty() {
             return runtimes;
         }
@@ -595,10 +602,7 @@ impl Step for Sanitizers {
         let _time = util::timeit(&builder);
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
-        cfg.target(&self.target);
-        cfg.host(&builder.config.build);
         cfg.profile("Release");
-
         cfg.define("CMAKE_C_COMPILER_TARGET", self.target);
         cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
         cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
@@ -609,6 +613,12 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
         cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        // On Darwin targets the sanitizer runtimes are build as universal binaries.
+        // Unfortunately sccache currently lacks support to build them successfully.
+        // Disable compiler launcher on Darwin targets to avoid potential issues.
+        let use_compiler_launcher = !self.target.contains("apple-darwin");
+        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher);
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
@@ -635,7 +645,11 @@ pub struct SanitizerRuntime {
 }
 
 /// Returns sanitizers available on a given target.
-fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<SanitizerRuntime> {
+fn supported_sanitizers(
+    out_dir: &Path,
+    target: Interned<String>,
+    channel: &str,
+) -> Vec<SanitizerRuntime> {
     let mut result = Vec::new();
     match &*target {
         "x86_64-apple-darwin" => {
@@ -644,7 +658,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                     cmake_target: format!("clang_rt.{}_osx_dynamic", s),
                     path: out_dir
                         .join(&format!("build/lib/darwin/libclang_rt.{}_osx_dynamic.dylib", s)),
-                    name: format!("librustc_rt.{}.dylib", s),
+                    name: format!("librustc-{}_rt.{}.dylib", channel, s),
                 });
             }
         }
@@ -653,7 +667,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-x86_64", s),
                     path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }
@@ -662,7 +676,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-x86_64", s),
                     path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }
@@ -671,7 +685,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-aarch64", s),
                     path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-aarch64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }

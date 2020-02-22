@@ -10,7 +10,7 @@ use rustc_span::Span;
 use crate::borrow_check::diagnostics::BorrowedContentSource;
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::util::collect_writes::FindAssignments;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -412,11 +412,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [ProjectionElem::Deref],
                 // FIXME document what is this 1 magic number about
             } if local == Local::new(1) && !self.upvars.is_empty() => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_help(
-                    self.body.span,
-                    "consider changing this to accept closures that implement `FnMut`",
-                );
+                self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
             PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
@@ -447,6 +443,101 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         err.buffer(&mut self.errors_buffer);
+    }
+
+    /// Targetted error when encountering an `FnMut` closure where an `Fn` closure was expected.
+    fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
+        err.span_label(sp, format!("cannot {}", act));
+
+        let hir = self.infcx.tcx.hir();
+        let closure_id = hir.as_local_hir_id(self.mir_def_id).unwrap();
+        let fn_call_id = hir.get_parent_node(closure_id);
+        let node = hir.get(fn_call_id);
+        let item_id = hir.get_parent_item(fn_call_id);
+        let mut look_at_return = true;
+        // If we can detect the expression to be an `fn` call where the closure was an argument,
+        // we point at the `fn` definition argument...
+        match node {
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(func, args), .. }) => {
+                let arg_pos = args
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, arg)| arg.span == self.body.span)
+                    .map(|(pos, _)| pos)
+                    .next();
+                let def_id = hir.local_def_id(item_id);
+                let tables = self.infcx.tcx.typeck_tables_of(def_id);
+                if let Some(ty::FnDef(def_id, _)) =
+                    tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
+                {
+                    let arg = match hir.get_if_local(*def_id) {
+                        Some(hir::Node::Item(hir::Item {
+                            ident,
+                            kind: hir::ItemKind::Fn(sig, ..),
+                            ..
+                        }))
+                        | Some(hir::Node::TraitItem(hir::TraitItem {
+                            ident,
+                            kind: hir::TraitItemKind::Method(sig, _),
+                            ..
+                        }))
+                        | Some(hir::Node::ImplItem(hir::ImplItem {
+                            ident,
+                            kind: hir::ImplItemKind::Method(sig, _),
+                            ..
+                        })) => Some(
+                            arg_pos
+                                .and_then(|pos| {
+                                    sig.decl.inputs.get(
+                                        pos + if sig.decl.implicit_self.has_implicit_self() {
+                                            1
+                                        } else {
+                                            0
+                                        },
+                                    )
+                                })
+                                .map(|arg| arg.span)
+                                .unwrap_or(ident.span),
+                        ),
+                        _ => None,
+                    };
+                    if let Some(span) = arg {
+                        err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
+                        err.span_label(func.span, "expects `Fn` instead of `FnMut`");
+                        if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
+                            err.span_label(self.body.span, "in this closure");
+                        }
+                        look_at_return = false;
+                    }
+                }
+            }
+            _ => {}
+        }
+        if look_at_return && hir.get_return_block(closure_id).is_some() {
+            // ...otherwise we are probably in the tail expression of the function, point at the
+            // return type.
+            match hir.get(hir.get_parent_item(fn_call_id)) {
+                hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
+                | hir::Node::TraitItem(hir::TraitItem {
+                    ident,
+                    kind: hir::TraitItemKind::Method(sig, _),
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    ident,
+                    kind: hir::ImplItemKind::Method(sig, _),
+                    ..
+                }) => {
+                    err.span_label(ident.span, "");
+                    err.span_label(
+                        sig.decl.output.span(),
+                        "change this to return `FnMut` instead of `Fn`",
+                    );
+                    err.span_label(self.body.span, "in this closure");
+                }
+                _ => {}
+            }
+        }
     }
 }
 

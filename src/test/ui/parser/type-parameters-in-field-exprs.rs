@@ -9,9 +9,9 @@ fn main() {
         y: 2,
     };
     f.x::<isize>;
-    //~^ ERROR field expressions may not have generic arguments
+    //~^ ERROR field expressions cannot have generic arguments
     f.x::<>;
-    //~^ ERROR field expressions may not have generic arguments
+    //~^ ERROR field expressions cannot have generic arguments
     f.x::();
-    //~^ ERROR field expressions may not have generic arguments
+    //~^ ERROR field expressions cannot have generic arguments
 }

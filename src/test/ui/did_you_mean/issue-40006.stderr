@@ -1,26 +1,26 @@
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:1:13
    |
 LL |   impl dyn A {
    |  _____________^
 LL | |     Y
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:7:10
    |
 LL |   trait X {
    |  __________^
 LL | |     X() {}
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:15:10
    |
 LL |   trait A {
    |  __________^
 LL | |     X() {}
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:19:17
@@ -28,21 +28,21 @@ error: expected `[`, found `#`
 LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:21:10
    |
 LL |   trait C {
    |  __________^
 LL | |     L = M;
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:24:10
    |
 LL |   trait D {
    |  __________^
 LL | |     Z = { 2 + 3 };
-   | |____^ missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, `const`, or `static`
 
 error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:28:9
@@ -50,11 +50,11 @@ error: expected one of `!` or `::`, found `(`
 LL |     ::Y ();
    |         ^ expected one of `!` or `::`
 
-error: missing `fn`, `type`, or `const` for associated-item declaration
+error: missing `fn`, `type`, `const`, or `static` for item declaration
   --> $DIR/issue-40006.rs:32:8
    |
 LL |     pub hello_method(&self) {
-   |        ^ missing `fn`, `type`, or `const`
+   |        ^ missing `fn`, `type`, `const`, or `static`
 
 error[E0599]: no method named `hello_method` found for struct `S` in the current scope
   --> $DIR/issue-40006.rs:38:7

@@ -109,7 +109,7 @@ use crate::mbe::{KleeneToken, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::kw;
 use rustc_span::{symbol::Ident, MultiSpan, Span};
 use syntax::ast::NodeId;
 use syntax::token::{DelimToken, Token, TokenKind};
@@ -392,7 +392,7 @@ fn check_nested_occurrences(
                 NestedMacroState::Empty,
                 &TokenTree::Token(Token { kind: TokenKind::Ident(name, false), .. }),
             ) => {
-                if name == sym::macro_rules {
+                if name == kw::MacroRules {
                     state = NestedMacroState::MacroRules;
                 } else if name == kw::Macro {
                     state = NestedMacroState::Macro;

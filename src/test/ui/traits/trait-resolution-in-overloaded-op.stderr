@@ -5,8 +5,6 @@ LL |     a * b
    |     - ^ - f64
    |     |
    |     &T
-   |
-   = note: an implementation of `std::ops::Mul` might be missing for `&T`
 
 error: aborting due to previous error
 

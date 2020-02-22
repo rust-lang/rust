@@ -7,20 +7,10 @@ use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
-use crate::namespace::Namespace;
 
-use rustc::infer::canonical::OriginalQueryValues;
-use rustc::infer::canonical::{Canonical, QueryResponse};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc::infer::{self, InferOk};
 use rustc::lint;
 use rustc::middle::stability;
 use rustc::session::config::nightly_options;
-use rustc::traits::query::method_autoderef::MethodAutoderefBadTy;
-use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
-use rustc::traits::query::CanonicalTyGoal;
-use rustc::traits::{self, ObligationCause};
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
@@ -31,6 +21,16 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::Namespace;
+use rustc_infer::infer::canonical::OriginalQueryValues;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::query::method_autoderef::MethodAutoderefBadTy;
+use rustc_infer::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
+use rustc_infer::traits::query::CanonicalTyGoal;
+use rustc_infer::traits::{self, ObligationCause};
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use std::cmp::max;
 use std::iter;
@@ -382,11 +382,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .emit();
                 } else {
-                    self.tcx.lint_hir(
+                    self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        "type annotations needed",
+                        |lint| lint.build("type annotations needed").emit(),
                     );
                 }
             } else {
@@ -902,13 +902,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    let import_ids = trait_candidate
-                        .import_ids
-                        .iter()
-                        .map(|node_id| self.fcx.tcx.hir().node_to_hir_id(*node_id))
-                        .collect();
-                    let result =
-                        self.assemble_extension_candidates_for_trait(import_ids, trait_did);
+                    let result = self.assemble_extension_candidates_for_trait(
+                        &trait_candidate.import_ids,
+                        trait_did,
+                    );
                     result?;
                 }
             }
@@ -920,7 +917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(smallvec![], trait_info.def_id)?;
+                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id)?;
             }
         }
         Ok(())
@@ -959,7 +956,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: SmallVec<[hir::HirId; 1]>,
+        import_ids: &SmallVec<[hir::HirId; 1]>,
         trait_def_id: DefId,
     ) -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
@@ -1280,33 +1277,36 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
-        let mut diag = self.tcx.struct_span_lint_hir(
+        self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
-            "a method with this name may be added to the standard library in the future",
-        );
-
-        // FIXME: This should be a `span_suggestion` instead of `help`
-        // However `self.span` only
-        // highlights the method name, so we can't use it. Also consider reusing the code from
-        // `report_method_error()`.
-        diag.help(&format!(
-            "call with fully qualified syntax `{}(...)` to keep using the current method",
-            self.tcx.def_path_str(stable_pick.item.def_id),
-        ));
-
-        if nightly_options::is_nightly_build() {
-            for (candidate, feature) in unstable_candidates {
+            |lint| {
+                let mut diag = lint.build(
+                    "a method with this name may be added to the standard library in the future",
+                );
+                // FIXME: This should be a `span_suggestion` instead of `help`
+                // However `self.span` only
+                // highlights the method name, so we can't use it. Also consider reusing the code from
+                // `report_method_error()`.
                 diag.help(&format!(
-                    "add `#![feature({})]` to the crate attributes to enable `{}`",
-                    feature,
-                    self.tcx.def_path_str(candidate.item.def_id),
+                    "call with fully qualified syntax `{}(...)` to keep using the current method",
+                    self.tcx.def_path_str(stable_pick.item.def_id),
                 ));
-            }
-        }
 
-        diag.emit();
+                if nightly_options::is_nightly_build() {
+                    for (candidate, feature) in unstable_candidates {
+                        diag.help(&format!(
+                            "add `#![feature({})]` to the crate attributes to enable `{}`",
+                            feature,
+                            self.tcx.def_path_str(candidate.item.def_id),
+                        ));
+                    }
+                }
+
+                diag.emit();
+            },
+        );
     }
 
     fn select_trait_candidate(
@@ -1696,18 +1696,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
+                    .in_definition_order()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
-                        Namespace::from(x.kind) == Namespace::Value && dist > 0 && dist <= max_dist
+                        x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
                     })
+                    .copied()
                     .collect()
             } else {
                 self.fcx
-                    .associated_item(def_id, name, Namespace::Value)
+                    .associated_item(def_id, name, Namespace::ValueNS)
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).collect()
+            self.tcx.associated_items(def_id).in_definition_order().copied().collect()
         }
     }
 }

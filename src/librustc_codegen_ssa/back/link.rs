@@ -765,6 +765,9 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
     let default_sysroot = filesearch::get_or_default_sysroot();
     let default_tlib =
         filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+    let channel = option_env!("CFG_RELEASE_CHANNEL")
+        .map(|channel| format!("-{}", channel))
+        .unwrap_or_default();
 
     match sess.opts.target_triple.triple() {
         "x86_64-apple-darwin" => {
@@ -772,13 +775,13 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
-            let libname = format!("rustc_rt.{}", name);
+            let libname = format!("rustc{}_rt.{}", channel, name);
             let rpath = default_tlib.to_str().expect("non-utf8 component in path");
             linker.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
             linker.link_dylib(Symbol::intern(&libname));
         }
         "x86_64-unknown-linux-gnu" | "x86_64-fuchsia" | "aarch64-fuchsia" => {
-            let filename = format!("librustc_rt.{}.a", name);
+            let filename = format!("librustc{}_rt.{}.a", channel, name);
             let path = default_tlib.join(&filename);
             linker.link_whole_rlib(&path);
         }
@@ -1648,7 +1651,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        sess.prof.extra_verbose_generic_activity(&format!("altering {}.rlib", name)).run(|| {
+        sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 

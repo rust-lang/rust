@@ -8,13 +8,15 @@ use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
-use syntax::ast::{self, Ident};
+use std::cell::RefCell;
+use syntax::ast::{self, Ident, NodeId};
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 
 struct ProcMacroDerive {
+    id: NodeId,
     trait_name: ast::Name,
     function_name: Ident,
     span: Span,
@@ -27,6 +29,7 @@ enum ProcMacroDefType {
 }
 
 struct ProcMacroDef {
+    id: NodeId,
     function_name: Ident,
     span: Span,
     def_type: ProcMacroDefType,
@@ -69,9 +72,6 @@ pub fn inject(
     if has_proc_macro_decls || is_proc_macro_crate {
         visit::walk_crate(&mut collect, &krate);
     }
-    // NOTE: If you change the order of macros in this vec
-    // for any reason, you must also update 'raw_proc_macro'
-    // in src/librustc_metadata/decoder.rs
     let macros = collect.macros;
 
     if !is_proc_macro_crate {
@@ -86,7 +86,8 @@ pub fn inject(
         return krate;
     }
 
-    krate.module.items.push(mk_decls(&mut cx, &macros));
+    let decls = mk_decls(&mut krate, &mut cx, &macros);
+    krate.module.items.push(decls);
 
     krate
 }
@@ -181,6 +182,7 @@ impl<'a> CollectProcMacros<'a> {
 
         if self.in_root && item.vis.node.is_pub() {
             self.macros.push(ProcMacro::Derive(ProcMacroDerive {
+                id: item.id,
                 span: item.span,
                 trait_name: trait_ident.name,
                 function_name: item.ident,
@@ -200,6 +202,7 @@ impl<'a> CollectProcMacros<'a> {
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.node.is_pub() {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
+                id: item.id,
                 span: item.span,
                 function_name: item.ident,
                 def_type: ProcMacroDefType::Attr,
@@ -218,6 +221,7 @@ impl<'a> CollectProcMacros<'a> {
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.node.is_pub() {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
+                id: item.id,
                 span: item.span,
                 function_name: item.ident,
                 def_type: ProcMacroDefType::Bang,
@@ -357,7 +361,15 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
+fn mk_decls(
+    ast_krate: &mut ast::Crate,
+    cx: &mut ExtCtxt<'_>,
+    macros: &[ProcMacro],
+) -> P<ast::Item> {
+    // We're the ones filling in this Vec,
+    // so it should be empty to start with
+    assert!(ast_krate.proc_macros.is_empty());
+
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,
@@ -376,6 +388,12 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let attr = cx.ident_of("attr", span);
     let bang = cx.ident_of("bang", span);
 
+    let krate_ref = RefCell::new(ast_krate);
+
+    // We add NodeIds to 'krate.proc_macros' in the order
+    // that we generate expressions. The position of each NodeId
+    // in the 'proc_macros' Vec corresponds to its position
+    // in the static array that will be generated
     let decls = {
         let local_path =
             |sp: Span, name| cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]));
@@ -385,19 +403,26 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         macros
             .iter()
             .map(|m| match m {
-                ProcMacro::Derive(cd) => cx.expr_call(
-                    span,
-                    proc_macro_ty_method_path(custom_derive),
-                    vec![
-                        cx.expr_str(cd.span, cd.trait_name),
-                        cx.expr_vec_slice(
-                            span,
-                            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>(),
-                        ),
-                        local_path(cd.span, cd.function_name),
-                    ],
-                ),
+                ProcMacro::Derive(cd) => {
+                    krate_ref.borrow_mut().proc_macros.push(cd.id);
+                    cx.expr_call(
+                        span,
+                        proc_macro_ty_method_path(custom_derive),
+                        vec![
+                            cx.expr_str(cd.span, cd.trait_name),
+                            cx.expr_vec_slice(
+                                span,
+                                cd.attrs
+                                    .iter()
+                                    .map(|&s| cx.expr_str(cd.span, s))
+                                    .collect::<Vec<_>>(),
+                            ),
+                            local_path(cd.span, cd.function_name),
+                        ],
+                    )
+                }
                 ProcMacro::Def(ca) => {
+                    krate_ref.borrow_mut().proc_macros.push(ca.id);
                     let ident = match ca.def_type {
                         ProcMacroDefType::Attr => attr,
                         ProcMacroDefType::Bang => bang,

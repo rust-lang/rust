@@ -3,6 +3,7 @@
 // Test `@` patterns combined with `box` patterns.
 
 #![feature(bindings_after_at)]
+#![feature(move_ref_pattern)]
 #![feature(box_patterns)]
 
 #[derive(Copy, Clone)]
@@ -70,6 +71,16 @@ fn main() {
             let _: &NC = b;
             let _: &NC = c;
         }
+        _ => {}
+    }
+
+    match Box::new([Ok(c()), Err(nc()), Ok(c())]) {
+        box [Ok(a), ref xs @ .., Err(b)] => {}
+        _ => {}
+    }
+
+    match [Ok(Box::new(c())), Err(Box::new(nc())), Ok(Box::new(c())), Ok(Box::new(c()))] {
+        [Ok(box ref a), ref xs @ .., Err(box b), Err(box ref mut c)] => {}
         _ => {}
     }
 }

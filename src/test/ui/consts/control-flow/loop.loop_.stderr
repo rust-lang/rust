@@ -4,7 +4,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |         while false {}
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
 
@@ -16,7 +16,7 @@ LL | |         x += 1;
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
 
@@ -28,7 +28,7 @@ LL | |         x += 1;
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
 
@@ -56,7 +56,7 @@ LL | |             break;
 LL | |         }
    | |_________^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -67,7 +67,7 @@ LL | |             break;
 LL | |         }
    | |_________^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `while` is not allowed in a `const`
@@ -76,7 +76,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
 
@@ -86,7 +86,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: `#![feature(const_loop)]` alone is not sufficient, since this loop expression contains an implicit conditional
 

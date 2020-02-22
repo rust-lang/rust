@@ -1,8 +1,10 @@
 //! Values computed by queries that use MIR.
 
 use crate::ty::{self, Ty};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
 use rustc_span::{Span, Symbol};
@@ -59,8 +61,12 @@ pub struct GeneratorLayout<'tcx> {
     pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct BorrowCheckResult<'tcx> {
+    /// All the opaque types that are restricted to concrete types
+    /// by this function. Unlike the value in `TypeckTables`, this has
+    /// unerased regions.
+    pub concrete_opaque_types: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
 }

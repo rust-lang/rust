@@ -1,7 +1,7 @@
 error: concrete type differs from previous defining opaque type use
   --> $DIR/generic_duplicate_param_use6.rs:14:1
    |
-LL | / fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
+LL | / fn three<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
 LL | |
 LL | |     (u, t)
 LL | | }
@@ -10,7 +10,7 @@ LL | | }
 note: previous use here
   --> $DIR/generic_duplicate_param_use6.rs:10:1
    |
-LL | / fn two<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
+LL | / fn two<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
 LL | |     (t, t)
 LL | | }
    | |_^

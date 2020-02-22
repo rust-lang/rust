@@ -4,6 +4,7 @@
 
 use crate::fmt;
 use crate::mem::MaybeUninit;
+use crate::num::flt2dec;
 use crate::ops::{Div, Rem, Sub};
 use crate::ptr;
 use crate::slice;
@@ -256,6 +257,161 @@ macro_rules! impl_Display {
     };
 }
 
+macro_rules! impl_Exp {
+    ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
+        fn $name(
+            mut n: $u,
+            is_nonnegative: bool,
+            upper: bool,
+            f: &mut fmt::Formatter<'_>
+        ) -> fmt::Result {
+            let (mut n, mut exponent, trailing_zeros, added_precision) = {
+                let mut exponent = 0;
+                // count and remove trailing decimal zeroes
+                while n % 10 == 0 && n >= 10 {
+                    n /= 10;
+                    exponent += 1;
+                }
+                let trailing_zeros = exponent;
+
+                let (added_precision, subtracted_precision) = match f.precision() {
+                    Some(fmt_prec) => {
+                        // number of decimal digits minus 1
+                        let mut tmp = n;
+                        let mut prec = 0;
+                        while tmp >= 10 {
+                            tmp /= 10;
+                            prec += 1;
+                        }
+                        (fmt_prec.saturating_sub(prec), prec.saturating_sub(fmt_prec))
+                    }
+                    None => (0,0)
+                };
+                for _ in 1..subtracted_precision {
+                    n/=10;
+                    exponent += 1;
+                }
+                if subtracted_precision != 0 {
+                    let rem = n % 10;
+                    n /= 10;
+                    exponent += 1;
+                    // round up last digit
+                    if rem >= 5 {
+                        n += 1;
+                    }
+                }
+                (n, exponent, trailing_zeros, added_precision)
+            };
+
+            // 39 digits (worst case u128) + . = 40
+            let mut buf = [MaybeUninit::<u8>::uninit(); 40];
+            let mut curr = buf.len() as isize; //index for buf
+            let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
+            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+
+            // decode 2 chars at a time
+            while n >= 100 {
+                let d1 = ((n % 100) as isize) << 1;
+                curr -= 2;
+                unsafe {
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                }
+                n /= 100;
+                exponent += 2;
+            }
+            // n is <= 99, so at most 2 chars long
+            let mut n = n as isize; // possibly reduce 64bit math
+            // decode second-to-last character
+            if n >= 10 {
+                curr -= 1;
+                unsafe {
+                    *buf_ptr.offset(curr) = (n as u8 % 10_u8) + b'0';
+                }
+                n /= 10;
+                exponent += 1;
+            }
+            // add decimal point iff >1 mantissa digit will be printed
+            if exponent != trailing_zeros || added_precision != 0 {
+                curr -= 1;
+                unsafe {
+                    *buf_ptr.offset(curr) = b'.';
+                }
+            }
+
+            let buf_slice = unsafe {
+                // decode last character
+                curr -= 1;
+                *buf_ptr.offset(curr) = (n as u8) + b'0';
+
+                let len = buf.len() - curr as usize;
+                slice::from_raw_parts(buf_ptr.offset(curr), len)
+            };
+
+            // stores 'e' (or 'E') and the up to 2-digit exponent
+            let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
+            let exp_ptr = MaybeUninit::first_ptr_mut(&mut exp_buf);
+            let exp_slice = unsafe {
+                *exp_ptr.offset(0) = if upper {b'E'} else {b'e'};
+                let len = if exponent < 10 {
+                    *exp_ptr.offset(1) = (exponent as u8) + b'0';
+                    2
+                } else {
+                    let off = exponent << 1;
+                    ptr::copy_nonoverlapping(lut_ptr.offset(off), exp_ptr.offset(1), 2);
+                    3
+                };
+                slice::from_raw_parts(exp_ptr, len)
+            };
+
+            let parts = &[
+                flt2dec::Part::Copy(buf_slice),
+                flt2dec::Part::Zero(added_precision),
+                flt2dec::Part::Copy(exp_slice)
+            ];
+            let sign = if !is_nonnegative {
+                &b"-"[..]
+            } else if f.sign_plus() {
+                &b"+"[..]
+            } else {
+                &b""[..]
+            };
+            let formatted = flt2dec::Formatted{sign, parts};
+            f.pad_formatted_parts(&formatted)
+        }
+
+        $(
+            #[stable(feature = "integer_exp_format", since = "1.42.0")]
+            impl fmt::LowerExp for $t {
+                #[allow(unused_comparisons)]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    let is_nonnegative = *self >= 0;
+                    let n = if is_nonnegative {
+                        self.$conv_fn()
+                    } else {
+                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        (!self.$conv_fn()).wrapping_add(1)
+                    };
+                    $name(n, is_nonnegative, false, f)
+                }
+            })*
+        $(
+            #[stable(feature = "integer_exp_format", since = "1.42.0")]
+            impl fmt::UpperExp for $t {
+                #[allow(unused_comparisons)]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    let is_nonnegative = *self >= 0;
+                    let n = if is_nonnegative {
+                        self.$conv_fn()
+                    } else {
+                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        (!self.$conv_fn()).wrapping_add(1)
+                    };
+                    $name(n, is_nonnegative, true, f)
+                }
+            })*
+    };
+}
+
 // Include wasm32 in here since it doesn't reflect the native pointer size, and
 // often cares strongly about getting a smaller code size.
 #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
@@ -265,6 +421,10 @@ mod imp {
         i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
             as u64 via to_u64 named fmt_u64
     );
+    impl_Exp!(
+        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
+            as u64 via to_u64 named exp_u64
+    );
 }
 
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
@@ -272,6 +432,9 @@ mod imp {
     use super::*;
     impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
     impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+    impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
+    impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
 
 impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
+impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);

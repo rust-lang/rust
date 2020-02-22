@@ -4,7 +4,7 @@
 // This function is checking that our (type-based) automatic
 // truncation does not sidestep the overflow checking.
 
-#![warn(exceeding_bitshifts)]
+#![warn(arithmetic_overflow)]
 #![warn(const_err)]
 
 fn main() {

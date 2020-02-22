@@ -16,9 +16,10 @@ pub use core::future::*;
 ///
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
+// This is `const` to avoid extra errors after we recover from `const async fn`
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+pub const fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
 

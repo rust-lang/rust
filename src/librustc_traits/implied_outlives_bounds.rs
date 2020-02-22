@@ -1,17 +1,17 @@
 //! Provider for the `implied_outlives_bounds` query.
 //! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
 
-use rustc::infer::canonical::{self, Canonical};
-use rustc::infer::InferCtxt;
-use rustc::traits::query::outlives_bounds::OutlivesBound;
-use rustc::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
-use rustc::traits::wf;
-use rustc::traits::FulfillmentContext;
-use rustc::traits::{TraitEngine, TraitEngineExt};
 use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
+use rustc_infer::infer::canonical::{self, Canonical};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::query::outlives_bounds::OutlivesBound;
+use rustc_infer::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
+use rustc_infer::traits::wf;
+use rustc_infer::traits::FulfillmentContext;
+use rustc_infer::traits::{TraitEngine, TraitEngineExt};
 use rustc_span::source_map::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 

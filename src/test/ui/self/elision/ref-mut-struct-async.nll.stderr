@@ -1,11 +1,3 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-mut-struct-async.rs:12:56
-   |
-LL |     async fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
-   |                                                        ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
-
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:13:9
    |
@@ -15,14 +7,6 @@ LL |     async fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
    |                               let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
-
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-mut-struct-async.rs:16:65
-   |
-LL |     async fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
-   |                                                                 ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:17:9
@@ -34,14 +18,6 @@ LL |     async fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
 LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-mut-struct-async.rs:20:65
-   |
-LL |     async fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
-   |                                                                 ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
-
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:21:9
    |
@@ -51,14 +27,6 @@ LL |     async fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
    |                                       let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
-
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-mut-struct-async.rs:24:74
-   |
-LL |     async fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
-   |                                                                          ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:25:9
@@ -70,14 +38,6 @@ LL |     async fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u
 LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-mut-struct-async.rs:28:74
-   |
-LL |     async fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
-   |                                                                          ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
-
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:29:9
    |
@@ -88,6 +48,5 @@ LL |     async fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u
 LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
-error: aborting due to 10 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0700`.

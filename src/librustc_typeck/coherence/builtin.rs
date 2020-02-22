@@ -1,14 +1,8 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use rustc::infer;
-use rustc::infer::outlives::env::OutlivesEnvironment;
-use rustc::infer::SuppressRegionErrors;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
-use rustc::traits::misc::{can_type_implement_copy, CopyImplementationError};
-use rustc::traits::predicate_for_trait_def;
-use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -16,16 +10,20 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
+use rustc_infer::infer;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{SuppressRegionErrors, TyCtxtInferExt};
+use rustc_infer::traits::misc::{can_type_implement_copy, CopyImplementationError};
+use rustc_infer::traits::predicate_for_trait_def;
+use rustc_infer::traits::{self, ObligationCause, TraitEngine};
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
+    let lang_items = tcx.lang_items();
     Checker { tcx, trait_def_id }
-        .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
-        .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
-        .check(tcx.lang_items().coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
-        .check(
-            tcx.lang_items().dispatch_from_dyn_trait(),
-            visit_implementation_of_dispatch_from_dyn,
-        );
+        .check(lang_items.drop_trait(), visit_implementation_of_drop)
+        .check(lang_items.copy_trait(), visit_implementation_of_copy)
+        .check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
+        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn);
 }
 
 struct Checker<'tcx> {

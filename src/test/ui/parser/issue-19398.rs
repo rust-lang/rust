@@ -1,5 +1,6 @@
 trait T {
-    extern "Rust" unsafe fn foo(); //~ ERROR expected `fn`, found keyword `unsafe`
+    //~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
+    extern "Rust" unsafe fn foo();
 }
 
 fn main() {}

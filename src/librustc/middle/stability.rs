@@ -222,11 +222,13 @@ fn late_report_deprecation(
         return;
     }
 
-    let mut diag = tcx.struct_span_lint_hir(lint, hir_id, span, message);
-    if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
-        deprecation_suggestion(&mut diag, suggestion, span);
-    }
-    diag.emit();
+    tcx.struct_span_lint_hir(lint, hir_id, span, |lint| {
+        let mut diag = lint.build(message);
+        if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
+            deprecation_suggestion(&mut diag, suggestion, span);
+        }
+        diag.emit()
+    });
     if hir_id == hir::DUMMY_HIR_ID {
         span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
     }
@@ -387,8 +389,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
-        let soft_handler =
-            |lint, span, msg: &_| self.lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg);
+        let soft_handler = |lint, span, msg: &_| {
+            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
+                lint.build(msg).emit()
+            })
+        };
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, is_soft } => {

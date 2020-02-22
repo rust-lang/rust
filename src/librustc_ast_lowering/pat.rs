@@ -128,6 +128,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut slice = None;
         let mut prev_rest_span = None;
 
+        // Lowers `$bm $ident @ ..` to `$bm $ident @ _`.
+        let lower_rest_sub = |this: &mut Self, pat, bm, ident, sub| {
+            let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
+            let node = this.lower_pat_ident(pat, bm, ident, lower_sub);
+            this.pat_with_node_id_of(pat, node)
+        };
+
         let mut iter = pats.iter();
         // Lower all the patterns until the first occurrence of a sub-slice pattern.
         for pat in iter.by_ref() {
@@ -142,9 +149,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
                 PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
-                    let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
-                    let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
-                    slice = Some(self.pat_with_node_id_of(pat, node));
+                    slice = Some(lower_rest_sub(self, pat, bm, ident, sub));
                     break;
                 }
                 // It was not a subslice pattern so lower it normally.
@@ -157,9 +162,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // There was a previous subslice pattern; make sure we don't allow more.
             let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
-                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
-                    // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
-                    after.push(self.pat_wild_with_node_id_of(pat));
+                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                    // #69103: Lower into `binding @ _` as above to avoid ICEs.
+                    after.push(lower_rest_sub(self, pat, bm, ident, sub));
                     Some(sub.span)
                 }
                 _ => None,

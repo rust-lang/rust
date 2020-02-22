@@ -36,9 +36,6 @@ use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 use rustc::middle::lang_items;
 use rustc::session::Session;
-use rustc::traits;
-use rustc::traits::error_reporting::report_object_safety_error;
-use rustc::traits::object_safety_violations;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
@@ -46,6 +43,8 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_infer::traits;
+use rustc_infer::traits::error_reporting::report_object_safety_error;
 use rustc_span::Span;
 use syntax::ast;
 
@@ -468,23 +467,20 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        let mut err = fcx.tcx.struct_span_lint_hir(
-            lint,
-            self.expr.hir_id,
-            self.span,
-            &format!(
+        fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span, |err| {
+            err.build(&format!(
                 "trivial {}cast: `{}` as `{}`",
                 adjective,
                 fcx.ty_to_string(t_expr),
                 fcx.ty_to_string(t_cast)
-            ),
-        );
-        err.help(&format!(
-            "cast can be replaced by coercion; this might \
-                           require {}a temporary variable",
-            type_asc_or
-        ));
-        err.emit();
+            ))
+            .help(&format!(
+                "cast can be replaced by coercion; this might \
+                                   require {}a temporary variable",
+                type_asc_or
+            ))
+            .emit();
+        });
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
@@ -520,7 +516,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn report_object_unsafe_cast(&self, fcx: &FnCtxt<'a, 'tcx>, did: DefId) {
-        let violations = object_safety_violations(fcx.tcx, did);
+        let violations = fcx.tcx.object_safety_violations(did);
         let mut err = report_object_safety_error(fcx.tcx, self.cast_span, did, violations);
         err.note(&format!("required by cast to type '{}'", fcx.ty_to_string(self.cast_ty)));
         err.emit();

@@ -1,13 +1,13 @@
 use chalk_engine::fallible::{Fallible, NoSolution};
 use chalk_engine::{context, ExClause, Literal};
-use rustc::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
-use rustc::traits::{
-    Clause, DomainGoal, Environment, Goal, GoalKind, InEnvironment, ProgramClause, WhereClause,
-};
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
+use rustc_infer::traits::{
+    Clause, DomainGoal, Environment, Goal, GoalKind, InEnvironment, ProgramClause, WhereClause,
+};
 use rustc_span::DUMMY_SP;
 
 use super::unify::*;
@@ -226,7 +226,9 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         let b = match b {
             &ty::ReVar(vid) => self
                 .infcx
-                .borrow_region_constraints()
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
                 .opportunistic_resolve_var(self.infcx.tcx, vid),
 
             other => other,

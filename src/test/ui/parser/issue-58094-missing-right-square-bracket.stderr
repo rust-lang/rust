@@ -7,10 +7,10 @@ LL | #[Ѕ
    |  unclosed delimiter
 
 error: expected item after attributes
-  --> $DIR/issue-58094-missing-right-square-bracket.rs:4:4
+  --> $DIR/issue-58094-missing-right-square-bracket.rs:4:1
    |
 LL | #[Ѕ
-   |    ^
+   | ^^^
 
 error: aborting due to 2 previous errors
 

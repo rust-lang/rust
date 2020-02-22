@@ -2,7 +2,7 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/wf-in-obj-type-static.rs:14:5
    |
 LL | struct Foo<T> {
-   |            - help: consider adding an explicit lifetime bound `T: 'static`...
+   |            - help: consider adding an explicit lifetime bound...: `T: 'static`
 LL |     // needs T: 'static
 LL |     x: dyn Object<&'static T>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

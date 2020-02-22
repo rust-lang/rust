@@ -157,6 +157,7 @@ def start_watchdog():
 # ~main
 ####################################################################################################
 
+
 if len(sys.argv) != 3:
     print("usage: python lldb_batchmode.py target-path script-path")
     sys.exit(1)

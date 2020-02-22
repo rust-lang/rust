@@ -33,7 +33,7 @@ use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 use crate::test;
 
-use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{html, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 
 #[cfg(test)]
 mod tests;
@@ -189,10 +189,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let compile_fail;
         let ignore;
         let edition;
-        if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            let parse_result = LangString::parse(&lang, self.check_error_codes, false);
+        if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
+            let parse_result = match kind {
+                CodeBlockKind::Fenced(ref lang) => {
+                    LangString::parse(&lang, self.check_error_codes, false)
+                }
+                CodeBlockKind::Indented => LangString::all_false(),
+            };
             if !parse_result.rust {
-                return Some(Event::Start(Tag::CodeBlock(lang)));
+                return Some(Event::Start(Tag::CodeBlock(kind)));
             }
             compile_fail = parse_result.compile_fail;
             ignore = parse_result.ignore;
@@ -370,11 +375,11 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
         }
 
         let event = self.inner.next();
-        if let Some(Event::Start(Tag::Header(level))) = event {
+        if let Some(Event::Start(Tag::Heading(level))) = event {
             let mut id = String::new();
             for event in &mut self.inner {
                 match &event {
-                    Event::End(Tag::Header(..)) => break,
+                    Event::End(Tag::Heading(..)) => break,
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
                     }
@@ -391,10 +396,10 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                 let mut html_header = String::new();
                 html::push_html(&mut html_header, self.buf.iter().cloned());
                 let sec = builder.push(level as u32, html_header, id.clone());
-                self.buf.push_front(Event::InlineHtml(format!("{} ", sec).into()));
+                self.buf.push_front(Event::Html(format!("{} ", sec).into()));
             }
 
-            self.buf.push_back(Event::InlineHtml(format!("</a></h{}>", level).into()));
+            self.buf.push_back(Event::Html(format!("</a></h{}>", level).into()));
 
             let start_tags = format!(
                 "<h{level} id=\"{id}\" class=\"section-header\">\
@@ -402,7 +407,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                 id = id,
                 level = level
             );
-            return Some(Event::InlineHtml(start_tags.into()));
+            return Some(Event::Html(start_tags.into()));
         }
         event
     }
@@ -556,40 +561,44 @@ pub fn find_testable_code<T: test::Tester>(
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
 ) {
-    let mut parser = Parser::new(doc);
+    let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
     let mut register_header = None;
-    while let Some(event) = parser.next() {
+    while let Some((event, offset)) = parser.next() {
         match event {
-            Event::Start(Tag::CodeBlock(s)) => {
-                let offset = parser.get_offset();
-
-                let block_info = if s.is_empty() {
-                    LangString::all_false()
-                } else {
-                    LangString::parse(&*s, error_codes, enable_per_target_ignores)
+            Event::Start(Tag::CodeBlock(kind)) => {
+                let block_info = match kind {
+                    CodeBlockKind::Fenced(ref lang) => {
+                        if lang.is_empty() {
+                            LangString::all_false()
+                        } else {
+                            LangString::parse(lang, error_codes, enable_per_target_ignores)
+                        }
+                    }
+                    CodeBlockKind::Indented => LangString::all_false(),
                 };
                 if !block_info.rust {
                     continue;
                 }
+
                 let mut test_s = String::new();
 
-                while let Some(Event::Text(s)) = parser.next() {
+                while let Some((Event::Text(s), _)) = parser.next() {
                     test_s.push_str(&s);
                 }
-
                 let text = test_s
                     .lines()
                     .map(|l| map_line(l).for_code())
                     .collect::<Vec<Cow<'_, str>>>()
                     .join("\n");
-                nb_lines += doc[prev_offset..offset].lines().count();
-                let line = tests.get_line() + nb_lines;
+
+                nb_lines += doc[prev_offset..offset.start].lines().count();
+                let line = tests.get_line() + nb_lines + 1;
                 tests.add_test(text, block_info, line);
-                prev_offset = offset;
+                prev_offset = offset.start;
             }
-            Event::Start(Tag::Header(level)) => {
+            Event::Start(Tag::Heading(level)) => {
                 register_header = Some(level as u32);
             }
             Event::Text(ref s) if register_header.is_some() => {
@@ -783,7 +792,7 @@ impl MarkdownHtml<'_> {
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event {
-            Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
+            Event::Html(text) => Event::Text(text),
             _ => event,
         });
 
@@ -842,10 +851,10 @@ pub fn plain_summary_line(md: &str) -> String {
             let next_event = next_event.unwrap();
             let (ret, is_in) = match next_event {
                 Event::Start(Tag::Paragraph) => (None, 1),
-                Event::Start(Tag::Header(_)) => (None, 1),
+                Event::Start(Tag::Heading(_)) => (None, 1),
                 Event::Code(code) => (Some(format!("`{}`", code)), 0),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
-                Event::End(Tag::Paragraph) | Event::End(Tag::Header(_)) => (None, -1),
+                Event::End(Tag::Paragraph) | Event::End(Tag::Heading(_)) => (None, -1),
                 _ => (None, 0),
             };
             if is_in > 0 || (is_in < 0 && self.is_in > 0) {
@@ -940,68 +949,79 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
         return code_blocks;
     }
 
-    let mut p = Parser::new_ext(md, opts());
+    let mut p = Parser::new_ext(md, opts()).into_offset_iter();
 
-    let mut code_block_start = 0;
-    let mut code_start = 0;
-    let mut is_fenced = false;
-    let mut previous_offset = 0;
-    let mut in_rust_code_block = false;
-    while let Some(event) = p.next() {
-        let offset = p.get_offset();
-
+    while let Some((event, offset)) = p.next() {
         match event {
             Event::Start(Tag::CodeBlock(syntax)) => {
-                let lang_string = if syntax.is_empty() {
-                    LangString::all_false()
-                } else {
-                    LangString::parse(&*syntax, ErrorCodes::Yes, false)
-                };
-
-                if lang_string.rust {
-                    in_rust_code_block = true;
-
-                    code_start = offset;
-                    code_block_start = match md[previous_offset..offset].find("```") {
-                        Some(fence_idx) => {
-                            is_fenced = true;
-                            previous_offset + fence_idx
+                let (syntax, code_start, code_end, range, is_fenced) = match syntax {
+                    CodeBlockKind::Fenced(syntax) => {
+                        let syntax = syntax.as_ref();
+                        let lang_string = if syntax.is_empty() {
+                            LangString::all_false()
+                        } else {
+                            LangString::parse(&*syntax, ErrorCodes::Yes, false)
+                        };
+                        if !lang_string.rust {
+                            continue;
                         }
-                        None => {
-                            is_fenced = false;
-                            offset
+                        let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
+                        let (code_start, mut code_end) = match p.next() {
+                            Some((Event::Text(_), offset)) => (offset.start, offset.end),
+                            Some((_, sub_offset)) => {
+                                let code = Range { start: sub_offset.start, end: sub_offset.start };
+                                code_blocks.push(RustCodeBlock {
+                                    is_fenced: true,
+                                    range: offset,
+                                    code,
+                                    syntax,
+                                });
+                                continue;
+                            }
+                            None => {
+                                let code = Range { start: offset.end, end: offset.end };
+                                code_blocks.push(RustCodeBlock {
+                                    is_fenced: true,
+                                    range: offset,
+                                    code,
+                                    syntax,
+                                });
+                                continue;
+                            }
+                        };
+                        while let Some((Event::Text(_), offset)) = p.next() {
+                            code_end = offset.end;
                         }
-                    };
-                }
-            }
-            Event::End(Tag::CodeBlock(syntax)) if in_rust_code_block => {
-                in_rust_code_block = false;
-
-                let code_block_end = if is_fenced {
-                    let fence_str = &md[previous_offset..offset].chars().rev().collect::<String>();
-                    fence_str
-                        .find("```")
-                        .map(|fence_idx| offset - fence_idx)
-                        .unwrap_or_else(|| offset)
-                } else if md.as_bytes().get(offset).map(|b| *b == b'\n').unwrap_or_default() {
-                    offset - 1
-                } else {
-                    offset
+                        (syntax, code_start, code_end, offset, true)
+                    }
+                    CodeBlockKind::Indented => {
+                        // The ending of the offset goes too far sometime so we reduce it by one in
+                        // these cases.
+                        if offset.end > offset.start
+                            && md.get(offset.end..=offset.end) == Some(&"\n")
+                        {
+                            (
+                                None,
+                                offset.start,
+                                offset.end,
+                                Range { start: offset.start, end: offset.end - 1 },
+                                false,
+                            )
+                        } else {
+                            (None, offset.start, offset.end, offset, false)
+                        }
+                    }
                 };
-
-                let code_end = if is_fenced { previous_offset } else { code_block_end };
 
                 code_blocks.push(RustCodeBlock {
                     is_fenced,
-                    range: Range { start: code_block_start, end: code_block_end },
+                    range,
                     code: Range { start: code_start, end: code_end },
-                    syntax: if !syntax.is_empty() { Some(syntax.into_string()) } else { None },
+                    syntax,
                 });
             }
             _ => (),
         }
-
-        previous_offset = offset;
     }
 
     code_blocks

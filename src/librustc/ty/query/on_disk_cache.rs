@@ -22,7 +22,7 @@ use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
-use syntax::ast::{Ident, NodeId};
+use syntax::ast::Ident;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -680,16 +680,6 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
     }
 }
 
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
-        let hir_id = hir::HirId::decode(self)?;
-        Ok(self.tcx().hir().hir_to_node_id(hir_id))
-    }
-}
-
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
@@ -928,19 +918,6 @@ where
     }
 }
 
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-{
-    #[inline]
-    fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
-        let hir_id = self.tcx.hir().node_to_hir_id(*node_id);
-        hir_id.encode(self)
-    }
-}
-
 impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for CacheEncoder<'a, 'tcx, opaque::Encoder> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.encoder)
@@ -966,6 +943,7 @@ where
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
+        #[inline]
         $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
             self.encoder.$name(value)
         })*
@@ -1053,23 +1031,27 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results_for_{}", ::std::any::type_name::<Q>());
-    let _timer = tcx.sess.prof.extra_verbose_generic_activity(desc);
+    let _timer = tcx
+        .sess
+        .prof
+        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
-    let shards = Q::query_cache(tcx).lock_shards();
-    assert!(shards.iter().all(|shard| shard.active.is_empty()));
-    for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
-        if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
-            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+    let state = Q::query_state(tcx);
+    assert!(state.all_inactive());
 
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+    state.iter_results(|results| {
+        for (key, value, dep_node) in results {
+            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &entry.value)?;
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &value)?;
+            }
         }
-    }
-
-    Ok(())
+        Ok(())
+    })
 }

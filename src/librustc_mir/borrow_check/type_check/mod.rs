@@ -5,18 +5,10 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::mir::interpret::PanicInfo;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::mir::AssertKind;
 use rustc::mir::*;
-use rustc::traits::query::type_op;
-use rustc::traits::query::type_op::custom::CustomTypeOp;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::cast::CastTy;
 use rustc::ty::fold::TypeFoldable;
@@ -31,11 +23,21 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::opaque_types::GenerateMemberConstraints;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{
+    InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
+};
+use rustc_infer::traits::query::type_op;
+use rustc_infer::traits::query::type_op::custom::CustomTypeOp;
+use rustc_infer::traits::query::{Fallible, NoSolution};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast;
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 
@@ -114,7 +116,7 @@ mod relate_tys;
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
-pub(crate) fn type_check<'tcx>(
+pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
@@ -124,7 +126,7 @@ pub(crate) fn type_check<'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
 ) -> MirTypeckResults<'tcx> {
@@ -159,7 +161,7 @@ pub(crate) fn type_check<'tcx>(
         constraints: &mut constraints,
     };
 
-    type_check_internal(
+    let opaque_type_values = type_check_internal(
         infcx,
         mir_def_id,
         param_env,
@@ -174,10 +176,11 @@ pub(crate) fn type_check<'tcx>(
             liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
 
             translate_outlives_facts(&mut cx);
+            cx.opaque_type_values
         },
     );
 
-    MirTypeckResults { constraints, universal_region_relations }
+    MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
 }
 
 fn type_check_internal<'a, 'tcx, R>(
@@ -190,7 +193,7 @@ fn type_check_internal<'a, 'tcx, R>(
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
-    mut extra: impl FnMut(&mut TypeChecker<'a, 'tcx>) -> R,
+    extra: impl FnOnce(TypeChecker<'a, 'tcx>) -> R,
 ) -> R {
     let mut checker = TypeChecker::new(
         infcx,
@@ -213,7 +216,7 @@ fn type_check_internal<'a, 'tcx, R>(
         checker.typeck_mir(body);
     }
 
-    extra(&mut checker)
+    extra(checker)
 }
 
 fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
@@ -310,6 +313,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
+            let tcx = self.tcx();
             if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -359,10 +363,23 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         );
                     }
                 }
-            }
-            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
-                let tcx = self.tcx();
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id);
+                let locations = location.to_locations();
+                let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
 
+                if let Err(terr) = self.cx.eq_types(
+                    normalized_ty,
+                    literal_ty,
+                    locations,
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
+            }
+
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,
@@ -467,33 +484,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
-        if place.projection.is_empty() {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let tcx = self.tcx();
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().copy_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                };
-
-                // To have a `Copy` operand, the type `T` of the
-                // value must be `Copy`. Note that we prove that `T: Copy`,
-                // rather than using the `is_copy_modulo_regions`
-                // test. This is important because
-                // `is_copy_modulo_regions` ignores the resulting region
-                // obligations and assumes they pass. This can result in
-                // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                // #29149). Note that we decide to use `Copy` before knowing
-                // whether the bounds fully apply: in effect, the rule is
-                // that if a value of some type could implement `Copy`, then
-                // it must.
-                self.cx.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::CopyBound,
-                );
-            }
-        }
-
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
@@ -502,6 +492,31 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location)
+        }
+
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let tcx = self.tcx();
+            let trait_ref = ty::TraitRef {
+                def_id: tcx.lang_items().copy_trait().unwrap(),
+                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+            };
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.cx.prove_trait_ref(
+                trait_ref,
+                location.to_locations(),
+                ConstraintCategory::CopyBound,
+            );
         }
 
         place_ty
@@ -800,6 +815,7 @@ struct TypeChecker<'a, 'tcx> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
+    opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
@@ -813,6 +829,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
     crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    crate opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -959,6 +976,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
             universal_region_relations,
+            opaque_type_values: FxHashMap::default(),
         };
         checker.check_user_type_annotations();
         checker
@@ -1192,10 +1210,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
              anon_ty={:?})",
             revealed_ty, anon_ty
         );
+
+        // Fast path for the common case.
+        if !anon_ty.has_opaque_types() {
+            if let Err(terr) = self.eq_types(anon_ty, revealed_ty, locations, category) {
+                span_mirbug!(
+                    self,
+                    locations,
+                    "eq_opaque_type_and_type: `{:?}=={:?}` failed with `{:?}`",
+                    revealed_ty,
+                    anon_ty,
+                    terr
+                );
+            }
+            return Ok(());
+        }
+
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
+        let concrete_opaque_types = &tcx.typeck_tables_of(anon_owner_def_id).concrete_opaque_types;
+        let mut opaque_type_values = Vec::new();
+
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
@@ -1220,6 +1257,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                          revealed_ty={:?}",
                         output_ty, opaque_type_map, revealed_ty
                     );
+                    // Make sure that the inferred types are well-formed. I'm
+                    // not entirely sure this is needed (the HIR type check
+                    // didn't do this) but it seems sensible to prevent opaque
+                    // types hiding ill-formed types.
+                    obligations.obligations.push(traits::Obligation::new(
+                        ObligationCause::dummy(),
+                        param_env,
+                        ty::Predicate::WellFormed(revealed_ty),
+                    ));
                     obligations.add(
                         infcx
                             .at(&ObligationCause::dummy(), param_env)
@@ -1227,47 +1273,76 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
-                        let opaque_defn_ty = tcx.type_of(opaque_def_id);
-                        let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
-                        let opaque_defn_ty = renumber::renumber_regions(infcx, &opaque_defn_ty);
-                        let concrete_is_opaque = infcx
-                            .resolve_vars_if_possible(&opaque_decl.concrete_ty)
-                            .is_impl_trait();
+                        let resolved_ty = infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty);
+                        let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind {
+                            def_id == opaque_def_id
+                        } else {
+                            false
+                        };
+                        let opaque_defn_ty = match concrete_opaque_types.get(&opaque_def_id) {
+                            None => {
+                                if !concrete_is_opaque {
+                                    tcx.sess.delay_span_bug(
+                                        body.span,
+                                        &format!(
+                                            "Non-defining use of {:?} with revealed type",
+                                            opaque_def_id,
+                                        ),
+                                    );
+                                }
+                                continue;
+                            }
+                            Some(opaque_defn_ty) => opaque_defn_ty,
+                        };
+                        debug!("opaque_defn_ty = {:?}", opaque_defn_ty);
+                        let subst_opaque_defn_ty =
+                            opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs);
+                        let renumbered_opaque_defn_ty =
+                            renumber::renumber_regions(infcx, &subst_opaque_defn_ty);
 
                         debug!(
-                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?} \
-                            concrete_is_opaque={}",
-                            opaque_decl.concrete_ty,
-                            infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty),
-                            opaque_defn_ty,
-                            concrete_is_opaque
+                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
+                            opaque_decl.concrete_ty, resolved_ty, renumbered_opaque_defn_ty,
                         );
 
-                        // concrete_is_opaque is `true` when we're using an opaque `impl Trait`
-                        // type without 'revealing' it. For example, code like this:
-                        //
-                        // type Foo = impl Debug;
-                        // fn foo1() -> Foo { ... }
-                        // fn foo2() -> Foo { foo1() }
-                        //
-                        // In `foo2`, we're not revealing the type of `Foo` - we're
-                        // just treating it as the opaque type.
-                        //
-                        // When this occurs, we do *not* want to try to equate
-                        // the concrete type with the underlying defining type
-                        // of the opaque type - this will always fail, since
-                        // the defining type of an opaque type is always
-                        // some other type (e.g. not itself)
-                        // Essentially, none of the normal obligations apply here -
-                        // we're just passing around some unknown opaque type,
-                        // without actually looking at the underlying type it
-                        // gets 'revealed' into
-
                         if !concrete_is_opaque {
+                            // Equate concrete_ty (an inference variable) with
+                            // the renumbered type from typeck.
                             obligations.add(
                                 infcx
                                     .at(&ObligationCause::dummy(), param_env)
-                                    .eq(opaque_decl.concrete_ty, opaque_defn_ty)?,
+                                    .eq(opaque_decl.concrete_ty, renumbered_opaque_defn_ty)?,
+                            );
+                            opaque_type_values.push((
+                                opaque_def_id,
+                                ty::ResolvedOpaqueTy {
+                                    concrete_type: renumbered_opaque_defn_ty,
+                                    substs: opaque_decl.substs,
+                                },
+                            ));
+                        } else {
+                            // We're using an opaque `impl Trait` type without
+                            // 'revealing' it. For example, code like this:
+                            //
+                            // type Foo = impl Debug;
+                            // fn foo1() -> Foo { ... }
+                            // fn foo2() -> Foo { foo1() }
+                            //
+                            // In `foo2`, we're not revealing the type of `Foo` - we're
+                            // just treating it as the opaque type.
+                            //
+                            // When this occurs, we do *not* want to try to equate
+                            // the concrete type with the underlying defining type
+                            // of the opaque type - this will always fail, since
+                            // the defining type of an opaque type is always
+                            // some other type (e.g. not itself)
+                            // Essentially, none of the normal obligations apply here -
+                            // we're just passing around some unknown opaque type,
+                            // without actually looking at the underlying type it
+                            // gets 'revealed' into
+                            debug!(
+                                "eq_opaque_type_and_type: non-defining use of {:?}",
+                                opaque_def_id,
                             );
                         }
                     }
@@ -1282,6 +1357,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 || "input_output".to_string(),
             ),
         )?;
+
+        self.opaque_type_values.extend(opaque_type_values);
 
         let universal_region_relations = self.universal_region_relations;
 
@@ -1299,6 +1376,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             infcx.constrain_opaque_type(
                                 opaque_def_id,
                                 &opaque_decl,
+                                GenerateMemberConstraints::IfNoStaticBound,
                                 universal_region_relations,
                             );
                             Ok(InferOk { value: (), obligations: vec![] })
@@ -1563,7 +1641,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
@@ -1938,7 +2016,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                                 tcx.mk_substs_trait(ty, &[]),
                                             ),
                                         }),
-                                        ast::Constness::NotConst,
+                                        hir::Constness::NotConst,
                                     ),
                                 ),
                                 &traits::SelectionError::Unimplemented,
@@ -2513,7 +2591,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+        if let Some(ref closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements
+        {
             let closure_constraints = QueryRegionConstraints {
                 outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
 
@@ -2579,7 +2658,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.prove_predicates(
             Some(ty::Predicate::Trait(
                 trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
-                ast::Constness::NotConst,
+                hir::Constness::NotConst,
             )),
             locations,
             category,

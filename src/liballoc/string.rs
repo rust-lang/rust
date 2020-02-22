@@ -319,7 +319,7 @@ pub struct String {
 /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FromUtf8Error {
     bytes: Vec<u8>,
     error: Utf8Error,
@@ -2106,18 +2106,11 @@ impl ops::DerefMut for String {
     }
 }
 
-/// An error when parsing a `String`.
+/// A type alias for [`Infallible`].
 ///
-/// This `enum` is slightly awkward: it will never actually exist. This error is
-/// part of the type signature of the implementation of [`FromStr`] on
-/// [`String`]. The return type of [`from_str`], requires that an error be
-/// defined, but, given that a [`String`] can always be made into a new
-/// [`String`] without error, this type will never actually be returned. As
-/// such, it is only here to satisfy said signature, and is useless otherwise.
+/// This alias exists for backwards compatibility, and may be eventually deprecated.
 ///
-/// [`FromStr`]: ../../std/str/trait.FromStr.html
-/// [`String`]: struct.String.html
-/// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
+/// [`Infallible`]: ../../core/convert/enum.Infallible.html
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 pub type ParseError = core::convert::Infallible;
 
@@ -2125,7 +2118,7 @@ pub type ParseError = core::convert::Infallible;
 impl FromStr for String {
     type Err = core::convert::Infallible;
     #[inline]
-    fn from_str(s: &str) -> Result<String, ParseError> {
+    fn from_str(s: &str) -> Result<String, Self::Err> {
         Ok(String::from(s))
     }
 }
@@ -2204,6 +2197,14 @@ impl ToString for String {
 impl AsRef<str> for String {
     #[inline]
     fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+#[stable(feature = "string_as_mut", since = "1.43.0")]
+impl AsMut<str> for String {
+    #[inline]
+    fn as_mut(&mut self) -> &mut str {
         self
     }
 }

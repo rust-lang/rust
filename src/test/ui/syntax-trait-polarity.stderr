@@ -8,7 +8,9 @@ error[E0198]: negative impls cannot be unsafe
   --> $DIR/syntax-trait-polarity.rs:12:1
    |
 LL | unsafe impl !Send for TestType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | unsafe because of this
 
 error: inherent impls cannot be negative
   --> $DIR/syntax-trait-polarity.rs:19:1
@@ -20,7 +22,9 @@ error[E0198]: negative impls cannot be unsafe
   --> $DIR/syntax-trait-polarity.rs:22:1
    |
 LL | unsafe impl<T> !Send for TestType2<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | unsafe because of this
 
 error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
   --> $DIR/syntax-trait-polarity.rs:14:1

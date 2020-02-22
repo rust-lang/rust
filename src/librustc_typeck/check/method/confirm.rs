@@ -4,14 +4,14 @@ use crate::astconv::AstConv;
 use crate::check::{callee, FnCtxt, Needs, PlaceOp};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
-use rustc::infer::{self, InferOk};
-use rustc::traits;
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Ty};
 use rustc_hir as hir;
+use rustc_infer::infer::{self, InferOk};
+use rustc_infer::traits;
 use rustc_span::Span;
 
 use std::ops::Deref;

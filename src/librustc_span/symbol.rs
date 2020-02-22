@@ -97,6 +97,7 @@ symbols! {
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
+        MacroRules:         "macro_rules",
         Raw:                "raw",
         Union:              "union",
     }
@@ -429,7 +430,6 @@ symbols! {
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_reexport,
-        macro_rules,
         macros_in_extern,
         macro_use,
         macro_vis_matcher,
@@ -457,6 +457,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_ref_pattern,
         move_val_init,
         movbe_target_feature,
         mul_with_overflow,
@@ -490,6 +491,7 @@ symbols! {
         non_exhaustive,
         non_modrs_mods,
         no_sanitize,
+        no_niche,
         no_stack_check,
         no_start,
         no_std,
@@ -586,6 +588,7 @@ symbols! {
         repr128,
         repr_align,
         repr_align_enum,
+        repr_no_niche,
         repr_packed,
         repr_simd,
         repr_transparent,
@@ -997,6 +1000,7 @@ impl Encodable for Symbol {
 }
 
 impl Decodable for Symbol {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Symbol, D::Error> {
         Ok(Symbol::intern(&d.read_str()?))
     }
@@ -1035,6 +1039,7 @@ impl Interner {
         }
     }
 
+    #[inline]
     pub fn intern(&mut self, string: &str) -> Symbol {
         if let Some(&name) = self.names.get(string) {
             return name;
@@ -1074,6 +1079,9 @@ pub mod sym {
     use std::convert::TryInto;
 
     symbols!();
+
+    // Used from a macro in `librustc_feature/accepted.rs`
+    pub use super::kw::MacroRules as macro_rules;
 
     // Get the symbol for an integer. The first few non-negative integers each
     // have a static symbol and therefore are fast.

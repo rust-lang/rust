@@ -361,6 +361,7 @@ impl Ordering {
     /// assert!(data == b);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reverse(self) -> Ordering {
         match self {
@@ -398,6 +399,7 @@ impl Ordering {
     /// assert_eq!(result, Ordering::Less);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
     pub fn then(self, other: Ordering) -> Ordering {
         match self {
@@ -435,6 +437,7 @@ impl Ordering {
     /// assert_eq!(result, Ordering::Less);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
     pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
         match self {
@@ -576,6 +579,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(10.cmp(&5), Ordering::Greater);
     /// assert_eq!(5.cmp(&5), Ordering::Equal);
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Self) -> Ordering;
 
@@ -591,6 +595,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
+    #[must_use]
     fn max(self, other: Self) -> Self
     where
         Self: Sized,
@@ -610,6 +615,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
+    #[must_use]
     fn min(self, other: Self) -> Self
     where
         Self: Sized,
@@ -635,6 +641,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert!(0.clamp(-2, 1) == 0);
     /// assert!(2.clamp(-2, 1) == 1);
     /// ```
+    #[must_use]
     #[unstable(feature = "clamp", issue = "44095")]
     fn clamp(self, min: Self, max: Self) -> Self
     where
@@ -915,6 +922,7 @@ pub macro PartialOrd($item:item) {
 /// assert_eq!(2, cmp::min(2, 2));
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     v1.min(v2)
@@ -935,6 +943,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// assert_eq!(cmp::min_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
@@ -958,6 +967,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// assert_eq!(cmp::min_by_key(-2, 2, |x: &i32| x.abs()), -2);
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
@@ -978,6 +988,7 @@ pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 /// assert_eq!(2, cmp::max(2, 2));
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     v1.max(v2)
@@ -998,6 +1009,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// assert_eq!(cmp::max_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 2);
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
@@ -1021,6 +1033,7 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// assert_eq!(cmp::max_by_key(-2, 2, |x: &i32| x.abs()), 2);
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))

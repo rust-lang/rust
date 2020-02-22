@@ -3,7 +3,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_attr as attr;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
@@ -82,72 +82,96 @@ pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
-    /// Const evaluability whitelist is here to check evaluability at the
-    /// top level beforehand.
-    fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
-        if tcx.is_closure(def_id) {
-            return None;
+pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
+    let parent_id = tcx.hir().get_parent_did(hir_id);
+    if !parent_id.is_top_level_module() {
+        is_const_impl_raw(tcx, LocalDefId::from_def_id(parent_id))
+    } else {
+        false
+    }
+}
+
+/// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
+/// said intrinsic is on the whitelist for being const callable.
+fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let hir_id =
+        tcx.hir().as_local_hir_id(def_id).expect("Non-local call to local provider is_const_fn");
+
+    let node = tcx.hir().get(hir_id);
+
+    if let Some(whitelisted) = is_const_intrinsic(tcx, def_id) {
+        whitelisted
+    } else if let Some(fn_like) = FnLikeNode::from_node(node) {
+        if fn_like.constness() == hir::Constness::Const {
+            return true;
         }
 
-        match tcx.fn_sig(def_id).abi() {
-            Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
-                Some(tcx.lookup_const_stability(def_id).is_some())
-            }
-            _ => None,
-        }
+        // If the function itself is not annotated with `const`, it may still be a `const fn`
+        // if it resides in a const trait impl.
+        is_parent_const_impl_raw(tcx, hir_id)
+    } else if let hir::Node::Ctor(_) = node {
+        true
+    } else {
+        false
+    }
+}
+
+/// Const evaluability whitelist is here to check evaluability at the
+/// top level beforehand.
+fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
+    if tcx.is_closure(def_id) {
+        return None;
     }
 
-    /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
-    /// said intrinsic is on the whitelist for being const callable.
-    fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        let hir_id = tcx
-            .hir()
-            .as_local_hir_id(def_id)
-            .expect("Non-local call to local provider is_const_fn");
-
-        let node = tcx.hir().get(hir_id);
-
-        if let Some(whitelisted) = is_const_intrinsic(tcx, def_id) {
-            whitelisted
-        } else if let Some(fn_like) = FnLikeNode::from_node(node) {
-            fn_like.constness() == hir::Constness::Const
-        } else if let hir::Node::Ctor(_) = node {
-            true
-        } else {
-            false
+    match tcx.fn_sig(def_id).abi() {
+        Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
+            Some(tcx.lookup_const_stability(def_id).is_some())
         }
+        _ => None,
     }
+}
 
-    fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        is_const_fn(tcx, def_id)
-            && match tcx.lookup_const_stability(def_id) {
-                Some(stab) => {
-                    if cfg!(debug_assertions) && stab.promotable {
-                        let sig = tcx.fn_sig(def_id);
-                        assert_eq!(
-                            sig.unsafety(),
-                            hir::Unsafety::Normal,
-                            "don't mark const unsafe fns as promotable",
-                            // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
-                        );
-                    }
-                    stab.promotable
+/// Checks whether the given item is an `impl` that has a `const` modifier.
+fn is_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let node = tcx.hir().get(hir_id);
+    matches!(
+        node,
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Impl { constness: hir::Constness::Const, .. },
+            ..
+        })
+    )
+}
+
+fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    is_const_fn(tcx, def_id)
+        && match tcx.lookup_const_stability(def_id) {
+            Some(stab) => {
+                if cfg!(debug_assertions) && stab.promotable {
+                    let sig = tcx.fn_sig(def_id);
+                    assert_eq!(
+                        sig.unsafety(),
+                        hir::Unsafety::Normal,
+                        "don't mark const unsafe fns as promotable",
+                        // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
+                    );
                 }
-                None => false,
+                stab.promotable
             }
-    }
+            None => false,
+        }
+}
 
-    fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        is_const_fn(tcx, def_id)
-            && tcx
-                .lookup_const_stability(def_id)
-                .map(|stab| stab.allow_const_fn_ptr)
-                .unwrap_or(false)
-    }
+fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    is_const_fn(tcx, def_id)
+        && tcx.lookup_const_stability(def_id).map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
+}
 
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         is_const_fn_raw,
+        is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, LocalDefId::from_def_id(def_id)),
         is_promotable_const_fn,
         const_fn_is_allowed_fn_ptr,
         ..*providers

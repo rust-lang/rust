@@ -140,6 +140,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 trait_impls: _,
                 body_ids: _,
                 modules: _,
+                proc_macros: _,
             } = *krate;
 
             alloc_hir_dep_nodes(

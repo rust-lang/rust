@@ -5,8 +5,6 @@ LL |     LinkedList::new() += 1;
    |     -----------------^^^^^
    |     |
    |     cannot use `+=` on type `std::collections::LinkedList<_>`
-   |
-   = note: an implementation of `std::ops::AddAssign` might be missing for `std::collections::LinkedList<_>`
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/E0067.rs:4:23

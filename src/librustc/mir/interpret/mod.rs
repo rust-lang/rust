@@ -38,15 +38,6 @@ macro_rules! err_ub_format {
 }
 
 #[macro_export]
-macro_rules! err_panic {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
 macro_rules! err_exhaust {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::ResourceExhaustion(
@@ -81,11 +72,6 @@ macro_rules! throw_ub_format {
 }
 
 #[macro_export]
-macro_rules! throw_panic {
-    ($($tt:tt)*) => { return Err(err_panic!($($tt)*).into()) };
-}
-
-#[macro_export]
 macro_rules! throw_exhaust {
     ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
 }
@@ -104,9 +90,9 @@ mod queries;
 mod value;
 
 pub use self::error::{
-    struct_error, AssertMessage, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
-    FrameInfo, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, PanicInfo,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
+    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, ResourceExhaustionInfo,
+    UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};
@@ -162,6 +148,10 @@ pub struct LitToConstInput<'tcx> {
 /// Error type for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
+    /// The literal's inferred type did not match the expected `ty` in the input.
+    /// This is used for graceful error handling (`delay_span_bug`) in
+    /// type checking (`AstConv::ast_const_to_const`).
+    TypeError,
     UnparseableFloat,
     Reported,
 }

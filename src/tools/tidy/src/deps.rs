@@ -59,6 +59,7 @@ const EXCEPTIONS: &[&str] = &[
     "dunce",              // CC0-1.0 mdbook-linkcheck
     "codespan-reporting", // Apache-2.0 mdbook-linkcheck
     "codespan",           // Apache-2.0 mdbook-linkcheck
+    "crossbeam-channel",  // MIT/Apache-2.0 AND BSD-2-Clause, cargo
 ];
 
 /// Which crates to check against the whitelist?

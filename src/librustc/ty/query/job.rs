@@ -1,13 +1,15 @@
+use crate::dep_graph::DepKind;
 use crate::ty::context::TyCtxt;
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::Query;
 use crate::ty::tls;
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::Span;
 
-#[cfg(not(parallel_compiler))]
-use std::ptr;
+use std::convert::TryFrom;
+use std::marker::PhantomData;
+use std::num::NonZeroU32;
 
 #[cfg(parallel_compiler)]
 use {
@@ -15,6 +17,7 @@ use {
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::stable_hasher::{HashStable, StableHasher},
     rustc_data_structures::sync::Lock,
+    rustc_data_structures::sync::Lrc,
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
@@ -30,61 +33,130 @@ pub struct QueryInfo<'tcx> {
     pub query: Query<'tcx>,
 }
 
-/// Representss an object representing an active query job.
-pub struct QueryJob<'tcx> {
+type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<'tcx>>;
+
+/// A value uniquely identifiying an active query job within a shard in the query cache.
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct QueryShardJobId(pub NonZeroU32);
+
+/// A value uniquely identifiying an active query job.
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct QueryJobId {
+    /// Which job within a shard is this
+    pub job: QueryShardJobId,
+
+    /// In which shard is this job
+    pub shard: u16,
+
+    /// What kind of query this job is
+    pub kind: DepKind,
+}
+
+impl QueryJobId {
+    pub fn new(job: QueryShardJobId, shard: usize, kind: DepKind) -> Self {
+        QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
+    }
+
+    fn query<'tcx>(self, map: &QueryMap<'tcx>) -> Query<'tcx> {
+        map.get(&self).unwrap().info.query.clone()
+    }
+
+    #[cfg(parallel_compiler)]
+    fn span(self, map: &QueryMap<'_>) -> Span {
+        map.get(&self).unwrap().job.span
+    }
+
+    #[cfg(parallel_compiler)]
+    fn parent(self, map: &QueryMap<'_>) -> Option<QueryJobId> {
+        map.get(&self).unwrap().job.parent
+    }
+
+    #[cfg(parallel_compiler)]
+    fn latch<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> Option<&'a QueryLatch<'tcx>> {
+        map.get(&self).unwrap().job.latch.as_ref()
+    }
+}
+
+pub struct QueryJobInfo<'tcx> {
     pub info: QueryInfo<'tcx>,
+    pub job: QueryJob<'tcx>,
+}
+
+/// Represents an active query job.
+#[derive(Clone)]
+pub struct QueryJob<'tcx> {
+    pub id: QueryShardJobId,
+
+    /// The span corresponding to the reason for which this query was required.
+    pub span: Span,
 
     /// The parent query job which created this job and is implicitly waiting on it.
-    pub parent: Option<Lrc<QueryJob<'tcx>>>,
+    pub parent: Option<QueryJobId>,
 
     /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
-    latch: QueryLatch<'tcx>,
+    latch: Option<QueryLatch<'tcx>>,
+
+    dummy: PhantomData<QueryLatch<'tcx>>,
 }
 
 impl<'tcx> QueryJob<'tcx> {
     /// Creates a new query job.
-    pub fn new(info: QueryInfo<'tcx>, parent: Option<Lrc<QueryJob<'tcx>>>) -> Self {
+    pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob {
-            info,
+            id,
+            span,
             parent,
             #[cfg(parallel_compiler)]
-            latch: QueryLatch::new(),
+            latch: None,
+            dummy: PhantomData,
         }
     }
 
-    /// Awaits for the query job to complete.
     #[cfg(parallel_compiler)]
-    pub(super) fn r#await(&self, tcx: TyCtxt<'tcx>, span: Span) -> Result<(), CycleError<'tcx>> {
-        tls::with_related_context(tcx, move |icx| {
-            let waiter = Lrc::new(QueryWaiter {
-                query: icx.query.clone(),
-                span,
-                cycle: Lock::new(None),
-                condvar: Condvar::new(),
-            });
-            self.latch.r#await(&waiter);
-            // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-            // although another thread may still have a Lrc reference so we cannot
-            // use Lrc::get_mut
-            let mut cycle = waiter.cycle.lock();
-            match cycle.take() {
-                None => Ok(()),
-                Some(cycle) => Err(cycle),
-            }
-        })
+    pub(super) fn latch(&mut self, _id: QueryJobId) -> QueryLatch<'tcx> {
+        if self.latch.is_none() {
+            self.latch = Some(QueryLatch::new());
+        }
+        self.latch.as_ref().unwrap().clone()
     }
 
     #[cfg(not(parallel_compiler))]
+    pub(super) fn latch(&mut self, id: QueryJobId) -> QueryLatch<'tcx> {
+        QueryLatch { id, dummy: PhantomData }
+    }
+
+    /// Signals to waiters that the query is complete.
+    ///
+    /// This does nothing for single threaded rustc,
+    /// as there are no concurrent jobs which could be waiting on us
+    pub fn signal_complete(self) {
+        #[cfg(parallel_compiler)]
+        self.latch.map(|latch| latch.set());
+    }
+}
+
+#[cfg(not(parallel_compiler))]
+#[derive(Clone)]
+pub(super) struct QueryLatch<'tcx> {
+    id: QueryJobId,
+    dummy: PhantomData<&'tcx ()>,
+}
+
+#[cfg(not(parallel_compiler))]
+impl<'tcx> QueryLatch<'tcx> {
     pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
+        let query_map = tcx.queries.try_collect_active_jobs().unwrap();
+
         // Get the current executing query (waiter) and find the waitee amongst its parents
-        let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
+        let mut current_job = tls::with_related_context(tcx, |icx| icx.query);
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
-            cycle.push(job.info.clone());
+            let info = query_map.get(&job).unwrap();
+            cycle.push(info.info.clone());
 
-            if ptr::eq(&*job, self) {
+            if job == self.id {
                 cycle.reverse();
 
                 // This is the end of the cycle
@@ -93,35 +165,24 @@ impl<'tcx> QueryJob<'tcx> {
                 // Replace it with the span which caused the cycle to form
                 cycle[0].span = span;
                 // Find out why the cycle itself was used
-                let usage =
-                    job.parent.as_ref().map(|parent| (job.info.span, parent.info.query.clone()));
+                let usage = info
+                    .job
+                    .parent
+                    .as_ref()
+                    .map(|parent| (info.info.span, parent.query(&query_map)));
                 return CycleError { usage, cycle };
             }
 
-            current_job = job.parent.clone();
+            current_job = info.job.parent.clone();
         }
 
         panic!("did not find a cycle")
-    }
-
-    /// Signals to waiters that the query is complete.
-    ///
-    /// This does nothing for single threaded rustc,
-    /// as there are no concurrent jobs which could be waiting on us
-    pub fn signal_complete(&self) {
-        #[cfg(parallel_compiler)]
-        self.latch.set();
-    }
-
-    #[cfg(parallel_compiler)]
-    fn as_ptr(&self) -> *const QueryJob<'tcx> {
-        self as *const _
     }
 }
 
 #[cfg(parallel_compiler)]
 struct QueryWaiter<'tcx> {
-    query: Option<Lrc<QueryJob<'tcx>>>,
+    query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
     cycle: Lock<Option<CycleError<'tcx>>>,
@@ -142,18 +203,43 @@ struct QueryLatchInfo<'tcx> {
 }
 
 #[cfg(parallel_compiler)]
-struct QueryLatch<'tcx> {
-    info: Mutex<QueryLatchInfo<'tcx>>,
+#[derive(Clone)]
+pub(super) struct QueryLatch<'tcx> {
+    info: Lrc<Mutex<QueryLatchInfo<'tcx>>>,
 }
 
 #[cfg(parallel_compiler)]
 impl<'tcx> QueryLatch<'tcx> {
     fn new() -> Self {
-        QueryLatch { info: Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() }) }
+        QueryLatch {
+            info: Lrc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
+        }
+    }
+
+    /// Awaits for the query job to complete.
+    #[cfg(parallel_compiler)]
+    pub(super) fn wait_on(&self, tcx: TyCtxt<'tcx>, span: Span) -> Result<(), CycleError<'tcx>> {
+        tls::with_related_context(tcx, move |icx| {
+            let waiter = Lrc::new(QueryWaiter {
+                query: icx.query,
+                span,
+                cycle: Lock::new(None),
+                condvar: Condvar::new(),
+            });
+            self.wait_on_inner(&waiter);
+            // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
+            // although another thread may still have a Lrc reference so we cannot
+            // use Lrc::get_mut
+            let mut cycle = waiter.cycle.lock();
+            match cycle.take() {
+                None => Ok(()),
+                Some(cycle) => Err(cycle),
+            }
+        })
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn r#await(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
+    fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -197,7 +283,7 @@ impl<'tcx> QueryLatch<'tcx> {
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
 #[cfg(parallel_compiler)]
-type Waiter<'tcx> = (Lrc<QueryJob<'tcx>>, usize);
+type Waiter = (QueryJobId, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
 /// Only waiters in a query are visited.
@@ -209,26 +295,33 @@ type Waiter<'tcx> = (Lrc<QueryJob<'tcx>>, usize);
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
 #[cfg(parallel_compiler)]
-fn visit_waiters<'tcx, F>(query: Lrc<QueryJob<'tcx>>, mut visit: F) -> Option<Option<Waiter<'tcx>>>
+fn visit_waiters<'tcx, F>(
+    query_map: &QueryMap<'tcx>,
+    query: QueryJobId,
+    mut visit: F,
+) -> Option<Option<Waiter>>
 where
-    F: FnMut(Span, Lrc<QueryJob<'tcx>>) -> Option<Option<Waiter<'tcx>>>,
+    F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
-    if let Some(ref parent) = query.parent {
-        if let Some(cycle) = visit(query.info.span, parent.clone()) {
+    if let Some(parent) = query.parent(query_map) {
+        if let Some(cycle) = visit(query.span(query_map), parent) {
             return Some(cycle);
         }
     }
 
     // Visit the explicit waiters which use condvars and are resumable
-    for (i, waiter) in query.latch.info.lock().waiters.iter().enumerate() {
-        if let Some(ref waiter_query) = waiter.query {
-            if visit(waiter.span, waiter_query.clone()).is_some() {
-                // Return a value which indicates that this waiter can be resumed
-                return Some(Some((query.clone(), i)));
+    if let Some(latch) = query.latch(query_map) {
+        for (i, waiter) in latch.info.lock().waiters.iter().enumerate() {
+            if let Some(waiter_query) = waiter.query {
+                if visit(waiter.span, waiter_query).is_some() {
+                    // Return a value which indicates that this waiter can be resumed
+                    return Some(Some((query, i)));
+                }
             }
         }
     }
+
     None
 }
 
@@ -238,13 +331,14 @@ where
 /// the cycle.
 #[cfg(parallel_compiler)]
 fn cycle_check<'tcx>(
-    query: Lrc<QueryJob<'tcx>>,
+    query_map: &QueryMap<'tcx>,
+    query: QueryJobId,
     span: Span,
-    stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
-    visited: &mut FxHashSet<*const QueryJob<'tcx>>,
-) -> Option<Option<Waiter<'tcx>>> {
-    if !visited.insert(query.as_ptr()) {
-        return if let Some(p) = stack.iter().position(|q| q.1.as_ptr() == query.as_ptr()) {
+    stack: &mut Vec<(Span, QueryJobId)>,
+    visited: &mut FxHashSet<QueryJobId>,
+) -> Option<Option<Waiter>> {
+    if !visited.insert(query) {
+        return if let Some(p) = stack.iter().position(|q| q.1 == query) {
             // We detected a query cycle, fix up the initial span and return Some
 
             // Remove previous stack entries
@@ -258,10 +352,12 @@ fn cycle_check<'tcx>(
     }
 
     // Query marked as visited is added it to the stack
-    stack.push((span, query.clone()));
+    stack.push((span, query));
 
     // Visit all the waiters
-    let r = visit_waiters(query, |span, successor| cycle_check(successor, span, stack, visited));
+    let r = visit_waiters(query_map, query, |span, successor| {
+        cycle_check(query_map, successor, span, stack, visited)
+    });
 
     // Remove the entry in our stack if we didn't find a cycle
     if r.is_none() {
@@ -276,26 +372,30 @@ fn cycle_check<'tcx>(
 /// This is achieved with a depth first search.
 #[cfg(parallel_compiler)]
 fn connected_to_root<'tcx>(
-    query: Lrc<QueryJob<'tcx>>,
-    visited: &mut FxHashSet<*const QueryJob<'tcx>>,
+    query_map: &QueryMap<'tcx>,
+    query: QueryJobId,
+    visited: &mut FxHashSet<QueryJobId>,
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
-    if !visited.insert(query.as_ptr()) {
+    if !visited.insert(query) {
         return false;
     }
 
     // This query is connected to the root (it has no query parent), return true
-    if query.parent.is_none() {
+    if query.parent(query_map).is_none() {
         return true;
     }
 
-    visit_waiters(query, |_, successor| connected_to_root(successor, visited).then_some(None))
-        .is_some()
+    visit_waiters(query_map, query, |_, successor| {
+        connected_to_root(query_map, successor, visited).then_some(None)
+    })
+    .is_some()
 }
 
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
-fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
+fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId)>(
+    query_map: &QueryMap<'tcx>,
     tcx: TyCtxt<'tcx>,
     queries: &'a [T],
     f: F,
@@ -308,7 +408,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
         .min_by_key(|v| {
             let (span, query) = f(v);
             let mut stable_hasher = StableHasher::new();
-            query.info.query.hash_stable(&mut hcx, &mut stable_hasher);
+            query.query(query_map).hash_stable(&mut hcx, &mut stable_hasher);
             // Prefer entry points which have valid spans for nicer error messages
             // We add an integer to the tuple ensuring that entry points
             // with valid spans are picked first
@@ -325,14 +425,17 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
 /// the function returns false.
 #[cfg(parallel_compiler)]
 fn remove_cycle<'tcx>(
-    jobs: &mut Vec<Lrc<QueryJob<'tcx>>>,
+    query_map: &QueryMap<'tcx>,
+    jobs: &mut Vec<QueryJobId>,
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
-    if let Some(waiter) = cycle_check(jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited) {
+    if let Some(waiter) =
+        cycle_check(query_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+    {
         // The stack is a vector of pairs of spans and queries; reverse it so that
         // the earlier entries require later entries
         let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
@@ -345,27 +448,25 @@ fn remove_cycle<'tcx>(
 
         // Remove the queries in our cycle from the list of jobs to look at
         for r in &stack {
-            if let Some(pos) = jobs.iter().position(|j| j.as_ptr() == r.1.as_ptr()) {
-                jobs.remove(pos);
-            }
+            jobs.remove_item(&r.1);
         }
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
         let entry_points = stack
             .iter()
-            .filter_map(|(span, query)| {
-                if query.parent.is_none() {
+            .filter_map(|&(span, query)| {
+                if query.parent(query_map).is_none() {
                     // This query is connected to the root (it has no query parent)
-                    Some((*span, query.clone(), None))
+                    Some((span, query, None))
                 } else {
                     let mut waiters = Vec::new();
                     // Find all the direct waiters who lead to the root
-                    visit_waiters(query.clone(), |span, waiter| {
+                    visit_waiters(query_map, query, |span, waiter| {
                         // Mark all the other queries in the cycle as already visited
-                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1.as_ptr()));
+                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
 
-                        if connected_to_root(waiter.clone(), &mut visited) {
+                        if connected_to_root(query_map, waiter, &mut visited) {
                             waiters.push((span, waiter));
                         }
 
@@ -375,31 +476,30 @@ fn remove_cycle<'tcx>(
                         None
                     } else {
                         // Deterministically pick one of the waiters to show to the user
-                        let waiter = pick_query(tcx, &waiters, |s| s.clone()).clone();
-                        Some((*span, query.clone(), Some(waiter)))
+                        let waiter = *pick_query(query_map, tcx, &waiters, |s| *s);
+                        Some((span, query, Some(waiter)))
                     }
                 }
             })
-            .collect::<Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>>();
+            .collect::<Vec<(Span, QueryJobId, Option<(Span, QueryJobId)>)>>();
 
         // Deterministically pick an entry point
-        let (_, entry_point, usage) = pick_query(tcx, &entry_points, |e| (e.0, e.1.clone()));
+        let (_, entry_point, usage) = pick_query(query_map, tcx, &entry_points, |e| (e.0, e.1));
 
         // Shift the stack so that our entry point is first
-        let entry_point_pos =
-            stack.iter().position(|(_, query)| query.as_ptr() == entry_point.as_ptr());
+        let entry_point_pos = stack.iter().position(|(_, query)| query == entry_point);
         if let Some(pos) = entry_point_pos {
             stack.rotate_left(pos);
         }
 
-        let usage = usage.as_ref().map(|(span, query)| (*span, query.info.query.clone()));
+        let usage = usage.as_ref().map(|(span, query)| (*span, query.query(query_map)));
 
         // Create the cycle error
         let error = CycleError {
             usage,
             cycle: stack
                 .iter()
-                .map(|&(s, ref q)| QueryInfo { span: s, query: q.info.query.clone() })
+                .map(|&(s, ref q)| QueryInfo { span: s, query: q.query(query_map) })
                 .collect(),
         };
 
@@ -408,7 +508,7 @@ fn remove_cycle<'tcx>(
         let (waitee_query, waiter_idx) = waiter.unwrap();
 
         // Extract the waiter we want to resume
-        let waiter = waitee_query.latch.extract_waiter(waiter_idx);
+        let waiter = waitee_query.latch(query_map).unwrap().extract_waiter(waiter_idx);
 
         // Set the cycle error so it will be picked up when resumed
         *waiter.cycle.lock() = Some(error);
@@ -460,12 +560,13 @@ fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
     });
 
     let mut wakelist = Vec::new();
-    let mut jobs: Vec<_> = tcx.queries.collect_active_jobs();
+    let query_map = tcx.queries.try_collect_active_jobs().unwrap();
+    let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;
 
     while jobs.len() > 0 {
-        if remove_cycle(&mut jobs, &mut wakelist, tcx) {
+        if remove_cycle(&query_map, &mut jobs, &mut wakelist, tcx) {
             found_cycle = true;
         }
     }

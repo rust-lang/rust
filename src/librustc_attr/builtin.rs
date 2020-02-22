@@ -37,7 +37,9 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                 .span_label(span, format!("expected one of {}", expected.join(", ")))
                 .emit();
         }
-        AttrError::MissingSince => struct_span_err!(diag, span, E0542, "missing 'since'").emit(),
+        AttrError::MissingSince => {
+            struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        }
         AttrError::MissingFeature => {
             struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
         }
@@ -639,7 +641,7 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
         let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-        feature_err(sess, *feature, cfg_span, &explain).emit()
+        feature_err(sess, *feature, cfg_span, &explain).emit();
     }
 }
 
@@ -838,6 +840,7 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
+    ReprNoNiche,
 }
 
 #[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
@@ -893,6 +896,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         sym::packed => Some(ReprPacked(1)),
                         sym::simd => Some(ReprSimd),
                         sym::transparent => Some(ReprTransparent),
+                        sym::no_niche => Some(ReprNoNiche),
                         name => int_type_of_word(name).map(ReprInt),
                     };
 

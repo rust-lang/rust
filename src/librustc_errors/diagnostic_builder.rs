@@ -106,7 +106,11 @@ impl<'a> DiagnosticBuilder<'a> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     pub fn emit_unless(&mut self, delay: bool) {
-        if delay { self.delay_as_bug() } else { self.emit() }
+        if delay {
+            self.delay_as_bug();
+        } else {
+            self.emit();
+        }
     }
 
     /// Stashes diagnostic for possible later improvement in a different,
@@ -186,8 +190,22 @@ impl<'a> DiagnosticBuilder<'a> {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
+    pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self {
         self.0.diagnostic.span_label(span, label);
+        self
+    }
+
+    /// Labels all the given spans with the provided label.
+    /// See `span_label` for more information.
+    pub fn span_labels(
+        &mut self,
+        spans: impl IntoIterator<Item = Span>,
+        label: impl AsRef<str>,
+    ) -> &mut Self {
+        let label = label.as_ref();
+        for span in spans {
+            self.0.diagnostic.span_label(span, label);
+        }
         self
     }
 
@@ -355,6 +373,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
+        debug!("Created new diagnostic");
         DiagnosticBuilder(Box::new(DiagnosticBuilderInner {
             handler,
             diagnostic,

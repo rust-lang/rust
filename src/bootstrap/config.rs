@@ -82,6 +82,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
 
+    pub use_lld: bool,
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
@@ -115,6 +116,7 @@ pub struct Config {
     pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
     pub jemalloc: bool,
+    pub control_flow_guard: bool,
 
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
@@ -321,6 +323,7 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     lld: Option<bool>,
+    use_lld: Option<bool>,
     llvm_tools: Option<bool>,
     lldb: Option<bool>,
     deny_warnings: Option<bool>,
@@ -331,6 +334,7 @@ struct Rust {
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<bool>,
+    control_flow_guard: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -565,6 +569,7 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
+            set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
@@ -577,6 +582,7 @@ impl Config {
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
+            set(&mut config.control_flow_guard, rust.control_flow_guard);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends =

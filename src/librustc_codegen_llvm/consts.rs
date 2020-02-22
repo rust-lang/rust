@@ -78,11 +78,9 @@ pub fn codegen_static_initializer(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
 ) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
-    let static_ = cx.tcx.const_eval_poly(def_id)?;
-
-    let alloc = match static_.val {
-        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset }) if offset.bytes() == 0 => alloc,
-        _ => bug!("static const eval returned {:#?}", static_),
+    let alloc = match cx.tcx.const_eval_poly(def_id)? {
+        ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
+        val => bug!("static const eval returned {:#?}", val),
     };
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
