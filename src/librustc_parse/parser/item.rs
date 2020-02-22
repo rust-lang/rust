@@ -147,10 +147,7 @@ impl<'a> Parser<'a> {
             || self.check_keyword(kw::Default) && self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe])
         {
             // IMPL ITEM
-            let defaultness = self.parse_defaultness();
-            let unsafety = self.parse_unsafety();
-            self.expect_keyword(kw::Impl)?;
-            self.parse_item_impl(attrs, unsafety, defaultness)?
+            self.parse_item_impl(attrs)?
         } else if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
@@ -349,7 +346,7 @@ impl<'a> Parser<'a> {
         err
     }
 
-    /// Parses an implementation item, `impl` keyword is already parsed.
+    /// Parses an implementation item.
     ///
     /// ```
     /// impl<'a, T> TYPE { /* impl items */ }
@@ -363,12 +360,11 @@ impl<'a> Parser<'a> {
     /// "impl" GENERICS "const"? "!"? TYPE "for"? (TYPE | "..") ("where" PREDICATES)? "{" BODY "}"
     /// "impl" GENERICS "const"? "!"? TYPE ("where" PREDICATES)? "{" BODY "}"
     /// ```
-    fn parse_item_impl(
-        &mut self,
-        attrs: &mut Vec<Attribute>,
-        unsafety: Unsafe,
-        defaultness: Defaultness,
-    ) -> PResult<'a, ItemInfo> {
+    fn parse_item_impl(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+        let defaultness = self.parse_defaultness();
+        let unsafety = self.parse_unsafety();
+        self.expect_keyword(kw::Impl)?;
+
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath() {
             self.parse_generics()?
@@ -529,22 +525,13 @@ impl<'a> Parser<'a> {
 
     /// Parses defaultness (i.e., `default` or nothing).
     fn parse_defaultness(&mut self) -> Defaultness {
-        // `pub` is included for better error messages
+        // We are interested in `default` followed by another keyword.
+        // However, we must avoid keywords that occur as binary operators.
+        // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(kw::Default)
-            && self.is_keyword_ahead(
-                1,
-                &[
-                    kw::Impl,
-                    kw::Static,
-                    kw::Const,
-                    kw::Async,
-                    kw::Fn,
-                    kw::Unsafe,
-                    kw::Extern,
-                    kw::Type,
-                    kw::Pub,
-                ],
-            )
+            && self.look_ahead(1, |t| {
+                t.is_non_raw_ident_where(|i| i.is_reserved() && i.name != kw::As)
+            })
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_span)
