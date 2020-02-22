@@ -1,8 +1,13 @@
 error: entry symbol `main` declared multiple times
-  --> $DIR/dupe-symbols-7.rs:12:1
+  --> $DIR/dupe-symbols-8.rs:7:1
    |
-LL | fn main(){}
-   | ^^^^^^^^^^^
+LL | / fn main() {
+LL | |     extern "Rust" {
+LL | |      fn main();
+LL | |     }
+LL | |     unsafe { main(); }
+LL | | }
+   | |_^
    |
    = help: did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
 

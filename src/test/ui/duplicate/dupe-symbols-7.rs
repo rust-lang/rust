@@ -1,7 +1,7 @@
 // build-fail
 
 //
-// error-pattern: entry symbol `main` defined multiple times
+// error-pattern: entry symbol `main` declared multiple times
 
 // FIXME https://github.com/rust-lang/rust/issues/59774
 // normalize-stderr-test "thread.*panicked.*Metadata module not compiled.*\n" -> ""
