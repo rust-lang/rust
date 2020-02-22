@@ -948,8 +948,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let AssocItem { id, ident, vis, defaultness: _, attrs, kind, span, tokens: _ } =
-        item.deref_mut();
+    let Item { id, ident, vis, defaultness: _, attrs, kind, span, tokens: _ } = item.deref_mut();
     walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
     smallvec![item]
 }
@@ -1004,6 +1003,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             attrs,
             id: DUMMY_NODE_ID,
             vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
+            defaultness: Defaultness::Final,
             span,
             kind: ItemKind::Mod(module),
             tokens: None,
@@ -1031,7 +1031,7 @@ pub fn noop_flat_map_item<T: MutVisitor>(
     mut item: P<Item>,
     visitor: &mut T,
 ) -> SmallVec<[P<Item>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, defaultness: _, span, tokens: _ } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     visitor.visit_id(id);
@@ -1049,7 +1049,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     mut item: P<ForeignItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
-    let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, defaultness: _, span, tokens: _ } = item.deref_mut();
     walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
     smallvec![item]
 }

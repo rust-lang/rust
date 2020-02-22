@@ -2411,16 +2411,19 @@ impl VariantData {
     }
 }
 
-/// An item.
-///
-/// The name might be a dummy name in case of anonymous items.
+/// An item definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item<K = ItemKind> {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    /// The name of the item.
+    /// It might be a dummy name in case of anonymous items.
     pub ident: Ident,
+    /// The `default`ness of this item.
+    /// This should only occur in syntactically well-formed code in associated contexts.
+    pub defaultness: Defaultness,
 
     pub kind: K,
 
@@ -2613,19 +2616,7 @@ pub type ForeignItemKind = AssocItemKind;
 
 /// Represents associated items.
 /// These include items in `impl` and `trait` definitions.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AssocItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub defaultness: Defaultness,
-    pub kind: AssocItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
+pub type AssocItem = Item<AssocItemKind>;
 
 /// Represents non-free item kinds.
 ///

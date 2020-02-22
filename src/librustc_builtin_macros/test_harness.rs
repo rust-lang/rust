@@ -162,7 +162,7 @@ impl MutVisitor for EntryPointCleaner {
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry::entry_point_type(&item, self.depth) {
             EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
-                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
+                .map(|ast::Item { id, ident, attrs, kind, vis, defaultness, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str_and_span(
                         "dead_code",
@@ -170,22 +170,13 @@ impl MutVisitor for EntryPointCleaner {
                     ));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+                    let attrs = attrs
+                        .into_iter()
+                        .filter(|attr| !attr.check_name(sym::main) && !attr.check_name(sym::start))
+                        .chain(iter::once(allow_dead_code))
+                        .collect();
 
-                    ast::Item {
-                        id,
-                        ident,
-                        attrs: attrs
-                            .into_iter()
-                            .filter(|attr| {
-                                !attr.check_name(sym::main) && !attr.check_name(sym::start)
-                            })
-                            .chain(iter::once(allow_dead_code))
-                            .collect(),
-                        kind,
-                        vis,
-                        span,
-                        tokens,
-                    }
+                    ast::Item { id, ident, attrs, kind, vis, defaultness, span, tokens }
                 }),
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
@@ -321,6 +312,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: respan(sp, ast::VisibilityKind::Public),
+        defaultness: ast::Defaultness::Final,
         span: sp,
         tokens: None,
     });

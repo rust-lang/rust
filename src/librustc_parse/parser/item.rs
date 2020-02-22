@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
 
         if let Some((ident, kind)) = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis)? {
-            return Ok(Some(P(self.mk_item(lo, ident, kind, vis, attrs))));
+            return Ok(Some(P(self.mk_item(lo, ident, kind, vis, Defaultness::Final, attrs))));
         }
 
         // FAILURE TO PARSE ITEM
@@ -866,7 +866,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, |_| true, &vis)?;
-        let item = self.mk_item(lo, ident, kind, vis, attrs);
+        let item = self.mk_item(lo, ident, kind, vis, Defaultness::Final, attrs);
         self.error_on_foreign_const(&item);
         Ok(P(item))
     }
@@ -1420,10 +1420,11 @@ impl<'a> Parser<'a> {
         ident: Ident,
         kind: K,
         vis: Visibility,
+        defaultness: Defaultness,
         attrs: Vec<Attribute>,
     ) -> Item<K> {
         let span = lo.to(self.prev_span);
-        Item { ident, attrs, id: DUMMY_NODE_ID, kind, vis, span, tokens: None }
+        Item { ident, attrs, id: DUMMY_NODE_ID, kind, vis, defaultness, span, tokens: None }
     }
 }
 

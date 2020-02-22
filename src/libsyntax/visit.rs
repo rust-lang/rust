@@ -526,7 +526,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
 }
 
 pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignItem) {
-    let ForeignItem { id, span, ident, vis, attrs, kind, tokens: _ } = item;
+    let ForeignItem { id, span, ident, vis, defaultness: _, attrs, kind, tokens: _ } = item;
     walk_nested_item(visitor, *id, *span, *ident, vis, attrs, kind, FnCtxt::Foreign);
 }
 

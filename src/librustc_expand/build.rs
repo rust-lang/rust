@@ -588,6 +588,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind,
             vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            defaultness: ast::Defaultness::Final,
             span,
             tokens: None,
         })
