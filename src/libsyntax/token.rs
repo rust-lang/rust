@@ -147,36 +147,30 @@ impl Lit {
 
 pub fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
-    token_can_begin_expr(&ident_token)
-}
 
-pub fn token_can_begin_expr(ident_token: &Token) -> bool {
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
-        || match ident_token.kind {
-            TokenKind::Ident(ident, _) => [
-                kw::Async,
-                kw::Do,
-                kw::Box,
-                kw::Break,
-                kw::Continue,
-                kw::False,
-                kw::For,
-                kw::If,
-                kw::Let,
-                kw::Loop,
-                kw::Match,
-                kw::Move,
-                kw::Return,
-                kw::True,
-                kw::Unsafe,
-                kw::While,
-                kw::Yield,
-                kw::Static,
-            ]
-            .contains(&ident),
-            _ => false,
-        }
+        || [
+            kw::Async,
+            kw::Do,
+            kw::Box,
+            kw::Break,
+            kw::Continue,
+            kw::False,
+            kw::For,
+            kw::If,
+            kw::Let,
+            kw::Loop,
+            kw::Match,
+            kw::Move,
+            kw::Return,
+            kw::True,
+            kw::Unsafe,
+            kw::While,
+            kw::Yield,
+            kw::Static,
+        ]
+        .contains(&name)
 }
 
 fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
@@ -369,8 +363,8 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => match **nt {
+                NtIdent(ident, is_raw) => ident_can_begin_expr(ident.name, ident.span, is_raw),
                 NtLiteral(..) |
-                NtIdent(..)   |
                 NtExpr(..)    |
                 NtBlock(..)   |
                 NtPath(..)    |
@@ -397,7 +391,8 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match **nt {
-                NtIdent(..) | NtTy(..) | NtPath(..) | NtLifetime(..) => true,
+                NtIdent(ident, is_raw) => ident_can_begin_type(ident.name, ident.span, is_raw),
+                NtTy(..) | NtPath(..) | NtLifetime(..) => true,
                 _ => false,
             },
             _ => false,
@@ -442,6 +437,7 @@ impl Token {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
+                NtIdent(ident, false) if ident.name.is_bool_lit() => true,
                 NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
                 _ => false,
             },

@@ -753,6 +753,12 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
     match token.kind {
         token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
+        token::Interpolated(ref nt) => match **nt {
+            token::NtIdent(ident, is_raw) if ident.name != kw::Underscore => {
+                Some((ident.name, is_raw))
+            }
+            _ => None,
+        },
         _ => None,
     }
 }
