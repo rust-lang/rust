@@ -1456,7 +1456,7 @@ impl MacroFixture {
 
 pub(crate) fn parse_macro(macro_definition: &str) -> MacroFixture {
     let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
-    let macro_definition: ast::MacroCall =
+    let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
     let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
