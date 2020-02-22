@@ -1,5 +1,6 @@
 #![warn(clippy::missing_const_for_fn)]
-#![allow(clippy::let_and_return)]
+#![allow(incomplete_features, clippy::let_and_return)]
+#![feature(const_generics)]
 
 use std::mem::transmute;
 
@@ -11,6 +12,10 @@ impl Game {
     // Could be const
     pub fn new() -> Self {
         Self { guess: 42 }
+    }
+
+    fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
+        b
     }
 }
 
