@@ -15,7 +15,7 @@ LL |         Some(_z @ ref _y) => {}
    |              |    |
    |              |    value borrowed here after move
    |              value moved into `_z` here
-   |              move occurs because `_z` has type `X` which does implement the `Copy` trait
+   |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
 
 error: cannot move out of value because it is borrowed
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:29:14
@@ -34,7 +34,7 @@ LL |         Some(_z @ ref mut _y) => {}
    |              |    |
    |              |    value borrowed here after move
    |              value moved into `_z` here
-   |              move occurs because `_z` has type `X` which does implement the `Copy` trait
+   |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:19

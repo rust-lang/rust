@@ -12,6 +12,12 @@ fn creation() {
 }
 
 #[test]
+#[should_panic]
+fn new_overflow() {
+    let _ = Duration::new(::core::u64::MAX, 1_000_000_000);
+}
+
+#[test]
 fn secs() {
     assert_eq!(Duration::new(0, 0).as_secs(), 0);
     assert_eq!(Duration::new(0, 500_000_005).as_secs(), 0);

@@ -659,7 +659,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
             });
             if !conflicts_ref.is_empty() {
                 let occurs_because = format!(
-                    "move occurs because `{}` has type `{}` which does implement the `Copy` trait",
+                    "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
                     name,
                     tables.node_type(pat.hir_id),
                 );
