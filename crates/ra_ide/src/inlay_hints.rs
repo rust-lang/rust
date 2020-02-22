@@ -50,49 +50,51 @@ fn get_inlay_hints(
     let analyzer = Lazy::new(move || sb.analyze(hir::InFile::new(file_id.into(), node), None));
     match_ast! {
         match node {
-            ast::LetStmt(it) => {
-                if it.ascribed_type().is_some() {
-                    return None;
-                }
-                let pat = it.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
-            },
-            ast::LambdaExpr(it) => {
-                it.param_list().map(|param_list| {
-                    param_list
-                        .params()
-                        .filter(|closure_param| closure_param.ascribed_type().is_none())
-                        .filter_map(|closure_param| closure_param.pat())
-                        .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, false, max_inlay_hint_length))
-                });
-            },
-            ast::ForExpr(it) => {
-                let pat = it.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
-            },
-            ast::IfExpr(it) => {
-                let pat = it.condition()?.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
-            },
-            ast::WhileExpr(it) => {
-                let pat = it.condition()?.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
-            },
-            ast::MatchArmList(it) => {
-                it.arms()
-                    .filter_map(|match_arm| match_arm.pat())
-                    .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, true, max_inlay_hint_length));
-            },
             ast::CallExpr(it) => {
                 get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
             ast::MethodCallExpr(it) => {
                 get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
+            ast::BindPat(it) => {
+                if should_not_display_type_hint(&it) {
+                    return None;
+                }
+                let pat = ast::Pat::from(it);
+                let ty = analyzer.type_of_pat(db, &pat)?;
+                if ty.is_unknown() {
+                    return None;
+                }
+
+                acc.push(
+                    InlayHint {
+                        range: pat.syntax().text_range(),
+                        kind: InlayKind::TypeHint,
+                        label: ty.display_truncated(db, max_inlay_hint_length).to_string().into(),
+                    }
+                );
+            },
             _ => (),
         }
     };
     Some(())
+}
+
+fn should_not_display_type_hint(bind_pat: &ast::BindPat) -> bool {
+    for node in bind_pat.syntax().ancestors() {
+        match_ast! {
+            match node {
+                ast::LetStmt(it) => {
+                    return it.ascribed_type().is_some()
+                },
+                ast::Param(it) => {
+                    return it.ascribed_type().is_some()
+                },
+                _ => (),
+            }
+        }
+    }
+    false
 }
 
 fn get_param_name_hints(
@@ -158,76 +160,6 @@ fn get_fn_signature(
         }
         _ => None,
     }
-}
-
-fn get_pat_type_hints(
-    acc: &mut Vec<InlayHint>,
-    db: &RootDatabase,
-    analyzer: &SourceAnalyzer,
-    root_pat: ast::Pat,
-    skip_root_pat_hint: bool,
-    max_inlay_hint_length: Option<usize>,
-) {
-    let original_pat = &root_pat.clone();
-
-    let hints = get_leaf_pats(root_pat)
-        .into_iter()
-        .filter(|pat| !skip_root_pat_hint || pat != original_pat)
-        .filter_map(|pat| {
-            let ty = analyzer.type_of_pat(db, &pat)?;
-            if ty.is_unknown() {
-                return None;
-            }
-            Some((pat.syntax().text_range(), ty))
-        })
-        .map(|(range, pat_type)| InlayHint {
-            range,
-            kind: InlayKind::TypeHint,
-            label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
-        });
-
-    acc.extend(hints);
-}
-
-fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
-    let mut pats_to_process = std::collections::VecDeque::<ast::Pat>::new();
-    pats_to_process.push_back(root_pat);
-
-    let mut leaf_pats = Vec::new();
-
-    while let Some(maybe_leaf_pat) = pats_to_process.pop_front() {
-        match &maybe_leaf_pat {
-            ast::Pat::BindPat(bind_pat) => match bind_pat.pat() {
-                Some(pat) => pats_to_process.push_back(pat),
-                _ => leaf_pats.push(maybe_leaf_pat),
-            },
-            ast::Pat::OrPat(ref_pat) => pats_to_process.extend(ref_pat.pats()),
-            ast::Pat::TuplePat(tuple_pat) => pats_to_process.extend(tuple_pat.args()),
-            ast::Pat::RecordPat(record_pat) => {
-                if let Some(pat_list) = record_pat.record_field_pat_list() {
-                    pats_to_process.extend(
-                        pat_list
-                            .record_field_pats()
-                            .filter_map(|record_field_pat| {
-                                record_field_pat
-                                    .pat()
-                                    .filter(|pat| pat.syntax().kind() != SyntaxKind::BIND_PAT)
-                            })
-                            .chain(pat_list.bind_pats().map(|bind_pat| {
-                                bind_pat.pat().unwrap_or_else(|| ast::Pat::from(bind_pat))
-                            })),
-                    );
-                }
-            }
-            ast::Pat::TupleStructPat(tuple_struct_pat) => {
-                pats_to_process.extend(tuple_struct_pat.args())
-            }
-            ast::Pat::ParenPat(inner_pat) => pats_to_process.extend(inner_pat.pat()),
-            ast::Pat::RefPat(ref_pat) => pats_to_process.extend(ref_pat.pat()),
-            _ => (),
-        }
-    }
-    leaf_pats
 }
 
 #[cfg(test)]
