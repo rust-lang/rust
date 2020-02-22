@@ -32,9 +32,9 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 
         let emitter = BufferEmitter { messages: Lrc::clone(&buffered_messages) };
 
-        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let handler = Handler::with_emitter(false, None, Box::new(emitter));
-        let sess = ParseSess::with_span_handler(handler, cm);
+        let sess = ParseSess::with_span_handler(handler, sm);
         let source_file = sess.source_map().new_source_file(
             FileName::Custom(String::from("doctest")),
             dox[code_block.code].to_owned(),

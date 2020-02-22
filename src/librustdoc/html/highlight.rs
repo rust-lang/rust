@@ -38,11 +38,11 @@ pub fn render_with_highlighting(
     }
 
     let sess = ParseSess::with_silent_emitter();
-    let fm = sess
+    let sf = sess
         .source_map()
         .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src.to_owned());
     let highlight_result = rustc_driver::catch_fatal_errors(|| {
-        let lexer = lexer::StringReader::new(&sess, fm, None);
+        let lexer = lexer::StringReader::new(&sess, sf, None);
         let mut classifier = Classifier::new(lexer, sess.source_map());
 
         let mut highlighted_source = vec![];
