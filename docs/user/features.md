@@ -159,11 +159,11 @@ active, will pick unique colors for identifiers.
 
 ### Code hints
 
-Rust Analyzer has two types of hints to show the information about the code:
+Rust-analyzer has two types of hints to show the information about the code:
 
 * hover hints, appearing on hover on any element.
 
-Contains extended information on the language item hovered.
+These contain extended information on the hovered language item.
 
 * inlay hints, shown near the element hinted directly in the editor.
 
@@ -176,8 +176,8 @@ Two types of inlay hints are displayed currently:
 
 In VS Code, the following settings can be used to configure the inlay hints:
 
-* rust-analyzer.displayInlayHints — toggles inlay hints display on or off
-* rust-analyzer.maxInlayHintLength — shortens the hints if their length exceed the value specified. If no value is specified (`null`), no shorteninng is applied.
+* `rust-analyzer.displayInlayHints` — toggles inlay hints display on or off
+* rust-analyzer.maxInlayHintLength — shortens the hints if their length exceeds the value specified. If no value is specified (`null`), no shorteninng is applied.
 
-**Note:** VS Code does not have a native support for inlay hints [yet](https://github.com/microsoft/vscode/issues/16221) and the hints are implemented using decorations.
+**Note:** VS Code does not have native support for inlay hints [yet](https://github.com/microsoft/vscode/issues/16221) and the hints are implemented using decorations.
 This approach has limitations: the caret movement near the end of the hint may look [weird](https://github.com/rust-analyzer/rust-analyzer/issues/1623).
