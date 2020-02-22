@@ -1,6 +1,6 @@
 trait MyTrait<T>: Iterator {
-    //~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
     Item = T;
+    //~^ ERROR expected one of `!` or `::`, found `=`
 }
 
 fn main() {}

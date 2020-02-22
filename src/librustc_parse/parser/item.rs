@@ -5,12 +5,12 @@ use super::{FollowedByType, Parser, PathStyle};
 use crate::maybe_whole;
 
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
-use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
-use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, Unsafe};
+use syntax::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind};
+use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
 use syntax::ast::{FnHeader, ForeignItem, Mutability, Visibility, VisibilityKind};
@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
             Some(item)
         });
 
-        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed)?;
+        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
         if let Some(ref item) = item {
             self.error_on_illegal_default(item.defaultness);
         }
@@ -91,21 +91,25 @@ impl<'a> Parser<'a> {
     fn parse_item_common(
         &mut self,
         mut attrs: Vec<Attribute>,
-        macros_allowed: bool,
-        attributes_allowed: bool,
+        mac_allowed: bool,
+        attrs_allowed: bool,
+        req_name: ReqName,
     ) -> PResult<'a, Option<Item>> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let mut def = self.parse_defaultness();
-        let kind = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis, &mut def)?;
+        let kind = self.parse_item_kind(&mut attrs, mac_allowed, lo, &vis, &mut def, req_name)?;
         if let Some((ident, kind)) = kind {
-            return Ok(Some(self.mk_item(lo, ident, kind, vis, def, attrs)));
+            let span = lo.to(self.prev_span);
+            let id = DUMMY_NODE_ID;
+            let item = Item { ident, attrs, id, kind, vis, defaultness: def, span, tokens: None };
+            return Ok(Some(item));
         }
 
         // At this point, we have failed to parse an item.
         self.error_on_unmatched_vis(&vis);
         self.error_on_unmatched_defaultness(def);
-        if !attributes_allowed {
+        if !attrs_allowed {
             self.recover_attrs_no_item(&attrs)?;
         }
         Ok(None)
@@ -151,6 +155,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: &Visibility,
         def: &mut Defaultness,
+        req_name: ReqName,
     ) -> PResult<'a, Option<ItemInfo>> {
         let info = if self.eat_keyword(kw::Use) {
             // USE ITEM
@@ -159,7 +164,7 @@ impl<'a> Parser<'a> {
             (Ident::invalid(), ItemKind::Use(P(tree)))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(&mut false, attrs, |_| true)?;
+            let (ident, sig, generics, body) = self.parse_fn(&mut false, attrs, req_name)?;
             (ident, ItemKind::Fn(sig, generics, body))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -367,23 +372,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
-    /// Given this code `path(`, it seems like this is not
-    /// setting the visibility of a macro invocation,
-    /// but rather a mistyped method declaration.
-    /// Create a diagnostic pointing out that `fn` is missing.
-    ///
-    /// ```
-    /// x |     pub   path(&self) {
-    ///   |         ^ missing `fn`, `type`, `const`, or `static`
-    /// ```
-    fn missing_nested_item_kind_err(&self, prev_span: Span) -> DiagnosticBuilder<'a> {
-        let sp = prev_span.between(self.token.span);
-        let expected_kinds = "missing `fn`, `type`, `const`, or `static`";
-        let mut err = self.struct_span_err(sp, &format!("{} for item declaration", expected_kinds));
-        err.span_label(sp, expected_kinds);
-        err
-    }
-
     /// Parses an implementation item.
     ///
     /// ```
@@ -457,8 +445,7 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items =
-            self.parse_item_list(attrs, |p, at_end| p.parse_impl_item(at_end).map(Some).map(Some))?;
+        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item())?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -517,7 +504,7 @@ impl<'a> Parser<'a> {
     fn parse_item_list<T>(
         &mut self,
         attrs: &mut Vec<Attribute>,
-        mut parse_item: impl FnMut(&mut Parser<'a>, &mut bool) -> PResult<'a, Option<Option<T>>>,
+        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -528,8 +515,7 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
-            let mut at_end = false;
-            match parse_item(self, &mut at_end) {
+            match parse_item(self) {
                 Ok(None) => {
                     // We have to bail or we'll potentially never make progress.
                     let non_item_span = self.token.span;
@@ -543,11 +529,11 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Some(item)) => items.extend(item),
                 Err(mut err) => {
-                    err.emit();
-                    if !at_end {
-                        self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
-                        break;
-                    }
+                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                    err.span_label(open_brace_span, "while parsing this item list starting here")
+                        .span_label(self.prev_span, "the item list ends here")
+                        .emit();
+                    break;
                 }
             }
         }
@@ -644,103 +630,69 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
-            let items = self.parse_item_list(attrs, |p, at_end| {
-                p.parse_trait_item(at_end).map(Some).map(Some)
-            })?;
+            let items = self.parse_item_list(attrs, |p| p.parse_trait_item())?;
             Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items)))
         }
     }
 
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, P<AssocItem>> {
-        maybe_whole!(self, NtImplItem, |x| x);
-        self.parse_assoc_item(at_end, |_| true)
+    pub fn parse_impl_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        maybe_whole!(self, NtImplItem, |x| Some(Some(x)));
+        self.parse_assoc_item(|_| true)
     }
 
-    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, P<AssocItem>> {
-        maybe_whole!(self, NtTraitItem, |x| x);
+    pub fn parse_trait_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        maybe_whole!(self, NtTraitItem, |x| Some(Some(x)));
         // This is somewhat dubious; We don't want to allow
         // param names to be left off if there is a definition...
         //
         // We don't allow param names to be left off in edition 2018.
-        self.parse_assoc_item(at_end, |t| t.span.rust_2018())
+        self.parse_assoc_item(|t| t.span.rust_2018())
     }
 
     /// Parses associated items.
-    fn parse_assoc_item(
-        &mut self,
-        at_end: &mut bool,
-        req_name: ReqName,
-    ) -> PResult<'a, P<AssocItem>> {
+    fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_assoc_item_(at_end, attrs, req_name);
+            let item = this.parse_assoc_item_(attrs, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
         self.unclosed_delims.append(&mut unclosed_delims);
         // See `parse_item` for why this clause is here.
-        if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-            item.tokens = Some(tokens);
+        if let Some(Some(item)) = &mut item {
+            if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                item.tokens = Some(tokens);
+            }
         }
-        self.error_on_assoc_static(&item);
-        Ok(P(item))
-    }
-
-    fn error_on_assoc_static(&self, item: &AssocItem) {
-        if let AssocItemKind::Static(..) = item.kind {
-            self.struct_span_err(item.span, "associated `static` items are not allowed").emit();
-        }
+        Ok(item)
     }
 
     fn parse_assoc_item_(
         &mut self,
-        at_end: &mut bool,
-        mut attrs: Vec<Attribute>,
+        attrs: Vec<Attribute>,
         req_name: ReqName,
-    ) -> PResult<'a, AssocItem> {
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let defaultness = self.parse_defaultness();
-        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, req_name, &vis)?;
-        let span = lo.to(self.prev_span);
-        let id = DUMMY_NODE_ID;
-        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
-    }
-
-    fn parse_assoc_item_kind(
-        &mut self,
-        at_end: &mut bool,
-        attrs: &mut Vec<Attribute>,
-        req_name: ReqName,
-        vis: &Visibility,
-    ) -> PResult<'a, (Ident, AssocItemKind)> {
-        if self.eat_keyword(kw::Type) {
-            match self.parse_type_alias()? {
-                (ident, ItemKind::TyAlias(a, b, c)) => Ok((ident, AssocItemKind::TyAlias(a, b, c))),
-                _ => unreachable!(),
-            }
-        } else if self.check_fn_front_matter() {
-            let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, req_name)?;
-            Ok((ident, AssocItemKind::Fn(sig, generics, body)))
-        } else if self.is_static_global() {
-            self.bump(); // `static`
-            let mutbl = self.parse_mutability();
-            let (ident, ty, expr) = self.parse_item_const_common(Some(mutbl))?;
-            Ok((ident, AssocItemKind::Static(ty, mutbl, expr)))
-        } else if self.eat_keyword(kw::Const) {
-            let (ident, ty, expr) = self.parse_item_const_common(None)?;
-            Ok((ident, AssocItemKind::Const(ty, expr)))
-        } else if self.isnt_macro_invocation() {
-            Err(self.missing_nested_item_kind_err(self.prev_span))
-        } else if self.token.is_path_start() {
-            let mac = self.parse_item_macro(&vis)?;
-            *at_end = true;
-            Ok((Ident::invalid(), AssocItemKind::Macro(mac)))
-        } else {
-            self.recover_attrs_no_item(attrs)?;
-            self.unexpected()
-        }
+    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        let it = self.parse_item_common(attrs, true, false, req_name)?;
+        Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
+            let kind = match kind {
+                ItemKind::Mac(a) => AssocItemKind::Macro(a),
+                ItemKind::Fn(a, b, c) => AssocItemKind::Fn(a, b, c),
+                ItemKind::TyAlias(a, b, c) => AssocItemKind::TyAlias(a, b, c),
+                ItemKind::Const(a, c) => AssocItemKind::Const(a, c),
+                ItemKind::Static(a, _, b) => {
+                    self.struct_span_err(span, "associated `static` items are not allowed").emit();
+                    AssocItemKind::Const(a, b)
+                }
+                _ => {
+                    let span = self.sess.source_map().def_span(span);
+                    self.struct_span_err(span, "item kind not supported in `trait` or `impl`")
+                        .emit();
+                    return None;
+                }
+            };
+            Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
+        }))
     }
 
     /// Parses a `type` alias with the following grammar:
@@ -907,7 +859,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_item_foreign_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p, _| p.parse_foreign_item())?;
+        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item())?;
         let module = ast::ForeignMod { abi, items };
         Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
     }
@@ -917,17 +869,17 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtForeignItem, |item| Some(Some(item)));
 
         let attrs = self.parse_outer_attributes()?;
-        let it = self.parse_item_common(attrs, true, false)?;
+        let it = self.parse_item_common(attrs, true, false, |_| true)?;
         Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
             self.error_on_illegal_default(defaultness);
             let kind = match kind {
-                ItemKind::Mac(a) => AssocItemKind::Macro(a),
-                ItemKind::Fn(a, b, c) => AssocItemKind::Fn(a, b, c),
-                ItemKind::TyAlias(a, b, c) => AssocItemKind::TyAlias(a, b, c),
-                ItemKind::Static(a, b, c) => AssocItemKind::Static(a, b, c),
+                ItemKind::Mac(a) => ForeignItemKind::Macro(a),
+                ItemKind::Fn(a, b, c) => ForeignItemKind::Fn(a, b, c),
+                ItemKind::TyAlias(a, b, c) => ForeignItemKind::TyAlias(a, b, c),
+                ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
                 ItemKind::Const(a, b) => {
                     self.error_on_foreign_const(span, ident);
-                    AssocItemKind::Static(a, Mutability::Not, b)
+                    ForeignItemKind::Static(a, Mutability::Not, b)
                 }
                 _ => {
                     let span = self.sess.source_map().def_span(span);
@@ -989,22 +941,6 @@ impl<'a> Parser<'a> {
     ///
     /// When `m` is `"const"`, `$ident` may also be `"_"`.
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
-        let (id, ty, expr) = self.parse_item_const_common(m)?;
-        let item = match m {
-            Some(m) => ItemKind::Static(ty, m, expr),
-            None => ItemKind::Const(ty, expr),
-        };
-        Ok((id, item))
-    }
-
-    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
-    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
-    ///
-    /// When `m` is `"const"`, `$ident` may also be `"_"`.
-    fn parse_item_const_common(
-        &mut self,
-        m: Option<Mutability>,
-    ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
         let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
 
         // Parse the type of a `const` or `static mut?` item.
@@ -1017,7 +953,12 @@ impl<'a> Parser<'a> {
 
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
         self.expect_semi()?;
-        Ok((id, ty, expr))
+
+        let item = match m {
+            Some(m) => ItemKind::Static(ty, m, expr),
+            None => ItemKind::Const(ty, expr),
+        };
+        Ok((id, item))
     }
 
     /// We were supposed to parse `:` but the `:` was missing.
@@ -1476,19 +1417,6 @@ impl<'a> Parser<'a> {
             return Ok(false);
         }
         Ok(true)
-    }
-
-    fn mk_item<K>(
-        &self,
-        lo: Span,
-        ident: Ident,
-        kind: K,
-        vis: Visibility,
-        defaultness: Defaultness,
-        attrs: Vec<Attribute>,
-    ) -> Item<K> {
-        let span = lo.to(self.prev_span);
-        Item { ident, attrs, id: DUMMY_NODE_ID, kind, vis, defaultness, span, tokens: None }
     }
 }
 

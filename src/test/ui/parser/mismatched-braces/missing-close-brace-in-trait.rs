@@ -1,11 +1,11 @@
 trait T {
-//~^ ERROR `main` function not found in crate `missing_close_brace_in_trait`
     fn foo(&self);
 
 pub(crate) struct Bar<T>();
-//~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
+//~^ ERROR item kind not supported in `trait` or `impl`
 
 impl T for Bar<usize> {
+//~^ ERROR item kind not supported in `trait` or `impl`
 fn foo(&self) {}
 }
 

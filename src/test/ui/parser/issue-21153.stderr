@@ -1,11 +1,13 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-21153.rs:1:29
+error: expected one of `!` or `::`, found `=`
+  --> $DIR/issue-21153.rs:2:10
    |
-LL |   trait MyTrait<T>: Iterator {
-   |  _____________________________^
-LL | |
-LL | |     Item = T;
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | trait MyTrait<T>: Iterator {
+   |                            - while parsing this item list starting here
+LL |     Item = T;
+   |          ^ expected one of `!` or `::`
+LL |
+LL | }
+   | - the item list ends here
 
 error: aborting due to previous error
 

@@ -865,15 +865,15 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::TraitItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_trait_item(&mut false)?);
+            while let Some(item) = this.parse_trait_item()? {
+                items.extend(item);
             }
             AstFragment::TraitItems(items)
         }
         AstFragmentKind::ImplItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_impl_item(&mut false)?);
+            while let Some(item) = this.parse_impl_item()? {
+                items.extend(item);
             }
             AstFragment::ImplItems(items)
         }

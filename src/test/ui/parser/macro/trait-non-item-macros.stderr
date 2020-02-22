@@ -1,13 +1,22 @@
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `static`, `type`, `unsafe`, or identifier, found `2`
-  --> $DIR/trait-non-item-macros.rs:2:19
+error: macro expansion ignores token `2` and any following
+  --> $DIR/trait-non-item-macros.rs:3:9
    |
-LL |     ($a:expr) => ($a)
-   |                   ^^ expected one of 11 possible tokens
+LL |         $a
+   |         ^^
 ...
 LL |     bah!(2);
-   |     -------- in this macro invocation
+   |     -------- caused by the macro expansion here
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the usage of `bah!` is likely invalid in trait item context
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/trait-non-item-macros.rs:12:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
