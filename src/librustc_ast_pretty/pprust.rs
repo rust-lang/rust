@@ -1016,8 +1016,8 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
-        let ast::ForeignItem { id, span, ident, attrs, kind, vis, tokens: _ } = item;
-        self.print_nested_item_kind(*id, *span, *ident, attrs, ast::Defaultness::Final, kind, vis);
+        let ast::Item { id, span, ident, attrs, kind, vis, defaultness, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, *defaultness, kind, vis);
     }
 
     fn print_nested_item_kind(
