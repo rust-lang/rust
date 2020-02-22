@@ -14,8 +14,8 @@ use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
-use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
@@ -1096,7 +1096,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     attr.span,
                     ast::CRATE_NODE_ID,
                     "unused doc comment",
-                    BuiltinLintDiagnostics::UnusedDocComment(attr.span));
+                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                );
             }
         }
     }
