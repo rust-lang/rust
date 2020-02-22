@@ -622,6 +622,44 @@ fn test() {
     );
 }
 
+#[test]
+fn coerce_unsize_super_trait_cycle() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+trait A {}
+trait B: C + A {}
+trait C: B {}
+trait D: C
+
+struct S;
+impl A for S {}
+impl B for S {}
+impl C for S {}
+impl D for S {}
+
+fn test() {
+    let obj: &dyn D = &S;
+    let obj: &dyn A = obj;
+}
+"#, true),
+        @r###"
+    [292; 348) '{     ...obj; }': ()
+    [302; 305) 'obj': &dyn D
+    [316; 318) '&S': &S
+    [317; 318) 'S': S
+    [328; 331) 'obj': &dyn A
+    [342; 345) 'obj': &dyn D
+    "###
+    );
+}
+
 #[ignore]
 #[test]
 fn coerce_unsize_generic() {

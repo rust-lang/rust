@@ -241,7 +241,8 @@ impl Ty {
             TypeNs::TraitId(trait_) => {
                 // if this is a bare dyn Trait, we'll directly put the required ^0 for the self type in there
                 let self_ty = if remaining_segments.len() == 0 { Some(Ty::Bound(0)) } else { None };
-                let trait_ref = TraitRef::from_resolved_path(ctx, trait_, resolved_segment, self_ty);
+                let trait_ref =
+                    TraitRef::from_resolved_path(ctx, trait_, resolved_segment, self_ty);
                 return if remaining_segments.len() == 1 {
                     let segment = remaining_segments.first().unwrap();
                     let associated_ty = associated_type_by_name_including_super_traits(

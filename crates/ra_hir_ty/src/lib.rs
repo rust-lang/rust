@@ -814,13 +814,16 @@ pub trait TypeWalk {
     where
         Self: Sized,
     {
-        self.fold_binders(&mut |ty, binders| match ty {
-            Ty::Bound(idx) if idx as usize >= binders => {
-                assert!(idx as i32 >= -n);
-                Ty::Bound((idx as i32 + n) as u32)
-            }
-            ty => ty,
-        }, 0)
+        self.fold_binders(
+            &mut |ty, binders| match ty {
+                Ty::Bound(idx) if idx as usize >= binders => {
+                    assert!(idx as i32 >= -n);
+                    Ty::Bound((idx as i32 + n) as u32)
+                }
+                ty => ty,
+            },
+            0,
+        )
     }
 }
 

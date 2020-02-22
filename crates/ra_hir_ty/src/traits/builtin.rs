@@ -316,12 +316,10 @@ fn super_trait_object_unsize_impl_datum(
     let self_bounds = vec![GenericPredicate::Implemented(self_trait_ref.clone())];
 
     // we need to go from our trait to the super trait, substituting type parameters
-    let mut path = crate::utils::find_super_trait_path(db, data.super_trait, data.trait_);
-    path.pop(); // the last one is our current trait, we don't need that
-    path.reverse(); // we want to go from trait to super trait
+    let path = crate::utils::find_super_trait_path(db, data.trait_, data.super_trait);
 
     let mut current_trait_ref = self_trait_ref;
-    for t in path {
+    for t in path.into_iter().skip(1) {
         let bounds = db.generic_predicates(current_trait_ref.trait_.into());
         let super_trait_ref = bounds
             .iter()

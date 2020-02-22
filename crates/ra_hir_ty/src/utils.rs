@@ -62,25 +62,36 @@ pub(super) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<Tr
     result
 }
 
-/// Finds a path from a trait to one of its descendant traits. Returns an empty
+/// Finds a path from a trait to one of its super traits. Returns an empty
 /// vector if there is no path.
 pub(super) fn find_super_trait_path(
     db: &impl DefDatabase,
-    super_trait: TraitId,
     trait_: TraitId,
+    super_trait: TraitId,
 ) -> Vec<TraitId> {
-    if trait_ == super_trait {
-        return vec![trait_];
-    }
+    let mut result = Vec::with_capacity(2);
+    result.push(trait_);
+    return if go(db, super_trait, &mut result) { result } else { Vec::new() };
 
-    for tt in direct_super_traits(db, trait_) {
-        let mut path = find_super_trait_path(db, super_trait, tt);
-        if !path.is_empty() {
-            path.push(trait_);
-            return path;
+    fn go(db: &impl DefDatabase, super_trait: TraitId, path: &mut Vec<TraitId>) -> bool {
+        let trait_ = *path.last().unwrap();
+        if trait_ == super_trait {
+            return true;
         }
+
+        for tt in direct_super_traits(db, trait_) {
+            if path.contains(&tt) {
+                continue;
+            }
+            path.push(tt);
+            if go(db, super_trait, path) {
+                return true;
+            } else {
+                path.pop();
+            }
+        }
+        false
     }
-    Vec::new()
 }
 
 pub(super) fn associated_type_by_name_including_super_traits(
