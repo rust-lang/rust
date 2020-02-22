@@ -320,5 +320,161 @@ error: item kind not supported in `extern` block
 LL |     default macro_rules! foo {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 43 previous errors
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:66:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:68:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/default-on-wrong-item-kind.rs:70:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:74:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:76:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:79:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:81:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:83:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:85:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:87:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:89:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:93:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:95:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:101:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:103:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/default-on-wrong-item-kind.rs:105:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:109:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:111:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:114:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:116:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:118:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:120:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:122:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:124:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:128:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:130:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 69 previous errors
 

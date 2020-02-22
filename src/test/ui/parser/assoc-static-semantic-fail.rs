@@ -10,10 +10,12 @@ impl S {
     //~^ ERROR associated `static` items are not allowed
     static IB: u8;
     //~^ ERROR associated `static` items are not allowed
+    //~| ERROR associated constant in `impl` without body
     default static IC: u8 = 0;
     //~^ ERROR associated `static` items are not allowed
     pub(crate) default static ID: u8;
     //~^ ERROR associated `static` items are not allowed
+    //~| ERROR associated constant in `impl` without body
 }
 
 trait T {
@@ -35,9 +37,11 @@ impl T for S {
     //~^ ERROR associated `static` items are not allowed
     static TB: u8;
     //~^ ERROR associated `static` items are not allowed
+    //~| ERROR associated constant in `impl` without body
     default static TC: u8 = 0;
     //~^ ERROR associated `static` items are not allowed
     pub default static TD: u8;
     //~^ ERROR associated `static` items are not allowed
+    //~| ERROR associated constant in `impl` without body
     //~| ERROR unnecessary visibility qualifier
 }

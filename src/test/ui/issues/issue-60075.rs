@@ -4,7 +4,8 @@ trait T {
     fn qux() -> Option<usize> {
         let _ = if true {
         });
-//~^ ERROR expected one of `async`
-//~| ERROR expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
+//~^ ERROR non-item in item list
+//~| ERROR mismatched closing delimiter: `)`
+//~| ERROR expected one of `.`, `;`
         Some(4)
     }

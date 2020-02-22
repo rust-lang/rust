@@ -60,3 +60,73 @@ extern "C" {
     default macro_rules! foo {} //~ ERROR item cannot be `default`
     //~^ ERROR item kind not supported in `extern` block
 }
+
+#[cfg(FALSE)]
+impl S {
+    default extern crate foo;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default use foo;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default static foo: u8;
+    //~^ ERROR associated `static` items are not allowed
+    default const foo: u8;
+    default fn foo();
+    default mod foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default extern "C" {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default type foo = u8;
+    default enum foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default struct foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default union foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default trait foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default trait foo = Ord;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default impl foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default!();
+    default::foo::bar!();
+    default macro foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default macro_rules! foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+}
+
+#[cfg(FALSE)]
+trait T {
+    default extern crate foo;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default use foo;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default static foo: u8;
+    //~^ ERROR associated `static` items are not allowed
+    default const foo: u8;
+    default fn foo();
+    default mod foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default extern "C" {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default type foo = u8;
+    default enum foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default struct foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default union foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default trait foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default trait foo = Ord;
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default impl foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default!();
+    default::foo::bar!();
+    default macro foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+    default macro_rules! foo {}
+    //~^ ERROR item kind not supported in `trait` or `impl`
+}

@@ -1,8 +1,13 @@
 error: expected one of `extern` or `fn`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:7:12
    |
+LL | impl S {
+   |        - while parsing this item list starting here
+LL |     #[cfg(FALSE)]
 LL |     unsafe async fn g() {}
    |            ^^^^^ expected one of `extern` or `fn`
+LL | }
+   | - the item list ends here
 
 error: expected one of `extern` or `fn`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:11:8
