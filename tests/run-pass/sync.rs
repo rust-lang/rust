@@ -1,5 +1,3 @@
-// Requires full MIR on Windows.
-
 #![feature(rustc_private)]
 
 use std::sync::{Mutex, RwLock, TryLockError};

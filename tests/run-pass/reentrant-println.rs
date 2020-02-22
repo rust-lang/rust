@@ -3,7 +3,7 @@ use std::fmt::{Display, Error, Formatter};
 // This test case exercises std::sys_common::remutex::ReentrantMutex
 // by calling println!() from inside fmt
 
-struct InterruptingCow();
+struct InterruptingCow;
 
 impl Display for InterruptingCow {
     fn fmt(&self, _f: &mut Formatter<'_>) -> Result<(), Error> {
@@ -13,5 +13,5 @@ impl Display for InterruptingCow {
 }
 
 fn main() {
-    println!("\"Knock knock\" \"Who's {} there?\"", InterruptingCow());
+    println!("\"Knock knock\" \"Who's {} there?\"", InterruptingCow);
 }
