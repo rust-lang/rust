@@ -11,7 +11,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{expand::original_range, FileSymbol};
+use crate::{expand::original_range, references::NameDefinition, FileSymbol};
 
 use super::short_label::ShortLabel;
 
@@ -34,6 +34,10 @@ pub struct NavigationTarget {
 
 pub(crate) trait ToNav {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget;
+}
+
+pub(crate) trait TryToNav {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget>;
 }
 
 impl NavigationTarget {
@@ -94,26 +98,6 @@ impl NavigationTarget {
             );
         }
         module.to_nav(db)
-    }
-
-    pub(crate) fn from_def(
-        db: &RootDatabase,
-        module_def: hir::ModuleDef,
-    ) -> Option<NavigationTarget> {
-        let nav = match module_def {
-            hir::ModuleDef::Module(module) => module.to_nav(db),
-            hir::ModuleDef::Function(it) => it.to_nav(db),
-            hir::ModuleDef::Adt(it) => it.to_nav(db),
-            hir::ModuleDef::Const(it) => it.to_nav(db),
-            hir::ModuleDef::Static(it) => it.to_nav(db),
-            hir::ModuleDef::EnumVariant(it) => it.to_nav(db),
-            hir::ModuleDef::Trait(it) => it.to_nav(db),
-            hir::ModuleDef::TypeAlias(it) => it.to_nav(db),
-            hir::ModuleDef::BuiltinType(..) => {
-                return None;
-            }
-        };
-        Some(nav)
     }
 
     #[cfg(test)]
@@ -201,6 +185,36 @@ impl ToNav for FileSymbol {
     }
 }
 
+impl TryToNav for NameDefinition {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        match self {
+            NameDefinition::Macro(it) => Some(it.to_nav(db)),
+            NameDefinition::StructField(it) => Some(it.to_nav(db)),
+            NameDefinition::ModuleDef(it) => it.try_to_nav(db),
+            NameDefinition::SelfType(it) => Some(it.to_nav(db)),
+            NameDefinition::Local(it) => Some(it.to_nav(db)),
+            NameDefinition::TypeParam(it) => Some(it.to_nav(db)),
+        }
+    }
+}
+
+impl TryToNav for hir::ModuleDef {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let res = match self {
+            hir::ModuleDef::Module(it) => it.to_nav(db),
+            hir::ModuleDef::Function(it) => it.to_nav(db),
+            hir::ModuleDef::Adt(it) => it.to_nav(db),
+            hir::ModuleDef::EnumVariant(it) => it.to_nav(db),
+            hir::ModuleDef::Const(it) => it.to_nav(db),
+            hir::ModuleDef::Static(it) => it.to_nav(db),
+            hir::ModuleDef::Trait(it) => it.to_nav(db),
+            hir::ModuleDef::TypeAlias(it) => it.to_nav(db),
+            hir::ModuleDef::BuiltinType(_) => return None,
+        };
+        Some(res)
+    }
+}
+
 pub(crate) trait ToNavFromAst {}
 impl ToNavFromAst for hir::Function {}
 impl ToNavFromAst for hir::Const {}
@@ -232,15 +246,17 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.definition_source(db);
         let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        let syntax = match &src.value {
-            ModuleSource::SourceFile(node) => node.syntax(),
-            ModuleSource::Module(node) => node.syntax(),
+        let (syntax, focus) = match &src.value {
+            ModuleSource::SourceFile(node) => (node.syntax(), None),
+            ModuleSource::Module(node) => {
+                (node.syntax(), node.name().map(|it| it.syntax().text_range()))
+            }
         };
         let frange = original_range(db, src.with_value(syntax));
         NavigationTarget::from_syntax(
             frange.file_id,
             name,
-            None,
+            focus,
             frange.range,
             syntax.kind(),
             None,

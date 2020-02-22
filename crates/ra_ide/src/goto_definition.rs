@@ -1,18 +1,18 @@
 //! FIXME: write short doc here
 
 use hir::{db::AstDatabase, InFile, SourceBinder};
-use ra_ide_db::{defs::NameDefinition, symbol_index, RootDatabase};
+use ra_ide_db::{symbol_index, RootDatabase};
 use ra_syntax::{
-    ast::{self, DocCommentsOwner},
+    ast::{self},
     match_ast, AstNode,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TokenAtOffset,
+    SyntaxToken, TokenAtOffset,
 };
 
 use crate::{
-    display::{ShortLabel, ToNav},
+    display::{ToNav, TryToNav},
     expand::descend_into_macros,
-    references::classify_name_ref,
+    references::{classify_name, classify_name_ref},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -74,23 +74,12 @@ pub(crate) fn reference_definition(
     use self::ReferenceResult::*;
 
     let name_kind = classify_name_ref(sb, name_ref);
-    match name_kind {
-        Some(NameDefinition::Macro(it)) => return Exact(it.to_nav(sb.db)),
-        Some(NameDefinition::StructField(it)) => return Exact(it.to_nav(sb.db)),
-        Some(NameDefinition::TypeParam(it)) => return Exact(it.to_nav(sb.db)),
-        Some(NameDefinition::Local(it)) => return Exact(it.to_nav(sb.db)),
-        Some(NameDefinition::ModuleDef(def)) => match NavigationTarget::from_def(sb.db, def) {
-            Some(nav) => return Exact(nav),
-            None => return Approximate(vec![]),
-        },
-        Some(NameDefinition::SelfType(imp)) => {
-            // FIXME: ideally, this should point to the type in the impl, and
-            // not at the whole impl. And goto **type** definition should bring
-            // us to the actual type
-            return Exact(imp.to_nav(sb.db));
-        }
-        None => {}
-    };
+    if let Some(def) = name_kind {
+        return match def.try_to_nav(sb.db) {
+            Some(nav) => ReferenceResult::Exact(nav),
+            None => ReferenceResult::Approximate(Vec::new()),
+        };
+    }
 
     // Fallback index based approach:
     let navs = symbol_index::index_resolve(sb.db, name_ref.value)
@@ -104,119 +93,9 @@ fn name_definition(
     sb: &mut SourceBinder<RootDatabase>,
     name: InFile<&ast::Name>,
 ) -> Option<Vec<NavigationTarget>> {
-    let parent = name.value.syntax().parent()?;
-
-    if let Some(module) = ast::Module::cast(parent.clone()) {
-        if module.has_semi() {
-            let src = name.with_value(module);
-            if let Some(child_module) = sb.to_def(src) {
-                let nav = child_module.to_nav(sb.db);
-                return Some(vec![nav]);
-            }
-        }
-    }
-
-    if let Some(nav) = named_target(sb.db, name.with_value(&parent)) {
-        return Some(vec![nav]);
-    }
-
-    None
-}
-
-fn named_target(db: &RootDatabase, node: InFile<&SyntaxNode>) -> Option<NavigationTarget> {
-    match_ast! {
-        match (node.value) {
-            ast::StructDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::EnumDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::EnumVariant(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::FnDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::TypeAliasDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::ConstDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::StaticDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::TraitDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::RecordFieldDef(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::Module(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    it.short_label(),
-                ))
-            },
-            ast::MacroCall(it) => {
-                Some(NavigationTarget::from_named(
-                    db,
-                    node.with_value(&it),
-                    it.doc_comment_text(),
-                    None,
-                ))
-            },
-            _ => None,
-        }
-    }
+    let def = classify_name(sb, name)?;
+    let nav = def.try_to_nav(sb.db)?;
+    Some(vec![nav])
 }
 
 #[cfg(test)]

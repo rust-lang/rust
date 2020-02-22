@@ -25,7 +25,7 @@ use ra_syntax::{
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
 };
 
-use crate::{display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
+use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
@@ -125,15 +125,7 @@ pub(crate) fn find_all_refs(
         };
 
     let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position, opt_name)?;
-
-    let declaration = match def {
-        NameDefinition::Macro(mac) => mac.to_nav(db),
-        NameDefinition::StructField(field) => field.to_nav(db),
-        NameDefinition::ModuleDef(def) => NavigationTarget::from_def(db, def)?,
-        NameDefinition::SelfType(imp) => imp.to_nav(db),
-        NameDefinition::Local(local) => local.to_nav(db),
-        NameDefinition::TypeParam(_) => return None,
-    };
+    let declaration = def.try_to_nav(db)?;
 
     let search_scope = {
         let base = SearchScope::for_def(&def, db);
