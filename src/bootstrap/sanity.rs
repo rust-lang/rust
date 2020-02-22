@@ -194,9 +194,7 @@ pub fn check(build: &mut Build) {
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target).is_none() {
-                let target = build.config.target_config.entry(target.clone()).or_default();
-
-                target.no_std = true;
+                build.config.target_config.entry(target.clone()).or_default();
             }
 
             if build.no_std(*target) == Some(false) {
