@@ -1,8 +1,8 @@
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
-use rustc_ast_pretty::pprust::{self, Comments, PrintState};
+use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
@@ -126,7 +126,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 
     fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(pprust::ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
 
