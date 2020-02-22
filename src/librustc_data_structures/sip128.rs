@@ -51,17 +51,48 @@ macro_rules! compress {
     }};
 }
 
-/// Loads up to 8 bytes from a byte-slice into a little-endian u64.
-#[inline]
-fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
-    assert!(len <= 8 && start + len <= buf.len());
+/// Loads an integer of the desired type from a byte stream, in LE order. Uses
+/// `copy_nonoverlapping` to let the compiler generate the most efficient way
+/// to load it from a possibly unaligned address.
+///
+/// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
+macro_rules! load_int_le {
+    ($buf:expr, $i:expr, $int_ty:ident) => {{
+        debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
+        let mut data = 0 as $int_ty;
+        ptr::copy_nonoverlapping(
+            $buf.get_unchecked($i),
+            &mut data as *mut _ as *mut u8,
+            mem::size_of::<$int_ty>(),
+        );
+        data.to_le()
+    }};
+}
 
-    let mut out = 0u64;
-    unsafe {
-        let out_ptr = &mut out as *mut _ as *mut u8;
-        ptr::copy_nonoverlapping(buf.as_ptr().offset(start as isize), out_ptr, len);
+/// Loads a u64 using up to 7 bytes of a byte slice. It looks clumsy but the
+/// `copy_nonoverlapping` calls that occur (via `load_int_le!`) all have fixed
+/// sizes and avoid calling `memcpy`, which is good for speed.
+///
+/// Unsafe because: unchecked indexing at start..start+len
+#[inline]
+unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+    debug_assert!(len < 8);
+    let mut i = 0; // current byte index (from LSB) in the output u64
+    let mut out = 0;
+    if i + 3 < len {
+        out = load_int_le!(buf, start + i, u32) as u64;
+        i += 4;
     }
-    out.to_le()
+    if i + 1 < len {
+        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        i += 2
+    }
+    if i < len {
+        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        i += 1;
+    }
+    debug_assert_eq!(i, len);
+    out
 }
 
 impl SipHasher128 {
@@ -243,7 +274,7 @@ impl Hasher for SipHasher128 {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            self.tail |= u8to64_le(msg, 0, cmp::min(length, needed)) << (8 * self.ntail);
+            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
             if length < needed {
                 self.ntail += length;
                 return;
@@ -261,7 +292,7 @@ impl Hasher for SipHasher128 {
 
         let mut i = needed;
         while i < len - left {
-            let mi = u8to64_le(msg, i, 8);
+            let mi = unsafe { load_int_le!(msg, i, u64) };
 
             self.state.v3 ^= mi;
             Sip24Rounds::c_rounds(&mut self.state);
@@ -270,7 +301,7 @@ impl Hasher for SipHasher128 {
             i += 8;
         }
 
-        self.tail = u8to64_le(msg, i, left);
+        self.tail = unsafe { u8to64_le(msg, i, left) };
         self.ntail = left;
     }
 
