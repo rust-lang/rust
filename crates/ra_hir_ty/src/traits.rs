@@ -335,6 +335,12 @@ pub struct ClosureFnTraitImplData {
     fn_trait: FnTrait,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UnsizeToSuperTraitObjectData {
+    trait_: TraitId,
+    super_trait: TraitId,
+}
+
 /// An impl. Usually this comes from an impl block, but some built-in types get
 /// synthetic impls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -343,6 +349,12 @@ pub enum Impl {
     ImplBlock(ImplId),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
+    /// [T; n]: Unsize<[T]>
+    UnsizeArray,
+    /// T: Unsize<dyn Trait> where T: Trait
+    UnsizeToTraitObject(TraitId),
+    /// dyn Trait: Unsize<dyn SuperTrait> if Trait: SuperTrait
+    UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData),
 }
 /// This exists just for Chalk, because our ImplIds are only unique per module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -461,6 +461,12 @@ impl<T> Binders<T> {
     }
 }
 
+impl<T: Clone> Binders<&T> {
+    pub fn cloned(&self) -> Binders<T> {
+        Binders { num_binders: self.num_binders, value: self.value.clone() }
+    }
+}
+
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
     pub fn subst(self, subst: &Substs) -> T {
@@ -661,6 +667,17 @@ impl Ty {
         }
     }
 
+    /// If this is a `dyn Trait` type, this returns the `Trait` part.
+    pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
+        match self {
+            Ty::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
+                GenericPredicate::Implemented(trait_ref) => Some(trait_ref),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
@@ -746,6 +763,20 @@ pub trait TypeWalk {
     /// variable for the self type.
     fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize);
 
+    fn fold_binders(mut self, f: &mut impl FnMut(Ty, usize) -> Ty, binders: usize) -> Self
+    where
+        Self: Sized,
+    {
+        self.walk_mut_binders(
+            &mut |ty_mut, binders| {
+                let ty = mem::replace(ty_mut, Ty::Unknown);
+                *ty_mut = f(ty, binders);
+            },
+            binders,
+        );
+        self
+    }
+
     fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Self
     where
         Self: Sized,
@@ -783,13 +814,16 @@ pub trait TypeWalk {
     where
         Self: Sized,
     {
-        self.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => {
-                assert!(idx as i32 >= -n);
-                Ty::Bound((idx as i32 + n) as u32)
-            }
-            ty => ty,
-        })
+        self.fold_binders(
+            &mut |ty, binders| match ty {
+                Ty::Bound(idx) if idx as usize >= binders => {
+                    assert!(idx as i32 >= -n);
+                    Ty::Bound((idx as i32 + n) as u32)
+                }
+                ty => ty,
+            },
+            0,
+        )
     }
 }
 

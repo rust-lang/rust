@@ -4,8 +4,12 @@ use hir_def::{expr::Expr, lang_item::LangItemTarget, TraitId, TypeAliasId};
 use hir_expand::name::name;
 use ra_db::CrateId;
 
-use super::{AssocTyValue, Impl};
-use crate::{db::HirDatabase, ApplicationTy, Substs, TraitRef, Ty, TypeCtor};
+use super::{AssocTyValue, Impl, UnsizeToSuperTraitObjectData};
+use crate::{
+    db::HirDatabase,
+    utils::{all_super_traits, generics},
+    ApplicationTy, Binders, GenericPredicate, Substs, TraitRef, Ty, TypeCtor,
+};
 
 pub(super) struct BuiltinImplData {
     pub num_vars: usize,
@@ -25,6 +29,8 @@ pub(super) fn get_builtin_impls(
     db: &impl HirDatabase,
     krate: CrateId,
     ty: &Ty,
+    // The first argument for the trait, if present
+    arg: &Option<Ty>,
     trait_: TraitId,
     mut callback: impl FnMut(Impl),
 ) {
@@ -43,12 +49,60 @@ pub(super) fn get_builtin_impls(
             }
         }
     }
+
+    let unsize_trait = get_unsize_trait(db, krate);
+    if let Some(actual_trait) = unsize_trait {
+        if trait_ == actual_trait {
+            get_builtin_unsize_impls(db, krate, ty, arg, callback);
+        }
+    }
+}
+
+fn get_builtin_unsize_impls(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    ty: &Ty,
+    // The first argument for the trait, if present
+    arg: &Option<Ty>,
+    mut callback: impl FnMut(Impl),
+) {
+    if !check_unsize_impl_prerequisites(db, krate) {
+        return;
+    }
+
+    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, .. }) = ty {
+        callback(Impl::UnsizeArray);
+        return; // array is unsized, the rest of the impls shouldn't apply
+    }
+
+    if let Some(target_trait) = arg.as_ref().and_then(|t| t.dyn_trait_ref()) {
+        // FIXME what about more complicated dyn tys with marker traits?
+        if let Some(trait_ref) = ty.dyn_trait_ref() {
+            if trait_ref.trait_ != target_trait.trait_ {
+                let super_traits = all_super_traits(db, trait_ref.trait_);
+                if super_traits.contains(&target_trait.trait_) {
+                    callback(Impl::UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData {
+                        trait_: trait_ref.trait_,
+                        super_trait: target_trait.trait_,
+                    }));
+                }
+            }
+        } else {
+            // FIXME only for sized types
+            callback(Impl::UnsizeToTraitObject(target_trait.trait_));
+        }
+    }
 }
 
 pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
     match impl_ {
         Impl::ImplBlock(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
+        Impl::UnsizeArray => array_unsize_impl_datum(db, krate),
+        Impl::UnsizeToTraitObject(trait_) => trait_object_unsize_impl_datum(db, krate, trait_),
+        Impl::UnsizeToSuperTraitObject(data) => {
+            super_trait_object_unsize_impl_datum(db, krate, data)
+        }
     }
 }
 
@@ -64,6 +118,8 @@ pub(super) fn associated_ty_value(
         }
     }
 }
+
+// Closure Fn trait impls
 
 fn check_closure_fn_trait_impl_prerequisites(
     db: &impl HirDatabase,
@@ -165,12 +221,143 @@ fn closure_fn_trait_output_assoc_ty_value(
     }
 }
 
+// Array unsizing
+
+fn check_unsize_impl_prerequisites(db: &impl HirDatabase, krate: CrateId) -> bool {
+    // the Unsize trait needs to exist and have two type parameters (Self and T)
+    let unsize_trait = match get_unsize_trait(db, krate) {
+        Some(t) => t,
+        None => return false,
+    };
+    let generic_params = generics(db, unsize_trait.into());
+    generic_params.len() == 2
+}
+
+fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImplData {
+    // impl<T> Unsize<[T]> for [T; _]
+    // (this can be a single impl because we don't distinguish array sizes currently)
+
+    let trait_ = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let var = Ty::Bound(0);
+    let substs = Substs::builder(2)
+        .push(Ty::apply_one(TypeCtor::Array, var.clone()))
+        .push(Ty::apply_one(TypeCtor::Slice, var))
+        .build();
+
+    let trait_ref = TraitRef { trait_, substs };
+
+    BuiltinImplData {
+        num_vars: 1,
+        trait_ref,
+        where_clauses: Vec::new(),
+        assoc_ty_values: Vec::new(),
+    }
+}
+
+// Trait object unsizing
+
+fn trait_object_unsize_impl_datum(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    trait_: TraitId,
+) -> BuiltinImplData {
+    // impl<T, T1, ...> Unsize<dyn Trait<T1, ...>> for T where T: Trait<T1, ...>
+
+    let unsize_trait = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let self_ty = Ty::Bound(0);
+
+    let target_substs = Substs::build_for_def(db, trait_)
+        .push(Ty::Bound(0))
+        // starting from ^2 because we want to start with ^1 outside of the
+        // `dyn`, which is ^2 inside
+        .fill_with_bound_vars(2)
+        .build();
+    let num_vars = target_substs.len();
+    let target_trait_ref = TraitRef { trait_, substs: target_substs };
+    let target_bounds = vec![GenericPredicate::Implemented(target_trait_ref)];
+
+    let self_substs = Substs::build_for_def(db, trait_).fill_with_bound_vars(0).build();
+    let self_trait_ref = TraitRef { trait_, substs: self_substs };
+    let where_clauses = vec![GenericPredicate::Implemented(self_trait_ref)];
+
+    let impl_substs =
+        Substs::builder(2).push(self_ty).push(Ty::Dyn(target_bounds.clone().into())).build();
+
+    let trait_ref = TraitRef { trait_: unsize_trait, substs: impl_substs };
+
+    BuiltinImplData { num_vars, trait_ref, where_clauses, assoc_ty_values: Vec::new() }
+}
+
+fn super_trait_object_unsize_impl_datum(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    data: UnsizeToSuperTraitObjectData,
+) -> BuiltinImplData {
+    // impl<T1, ...> Unsize<dyn SuperTrait> for dyn Trait<T1, ...>
+
+    let unsize_trait = get_unsize_trait(db, krate) // get unsize trait
+        // the existence of the Unsize trait has been checked before
+        .expect("Unsize trait missing");
+
+    let self_substs = Substs::build_for_def(db, data.trait_).fill_with_bound_vars(0).build();
+
+    let num_vars = self_substs.len() - 1;
+
+    let self_trait_ref = TraitRef { trait_: data.trait_, substs: self_substs.clone() };
+    let self_bounds = vec![GenericPredicate::Implemented(self_trait_ref.clone())];
+
+    // we need to go from our trait to the super trait, substituting type parameters
+    let path = crate::utils::find_super_trait_path(db, data.trait_, data.super_trait);
+
+    let mut current_trait_ref = self_trait_ref;
+    for t in path.into_iter().skip(1) {
+        let bounds = db.generic_predicates(current_trait_ref.trait_.into());
+        let super_trait_ref = bounds
+            .iter()
+            .find_map(|b| match &b.value {
+                GenericPredicate::Implemented(tr)
+                    if tr.trait_ == t && tr.substs[0] == Ty::Bound(0) =>
+                {
+                    Some(Binders { value: tr, num_binders: b.num_binders })
+                }
+                _ => None,
+            })
+            .expect("trait bound for known super trait not found");
+        current_trait_ref = super_trait_ref.cloned().subst(&current_trait_ref.substs);
+    }
+
+    let super_bounds = vec![GenericPredicate::Implemented(current_trait_ref)];
+
+    let substs = Substs::builder(2)
+        .push(Ty::Dyn(self_bounds.into()))
+        .push(Ty::Dyn(super_bounds.into()))
+        .build();
+
+    let trait_ref = TraitRef { trait_: unsize_trait, substs };
+
+    BuiltinImplData { num_vars, trait_ref, where_clauses: Vec::new(), assoc_ty_values: Vec::new() }
+}
+
 fn get_fn_trait(
     db: &impl HirDatabase,
     krate: CrateId,
     fn_trait: super::FnTrait,
 ) -> Option<TraitId> {
     let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
+    match target {
+        LangItemTarget::TraitId(t) => Some(t),
+        _ => None,
+    }
+}
+
+fn get_unsize_trait(db: &impl HirDatabase, krate: CrateId) -> Option<TraitId> {
+    let target = db.lang_item(krate, "unsize".into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),
         _ => None,
