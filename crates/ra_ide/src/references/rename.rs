@@ -98,6 +98,17 @@ fn rename_mod(
     };
     source_file_edits.push(edit);
 
+    if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(db, position, None) {
+        let ref_edits = refs.references.into_iter().map(|reference| {
+            source_edit_from_file_id_range(
+                reference.file_range.file_id,
+                reference.file_range.range,
+                new_name,
+            )
+        });
+        source_file_edits.extend(ref_edits);
+    }
+
     Some(SourceChange::from_edits("rename", source_file_edits, file_system_edits))
 }
 
@@ -381,6 +392,101 @@ mod tests {
         )
         "###
                );
+    }
+
+    #[test]
+    fn test_module_rename_in_path() {
+        test_rename(
+            r#"
+    mod <|>foo {
+        pub fn bar() {}
+    }
+
+    fn main() {
+        foo::bar();
+    }"#,
+            "baz",
+            r#"
+    mod baz {
+        pub fn bar() {}
+    }
+
+    fn main() {
+        baz::bar();
+    }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_filename_and_path() {
+        let (analysis, position) = analysis_and_position(
+            "
+            //- /lib.rs
+            mod bar;
+            fn f() {
+                bar::foo::fun()
+            }
+
+            //- /bar.rs
+            pub mod foo<|>;
+
+            //- /bar/foo.rs
+            // pub fn fun() {}
+            ",
+        );
+        let new_name = "foo2";
+        let source_change = analysis.rename(position, new_name).unwrap();
+        assert_debug_snapshot!(&source_change,
+@r###"
+        Some(
+            RangeInfo {
+                range: [8; 11),
+                info: SourceChange {
+                    label: "rename",
+                    source_file_edits: [
+                        SourceFileEdit {
+                            file_id: FileId(
+                                2,
+                            ),
+                            edit: TextEdit {
+                                atoms: [
+                                    AtomTextEdit {
+                                        delete: [8; 11),
+                                        insert: "foo2",
+                                    },
+                                ],
+                            },
+                        },
+                        SourceFileEdit {
+                            file_id: FileId(
+                                1,
+                            ),
+                            edit: TextEdit {
+                                atoms: [
+                                    AtomTextEdit {
+                                        delete: [27; 30),
+                                        insert: "foo2",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                3,
+                            ),
+                            dst_source_root: SourceRootId(
+                                0,
+                            ),
+                            dst_path: "bar/foo2.rs",
+                        },
+                    ],
+                    cursor_position: None,
+                },
+            },
+        )
+        "###);
     }
 
     fn test_rename(text: &str, new_name: &str, expected: &str) {
