@@ -1133,6 +1133,26 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     }
 
     #[inline]
+    fn next_inclusive(&mut self) -> Option<&'a str> {
+        if self.finished {
+            return None;
+        }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match() {
+            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
+            // and self.start is either the start of the original string,
+            // or `b` was assigned to it, so it also lies on unicode boundary.
+            Some((_, b)) => unsafe {
+                let elt = haystack.get_unchecked(self.start..b);
+                self.start = b;
+                Some(elt)
+            },
+            None => self.get_end(),
+        }
+    }
+
+    #[inline]
     fn next_back(&mut self) -> Option<&'a str>
     where
         P::Searcher: ReverseSearcher<'a>,
@@ -1162,6 +1182,49 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
                 Some(elt)
             },
             // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+            None => unsafe {
+                self.finished = true;
+                Some(haystack.get_unchecked(self.start..self.end))
+            },
+        }
+    }
+
+    #[inline]
+    fn next_back_inclusive(&mut self) -> Option<&'a str>
+    where
+        P::Searcher: ReverseSearcher<'a>,
+    {
+        if self.finished {
+            return None;
+        }
+
+        if !self.allow_trailing_empty {
+            self.allow_trailing_empty = true;
+            match self.next_back_inclusive() {
+                Some(elt) if !elt.is_empty() => return Some(elt),
+                _ => {
+                    if self.finished {
+                        return None;
+                    }
+                }
+            }
+        }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match_back() {
+            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
+            // and self.end is either the end of the original string,
+            // or `b` was assigned to it, so it also lies on unicode boundary.
+            Some((_, b)) => unsafe {
+                let elt = haystack.get_unchecked(b..self.end);
+                self.end = b;
+                Some(elt)
+            },
+            // SAFETY: self.start is either the start of the original string,
+            // or start of a substring that represents the part of the string that hasn't
+            // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
+            // self.end is either the end of the original string,
+            // or `b` was assigned to it, so it also lies on unicode boundary.
             None => unsafe {
                 self.finished = true;
                 Some(haystack.get_unchecked(self.start..self.end))
@@ -3213,6 +3276,42 @@ impl str {
         })
     }
 
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern. Differs from the iterator produced by
+    /// `split` in that `split_inclusive` leaves the matched part as the
+    /// terminator of the substring.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .split_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb."]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the terminator of the preceding substring.
+    /// That substring will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .split_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
+    /// ```
+    #[unstable(feature = "split_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
+        SplitInclusive(SplitInternal {
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
+            allow_trailing_empty: false,
+            finished: false,
+        })
+    }
+
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern and yielded in reverse order.
     ///
@@ -4406,6 +4505,19 @@ pub struct SplitAsciiWhitespace<'a> {
     inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>, UnsafeBytesToStr>,
 }
 
+/// An iterator over the substrings of a string,
+/// terminated by a substring matching to a predicate function
+/// Unlike `Split`, it contains the matched part as a terminator
+/// of the subslice.
+///
+/// This struct is created by the [`split_inclusive`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`split_inclusive`]: ../../std/primitive.str.html#method.split_inclusive
+/// [`str`]: ../../std/primitive.str.html
+#[unstable(feature = "split_inclusive", issue = "none")]
+pub struct SplitInclusive<'a, P: Pattern<'a>>(SplitInternal<'a, P>);
+
 impl_fn_for_zst! {
     #[derive(Clone)]
     struct IsWhitespace impl Fn = |c: char| -> bool {
@@ -4495,6 +4607,44 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next_inclusive()
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitInclusive").field("0", &self.0).finish()
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
+    fn clone(&self) -> Self {
+        SplitInclusive(self.0.clone())
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
+    for SplitInclusive<'a, P>
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.0.next_back_inclusive()
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.
 ///

@@ -12,6 +12,7 @@
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(vec_remove_item)]
+#![feature(split_inclusive)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
