@@ -1,7 +1,6 @@
 macro_rules! m {
-    //~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
     () => {
-        let
+        let //~ ERROR macro expansion ignores token `let` and any following
     };
 }
 

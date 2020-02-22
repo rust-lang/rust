@@ -879,8 +879,8 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_foreign_item(&mut false)?);
+            while let Some(item) = this.parse_foreign_item()? {
+                items.extend(item);
             }
             AstFragment::ForeignItems(items)
         }

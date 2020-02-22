@@ -457,7 +457,8 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items = self.parse_item_list(attrs, |p, at_end| p.parse_impl_item(at_end))?;
+        let impl_items =
+            self.parse_item_list(attrs, |p, at_end| p.parse_impl_item(at_end).map(Some).map(Some))?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -516,8 +517,9 @@ impl<'a> Parser<'a> {
     fn parse_item_list<T>(
         &mut self,
         attrs: &mut Vec<Attribute>,
-        mut parse_item: impl FnMut(&mut Parser<'a>, &mut bool) -> PResult<'a, T>,
+        mut parse_item: impl FnMut(&mut Parser<'a>, &mut bool) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
+        let open_brace_span = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
         attrs.append(&mut self.parse_inner_attributes()?);
 
@@ -528,7 +530,18 @@ impl<'a> Parser<'a> {
             }
             let mut at_end = false;
             match parse_item(self, &mut at_end) {
-                Ok(item) => items.push(item),
+                Ok(None) => {
+                    // We have to bail or we'll potentially never make progress.
+                    let non_item_span = self.token.span;
+                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                    self.struct_span_err(non_item_span, "non-item in item list")
+                        .span_label(open_brace_span, "item list starts here")
+                        .span_label(non_item_span, "non-item starts here")
+                        .span_label(self.prev_span, "item list ends here")
+                        .emit();
+                    break;
+                }
+                Ok(Some(item)) => items.extend(item),
                 Err(mut err) => {
                     err.emit();
                     if !at_end {
@@ -631,7 +644,9 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
-            let items = self.parse_item_list(attrs, |p, at_end| p.parse_trait_item(at_end))?;
+            let items = self.parse_item_list(attrs, |p, at_end| {
+                p.parse_trait_item(at_end).map(Some).map(Some)
+            })?;
             Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items)))
         }
     }
@@ -892,38 +907,48 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_item_foreign_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p, at_end| p.parse_foreign_item(at_end))?;
+        let items = self.parse_item_list(attrs, |p, _| p.parse_foreign_item())?;
         let module = ast::ForeignMod { abi, items };
         Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
-    pub fn parse_foreign_item(&mut self, at_end: &mut bool) -> PResult<'a, P<ForeignItem>> {
-        maybe_whole!(self, NtForeignItem, |ni| ni);
+    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
+        maybe_whole!(self, NtForeignItem, |item| Some(Some(item)));
 
-        let mut attrs = self.parse_outer_attributes()?;
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let (ident, kind) = self.parse_assoc_item_kind(at_end, &mut attrs, |_| true, &vis)?;
-        let item = self.mk_item(lo, ident, kind, vis, Defaultness::Final, attrs);
-        self.error_on_foreign_const(&item);
-        Ok(P(item))
+        let attrs = self.parse_outer_attributes()?;
+        let it = self.parse_item_common(attrs, true, false)?;
+        Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
+            self.error_on_illegal_default(defaultness);
+            let kind = match kind {
+                ItemKind::Mac(a) => AssocItemKind::Macro(a),
+                ItemKind::Fn(a, b, c) => AssocItemKind::Fn(a, b, c),
+                ItemKind::TyAlias(a, b, c) => AssocItemKind::TyAlias(a, b, c),
+                ItemKind::Static(a, b, c) => AssocItemKind::Static(a, b, c),
+                ItemKind::Const(a, b) => {
+                    self.error_on_foreign_const(span, ident);
+                    AssocItemKind::Static(a, Mutability::Not, b)
+                }
+                _ => {
+                    let span = self.sess.source_map().def_span(span);
+                    self.struct_span_err(span, "item kind not supported in `extern` block").emit();
+                    return None;
+                }
+            };
+            Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
+        }))
     }
 
-    fn error_on_foreign_const(&self, item: &ForeignItem) {
-        if let AssocItemKind::Const(..) = item.kind {
-            self.struct_span_err(item.ident.span, "extern items cannot be `const`")
-                .span_suggestion(
-                    item.span.with_hi(item.ident.span.lo()),
-                    "try using a static value",
-                    "static ".to_string(),
-                    Applicability::MachineApplicable,
-                )
-                .note(
-                    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html",
-                )
-                .emit();
-        }
+    fn error_on_foreign_const(&self, span: Span, ident: Ident) {
+        self.struct_span_err(ident.span, "extern items cannot be `const`")
+            .span_suggestion(
+                span.with_hi(ident.span.lo()),
+                "try using a static value",
+                "static ".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
+            .emit();
     }
 
     fn is_static_global(&mut self) -> bool {
