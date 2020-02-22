@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
-import { Ctx, sendRequestWithRetry } from './ctx';
-import { log } from './util';
+import { Ctx } from './ctx';
+import { log, sendRequestWithRetry } from './util';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
@@ -152,28 +152,24 @@ class HintsUpdater {
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
-        const client = this.ctx.client;
-        if (!client) return null;
+        this.pending.get(documentUri)?.cancel();
 
-        const request: InlayHintsParams = {
-            textDocument: { uri: documentUri },
-        };
         const tokenSource = new vscode.CancellationTokenSource();
-        const prevHintsRequest = this.pending.get(documentUri);
-        prevHintsRequest?.cancel();
-
         this.pending.set(documentUri, tokenSource);
-        try {
-            return await sendRequestWithRetry<InlayHint[] | null>(
-                client,
-                'rust-analyzer/inlayHints',
-                request,
-                tokenSource.token,
-            );
-        } finally {
-            if (!tokenSource.token.isCancellationRequested) {
-                this.pending.delete(documentUri);
-            }
-        }
+
+        const request: InlayHintsParams = { textDocument: { uri: documentUri } };
+
+        return sendRequestWithRetry<InlayHint[]>(
+            this.ctx.client,
+            'rust-analyzer/inlayHints',
+            request,
+            tokenSource.token
+        )
+            .catch(_ => null)
+            .finally(() => {
+                if (!tokenSource.token.isCancellationRequested) {
+                    this.pending.delete(documentUri);
+                }
+            });
     }
 }
