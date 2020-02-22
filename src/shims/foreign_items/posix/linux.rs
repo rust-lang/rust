@@ -19,6 +19,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
+
+            // The only reason this is not in the `posix` module is because the `macos` item has a
+            // different name.
             "close" => {
                 let result = this.close(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
@@ -56,6 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // so skip over it.
                         getrandom(this, &args[1..], dest)?;
                     }
+                    // `statx` is used by `libstd` to retrieve metadata information in `linux`
+                    // instead of using `stat`,`lstat` or `fstat` as in the `macos` platform.
                     id if id == sys_statx => {
                         // The first argument is the syscall id,
                         // so skip over it.

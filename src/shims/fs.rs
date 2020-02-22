@@ -383,6 +383,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         macos_stat_write_buf(this, metadata, buf_op)
     }
 
+    /// Emulate `stat` or `lstat` on the `macos` platform. This function is not intended to be
+    /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
+    /// disabled or if the target platform is the correct one. Please use `macos_stat` or
+    /// `macos_lstat` instead.
     fn macos_stat_or_lstat(
         &mut self,
         follow_symlink: bool,

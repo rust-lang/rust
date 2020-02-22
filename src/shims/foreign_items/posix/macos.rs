@@ -19,6 +19,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
+
+            // The only reason this is not in the `posix` module is because the `linux` item has a
+            // different name.
             "close$NOCANCEL" => {
                 let result = this.close(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
