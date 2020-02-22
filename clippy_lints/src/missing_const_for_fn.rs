@@ -2,12 +2,13 @@ use crate::utils::{has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc::lint::in_external_macro;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Constness, FnDecl, HirId};
+use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
+use std::matches;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -90,8 +91,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         // Perform some preliminary checks that rule out constness on the Clippy side. This way we
         // can skip the actual const check and return early.
         match kind {
-            FnKind::ItemFn(_, _, header, ..) => {
-                if already_const(header) {
+            FnKind::ItemFn(_, generics, header, ..) => {
+                let has_const_generic_params = generics
+                    .params
+                    .iter()
+                    .any(|param| matches!(param.kind, GenericParamKind::Const{ .. }));
+
+                if already_const(header) || has_const_generic_params {
                     return;
                 }
             },

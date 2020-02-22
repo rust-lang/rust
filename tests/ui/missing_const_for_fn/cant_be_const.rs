@@ -3,7 +3,8 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 #![warn(clippy::missing_const_for_fn)]
-#![feature(start)]
+#![allow(incomplete_features)]
+#![feature(start, const_generics)]
 
 struct Game;
 
@@ -89,4 +90,14 @@ mod with_drop {
             B
         }
     }
+}
+
+fn const_generic_params<T, const N: usize>(t: &[T; N]) -> &[T; N] {
+    t
+}
+
+fn const_generic_return<T, const N: usize>(t: &[T]) -> &[T; N] {
+    let p = t.as_ptr() as *const [T; N];
+
+    unsafe { &*p }
 }
