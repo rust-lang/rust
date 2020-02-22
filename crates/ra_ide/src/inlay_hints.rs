@@ -285,11 +285,6 @@ fn main() {
                 label: "i32",
             },
             InlayHint {
-                range: [584; 585),
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
                 range: [577; 578),
                 kind: TypeHint,
                 label: "f64",
@@ -298,6 +293,11 @@ fn main() {
                 range: [580; 581),
                 kind: TypeHint,
                 label: "f64",
+            },
+            InlayHint {
+                range: [584; 585),
+                kind: TypeHint,
+                label: "i32",
             },
             InlayHint {
                 range: [627; 628),
@@ -447,6 +447,11 @@ fn main() {
                 label: "CustomOption<Test>",
             },
             InlayHint {
+                range: [287; 291),
+                kind: TypeHint,
+                label: "&CustomOption<Test>",
+            },
+            InlayHint {
                 range: [334; 338),
                 kind: TypeHint,
                 label: "&Test",
@@ -462,9 +467,34 @@ fn main() {
                 label: "&u8",
             },
             InlayHint {
+                range: [449; 450),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [455; 456),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
                 range: [531; 532),
                 kind: TypeHint,
                 label: "&u32",
+            },
+            InlayHint {
+                range: [538; 539),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [618; 619),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [675; 676),
+                kind: TypeHint,
+                label: "&u8",
             },
         ]
         "###
@@ -510,6 +540,11 @@ fn main() {
                 label: "CustomOption<Test>",
             },
             InlayHint {
+                range: [293; 297),
+                kind: TypeHint,
+                label: "&CustomOption<Test>",
+            },
+            InlayHint {
                 range: [343; 347),
                 kind: TypeHint,
                 label: "&Test",
@@ -525,9 +560,34 @@ fn main() {
                 label: "&u8",
             },
             InlayHint {
+                range: [464; 465),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [470; 471),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
                 range: [549; 550),
                 kind: TypeHint,
                 label: "&u32",
+            },
+            InlayHint {
+                range: [556; 557),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [639; 640),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [699; 700),
+                kind: TypeHint,
+                label: "&u8",
             },
         ]
         "###
@@ -568,6 +628,11 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
+                range: [272; 276),
+                kind: TypeHint,
+                label: "CustomOption<Test>",
+            },
+            InlayHint {
                 range: [311; 315),
                 kind: TypeHint,
                 label: "Test",
@@ -583,9 +648,34 @@ fn main() {
                 label: "u8",
             },
             InlayHint {
+                range: [410; 411),
+                kind: TypeHint,
+                label: "CustomOption<u32>",
+            },
+            InlayHint {
+                range: [416; 417),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
                 range: [484; 485),
                 kind: TypeHint,
                 label: "u32",
+            },
+            InlayHint {
+                range: [491; 492),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
+                range: [563; 564),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
+                range: [612; 613),
+                kind: TypeHint,
+                label: "u8",
             },
         ]
         "###
@@ -677,9 +767,19 @@ fn main() {
                 label: "msg",
             },
             InlayHint {
+                range: [277; 288),
+                kind: ParameterHint,
+                label: "last",
+            },
+            InlayHint {
                 range: [331; 334),
                 kind: ParameterHint,
                 label: "param",
+            },
+            InlayHint {
+                range: [354; 356),
+                kind: ParameterHint,
+                label: "&self",
             },
             InlayHint {
                 range: [358; 362),
