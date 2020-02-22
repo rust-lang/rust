@@ -44,6 +44,7 @@ macro intrinsic_match {
     $(
         $($($name:tt).*)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
     )*) => {
+        let _ = $substs; // Silence warning when substs is unused.
         match $intrinsic {
             $(
                 $(intrinsic_pat!($($name).*))|* $(if $cond)? => {

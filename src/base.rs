@@ -283,6 +283,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
 fn trans_stmt<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    #[allow(unused_variables)]
     cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {

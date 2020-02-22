@@ -155,7 +155,7 @@ impl<'a> OptimizeContext<'a> {
 
 pub(super) fn optimize_function<T: std::fmt::Debug>(
     ctx: &mut Context,
-    clif_comments: &mut crate::pretty_clif::CommentWriter,
+    _clif_comments: &mut crate::pretty_clif::CommentWriter,
     name: T,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);

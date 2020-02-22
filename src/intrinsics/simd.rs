@@ -17,7 +17,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            fx.tcx.sess.fatal(&format!("Unknown SIMD intrinsic {}", intrinsic));
+            fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
         };
 
         simd_cast, (c a) {
@@ -104,7 +104,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         };
 
-        simd_insert, (c base, o idx, v val) {
+        simd_insert, (c base, o idx, v _val) {
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {

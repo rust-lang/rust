@@ -124,10 +124,10 @@ impl<'tcx> DebugContext<'tcx> {
             ty::Uint(_) => primitive(&mut self.dwarf, gimli::DW_ATE_unsigned),
             ty::Int(_) => primitive(&mut self.dwarf, gimli::DW_ATE_signed),
             ty::Float(_) => primitive(&mut self.dwarf, gimli::DW_ATE_float),
-            ty::Ref(_, pointee_ty, mutbl)
+            ty::Ref(_, pointee_ty, _mutbl)
             | ty::RawPtr(ty::TypeAndMut {
                 ty: pointee_ty,
-                mutbl,
+                mutbl: _mutbl,
             }) => {
                 let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_pointer_type);
 
