@@ -347,7 +347,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("stat")?;
-        this.check_platform("macos", "stat")?;
+        this.assert_platform("macos", "stat");
         // `stat` always follows symlinks.
         this.macos_stat_or_lstat(true, path_op, buf_op)
     }
@@ -360,7 +360,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("lstat")?;
-        this.check_platform("macos", "lstat")?;
+        this.assert_platform("macos", "lstat");
         this.macos_stat_or_lstat(false, path_op, buf_op)
     }
 
@@ -372,7 +372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("fstat")?;
-        this.check_platform("macos", "fstat")?;
+        this.assert_platform("macos", "fstat");
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -416,7 +416,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("statx")?;
-        this.check_platform("linux", "statx")?;
+        this.assert_platform("linux", "statx");
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
         let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
