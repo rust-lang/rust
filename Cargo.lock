@@ -4129,11 +4129,13 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "fmt_macros",
+ "graphviz",
  "log",
  "rustc",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_hir",
  "rustc_index",

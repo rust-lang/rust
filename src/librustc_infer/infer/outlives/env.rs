@@ -1,10 +1,9 @@
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
+use rustc::ty;
 use rustc::ty::free_region_map::FreeRegionMap;
-use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_span::Span;
 
 use super::explicit_outlives_bounds;
 
@@ -144,39 +143,6 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         self.region_bound_pairs_accum.truncate(len);
     }
 
-    /// This method adds "implied bounds" into the outlives environment.
-    /// Implied bounds are outlives relationships that we can deduce
-    /// on the basis that certain types must be well-formed -- these are
-    /// either the types that appear in the function signature or else
-    /// the input types to an impl. For example, if you have a function
-    /// like
-    ///
-    /// ```
-    /// fn foo<'a, 'b, T>(x: &'a &'b [T]) { }
-    /// ```
-    ///
-    /// we can assume in the caller's body that `'b: 'a` and that `T:
-    /// 'b` (and hence, transitively, that `T: 'a`). This method would
-    /// add those assumptions into the outlives-environment.
-    ///
-    /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
-    pub fn add_implied_bounds(
-        &mut self,
-        infcx: &InferCtxt<'a, 'tcx>,
-        fn_sig_tys: &[Ty<'tcx>],
-        body_id: hir::HirId,
-        span: Span,
-    ) {
-        debug!("add_implied_bounds()");
-
-        for &ty in fn_sig_tys {
-            let ty = infcx.resolve_vars_if_possible(&ty);
-            debug!("add_implied_bounds: ty = {}", ty);
-            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
-            self.add_outlives_bounds(Some(infcx), implied_bounds)
-        }
-    }
-
     /// Save the current set of region-bound pairs under the given `body_id`.
     pub fn save_implied_bounds(&mut self, body_id: hir::HirId) {
         let old =
@@ -190,8 +156,11 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
-    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'a, 'tcx>>, outlives_bounds: I)
-    where
+    pub fn add_outlives_bounds<I>(
+        &mut self,
+        infcx: Option<&InferCtxt<'a, 'tcx>>,
+        outlives_bounds: I,
+    ) where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         // Record relationships such as `T:'x` that don't go into the

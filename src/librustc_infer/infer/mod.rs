@@ -13,11 +13,11 @@ use rustc::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc::middle::free_region::RegionRelations;
-use rustc::middle::lang_items;
 use rustc::middle::region;
 use rustc::mir;
 use rustc::mir::interpret::ConstEvalResult;
 use rustc::session::config::BorrowckMode;
+use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::relate::RelateResult;
@@ -58,7 +58,6 @@ pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
 pub mod nll_relate;
-pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;
 pub mod resolve;
@@ -215,10 +214,10 @@ pub struct InferCtxt<'a, 'tcx> {
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx>,
+    pub selection_cache: select::SelectionCache<'tcx>,
 
     /// Caches the results of trait evaluation.
-    pub evaluation_cache: traits::EvaluationCache<'tcx>,
+    pub evaluation_cache: select::EvaluationCache<'tcx>,
 
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
@@ -1474,27 +1473,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn type_is_copy_modulo_regions(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) -> bool {
-        let ty = self.resolve_vars_if_possible(&ty);
-
-        if !(param_env, ty).has_local_value() {
-            return ty.is_copy_modulo_regions(self.tcx, param_env, span);
-        }
-
-        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
-
-        // This can get called from typeck (by euv), and `moves_by_default`
-        // rightly refuses to work with inference variables, but
-        // moves_by_default has a cache, which we want to use in other
-        // cases.
-        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
-    }
-
     /// Obtains the latest type of the given closure; this may be a
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
@@ -1516,30 +1494,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
         let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
-    }
-
-    /// Normalizes associated types in `value`, potentially returning
-    /// new obligations that must further be processed.
-    pub fn partially_normalize_associated_types_in<T>(
-        &self,
-        span: Span,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: &T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        debug!("partially_normalize_associated_types_in(value={:?})", value);
-        let mut selcx = traits::SelectionContext::new(self);
-        let cause = ObligationCause::misc(span, body_id);
-        let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-        debug!(
-            "partially_normalize_associated_types_in: result={:?} predicates={:?}",
-            value, obligations
-        );
-        InferOk { value, obligations }
     }
 
     /// Clears the selection, evaluation, and projection caches. This is useful when

@@ -1,10 +1,13 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::infer::TyCtxtInferExt;
+use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause};
 
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
+use rustc_infer::infer::TyCtxtInferExt;
+
+use crate::traits::error_reporting::InferCtxtExt;
 
 #[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {

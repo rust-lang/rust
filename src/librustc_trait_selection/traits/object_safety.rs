@@ -11,6 +11,7 @@
 use super::elaborate_predicates;
 
 use crate::infer::TyCtxtInferExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};

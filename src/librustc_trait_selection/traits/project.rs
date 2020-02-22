@@ -1,7 +1,6 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
-use super::projection_cache::NormalizedTy;
 use super::specialization_graph;
 use super::translate_substs;
 use super::util;
@@ -12,11 +11,12 @@ use super::PredicateObligation;
 use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
-use super::{Normalized, ProjectionCacheEntry, ProjectionCacheKey};
+use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use super::{VtableClosureData, VtableFnPointerData, VtableGeneratorData, VtableImplData};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use crate::traits::error_reporting::InferCtxtExt;
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
@@ -452,7 +452,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     let infcx = selcx.infcx();
 
     let projection_ty = infcx.resolve_vars_if_possible(&projection_ty);
-    let cache_key = ProjectionCacheKey { ty: projection_ty };
+    let cache_key = ProjectionCacheKey::new(projection_ty);
 
     debug!(
         "opt_normalize_projection_type(\
@@ -1483,20 +1483,29 @@ fn assoc_ty_def(
     }
 }
 
-impl<'cx, 'tcx> ProjectionCacheKey<'tcx> {
-    pub fn from_poly_projection_predicate(
+crate trait ProjectionCacheKeyExt<'tcx>: Sized {
+    fn from_poly_projection_predicate(
+        selcx: &mut SelectionContext<'cx, 'tcx>,
+        predicate: &ty::PolyProjectionPredicate<'tcx>,
+    ) -> Option<Self>;
+}
+
+impl<'tcx> ProjectionCacheKeyExt<'tcx> for ProjectionCacheKey<'tcx> {
+    fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
         predicate: &ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Self> {
         let infcx = selcx.infcx();
         // We don't do cross-snapshot caching of obligations with escaping regions,
         // so there's no cache key to use
-        predicate.no_bound_vars().map(|predicate| ProjectionCacheKey {
-            // We don't attempt to match up with a specific type-variable state
-            // from a specific call to `opt_normalize_projection_type` - if
-            // there's no precise match, the original cache entry is "stranded"
-            // anyway.
-            ty: infcx.resolve_vars_if_possible(&predicate.projection_ty),
+        predicate.no_bound_vars().map(|predicate| {
+            ProjectionCacheKey::new(
+                // We don't attempt to match up with a specific type-variable state
+                // from a specific call to `opt_normalize_projection_type` - if
+                // there's no precise match, the original cache entry is "stranded"
+                // anyway.
+                infcx.resolve_vars_if_possible(&predicate.projection_ty),
+            )
         })
     }
 }

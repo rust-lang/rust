@@ -1,5 +1,4 @@
-use crate::infer::error_reporting::unexpected_hidden_region_diagnostic;
-use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, PredicateObligation};
 use rustc::session::config::nightly_options;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
@@ -11,6 +10,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::Node;
+use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_span::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -103,7 +105,58 @@ pub enum GenerateMemberConstraints {
     IfNoStaticBound,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+pub trait InferCtxtExt<'tcx> {
+    fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
+        &self,
+        parent_def_id: DefId,
+        body_id: hir::HirId,
+        param_env: ty::ParamEnv<'tcx>,
+        value: &T,
+        value_span: Span,
+    ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)>;
+
+    fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(
+        &self,
+        opaque_types: &OpaqueTypeMap<'tcx>,
+        free_region_relations: &FRR,
+    );
+
+    fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
+        &self,
+        def_id: DefId,
+        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        mode: GenerateMemberConstraints,
+        free_region_relations: &FRR,
+    );
+
+    /*private*/
+    fn generate_member_constraint(
+        &self,
+        concrete_ty: Ty<'tcx>,
+        opaque_type_generics: &ty::Generics,
+        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        opaque_type_def_id: DefId,
+    );
+
+    /*private*/
+    fn member_constraint_feature_gate(
+        &self,
+        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        opaque_type_def_id: DefId,
+        conflict1: ty::Region<'tcx>,
+        conflict2: ty::Region<'tcx>,
+    ) -> bool;
+
+    fn infer_opaque_definition_from_instantiation(
+        &self,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        instantiated_ty: Ty<'tcx>,
+        span: Span,
+    ) -> Ty<'tcx>;
+}
+
+impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// Replaces all opaque types in `value` with fresh inference variables
     /// and creates appropriate obligations. For example, given the input:
     ///
@@ -129,7 +182,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///   obligations
     /// - `value` -- the value within which we are instantiating opaque types
     /// - `value_span` -- the span where the value came from, used in error reporting
-    pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
+    fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: DefId,
         body_id: hir::HirId,
@@ -317,7 +370,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
     /// - `free_region_relations` -- something that can be used to relate
     ///   the free regions (`'a`) that appear in the impl trait.
-    pub fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(
+    fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(
         &self,
         opaque_types: &OpaqueTypeMap<'tcx>,
         free_region_relations: &FRR,
@@ -335,7 +388,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// See `constrain_opaque_types` for documentation.
-    pub fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
+    fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         def_id: DefId,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
@@ -577,7 +630,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// - `substs`, the substs  used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
-    pub fn infer_opaque_definition_from_instantiation(
+    fn infer_opaque_definition_from_instantiation(
         &self,
         def_id: DefId,
         substs: SubstsRef<'tcx>,

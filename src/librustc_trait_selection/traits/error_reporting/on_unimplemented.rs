@@ -8,7 +8,27 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+use super::InferCtxtPrivExt;
+
+crate trait InferCtxtExt<'tcx> {
+    /*private*/
+    fn impl_similar_to(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> Option<DefId>;
+
+    /*private*/
+    fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
+
+    fn on_unimplemented_note(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> OnUnimplementedNote;
+}
+
+impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -101,7 +121,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn on_unimplemented_note(
+    fn on_unimplemented_note(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,

@@ -7,7 +7,11 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 pub use rustc::traits::query::{DropckOutlivesResult, DtorckConstraint};
 
-impl<'cx, 'tcx> At<'cx, 'tcx> {
+pub trait AtExt<'tcx> {
+    fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>>;
+}
+
+impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
     /// of "kinds" (types, regions) that must be outlive the execution
     /// of the destructor. These basically correspond to data that the
@@ -25,7 +29,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     ///
     /// [#1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
     /// [#1327]: https://github.com/rust-lang/rfcs/blob/master/text/1327-dropck-param-eyepatch.md
-    pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>> {
+    fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>> {
         debug!("dropck_outlives(ty={:?}, param_env={:?})", ty, self.param_env,);
 
         // Quick check: there are a number of cases that we know do not require

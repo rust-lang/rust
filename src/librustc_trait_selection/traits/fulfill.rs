@@ -4,9 +4,9 @@ use rustc::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use std::marker::PhantomData;
 
-use super::engine::{TraitEngine, TraitEngineExt};
 use super::project;
 use super::select::SelectionContext;
 use super::wf;
@@ -16,6 +16,9 @@ use super::CodeSelectionError;
 use super::{ConstEvalFailure, Unimplemented};
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
+
+use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     /// Note that we include both the `ParamEnv` and the `Predicate`,

@@ -1,6 +1,5 @@
 use super::{
-    ArgKind, EvaluationResult, Obligation, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
+    EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
 };
 
 use crate::infer::InferCtxt;
@@ -8,9 +7,7 @@ use crate::traits::error_reporting::suggest_constraining_type_param;
 
 use rustc::ty::TypeckTables;
 use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
-};
+use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -20,8 +17,136 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    crate fn suggest_restricting_param_bound(
+use super::InferCtxtPrivExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+
+crate trait InferCtxtExt<'tcx> {
+    fn suggest_restricting_param_bound(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: &ty::PolyTraitRef<'_>,
+        body_id: hir::HirId,
+    );
+
+    fn suggest_borrow_on_unsized_slice(
+        &self,
+        code: &ObligationCauseCode<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+    );
+
+    fn get_closure_name(
+        &self,
+        def_id: DefId,
+        err: &mut DiagnosticBuilder<'_>,
+        msg: &str,
+    ) -> Option<String>;
+
+    fn suggest_fn_call(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+    );
+
+    fn suggest_add_reference_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+        has_custom_message: bool,
+    ) -> bool;
+
+    fn suggest_remove_reference(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    );
+
+    fn suggest_change_mut(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+    );
+
+    fn suggest_semicolon_removal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    );
+
+    fn suggest_impl_trait(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    ) -> bool;
+
+    fn point_at_returns_when_relevant(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    );
+
+    fn report_closure_arg_mismatch(
+        &self,
+        span: Span,
+        found_span: Option<Span>,
+        expected_ref: ty::PolyTraitRef<'tcx>,
+        found: ty::PolyTraitRef<'tcx>,
+    ) -> DiagnosticBuilder<'tcx>;
+
+    fn suggest_fully_qualified_path(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        def_id: DefId,
+        span: Span,
+        trait_ref: DefId,
+    );
+
+    fn maybe_note_obligation_cause_for_async_await(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> bool;
+
+    fn note_obligation_cause_for_async_await(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        target_span: Span,
+        scope_span: &Option<Span>,
+        expr: Option<hir::HirId>,
+        snippet: String,
+        first_generator: DefId,
+        last_generator: Option<DefId>,
+        trait_ref: ty::TraitRef<'_>,
+        target_ty: Ty<'tcx>,
+        tables: &ty::TypeckTables<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        next_code: Option<&ObligationCauseCode<'tcx>>,
+    );
+
+    fn note_obligation_cause_code<T>(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        predicate: &T,
+        cause_code: &ObligationCauseCode<'tcx>,
+        obligated_types: &mut Vec<&ty::TyS<'tcx>>,
+    ) where
+        T: fmt::Display;
+
+    fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>);
+}
+
+impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+    fn suggest_restricting_param_bound(
         &self,
         mut err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::PolyTraitRef<'_>,
@@ -168,7 +293,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
     /// suggestion to borrow the initializer in order to use have a slice instead.
-    crate fn suggest_borrow_on_unsized_slice(
+    fn suggest_borrow_on_unsized_slice(
         &self,
         code: &ObligationCauseCode<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -195,7 +320,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Given a closure's `DefId`, return the given name of the closure.
     ///
     /// This doesn't account for reassignments, but it's only used for suggestions.
-    crate fn get_closure_name(
+    fn get_closure_name(
         &self,
         def_id: DefId,
         err: &mut DiagnosticBuilder<'_>,
@@ -233,7 +358,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// We tried to apply the bound to an `fn` or closure. Check whether calling it would
     /// evaluate to a type that *would* satisfy the trait binding. If it would, suggest calling
     /// it: `bar(foo)` → `bar(foo())`. This case is *very* likely to be hit if `foo` is `async`.
-    crate fn suggest_fn_call(
+    fn suggest_fn_call(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
@@ -317,7 +442,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn suggest_add_reference_to_arg(
+    fn suggest_add_reference_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -389,7 +514,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
     /// suggest removing these references until we reach a type that implements the trait.
-    crate fn suggest_remove_reference(
+    fn suggest_remove_reference(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -451,7 +576,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Check if the trait bound is implemented for a different mutability and note it in the
     /// final error.
-    crate fn suggest_change_mut(
+    fn suggest_change_mut(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -513,7 +638,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn suggest_semicolon_removal(
+    fn suggest_semicolon_removal(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -549,7 +674,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// If all conditions are met to identify a returned `dyn Trait`, suggest using `impl Trait` if
     /// applicable and signal that the error has been expanded appropriately and needs to be
     /// emitted.
-    crate fn suggest_impl_trait(
+    fn suggest_impl_trait(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
@@ -723,7 +848,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         true
     }
 
-    crate fn point_at_returns_when_relevant(
+    fn point_at_returns_when_relevant(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
@@ -753,220 +878,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// Given some node representing a fn-like thing in the HIR map,
-    /// returns a span and `ArgKind` information that describes the
-    /// arguments it expects. This can be supplied to
-    /// `report_arg_count_mismatch`.
-    pub fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
-        match node {
-            Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
-                ..
-            }) => (
-                self.tcx.sess.source_map().def_span(span),
-                self.tcx
-                    .hir()
-                    .body(id)
-                    .params
-                    .iter()
-                    .map(|arg| {
-                        if let hir::Pat { kind: hir::PatKind::Tuple(ref args, _), span, .. } =
-                            *arg.pat
-                        {
-                            ArgKind::Tuple(
-                                Some(span),
-                                args.iter()
-                                    .map(|pat| {
-                                        let snippet = self
-                                            .tcx
-                                            .sess
-                                            .source_map()
-                                            .span_to_snippet(pat.span)
-                                            .unwrap();
-                                        (snippet, "_".to_owned())
-                                    })
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            let name =
-                                self.tcx.sess.source_map().span_to_snippet(arg.pat.span).unwrap();
-                            ArgKind::Arg(name, "_".to_owned())
-                        }
-                    })
-                    .collect::<Vec<ArgKind>>(),
-            ),
-            Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
-            | Node::ImplItem(&hir::ImplItem {
-                span,
-                kind: hir::ImplItemKind::Method(ref sig, _),
-                ..
-            })
-            | Node::TraitItem(&hir::TraitItem {
-                span,
-                kind: hir::TraitItemKind::Fn(ref sig, _),
-                ..
-            }) => (
-                self.tcx.sess.source_map().def_span(span),
-                sig.decl
-                    .inputs
-                    .iter()
-                    .map(|arg| match arg.clone().kind {
-                        hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
-                            Some(arg.span),
-                            vec![("_".to_owned(), "_".to_owned()); tys.len()],
-                        ),
-                        _ => ArgKind::empty(),
-                    })
-                    .collect::<Vec<ArgKind>>(),
-            ),
-            Node::Ctor(ref variant_data) => {
-                let span = variant_data
-                    .ctor_hir_id()
-                    .map(|hir_id| self.tcx.hir().span(hir_id))
-                    .unwrap_or(DUMMY_SP);
-                let span = self.tcx.sess.source_map().def_span(span);
-
-                (span, vec![ArgKind::empty(); variant_data.fields().len()])
-            }
-            _ => panic!("non-FnLike node found: {:?}", node),
-        }
-    }
-
-    /// Reports an error when the number of arguments needed by a
-    /// trait match doesn't match the number that the expression
-    /// provides.
-    pub fn report_arg_count_mismatch(
-        &self,
-        span: Span,
-        found_span: Option<Span>,
-        expected_args: Vec<ArgKind>,
-        found_args: Vec<ArgKind>,
-        is_closure: bool,
-    ) -> DiagnosticBuilder<'tcx> {
-        let kind = if is_closure { "closure" } else { "function" };
-
-        let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
-            let arg_length = arguments.len();
-            let distinct = match &other[..] {
-                &[ArgKind::Tuple(..)] => true,
-                _ => false,
-            };
-            match (arg_length, arguments.get(0)) {
-                (1, Some(&ArgKind::Tuple(_, ref fields))) => {
-                    format!("a single {}-tuple as argument", fields.len())
-                }
-                _ => format!(
-                    "{} {}argument{}",
-                    arg_length,
-                    if distinct && arg_length > 1 { "distinct " } else { "" },
-                    pluralize!(arg_length)
-                ),
-            }
-        };
-
-        let expected_str = args_str(&expected_args, &found_args);
-        let found_str = args_str(&found_args, &expected_args);
-
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            span,
-            E0593,
-            "{} is expected to take {}, but it takes {}",
-            kind,
-            expected_str,
-            found_str,
-        );
-
-        err.span_label(span, format!("expected {} that takes {}", kind, expected_str));
-
-        if let Some(found_span) = found_span {
-            err.span_label(found_span, format!("takes {}", found_str));
-
-            // move |_| { ... }
-            // ^^^^^^^^-- def_span
-            //
-            // move |_| { ... }
-            // ^^^^^-- prefix
-            let prefix_span = self.tcx.sess.source_map().span_until_non_whitespace(found_span);
-            // move |_| { ... }
-            //      ^^^-- pipe_span
-            let pipe_span =
-                if let Some(span) = found_span.trim_start(prefix_span) { span } else { found_span };
-
-            // Suggest to take and ignore the arguments with expected_args_length `_`s if
-            // found arguments is empty (assume the user just wants to ignore args in this case).
-            // For example, if `expected_args_length` is 2, suggest `|_, _|`.
-            if found_args.is_empty() && is_closure {
-                let underscores = vec!["_"; expected_args.len()].join(", ");
-                err.span_suggestion(
-                    pipe_span,
-                    &format!(
-                        "consider changing the closure to take and ignore the expected argument{}",
-                        if expected_args.len() < 2 { "" } else { "s" }
-                    ),
-                    format!("|{}|", underscores),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            if let &[ArgKind::Tuple(_, ref fields)] = &found_args[..] {
-                if fields.len() == expected_args.len() {
-                    let sugg = fields
-                        .iter()
-                        .map(|(name, _)| name.to_owned())
-                        .collect::<Vec<String>>()
-                        .join(", ");
-                    err.span_suggestion(
-                        found_span,
-                        "change the closure to take multiple arguments instead of a single tuple",
-                        format!("|{}|", sugg),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..] {
-                if fields.len() == found_args.len() && is_closure {
-                    let sugg = format!(
-                        "|({}){}|",
-                        found_args
-                            .iter()
-                            .map(|arg| match arg {
-                                ArgKind::Arg(name, _) => name.to_owned(),
-                                _ => "_".to_owned(),
-                            })
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                        // add type annotations if available
-                        if found_args.iter().any(|arg| match arg {
-                            ArgKind::Arg(_, ty) => ty != "_",
-                            _ => false,
-                        }) {
-                            format!(
-                                ": ({})",
-                                fields
-                                    .iter()
-                                    .map(|(_, ty)| ty.to_owned())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
-                            )
-                        } else {
-                            String::new()
-                        },
-                    );
-                    err.span_suggestion(
-                        found_span,
-                        "change the closure to accept a tuple instead of individual arguments",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        }
-
-        err
-    }
-
-    crate fn report_closure_arg_mismatch(
+    fn report_closure_arg_mismatch(
         &self,
         span: Span,
         found_span: Option<Span>,
@@ -1022,10 +934,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         err
     }
-}
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    crate fn suggest_fully_qualified_path(
+    fn suggest_fully_qualified_path(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         def_id: DefId,
@@ -1091,7 +1001,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// ```
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
-    crate fn maybe_note_obligation_cause_for_async_await(
+    fn maybe_note_obligation_cause_for_async_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
@@ -1271,7 +1181,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Unconditionally adds the diagnostic note described in
     /// `maybe_note_obligation_cause_for_async_await`'s documentation comment.
-    crate fn note_obligation_cause_for_async_await(
+    fn note_obligation_cause_for_async_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         target_span: Span,
@@ -1423,7 +1333,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
     }
 
-    crate fn note_obligation_cause_code<T>(
+    fn note_obligation_cause_code<T>(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         predicate: &T,
@@ -1638,7 +1548,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
         let current_limit = self.tcx.sess.recursion_limit.get();
         let suggested_limit = current_limit * 2;
         err.help(&format!(

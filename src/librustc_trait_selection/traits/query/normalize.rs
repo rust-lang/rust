@@ -5,17 +5,24 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::Normalized;
+use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_infer::traits::Normalized;
 
 use super::NoSolution;
 
 pub use rustc::traits::query::NormalizationResult;
 
-impl<'cx, 'tcx> At<'cx, 'tcx> {
+pub trait AtExt<'tcx> {
+    fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
+    where
+        T: TypeFoldable<'tcx>;
+}
+
+impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -29,7 +36,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
-    pub fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>,
     {

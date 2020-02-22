@@ -33,6 +33,8 @@ use super::{
 };
 
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
+use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::project::ProjectionCacheKeyExt;
 use rustc::dep_graph::{DepKind, DepNodeIndex};
 use rustc::middle::lang_items;
 use rustc::ty::fast_reject;
@@ -3464,9 +3466,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 }
 
-impl<'tcx> TraitObligation<'tcx> {
+trait TraitObligationExt<'tcx> {
+    fn derived_cause(
+        &self,
+        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx>;
+}
+
+impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
     #[allow(unused_comparisons)]
-    pub fn derived_cause(
+    fn derived_cause(
         &self,
         variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {

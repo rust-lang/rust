@@ -1,5 +1,5 @@
-use crate::infer::opaque_types::required_region_bounds;
 use crate::infer::InferCtxt;
+use crate::opaque_types::required_region_bounds;
 use crate::traits::{self, AssocTypeBoundData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::SubstsRef;

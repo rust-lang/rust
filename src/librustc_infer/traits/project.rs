@@ -65,7 +65,13 @@ pub struct ProjectionCache<'tcx> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectionCacheKey<'tcx> {
-    pub ty: ty::ProjectionTy<'tcx>,
+    ty: ty::ProjectionTy<'tcx>,
+}
+
+impl ProjectionCacheKey<'tcx> {
+    pub fn new(ty: ty::ProjectionTy<'tcx>) -> Self {
+        Self { ty }
+    }
 }
 
 #[derive(Clone, Debug)]

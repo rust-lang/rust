@@ -14,7 +14,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferCtxtBuilder, InferOk, InferResult, NLLRegionVariableOrigin};
+use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{DomainGoal, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
@@ -26,51 +26,7 @@ use rustc::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
-use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
-
-impl<'tcx> InferCtxtBuilder<'tcx> {
-    /// The "main method" for a canonicalized trait query. Given the
-    /// canonical key `canonical_key`, this method will create a new
-    /// inference context, instantiate the key, and run your operation
-    /// `op`. The operation should yield up a result (of type `R`) as
-    /// well as a set of trait obligations that must be fully
-    /// satisfied. These obligations will be processed and the
-    /// canonical result created.
-    ///
-    /// Returns `NoSolution` in the event of any error.
-    ///
-    /// (It might be mildly nicer to implement this on `TyCtxt`, and
-    /// not `InferCtxtBuilder`, but that is a bit tricky right now.
-    /// In part because we would need a `for<'tcx>` sort of
-    /// bound for the closure and in part because it is convenient to
-    /// have `'tcx` be free on this function so that we can talk about
-    /// `K: TypeFoldable<'tcx>`.)
-    pub fn enter_canonical_trait_query<K, R>(
-        &mut self,
-        canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
-    where
-        K: TypeFoldable<'tcx>,
-        R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
-    {
-        self.enter_with_canonical(
-            DUMMY_SP,
-            canonical_key,
-            |ref infcx, key, canonical_inference_vars| {
-                let mut fulfill_cx = TraitEngine::new(infcx.tcx);
-                let value = operation(infcx, &mut *fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(
-                    canonical_inference_vars,
-                    value,
-                    &mut *fulfill_cx,
-                )
-            },
-        )
-    }
-}
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
