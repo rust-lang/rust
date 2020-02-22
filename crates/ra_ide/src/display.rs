@@ -15,7 +15,7 @@ pub use function_signature::FunctionSignature;
 pub use navigation_target::NavigationTarget;
 pub use structure::{file_structure, StructureNode};
 
-pub(crate) use navigation_target::ToNav;
+pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
