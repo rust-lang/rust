@@ -164,7 +164,7 @@ impl<'t> Parser<'t> {
         assert!(self.eat(kind));
     }
 
-    /// Advances the parser by one token with composite puncts handled
+    /// Advances the parser by one token
     pub(crate) fn bump_any(&mut self) {
         let kind = self.nth(0);
         if kind == EOF {
