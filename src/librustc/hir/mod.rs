@@ -55,7 +55,7 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers<'_>) {
     providers.parent_module_from_def_id = |tcx, id| {
         let hir = tcx.hir();
-        hir.get_module_parent(hir.as_local_hir_id(id).unwrap())
+        hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id).unwrap()))
     };
     providers.hir_crate = |tcx, _| tcx.hir_map.untracked_krate();
     map::provide(providers);

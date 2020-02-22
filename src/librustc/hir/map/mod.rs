@@ -746,15 +746,9 @@ impl<'hir> Map<'hir> {
         hir_id
     }
 
-    /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
-    /// module parent is in this map.
-    pub fn get_module_parent(&self, id: HirId) -> DefId {
-        self.local_def_id(self.get_module_parent_node(id))
-    }
-
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
+    pub(super) fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
         for (hir_id, node) in self.parent_iter(hir_id) {
             if let Node::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
                 return hir_id;
