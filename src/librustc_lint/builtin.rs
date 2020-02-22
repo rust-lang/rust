@@ -738,52 +738,33 @@ impl EarlyLintPass for DeprecatedAttr {
     }
 }
 
-trait UnusedDocCommentExt {
-    fn warn_if_doc(
-        &self,
-        cx: &EarlyContext<'_>,
-        node_span: Span,
-        node_kind: &str,
-        attrs: &[ast::Attribute],
-    );
-}
+fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &[ast::Attribute]) {
+    let mut attrs = attrs.into_iter().peekable();
 
-impl UnusedDocCommentExt for UnusedDocComment {
-    fn warn_if_doc(
-        &self,
-        cx: &EarlyContext<'_>,
-        node_span: Span,
-        node_kind: &str,
-        attrs: &[ast::Attribute],
-    ) {
-        let mut attrs = attrs.into_iter().peekable();
+    // Accumulate a single span for sugared doc comments.
+    let mut sugared_span: Option<Span> = None;
 
-        // Accumulate a single span for sugared doc comments.
-        let mut sugared_span: Option<Span> = None;
+    while let Some(attr) = attrs.next() {
+        if attr.is_doc_comment() {
+            sugared_span =
+                Some(sugared_span.map_or_else(|| attr.span, |span| span.with_hi(attr.span.hi())));
+        }
 
-        while let Some(attr) = attrs.next() {
-            if attr.is_doc_comment() {
-                sugared_span = Some(
-                    sugared_span.map_or_else(|| attr.span, |span| span.with_hi(attr.span.hi())),
+        if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
+            continue;
+        }
+
+        let span = sugared_span.take().unwrap_or_else(|| attr.span);
+
+        if attr.is_doc_comment() || attr.check_name(sym::doc) {
+            cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
+                let mut err = lint.build("unused doc comment");
+                err.span_label(
+                    node_span,
+                    format!("rustdoc does not generate documentation for {}", node_kind),
                 );
-            }
-
-            if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
-                continue;
-            }
-
-            let span = sugared_span.take().unwrap_or_else(|| attr.span);
-
-            if attr.is_doc_comment() || attr.check_name(sym::doc) {
-                cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
-                    let mut err = lint.build("unused doc comment");
-                    err.span_label(
-                        node_span,
-                        format!("rustdoc does not generate documentation for {}", node_kind),
-                    );
-                    err.emit();
-                });
-            }
+                err.emit();
+            });
         }
     }
 }
@@ -797,16 +778,16 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Semi(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Mac(..) => return,
         };
 
-        self.warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
+        warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
-        self.warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
+        warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        self.warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
+        warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
     }
 }
 
