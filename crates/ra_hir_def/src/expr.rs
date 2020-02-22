@@ -48,7 +48,7 @@ pub enum Literal {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
-    /// This is produced if syntax tree does not have a required expression piece.
+    /// This is produced if the syntax tree does not have a required expression piece.
     Missing,
     Path(Path),
     If {

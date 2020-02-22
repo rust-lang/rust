@@ -174,6 +174,7 @@ impl HasChildSource for VariantId {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StructKind {
     Tuple,
     Record,
