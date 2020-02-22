@@ -127,8 +127,7 @@ pub fn make_module(sess: &Session, name: String) -> Module<Backend> {
             name + ".o",
             ObjectTrapCollection::Disabled,
             cranelift_module::default_libcall_names(),
-        )
-        .unwrap(),
+        ),
     );
     module
 }
