@@ -254,41 +254,6 @@ pub enum TyKind<'tcx> {
     Error,
 }
 
-impl<'tcx> TyKind<'tcx> {
-    pub fn article_and_description(&self) -> (&'static str, &'static str) {
-        match *self {
-            Bool => ("a", "boolean value"),
-            Char => ("a", "character"),
-            Int(..) => ("a", "signed interger"),
-            Uint(..) => ("an", "unsigned integer"),
-            Float(..) => ("a", "floating point number"),
-            Adt(..) => ("an", "abstract data type"),
-            Foreign(..) => ("a", "foreign type"),
-            Str => ("a", "string slice"),
-            Array(..) => ("an", "array"),
-            Slice(..) => ("a", "slice"),
-            RawPtr(..) => ("a", "raw pointer"),
-            Ref(..) => ("a", "reference"),
-            FnDef(..) => ("a", "function"),
-            FnPtr(..) => ("a", "function pointer"),
-            Dynamic(..) => ("a", "trait object"),
-            Closure(..) => ("a", "closure"),
-            Generator(..) => ("a", "generator"),
-            GeneratorWitness(..) => ("a", "generator witness"),
-            Never => ("a", "never"),
-            Tuple(..) => ("a", "tuple"),
-            Projection(..) => ("a", "projection"),
-            UnnormalizedProjection(..) => ("an", "unnormalized projection"),
-            Opaque(..) => ("an", "opaque type"),
-            Param(..) => ("a", "type parameter"),
-            Bound(..) => ("a", "bound type variable"),
-            Placeholder(..) => ("a", "universally quantified higher-ranked type"),
-            Infer(..) => ("an", "inference variable"),
-            Error => ("a", "type error"),
-        }
-    }
-}
-
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TyKind<'_>, 24);
