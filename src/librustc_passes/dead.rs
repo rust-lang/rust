@@ -286,8 +286,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>,
-                   id: hir::HirId, span: rustc_span::Span) {
+    fn visit_qpath(
+        &mut self,
+        qpath: &'tcx hir::QPath<'tcx>,
+        id: hir::HirId,
+        span: rustc_span::Span,
+    ) {
         let res = self.tables.qpath_res(qpath, id);
         self.handle_res(res);
         intravisit::walk_qpath(self, qpath, id, span);
