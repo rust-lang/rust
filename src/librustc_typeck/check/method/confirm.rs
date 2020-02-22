@@ -313,7 +313,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             parent_substs,
             false,
             None,
-            arg_count_correct,
+            arg_count_correct.is_ok(),
             // Provide the generic args, and whether types should be inferred.
             |def_id| {
                 // The last component of the returned tuple here is unimportant.
