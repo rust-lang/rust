@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_int_conversion)]
-
 const REVERSE: u32 = 0x12345678_u32.reverse_bits();
 const FROM_BE_BYTES: i32 = i32::from_be_bytes([0x12, 0x34, 0x56, 0x78]);
 const FROM_LE_BYTES: i32 = i32::from_le_bytes([0x12, 0x34, 0x56, 0x78]);
