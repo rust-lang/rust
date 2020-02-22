@@ -1,12 +1,12 @@
 //! FIXME: write short doc here
 
-use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
+use hir::{Function, HirDisplay, SourceAnalyzer, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
+    match_ast, SmolStr, SourceFile, SyntaxNode, TextRange,
 };
 
 use crate::{FileId, FunctionSignature};
@@ -107,28 +107,33 @@ fn get_param_name_hints(
         ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
         ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
         _ => return None,
+    }
+    .into_iter()
+    // we need args len to determine whether to skip or not the &self parameter
+    .collect::<Vec<_>>();
+
+    let (has_self_param, fn_signature) = get_fn_signature(db, analyzer, &expr)?;
+    let parameters = if has_self_param && fn_signature.parameter_names.len() > args.len() {
+        fn_signature.parameter_names.into_iter().skip(1)
+    } else {
+        fn_signature.parameter_names.into_iter().skip(0)
     };
 
-    let mut parameters = get_fn_signature(db, analyzer, &expr)?.parameter_names.into_iter();
-
-    if let ast::Expr::MethodCallExpr(_) = &expr {
-        parameters.next();
-    };
-
-    let hints = parameters
-        .zip(args)
-        .filter_map(|(param, arg)| {
-            if arg.syntax().kind() == SyntaxKind::LITERAL && !param.is_empty() {
-                Some((arg.syntax().text_range(), param))
-            } else {
-                None
-            }
-        })
-        .map(|(range, param_name)| InlayHint {
-            range,
-            kind: InlayKind::ParameterHint,
-            label: param_name.into(),
-        });
+    let hints =
+        parameters
+            .zip(args)
+            .filter_map(|(param, arg)| {
+                if !param.is_empty() {
+                    Some((arg.syntax().text_range(), param))
+                } else {
+                    None
+                }
+            })
+            .map(|(range, param_name)| InlayHint {
+                range,
+                kind: InlayKind::ParameterHint,
+                label: param_name.into(),
+            });
 
     acc.extend(hints);
     Some(())
@@ -138,25 +143,27 @@ fn get_fn_signature(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     expr: &ast::Expr,
-) -> Option<FunctionSignature> {
+) -> Option<(bool, FunctionSignature)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             // FIXME: Type::as_callable is broken for closures
             let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
-                    let fn_def = it.into();
-                    Some(FunctionSignature::from_hir(db, fn_def))
+                    let fn_def: Function = it.into();
+                    Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
                 }
-                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into()),
+                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into())
+                    .map(|signature| (false, signature)),
                 hir::CallableDef::EnumVariantId(it) => {
                     FunctionSignature::from_enum_variant(db, it.into())
+                        .map(|signature| (false, signature))
                 }
             }
         }
         ast::Expr::MethodCallExpr(expr) => {
             let fn_def = analyzer.resolve_method_call(&expr)?;
-            Some(FunctionSignature::from_hir(db, fn_def))
+            Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
         }
         _ => None,
     }
