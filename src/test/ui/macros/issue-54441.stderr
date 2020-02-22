@@ -1,11 +1,13 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-54441.rs:1:1
+error: macro expansion ignores token `let` and any following
+  --> $DIR/issue-54441.rs:3:9
    |
-LL | / macro_rules! m {
-LL | |
-LL | |     () => {
-LL | |         let
-   | |________^ missing `fn`, `type`, `const`, or `static`
+LL |         let
+   |         ^^^
+...
+LL |     m!();
+   |     ----- caused by the macro expansion here
+   |
+   = note: the usage of `m!` is likely invalid in foreign item context
 
 error: aborting due to previous error
 
