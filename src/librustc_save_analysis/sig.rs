@@ -502,7 +502,7 @@ impl Sig for ast::Item {
                 items: _,
             } => {
                 let mut text = String::new();
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     text.push_str("default ");
                 }
                 if let ast::Unsafe::Yes(_) = unsafety {

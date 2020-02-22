@@ -2106,7 +2106,7 @@ pub enum Const {
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Defaultness {
-    Default,
+    Default(Span),
     Final,
 }
 

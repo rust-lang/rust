@@ -810,13 +810,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Macro(..) => unimplemented!(),
         };
-        hir::TraitItemRef {
-            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id) },
-            ident: i.ident,
-            span: i.span,
-            defaultness: self.lower_defaultness(Defaultness::Default, has_default),
-            kind,
-        }
+        let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
+        let defaultness = hir::Defaultness::Default { has_value: has_default };
+        hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
@@ -948,7 +944,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_defaultness(&self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
-            Defaultness::Default => hir::Defaultness::Default { has_value: has_value },
+            Defaultness::Default(_) => hir::Defaultness::Default { has_value },
             Defaultness::Final => {
                 assert!(has_value);
                 hir::Defaultness::Final

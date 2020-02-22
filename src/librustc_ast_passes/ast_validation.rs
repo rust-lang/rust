@@ -400,9 +400,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
-        if let Defaultness::Default = defaultness {
+        if let Defaultness::Default(def_span) = defaultness {
+            let span = self.session.source_map().def_span(span);
             self.err_handler()
                 .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .span_label(def_span, "`default` because of this")
                 .emit();
         }
     }
@@ -863,10 +865,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if polarity == ImplPolarity::Negative {
                     self.err_handler().span_err(item.span, "inherent impls cannot be negative");
                 }
-                if defaultness == Defaultness::Default {
+                if let Defaultness::Default(def_span) = defaultness {
+                    let span = self.session.source_map().def_span(item.span);
                     self.err_handler()
-                        .struct_span_err(item.span, "inherent impls cannot be default")
-                        .note("only trait implementations may be annotated with default")
+                        .struct_span_err(span, "inherent impls cannot be `default`")
+                        .span_label(def_span, "`default` because of this")
+                        .note("only trait implementations may be annotated with `default`")
                         .emit();
                 }
                 if let Const::Yes(span) = constness {

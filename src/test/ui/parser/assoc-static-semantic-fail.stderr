@@ -74,13 +74,17 @@ error: `default` is only allowed on items in `impl` definitions
   --> $DIR/assoc-static-semantic-fail.rs:24:5
    |
 LL |     default static TC: u8 = 0;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     -------^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `default` because of this
 
 error: `default` is only allowed on items in `impl` definitions
   --> $DIR/assoc-static-semantic-fail.rs:27:5
    |
 LL |     pub(crate) default static TD: u8;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^-------^^^^^^^^^^^^^^^
+   |                |
+   |                `default` because of this
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/assoc-static-semantic-fail.rs:27:5
