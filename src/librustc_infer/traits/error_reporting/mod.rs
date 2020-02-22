@@ -647,7 +647,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
 
                         // Try to report a help message
-                        if !trait_ref.has_infer_types()
+                        if !trait_ref.has_infer_types_or_consts()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
                         {
                             // If a where-clause may be useful, remind the

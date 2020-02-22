@@ -502,7 +502,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let univariant = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
             Ok(tcx.intern_layout(self.univariant_uninterned(ty, fields, repr, kind)?))
         };
-        debug_assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types_or_consts());
 
         Ok(match ty.kind {
             // Basic scalars.
@@ -1752,7 +1752,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        debug_assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types_or_consts());
 
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {

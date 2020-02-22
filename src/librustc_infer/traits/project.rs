@@ -490,22 +490,14 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     match cache_result {
         Ok(()) => {}
         Err(ProjectionCacheEntry::Ambiguous) => {
-            // If we found ambiguity the last time, that generally
-            // means we will continue to do so until some type in the
-            // key changes (and we know it hasn't, because we just
-            // fully resolved it). One exception though is closure
-            // types, which can transition from having a fixed kind to
-            // no kind with no visible change in the key.
-            //
-            // FIXME(#32286) refactor this so that closure type
-            // changes
+            // If we found ambiguity the last time, that means we will continue
+            // to do so until some type in the key changes (and we know it
+            // hasn't, because we just fully resolved it).
             debug!(
                 "opt_normalize_projection_type: \
                  found cache entry: ambiguous"
             );
-            if !projection_ty.has_closure_types() {
-                return None;
-            }
+            return None;
         }
         Err(ProjectionCacheEntry::InProgress) => {
             // If while normalized A::B, we are asked to normalize

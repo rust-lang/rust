@@ -1482,12 +1482,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> bool {
         let ty = self.resolve_vars_if_possible(&ty);
 
-        // Even if the type may have no inference variables, during
-        // type-checking closure types are in local tables only.
-        if self.in_progress_tables.is_none() || !ty.has_closure_types() {
-            if !(param_env, ty).has_local_value() {
-                return ty.is_copy_modulo_regions(self.tcx, param_env, span);
-            }
+        if !(param_env, ty).has_local_value() {
+            return ty.is_copy_modulo_regions(self.tcx, param_env, span);
         }
 
         let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
