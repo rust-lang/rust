@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
             (Ident::invalid(), ItemKind::Use(P(tree)))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(&mut false, attrs, req_name)?;
+            let (ident, sig, generics, body) = self.parse_fn(attrs, req_name)?;
             (ident, ItemKind::Fn(sig, generics, body))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1406,7 +1406,6 @@ impl<'a> Parser<'a> {
     /// Parse a function starting from the front matter (`const ...`) to the body `{ ... }` or `;`.
     fn parse_fn(
         &mut self,
-        at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
         req_name: ReqName,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
@@ -1415,18 +1414,14 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl = self.parse_fn_decl(req_name, AllowPlus::Yes)?; // `(p: u8, ...)`
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
-        let body = self.parse_fn_body(at_end, attrs)?; // `;` or `{ ... }`.
+        let body = self.parse_fn_body(attrs)?; // `;` or `{ ... }`.
         Ok((ident, FnSig { header, decl }, generics, body))
     }
 
     /// Parse the "body" of a function.
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the function is a provided one.
-    fn parse_fn_body(
-        &mut self,
-        at_end: &mut bool,
-        attrs: &mut Vec<Attribute>,
-    ) -> PResult<'a, Option<P<Block>>> {
+    fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
         let (inner_attrs, body) = match self.token.kind {
             token::Semi => {
                 self.bump();
@@ -1446,7 +1441,6 @@ impl<'a> Parser<'a> {
             _ => return self.expected_semi_or_open_brace(),
         };
         attrs.extend(inner_attrs);
-        *at_end = true;
         Ok(body)
     }
 
