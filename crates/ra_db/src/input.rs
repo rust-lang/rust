@@ -165,7 +165,7 @@ impl CrateGraph {
         self.arena.is_empty()
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = CrateId> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
         self.arena.keys().copied()
     }
 
@@ -183,10 +183,7 @@ impl CrateGraph {
         Some(crate_id)
     }
 
-    pub fn dependencies<'a>(
-        &'a self,
-        crate_id: CrateId,
-    ) -> impl Iterator<Item = &'a Dependency> + 'a {
+    pub fn dependencies(&self, crate_id: CrateId) -> impl Iterator<Item = &Dependency> {
         self.arena[&crate_id].dependencies.iter()
     }
 
