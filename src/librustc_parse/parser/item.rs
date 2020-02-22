@@ -81,17 +81,30 @@ impl<'a> Parser<'a> {
             Some(item)
         });
 
+        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed)?;
+        if let Some(ref item) = item {
+            self.error_on_illegal_default(item.defaultness);
+        }
+        Ok(item.map(P))
+    }
+
+    fn parse_item_common(
+        &mut self,
+        mut attrs: Vec<Attribute>,
+        macros_allowed: bool,
+        attributes_allowed: bool,
+    ) -> PResult<'a, Option<Item>> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
-
-        if let Some((ident, kind)) = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis)? {
-            return Ok(Some(P(self.mk_item(lo, ident, kind, vis, Defaultness::Final, attrs))));
+        let mut def = self.parse_defaultness();
+        let kind = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis, &mut def)?;
+        if let Some((ident, kind)) = kind {
+            return Ok(Some(self.mk_item(lo, ident, kind, vis, def, attrs)));
         }
 
         // At this point, we have failed to parse an item.
-
         self.error_on_unmatched_vis(&vis);
-
+        self.error_on_unmatched_defaultness(def);
         if !attributes_allowed {
             self.recover_attrs_no_item(&attrs)?;
         }
@@ -111,6 +124,25 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
+    /// Error in-case a `default` was parsed but no item followed.
+    fn error_on_unmatched_defaultness(&self, def: Defaultness) {
+        if let Defaultness::Default(span) = def {
+            self.struct_span_err(span, "unmatched `default`")
+                .span_label(span, "the unmatched `default`")
+                .emit();
+        }
+    }
+
+    /// Error in-case `default` was parsed in an in-appropriate context.
+    fn error_on_illegal_default(&self, def: Defaultness) {
+        if let Defaultness::Default(span) = def {
+            self.struct_span_err(span, "item cannot be `default`")
+                .span_label(span, "`default` because of this")
+                .note("only associated `fn`, `const`, and `type` items can be `default`")
+                .emit();
+        }
+    }
+
     /// Parses one of the items allowed by the flags.
     fn parse_item_kind(
         &mut self,
@@ -118,6 +150,7 @@ impl<'a> Parser<'a> {
         macros_allowed: bool,
         lo: Span,
         vis: &Visibility,
+        def: &mut Defaultness,
     ) -> PResult<'a, Option<ItemInfo>> {
         let info = if self.eat_keyword(kw::Use) {
             // USE ITEM
@@ -150,10 +183,9 @@ impl<'a> Parser<'a> {
             self.parse_item_trait(attrs, lo)?
         } else if self.check_keyword(kw::Impl)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
-            || self.check_keyword(kw::Default) && self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe])
         {
             // IMPL ITEM
-            self.parse_item_impl(attrs)?
+            self.parse_item_impl(attrs, mem::replace(def, Defaultness::Final))?
         } else if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
@@ -366,8 +398,11 @@ impl<'a> Parser<'a> {
     /// "impl" GENERICS "const"? "!"? TYPE "for"? (TYPE | "..") ("where" PREDICATES)? "{" BODY "}"
     /// "impl" GENERICS "const"? "!"? TYPE ("where" PREDICATES)? "{" BODY "}"
     /// ```
-    fn parse_item_impl(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
-        let defaultness = self.parse_defaultness();
+    fn parse_item_impl(
+        &mut self,
+        attrs: &mut Vec<Attribute>,
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemInfo> {
         let unsafety = self.parse_unsafety();
         self.expect_keyword(kw::Impl)?;
 
@@ -531,13 +566,11 @@ impl<'a> Parser<'a> {
 
     /// Parses defaultness (i.e., `default` or nothing).
     fn parse_defaultness(&mut self) -> Defaultness {
-        // We are interested in `default` followed by another keyword.
+        // We are interested in `default` followed by another identifier.
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(kw::Default)
-            && self.look_ahead(1, |t| {
-                t.is_non_raw_ident_where(|i| i.is_reserved() && i.name != kw::As)
-            })
+            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_span)

@@ -1,0 +1,122 @@
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:8:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:9:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:10:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:11:5
+   |
+LL |     default const foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:12:5
+   |
+LL |     default fn foo();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:13:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:14:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:15:5
+   |
+LL |     default type foo = u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:16:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:17:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:18:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:19:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:20:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:24:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:25:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: aborting due to 15 previous errors
+

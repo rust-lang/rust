@@ -1,0 +1,14 @@
+error: unmatched `default`
+  --> $DIR/default-unmatched.rs:3:5
+   |
+LL |     default do
+   |     ^^^^^^^ the unmatched `default`
+
+error: expected item, found reserved keyword `do`
+  --> $DIR/default-unmatched.rs:3:13
+   |
+LL |     default do
+   |             ^^ expected item
+
+error: aborting due to 2 previous errors
+
