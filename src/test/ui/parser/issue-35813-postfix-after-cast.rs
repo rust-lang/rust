@@ -35,6 +35,29 @@ pub fn cast_after_cast() {
     let _ = 0i32: i32: i32 as u32 as i32;
 }
 
+pub fn cast_cast_method_call() {
+    let _ = 0i32: i32: i32.count_ones();
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0 as i32: i32.count_ones();
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0i32: i32 as i32.count_ones();
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0 as i32 as i32.count_ones();
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0i32: i32: i32 as u32 as i32.count_ones();
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0i32: i32.count_ones(): u32;
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0 as i32.count_ones(): u32;
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0i32: i32.count_ones() as u32;
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0 as i32.count_ones() as u32;
+    //~^ ERROR: casts cannot be followed by a method call
+    let _ = 0i32: i32: i32.count_ones() as u32 as i32;
+    //~^ ERROR: casts cannot be followed by a method call
+}
+
 // this tests that the precedence for `!x as Y.Z` is still what we expect
 pub fn precedence() {
     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];

@@ -22,68 +22,128 @@ error: casts cannot be followed by indexing
 LL |     (&[0i32]): &[i32; 1][0];
    |     ^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `((&[0i32]): &[i32; 1])`
 
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:39:13
+   |
+LL |     let _ = 0i32: i32: i32.count_ones();
+   |             ^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32: i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:41:13
+   |
+LL |     let _ = 0 as i32: i32.count_ones();
+   |             ^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32: i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:43:13
+   |
+LL |     let _ = 0i32: i32 as i32.count_ones();
+   |             ^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:45:13
+   |
+LL |     let _ = 0 as i32 as i32.count_ones();
+   |             ^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:47:13
+   |
+LL |     let _ = 0i32: i32: i32 as u32 as i32.count_ones();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32: i32 as u32 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:49:13
+   |
+LL |     let _ = 0i32: i32.count_ones(): u32;
+   |             ^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:51:13
+   |
+LL |     let _ = 0 as i32.count_ones(): u32;
+   |             ^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:53:13
+   |
+LL |     let _ = 0i32: i32.count_ones() as u32;
+   |             ^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:55:13
+   |
+LL |     let _ = 0 as i32.count_ones() as u32;
+   |             ^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32)`
+
+error: casts cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:57:13
+   |
+LL |     let _ = 0i32: i32: i32.count_ones() as u32 as i32;
+   |             ^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(0i32: i32: i32)`
+
 error: casts cannot be followed by indexing
-  --> $DIR/issue-35813-postfix-after-cast.rs:40:18
+  --> $DIR/issue-35813-postfix-after-cast.rs:63:18
    |
 LL |     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&vec![1, 2, 3] as &Vec<i32>)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:45:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:68:5
    |
 LL |     0 as i32.max(0);
    |     ^^^^^^^^ help: try surrounding the expression in parentheses: `(0 as i32)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:47:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:70:5
    |
 LL |     0: i32.max(0);
    |     ^^^^^^ help: try surrounding the expression in parentheses: `(0: i32)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:62:8
+  --> $DIR/issue-35813-postfix-after-cast.rs:85:8
    |
 LL |     if 5u64 as i32.max(0) == 0 {
    |        ^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64 as i32)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:65:8
+  --> $DIR/issue-35813-postfix-after-cast.rs:88:8
    |
 LL |     if 5u64: u64.max(0) == 0 {
    |        ^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64: u64)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:72:9
+  --> $DIR/issue-35813-postfix-after-cast.rs:95:9
    |
 LL |         5u64 as u32.max(0) == 0
    |         ^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64 as u32)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:76:9
+  --> $DIR/issue-35813-postfix-after-cast.rs:99:9
    |
 LL |         5u64: u64.max(0) == 0
    |         ^^^^^^^^^ help: try surrounding the expression in parentheses: `(5u64: u64)`
 
 error: casts cannot be followed by indexing
-  --> $DIR/issue-35813-postfix-after-cast.rs:81:24
+  --> $DIR/issue-35813-postfix-after-cast.rs:104:24
    |
 LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
    |                        ^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&[1,2,3] as &[i32])`
 
 error: casts cannot be followed by indexing
-  --> $DIR/issue-35813-postfix-after-cast.rs:84:25
+  --> $DIR/issue-35813-postfix-after-cast.rs:107:25
    |
 LL | static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
    |                         ^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(&[1i32,2,3]: &[i32; 3])`
 
 error: casts cannot be followed by ?
-  --> $DIR/issue-35813-postfix-after-cast.rs:89:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:112:5
    |
 LL |     Err(0u64) as Result<u64,u64>?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Err(0u64) as Result<u64,u64>)`
 
 error: casts cannot be followed by ?
-  --> $DIR/issue-35813-postfix-after-cast.rs:91:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:114:5
    |
 LL |     Err(0u64): Result<u64,u64>?;
    |     ^^^^^^^^^-^^^^^^^^^^^^^^^^
@@ -94,25 +154,25 @@ LL |     Err(0u64): Result<u64,u64>?;
    = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error: casts cannot be followed by a function call
-  --> $DIR/issue-35813-postfix-after-cast.rs:115:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:138:5
    |
 LL |     drop as fn(u8)(0);
    |     ^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(drop as fn(u8))`
 
 error: casts cannot be followed by a function call
-  --> $DIR/issue-35813-postfix-after-cast.rs:117:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:140:5
    |
 LL |     drop_ptr: fn(u8)(0);
    |     ^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(drop_ptr: fn(u8))`
 
 error: casts cannot be followed by `.await`
-  --> $DIR/issue-35813-postfix-after-cast.rs:122:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:145:5
    |
 LL |     Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>.await;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>)`
 
 error: casts cannot be followed by `.await`
-  --> $DIR/issue-35813-postfix-after-cast.rs:125:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:148:5
    |
 LL |     Box::pin(noop()): Pin<Box<_>>.await;
    |     ^^^^^^^^^^^^^^^^-^^^^^^^^^^^^
@@ -123,41 +183,41 @@ LL |     Box::pin(noop()): Pin<Box<_>>.await;
    = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error: casts cannot be followed by a field access
-  --> $DIR/issue-35813-postfix-after-cast.rs:137:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:160:5
    |
 LL |     Foo::default() as Foo.bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Foo::default() as Foo)`
 
 error: casts cannot be followed by a field access
-  --> $DIR/issue-35813-postfix-after-cast.rs:139:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:162:5
    |
 LL |     Foo::default(): Foo.bar;
    |     ^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(Foo::default(): Foo)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:54:9
+  --> $DIR/issue-35813-postfix-after-cast.rs:77:9
    |
 LL |         if true { 33 } else { 44 } as i32.max(0),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(if true { 33 } else { 44 } as i32)`
 
 error: casts cannot be followed by a method call
-  --> $DIR/issue-35813-postfix-after-cast.rs:56:9
+  --> $DIR/issue-35813-postfix-after-cast.rs:79:9
    |
 LL |         if true { 33 } else { 44 }: i32.max(0)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try surrounding the expression in parentheses: `(if true { 33 } else { 44 }: i32)`
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-35813-postfix-after-cast.rs:101:13
+  --> $DIR/issue-35813-postfix-after-cast.rs:124:13
    |
 LL |     drop as F();
    |             ^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-35813-postfix-after-cast.rs:103:15
+  --> $DIR/issue-35813-postfix-after-cast.rs:126:15
    |
 LL |     drop_ptr: F();
    |               ^^^ only `Fn` traits may use parentheses
 
-error: aborting due to 25 previous errors
+error: aborting due to 35 previous errors
 
 For more information about this error, try `rustc --explain E0214`.
