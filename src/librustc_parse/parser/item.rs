@@ -31,13 +31,33 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_item_(
         &mut self,
-        attrs: Vec<Attribute>,
+        mut attrs: Vec<Attribute>,
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
+        maybe_whole!(self, NtItem, |item| {
+            let mut item = item;
+            mem::swap(&mut item.attrs, &mut attrs);
+            item.attrs.extend(attrs);
+            Some(item)
+        });
+        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
+        if let Some(ref item) = item {
+            self.error_on_illegal_default(item.defaultness);
+        }
+        Ok(item.map(P))
+    }
+
+    fn parse_item_common(
+        &mut self,
+        attrs: Vec<Attribute>,
+        mac_allowed: bool,
+        attrs_allowed: bool,
+        req_name: ReqName,
+    ) -> PResult<'a, Option<Item>> {
         let mut unclosed_delims = vec![];
-        let (ret, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_item_implementation(attrs, macros_allowed, attributes_allowed);
+        let (mut item, tokens) = self.collect_tokens(|this| {
+            let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -57,38 +77,15 @@ impl<'a> Parser<'a> {
         // it (bad!). To work around this case for now we just avoid recording
         // `tokens` if we detect any inner attributes. This should help keep
         // expansion correct, but we should fix this bug one day!
-        Ok(ret.map(|item| {
-            item.map(|mut i| {
-                if !i.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    i.tokens = Some(tokens);
-                }
-                i
-            })
-        }))
-    }
-
-    /// Parses one of the items allowed by the flags.
-    fn parse_item_implementation(
-        &mut self,
-        mut attrs: Vec<Attribute>,
-        macros_allowed: bool,
-        attributes_allowed: bool,
-    ) -> PResult<'a, Option<P<Item>>> {
-        maybe_whole!(self, NtItem, |item| {
-            let mut item = item;
-            mem::swap(&mut item.attrs, &mut attrs);
-            item.attrs.extend(attrs);
-            Some(item)
-        });
-
-        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
-        if let Some(ref item) = item {
-            self.error_on_illegal_default(item.defaultness);
+        if let Some(item) = &mut item {
+            if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                item.tokens = Some(tokens);
+            }
         }
-        Ok(item.map(P))
+        Ok(item)
     }
 
-    fn parse_item_common(
+    fn parse_item_common_(
         &mut self,
         mut attrs: Vec<Attribute>,
         mac_allowed: bool,
@@ -652,27 +649,6 @@ impl<'a> Parser<'a> {
     /// Parses associated items.
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         let attrs = self.parse_outer_attributes()?;
-        let mut unclosed_delims = vec![];
-        let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_assoc_item_(attrs, req_name);
-            unclosed_delims.append(&mut this.unclosed_delims);
-            item
-        })?;
-        self.unclosed_delims.append(&mut unclosed_delims);
-        // See `parse_item` for why this clause is here.
-        if let Some(Some(item)) = &mut item {
-            if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                item.tokens = Some(tokens);
-            }
-        }
-        Ok(item)
-    }
-
-    fn parse_assoc_item_(
-        &mut self,
-        attrs: Vec<Attribute>,
-        req_name: ReqName,
-    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         let it = self.parse_item_common(attrs, true, false, req_name)?;
         Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
             let kind = match kind {
@@ -869,8 +845,8 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtForeignItem, |item| Some(Some(item)));
 
         let attrs = self.parse_outer_attributes()?;
-        let it = self.parse_item_common(attrs, true, false, |_| true)?;
-        Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
+        let item = self.parse_item_common(attrs, true, false, |_| true)?;
+        Ok(item.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
             self.error_on_illegal_default(defaultness);
             let kind = match kind {
                 ItemKind::Mac(a) => ForeignItemKind::Macro(a),
