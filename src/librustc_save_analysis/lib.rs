@@ -66,9 +66,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
         use rls_span::{Column, Row};
 
-        let cm = self.tcx.sess.source_map();
-        let start = cm.lookup_char_pos(span.lo());
-        let end = cm.lookup_char_pos(span.hi());
+        let sm = self.tcx.sess.source_map();
+        let start = sm.lookup_char_pos(span.lo());
+        let end = sm.lookup_char_pos(span.hi());
 
         SpanData {
             file_name: start.file.name.to_string().into(),
@@ -258,8 +258,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
                 );
 
-                let cm = self.tcx.sess.source_map();
-                let filename = cm.span_to_filename(m.inner);
+                let sm = self.tcx.sess.source_map();
+                let filename = sm.span_to_filename(m.inner);
 
                 filter!(self.span_utils, item.ident.span);
 

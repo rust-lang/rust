@@ -124,9 +124,9 @@ pub struct ParseSess {
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(cm.clone()));
-        ParseSess::with_span_handler(handler, cm)
+        let sm = Lrc::new(SourceMap::new(file_path_mapping));
+        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(sm.clone()));
+        ParseSess::with_span_handler(handler, sm)
     }
 
     pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
@@ -148,9 +148,9 @@ impl ParseSess {
     }
 
     pub fn with_silent_emitter() -> Self {
-        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
-        ParseSess::with_span_handler(handler, cm)
+        ParseSess::with_span_handler(handler, sm)
     }
 
     #[inline]

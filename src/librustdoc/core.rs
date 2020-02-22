@@ -177,7 +177,7 @@ pub fn new_handler(
             Box::new(
                 EmitterWriter::stderr(
                     color_config,
-                    source_map.map(|cm| cm as _),
+                    source_map.map(|sm| sm as _),
                     short,
                     debugging_opts.teach,
                     debugging_opts.terminal_width,

@@ -13,14 +13,14 @@ struct CacheEntry {
 }
 
 #[derive(Clone)]
-pub struct CachingSourceMapView<'cm> {
-    source_map: &'cm SourceMap,
+pub struct CachingSourceMapView<'sm> {
+    source_map: &'sm SourceMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
 }
 
-impl<'cm> CachingSourceMapView<'cm> {
-    pub fn new(source_map: &'cm SourceMap) -> CachingSourceMapView<'cm> {
+impl<'sm> CachingSourceMapView<'sm> {
+    pub fn new(source_map: &'sm SourceMap) -> CachingSourceMapView<'sm> {
         let files = source_map.files();
         let first_file = files[0].clone();
         let entry = CacheEntry {

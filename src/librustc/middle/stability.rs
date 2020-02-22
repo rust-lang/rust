@@ -106,10 +106,10 @@ pub fn report_unstable(
     };
 
     let msp: MultiSpan = span.into();
-    let cm = &sess.parse_sess.source_map();
+    let sm = &sess.parse_sess.source_map();
     let span_key = msp.primary_span().and_then(|sp: Span| {
         if !sp.is_dummy() {
-            let file = cm.lookup_char_pos(sp.lo()).file;
+            let file = sm.lookup_char_pos(sp.lo()).file;
             if file.name.is_macros() { None } else { Some(span) }
         } else {
             None

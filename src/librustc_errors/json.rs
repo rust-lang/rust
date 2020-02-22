@@ -373,13 +373,13 @@ impl DiagnosticSpan {
 
 impl DiagnosticSpanLine {
     fn line_from_source_file(
-        fm: &rustc_span::SourceFile,
+        sf: &rustc_span::SourceFile,
         index: usize,
         h_start: usize,
         h_end: usize,
     ) -> DiagnosticSpanLine {
         DiagnosticSpanLine {
-            text: fm.get_line(index).map_or(String::new(), |l| l.into_owned()),
+            text: sf.get_line(index).map_or(String::new(), |l| l.into_owned()),
             highlight_start: h_start,
             highlight_end: h_end,
         }
@@ -392,13 +392,13 @@ impl DiagnosticSpanLine {
         je.sm
             .span_to_lines(span)
             .map(|lines| {
-                let fm = &*lines.file;
+                let sf = &*lines.file;
                 lines
                     .lines
                     .iter()
                     .map(|line| {
                         DiagnosticSpanLine::line_from_source_file(
-                            fm,
+                            sf,
                             line.line_index,
                             line.start_col.0 + 1,
                             line.end_col.0 + 1,

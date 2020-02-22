@@ -90,9 +90,9 @@ impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
 /// *Attention*: the method used is very fragile since it essentially duplicates the work of the
 /// parser. If you need to use this function or something similar, please consider updating the
 /// `source_map` functions and this function to something more robust.
-fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
-    let impl_span = cm.span_until_char(impl_span, '<');
-    let impl_span = cm.span_until_whitespace(impl_span);
+fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
+    let impl_span = sm.span_until_char(impl_span, '<');
+    let impl_span = sm.span_until_whitespace(impl_span);
     impl_span
 }
 
@@ -136,14 +136,14 @@ impl<'a> Resolver<'a> {
                 );
                 err.span_label(span, format!("use of generic parameter from outer function"));
 
-                let cm = self.session.source_map();
+                let sm = self.session.source_map();
                 match outer_res {
                     Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
                         if let Some(impl_span) =
                             maybe_impl_defid.and_then(|def_id| self.definitions.opt_span(def_id))
                         {
                             err.span_label(
-                                reduce_impl_span_to_impl_keyword(cm, impl_span),
+                                reduce_impl_span_to_impl_keyword(sm, impl_span),
                                 "`Self` type implicitly declared here, by this `impl`",
                             );
                         }
@@ -180,7 +180,7 @@ impl<'a> Resolver<'a> {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = &format!("try using a local generic parameter instead");
-                    if let Some((sugg_span, snippet)) = cm.generate_local_type_param_snippet(span) {
+                    if let Some((sugg_span, snippet)) = sm.generate_local_type_param_snippet(span) {
                         // Suggest the modification to the user
                         err.span_suggestion(
                             sugg_span,
@@ -188,7 +188,7 @@ impl<'a> Resolver<'a> {
                             snippet,
                             Applicability::MachineApplicable,
                         );
-                    } else if let Some(sp) = cm.generate_fn_name_span(span) {
+                    } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
                             format!("try adding a local generic parameter in this method instead"),

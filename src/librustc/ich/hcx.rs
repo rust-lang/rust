@@ -149,7 +149,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => cm,
+            Some(ref mut sm) => sm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()

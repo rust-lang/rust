@@ -140,13 +140,13 @@ pub const INDENT_UNIT: usize = 4;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
-    cm: &'a SourceMap,
+    sm: &'a SourceMap,
     krate: &hir::Crate<'_>,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(cm, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -158,12 +158,12 @@ pub fn print_crate<'a>(
 
 impl<'a> State<'a> {
     pub fn new_from_input(
-        cm: &'a SourceMap,
+        sm: &'a SourceMap,
         filename: FileName,
         input: String,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, filename, input)), ann }
+        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
     }
 }
 

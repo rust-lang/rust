@@ -452,8 +452,8 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                let cm = sess.source_map();
-                *out = pprust_hir::print_crate(cm, krate, src_name, src, annotation.pp_ann())
+                let sm = sess.source_map();
+                *out = pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
             })
         }
 
