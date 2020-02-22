@@ -835,7 +835,10 @@ pub fn codegen_intrinsic_call<'tcx>(
         size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name, () {
             let const_val =
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
-            let val = crate::constant::trans_const_value(fx, const_val);
+            let val = crate::constant::trans_const_value(
+                fx,
+                ty::Const::from_value(fx.tcx, const_val, ret.layout().ty),
+            );
             ret.write_cvalue(fx, val);
         };
 

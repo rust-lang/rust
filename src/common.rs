@@ -374,7 +374,10 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             caller.line as u32,
             caller.col_display as u32 + 1,
         ));
-        crate::constant::trans_const_value(self, const_loc)
+        crate::constant::trans_const_value(
+            self,
+            ty::Const::from_value(self.tcx, const_loc, self.tcx.caller_location_ty()),
+        )
     }
 
     pub fn triple(&self) -> &target_lexicon::Triple {

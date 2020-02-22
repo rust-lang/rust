@@ -632,7 +632,8 @@ fn codegen_array_len<'tcx>(
 ) -> Value {
     match place.layout().ty.kind {
         ty::Array(_elem_ty, len) => {
-            let len = crate::constant::force_eval_const(fx, len)
+            let len = fx.monomorphize(&len)
+                .eval(fx.tcx, ParamEnv::reveal_all())
                 .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }

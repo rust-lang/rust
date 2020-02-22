@@ -69,45 +69,10 @@ pub fn trans_constant<'tcx>(
                 fx.layout_of(fx.monomorphize(&constant.literal.ty)),
             ).to_cvalue(fx);
         }
-        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
-            let substs = fx.monomorphize(substs);
-            fx.tcx.const_eval_resolve(
-                ParamEnv::reveal_all(),
-                def_id,
-                substs,
-                promoted,
-                None, // FIXME use correct span
-            ).unwrap_or_else(|_| {
-                fx.tcx.sess.abort_if_errors();
-                unreachable!();
-            })
-        }
-        _ => fx.monomorphize(&constant.literal),
+        _ => fx.monomorphize(&constant.literal).eval(fx.tcx, ParamEnv::reveal_all()),
     };
 
     trans_const_value(fx, const_)
-}
-
-pub fn force_eval_const<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Backend>,
-    const_: &'tcx Const,
-) -> &'tcx Const<'tcx> {
-    match const_.val {
-        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
-            let substs = fx.monomorphize(substs);
-            fx.tcx.const_eval_resolve(
-                ParamEnv::reveal_all(),
-                def_id,
-                substs,
-                promoted,
-                None, // FIXME pass correct span
-            ).unwrap_or_else(|_| {
-                fx.tcx.sess.abort_if_errors();
-                unreachable!();
-            })
-        }
-        _ => fx.monomorphize(&const_),
-    }
 }
 
 pub fn trans_const_value<'tcx>(
@@ -338,8 +303,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
 
                 let const_ = tcx.const_eval_poly(def_id).unwrap();
 
-                let alloc = match const_.val {
-                    ConstKind::Value(ConstValue::ByRef { alloc, offset }) if offset.bytes() == 0 => alloc,
+                let alloc = match const_ {
+                    ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
@@ -537,7 +502,9 @@ pub fn mir_operand_get_const_val<'tcx>(
     operand: &Operand<'tcx>,
 ) -> Option<&'tcx Const<'tcx>> {
     match operand {
-        Operand::Copy(_) | Operand::Move(_) => return None,
-        Operand::Constant(const_) => return Some(force_eval_const(fx, const_.literal)),
+        Operand::Copy(_) | Operand::Move(_) => None,
+        Operand::Constant(const_) => {
+            Some(fx.monomorphize(&const_.literal).eval(fx.tcx, ParamEnv::reveal_all()))
+        }
     }
 }
