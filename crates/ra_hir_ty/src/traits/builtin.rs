@@ -230,10 +230,7 @@ fn check_unsize_impl_prerequisites(db: &impl HirDatabase, krate: CrateId) -> boo
         None => return false,
     };
     let generic_params = generics(db, unsize_trait.into());
-    if generic_params.len() != 2 {
-        return false;
-    }
-    true
+    generic_params.len() == 2
 }
 
 fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImplData {
