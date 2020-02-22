@@ -14,6 +14,7 @@ use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
@@ -1090,7 +1091,12 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             }
 
             if attr.doc_str().is_some() {
-                self.cx.parse_sess.buffer_lint(&UNUSED_DOC_COMMENTS, attr.span, ast::CRATE_NODE_ID, "yep, it's unused");
+                self.cx.parse_sess.buffer_lint_with_diagnostic(
+                    &UNUSED_DOC_COMMENTS,
+                    attr.span,
+                    ast::CRATE_NODE_ID,
+                    "unused doc comment",
+                    BuiltinLintDiagnostics::UnusedDocComment(attr.span));
             }
         }
     }
