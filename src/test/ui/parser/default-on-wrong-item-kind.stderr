@@ -105,7 +105,7 @@ LL |     default trait foo = Ord;
 error: item cannot be `default`
   --> $DIR/default-on-wrong-item-kind.rs:25:5
    |
-LL |     default macro foo {}
+LL |     default default!();
    |     ^^^^^^^ `default` because of this
    |
    = note: only associated `fn`, `const`, and `type` items can be `default`
@@ -113,13 +113,29 @@ LL |     default macro foo {}
 error: item cannot be `default`
   --> $DIR/default-on-wrong-item-kind.rs:26:5
    |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:27:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:28:5
+   |
 LL |     default macro_rules! foo {}
    |     ^^^^^^^ `default` because of this
    |
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:31:5
+  --> $DIR/default-on-wrong-item-kind.rs:33:5
    |
 LL |     default extern crate foo;
    |     ^^^^^^^ `default` because of this
@@ -127,13 +143,13 @@ LL |     default extern crate foo;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:31:5
+  --> $DIR/default-on-wrong-item-kind.rs:33:5
    |
 LL |     default extern crate foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:33:5
+  --> $DIR/default-on-wrong-item-kind.rs:35:5
    |
 LL |     default use foo;
    |     ^^^^^^^ `default` because of this
@@ -141,13 +157,13 @@ LL |     default use foo;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:33:5
+  --> $DIR/default-on-wrong-item-kind.rs:35:5
    |
 LL |     default use foo;
    |     ^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:35:5
+  --> $DIR/default-on-wrong-item-kind.rs:37:5
    |
 LL |     default static foo: u8;
    |     ^^^^^^^ `default` because of this
@@ -155,7 +171,7 @@ LL |     default static foo: u8;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:36:5
+  --> $DIR/default-on-wrong-item-kind.rs:38:5
    |
 LL |     default const foo: u8;
    |     ^^^^^^^ `default` because of this
@@ -163,7 +179,7 @@ LL |     default const foo: u8;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: extern items cannot be `const`
-  --> $DIR/default-on-wrong-item-kind.rs:36:19
+  --> $DIR/default-on-wrong-item-kind.rs:38:19
    |
 LL |     default const foo: u8;
    |     --------------^^^
@@ -173,7 +189,7 @@ LL |     default const foo: u8;
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:38:5
+  --> $DIR/default-on-wrong-item-kind.rs:40:5
    |
 LL |     default fn foo();
    |     ^^^^^^^ `default` because of this
@@ -181,7 +197,7 @@ LL |     default fn foo();
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:39:5
+  --> $DIR/default-on-wrong-item-kind.rs:41:5
    |
 LL |     default mod foo {}
    |     ^^^^^^^ `default` because of this
@@ -189,13 +205,13 @@ LL |     default mod foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:39:5
+  --> $DIR/default-on-wrong-item-kind.rs:41:5
    |
 LL |     default mod foo {}
    |     ^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:41:5
+  --> $DIR/default-on-wrong-item-kind.rs:43:5
    |
 LL |     default extern "C" {}
    |     ^^^^^^^ `default` because of this
@@ -203,13 +219,13 @@ LL |     default extern "C" {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:41:5
+  --> $DIR/default-on-wrong-item-kind.rs:43:5
    |
 LL |     default extern "C" {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:43:5
+  --> $DIR/default-on-wrong-item-kind.rs:45:5
    |
 LL |     default type foo = u8;
    |     ^^^^^^^ `default` because of this
@@ -217,7 +233,7 @@ LL |     default type foo = u8;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:44:5
+  --> $DIR/default-on-wrong-item-kind.rs:46:5
    |
 LL |     default enum foo {}
    |     ^^^^^^^ `default` because of this
@@ -225,13 +241,13 @@ LL |     default enum foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:44:5
+  --> $DIR/default-on-wrong-item-kind.rs:46:5
    |
 LL |     default enum foo {}
    |     ^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:46:5
+  --> $DIR/default-on-wrong-item-kind.rs:48:5
    |
 LL |     default struct foo {}
    |     ^^^^^^^ `default` because of this
@@ -239,13 +255,13 @@ LL |     default struct foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:46:5
+  --> $DIR/default-on-wrong-item-kind.rs:48:5
    |
 LL |     default struct foo {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:48:5
+  --> $DIR/default-on-wrong-item-kind.rs:50:5
    |
 LL |     default union foo {}
    |     ^^^^^^^ `default` because of this
@@ -253,27 +269,27 @@ LL |     default union foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:48:5
+  --> $DIR/default-on-wrong-item-kind.rs:50:5
    |
 LL |     default union foo {}
-   |     ^^^^^^^^^^^^^^^^^
-
-error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:50:5
-   |
-LL |     default trait foo {}
-   |     ^^^^^^^ `default` because of this
-   |
-   = note: only associated `fn`, `const`, and `type` items can be `default`
-
-error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:50:5
-   |
-LL |     default trait foo {}
    |     ^^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
   --> $DIR/default-on-wrong-item-kind.rs:52:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item kind not supported in `extern` block
+  --> $DIR/default-on-wrong-item-kind.rs:52:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:54:5
    |
 LL |     default trait foo = Ord;
    |     ^^^^^^^ `default` because of this
@@ -281,19 +297,35 @@ LL |     default trait foo = Ord;
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:52:5
+  --> $DIR/default-on-wrong-item-kind.rs:54:5
    |
 LL |     default trait foo = Ord;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:54:5
+  --> $DIR/default-on-wrong-item-kind.rs:56:5
    |
 LL |     default impl foo {}
    |     ^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:58:5
+  --> $DIR/default-on-wrong-item-kind.rs:60:5
+   |
+LL |     default default!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:61:5
+   |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:62:5
    |
 LL |     default macro foo {}
    |     ^^^^^^^ `default` because of this
@@ -301,13 +333,13 @@ LL |     default macro foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:58:5
+  --> $DIR/default-on-wrong-item-kind.rs:62:5
    |
 LL |     default macro foo {}
    |     ^^^^^^^^^^^^^^^^^
 
 error: item cannot be `default`
-  --> $DIR/default-on-wrong-item-kind.rs:60:5
+  --> $DIR/default-on-wrong-item-kind.rs:64:5
    |
 LL |     default macro_rules! foo {}
    |     ^^^^^^^ `default` because of this
@@ -315,166 +347,166 @@ LL |     default macro_rules! foo {}
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
 error: item kind not supported in `extern` block
-  --> $DIR/default-on-wrong-item-kind.rs:60:5
+  --> $DIR/default-on-wrong-item-kind.rs:64:5
    |
 LL |     default macro_rules! foo {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:66:5
+  --> $DIR/default-on-wrong-item-kind.rs:70:5
    |
 LL |     default extern crate foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:68:5
+  --> $DIR/default-on-wrong-item-kind.rs:72:5
    |
 LL |     default use foo;
    |     ^^^^^^^^^^^^^^^^
 
 error: associated `static` items are not allowed
-  --> $DIR/default-on-wrong-item-kind.rs:70:5
+  --> $DIR/default-on-wrong-item-kind.rs:74:5
    |
 LL |     default static foo: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:74:5
+  --> $DIR/default-on-wrong-item-kind.rs:78:5
    |
 LL |     default mod foo {}
    |     ^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:76:5
+  --> $DIR/default-on-wrong-item-kind.rs:80:5
    |
 LL |     default extern "C" {}
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:79:5
-   |
-LL |     default enum foo {}
-   |     ^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:81:5
-   |
-LL |     default struct foo {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
   --> $DIR/default-on-wrong-item-kind.rs:83:5
    |
-LL |     default union foo {}
-   |     ^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:85:5
-   |
-LL |     default trait foo {}
-   |     ^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:87:5
-   |
-LL |     default trait foo = Ord;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:89:5
-   |
-LL |     default impl foo {}
-   |     ^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:93:5
-   |
-LL |     default macro foo {}
-   |     ^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:95:5
-   |
-LL |     default macro_rules! foo {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:101:5
-   |
-LL |     default extern crate foo;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:103:5
-   |
-LL |     default use foo;
-   |     ^^^^^^^^^^^^^^^^
-
-error: associated `static` items are not allowed
-  --> $DIR/default-on-wrong-item-kind.rs:105:5
-   |
-LL |     default static foo: u8;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:109:5
-   |
-LL |     default mod foo {}
-   |     ^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:111:5
-   |
-LL |     default extern "C" {}
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:114:5
-   |
 LL |     default enum foo {}
    |     ^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:116:5
+  --> $DIR/default-on-wrong-item-kind.rs:85:5
    |
 LL |     default struct foo {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:118:5
+  --> $DIR/default-on-wrong-item-kind.rs:87:5
    |
 LL |     default union foo {}
    |     ^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:120:5
+  --> $DIR/default-on-wrong-item-kind.rs:89:5
    |
 LL |     default trait foo {}
    |     ^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:122:5
+  --> $DIR/default-on-wrong-item-kind.rs:91:5
    |
 LL |     default trait foo = Ord;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:124:5
+  --> $DIR/default-on-wrong-item-kind.rs:93:5
    |
 LL |     default impl foo {}
    |     ^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:128:5
+  --> $DIR/default-on-wrong-item-kind.rs:99:5
    |
 LL |     default macro foo {}
    |     ^^^^^^^^^^^^^^^^^
 
 error: item kind not supported in `trait` or `impl`
-  --> $DIR/default-on-wrong-item-kind.rs:130:5
+  --> $DIR/default-on-wrong-item-kind.rs:101:5
    |
 LL |     default macro_rules! foo {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 69 previous errors
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:107:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:109:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/default-on-wrong-item-kind.rs:111:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:115:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:117:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:120:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:122:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:124:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:126:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:128:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:130:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:136:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: item kind not supported in `trait` or `impl`
+  --> $DIR/default-on-wrong-item-kind.rs:138:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 73 previous errors
 
