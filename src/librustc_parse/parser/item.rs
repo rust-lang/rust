@@ -88,21 +88,27 @@ impl<'a> Parser<'a> {
             return Ok(Some(P(self.mk_item(lo, ident, kind, vis, Defaultness::Final, attrs))));
         }
 
-        // FAILURE TO PARSE ITEM
-        if let VisibilityKind::Inherited = vis.node {
-        } else {
-            let vs = pprust::vis_to_string(&vis);
-            let vs = vs.trim_end();
-            self.struct_span_err(vis.span, &format!("unmatched visibility `{}`", vs))
-                .span_label(vis.span, "the unmatched visibility")
-                .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
-                .emit();
-        }
+        // At this point, we have failed to parse an item.
+
+        self.error_on_unmatched_vis(&vis);
 
         if !attributes_allowed {
             self.recover_attrs_no_item(&attrs)?;
         }
         Ok(None)
+    }
+
+    /// Error in-case a non-inherited visibility was parsed but no item followed.
+    fn error_on_unmatched_vis(&self, vis: &Visibility) {
+        if let VisibilityKind::Inherited = vis.node {
+            return;
+        }
+        let vs = pprust::vis_to_string(&vis);
+        let vs = vs.trim_end();
+        self.struct_span_err(vis.span, &format!("unmatched visibility `{}`", vs))
+            .span_label(vis.span, "the unmatched visibility")
+            .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
+            .emit();
     }
 
     /// Parses one of the items allowed by the flags.
