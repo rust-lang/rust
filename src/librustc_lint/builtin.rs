@@ -744,7 +744,6 @@ trait UnusedDocCommentExt {
         cx: &EarlyContext<'_>,
         node_span: Span,
         node_kind: &str,
-        is_macro_expansion: bool,
         attrs: &[ast::Attribute],
     );
 }
@@ -755,7 +754,6 @@ impl UnusedDocCommentExt for UnusedDocComment {
         cx: &EarlyContext<'_>,
         node_span: Span,
         node_kind: &str,
-        is_macro_expansion: bool,
         attrs: &[ast::Attribute],
     ) {
         let mut attrs = attrs.into_iter().peekable();
@@ -783,12 +781,6 @@ impl UnusedDocCommentExt for UnusedDocComment {
                         node_span,
                         format!("rustdoc does not generate documentation for {}", node_kind),
                     );
-                    if is_macro_expansion {
-                        err.help(
-                            "to document an item produced by a macro, \
-                                  the macro must produce the documentation as part of its expansion",
-                        );
-                    }
                     err.emit();
                 });
             }
@@ -797,31 +789,24 @@ impl UnusedDocCommentExt for UnusedDocComment {
 }
 
 impl EarlyLintPass for UnusedDocComment {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Mac(..) = item.kind {
-            self.warn_if_doc(cx, item.span, "macro expansions", true, &item.attrs);
-        }
-    }
-
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        let (kind, is_macro_expansion) = match stmt.kind {
-            ast::StmtKind::Local(..) => ("statements", false),
-            ast::StmtKind::Item(..) => ("inner items", false),
-            ast::StmtKind::Mac(..) => ("macro expansions", true),
+        let kind = match stmt.kind {
+            ast::StmtKind::Local(..) => "statements",
+            ast::StmtKind::Item(..) => "inner items",
             // expressions will be reported by `check_expr`.
-            ast::StmtKind::Semi(..) | ast::StmtKind::Expr(..) => return,
+            ast::StmtKind::Semi(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Mac(..) => return,
         };
 
-        self.warn_if_doc(cx, stmt.span, kind, is_macro_expansion, stmt.kind.attrs());
+        self.warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
-        self.warn_if_doc(cx, arm_span, "match arms", false, &arm.attrs);
+        self.warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        self.warn_if_doc(cx, expr.span, "expressions", false, &expr.attrs);
+        self.warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
     }
 }
 

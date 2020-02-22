@@ -190,6 +190,7 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
+    UnusedDocComment(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
