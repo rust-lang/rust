@@ -1389,7 +1389,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
-        if let ast::Defaultness::Default = defaultness {
+        if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
         }
     }

@@ -349,7 +349,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
 
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
@@ -543,7 +543,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        if i.defaultness == ast::Defaultness::Default {
+        if let ast::Defaultness::Default(_) = i.defaultness {
             gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
         }
 

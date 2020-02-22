@@ -547,7 +547,7 @@ impl<'a> Parser<'a> {
             )
         {
             self.bump(); // `default`
-            Defaultness::Default
+            Defaultness::Default(self.prev_span)
         } else {
             Defaultness::Final
         }
