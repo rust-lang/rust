@@ -30,7 +30,7 @@ pub struct ItemScope {
     legacy_macros: FxHashMap<Name, MacroDefId>,
 }
 
-static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
+pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
         .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into(), Visibility::Public)))
@@ -40,9 +40,9 @@ static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
 /// Shadow mode for builtin type which can be shadowed by module.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum BuiltinShadowMode {
-    // Prefer Module
+    /// Prefer user-defined modules (or other types) over builtins.
     Module,
-    // Prefer Other Types
+    /// Prefer builtins over user-defined modules (but not other types).
     Other,
 }
 
@@ -51,7 +51,7 @@ pub(crate) enum BuiltinShadowMode {
 impl ItemScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
         //FIXME: shadowing
-        self.visible.iter().chain(BUILTIN_SCOPE.iter()).map(|(n, def)| (n, *def))
+        self.visible.iter().map(|(n, def)| (n, *def))
     }
 
     pub fn entries_without_primitives<'a>(
@@ -79,29 +79,8 @@ impl ItemScope {
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub(crate) fn get(&self, name: &Name, shadow: BuiltinShadowMode) -> PerNs {
-        match shadow {
-            BuiltinShadowMode::Module => self
-                .visible
-                .get(name)
-                .or_else(|| BUILTIN_SCOPE.get(name))
-                .copied()
-                .unwrap_or_else(PerNs::none),
-            BuiltinShadowMode::Other => {
-                let item = self.visible.get(name).copied();
-                if let Some(def) = item {
-                    if let Some(ModuleDefId::ModuleId(_)) = def.take_types() {
-                        return BUILTIN_SCOPE
-                            .get(name)
-                            .copied()
-                            .or(item)
-                            .unwrap_or_else(PerNs::none);
-                    }
-                }
-
-                item.or_else(|| BUILTIN_SCOPE.get(name).copied()).unwrap_or_else(PerNs::none)
-            }
-        }
+    pub(crate) fn get(&self, name: &Name) -> PerNs {
+        self.visible.get(name).copied().unwrap_or_else(PerNs::none)
     }
 
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {

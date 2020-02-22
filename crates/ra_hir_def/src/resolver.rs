@@ -15,7 +15,7 @@ use crate::{
     db::DefDatabase,
     expr::{ExprId, PatId},
     generics::GenericParams,
-    item_scope::BuiltinShadowMode,
+    item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::CrateDefMap,
     path::{ModPath, PathKind},
     per_ns::PerNs,
@@ -193,7 +193,7 @@ impl Resolver {
                     return Some((res, idx));
                 }
                 Scope::LocalItemsScope(body) => {
-                    let def = body.item_scope.get(first_name, BuiltinShadowMode::Other);
+                    let def = body.item_scope.get(first_name);
                     if let Some(res) = to_type_ns(def) {
                         return Some((res, None));
                     }
@@ -335,8 +335,10 @@ impl Resolver {
                     };
                 }
                 Scope::LocalItemsScope(body) => {
-                    let def = body.item_scope.get(first_name, BuiltinShadowMode::Other);
-                    if let Some(res) = to_value_ns(def) {
+                    // we don't bother looking in the builtin scope here because there are no builtin values
+                    let def = to_value_ns(body.item_scope.get(first_name));
+
+                    if let Some(res) = def {
                         return Some(ResolveValueResult::ValueNs(res));
                     }
                 }
@@ -475,6 +477,9 @@ impl Scope {
                 });
                 m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
+                });
+                BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
+                    f(name.clone(), ScopeDef::PerNs(def));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
