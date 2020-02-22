@@ -42,7 +42,7 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
 
             console.log("Installed version:", installedVersion, "required:", requiredVersion);
 
-            if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion == requiredVersion) {
+            if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion === requiredVersion) {
                 return prebuiltBinaryPath;
             }
 
