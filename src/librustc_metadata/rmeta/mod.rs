@@ -302,7 +302,7 @@ enum EntryKind {
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
     Closure,
-    Generator(Lazy<hir::GeneratorKind>),
+    Generator(hir::GeneratorKind),
     Trait(Lazy<TraitData>),
     Impl(Lazy<ImplData>),
     Method(Lazy<MethodData>),

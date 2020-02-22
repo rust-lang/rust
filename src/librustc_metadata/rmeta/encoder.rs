@@ -1268,7 +1268,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- match ty.kind {
             ty::Generator(..) => {
                 let data = self.tcx.generator_kind(def_id).unwrap();
-                EntryKind::Generator(self.lazy(data))
+                EntryKind::Generator(data)
             }
 
             ty::Closure(..) => EntryKind::Closure,
