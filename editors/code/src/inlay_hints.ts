@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { Ctx, sendRequestWithRetry } from './ctx';
+import { log } from './util';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
@@ -71,7 +72,7 @@ class HintsUpdater {
     }
 
     async setEnabled(enabled: boolean): Promise<void> {
-        console.log({ enabled, prev: this.enabled });
+        log.debug({ enabled, prev: this.enabled });
 
         if (this.enabled === enabled) return;
         this.enabled = enabled;

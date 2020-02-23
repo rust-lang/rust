@@ -12,8 +12,10 @@ module.exports = {
         "@typescript-eslint"
     ],
     "rules": {
-        "eqeqeq": ["error", "always", { "null": "ignore" }],
         "camelcase": ["error"],
+        "eqeqeq": ["error", "always", { "null": "ignore" }],
+        "no-console": ["error"],
+        "prefer-const": "error",
         "@typescript-eslint/member-delimiter-style": [
             "error",
             {
@@ -30,7 +32,6 @@ module.exports = {
         "@typescript-eslint/semi": [
             "error",
             "always"
-        ],
-        "prefer-const": "error"
+        ]
     }
 };

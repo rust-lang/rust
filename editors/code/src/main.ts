@@ -7,6 +7,7 @@ import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
 import { ensureServerBinary } from './installation/server';
 import { Config } from './config';
+import { log } from './util';
 
 let ctx: Ctx | undefined;
 
@@ -38,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 try {
                     sub.dispose();
                 } catch (e) {
-                    console.error(e);
+                    log.error(e);
                 }
             }
             await activate(context);

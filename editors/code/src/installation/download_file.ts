@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as stream from "stream";
 import * as util from "util";
 import { strict as assert } from "assert";
+import { log } from "../util";
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -21,8 +22,8 @@ export async function downloadFile(
     const res = await fetch(url);
 
     if (!res.ok) {
-        console.log("Error", res.status, "while downloading file from", url);
-        console.dir({ body: await res.text(), headers: res.headers }, { depth: 3 });
+        log.error("Error", res.status, "while downloading file from", url);
+        log.error({ body: await res.text(), headers: res.headers });
 
         throw new Error(`Got response ${res.status} when trying to download a file.`);
     }
@@ -30,7 +31,7 @@ export async function downloadFile(
     const totalBytes = Number(res.headers.get('content-length'));
     assert(!Number.isNaN(totalBytes), "Sanity check of content-length protocol");
 
-    console.log("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
+    log.debug("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
 
     let readBytes = 0;
     res.body.on("data", (chunk: Buffer) => {
