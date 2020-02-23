@@ -103,7 +103,7 @@ impl ProjectWorkspace {
                 let sysroot = if with_sysroot {
                     Sysroot::discover(&cargo_toml).with_context(|| {
                         format!(
-                            "Failed to find sysroot for Cargo.toml file {}",
+                            "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
                             cargo_toml.display()
                         )
                     })?
