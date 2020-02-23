@@ -5,7 +5,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use rand::Rng;
 
 use rustc::ty::layout::HasDataLayout;
-use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Pointer, PointerArithmetic};
+use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Machine, Pointer, PointerArithmetic};
 use rustc_target::abi::Size;
 
 use crate::{Evaluator, Tag, STACK_ADDR};
@@ -80,12 +80,13 @@ impl<'mir, 'tcx> GlobalState {
     ) -> InterpResult<'tcx, u64> {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
+        let id = Evaluator::canonical_alloc_id(memory, ptr.alloc_id);
 
         // There is nothing wrong with a raw pointer being cast to an integer only after
         // it became dangling.  Hence `MaybeDead`.
-        let (size, align) = memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?;
+        let (size, align) = memory.get_size_and_align(id, AllocCheck::MaybeDead)?;
 
-        let base_addr = match global_state.base_addr.entry(ptr.alloc_id) {
+        let base_addr = match global_state.base_addr.entry(id) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 // This allocation does not have a base address yet, pick one.
@@ -102,7 +103,7 @@ impl<'mir, 'tcx> GlobalState {
                 trace!(
                     "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
                     base_addr,
-                    ptr.alloc_id,
+                    id,
                     slack,
                     align.bytes(),
                 );
@@ -112,7 +113,7 @@ impl<'mir, 'tcx> GlobalState {
                 global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
-                global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id));
+                global_state.int_to_ptr_map.push((base_addr, id));
 
                 base_addr
             }
