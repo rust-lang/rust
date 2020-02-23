@@ -1002,20 +1002,26 @@ fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
                     x if x == "x86" => "i686",
                     x => x,
                 };
+                let mingw_bits = &sess.target.target.target_pointer_width;
                 let mingw_dir = format!("{}-w64-mingw32", mingw_arch);
                 // Here we have path/bin/gcc but we need path/
                 let mut path = linker_path;
                 path.pop();
                 path.pop();
-                // Based on Clang MinGW driver
-                let probe_path = path.join(&mingw_dir).join("lib");
-                if probe_path.exists() {
-                    return Some(probe_path);
-                };
-                let probe_path = path.join(&mingw_dir).join("sys-root/mingw/lib");
-                if probe_path.exists() {
-                    return Some(probe_path);
-                };
+                // Loosely based on Clang MinGW driver
+                let probe_paths = vec![
+                    path.join(&mingw_dir).join("lib"),                // Typical path
+                    path.join(&mingw_dir).join("sys-root/mingw/lib"), // Rare path
+                    path.join(format!(
+                        "lib/mingw/tools/install/mingw{}/{}/lib",
+                        &mingw_bits, &mingw_dir
+                    )), // Chocolatey is creative
+                ];
+                for probe_path in probe_paths {
+                    if probe_path.join("crt2.o").exists() {
+                        return Some(probe_path);
+                    };
+                }
             };
         };
         None
