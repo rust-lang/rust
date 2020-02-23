@@ -3,7 +3,7 @@
 
 const fn foo() -> ! {
     unsafe { std::mem::transmute(()) }
-    //~^ WARN any use of this value will cause an error [const_err]
+    //~^ ERROR evaluation of constant value failed
     //~| WARN the type `!` does not permit zero-initialization [invalid_value]
 }
 
@@ -12,7 +12,7 @@ enum Empty { }
 
 #[warn(const_err)]
 const FOO: [Empty; 3] = [foo(); 3];
-
+//~^ WARN any use of this value will cause an error
 #[warn(const_err)]
 const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
 //~^ ERROR it is undefined behavior to use this value
