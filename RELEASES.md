@@ -3,9 +3,6 @@ Version 1.42.0 (2020-03-12)
 
 Language
 --------
-- [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
-  that you can create an enum that has the exact layout and ABI of the type
-  it contains.
 - [You can now use the slice pattern syntax with subslices.][67712] e.g.
   ```rust
   fn foo(words: &[&str]) {
@@ -16,17 +13,33 @@ Language
       }
   }
   ```
-  <!-- TODO -->
-- [Merge `TraitItem` & `ImplItem into `AssocItem`][67131]
+- [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
+  that you can create an enum that has the exact layout and ABI of the type
+  it contains.
+- [There are some *syntax-only* changes:][67131]
+   - `default` is syntactically allowed before items in `trait` definitions.
+   - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
+     leave out their bodies in favor of `;`.
+   - Bounds on associated types in `impl`s are now syntactically allowed
+     (e.g. `type Foo: Ord;`).
+   - `...` (the C-variadic type) may occur syntactically directly as the type of
+      any function parameter.
+  
+  These are still rejected *semantically*, so you will likely receive an error
+  but these changes can be seen and parsed by procedural macros and
+  conditional compilation.
 
 Compiler
 --------
-- [Added tier 3\* support for `armv7a-none-eabi`.][68253]
-- [Added tier 3 support for `riscv64gc-unknown-linux-gnu`.][68037]
+- [Added tier 2\* support for `armv7a-none-eabi`.][68253]
+- [Added tier 2 support for `riscv64gc-unknown-linux-gnu`.][68339]
 - [`Option::{expect,unwrap}` and
    `Result::{expect, expect_err, unwrap, unwrap_err}` now produce panic messages
    pointing to the location where they were called, rather than
    `core`'s internals. ][67887]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
 
 Libraries
 ---------
@@ -40,14 +53,14 @@ Libraries
 
 Stabilized APIs
 ---------------
+- [`CondVar::wait_while`]
+- [`CondVar::wait_timeout_while`]
 - [`DebugMap::key`]
 - [`DebugMap::value`]
 - [`ManuallyDrop::take`]
 - [`matches!`]
 - [`ptr::slice_from_raw_parts_mut`]
 - [`ptr::slice_from_raw_parts`]
-- [`wait_timeout_while`]
-- [`wait_while`]
 
 Cargo
 -----
@@ -62,7 +75,7 @@ Compatibility Notes
 [68253]: https://github.com/rust-lang/rust/pull/68253/
 [68348]: https://github.com/rust-lang/rust/pull/68348/
 [67935]: https://github.com/rust-lang/rust/pull/67935/
-[68037]: https://github.com/rust-lang/rust/pull/68037/
+[68339]: https://github.com/rust-lang/rust/pull/68339/
 [68122]: https://github.com/rust-lang/rust/pull/68122/
 [67712]: https://github.com/rust-lang/rust/pull/67712/
 [67887]: https://github.com/rust-lang/rust/pull/67887/
@@ -78,7 +91,8 @@ Compatibility Notes
 [`matches!`]: https://doc.rust-lang.org/stable/std/macro.matches.html
 [`ptr::slice_from_raw_parts_mut`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts_mut.html
 [`ptr::slice_from_raw_parts`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts.html
-[`wait_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_while
+[`CondVar::wait_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_while
+[`CondVar::wait_timeout_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_timeout_while
 
 
 Version 1.41.0 (2020-01-30)
