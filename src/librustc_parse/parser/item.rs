@@ -661,12 +661,7 @@ impl<'a> Parser<'a> {
                     self.struct_span_err(span, "associated `static` items are not allowed").emit();
                     AssocItemKind::Const(a, b)
                 }
-                _ => {
-                    let span = self.sess.source_map().def_span(span);
-                    self.struct_span_err(span, "item kind not supported in `trait` or `impl`")
-                        .emit();
-                    return None;
-                }
+                _ => return self.error_bad_item_kind(span, &kind, "`trait` or `impl`"),
             };
             Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
         }))
@@ -858,14 +853,17 @@ impl<'a> Parser<'a> {
                     self.error_on_foreign_const(span, ident);
                     ForeignItemKind::Static(a, Mutability::Not, b)
                 }
-                _ => {
-                    let span = self.sess.source_map().def_span(span);
-                    self.struct_span_err(span, "item kind not supported in `extern` block").emit();
-                    return None;
-                }
+                _ => return self.error_bad_item_kind(span, &kind, "`extern` block"),
             };
             Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
         }))
+    }
+
+    fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
+        let span = self.sess.source_map().def_span(span);
+        let msg = format!("{} not supported in {}", kind.descr(), ctx);
+        self.struct_span_err(span, &msg).emit();
+        return None;
     }
 
     fn error_on_foreign_const(&self, span: Span, ident: Ident) {

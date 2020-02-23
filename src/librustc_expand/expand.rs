@@ -378,8 +378,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.span_err(
                     span,
                     &format!(
-                        "expected crate top-level item to be a module after macro expansion, found a {}",
-                        kind.descriptive_variant()
+                        "expected crate top-level item to be a module after macro expansion, found {} {}",
+                        kind.article(), kind.descr()
                     ),
                 );
             }

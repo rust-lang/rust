@@ -2574,23 +2574,34 @@ pub enum ItemKind {
 }
 
 impl ItemKind {
-    pub fn descriptive_variant(&self) -> &str {
-        match *self {
+    pub fn article(&self) -> &str {
+        use ItemKind::*;
+        match self {
+            Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
+            ExternCrate(..) | ForeignMod(..) | Mac(..) | Enum(..) | Impl { .. } => "an",
+        }
+    }
+
+    pub fn descr(&self) -> &str {
+        match self {
             ItemKind::ExternCrate(..) => "extern crate",
-            ItemKind::Use(..) => "use",
+            ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
-            ItemKind::ForeignMod(..) => "foreign module",
-            ItemKind::GlobalAsm(..) => "global asm",
+            ItemKind::ForeignMod(..) => "extern block",
+            ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl { .. } => "item",
+            ItemKind::Mac(..) => "item macro invocation",
+            ItemKind::MacroDef(..) => "macro definition",
+            ItemKind::Impl { .. } => "implementation",
         }
     }
 
