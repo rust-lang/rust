@@ -1,8 +1,10 @@
-error: unmatched `default`
+error: `default` not followed by an item
   --> $DIR/default-unmatched.rs:3:5
    |
 LL |     default do
-   |     ^^^^^^^ the unmatched `default`
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
 
 error: expected item, found reserved keyword `do`
   --> $DIR/default-unmatched.rs:3:13

@@ -1,8 +1,10 @@
-error: unmatched `default`
+error: `default` not followed by an item
   --> $DIR/default.rs:22:5
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }
-   |     ^^^^^^^ the unmatched `default`
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
 
 error: non-item in item list
   --> $DIR/default.rs:22:13

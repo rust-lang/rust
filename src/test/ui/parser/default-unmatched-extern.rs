@@ -3,6 +3,6 @@ fn main() {}
 extern "C" {
     default!(); //~ ERROR cannot find macro `default` in this scope
     default do
-    //~^ ERROR unmatched `default`
+    //~^ ERROR `default` not followed by an item
     //~| ERROR non-item in item list
 }
