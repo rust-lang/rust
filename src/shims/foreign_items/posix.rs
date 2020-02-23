@@ -322,7 +322,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             _ => {
-                match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
+                match this.tcx.sess.target.target.target_os.as_str() {
                     "linux" => return linux::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                     "macos" => return macos::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                     _ => unreachable!(),

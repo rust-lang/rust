@@ -359,11 +359,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function used inside the shims of foreign functions to check that isolation is
     /// disabled. It returns an error using the `name` of the foreign function if this is not the
     /// case.
-    fn check_no_isolation(&mut self, name: &str) -> InterpResult<'tcx> {
-        if !self.eval_context_mut().machine.communicate {
+    fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
+        if !self.eval_context_ref().machine.communicate {
             throw_unsup_format!(
                 "`{}` not available when isolation is enabled. Pass the flag `-Zmiri-disable-isolation` to disable it.",
-                name
+                name,
             )
         }
         Ok(())
@@ -371,13 +371,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function used inside the shims of foreign functions to assert that the target
     /// platform is `platform`. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
-    fn assert_platform(&mut self, platform: &str, name: &str) {
+    fn assert_platform(&self, platform: &str, name: &str) {
         assert_eq!(
-            self.eval_context_mut().tcx.sess.target.target.target_os.to_lowercase(),
+            self.eval_context_ref().tcx.sess.target.target.target_os,
             platform,
             "`{}` is only available on the `{}` platform",
             name,
-            platform
+            platform,
         )
     }
 
@@ -389,8 +389,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Gets the last error variable.
-    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
-        let this = self.eval_context_mut();
+    fn get_last_error(&self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_ref();
         let errno_place = this.machine.last_error.unwrap();
         this.read_scalar(errno_place.into())?.not_undef()
     }

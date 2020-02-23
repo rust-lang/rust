@@ -169,7 +169,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
     // FIXME: We always ignore leaks on some platforms where we do not
     // correctly implement TLS destructors.
-    let target_os = tcx.sess.target.target.target_os.to_lowercase();
+    let target_os = tcx.sess.target.target.target_os.as_str();
     let ignore_leaks = config.ignore_leaks || target_os == "windows" || target_os == "macos";
 
     let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {

@@ -18,7 +18,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
             }
 
-            // File related shims
+            // File related shims (but also see "syscall" below for statx)
 
             // The only reason this is not in the `posix` module is because the `macos` item has a
             // different name.
@@ -59,8 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // so skip over it.
                         getrandom(this, &args[1..], dest)?;
                     }
-                    // `statx` is used by `libstd` to retrieve metadata information in `linux`
-                    // instead of using `stat`,`lstat` or `fstat` as in the `macos` platform.
+                    // `statx` is used by `libstd` to retrieve metadata information on `linux`
+                    // instead of using `stat`,`lstat` or `fstat` as on `macos`.
                     id if id == sys_statx => {
                         // The first argument is the syscall id,
                         // so skip over it.
@@ -87,7 +87,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-// Shims the linux 'getrandom()' syscall.
+// Shims the linux `getrandom` syscall.
 fn getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
     args: &[OpTy<'tcx, Tag>],
