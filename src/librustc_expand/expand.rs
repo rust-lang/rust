@@ -358,7 +358,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]);
 

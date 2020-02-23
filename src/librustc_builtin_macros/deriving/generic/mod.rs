@@ -542,9 +542,9 @@ impl<'a> TraitDef<'a> {
                 span: self.span,
                 ident,
                 vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 kind: ast::AssocItemKind::TyAlias(
+                    ast::Defaultness::Final,
                     Generics::default(),
                     Vec::new(),
                     Some(type_def.to_ty(cx, self.span, type_ident, generics)),
@@ -968,6 +968,7 @@ impl<'a> MethodDef<'a> {
             header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
             decl: fn_decl,
         };
+        let def = ast::Defaultness::Final;
 
         // Create the method.
         P(ast::AssocItem {
@@ -975,9 +976,8 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             span: trait_.span,
             vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
-            defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(sig, fn_generics, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
             tokens: None,
         })
     }

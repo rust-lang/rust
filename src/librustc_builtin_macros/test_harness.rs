@@ -162,7 +162,7 @@ impl MutVisitor for EntryPointCleaner {
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry::entry_point_type(&item, self.depth) {
             EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
-                .map(|ast::Item { id, ident, attrs, kind, vis, defaultness, span, tokens }| {
+                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str_and_span(
                         "dead_code",
@@ -176,7 +176,7 @@ impl MutVisitor for EntryPointCleaner {
                         .chain(iter::once(allow_dead_code))
                         .collect();
 
-                    ast::Item { id, ident, attrs, kind, vis, defaultness, span, tokens }
+                    ast::Item { id, ident, attrs, kind, vis, span, tokens }
                 }),
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
@@ -298,7 +298,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
-    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), Some(main_body));
+    let def = ast::Defaultness::Final;
+    let main = ast::ItemKind::Fn(def, sig, ast::Generics::default(), Some(main_body));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
@@ -312,7 +313,6 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: respan(sp, ast::VisibilityKind::Public),
-        defaultness: ast::Defaultness::Final,
         span: sp,
         tokens: None,
     });

@@ -133,7 +133,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
         );
         match item.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -151,7 +151,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Const(ref ty, _) | ast::ForeignItemKind::Static(ref ty, _, _) => {
+            ast::ForeignItemKind::Const(_, ref ty, _)
+            | ast::ForeignItemKind::Static(ref ty, _, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -180,7 +181,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.kind {
-            ast::ItemKind::Fn(ref sig, .., ref generics, _) => {
+            ast::ItemKind::Fn(_, ref sig, .., ref generics, _) => {
                 let qualname = format!(
                     "::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
@@ -227,7 +228,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Const(ref typ, _) => {
+            ast::ItemKind::Const(_, ref typ, _) => {
                 let qualname = format!(
                     "::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))

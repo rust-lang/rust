@@ -588,7 +588,6 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind,
             vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-            defaultness: ast::Defaultness::Final,
             span,
             tokens: None,
         })
@@ -645,7 +644,8 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, Some(expr)))
+        let def = ast::Defaultness::Final;
+        self.item(span, name, Vec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

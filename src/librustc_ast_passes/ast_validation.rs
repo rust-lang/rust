@@ -881,7 +881,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(ref sig, ref generics, ref body) => {
+            ItemKind::Fn(def, ref sig, ref generics, ref body) => {
+                self.check_defaultness(item.span, def);
                 self.check_const_fn_const_generic(item.span, sig, generics);
 
                 if body.is_none() {
@@ -965,7 +966,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
-            ItemKind::Const(.., None) => {
+            ItemKind::Const(def, .., None) => {
+                self.check_defaultness(item.span, def);
                 let msg = "free constant item without body";
                 self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
             }
@@ -973,7 +975,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
-            ItemKind::TyAlias(_, ref bounds, ref body) => {
+            ItemKind::TyAlias(def, _, ref bounds, ref body) => {
+                self.check_defaultness(item.span, def);
                 if body.is_none() {
                     let msg = "free type alias without body";
                     self.error_item_without_body(item.span, "type", msg, " = <type>;");
@@ -988,11 +991,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
-            ForeignItemKind::Fn(sig, _, body) => {
+            ForeignItemKind::Fn(def, sig, _, body) => {
+                self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
-            ForeignItemKind::TyAlias(generics, bounds, body) => {
+            ForeignItemKind::TyAlias(def, generics, bounds, body) => {
+                self.check_defaultness(fi.span, *def);
                 self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
@@ -1233,19 +1238,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if ctxt == AssocCtxt::Trait {
-            self.check_defaultness(item.span, item.defaultness);
+        if ctxt == AssocCtxt::Trait || !self.in_trait_impl {
+            self.check_defaultness(item.span, item.kind.defaultness());
         }
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(_, body) => {
+                AssocItemKind::Const(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
-                AssocItemKind::Fn(_, _, body) => {
+                AssocItemKind::Fn(_, _, _, body) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(_, bounds, body) => {
+                AssocItemKind::TyAlias(_, _, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
                     self.check_type_no_bounds(bounds, "`impl`s");
                 }
@@ -1255,7 +1260,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(sig, _, _) = &item.kind {
+            if let AssocItemKind::Fn(_, sig, _, _) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }

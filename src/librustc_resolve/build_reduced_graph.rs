@@ -718,7 +718,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(_, _, ref ty) => {
+            ItemKind::TyAlias(_, _, _, ref ty) => {
                 let def_kind = match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                     None => DefKind::TyAlias,
                     Some(_) => DefKind::OpaqueTy,
@@ -1253,7 +1253,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let (res, ns) = match item.kind {
             AssocItemKind::Static(..) // Let's pretend it's a `const` for recovery.
             | AssocItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
-            AssocItemKind::Fn(ref sig, _, _) => {
+            AssocItemKind::Fn(_, ref sig, _, _) => {
                 if sig.decl.has_self() {
                     self.r.has_self.insert(item_def_id);
                 }
