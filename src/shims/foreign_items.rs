@@ -1,9 +1,12 @@
+mod windows;
+mod posix;
+
 use std::{convert::TryInto, iter};
 
 use rustc_hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc::ty::layout::{Align, Size};
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
 use syntax::attr;
@@ -167,6 +170,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Next: functions that return.
+        if this.emulate_foreign_item_by_name(link_name, args, dest, ret)? {
+            this.dump_place(*dest);
+            this.go_to_block(ret);
+        }
+
+        Ok(None)
+    }
+
+    /// Emulates calling a foreign item using its name, failing if the item is not supported.
+    /// Returns `true` if the caller is expected to jump to the return block, and `false` if
+    /// jumping has already been taken care of.
+    fn emulate_foreign_item_by_name(
+        &mut self,
+        link_name: &str,
+        args: &[OpTy<'tcx, Tag>],
+        dest: PlaceTy<'tcx, Tag>,
+        ret: mir::BasicBlock,
+    ) -> InterpResult<'tcx, bool> {
+        let this = self.eval_context_mut();
+
+        // Here we dispatch all the shims for foreign functions. If you have a platform specific
+        // shim, add it to the corresponding submodule.
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
@@ -180,33 +205,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     items.checked_mul(len).ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
-            }
-            "posix_memalign" => {
-                let ret = this.deref_operand(args[0])?;
-                let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let size = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                if align < this.pointer_size().bytes() {
-                    throw_ub_format!(
-                        "posix_memalign: alignment must be at least the size of a pointer, but is {}",
-                        align,
-                    );
-                }
-
-                if size == 0 {
-                    this.write_null(ret.into())?;
-                } else {
-                    let ptr = this.memory.allocate(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::C.into(),
-                    );
-                    this.write_scalar(ptr, ret.into())?;
-                }
-                this.write_null(dest)?;
             }
             "free" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
@@ -292,56 +290,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(new_ptr, dest)?;
             }
 
-            "syscall" => {
-                let sys_getrandom = this
-                    .eval_path_scalar(&["libc", "SYS_getrandom"])?
-                    .expect("Failed to get libc::SYS_getrandom")
-                    .to_machine_usize(this)?;
-
-                let sys_statx = this
-                    .eval_path_scalar(&["libc", "SYS_statx"])?
-                    .expect("Failed to get libc::SYS_statx")
-                    .to_machine_usize(this)?;
-
-                match this.read_scalar(args[0])?.to_machine_usize(this)? {
-                    // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                    // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
-                    id if id == sys_getrandom => {
-                        // The first argument is the syscall id,
-                        // so skip over it.
-                        linux_getrandom(this, &args[1..], dest)?;
-                    }
-                    id if id == sys_statx => {
-                        // The first argument is the syscall id,
-                        // so skip over it.
-                        let result = this.statx(args[1], args[2], args[3], args[4], args[5])?;
-                        this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-                    }
-                    id => throw_unsup_format!("miri does not support syscall ID {}", id),
-                }
-            }
-
-            "getrandom" => {
-                linux_getrandom(this, args, dest)?;
-            }
-
-            "dlsym" => {
-                let _handle = this.read_scalar(args[0])?;
-                let symbol = this.read_scalar(args[1])?.not_undef()?;
-                let symbol_name = this.memory.read_c_str(symbol)?;
-                let err = format!("bad c unicode symbol: {:?}", symbol_name);
-                let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
-                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
-                    this.write_scalar(Scalar::from(ptr), dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
-            }
-
             "__rust_maybe_catch_panic" => {
                 this.handle_catch_panic(args, dest, ret)?;
-                return Ok(None);
+                return Ok(false);
             }
 
             "memcmp" => {
@@ -397,143 +348,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     this.write_null(dest)?;
                 }
-            }
-
-            | "__errno_location"
-            | "__error"
-            => {
-                let errno_place = this.machine.last_error.unwrap();
-                this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
-            }
-
-            "getenv" => {
-                let result = this.getenv(args[0])?;
-                this.write_scalar(result, dest)?;
-            }
-
-            "unsetenv" => {
-                let result = this.unsetenv(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "setenv" => {
-                let result = this.setenv(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "getcwd" => {
-                let result = this.getcwd(args[0], args[1])?;
-                this.write_scalar(result, dest)?;
-            }
-
-            "chdir" => {
-                let result = this.chdir(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "open"
-            | "open64"
-            => {
-                let result = this.open(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "fcntl" => {
-                let result = this.fcntl(args[0], args[1], args.get(2).cloned())?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "close"
-            | "close$NOCANCEL"
-            => {
-                let result = this.close(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "read" => {
-                let result = this.read(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "write" => {
-                let fd = this.read_scalar(args[0])?.to_i32()?;
-                let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_machine_usize(tcx)?;
-                trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
-                let result = if fd == 1 || fd == 2 {
-                    // stdout/stderr
-                    use std::io::{self, Write};
-
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(n))?;
-                    // We need to flush to make sure this actually appears on the screen
-                    let res = if fd == 1 {
-                        // Stdout is buffered, flush to make sure it appears on the screen.
-                        // This is the write() syscall of the interpreted program, we want it
-                        // to correspond to a write() syscall on the host -- there is no good
-                        // in adding extra buffering here.
-                        let res = io::stdout().write(buf_cont);
-                        io::stdout().flush().unwrap();
-                        res
-                    } else {
-                        // No need to flush, stderr is not buffered.
-                        io::stderr().write(buf_cont)
-                    };
-                    match res {
-                        Ok(n) => n as i64,
-                        Err(_) => -1,
-                    }
-                } else {
-                    this.write(args[0], args[1], args[2])?
-                };
-                // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "lseek64"
-            | "lseek"
-            => {
-                let result = this.lseek64(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "unlink" => {
-                let result = this.unlink(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "symlink" => {
-                let result = this.symlink(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "stat$INODE64" => {
-                let result = this.stat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "lstat$INODE64" => {
-                let result = this.lstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "fstat$INODE64" => {
-                let result = this.fstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "rename" => {
-                let result = this.rename(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "clock_gettime" => {
-                let result = this.clock_gettime(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "gettimeofday" => {
-                let result = this.gettimeofday(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "strlen" => {
@@ -641,390 +455,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
-            // Some things needed for `sys::thread` initialization to go through.
-            | "signal"
-            | "sigaction"
-            | "sigaltstack"
-            => {
-                this.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
+            _ => match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
+                "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                target => throw_unsup_format!("The {} target platform is not supported", target),
             }
+        };
 
-            "sysconf" => {
-                let name = this.read_scalar(args[0])?.to_i32()?;
-
-                trace!("sysconf() called with name {}", name);
-                // TODO: Cache the sysconf integers via Miri's global cache.
-                let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
-                    (
-                        &["libc", "_SC_NPROCESSORS_ONLN"],
-                        Scalar::from_int(NUM_CPUS, dest.layout.size),
-                    ),
-                ];
-                let mut result = None;
-                for &(path, path_value) in paths {
-                    if let Some(val) = this.eval_path_scalar(path)? {
-                        let val = val.to_i32()?;
-                        if val == name {
-                            result = Some(path_value);
-                            break;
-                        }
-                    }
-                }
-                if let Some(result) = result {
-                    this.write_scalar(result, dest)?;
-                } else {
-                    throw_unsup_format!("Unimplemented sysconf name: {}", name)
-                }
-            }
-
-            "sched_getaffinity" => {
-                // Return an error; `num_cpus` then falls back to `sysconf`.
-                this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
-            }
-
-            "isatty" => {
-                this.write_null(dest)?;
-            }
-
-            // Hook pthread calls that go to the thread-local storage memory subsystem.
-            "pthread_key_create" => {
-                let key_place = this.deref_operand(args[0])?;
-
-                // Extract the function type out of the signature (that seems easier than constructing it ourselves).
-                let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
-                    Some(dtor_ptr) => Some(this.memory.get_fn(dtor_ptr)?.as_instance()?),
-                    None => None,
-                };
-
-                // Figure out how large a pthread TLS key actually is.
-                // This is `libc::pthread_key_t`.
-                let key_type = args[0].layout.ty
-                    .builtin_deref(true)
-                    .ok_or_else(|| err_ub_format!(
-                        "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
-                    ))?
-                    .ty;
-                let key_layout = this.layout_of(key_type)?;
-
-                // Create key and write it into the memory where `key_ptr` wants it.
-                let key = this.machine.tls.create_tls_key(dtor) as u128;
-                if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128)
-                {
-                    throw_unsup!(OutOfTls);
-                }
-
-                this.write_scalar(Scalar::from_uint(key, key_layout.size), key_place.into())?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
-            }
-            "pthread_key_delete" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
-                this.machine.tls.delete_tls_key(key)?;
-                // Return success (0)
-                this.write_null(dest)?;
-            }
-            "pthread_getspecific" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
-                let ptr = this.machine.tls.load_tls(key, tcx)?;
-                this.write_scalar(ptr, dest)?;
-            }
-            "pthread_setspecific" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
-                let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
-            }
-
-            // Stack size/address stuff.
-            | "pthread_attr_init"
-            | "pthread_attr_destroy"
-            | "pthread_self"
-            | "pthread_attr_setstacksize" => {
-                this.write_null(dest)?;
-            }
-            "pthread_attr_getstack" => {
-                let addr_place = this.deref_operand(args[1])?;
-                let size_place = this.deref_operand(args[2])?;
-
-                this.write_scalar(
-                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
-                    addr_place.into(),
-                )?;
-                this.write_scalar(
-                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
-                    size_place.into(),
-                )?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
-            }
-
-            // We don't support threading. (Also for Windows.)
-            | "pthread_create"
-            | "CreateThread"
-            => {
-                throw_unsup_format!("Miri does not support threading");
-            }
-
-            // Stub out calls for condvar, mutex and rwlock, to just return `0`.
-            | "pthread_mutexattr_init"
-            | "pthread_mutexattr_settype"
-            | "pthread_mutex_init"
-            | "pthread_mutexattr_destroy"
-            | "pthread_mutex_lock"
-            | "pthread_mutex_unlock"
-            | "pthread_mutex_destroy"
-            | "pthread_rwlock_rdlock"
-            | "pthread_rwlock_unlock"
-            | "pthread_rwlock_wrlock"
-            | "pthread_rwlock_destroy"
-            | "pthread_condattr_init"
-            | "pthread_condattr_setclock"
-            | "pthread_cond_init"
-            | "pthread_condattr_destroy"
-            | "pthread_cond_destroy"
-            => {
-                this.write_null(dest)?;
-            }
-
-            // We don't support fork so we don't have to do anything for atfork.
-            "pthread_atfork" => {
-                this.write_null(dest)?;
-            }
-
-            "posix_fadvise" => {
-                // fadvise is only informational, we can ignore it.
-                this.write_null(dest)?;
-            }
-
-            "mmap" => {
-                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let addr = this.read_scalar(args[0])?.not_undef()?;
-                this.write_scalar(addr, dest)?;
-            }
-            "mprotect" => {
-                this.write_null(dest)?;
-            }
-
-            // macOS API stubs.
-            | "pthread_attr_get_np"
-            | "pthread_getattr_np"
-            => {
-                this.write_null(dest)?;
-            }
-            "pthread_get_stackaddr_np" => {
-                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
-                this.write_scalar(stack_addr, dest)?;
-            }
-            "pthread_get_stacksize_np" => {
-                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
-                this.write_scalar(stack_size, dest)?;
-            }
-            "_tlv_atexit" => {
-                // FIXME: register the destructor.
-            }
-            "_NSGetArgc" => {
-                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
-            }
-            "_NSGetArgv" => {
-                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
-            }
-            "SecRandomCopyBytes" => {
-                let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let ptr = this.read_scalar(args[2])?.not_undef()?;
-                this.gen_random(ptr, len as usize)?;
-                this.write_null(dest)?;
-            }
-
-            // Windows API stubs.
-            // HANDLE = isize
-            // DWORD = ULONG = u32
-            // BOOL = i32
-            "GetProcessHeap" => {
-                // Just fake a HANDLE
-                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
-            }
-            "HeapAlloc" => {
-                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
-                let flags = this.read_scalar(args[1])?.to_u32()?;
-                let size = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
-                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap);
-                this.write_scalar(res, dest)?;
-            }
-            "HeapFree" => {
-                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
-                let _flags = this.read_scalar(args[1])?.to_u32()?;
-                let ptr = this.read_scalar(args[2])?.not_undef()?;
-                this.free(ptr, MiriMemoryKind::WinHeap)?;
-                this.write_scalar(Scalar::from_int(1, Size::from_bytes(4)), dest)?;
-            }
-            "HeapReAlloc" => {
-                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
-                let _flags = this.read_scalar(args[1])?.to_u32()?;
-                let ptr = this.read_scalar(args[2])?.not_undef()?;
-                let size = this.read_scalar(args[3])?.to_machine_usize(this)?;
-                let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
-                this.write_scalar(res, dest)?;
-            }
-
-            "SetLastError" => {
-                this.set_last_error(this.read_scalar(args[0])?.not_undef()?)?;
-            }
-            "GetLastError" => {
-                let last_error = this.get_last_error()?;
-                this.write_scalar(last_error, dest)?;
-            }
-
-            "AddVectoredExceptionHandler" => {
-                // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
-            }
-
-            | "InitializeCriticalSection"
-            | "EnterCriticalSection"
-            | "LeaveCriticalSection"
-            | "DeleteCriticalSection"
-            => {
-                // Nothing to do, not even a return value.
-            }
-
-            | "GetModuleHandleW"
-            | "GetProcAddress"
-            | "TryEnterCriticalSection"
-            | "GetConsoleScreenBufferInfo"
-            | "SetConsoleTextAttribute"
-            => {
-                // Pretend these do not exist / nothing happened, by returning zero.
-                this.write_null(dest)?;
-            }
-
-            "GetSystemInfo" => {
-                let system_info = this.deref_operand(args[0])?;
-                // Initialize with `0`.
-                this.memory.write_bytes(
-                    system_info.ptr,
-                    iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
-                )?;
-                // Set number of processors.
-                let dword_size = Size::from_bytes(4);
-                let num_cpus = this.mplace_field(system_info, 6)?;
-                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), num_cpus.into())?;
-            }
-
-            "TlsAlloc" => {
-                // This just creates a key; Windows does not natively support TLS destructors.
-
-                // Create key and return it.
-                let key = this.machine.tls.create_tls_key(None) as u128;
-
-                // Figure out how large a TLS key actually is. This is `c::DWORD`.
-                if dest.layout.size.bits() < 128
-                    && key >= (1u128 << dest.layout.size.bits() as u128)
-                {
-                    throw_unsup!(OutOfTls);
-                }
-                this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
-            }
-            "TlsGetValue" => {
-                let key = this.read_scalar(args[0])?.to_u32()? as u128;
-                let ptr = this.machine.tls.load_tls(key, tcx)?;
-                this.write_scalar(ptr, dest)?;
-            }
-            "TlsSetValue" => {
-                let key = this.read_scalar(args[0])?.to_u32()? as u128;
-                let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
-
-                // Return success (`1`).
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
-            }
-            "GetStdHandle" => {
-                let which = this.read_scalar(args[0])?.to_i32()?;
-                // We just make this the identity function, so we know later in `WriteFile`
-                // which one it is.
-                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
-            }
-            "WriteFile" => {
-                let handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
-                let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_u32()?;
-                let written_place = this.deref_operand(args[3])?;
-                // Spec says to always write `0` first.
-                this.write_null(written_place.into())?;
-                let written = if handle == -11 || handle == -12 {
-                    // stdout/stderr
-                    use std::io::{self, Write};
-
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(u64::from(n)))?;
-                    let res = if handle == -11 {
-                        io::stdout().write(buf_cont)
-                    } else {
-                        io::stderr().write(buf_cont)
-                    };
-                    res.ok().map(|n| n as u32)
-                } else {
-                    eprintln!("Miri: Ignored output to handle {}", handle);
-                    // Pretend it all went well.
-                    Some(n)
-                };
-                // If there was no error, write back how much was written.
-                if let Some(n) = written {
-                    this.write_scalar(Scalar::from_u32(n), written_place.into())?;
-                }
-                // Return whether this was a success.
-                this.write_scalar(
-                    Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
-                    dest,
-                )?;
-            }
-            "GetConsoleMode" => {
-                // Everything is a pipe.
-                this.write_null(dest)?;
-            }
-            "GetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPWSTR lpBuffer (32-bit pointer to a string of 16-bit Unicode chars)
-                // lpBuffer : ptr to buffer that receives contents of the env_var as a null-terminated string.
-                // Return `# of chars` stored in the buffer pointed to by lpBuffer, excluding null-terminator.
-                // Return 0 upon failure.
-
-                // This is not the env var you are looking for.
-                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
-                this.write_null(dest)?;
-            }
-            "SetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPCWSTR lpValue (32-bit ptr to a const string of 16-bit Unicode chars)
-                // Return nonzero if success, else return 0.
-                throw_unsup_format!("can't set environment variable on Windows");
-            }
-            "GetCommandLineW" => {
-                this.write_scalar(
-                    this.machine.cmd_line.expect("machine must be initialized"),
-                    dest,
-                )?;
-            }
-            // The actual name of 'RtlGenRandom'
-            "SystemFunction036" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let len = this.read_scalar(args[1])?.to_u32()?;
-                this.gen_random(ptr, len as usize)?;
-                this.write_scalar(Scalar::from_bool(true), dest)?;
-            }
-
-            // We can't execute anything else.
-            _ => throw_unsup_format!("can't call foreign function: {}", link_name),
-        }
-
-        this.dump_place(*dest);
-        this.go_to_block(ret);
-        Ok(None)
+        Ok(true)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
@@ -1042,22 +480,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
-}
-
-// Shims the linux 'getrandom()' syscall.
-fn linux_getrandom<'tcx>(
-    this: &mut MiriEvalContext<'_, 'tcx>,
-    args: &[OpTy<'tcx, Tag>],
-    dest: PlaceTy<'tcx, Tag>,
-) -> InterpResult<'tcx> {
-    let ptr = this.read_scalar(args[0])?.not_undef()?;
-    let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
-
-    // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-    // neither of which have any effect on our current PRNG.
-    let _flags = this.read_scalar(args[2])?.to_i32()?;
-
-    this.gen_random(ptr, len as usize)?;
-    this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
-    Ok(())
 }

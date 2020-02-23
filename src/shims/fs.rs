@@ -392,29 +392,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(create_link(target, linkpath).map(|_| 0))
     }
 
-    fn stat(
+    fn macos_stat(
         &mut self,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("stat")?;
+        this.assert_platform("macos", "stat");
         // `stat` always follows symlinks.
-        this.stat_or_lstat(true, path_op, buf_op)
+        this.macos_stat_or_lstat(true, path_op, buf_op)
     }
 
     // `lstat` is used to get symlink metadata.
-    fn lstat(
+    fn macos_lstat(
         &mut self,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("lstat")?;
-        this.stat_or_lstat(false, path_op, buf_op)
+        this.assert_platform("macos", "lstat");
+        this.macos_stat_or_lstat(false, path_op, buf_op)
     }
 
-    fn fstat(
+    fn macos_fstat(
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
@@ -422,10 +424,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("fstat")?;
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `fstat` shim is only available for `macos` targets.")
-        }
+        this.assert_platform("macos", "fstat");
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -433,20 +432,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_macos_write_buf(this, metadata, buf_op)
+        macos_stat_write_buf(this, metadata, buf_op)
     }
 
-    fn stat_or_lstat(
+    /// Emulate `stat` or `lstat` on the `macos` platform. This function is not intended to be
+    /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
+    /// disabled or if the target platform is the correct one. Please use `macos_stat` or
+    /// `macos_lstat` instead.
+    fn macos_stat_or_lstat(
         &mut self,
         follow_symlink: bool,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` and `lstat` shims are only available for `macos` targets.")
-        }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
         let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
@@ -455,10 +454,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_macos_write_buf(this, metadata, buf_op)
+        macos_stat_write_buf(this, metadata, buf_op)
     }
 
-    fn statx(
+    fn linux_statx(
         &mut self,
         dirfd_op: OpTy<'tcx, Tag>,    // Should be an `int`
         pathname_op: OpTy<'tcx, Tag>, // Should be a `const char *`
@@ -469,10 +468,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("statx")?;
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "linux" {
-            throw_unsup_format!("The `statx` shim is only available for `linux` targets.")
-        }
+        this.assert_platform("linux", "statx");
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
         let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
@@ -748,7 +744,7 @@ impl FileMetadata {
     }
 }
 
-fn stat_macos_write_buf<'tcx, 'mir>(
+fn macos_stat_write_buf<'tcx, 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     metadata: FileMetadata,
     buf_op: OpTy<'tcx, Tag>,
