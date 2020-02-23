@@ -759,7 +759,8 @@ impl<'a> Builder<'a> {
         };
 
         let mut rustflags = Rustflags::new(&target);
-        if stage != 0 {
+        // x.py with nightly clippy needs to run over #[cfg(not(bootstrap)] code in order to function
+        if stage != 0 || cmd == "clippy" {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
             }
