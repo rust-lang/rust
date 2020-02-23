@@ -397,10 +397,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
-            ast::ForeignItemKind::Macro(..) => {}
+            ast::ForeignItemKind::Macro(..) | ast::ForeignItemKind::Const(..) => {}
         }
 
         visit::walk_foreign_item(self, i)
@@ -419,8 +419,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
-        if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
+    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
+        if let ast::FnRetTy::Ty(ref output_ty) = *ret_ty {
             if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
@@ -548,12 +548,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match i.kind {
-            ast::AssocItemKind::Fn(ref sig, _) => {
+            ast::AssocItemKind::Fn(ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }
-            ast::AssocItemKind::TyAlias(_, ref ty) => {
+            ast::AssocItemKind::TyAlias(ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -565,7 +565,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let Some(ty) = ty {
                     self.check_impl_trait(ty);
                 }
-                self.check_gat(&i.generics, i.span);
+                self.check_gat(generics, i.span);
             }
             _ => {}
         }

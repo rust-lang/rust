@@ -1,16 +1,14 @@
-error[E0061]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/issue-26094.rs:3:9
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/issue-26094.rs:10:17
    |
 LL |         $other(None)
-   |         ^^^^^^^^^^^^ expected 0 parameters
+   |                ---- supplied 1 argument
 ...
 LL | fn some_function() {}
    | ------------------ defined here
 ...
 LL |     some_macro!(some_function);
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                 ^^^^^^^^^^^^^ expected 0 arguments
 
 error: aborting due to previous error
 

@@ -148,6 +148,10 @@ pub struct LitToConstInput<'tcx> {
 /// Error type for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
+    /// The literal's inferred type did not match the expected `ty` in the input.
+    /// This is used for graceful error handling (`delay_span_bug`) in
+    /// type checking (`AstConv::ast_const_to_const`).
+    TypeError,
     UnparseableFloat,
     Reported,
 }

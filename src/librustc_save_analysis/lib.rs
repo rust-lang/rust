@@ -151,7 +151,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Const(ref ty, _) | ast::ForeignItemKind::Static(ref ty, _, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -173,7 +173,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
-            ast::ForeignItemKind::Ty => None,
+            ast::ForeignItemKind::TyAlias(..) => None,
             ast::ForeignItemKind::Macro(..) => None,
         }
     }
@@ -408,7 +408,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         qualname.push_str(&self.tcx.hir().hir_to_pretty_string(self_ty.hir_id));
 
                         let trait_id = self.tcx.trait_id_of_impl(impl_id);
-                        let mut decl_id = None;
                         let mut docs = String::new();
                         let mut attrs = vec![];
                         let hir_id = self.tcx.hir().node_to_hir_id(id);
@@ -417,15 +416,18 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             attrs = item.attrs.to_vec();
                         }
 
+                        let mut decl_id = None;
                         if let Some(def_id) = trait_id {
                             // A method in a trait impl.
                             qualname.push_str(" as ");
                             qualname.push_str(&self.tcx.def_path_str(def_id));
-                            self.tcx
+
+                            decl_id = self
+                                .tcx
                                 .associated_items(def_id)
-                                .iter()
-                                .find(|item| item.ident.name == ident.name)
-                                .map(|item| decl_id = Some(item.def_id));
+                                .filter_by_name_unhygienic(ident.name)
+                                .next()
+                                .map(|item| item.def_id);
                         }
                         qualname.push_str(">");
 
@@ -716,12 +718,11 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::Method, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
+
                     self.tcx
                         .associated_items(ti.container.id())
-                        .iter()
-                        .find(|item| {
-                            item.ident.name == ti.ident.name && item.defaultness.has_value()
-                        })
+                        .filter_by_name_unhygienic(ti.ident.name)
+                        .find(|item| item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None
@@ -880,8 +881,8 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push_str(&decl.inputs.iter().map(param_to_string).collect::<Vec<_>>().join(", "));
     sig.push(')');
     match decl.output {
-        ast::FunctionRetTy::Default(_) => sig.push_str(" -> ()"),
-        ast::FunctionRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
+        ast::FnRetTy::Default(_) => sig.push_str(" -> ()"),
+        ast::FnRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
     }
 
     sig

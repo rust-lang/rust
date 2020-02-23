@@ -3,7 +3,8 @@
 //! manage the caches, and so forth.
 
 use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
-use crate::ty::query::config::{QueryConfig, QueryDescription};
+use crate::ty::query::caches::QueryCache;
+use crate::ty::query::config::{QueryAccessors, QueryDescription};
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryShardJobId};
 use crate::ty::query::Query;
 use crate::ty::tls;
@@ -12,10 +13,8 @@ use crate::ty::{self, TyCtxt};
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
-#[cfg(parallel_compiler)]
-use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
 use rustc_span::source_map::DUMMY_SP;
@@ -25,26 +24,50 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
 use std::ptr;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
-    pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
+pub(crate) struct QueryStateShard<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
+    pub(super) cache: <<D as QueryAccessors<'tcx>>::Cache as QueryCache<D::Key, D::Value>>::Sharded,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
 
     /// Used to generate unique ids for active jobs.
     pub(super) jobs: u32,
+}
 
+impl<'tcx, Q: QueryAccessors<'tcx>> QueryStateShard<'tcx, Q> {
+    fn get_cache(
+        &mut self,
+    ) -> &mut <<Q as QueryAccessors<'tcx>>::Cache as QueryCache<Q::Key, Q::Value>>::Sharded {
+        &mut self.cache
+    }
+}
+
+impl<'tcx, Q: QueryAccessors<'tcx>> Default for QueryStateShard<'tcx, Q> {
+    fn default() -> QueryStateShard<'tcx, Q> {
+        QueryStateShard { cache: Default::default(), active: Default::default(), jobs: 0 }
+    }
+}
+
+pub(crate) struct QueryState<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
+    pub(super) cache: D::Cache,
+    pub(super) shards: Sharded<QueryStateShard<'tcx, D>>,
     #[cfg(debug_assertions)]
-    pub(super) cache_hits: usize,
+    pub(super) cache_hits: AtomicUsize,
 }
 
-pub(super) struct QueryValue<T> {
-    pub(super) value: T,
-    pub(super) index: DepNodeIndex,
-}
+impl<'tcx, Q: QueryAccessors<'tcx>> QueryState<'tcx, Q> {
+    pub(super) fn get_lookup<K: Hash>(&'tcx self, key: &K) -> QueryLookup<'tcx, Q> {
+        // We compute the key's hash once and then use it for both the
+        // shard lookup and the hashmap lookup. This relies on the fact
+        // that both of them use `FxHasher`.
+        let mut hasher = FxHasher::default();
+        key.hash(&mut hasher);
+        let key_hash = hasher.finish();
 
-impl<T> QueryValue<T> {
-    pub(super) fn new(value: T, dep_node_index: DepNodeIndex) -> QueryValue<T> {
-        QueryValue { value, index: dep_node_index }
+        let shard = self.shards.get_shard_index_by_hash(key_hash);
+        let lock = self.shards.get_shard_by_index(shard).lock();
+        QueryLookup { key_hash, shard, lock }
     }
 }
 
@@ -58,142 +81,134 @@ pub(super) enum QueryResult<'tcx> {
     Poisoned,
 }
 
-impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
-    fn default() -> QueryCache<'tcx, M> {
-        QueryCache {
-            results: FxHashMap::default(),
-            active: FxHashMap::default(),
-            jobs: 0,
+impl<'tcx, M: QueryAccessors<'tcx>> QueryState<'tcx, M> {
+    pub fn iter_results<R>(
+        &self,
+        f: impl for<'a> FnOnce(
+            Box<dyn Iterator<Item = (&'a M::Key, &'a M::Value, DepNodeIndex)> + 'a>,
+        ) -> R,
+    ) -> R {
+        self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
+    }
+    pub fn all_inactive(&self) -> bool {
+        let shards = self.shards.lock_shards();
+        shards.iter().all(|shard| shard.active.is_empty())
+    }
+}
+
+impl<'tcx, M: QueryAccessors<'tcx>> Default for QueryState<'tcx, M> {
+    fn default() -> QueryState<'tcx, M> {
+        QueryState {
+            cache: M::Cache::default(),
+            shards: Default::default(),
             #[cfg(debug_assertions)]
-            cache_hits: 0,
+            cache_hits: AtomicUsize::new(0),
         }
     }
 }
 
+/// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
+pub(crate) struct QueryLookup<'tcx, Q: QueryAccessors<'tcx>> {
+    pub(super) key_hash: u64,
+    pub(super) shard: usize,
+    pub(super) lock: LockGuard<'tcx, QueryStateShard<'tcx, Q>>,
+}
+
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-pub(super) struct JobOwner<'a, 'tcx, Q: QueryDescription<'tcx>> {
-    cache: &'a Sharded<QueryCache<'tcx, Q>>,
+pub(super) struct JobOwner<'tcx, Q: QueryDescription<'tcx>> {
+    tcx: TyCtxt<'tcx>,
     key: Q::Key,
     id: QueryJobId,
 }
 
-impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
+impl<'tcx, Q: QueryDescription<'tcx>> JobOwner<'tcx, Q> {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
-    /// If the query is executing elsewhere, this will wait for it.
+    /// This function assumes that `try_get_cached` is already called and returned `lookup`.
+    /// If the query is executing elsewhere, this will wait for it and return the result.
     /// If the query panicked, this will silently panic.
     ///
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
-        // Handling the `query_blocked_prof_timer` is a bit weird because of the
-        // control flow in this function: Blocking is implemented by
-        // awaiting a running job and, once that is done, entering the loop below
-        // again from the top. In that second iteration we will hit the
-        // cache which provides us with the information we need for
-        // finishing the "query-blocked" event.
-        //
-        // We thus allocate `query_blocked_prof_timer` outside the loop,
-        // initialize it during the first iteration and finish it during the
-        // second iteration.
+    pub(super) fn try_start(
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+        key: &Q::Key,
+        mut lookup: QueryLookup<'tcx, Q>,
+    ) -> TryGetJob<'tcx, Q> {
+        let lock = &mut *lookup.lock;
+
+        let (latch, mut _query_blocked_prof_timer) = match lock.active.entry((*key).clone()) {
+            Entry::Occupied(mut entry) => {
+                match entry.get_mut() {
+                    QueryResult::Started(job) => {
+                        // For parallel queries, we'll block and wait until the query running
+                        // in another thread has completed. Record how long we wait in the
+                        // self-profiler.
+                        let _query_blocked_prof_timer = if cfg!(parallel_compiler) {
+                            Some(tcx.prof.query_blocked())
+                        } else {
+                            None
+                        };
+
+                        // Create the id of the job we're waiting for
+                        let id = QueryJobId::new(job.id, lookup.shard, Q::dep_kind());
+
+                        (job.latch(id), _query_blocked_prof_timer)
+                    }
+                    QueryResult::Poisoned => FatalError.raise(),
+                }
+            }
+            Entry::Vacant(entry) => {
+                // No job entry for this query. Return a new one to be started later.
+
+                // Generate an id unique within this shard.
+                let id = lock.jobs.checked_add(1).unwrap();
+                lock.jobs = id;
+                let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
+
+                let global_id = QueryJobId::new(id, lookup.shard, Q::dep_kind());
+
+                let job = tls::with_related_context(tcx, |icx| QueryJob::new(id, span, icx.query));
+
+                entry.insert(QueryResult::Started(job));
+
+                let owner = JobOwner { tcx, id: global_id, key: (*key).clone() };
+                return TryGetJob::NotYetStarted(owner);
+            }
+        };
+        mem::drop(lookup.lock);
+
+        // If we are single-threaded we know that we have cycle error,
+        // so we just return the error.
+        #[cfg(not(parallel_compiler))]
+        return TryGetJob::Cycle(cold_path(|| {
+            Q::handle_cycle_error(tcx, latch.find_cycle_in_stack(tcx, span))
+        }));
+
+        // With parallel queries we might just have to wait on some other
+        // thread.
         #[cfg(parallel_compiler)]
-        let mut query_blocked_prof_timer: Option<TimingGuard<'_>> = None;
+        {
+            let result = latch.wait_on(tcx, span);
 
-        let cache = Q::query_cache(tcx);
-        loop {
-            // We compute the key's hash once and then use it for both the
-            // shard lookup and the hashmap lookup. This relies on the fact
-            // that both of them use `FxHasher`.
-            let mut state = FxHasher::default();
-            key.hash(&mut state);
-            let key_hash = state.finish();
-
-            let shard = cache.get_shard_index_by_hash(key_hash);
-            let mut lock_guard = cache.get_shard_by_index(shard).lock();
-            let lock = &mut *lock_guard;
-
-            if let Some((_, value)) =
-                lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
-            {
-                if unlikely!(tcx.prof.enabled()) {
-                    tcx.prof.query_cache_hit(value.index.into());
-
-                    #[cfg(parallel_compiler)]
-                    {
-                        if let Some(prof_timer) = query_blocked_prof_timer.take() {
-                            prof_timer.finish_with_query_invocation_id(value.index.into());
-                        }
-                    }
-                }
-
-                let result = (value.value.clone(), value.index);
-                #[cfg(debug_assertions)]
-                {
-                    lock.cache_hits += 1;
-                }
-                return TryGetJob::JobCompleted(result);
+            if let Err(cycle) = result {
+                return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
             }
 
-            let latch = match lock.active.entry((*key).clone()) {
-                Entry::Occupied(mut entry) => {
-                    match entry.get_mut() {
-                        QueryResult::Started(job) => {
-                            // For parallel queries, we'll block and wait until the query running
-                            // in another thread has completed. Record how long we wait in the
-                            // self-profiler.
-                            #[cfg(parallel_compiler)]
-                            {
-                                query_blocked_prof_timer = Some(tcx.prof.query_blocked());
-                            }
+            let cached = tcx.try_get_cached::<Q, _, _, _>(
+                (*key).clone(),
+                |value, index| (value.clone(), index),
+                |_, _| panic!("value must be in cache after waiting"),
+            );
 
-                            // Create the id of the job we're waiting for
-                            let id = QueryJobId::new(job.id, shard, Q::dep_kind());
-
-                            job.latch(id)
-                        }
-                        QueryResult::Poisoned => FatalError.raise(),
-                    }
-                }
-                Entry::Vacant(entry) => {
-                    // No job entry for this query. Return a new one to be started later.
-
-                    // Generate an id unique within this shard.
-                    let id = lock.jobs.checked_add(1).unwrap();
-                    lock.jobs = id;
-                    let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
-
-                    let global_id = QueryJobId::new(id, shard, Q::dep_kind());
-
-                    let job =
-                        tls::with_related_context(tcx, |icx| QueryJob::new(id, span, icx.query));
-
-                    entry.insert(QueryResult::Started(job));
-
-                    let owner = JobOwner { cache, id: global_id, key: (*key).clone() };
-                    return TryGetJob::NotYetStarted(owner);
-                }
-            };
-            mem::drop(lock_guard);
-
-            // If we are single-threaded we know that we have cycle error,
-            // so we just return the error.
-            #[cfg(not(parallel_compiler))]
-            return TryGetJob::Cycle(cold_path(|| {
-                Q::handle_cycle_error(tcx, latch.find_cycle_in_stack(tcx, span))
-            }));
-
-            // With parallel queries we might just have to wait on some other
-            // thread.
-            #[cfg(parallel_compiler)]
-            {
-                let result = latch.wait_on(tcx, span);
-
-                if let Err(cycle) = result {
-                    return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
-                }
+            if let Some(prof_timer) = _query_blocked_prof_timer.take() {
+                prof_timer.finish_with_query_invocation_id(cached.1.into());
             }
+
+            return TryGetJob::JobCompleted(cached);
         }
     }
 
@@ -203,19 +218,20 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
-        let cache = self.cache;
+        let tcx = self.tcx;
 
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
-        let value = QueryValue::new(result.clone(), dep_node_index);
         let job = {
-            let mut lock = cache.get_shard_by_value(&key).lock();
+            let state = Q::query_state(tcx);
+            let result = result.clone();
+            let mut lock = state.shards.get_shard_by_value(&key).lock();
             let job = match lock.active.remove(&key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            lock.results.insert(key, value);
+            state.cache.complete(tcx, &mut lock.cache, key, result, dep_node_index);
             job
         };
 
@@ -233,12 +249,13 @@ where
     (result, diagnostics.into_inner())
 }
 
-impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
+impl<'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'tcx, Q> {
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let shard = self.cache.get_shard_by_value(&self.key);
+        let state = Q::query_state(self.tcx);
+        let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
             let mut shard = shard.lock();
             let job = match shard.active.remove(&self.key).unwrap() {
@@ -261,14 +278,15 @@ pub struct CycleError<'tcx> {
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
 }
 
-/// The result of `try_get_lock`.
-pub(super) enum TryGetJob<'a, 'tcx, D: QueryDescription<'tcx>> {
+/// The result of `try_start`.
+pub(super) enum TryGetJob<'tcx, D: QueryDescription<'tcx>> {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'a, 'tcx, D>),
+    NotYetStarted(JobOwner<'tcx, D>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep-node index
     /// if it succeeded or a cycle error if it failed.
+    #[cfg(parallel_compiler)]
     JobCompleted((D::Value, DepNodeIndex)),
 
     /// Trying to execute the query resulted in a cycle.
@@ -396,13 +414,72 @@ impl<'tcx> TyCtxt<'tcx> {
         eprintln!("end of query stack");
     }
 
+    /// Checks if the query is already computed and in the cache.
+    /// It returns the shard index and a lock guard to the shard,
+    /// which will be used if the query is not in the cache and we need
+    /// to compute it.
+    #[inline(always)]
+    fn try_get_cached<Q, R, OnHit, OnMiss>(
+        self,
+        key: Q::Key,
+        // `on_hit` can be called while holding a lock to the query cache
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        Q: QueryDescription<'tcx> + 'tcx,
+        OnHit: FnOnce(&Q::Value, DepNodeIndex) -> R,
+        OnMiss: FnOnce(Q::Key, QueryLookup<'tcx, Q>) -> R,
+    {
+        let state = Q::query_state(self);
+
+        state.cache.lookup(
+            state,
+            QueryStateShard::<Q>::get_cache,
+            key,
+            |value, index| {
+                if unlikely!(self.prof.enabled()) {
+                    self.prof.query_cache_hit(index.into());
+                }
+                #[cfg(debug_assertions)]
+                {
+                    state.cache_hits.fetch_add(1, Ordering::Relaxed);
+                }
+                on_hit(value, index)
+            },
+            on_miss,
+        )
+    }
+
     #[inline(never)]
-    pub(super) fn get_query<Q: QueryDescription<'tcx>>(self, span: Span, key: Q::Key) -> Q::Value {
+    pub(super) fn get_query<Q: QueryDescription<'tcx> + 'tcx>(
+        self,
+        span: Span,
+        key: Q::Key,
+    ) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        let job = match JobOwner::try_get(self, span, &key) {
+        self.try_get_cached::<Q, _, _, _>(
+            key,
+            |value, index| {
+                self.dep_graph.read_index(index);
+                value.clone()
+            },
+            |key, lookup| self.try_execute_query::<Q>(span, key, lookup),
+        )
+    }
+
+    #[inline(always)]
+    pub(super) fn try_execute_query<Q: QueryDescription<'tcx>>(
+        self,
+        span: Span,
+        key: Q::Key,
+        lookup: QueryLookup<'tcx, Q>,
+    ) -> Q::Value {
+        let job = match JobOwner::try_start(self, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
+            #[cfg(parallel_compiler)]
             TryGetJob::JobCompleted((v, index)) => {
                 self.dep_graph.read_index(index);
                 return v;
@@ -560,7 +637,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn force_query_with_job<Q: QueryDescription<'tcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'_, 'tcx, Q>,
+        job: JobOwner<'tcx, Q>,
         dep_node: DepNode,
     ) -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
@@ -615,7 +692,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// side-effects -- e.g., in order to report errors for erroneous programs.
     ///
     /// Note: The optimization is only available during incr. comp.
-    pub(super) fn ensure_query<Q: QueryDescription<'tcx>>(self, key: Q::Key) -> () {
+    pub(super) fn ensure_query<Q: QueryDescription<'tcx> + 'tcx>(self, key: Q::Key) -> () {
         if Q::EVAL_ALWAYS {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
             return;
@@ -643,14 +720,30 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(dead_code)]
-    fn force_query<Q: QueryDescription<'tcx>>(self, key: Q::Key, span: Span, dep_node: DepNode) {
+    fn force_query<Q: QueryDescription<'tcx> + 'tcx>(
+        self,
+        key: Q::Key,
+        span: Span,
+        dep_node: DepNode,
+    ) {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
-        let job = match JobOwner::try_get(self, span, &key) {
-            TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::Cycle(_) | TryGetJob::JobCompleted(_) => return,
-        };
-        self.force_query_with_job::<Q>(key, job, dep_node);
+
+        self.try_get_cached::<Q, _, _, _>(
+            key,
+            |_, _| {
+                // Cache hit, do nothing
+            },
+            |key, lookup| {
+                let job = match JobOwner::try_start(self, span, &key, lookup) {
+                    TryGetJob::NotYetStarted(job) => job,
+                    TryGetJob::Cycle(_) => return,
+                    #[cfg(parallel_compiler)]
+                    TryGetJob::JobCompleted(_) => return,
+                };
+                self.force_query_with_job::<Q>(key, job, dep_node);
+            },
+        );
     }
 }
 
@@ -659,17 +752,17 @@ macro_rules! handle_cycle_error {
         $tcx.report_cycle($error).emit();
         Value::from_cycle_error($tcx)
     }};
-    ([fatal_cycle$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+    ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).emit();
         $tcx.sess.abort_if_errors();
         unreachable!()
     }};
-    ([cycle_delay_bug$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+    ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).delay_as_bug();
         Value::from_cycle_error($tcx)
     }};
-    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
-        handle_cycle_error!([$($modifiers),*][$($args)*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        handle_cycle_error!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -677,11 +770,11 @@ macro_rules! is_anon {
     ([]) => {{
         false
     }};
-    ([anon$(, $modifiers:ident)*]) => {{
+    ([anon $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident$(, $modifiers:ident)*]) => {
-        is_anon!([$($modifiers),*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+        is_anon!([$($($modifiers)*)*])
     };
 }
 
@@ -689,11 +782,23 @@ macro_rules! is_eval_always {
     ([]) => {{
         false
     }};
-    ([eval_always$(, $modifiers:ident)*]) => {{
+    ([eval_always $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident$(, $modifiers:ident)*]) => {
-        is_eval_always!([$($modifiers),*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+        is_eval_always!([$($($modifiers)*)*])
+    };
+}
+
+macro_rules! query_storage {
+    ([][$K:ty, $V:ty]) => {
+        <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache
+    };
+    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
+        $ty
+    };
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        query_storage!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -701,11 +806,11 @@ macro_rules! hash_result {
     ([][$hcx:expr, $result:expr]) => {{
         dep_graph::hash_result($hcx, &$result)
     }};
-    ([no_hash$(, $modifiers:ident)*][$hcx:expr, $result:expr]) => {{
+    ([no_hash $($rest:tt)*][$hcx:expr, $result:expr]) => {{
         None
     }};
-    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
-        hash_result!([$($modifiers),*][$($args)*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        hash_result!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -725,7 +830,6 @@ macro_rules! define_queries_inner {
         [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
-        use rustc_data_structures::sharded::Sharded;
         use crate::{
             rustc_data_structures::stable_hasher::HashStable,
             rustc_data_structures::stable_hasher::StableHasher,
@@ -760,11 +864,11 @@ macro_rules! define_queries_inner {
                 $(
                     // We use try_lock_shards here since we are called from the
                     // deadlock handler, and this shouldn't be locked.
-                    let shards = self.$name.try_lock_shards()?;
+                    let shards = self.$name.shards.try_lock_shards()?;
                     let shards = shards.iter().enumerate();
                     jobs.extend(shards.flat_map(|(shard_id, shard)| {
                         shard.active.iter().filter_map(move |(k, v)| {
-                            if let QueryResult::Started(ref job) = *v {
+                        if let QueryResult::Started(ref job) = *v {
                                 let id = QueryJobId {
                                     job: job.id,
                                     shard:  u16::try_from(shard_id).unwrap(),
@@ -776,110 +880,14 @@ macro_rules! define_queries_inner {
                                     query: queries::$name::query(k.clone())
                                 };
                                 Some((id, QueryJobInfo { info,  job: job.clone() }))
-                            } else {
-                                None
-                            }
+                        } else {
+                            None
+                        }
                         })
                     }));
                 )*
 
                 Some(jobs)
-            }
-
-            pub fn print_stats(&self) {
-                let mut queries = Vec::new();
-
-                #[derive(Clone)]
-                struct QueryStats {
-                    name: &'static str,
-                    cache_hits: usize,
-                    key_size: usize,
-                    key_type: &'static str,
-                    value_size: usize,
-                    value_type: &'static str,
-                    entry_count: usize,
-                }
-
-                fn stats<'tcx, Q: QueryConfig<'tcx>>(
-                    name: &'static str,
-                    map: &Sharded<QueryCache<'tcx, Q>>,
-                ) -> QueryStats {
-                    let map = map.lock_shards();
-                    QueryStats {
-                        name,
-                        #[cfg(debug_assertions)]
-                        cache_hits: map.iter().map(|shard| shard.cache_hits).sum(),
-                        #[cfg(not(debug_assertions))]
-                        cache_hits: 0,
-                        key_size: mem::size_of::<Q::Key>(),
-                        key_type: type_name::<Q::Key>(),
-                        value_size: mem::size_of::<Q::Value>(),
-                        value_type: type_name::<Q::Value>(),
-                        entry_count: map.iter().map(|shard| shard.results.len()).sum(),
-                    }
-                }
-
-                $(
-                    queries.push(stats::<queries::$name<'_>>(
-                        stringify!($name),
-                        &self.$name,
-                    ));
-                )*
-
-                if cfg!(debug_assertions) {
-                    let hits: usize = queries.iter().map(|s| s.cache_hits).sum();
-                    let results: usize = queries.iter().map(|s| s.entry_count).sum();
-                    println!("\nQuery cache hit rate: {}", hits as f64 / (hits + results) as f64);
-                }
-
-                let mut query_key_sizes = queries.clone();
-                query_key_sizes.sort_by_key(|q| q.key_size);
-                println!("\nLarge query keys:");
-                for q in query_key_sizes.iter().rev()
-                                        .filter(|q| q.key_size > 8) {
-                    println!(
-                        "   {} - {} x {} - {}",
-                        q.name,
-                        q.key_size,
-                        q.entry_count,
-                        q.key_type
-                    );
-                }
-
-                let mut query_value_sizes = queries.clone();
-                query_value_sizes.sort_by_key(|q| q.value_size);
-                println!("\nLarge query values:");
-                for q in query_value_sizes.iter().rev()
-                                          .filter(|q| q.value_size > 8) {
-                    println!(
-                        "   {} - {} x {} - {}",
-                        q.name,
-                        q.value_size,
-                        q.entry_count,
-                        q.value_type
-                    );
-                }
-
-                if cfg!(debug_assertions) {
-                    let mut query_cache_hits = queries.clone();
-                    query_cache_hits.sort_by_key(|q| q.cache_hits);
-                    println!("\nQuery cache hits:");
-                    for q in query_cache_hits.iter().rev() {
-                        println!(
-                            "   {} - {} ({}%)",
-                            q.name,
-                            q.cache_hits,
-                            q.cache_hits as f64 / (q.cache_hits + q.entry_count) as f64
-                        );
-                    }
-                }
-
-                let mut query_value_count = queries.clone();
-                query_value_count.sort_by_key(|q| q.entry_count);
-                println!("\nQuery value count:");
-                for q in query_value_count.iter().rev() {
-                    println!("   {} - {}", q.name, q.entry_count);
-                }
             }
         }
 
@@ -956,7 +964,6 @@ macro_rules! define_queries_inner {
         $(impl<$tcx> QueryConfig<$tcx> for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
-
             const NAME: &'static str = stringify!($name);
             const CATEGORY: ProfileCategory = $category;
         }
@@ -965,22 +972,22 @@ macro_rules! define_queries_inner {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
 
+            type Cache = query_storage!([$($modifiers)*][$K, $V]);
+
             #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
             }
 
             #[inline(always)]
-            fn query_cache<'a>(tcx: TyCtxt<$tcx>) -> &'a Sharded<QueryCache<$tcx, Self>> {
+            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<$tcx, Self> {
                 &tcx.queries.$name
             }
 
             #[allow(unused)]
             #[inline(always)]
             fn to_dep_node(tcx: TyCtxt<$tcx>, key: &Self::Key) -> DepNode {
-                use crate::dep_graph::DepConstructor::*;
-
-                DepNode::new(tcx, $node(*key))
+                DepConstructor::$node(tcx, *key)
             }
 
             #[inline(always)]
@@ -1132,7 +1139,7 @@ macro_rules! define_queries_struct {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             fallback_extern_providers: Box<Providers<$tcx>>,
 
-            $($(#[$attr])*  $name: Sharded<QueryCache<$tcx, queries::$name<$tcx>>>,)*
+            $($(#[$attr])*  $name: QueryState<$tcx, queries::$name<$tcx>>,)*
         }
     };
 }

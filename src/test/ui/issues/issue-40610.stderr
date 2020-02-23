@@ -5,8 +5,6 @@ LL |     () + f(&[1.0]);
    |     -- ^ --------- ()
    |     |
    |     ()
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `()`
 
 error: aborting due to previous error
 

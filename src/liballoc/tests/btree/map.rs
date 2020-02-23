@@ -15,7 +15,7 @@ fn test_basic_large() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
     #[cfg(miri)]
-    let size = 200;
+    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -381,8 +381,8 @@ fn test_range_small() {
 }
 
 #[test]
-fn test_range_depth_2() {
-    // Assuming that node.CAPACITY is 11, having 12 pairs implies a depth 2 tree
+fn test_range_height_2() {
+    // Assuming that node.CAPACITY is 11, having 12 pairs implies a height 2 tree
     // with 2 leaves. Depending on details we don't want or need to rely upon,
     // the single key at the root will be 6 or 7.
 
@@ -524,7 +524,7 @@ fn test_range_1000() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 1000;
     #[cfg(miri)]
-    let size = 200;
+    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -561,14 +561,15 @@ fn test_range_borrowed_key() {
 
 #[test]
 fn test_range() {
-    #[cfg(not(miri))] // Miri is too slow
     let size = 200;
+    #[cfg(not(miri))] // Miri is too slow
+    let step = 1;
     #[cfg(miri)]
-    let size = 30;
+    let step = 66;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-    for i in 0..size {
-        for j in i..size {
+    for i in (0..size).step_by(step) {
+        for j in (i..size).step_by(step) {
             let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
             let mut pairs = (i..=j).map(|i| (i, i));
 
@@ -583,14 +584,15 @@ fn test_range() {
 
 #[test]
 fn test_range_mut() {
-    #[cfg(not(miri))] // Miri is too slow
     let size = 200;
+    #[cfg(not(miri))] // Miri is too slow
+    let step = 1;
     #[cfg(miri)]
-    let size = 30;
+    let step = 66;
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-    for i in 0..size {
-        for j in i..size {
+    for i in (0..size).step_by(step) {
+        for j in (i..size).step_by(step) {
             let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
             let mut pairs = (i..=j).map(|i| (i, i));
 
@@ -758,10 +760,7 @@ fn test_bad_zst() {
 #[test]
 fn test_clone() {
     let mut map = BTreeMap::new();
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 100;
-    #[cfg(miri)]
-    let size = 30;
+    let size = 12; // to obtain height 2 tree (having edges to leaf nodes)
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -788,24 +787,36 @@ fn test_clone() {
         assert_eq!(map.len(), size / 2 - i - 1);
         assert_eq!(map, map.clone());
     }
+
+    // Full 2-level and minimal 3-level tree (sizes 143, 144 -- the only ones we clone for).
+    for i in 1..=144 {
+        assert_eq!(map.insert(i, i), None);
+        assert_eq!(map.len(), i);
+        if i >= 143 {
+            assert_eq!(map, map.clone());
+        }
+    }
 }
 
 #[test]
 fn test_clone_from() {
     let mut map1 = BTreeMap::new();
-    let size = 30;
+    let max_size = 12; // to obtain height 2 tree (having edges to leaf nodes)
 
-    for i in 0..size {
+    // Range to max_size inclusive, because i is the size of map1 being tested.
+    for i in 0..=max_size {
         let mut map2 = BTreeMap::new();
         for j in 0..i {
             let mut map1_copy = map2.clone();
-            map1_copy.clone_from(&map1);
+            map1_copy.clone_from(&map1); // small cloned from large
             assert_eq!(map1_copy, map1);
             let mut map2_copy = map1.clone();
-            map2_copy.clone_from(&map2);
+            map2_copy.clone_from(&map2); // large cloned from small
             assert_eq!(map2_copy, map2);
             map2.insert(100 * j + 1, 2 * j + 1);
         }
+        map2.clone_from(&map1); // same length
+        assert_eq!(map2, map1);
         map1.insert(i, 10 * i);
     }
 }
@@ -956,6 +967,7 @@ create_append_test!(test_append_145, 145);
 // Tests for several randomly chosen sizes.
 create_append_test!(test_append_170, 170);
 create_append_test!(test_append_181, 181);
+#[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_239, 239);
 #[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_1700, 1700);

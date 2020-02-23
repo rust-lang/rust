@@ -97,7 +97,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
     // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
@@ -144,7 +144,7 @@ pub(super) fn op_to_const<'tcx>(
             ConstValue::Scalar(Scalar::zst())
         }
     };
-    let val = match immediate {
+    match immediate {
         Ok(mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -166,8 +166,7 @@ pub(super) fn op_to_const<'tcx>(
             let len: usize = len.try_into().unwrap();
             ConstValue::Slice { data, start, end: start + len }
         }
-    };
-    ecx.tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
+    }
 }
 
 fn validate_and_turn_into_const<'tcx>(
@@ -195,13 +194,10 @@ fn validate_and_turn_into_const<'tcx>(
         // whether they become immediates.
         if is_static || cid.promoted.is_some() {
             let ptr = mplace.ptr.assert_ptr();
-            Ok(tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Value(ConstValue::ByRef {
-                    alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
-                    offset: ptr.offset,
-                }),
-                ty: mplace.layout.ty,
-            }))
+            Ok(ConstValue::ByRef {
+                alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                offset: ptr.offset,
+            })
         } else {
             Ok(op_to_const(&ecx, mplace.into()))
         }

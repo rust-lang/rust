@@ -1,7 +1,8 @@
 use rustc::traits::query::NoSolution;
-use rustc::traits::{Normalized, ObligationCause};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers<'_>) {

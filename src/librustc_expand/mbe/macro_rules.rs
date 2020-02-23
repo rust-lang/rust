@@ -87,7 +87,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind, true).map_err(|mut e| {
+        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {
                     // early end of macro arm (#52866)
@@ -267,7 +267,6 @@ fn generic_extension<'cx>(
                     cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
-                p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {

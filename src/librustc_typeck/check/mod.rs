@@ -89,20 +89,11 @@ pub mod writeback;
 
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
-use crate::namespace::Namespace;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
-use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc::infer::opaque_types::OpaqueTypeDecl;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::middle::region;
 use rustc::mir::interpret::ConstValue;
 use rustc::session::parse::feature_err;
-use rustc::traits::error_reporting::recursive_type_with_infinite_size_error;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -126,6 +117,14 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
+use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
+use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_infer::traits::error_reporting::recursive_type_with_infinite_size_error;
+use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -1832,18 +1831,17 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    if let Ok(static_) = tcx.const_eval_poly(id) {
-        let alloc = if let ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) = static_.val {
-            alloc
-        } else {
-            bug!("Matching on non-ByRef static")
-        };
-        if alloc.relocations().len() != 0 {
-            let msg = "statics with a custom `#[link_section]` must be a \
+    match tcx.const_eval_poly(id) {
+        Ok(ConstValue::ByRef { alloc, .. }) => {
+            if alloc.relocations().len() != 0 {
+                let msg = "statics with a custom `#[link_section]` must be a \
                        simple list of bytes on the wasm target with no \
                        extra levels of indirection such as references";
-            tcx.sess.span_err(span, msg);
+                tcx.sess.span_err(span, msg);
+            }
         }
+        Ok(_) => bug!("Matching on non-ByRef static"),
+        Err(_) => {}
     }
 }
 
@@ -1973,19 +1971,16 @@ fn check_impl_items_against_trait<'tcx>(
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items() {
+        let namespace = impl_item.kind.namespace();
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx
             .associated_items(impl_trait_ref.def_id)
-            .iter()
-            .find(|ac| {
-                Namespace::from(&impl_item.kind) == Namespace::from(ac.kind)
-                    && tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id)
-            })
+            .find_by_name_and_namespace(tcx, ty_impl_item.ident, namespace, impl_trait_ref.def_id)
             .or_else(|| {
                 // Not compatible, but needed for the error message
                 tcx.associated_items(impl_trait_ref.def_id)
-                    .iter()
-                    .find(|ac| tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
+                    .filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id)
+                    .next()
             });
 
         // Check that impl definition matches trait definition
@@ -2089,7 +2084,7 @@ fn check_impl_items_against_trait<'tcx>(
     let mut missing_items = Vec::new();
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
-    for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
+    for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
         let is_implemented = trait_def
             .ancestors(tcx, impl_id)
             .leaf_def(tcx, trait_item.ident, trait_item.kind)
@@ -3844,17 +3839,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  error_code: &str,
                                  c_variadic: bool,
                                  sugg_unit: bool| {
+            let (span, start_span, args) = match &expr.kind {
+                hir::ExprKind::Call(hir::Expr { span, .. }, args) => (*span, *span, &args[..]),
+                hir::ExprKind::MethodCall(path_segment, span, args) => (
+                    *span,
+                    // `sp` doesn't point at the whole `foo.bar()`, only at `bar`.
+                    path_segment
+                        .args
+                        .and_then(|args| args.args.iter().last())
+                        // Account for `foo.bar::<T>()`.
+                        .map(|arg| {
+                            // Skip the closing `>`.
+                            tcx.sess
+                                .source_map()
+                                .next_point(tcx.sess.source_map().next_point(arg.span()))
+                        })
+                        .unwrap_or(*span),
+                    &args[1..], // Skip the receiver.
+                ),
+                k => span_bug!(sp, "checking argument types on a non-call: `{:?}`", k),
+            };
+            let arg_spans = if args.is_empty() {
+                // foo()
+                // ^^^-- supplied 0 arguments
+                // |
+                // expected 2 arguments
+                vec![tcx.sess.source_map().next_point(start_span).with_hi(sp.hi())]
+            } else {
+                // foo(1, 2, 3)
+                // ^^^ -  -  - supplied 3 arguments
+                // |
+                // expected 2 arguments
+                args.iter().map(|arg| arg.span).collect::<Vec<Span>>()
+            };
+
             let mut err = tcx.sess.struct_span_err_with_code(
-                sp,
+                span,
                 &format!(
                     "this function takes {}{} but {} {} supplied",
                     if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(expected_count, "parameter"),
-                    potentially_plural_count(arg_count, "parameter"),
+                    potentially_plural_count(expected_count, "argument"),
+                    potentially_plural_count(arg_count, "argument"),
                     if arg_count == 1 { "was" } else { "were" }
                 ),
                 DiagnosticId::Error(error_code.to_owned()),
             );
+            let label = format!("supplied {}", potentially_plural_count(arg_count, "argument"));
+            for (i, span) in arg_spans.into_iter().enumerate() {
+                err.span_label(
+                    span,
+                    if arg_count == 0 || i + 1 == arg_count { &label } else { "" },
+                );
+            }
 
             if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().def_span(sp)) {
                 err.span_label(def_s, "defined here");
@@ -3871,11 +3907,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 err.span_label(
-                    sp,
+                    span,
                     format!(
                         "expected {}{}",
                         if c_variadic { "at least " } else { "" },
-                        potentially_plural_count(expected_count, "parameter")
+                        potentially_plural_count(expected_count, "argument")
                     ),
                 );
             }
@@ -5153,7 +5189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
-            (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
@@ -5162,18 +5198,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
                 err.span_label(span, "possibly return type missing here?");
                 true
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), _, false, true) => {
+            (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.span_label(span, "expected `()` because of default return type");
                 true
             }
             // expectation was caused by something else, not the default return
-            (&hir::FunctionRetTy::DefaultReturn(_), _, _, false) => false,
-            (&hir::FunctionRetTy::Return(ref ty), _, _, _) => {
+            (&hir::FnRetTy::DefaultReturn(_), _, _, false) => false,
+            (&hir::FnRetTy::Return(ref ty), _, _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
@@ -5225,7 +5261,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
                 let future_trait = self.tcx.lang_items().future_trait().unwrap();
-                let item_def_id = self.tcx.associated_items(future_trait)[0].def_id;
+                let item_def_id = self
+                    .tcx
+                    .associated_items(future_trait)
+                    .in_definition_order()
+                    .nth(0)
+                    .unwrap()
+                    .def_id;
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         // `<T as Future>::Output`
@@ -5623,8 +5665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.tcx.sess.span_err(
             span,
-            "this function can only be invoked \
-                                      directly, not through a function pointer",
+            "this function can only be invoked directly, not through a function pointer",
         );
     }
 

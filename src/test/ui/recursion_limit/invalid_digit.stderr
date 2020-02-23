@@ -1,0 +1,10 @@
+error: `recursion_limit` must be a non-negative integer
+  --> $DIR/invalid_digit.rs:3:1
+   |
+LL | #![recursion_limit = "-100"]
+   | ^^^^^^^^^^^^^^^^^^^^^------^
+   |                      |
+   |                      not a valid integer
+
+error: aborting due to previous error
+

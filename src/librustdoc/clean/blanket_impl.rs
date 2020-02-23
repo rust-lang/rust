@@ -1,9 +1,9 @@
-use rustc::infer::InferOk;
-use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty::{ToPredicate, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_infer::traits;
 use rustc_span::DUMMY_SP;
 
 use super::*;
@@ -114,8 +114,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .cx
                             .tcx
                             .associated_items(impl_def_id)
-                            .iter()
-                            .copied()
+                            .in_definition_order()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
                         polarity: None,

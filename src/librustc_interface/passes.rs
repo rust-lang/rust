@@ -13,7 +13,6 @@ use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType
 use rustc::session::config::{PpMode, PpSourceMode};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc::traits;
 use rustc::ty::steal::Steal;
 use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -26,6 +25,7 @@ use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Crate;
+use rustc_infer::traits;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -696,8 +696,8 @@ impl<'tcx> QueryContext<'tcx> {
         ty::tls::enter_global(self.0, |tcx| f(tcx))
     }
 
-    pub fn print_stats(&self) {
-        self.0.queries.print_stats()
+    pub fn print_stats(&mut self) {
+        self.enter(|tcx| ty::query::print_stats(tcx))
     }
 }
 

@@ -4,16 +4,16 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::middle::{lang_items, region};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::LateBoundRegionConversionTime;
-use rustc::infer::{InferOk, InferResult};
-use rustc::traits::error_reporting::ArgKind;
-use rustc::traits::Obligation;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, Ty};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::traits::error_reporting::ArgKind;
+use rustc_infer::traits::Obligation;
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use std::cmp;
@@ -248,7 +248,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if is_gen {
             // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
             // associated item and not yield.
-            let return_assoc_item = self.tcx.associated_items(gen_trait)[1].def_id;
+            let return_assoc_item =
+                self.tcx.associated_items(gen_trait).in_definition_order().nth(1).unwrap().def_id;
             if return_assoc_item != projection.projection_def_id() {
                 debug!("deduce_sig_from_projection: not return assoc item of generator");
                 return None;
@@ -555,8 +556,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
-            hir::FunctionRetTy::Return(ref output) => astconv.ast_ty_to_ty(&output),
-            hir::FunctionRetTy::DefaultReturn(_) => match body.generator_kind {
+            hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(&output),
+            hir::FnRetTy::DefaultReturn(_) => match body.generator_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
@@ -673,7 +674,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item = self.tcx.associated_items(future_trait)[0].def_id;
+        let output_assoc_item =
+            self.tcx.associated_items(future_trait).in_definition_order().nth(0).unwrap().def_id;
         if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,
@@ -703,7 +705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.types.err
         });
 
-        if let hir::FunctionRetTy::Return(ref output) = decl.output {
+        if let hir::FnRetTy::Return(ref output) = decl.output {
             astconv.ast_ty_to_ty(&output);
         }
 

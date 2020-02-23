@@ -12,9 +12,8 @@ use rustc_index::bit_set::BitSet;
 use crate::dataflow::generic::{Analysis, Results, ResultsCursor};
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 use crate::dataflow::move_paths::{LookupResult, MovePathIndex};
-use crate::dataflow::IndirectlyMutableLocals;
+use crate::dataflow::MaybeMutBorrowedLocals;
 use crate::dataflow::MoveDataParamEnv;
-use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
@@ -24,7 +23,6 @@ pub struct SanityCheck;
 impl<'tcx> MirPass<'tcx> for SanityCheck {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         use crate::dataflow::has_rustc_mir_with;
-
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -37,7 +35,6 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(body, tcx, param_env).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-        let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
 
         let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
             .into_engine(tcx, body, def_id)
@@ -48,15 +45,9 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
             .into_engine(tcx, body, def_id)
             .iterate_to_fixpoint();
-        let _flow_indirectly_mut = do_dataflow(
-            tcx,
-            body,
-            def_id,
-            &attributes,
-            &dead_unwinds,
-            IndirectlyMutableLocals::new(tcx, body, param_env),
-            |_, i| DebugFormatted::new(&i),
-        );
+        let flow_mut_borrowed = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
+            .into_engine(tcx, body, def_id)
+            .iterate_to_fixpoint();
 
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
@@ -67,12 +58,9 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
         }
-        // FIXME: Uncomment these as analyses are migrated to the new framework
-        /*
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_indirectly_mut);
+            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_mut_borrowed);
         }
-        */
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");
         }
@@ -276,8 +264,7 @@ where
     }
 }
 
-/* FIXME: Add this back once `IndirectlyMutableLocals` uses the new dataflow framework.
-impl<'tcx> RustcPeekAt<'tcx> for IndirectlyMutableLocals<'_, 'tcx> {
+impl<'tcx> RustcPeekAt<'tcx> for MaybeMutBorrowedLocals<'_, 'tcx> {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -298,4 +285,3 @@ impl<'tcx> RustcPeekAt<'tcx> for IndirectlyMutableLocals<'_, 'tcx> {
         }
     }
 }
-*/

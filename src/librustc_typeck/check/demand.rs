@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
-use rustc::infer::InferOk;
-use rustc::traits::{self, ObligationCause};
+use rustc_infer::infer::InferOk;
+use rustc_infer::traits::{self, ObligationCause};
 
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
@@ -539,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let item_def_id = self
                     .tcx
                     .associated_items(deref_trait)
-                    .iter()
+                    .in_definition_order()
                     .find(|item| item.kind == ty::AssocKind::Type)
                     .unwrap()
                     .def_id;

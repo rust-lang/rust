@@ -241,7 +241,7 @@ impl Sig for ast::Ty {
                     refs.extend(nested.refs.into_iter());
                 }
                 text.push(')');
-                if let ast::FunctionRetTy::Ty(ref t) = f.decl.output {
+                if let ast::FnRetTy::Ty(ref t) = f.decl.output {
                     text.push_str(" -> ");
                     let nested = t.make(offset + text.len(), None, scx)?;
                     text.push_str(&nested.text);
@@ -334,10 +334,13 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
@@ -355,10 +358,13 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
@@ -392,7 +398,7 @@ impl Sig for ast::Item {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -743,7 +749,7 @@ impl Sig for ast::ForeignItem {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -754,7 +760,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(sig)
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
+            ast::ForeignItemKind::Static(ref ty, m, _) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mut {
                     text.push_str("mut ");
@@ -773,7 +779,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -786,6 +792,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(Signature { text: text, defs: defs, refs: vec![] })
             }
+            ast::ForeignItemKind::Const(..) => Err("foreign const"),
             ast::ForeignItemKind::Macro(..) => Err("macro"),
         }
     }
@@ -911,7 +918,7 @@ fn make_method_signature(
     }
     sig.text.push(')');
 
-    if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {
+    if let ast::FnRetTy::Ty(ref t) = m.decl.output {
         sig.text.push_str(" -> ");
         let nested = t.make(sig.text.len(), None, scx)?;
         sig.text.push_str(&nested.text);

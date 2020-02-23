@@ -1,10 +1,10 @@
-use rustc::infer::InferCtxt;
 use rustc::lint;
 use rustc::mir::Field;
-use rustc::traits::predicate_for_trait_def;
-use rustc::traits::{self, ObligationCause, PredicateObligation};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::predicate_for_trait_def;
+use rustc_infer::traits::{self, ObligationCause, PredicateObligation};
 
 use rustc_index::vec::Idx;
 

@@ -215,18 +215,22 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
-            AssocItemKind::Fn(FnSig { header, decl }, body) if header.asyncness.is_async() => {
+            AssocItemKind::Fn(FnSig { header, decl }, generics, body)
+                if header.asyncness.is_async() =>
+            {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
                     i.span,
                     header,
-                    &i.generics,
+                    generics,
                     decl,
                     body.as_deref(),
                 );
             }
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) | AssocItemKind::Static(..) => {
+                DefPathData::ValueNs(i.ident.name)
+            }
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
         };

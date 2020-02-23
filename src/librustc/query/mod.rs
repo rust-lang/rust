@@ -279,6 +279,14 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
+        /// Returns `true` if this is a const `impl`. **Do not call this function manually.**
+        ///
+        /// This query caches the base data for the `is_const_impl` helper function, which also
+        /// takes into account stability attributes (e.g., `#[rustc_const_unstable]`).
+        query is_const_impl_raw(key: DefId) -> bool {
+            desc { |tcx| "checking if item is const impl: `{}`", tcx.def_path_str(key) }
+        }
+
         query asyncness(key: DefId) -> hir::IsAsync {
             desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         }
@@ -325,7 +333,7 @@ rustc_queries! {
         query associated_item(_: DefId) -> ty::AssocItem {}
 
         /// Collects the associated items defined on a trait or impl.
-        query associated_items(key: DefId) -> &'tcx [ty::AssocItem] {
+        query associated_items(key: DefId) -> &'tcx ty::AssociatedItems {
             desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
         }
 
@@ -519,7 +527,7 @@ rustc_queries! {
         /// Extracts a field of a (variant of a) const.
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
-        ) -> &'tcx ty::Const<'tcx> {
+        ) -> ConstValue<'tcx> {
             no_force
             desc { "extract field of const" }
         }
@@ -533,7 +541,7 @@ rustc_queries! {
             desc { "destructure constant" }
         }
 
-        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }
@@ -653,7 +661,7 @@ rustc_queries! {
             desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query is_object_safe(key: DefId) -> bool {
+        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 

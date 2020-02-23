@@ -5,8 +5,6 @@ LL |     A = "" + 1
    |         -- ^ - {integer}
    |         |
    |         &str
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `&str`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-41394.rs:7:9

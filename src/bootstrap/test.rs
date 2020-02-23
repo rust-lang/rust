@@ -662,7 +662,7 @@ impl Step for RustdocJSNotStd {
                 target: self.target,
                 mode: "js-doc-test",
                 suite: "rustdoc-js",
-                path: None,
+                path: "src/test/rustdoc-js",
                 compare_mode: None,
             });
         } else {
@@ -698,7 +698,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
-            path: Some("src/test/rustdoc-ui"),
+            path: "src/test/rustdoc-ui",
             compare_mode: None,
         })
     }
@@ -843,7 +843,7 @@ macro_rules! test_definitions {
                     target: self.target,
                     mode: $mode,
                     suite: $suite,
-                    path: Some($path),
+                    path: $path,
                     compare_mode: $compare_mode,
                 })
             }
@@ -926,7 +926,7 @@ struct Compiletest {
     target: Interned<String>,
     mode: &'static str,
     suite: &'static str,
-    path: Option<&'static str>,
+    path: &'static str,
     compare_mode: Option<&'static str>,
 }
 
@@ -949,7 +949,7 @@ impl Step for Compiletest {
         let suite = self.suite;
 
         // Path for test suite
-        let suite_path = self.path.unwrap_or("");
+        let suite_path = self.path;
 
         // Skip codegen tests if they aren't enabled in configuration.
         if !builder.config.codegen_tests && suite == "codegen" {
@@ -1051,10 +1051,10 @@ impl Step for Compiletest {
         cmd.arg("--docck-python").arg(builder.python());
 
         if builder.config.build.ends_with("apple-darwin") {
-            // Force /usr/bin/python on macOS for LLDB tests because we're loading the
+            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
             // LLDB plugin's compiled module which only works with the system python
             // (namely not Homebrew-installed python)
-            cmd.arg("--lldb-python").arg("/usr/bin/python");
+            cmd.arg("--lldb-python").arg("/usr/bin/python3");
         } else {
             cmd.arg("--lldb-python").arg(builder.python());
         }

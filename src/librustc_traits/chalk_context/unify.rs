@@ -1,8 +1,8 @@
-use rustc::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
-use rustc::infer::{InferCtxt, RegionVariableOrigin};
-use rustc::traits::{DomainGoal, Environment, Goal, InEnvironment};
 use rustc::ty;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
+use rustc_infer::infer::{InferCtxt, RegionVariableOrigin};
+use rustc_infer::traits::{DomainGoal, Environment, Goal, InEnvironment};
 use rustc_span::DUMMY_SP;
 
 crate struct UnificationResult<'tcx> {

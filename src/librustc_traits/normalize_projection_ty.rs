@@ -1,9 +1,12 @@
-use rustc::infer::canonical::{Canonical, QueryResponse};
-use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
-use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_hir as hir;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::query::{
+    normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution,
+};
+use rustc_infer::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
 use rustc_span::DUMMY_SP;
 use std::sync::atomic::Ordering;
 

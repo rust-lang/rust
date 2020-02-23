@@ -1,7 +1,7 @@
 // error-pattern:thread 'main' panicked at 'attempt to shift left with overflow'
 // compile-flags: -C debug-assertions
 
-#![warn(exceeding_bitshifts)]
+#![warn(arithmetic_overflow)]
 #![warn(const_err)]
 
 fn main() {

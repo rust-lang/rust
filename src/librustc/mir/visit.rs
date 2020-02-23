@@ -519,12 +519,12 @@ macro_rules! make_mir_visitor {
                         resume_arg,
                         drop: _,
                     } => {
+                        self.visit_operand(value, source_location);
                         self.visit_place(
                             resume_arg,
                             PlaceContext::MutatingUse(MutatingUseContext::Store),
                             source_location,
                         );
-                        self.visit_operand(value, source_location);
                     }
 
                 }

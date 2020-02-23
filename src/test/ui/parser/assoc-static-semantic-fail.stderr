@@ -1,0 +1,99 @@
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:9:5
+   |
+LL |     static IA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:11:5
+   |
+LL |     static IB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:13:5
+   |
+LL |     default static IC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:15:5
+   |
+LL |     pub(crate) default static ID: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:20:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:22:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:24:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:27:5
+   |
+LL |     pub(crate) default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:34:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:36:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:38:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-semantic-fail.rs:40:5
+   |
+LL |     pub default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/assoc-static-semantic-fail.rs:24:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `default` is only allowed on items in `impl` definitions
+  --> $DIR/assoc-static-semantic-fail.rs:27:5
+   |
+LL |     pub(crate) default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/assoc-static-semantic-fail.rs:27:5
+   |
+LL |     pub(crate) default static TD: u8;
+   |     ^^^^^^^^^^
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/assoc-static-semantic-fail.rs:40:5
+   |
+LL |     pub default static TD: u8;
+   |     ^^^ `pub` not permitted here because it's implied
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

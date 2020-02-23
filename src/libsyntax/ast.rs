@@ -243,7 +243,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -1612,46 +1612,6 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents associated items.
-/// These include items in `impl` and `trait` definitions.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AssocItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub defaultness: Defaultness,
-    pub generics: Generics,
-    pub kind: AssocItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
-/// Represents various kinds of content within an `impl`.
-///
-/// The term "provided" in the variants below refers to the item having a default
-/// definition / body. Meanwhile, a "required" item lacks a definition / body.
-/// In an implementation, all items must be provided.
-/// The `Option`s below denote the bodies, where `Some(_)`
-/// means "provided" and conversely `None` means "required".
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum AssocItemKind {
-    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
-    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
-    Const(P<Ty>, Option<P<Expr>>),
-
-    /// An associated function.
-    Fn(FnSig, Option<P<Block>>),
-
-    /// An associated type.
-    TyAlias(GenericBounds, Option<P<Ty>>),
-
-    /// A macro expanding to an associated item.
-    Macro(Mac),
-}
-
 #[derive(
     Clone,
     Copy,
@@ -2083,7 +2043,7 @@ impl Param {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Param>,
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl FnDecl {
@@ -2168,8 +2128,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum FunctionRetTy {
-    // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
+pub enum FnRetTy {
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
@@ -2179,11 +2138,11 @@ pub enum FunctionRetTy {
     Ty(P<Ty>),
 }
 
-impl FunctionRetTy {
+impl FnRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            FunctionRetTy::Default(span) => span,
-            FunctionRetTy::Ty(ref ty) => ty.span,
+            FnRetTy::Default(span) => span,
+            FnRetTy::Ty(ref ty) => ty.span,
         }
     }
 }
@@ -2543,11 +2502,11 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, P<Expr>),
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(P<Ty>, P<Expr>),
+    Const(P<Ty>, Option<P<Expr>>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
@@ -2647,28 +2606,45 @@ impl ItemKind {
     }
 }
 
-pub type ForeignItem = Item<ForeignItemKind>;
+// FIXME(Centril): These definitions should be unmerged;
+// see https://github.com/rust-lang/rust/pull/69194#discussion_r379899975
+pub type ForeignItem = Item<AssocItemKind>;
+pub type ForeignItemKind = AssocItemKind;
 
-/// An item within an `extern` block.
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ForeignItemKind {
-    /// A foreign function.
-    Fn(FnSig, Generics, Option<P<Block>>),
-    /// A foreign static item (`static ext: u8`).
-    Static(P<Ty>, Mutability),
-    /// A foreign type.
-    Ty,
-    /// A macro invocation.
-    Macro(Mac),
+pub struct AssocItem {
+    pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub vis: Visibility,
+    pub ident: Ident,
+
+    pub defaultness: Defaultness,
+    pub kind: AssocItemKind,
+    /// See `Item::tokens` for what this is.
+    pub tokens: Option<TokenStream>,
 }
 
-impl ForeignItemKind {
-    pub fn descriptive_variant(&self) -> &str {
-        match *self {
-            ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Static(..) => "foreign static item",
-            ForeignItemKind::Ty => "foreign type",
-            ForeignItemKind::Macro(..) => "macro in foreign module",
-        }
-    }
+/// Represents non-free item kinds.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AssocItemKind {
+    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the constant is provided, and otherwise required.
+    Const(P<Ty>, Option<P<Expr>>),
+    /// A static item (`static FOO: u8`).
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    /// A function.
+    Fn(FnSig, Generics, Option<P<Block>>),
+    /// A type.
+    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
+    /// A macro expanding to items.
+    Macro(Mac),
 }

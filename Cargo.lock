@@ -498,7 +498,7 @@ dependencies = [
  "itertools 0.8.0",
  "lazy_static 1.4.0",
  "matches",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark 0.7.0",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -3109,8 +3109,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "chalk-engine",
- "fmt_macros",
- "graphviz",
  "jobserver",
  "log",
  "measureme",
@@ -3775,6 +3773,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_infer"
+version = "0.0.0"
+dependencies = [
+ "fmt_macros",
+ "graphviz",
+ "log",
+ "rustc",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_error_codes",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "smallvec 1.0.0",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
@@ -3794,6 +3814,7 @@ dependencies = [
  "rustc_expand",
  "rustc_hir",
  "rustc_incremental",
+ "rustc_infer",
  "rustc_lint",
  "rustc_metadata",
  "rustc_mir",
@@ -3836,6 +3857,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3905,6 +3927,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_lexer",
  "rustc_macros",
  "rustc_span",
@@ -3927,6 +3950,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_macros",
  "rustc_session",
  "rustc_span",
@@ -3967,6 +3991,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4017,6 +4042,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_hir",
+ "rustc_infer",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
@@ -4106,6 +4132,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_infer",
  "rustc_macros",
  "rustc_span",
  "rustc_target",
@@ -4121,6 +4148,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_infer",
  "rustc_span",
  "rustc_target",
 ]
@@ -4137,6 +4165,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",

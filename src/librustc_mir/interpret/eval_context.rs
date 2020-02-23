@@ -756,6 +756,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn const_eval(
         &self,
         gid: GlobalId<'tcx>,
+        ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -777,7 +778,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
         // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
         // `ecx.const_eval`.
-        self.eval_const_to_op(val, None)
+        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
+        self.eval_const_to_op(&const_, None)
     }
 
     pub fn const_eval_raw(

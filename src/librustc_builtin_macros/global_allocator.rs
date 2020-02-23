@@ -63,7 +63,7 @@ impl AllocFnFactory<'_, '_> {
         let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, mk)).collect();
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
-        let decl = self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty));
+        let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header };
         let kind = ItemKind::Fn(sig, Generics::default(), Some(self.cx.block_expr(output_expr)));

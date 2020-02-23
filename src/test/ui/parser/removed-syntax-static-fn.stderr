@@ -1,11 +1,20 @@
-error: missing `fn`, `type`, or `const` for associated-item declaration
-  --> $DIR/removed-syntax-static-fn.rs:3:9
+error: expected identifier, found keyword `fn`
+  --> $DIR/removed-syntax-static-fn.rs:4:12
    |
-LL |   impl S {
-   |  _________^
-LL | |
-LL | |     static fn f() {}
-   | |____^ missing `fn`, `type`, or `const`
+LL |     static fn f() {}
+   |            ^^ expected identifier, found keyword
 
-error: aborting due to previous error
+error: expected one of `:`, `;`, or `=`, found `f`
+  --> $DIR/removed-syntax-static-fn.rs:4:15
+   |
+LL |     static fn f() {}
+   |               ^ expected one of `:`, `;`, or `=`
+
+error: missing type for `static` item
+  --> $DIR/removed-syntax-static-fn.rs:4:12
+   |
+LL |     static fn f() {}
+   |            ^^ help: provide a type for the item: `r#fn: <type>`
+
+error: aborting due to 3 previous errors
 

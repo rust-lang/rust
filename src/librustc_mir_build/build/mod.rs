@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;

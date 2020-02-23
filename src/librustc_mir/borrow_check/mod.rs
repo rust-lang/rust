@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc::infer::InferCtxt;
 use rustc::lint::builtin::MUTABLE_BORROW_RESERVATION_CONFLICT;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::mir::{
@@ -20,6 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 
 use either::Either;
 use smallvec::SmallVec;

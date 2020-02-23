@@ -35,7 +35,7 @@ use crate::doctree;
 use crate::html::item_type::ItemType;
 use crate::html::render::{cache, ExternalLocation};
 
-use self::FunctionRetTy::*;
+use self::FnRetTy::*;
 use self::ItemEnum::*;
 use self::SelfTy::*;
 use self::Type::*;
@@ -862,7 +862,7 @@ pub struct Function {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct FnDecl {
     pub inputs: Arguments,
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
     pub c_variadic: bool,
     pub attrs: Attributes,
 }
@@ -881,12 +881,12 @@ impl FnDecl {
     ///
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
-    pub fn sugared_async_return_type(&self) -> FunctionRetTy {
+    pub fn sugared_async_return_type(&self) -> FnRetTy {
         match &self.output {
-            FunctionRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
+            FnRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
                 GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                     let bindings = trait_.bindings().unwrap();
-                    FunctionRetTy::Return(bindings[0].ty().clone())
+                    FnRetTy::Return(bindings[0].ty().clone())
                 }
                 _ => panic!("unexpected desugaring of async function"),
             },
@@ -931,12 +931,12 @@ impl Argument {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum FunctionRetTy {
+pub enum FnRetTy {
     Return(Type),
     DefaultReturn,
 }
 
-impl GetDefId for FunctionRetTy {
+impl GetDefId for FnRetTy {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             Return(ref ty) => ty.def_id(),

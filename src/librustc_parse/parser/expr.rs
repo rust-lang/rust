@@ -10,9 +10,7 @@ use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
-use syntax::ast::{
-    AnonConst, BinOp, BinOpKind, FnDecl, FunctionRetTy, Mac, Param, Ty, TyKind, UnOp,
-};
+use syntax::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, Mac, Param, Ty, TyKind, UnOp};
 use syntax::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind};
@@ -168,7 +166,7 @@ impl<'a> Parser<'a> {
         while let Some(op) = self.check_assoc_op() {
             // Adjust the span for interpolated LHS to point to the `$lhs` token
             // and not to what it refers to.
-            let lhs_span = match self.unnormalized_prev_token().kind {
+            let lhs_span = match self.unnormalized_prev_token.kind {
                 TokenKind::Interpolated(..) => self.prev_span,
                 _ => lhs.span,
             };
@@ -529,7 +527,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
             (
-                match self.unnormalized_prev_token().kind {
+                match self.unnormalized_prev_token.kind {
                     TokenKind::Interpolated(..) => self.prev_span,
                     _ => e.span,
                 },
@@ -1358,7 +1356,7 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span;
         let body = match decl.output {
-            FunctionRetTy::Default(_) => {
+            FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
             }

@@ -631,10 +631,6 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
 
     let comment = if testfile.to_string_lossy().ends_with(".rs") { "//" } else { "#" };
 
-    // FIXME: would be nice to allow some whitespace between comment and brace :)
-    // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
-    let comment_with_brace = comment.to_string() + "[";
-
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
 
@@ -650,7 +646,7 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(&comment_with_brace) {
+        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some(close_brace) = ln.find(']') {
                 let open_brace = ln.find('[').unwrap();
@@ -663,10 +659,7 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
                     it(ln[(close_brace + 1)..].trim_start());
                 }
             } else {
-                panic!(
-                    "malformed condition directive: expected `{}foo]`, found `{}`",
-                    comment_with_brace, ln
-                )
+                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
             }
         } else if ln.starts_with(comment) {
             it(ln[comment.len()..].trim_start());

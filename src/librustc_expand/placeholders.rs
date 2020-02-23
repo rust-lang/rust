@@ -25,7 +25,6 @@ pub fn placeholder(
 
     let ident = ast::Ident::invalid();
     let attrs = Vec::new();
-    let generics = ast::Generics::default();
     let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
     let span = DUMMY_SP;
     let expr_placeholder = || {
@@ -57,7 +56,6 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            generics,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
@@ -68,7 +66,6 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            generics,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,

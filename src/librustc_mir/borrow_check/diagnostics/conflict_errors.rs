@@ -3,7 +3,6 @@ use rustc::mir::{
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
-use rustc::traits::error_reporting::suggest_constraining_type_param;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -11,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
+use rustc_infer::traits::error_reporting::suggest_constraining_type_param;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
 
@@ -1885,7 +1885,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // as the HIR doesn't have full types for closure arguments.
                 let return_ty = *sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
-                if let hir::FunctionRetTy::Return(ty) = &fn_decl.output {
+                if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
                         return_span = lifetime.span;
                     }

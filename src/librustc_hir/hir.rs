@@ -1,11 +1,11 @@
-use crate::def::{DefKind, Res};
+use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
 use crate::print;
 
 crate use BlockCheckMode::*;
-crate use FunctionRetTy::*;
+crate use FnRetTy::*;
 crate use UnsafeSource::*;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -1897,6 +1897,15 @@ pub enum ImplItemKind<'hir> {
     OpaqueTy(GenericBounds<'hir>),
 }
 
+impl ImplItemKind<'_> {
+    pub fn namespace(&self) -> Namespace {
+        match self {
+            ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
+            ImplItemKind::Const(..) | ImplItemKind::Method(..) => Namespace::ValueNS,
+        }
+    }
+}
+
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -2082,7 +2091,7 @@ pub struct FnDecl<'hir> {
     ///
     /// Additional argument data is stored in the function's [body](Body::parameters).
     pub inputs: &'hir [Ty<'hir>],
-    pub output: FunctionRetTy<'hir>,
+    pub output: FnRetTy<'hir>,
     pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
@@ -2148,7 +2157,7 @@ impl Defaultness {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum FunctionRetTy<'hir> {
+pub enum FnRetTy<'hir> {
     /// Return type is not specified.
     ///
     /// Functions default to `()` and
@@ -2159,7 +2168,7 @@ pub enum FunctionRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl fmt::Display for FunctionRetTy<'_> {
+impl fmt::Display for FnRetTy<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
@@ -2168,7 +2177,7 @@ impl fmt::Display for FunctionRetTy<'_> {
     }
 }
 
-impl FunctionRetTy<'_> {
+impl FnRetTy<'_> {
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,

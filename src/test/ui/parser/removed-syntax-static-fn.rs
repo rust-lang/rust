@@ -1,8 +1,10 @@
 struct S;
 
 impl S {
-    //~^ ERROR missing `fn`, `type`, or `const` for associated-item declaration
     static fn f() {}
+    //~^ ERROR expected identifier, found keyword `fn`
+    //~| ERROR expected one of `:`, `;`, or `=`
+    //~| ERROR missing type for `static` item
 }
 
 fn main() {}

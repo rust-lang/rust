@@ -5,19 +5,10 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::opaque_types::GenerateMemberConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::AssertKind;
 use rustc::mir::*;
-use rustc::traits::query::type_op;
-use rustc::traits::query::type_op::custom::CustomTypeOp;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::cast::CastTy;
 use rustc::ty::fold::TypeFoldable;
@@ -32,6 +23,17 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::opaque_types::GenerateMemberConstraints;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{
+    InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
+};
+use rustc_infer::traits::query::type_op;
+use rustc_infer::traits::query::type_op::custom::CustomTypeOp;
+use rustc_infer::traits::query::{Fallible, NoSolution};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow::generic::ResultsCursor;
@@ -311,6 +313,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
+            let tcx = self.tcx();
             if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -360,10 +363,23 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         );
                     }
                 }
-            }
-            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
-                let tcx = self.tcx();
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id);
+                let locations = location.to_locations();
+                let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
 
+                if let Err(terr) = self.cx.eq_types(
+                    normalized_ty,
+                    literal_ty,
+                    locations,
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
+            }
+
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,
@@ -468,33 +484,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
-        if place.projection.is_empty() {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let tcx = self.tcx();
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().copy_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                };
-
-                // To have a `Copy` operand, the type `T` of the
-                // value must be `Copy`. Note that we prove that `T: Copy`,
-                // rather than using the `is_copy_modulo_regions`
-                // test. This is important because
-                // `is_copy_modulo_regions` ignores the resulting region
-                // obligations and assumes they pass. This can result in
-                // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                // #29149). Note that we decide to use `Copy` before knowing
-                // whether the bounds fully apply: in effect, the rule is
-                // that if a value of some type could implement `Copy`, then
-                // it must.
-                self.cx.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::CopyBound,
-                );
-            }
-        }
-
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
@@ -503,6 +492,31 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location)
+        }
+
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let tcx = self.tcx();
+            let trait_ref = ty::TraitRef {
+                def_id: tcx.lang_items().copy_trait().unwrap(),
+                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+            };
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.cx.prove_trait_ref(
+                trait_ref,
+                location.to_locations(),
+                ConstraintCategory::CopyBound,
+            );
         }
 
         place_ty
