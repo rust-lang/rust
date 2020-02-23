@@ -144,11 +144,11 @@ enum LiveNodeKind {
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
-    let cm = tcx.sess.source_map();
+    let sm = tcx.sess.source_map();
     match lnk {
-        UpvarNode(s) => format!("Upvar node [{}]", cm.span_to_string(s)),
-        ExprNode(s) => format!("Expr node [{}]", cm.span_to_string(s)),
-        VarDefNode(s) => format!("Var def node [{}]", cm.span_to_string(s)),
+        UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_string(s)),
+        ExprNode(s) => format!("Expr node [{}]", sm.span_to_string(s)),
+        VarDefNode(s) => format!("Var def node [{}]", sm.span_to_string(s)),
         ExitNode => "Exit node".to_owned(),
     }
 }

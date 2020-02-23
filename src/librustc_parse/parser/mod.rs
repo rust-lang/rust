@@ -601,141 +601,76 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Expects and consumes a `+`. if `+=` is seen, replaces it with a `=`
-    /// and continues. If a `+` is not seen, returns `false`.
-    ///
-    /// This is used when token-splitting `+=` into `+`.
-    /// See issue #47856 for an example of when this may occur.
+    /// Eats the expected token if it's present possibly breaking
+    /// compound tokens like multi-character operators in process.
+    /// Returns `true` if the token was eaten.
+    fn break_and_eat(&mut self, expected: TokenKind) -> bool {
+        if self.token.kind == expected {
+            self.bump();
+            return true;
+        }
+        match self.token.kind.break_two_token_op() {
+            Some((first, second)) if first == expected => {
+                let first_span = self.sess.source_map().start_point(self.token.span);
+                let second_span = self.token.span.with_lo(first_span.hi());
+                self.set_token(Token::new(first, first_span));
+                self.bump_with(Token::new(second, second_span));
+                true
+            }
+            _ => {
+                self.expected_tokens.push(TokenType::Token(expected));
+                false
+            }
+        }
+    }
+
+    /// Eats `+` possibly breaking tokens like `+=` in process.
     fn eat_plus(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
-        match self.token.kind {
-            token::BinOp(token::Plus) => {
-                self.bump();
-                true
-            }
-            token::BinOpEq(token::Plus) => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi()));
-                true
-            }
-            _ => false,
-        }
+        self.break_and_eat(token::BinOp(token::Plus))
     }
 
-    /// Expects and consumes an `&`. If `&&` is seen, replaces it with a single
-    /// `&` and continues. If an `&` is not seen, signals an error.
+    /// Eats `&` possibly breaking tokens like `&&` in process.
+    /// Signals an error if `&` is not eaten.
     fn expect_and(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::And)));
-        match self.token.kind {
-            token::BinOp(token::And) => {
-                self.bump();
-                Ok(())
-            }
-            token::AndAnd => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                Ok(self
-                    .bump_with(token::BinOp(token::And), self.token.span.with_lo(start_point.hi())))
-            }
-            _ => self.unexpected(),
-        }
+        if self.break_and_eat(token::BinOp(token::And)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Expects and consumes an `|`. If `||` is seen, replaces it with a single
-    /// `|` and continues. If an `|` is not seen, signals an error.
+    /// Eats `|` possibly breaking tokens like `||` in process.
+    /// Signals an error if `|` was not eaten.
     fn expect_or(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Or)));
-        match self.token.kind {
-            token::BinOp(token::Or) => {
-                self.bump();
-                Ok(())
-            }
-            token::OrOr => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                Ok(self
-                    .bump_with(token::BinOp(token::Or), self.token.span.with_lo(start_point.hi())))
-            }
-            _ => self.unexpected(),
-        }
+        if self.break_and_eat(token::BinOp(token::Or)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
-    /// `<` and continue. If `<-` is seen, replaces it with a single `<`
-    /// and continue. If a `<` is not seen, returns false.
-    ///
-    /// This is meant to be used when parsing generics on a path to get the
-    /// starting token.
+    /// Eats `<` possibly breaking tokens like `<<` in process.
     fn eat_lt(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Token(token::Lt));
-        let ate = match self.token.kind {
-            token::Lt => {
-                self.bump();
-                true
-            }
-            token::BinOp(token::Shl) => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                self.bump_with(token::Lt, self.token.span.with_lo(start_point.hi()));
-                true
-            }
-            token::LArrow => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                self.bump_with(
-                    token::BinOp(token::Minus),
-                    self.token.span.with_lo(start_point.hi()),
-                );
-                true
-            }
-            _ => false,
-        };
-
+        let ate = self.break_and_eat(token::Lt);
         if ate {
             // See doc comment for `unmatched_angle_bracket_count`.
             self.unmatched_angle_bracket_count += 1;
             self.max_angle_bracket_count += 1;
             debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
-
         ate
     }
 
+    /// Eats `<` possibly breaking tokens like `<<` in process.
+    /// Signals an error if `<` was not eaten.
     fn expect_lt(&mut self) -> PResult<'a, ()> {
-        if !self.eat_lt() { self.unexpected() } else { Ok(()) }
+        if self.eat_lt() { Ok(()) } else { self.unexpected() }
     }
 
-    /// Expects and consumes a single `>` token. if a `>>` is seen, replaces it
-    /// with a single `>` and continues. If a `>` is not seen, signals an error.
+    /// Eats `>` possibly breaking tokens like `>>` in process.
+    /// Signals an error if `>` was not eaten.
     fn expect_gt(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::Gt));
-        let ate = match self.token.kind {
-            token::Gt => {
-                self.bump();
-                Some(())
+        if self.break_and_eat(token::Gt) {
+            // See doc comment for `unmatched_angle_bracket_count`.
+            if self.unmatched_angle_bracket_count > 0 {
+                self.unmatched_angle_bracket_count -= 1;
+                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
             }
-            token::BinOp(token::Shr) => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                Some(self.bump_with(token::Gt, self.token.span.with_lo(start_point.hi())))
-            }
-            token::BinOpEq(token::Shr) => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                Some(self.bump_with(token::Ge, self.token.span.with_lo(start_point.hi())))
-            }
-            token::Ge => {
-                let start_point = self.sess.source_map().start_point(self.token.span);
-                Some(self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi())))
-            }
-            _ => None,
-        };
-
-        match ate {
-            Some(_) => {
-                // See doc comment for `unmatched_angle_bracket_count`.
-                if self.unmatched_angle_bracket_count > 0 {
-                    self.unmatched_angle_bracket_count -= 1;
-                    debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
-                }
-
-                Ok(())
-            }
-            None => self.unexpected(),
+            Ok(())
+        } else {
+            self.unexpected()
         }
     }
 
@@ -903,10 +838,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Advance the parser by one token.
-    pub fn bump(&mut self) {
+    /// Advance the parser by one token using provided token as the next one.
+    fn bump_with(&mut self, next_token: Token) {
+        // Bumping after EOF is a bad sign, usually an infinite loop.
         if self.prev_token.kind == TokenKind::Eof {
-            // Bumping after EOF is a bad sign, usually an infinite loop.
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
             self.span_bug(self.token.span, msg);
         }
@@ -914,30 +849,19 @@ impl<'a> Parser<'a> {
         // Update the current and previous tokens.
         self.prev_token = self.token.take();
         self.unnormalized_prev_token = self.unnormalized_token.take();
-        let next_token = self.next_tok(self.unnormalized_prev_token.span);
         self.set_token(next_token);
 
         // Update fields derived from the previous token.
         self.prev_span = self.unnormalized_prev_token.span;
 
+        // Diagnostics.
         self.expected_tokens.clear();
     }
 
-    /// Advances the parser using provided token as a next one. Use this when
-    /// consuming a part of a token. For example a single `<` from `<<`.
-    /// FIXME: this function sets the previous token data to some semi-nonsensical values
-    /// which kind of work because they are currently used in very limited ways in practice.
-    /// Correct token kinds and spans need to be calculated instead.
-    fn bump_with(&mut self, next: TokenKind, span: Span) {
-        // Update the current and previous tokens.
-        self.prev_token = self.token.take();
-        self.unnormalized_prev_token = self.unnormalized_token.take();
-        self.set_token(Token::new(next, span));
-
-        // Update fields derived from the previous token.
-        self.prev_span = self.unnormalized_prev_token.span.with_hi(span.lo());
-
-        self.expected_tokens.clear();
+    /// Advance the parser by one token.
+    pub fn bump(&mut self) {
+        let next_token = self.next_tok(self.unnormalized_token.span);
+        self.bump_with(next_token);
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.

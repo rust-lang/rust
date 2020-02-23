@@ -2524,7 +2524,7 @@ pub enum ItemKind {
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(P<Ty>, Generics),
+    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2594,7 +2594,7 @@ impl ItemKind {
     pub fn generics(&self) -> Option<&Generics> {
         match self {
             Self::Fn(_, generics, _)
-            | Self::TyAlias(_, generics)
+            | Self::TyAlias(generics, ..)
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)

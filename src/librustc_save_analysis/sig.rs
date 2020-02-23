@@ -423,12 +423,15 @@ impl Sig for ast::Item {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            ast::ItemKind::TyAlias(ref ty, ref generics) => {
+            ast::ItemKind::TyAlias(ref generics, _, ref ty) => {
                 let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");
-                let ty = ty.make(offset + sig.text.len(), id, scx)?;
+                let ty = match ty {
+                    Some(ty) => ty.make(offset + sig.text.len(), id, scx)?,
+                    None => Err("Ty")?,
+                };
                 sig.text.push_str(&ty.text);
                 sig.text.push(';');
 

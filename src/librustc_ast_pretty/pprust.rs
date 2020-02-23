@@ -47,15 +47,15 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 
 pub struct Comments<'a> {
-    cm: &'a SourceMap,
+    sm: &'a SourceMap,
     comments: Vec<comments::Comment>,
     current: usize,
 }
 
 impl<'a> Comments<'a> {
-    pub fn new(cm: &'a SourceMap, filename: FileName, input: String) -> Comments<'a> {
-        let comments = comments::gather_comments(cm, filename, input);
-        Comments { cm, comments, current: 0 }
+    pub fn new(sm: &'a SourceMap, filename: FileName, input: String) -> Comments<'a> {
+        let comments = comments::gather_comments(sm, filename, input);
+        Comments { sm, comments, current: 0 }
     }
 
     pub fn next(&self) -> Option<comments::Comment> {
@@ -71,8 +71,8 @@ impl<'a> Comments<'a> {
             if cmnt.style != comments::Trailing {
                 return None;
             }
-            let span_line = self.cm.lookup_char_pos(span.hi());
-            let comment_line = self.cm.lookup_char_pos(cmnt.pos);
+            let span_line = self.sm.lookup_char_pos(span.hi());
+            let comment_line = self.sm.lookup_char_pos(cmnt.pos);
             let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
             if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 return Some(cmnt);
@@ -95,7 +95,7 @@ crate const INDENT_UNIT: usize = 4;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
-    cm: &'a SourceMap,
+    sm: &'a SourceMap,
     krate: &ast::Crate,
     filename: FileName,
     input: String,
@@ -106,7 +106,7 @@ pub fn print_crate<'a>(
 ) -> String {
     let mut s = State {
         s: pp::mk_printer(),
-        comments: Some(Comments::new(cm, filename, input)),
+        comments: Some(Comments::new(sm, filename, input)),
         ann,
         is_expanded,
     };
@@ -522,8 +522,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.hardbreak();
             }
         }
-        if let Some(cm) = self.comments() {
-            cm.current += 1;
+        if let Some(cmnts) = self.comments() {
+            cmnts.current += 1;
         }
     }
 
@@ -1185,18 +1185,10 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.to_string());
                 self.end();
             }
-            ast::ItemKind::TyAlias(ref ty, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.print_generic_params(&generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&generics.where_clause);
-                self.s.space();
-                self.word_space("=");
-                self.print_type(ty);
-                self.s.word(";");
-                self.end(); // end the outer ibox
+            ast::ItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
+                let def = ast::Defaultness::Final;
+                let ty = ty.as_deref();
+                self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
             ast::ItemKind::Enum(ref enum_definition, ref params) => {
                 self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);

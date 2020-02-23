@@ -969,6 +969,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
+            ItemKind::TyAlias(_, ref bounds, ref body) => {
+                if body.is_none() {
+                    let msg = "free type alias without body";
+                    self.error_item_without_body(item.span, "type", msg, " = <type>;");
+                }
+                self.check_type_no_bounds(bounds, "this context");
+            }
             _ => {}
         }
 
