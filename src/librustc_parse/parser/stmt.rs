@@ -35,39 +35,33 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        if self.eat_keyword(kw::Let) {
-            return self.parse_local_mk(lo, attrs.into()).map(Some);
-        }
-        if self.is_kw_followed_by_ident(kw::Mut) {
-            return self.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut");
-        }
-        if self.is_kw_followed_by_ident(kw::Auto) {
+        let stmt = if self.eat_keyword(kw::Let) {
+            self.parse_local_mk(lo, attrs.into())?
+        } else if self.is_kw_followed_by_ident(kw::Mut) {
+            self.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut")?
+        } else if self.is_kw_followed_by_ident(kw::Auto) {
             self.bump(); // `auto`
             let msg = "write `let` instead of `auto` to introduce a new variable";
-            return self.recover_stmt_local(lo, attrs.into(), msg, "let");
-        }
-        if self.is_kw_followed_by_ident(sym::var) {
+            self.recover_stmt_local(lo, attrs.into(), msg, "let")?
+        } else if self.is_kw_followed_by_ident(sym::var) {
             self.bump(); // `var`
             let msg = "write `let` instead of `var` to introduce a new variable";
-            return self.recover_stmt_local(lo, attrs.into(), msg, "let");
-        }
-
-        // Starts like a simple path, being careful to avoid contextual keywords,
-        // e.g., `union`, items with `crate` visibility, or `auto trait` items.
-        // We aim to parse an arbitrary path `a::b` but not something that starts like a path
-        // (1 token), but it fact not a path. Also, we avoid stealing syntax from `parse_item_`.
-        if self.token.is_path_start() && !self.token.is_qpath_start() && !self.is_path_start_item()
+            self.recover_stmt_local(lo, attrs.into(), msg, "let")?
+        } else if self.token.is_path_start()
+            && !self.token.is_qpath_start()
+            && !self.is_path_start_item()
         {
-            return self.parse_stmt_path_start(lo, attrs).map(Some);
-        }
-
-        if let Some(item) = self.parse_stmt_item(attrs.clone())? {
+            // We have avoided contextual keywords like `union`, items with `crate` visibility,
+            // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
+            // that starts like a path (1 token), but it fact not a path.
+            // Also, we avoid stealing syntax from `parse_item_`.
+            self.parse_stmt_path_start(lo, attrs)?
+        } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
             // FIXME: Bad copy of attrs
-            return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))));
+            self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         }
-
         // Do not attempt to parse an expression if we're done here.
-        if self.token == token::Semi {
+        else if self.token == token::Semi {
             self.error_outer_attrs(&attrs);
             self.bump();
             let mut last_semi = lo;
@@ -82,17 +76,16 @@ impl<'a> Parser<'a> {
                 ExprKind::Tup(Vec::new()),
                 AttrVec::new(),
             ));
-            return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
-        }
-
-        if self.token == token::CloseDelim(token::Brace) {
+            self.mk_stmt(lo.to(last_semi), kind)
+        } else if self.token != token::CloseDelim(token::Brace) {
+            // Remainder are line-expr stmts.
+            let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
+            self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
+        } else {
             self.error_outer_attrs(&attrs);
             return Ok(None);
-        }
-
-        // Remainder are line-expr stmts.
-        let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
-        Ok(Some(self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))))
+        };
+        Ok(Some(stmt))
     }
 
     fn parse_stmt_item(&mut self, attrs: Vec<Attribute>) -> PResult<'a, Option<ast::Item>> {
@@ -168,12 +161,12 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
         msg: &str,
         sugg: &str,
-    ) -> PResult<'a, Option<Stmt>> {
+    ) -> PResult<'a, Stmt> {
         let stmt = self.parse_local_mk(lo, attrs)?;
         self.struct_span_err(lo, "invalid variable declaration")
             .span_suggestion(lo, msg, sugg.to_string(), Applicability::MachineApplicable)
             .emit();
-        Ok(Some(stmt))
+        Ok(stmt)
     }
 
     fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
