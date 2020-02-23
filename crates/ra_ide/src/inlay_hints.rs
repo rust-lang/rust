@@ -1,12 +1,12 @@
 //! FIXME: write short doc here
 
-use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
+use hir::{Function, HirDisplay, SourceAnalyzer, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
+    match_ast, SmolStr, SourceFile, SyntaxNode, TextRange,
 };
 
 use crate::{FileId, FunctionSignature};
@@ -50,49 +50,51 @@ fn get_inlay_hints(
     let analyzer = Lazy::new(move || sb.analyze(hir::InFile::new(file_id.into(), node), None));
     match_ast! {
         match node {
-            ast::LetStmt(it) => {
-                if it.ascribed_type().is_some() {
-                    return None;
-                }
-                let pat = it.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
-            },
-            ast::LambdaExpr(it) => {
-                it.param_list().map(|param_list| {
-                    param_list
-                        .params()
-                        .filter(|closure_param| closure_param.ascribed_type().is_none())
-                        .filter_map(|closure_param| closure_param.pat())
-                        .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, false, max_inlay_hint_length))
-                });
-            },
-            ast::ForExpr(it) => {
-                let pat = it.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
-            },
-            ast::IfExpr(it) => {
-                let pat = it.condition()?.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
-            },
-            ast::WhileExpr(it) => {
-                let pat = it.condition()?.pat()?;
-                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
-            },
-            ast::MatchArmList(it) => {
-                it.arms()
-                    .filter_map(|match_arm| match_arm.pat())
-                    .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, true, max_inlay_hint_length));
-            },
             ast::CallExpr(it) => {
                 get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
             ast::MethodCallExpr(it) => {
                 get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
+            ast::BindPat(it) => {
+                if should_not_display_type_hint(&it) {
+                    return None;
+                }
+                let pat = ast::Pat::from(it);
+                let ty = analyzer.type_of_pat(db, &pat)?;
+                if ty.is_unknown() {
+                    return None;
+                }
+
+                acc.push(
+                    InlayHint {
+                        range: pat.syntax().text_range(),
+                        kind: InlayKind::TypeHint,
+                        label: ty.display_truncated(db, max_inlay_hint_length).to_string().into(),
+                    }
+                );
+            },
             _ => (),
         }
     };
     Some(())
+}
+
+fn should_not_display_type_hint(bind_pat: &ast::BindPat) -> bool {
+    for node in bind_pat.syntax().ancestors() {
+        match_ast! {
+            match node {
+                ast::LetStmt(it) => {
+                    return it.ascribed_type().is_some()
+                },
+                ast::Param(it) => {
+                    return it.ascribed_type().is_some()
+                },
+                _ => (),
+            }
+        }
+    }
+    false
 }
 
 fn get_param_name_hints(
@@ -105,28 +107,33 @@ fn get_param_name_hints(
         ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
         ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
         _ => return None,
+    }
+    .into_iter()
+    // we need args len to determine whether to skip or not the &self parameter
+    .collect::<Vec<_>>();
+
+    let (has_self_param, fn_signature) = get_fn_signature(db, analyzer, &expr)?;
+    let parameters = if has_self_param && fn_signature.parameter_names.len() > args.len() {
+        fn_signature.parameter_names.into_iter().skip(1)
+    } else {
+        fn_signature.parameter_names.into_iter().skip(0)
     };
 
-    let mut parameters = get_fn_signature(db, analyzer, &expr)?.parameter_names.into_iter();
-
-    if let ast::Expr::MethodCallExpr(_) = &expr {
-        parameters.next();
-    };
-
-    let hints = parameters
-        .zip(args)
-        .filter_map(|(param, arg)| {
-            if arg.syntax().kind() == SyntaxKind::LITERAL && !param.is_empty() {
-                Some((arg.syntax().text_range(), param))
-            } else {
-                None
-            }
-        })
-        .map(|(range, param_name)| InlayHint {
-            range,
-            kind: InlayKind::ParameterHint,
-            label: param_name.into(),
-        });
+    let hints =
+        parameters
+            .zip(args)
+            .filter_map(|(param, arg)| {
+                if !param.is_empty() {
+                    Some((arg.syntax().text_range(), param))
+                } else {
+                    None
+                }
+            })
+            .map(|(range, param_name)| InlayHint {
+                range,
+                kind: InlayKind::ParameterHint,
+                label: param_name.into(),
+            });
 
     acc.extend(hints);
     Some(())
@@ -136,98 +143,30 @@ fn get_fn_signature(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     expr: &ast::Expr,
-) -> Option<FunctionSignature> {
+) -> Option<(bool, FunctionSignature)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             // FIXME: Type::as_callable is broken for closures
             let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
-                    let fn_def = it.into();
-                    Some(FunctionSignature::from_hir(db, fn_def))
+                    let fn_def: Function = it.into();
+                    Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
                 }
-                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into()),
+                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into())
+                    .map(|signature| (false, signature)),
                 hir::CallableDef::EnumVariantId(it) => {
                     FunctionSignature::from_enum_variant(db, it.into())
+                        .map(|signature| (false, signature))
                 }
             }
         }
         ast::Expr::MethodCallExpr(expr) => {
             let fn_def = analyzer.resolve_method_call(&expr)?;
-            Some(FunctionSignature::from_hir(db, fn_def))
+            Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
         }
         _ => None,
     }
-}
-
-fn get_pat_type_hints(
-    acc: &mut Vec<InlayHint>,
-    db: &RootDatabase,
-    analyzer: &SourceAnalyzer,
-    root_pat: ast::Pat,
-    skip_root_pat_hint: bool,
-    max_inlay_hint_length: Option<usize>,
-) {
-    let original_pat = &root_pat.clone();
-
-    let hints = get_leaf_pats(root_pat)
-        .into_iter()
-        .filter(|pat| !skip_root_pat_hint || pat != original_pat)
-        .filter_map(|pat| {
-            let ty = analyzer.type_of_pat(db, &pat)?;
-            if ty.is_unknown() {
-                return None;
-            }
-            Some((pat.syntax().text_range(), ty))
-        })
-        .map(|(range, pat_type)| InlayHint {
-            range,
-            kind: InlayKind::TypeHint,
-            label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
-        });
-
-    acc.extend(hints);
-}
-
-fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
-    let mut pats_to_process = std::collections::VecDeque::<ast::Pat>::new();
-    pats_to_process.push_back(root_pat);
-
-    let mut leaf_pats = Vec::new();
-
-    while let Some(maybe_leaf_pat) = pats_to_process.pop_front() {
-        match &maybe_leaf_pat {
-            ast::Pat::BindPat(bind_pat) => match bind_pat.pat() {
-                Some(pat) => pats_to_process.push_back(pat),
-                _ => leaf_pats.push(maybe_leaf_pat),
-            },
-            ast::Pat::OrPat(ref_pat) => pats_to_process.extend(ref_pat.pats()),
-            ast::Pat::TuplePat(tuple_pat) => pats_to_process.extend(tuple_pat.args()),
-            ast::Pat::RecordPat(record_pat) => {
-                if let Some(pat_list) = record_pat.record_field_pat_list() {
-                    pats_to_process.extend(
-                        pat_list
-                            .record_field_pats()
-                            .filter_map(|record_field_pat| {
-                                record_field_pat
-                                    .pat()
-                                    .filter(|pat| pat.syntax().kind() != SyntaxKind::BIND_PAT)
-                            })
-                            .chain(pat_list.bind_pats().map(|bind_pat| {
-                                bind_pat.pat().unwrap_or_else(|| ast::Pat::from(bind_pat))
-                            })),
-                    );
-                }
-            }
-            ast::Pat::TupleStructPat(tuple_struct_pat) => {
-                pats_to_process.extend(tuple_struct_pat.args())
-            }
-            ast::Pat::ParenPat(inner_pat) => pats_to_process.extend(inner_pat.pat()),
-            ast::Pat::RefPat(ref_pat) => pats_to_process.extend(ref_pat.pat()),
-            _ => (),
-        }
-    }
-    leaf_pats
 }
 
 #[cfg(test)]
@@ -346,11 +285,6 @@ fn main() {
                 label: "i32",
             },
             InlayHint {
-                range: [584; 585),
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
                 range: [577; 578),
                 kind: TypeHint,
                 label: "f64",
@@ -359,6 +293,11 @@ fn main() {
                 range: [580; 581),
                 kind: TypeHint,
                 label: "f64",
+            },
+            InlayHint {
+                range: [584; 585),
+                kind: TypeHint,
+                label: "i32",
             },
             InlayHint {
                 range: [627; 628),
@@ -508,6 +447,11 @@ fn main() {
                 label: "CustomOption<Test>",
             },
             InlayHint {
+                range: [287; 291),
+                kind: TypeHint,
+                label: "&CustomOption<Test>",
+            },
+            InlayHint {
                 range: [334; 338),
                 kind: TypeHint,
                 label: "&Test",
@@ -523,9 +467,34 @@ fn main() {
                 label: "&u8",
             },
             InlayHint {
+                range: [449; 450),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [455; 456),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
                 range: [531; 532),
                 kind: TypeHint,
                 label: "&u32",
+            },
+            InlayHint {
+                range: [538; 539),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [618; 619),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [675; 676),
+                kind: TypeHint,
+                label: "&u8",
             },
         ]
         "###
@@ -571,6 +540,11 @@ fn main() {
                 label: "CustomOption<Test>",
             },
             InlayHint {
+                range: [293; 297),
+                kind: TypeHint,
+                label: "&CustomOption<Test>",
+            },
+            InlayHint {
                 range: [343; 347),
                 kind: TypeHint,
                 label: "&Test",
@@ -586,9 +560,34 @@ fn main() {
                 label: "&u8",
             },
             InlayHint {
+                range: [464; 465),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [470; 471),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
                 range: [549; 550),
                 kind: TypeHint,
                 label: "&u32",
+            },
+            InlayHint {
+                range: [556; 557),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [639; 640),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [699; 700),
+                kind: TypeHint,
+                label: "&u8",
             },
         ]
         "###
@@ -629,6 +628,11 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
+                range: [272; 276),
+                kind: TypeHint,
+                label: "CustomOption<Test>",
+            },
+            InlayHint {
                 range: [311; 315),
                 kind: TypeHint,
                 label: "Test",
@@ -644,9 +648,34 @@ fn main() {
                 label: "u8",
             },
             InlayHint {
+                range: [410; 411),
+                kind: TypeHint,
+                label: "CustomOption<u32>",
+            },
+            InlayHint {
+                range: [416; 417),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
                 range: [484; 485),
                 kind: TypeHint,
                 label: "u32",
+            },
+            InlayHint {
+                range: [491; 492),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
+                range: [563; 564),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
+                range: [612; 613),
+                kind: TypeHint,
+                label: "u8",
             },
         ]
         "###
@@ -738,9 +767,19 @@ fn main() {
                 label: "msg",
             },
             InlayHint {
+                range: [277; 288),
+                kind: ParameterHint,
+                label: "last",
+            },
+            InlayHint {
                 range: [331; 334),
                 kind: ParameterHint,
                 label: "param",
+            },
+            InlayHint {
+                range: [354; 356),
+                kind: ParameterHint,
+                label: "&self",
             },
             InlayHint {
                 range: [358; 362),
