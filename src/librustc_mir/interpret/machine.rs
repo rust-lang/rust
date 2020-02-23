@@ -219,10 +219,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// This function must be idempotent.
     #[inline]
-    fn canonical_alloc_id(
-        _mem: &Memory<'mir, 'tcx, Self>,
-        id: AllocId,
-    ) -> AllocId {
+    fn canonical_alloc_id(_mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         id
     }
 
