@@ -7,4 +7,4 @@ impl ?Sized for Type {} //~ ERROR expected a trait, found type
 impl ?Sized for .. {} //~ ERROR expected a trait, found type
 
 default unsafe FAIL //~ ERROR expected item, found keyword `unsafe`
-//~^ ERROR `default` not followed by an item
+//~^ ERROR `default` is not followed by an item

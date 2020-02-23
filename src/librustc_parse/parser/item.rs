@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
         }
         let vs = pprust::vis_to_string(&vis);
         let vs = vs.trim_end();
-        self.struct_span_err(vis.span, &format!("visibility `{}` not followed by an item", vs))
+        self.struct_span_err(vis.span, &format!("visibility `{}` is not followed by an item", vs))
             .span_label(vis.span, "the visibility")
             .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
             .emit();
@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
     /// Error in-case a `default` was parsed but no item followed.
     fn error_on_unmatched_defaultness(&self, def: Defaultness) {
         if let Defaultness::Default(sp) = def {
-            self.struct_span_err(sp, "`default` not followed by an item")
+            self.struct_span_err(sp, "`default` is not followed by an item")
                 .span_label(sp, "the `default` qualifier")
                 .note("only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`")
                 .emit();
@@ -657,7 +657,7 @@ impl<'a> Parser<'a> {
                     self.struct_span_err(span, "associated `static` items are not allowed").emit();
                     AssocItemKind::Const(Defaultness::Final, a, b)
                 }
-                _ => return self.error_bad_item_kind(span, &kind, "`trait` or `impl`"),
+                _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
             };
             Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
@@ -846,7 +846,7 @@ impl<'a> Parser<'a> {
                     self.error_on_foreign_const(span, ident);
                     ForeignItemKind::Static(a, Mutability::Not, b)
                 }
-                _ => return self.error_bad_item_kind(span, &kind, "`extern` block"),
+                _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
             };
             Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
@@ -854,7 +854,7 @@ impl<'a> Parser<'a> {
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
         let span = self.sess.source_map().def_span(span);
-        let msg = format!("{} not supported in {}", kind.descr(), ctx);
+        let msg = format!("{} is not supported in {}", kind.descr(), ctx);
         self.struct_span_err(span, &msg).emit();
         return None;
     }

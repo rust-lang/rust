@@ -2,10 +2,10 @@ trait T {
     fn foo(&self);
 
 pub(crate) struct Bar<T>();
-//~^ ERROR struct not supported in `trait` or `impl`
+//~^ ERROR struct is not supported in `trait`s or `impl`s
 
 impl T for Bar<usize> {
-//~^ ERROR implementation not supported in `trait` or `impl`
+//~^ ERROR implementation is not supported in `trait`s or `impl`s
 fn foo(&self) {}
 }
 

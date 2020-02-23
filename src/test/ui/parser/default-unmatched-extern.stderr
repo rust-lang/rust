@@ -1,4 +1,4 @@
-error: `default` not followed by an item
+error: `default` is not followed by an item
   --> $DIR/default-unmatched-extern.rs:5:5
    |
 LL |     default do
