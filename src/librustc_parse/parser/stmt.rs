@@ -22,14 +22,14 @@ impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(false).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
         }))
     }
 
-    fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(&mut self, module_stmt: bool) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
         let attrs = self.parse_outer_attributes()?;
@@ -56,7 +56,10 @@ impl<'a> Parser<'a> {
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
             self.parse_stmt_path_start(lo, attrs)?
-        } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
+        } else if let Some(item) =
+            // When parsing the statement as a module (recovery), avoid parsing items.
+            if module_stmt { None } else { self.parse_stmt_item(attrs.clone())? }
+        {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.token == token::Semi {
@@ -275,7 +278,7 @@ impl<'a> Parser<'a> {
         //      bar;
         //
         // which is valid in other languages, but not Rust.
-        match self.parse_stmt_without_recovery() {
+        match self.parse_stmt_without_recovery(true) {
             Ok(Some(stmt)) => {
                 if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
                     || do_not_suggest_help
@@ -334,7 +337,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            let stmt = match self.parse_full_stmt() {
+            let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
@@ -354,20 +357,23 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a statement, including the trailing semicolon.
-    pub fn parse_full_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
+    pub fn parse_full_stmt(&mut self, module_stmt: bool) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let mut stmt = match self.parse_stmt_without_recovery()? {
+        let mut stmt = match self.parse_stmt_without_recovery(module_stmt)? {
             Some(stmt) => stmt,
             None => return Ok(None),
         };
 
         let mut eat_semi = true;
         match stmt.kind {
-            // Expression without semicolon.
             StmtKind::Expr(ref expr)
-                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
+                // Expression without semicolon.
+                if self.token != token::Eof
+                    && classify::expr_requires_semi_to_be_stmt(expr)
+                    // Do not error here if in `module_stmt` recovery mode.
+                    && !module_stmt =>
             {
                 // Just check for errors and recover; do not eat semicolon yet.
                 if let Err(mut e) =

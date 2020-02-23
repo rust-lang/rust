@@ -6,11 +6,25 @@ LL | pub(crate) () fn foo() {}
    |
    = help: you likely meant to define an item, e.g., `pub(crate) fn foo() {}`
 
-error: expected item, found `(`
+error: statements cannot reside in modules
   --> $DIR/pub-restricted-error-fn.rs:1:12
    |
 LL | pub(crate) () fn foo() {}
-   |            ^ expected item
+   |            ^^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | pub(crate) fn my_function() -> _ { () } fn foo() {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0601]: `main` function not found in crate `pub_restricted_error_fn`
+  --> $DIR/pub-restricted-error-fn.rs:1:1
+   |
+LL | pub(crate) () fn foo() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ consider adding a `main` function to `$DIR/pub-restricted-error-fn.rs`
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

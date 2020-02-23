@@ -4,12 +4,15 @@ use super::Parser;
 
 use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
-use rustc_errors::PResult;
-use rustc_span::source_map::{FileName, SourceMap, Span, DUMMY_SP};
+use rustc_ast_pretty::pprust;
+use rustc_errors::{Applicability, PResult};
+use rustc_span::source_map::{respan, FileName, MultiSpan, SourceMap, Span, DUMMY_SP};
 use rustc_span::symbol::sym;
 use syntax::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
 use syntax::attr;
+use syntax::ptr::P;
 use syntax::token::{self, TokenKind};
+use syntax::visit::Visitor;
 
 use std::path::{self, Path, PathBuf};
 
@@ -75,9 +78,12 @@ impl<'a> Parser<'a> {
     /// Given a termination token, parses all of the items in a module.
     fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
         let mut items = vec![];
-        while let Some(item) = self.parse_item()? {
-            items.push(item);
-            self.maybe_consume_incorrect_semicolon(&items);
+        let mut stuck = false;
+        while let Some(res) = self.parse_item_in_mod(term, &mut stuck)? {
+            if let Some(item) = res {
+                items.push(item);
+                self.maybe_consume_incorrect_semicolon(&items);
+            }
         }
 
         if !self.eat(term) {
@@ -93,6 +99,135 @@ impl<'a> Parser<'a> {
         let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_span };
 
         Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
+    }
+
+    fn parse_item_in_mod(
+        &mut self,
+        term: &TokenKind,
+        stuck: &mut bool,
+    ) -> PResult<'a, Option<Option<P<ast::Item>>>> {
+        match self.parse_item()? {
+            // We just made progress and we might have statements following this item.
+            i @ Some(_) => {
+                *stuck = false;
+                Ok(Some(i))
+            }
+            // No progress and the previous attempt at statements failed, so terminate the loop.
+            None if *stuck => Ok(None),
+            None => Ok(self.recover_stmts_as_item(term, stuck)?.then_some(None)),
+        }
+    }
+
+    /// Parse a contiguous list of statements until we reach the terminating token or EOF.
+    /// When any statements were parsed, perform recovery and suggest wrapping the statements
+    /// inside a function. If `stuck` becomes `true`, then this method should not be called
+    /// unless we have advanced the cursor.
+    fn recover_stmts_as_item(&mut self, term: &TokenKind, stuck: &mut bool) -> PResult<'a, bool> {
+        let lo = self.token.span;
+        let mut stmts = vec![];
+        while ![term, &token::Eof].contains(&&self.token.kind) {
+            let old_expected = std::mem::take(&mut self.expected_tokens);
+            let snapshot = self.clone();
+            let stmt = self.parse_full_stmt(true);
+            self.expected_tokens = old_expected; // Restore expected tokens to before recovery.
+            match stmt {
+                Ok(None) => break,
+                Ok(Some(stmt)) => stmts.push(stmt),
+                Err(mut err) => {
+                    // We couldn't parse as a statement. Rewind to the last one we could for.
+                    // Also notify the caller that we made no progress, meaning that the method
+                    // should not be called again to avoid non-termination.
+                    err.cancel();
+                    *self = snapshot;
+                    *stuck = true;
+                    break;
+                }
+            }
+        }
+
+        let recovered = !stmts.is_empty();
+        if recovered {
+            // We parsed some statements and have recovered, so let's emit an error.
+            self.error_stmts_as_item_suggest_fn(lo, stmts);
+        }
+        Ok(recovered)
+    }
+
+    fn error_stmts_as_item_suggest_fn(&self, lo: Span, stmts: Vec<ast::Stmt>) {
+        use syntax::ast::*;
+
+        let span = lo.to(self.prev_span);
+        let spans: MultiSpan = match &*stmts {
+            [] | [_] => span.into(),
+            [x, .., y] => vec![x.span, y.span].into(),
+        };
+
+        // Perform coarse grained inference about returns.
+        // We use this to tell whether `main` is an acceptable name
+        // and if `-> _` or `-> Result<_, _>` should be used instead of defaulting to unit.
+        #[derive(Default)]
+        struct RetInfer(bool, bool, bool);
+        let RetInfer(has_ret_unit, has_ret_expr, has_try_expr) = {
+            impl Visitor<'_> for RetInfer {
+                fn visit_expr_post(&mut self, expr: &Expr) {
+                    match expr.kind {
+                        ExprKind::Ret(None) => self.0 = true,    // `return`
+                        ExprKind::Ret(Some(_)) => self.1 = true, // `return $expr`
+                        ExprKind::Try(_) => self.2 = true,       // `expr?`
+                        _ => {}
+                    }
+                }
+            }
+            let mut visitor = RetInfer::default();
+            for stmt in &stmts {
+                visitor.visit_stmt(stmt);
+            }
+            if let StmtKind::Expr(_) = &stmts.last().unwrap().kind {
+                visitor.1 = true; // The tail expression.
+            }
+            visitor
+        };
+
+        // For the function name, use `main` if we are in `main.rs`, and `my_function` otherwise.
+        let use_main = (has_ret_unit || has_try_expr)
+            && self.directory.path.file_stem() == Some(std::ffi::OsStr::new("main"));
+        let ident = Ident::from_str_and_span(if use_main { "main" } else { "my_function" }, span);
+
+        // Construct the return type; either default, `-> _`, or `-> Result<_, _>`.
+        let output = match (has_ret_unit, has_ret_expr, has_try_expr) {
+            (true, _, _) | (false, false, false) => FnRetTy::Default(span),
+            (_, _, true) => {
+                let arg = GenericArg::Type(self.mk_ty(span, TyKind::Infer));
+                let args = [arg.clone(), arg].to_vec();
+                let args = AngleBracketedArgs { span, constraints: vec![], args };
+                let mut path = Path::from_ident(Ident::from_str_and_span("Result", span));
+                path.segments[0].args = Some(P(GenericArgs::AngleBracketed(args)));
+                FnRetTy::Ty(self.mk_ty(span, TyKind::Path(None, path)))
+            }
+            (_, true, _) => FnRetTy::Ty(self.mk_ty(span, TyKind::Infer)),
+        };
+
+        // Finalize the AST for the function item.
+        let sig = FnSig { header: FnHeader::default(), decl: P(FnDecl { inputs: vec![], output }) };
+        let body = self.mk_block(stmts, BlockCheckMode::Default, span);
+        let kind = ItemKind::Fn(Defaultness::Final, sig, Generics::default(), Some(body));
+        let vis = respan(span, VisibilityKind::Inherited);
+        let item = Item { span, ident, vis, kind, attrs: vec![], id: DUMMY_NODE_ID, tokens: None };
+
+        // Emit the error with a suggestion to wrap the statements in the function.
+        let mut err = self.struct_span_err(spans, "statements cannot reside in modules");
+        err.span_suggestion_verbose(
+            span,
+            "consider moving the statements into a function",
+            pprust::item_to_string(&item),
+            Applicability::HasPlaceholders,
+        );
+        err.note("the program entry point starts in `fn main() { ... }`, defined in `main.rs`");
+        err.note(
+            "for more on functions and how to structure your program, \
+                see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html",
+        );
+        err.emit();
     }
 
     fn submod_path(

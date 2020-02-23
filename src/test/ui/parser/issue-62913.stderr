@@ -12,11 +12,25 @@ error: invalid trailing slash in literal
 LL | "\u\"
    |     ^
 
-error: expected item, found `"\u\"`
+error: statements cannot reside in modules
   --> $DIR/issue-62913.rs:1:1
    |
 LL | "\u\"
-   | ^^^^^^ expected item
+   | ^^^^^^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | fn my_function() -> _ { "\u\" }
+   |
 
-error: aborting due to 3 previous errors
+error[E0601]: `main` function not found in crate `issue_62913`
+  --> $DIR/issue-62913.rs:1:1
+   |
+LL | "\u\"
+   | ^^^^^^ consider adding a `main` function to `$DIR/issue-62913.rs`
 
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

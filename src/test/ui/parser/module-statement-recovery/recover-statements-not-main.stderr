@@ -1,0 +1,42 @@
+error: statements cannot reside in modules
+  --> $DIR/recover-statements-not-main.rs:5:1
+   |
+LL | let x = 0;
+   | ^^^^^^^^^^
+...
+LL | Ok(42u16)
+   | ^^^^^^^^^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | fn my_function() -> Result<_, _> {
+LL |     let x = 0;
+LL |     x;
+LL |     x;
+LL |     x;
+LL |     x;
+ ...
+
+error: statements cannot reside in modules
+  --> $DIR/recover-statements-not-main.rs:17:1
+   |
+LL | if true {}
+   | ^^^^^^^^^^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | fn my_function() -> _ { if true { } }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected one of `!` or `::`, found `.`
+  --> $DIR/recover-statements-not-main.rs:21:2
+   |
+LL | x.y();
+   |  ^ expected one of `!` or `::`
+
+error: aborting due to 3 previous errors
+

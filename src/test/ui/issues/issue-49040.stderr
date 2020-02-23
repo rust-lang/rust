@@ -1,8 +1,15 @@
-error: expected item, found `;`
+error: statements cannot reside in modules
   --> $DIR/issue-49040.rs:1:28
    |
 LL | #![allow(unused_variables)];
-   |                            ^ help: remove this semicolon
+   |                            ^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | #![allow(unused_variables)]fn my_function() { }
+   |                            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0601]: `main` function not found in crate `issue_49040`
   --> $DIR/issue-49040.rs:1:1
@@ -10,7 +17,7 @@ error[E0601]: `main` function not found in crate `issue_49040`
 LL | / #![allow(unused_variables)];
 LL | |
 LL | | fn foo() {}
-   | |__^ consider adding a `main` function to `$DIR/issue-49040.rs`
+   | |___________^ consider adding a `main` function to `$DIR/issue-49040.rs`
 
 error: aborting due to 2 previous errors
 

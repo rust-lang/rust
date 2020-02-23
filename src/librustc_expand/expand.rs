@@ -892,7 +892,7 @@ pub fn parse_ast_fragment<'a>(
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
             while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
-                if let Some(stmt) = this.parse_full_stmt()? {
+                if let Some(stmt) = this.parse_full_stmt(false)? {
                     stmts.push(stmt);
                 }
             }
