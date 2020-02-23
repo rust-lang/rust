@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
@@ -12,7 +13,7 @@ use rustc::mir;
 use rustc::ty::{
     self,
     layout::{LayoutOf, Size},
-    Ty, TyCtxt,
+    Ty,
 };
 use rustc_ast::attr;
 use rustc_hir::def_id::DefId;
@@ -74,7 +75,11 @@ pub struct MemoryExtra {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
 
+    /// Mapping extern static names to their canonical allocation.
+    pub(crate) extern_statics: HashMap<&'static str, AllocId>,
+
     /// The random number generator used for resolving non-determinism.
+    /// Needs to be queried by ptr_to_int, hence needs interior mutability.
     pub(crate) rng: RefCell<StdRng>,
 }
 
@@ -85,7 +90,34 @@ impl MemoryExtra {
         } else {
             None
         };
-        MemoryExtra { stacked_borrows, intptrcast: Default::default(), rng: RefCell::new(rng) }
+        MemoryExtra {
+            stacked_borrows,
+            intptrcast: Default::default(),
+            extern_statics: HashMap::default(),
+            rng: RefCell::new(rng),
+        }
+    }
+
+    /// Sets up the "extern statics" for this machine.
+    pub fn init_extern_statics<'mir, 'tcx>(
+        this: &mut MiriEvalContext<'mir, 'tcx>,
+    ) -> InterpResult<'tcx> {
+        match this.tcx.sess.target.target.target_os.as_str() {
+            "linux" => {
+                // "__cxa_thread_atexit_impl"
+                // This should be all-zero, pointer-sized.
+                let layout = this.layout_of(this.tcx.types.usize)?;
+                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
+                this.memory
+                    .extra
+                    .extern_statics
+                    .insert("__cxa_thread_atexit_impl", place.ptr.assert_ptr().alloc_id)
+                    .unwrap_none();
+            }
+            _ => {} // No "extern statics" supported on this platform
+        }
+        Ok(())
     }
 }
 
@@ -267,32 +299,29 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn find_foreign_static(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
+    fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
+        let tcx = mem.tcx;
+        // Figure out if this is an extern static, and if yes, which one.
+        let def_id = match tcx.alloc_map.lock().get(id) {
+            Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => def_id,
+            _ => {
+                // No need to canonicalize anything.
+                return id;
+            }
+        };
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
             None => tcx.item_name(def_id).as_str(),
         };
-
-        let alloc = match &*link_name {
-            "__cxa_thread_atexit_impl" => {
-                // This should be all-zero, pointer-sized.
-                let size = tcx.data_layout.pointer_size;
-                let data = vec![0; size.bytes() as usize];
-                Allocation::from_bytes(&data, tcx.data_layout.pointer_align.abi)
-            }
-            _ => throw_unsup_format!("can't access foreign static: {}", link_name),
-        };
-        Ok(Cow::Owned(alloc))
-    }
-
-    #[inline(always)]
-    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        // We are not interested in detecting loops.
-        Ok(())
+        // Check if we know this one.
+        if let Some(canonical_id) = mem.extra.extern_statics.get(&*link_name) {
+            trace!("canonical_alloc_id: {:?} ({}) -> {:?}", id, link_name, canonical_id);
+            *canonical_id
+        } else {
+            // Return original id; `Memory::get_static_alloc` will throw an error.
+            id
+        }
     }
 
     fn init_allocation_extra<'b>(

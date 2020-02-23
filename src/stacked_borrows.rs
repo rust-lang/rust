@@ -453,7 +453,7 @@ impl Stacks {
             // Thus we call `static_base_ptr` such that the global pointers get the same tag
             // as what we use here.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(MiriMemoryKind::Static) =>
+            MemoryKind::Machine(MiriMemoryKind::Static) | MemoryKind::Machine(MiriMemoryKind::Machine) =>
                 (extra.borrow_mut().static_base_ptr(id), Permission::SharedReadWrite),
             // Everything else we handle entirely untagged for now.
             // FIXME: experiment with more precise tracking.
