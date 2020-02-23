@@ -1,15 +1,17 @@
 use crate::hir::map::DefPathHash;
 use crate::ich::{self, StableHashingContext};
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, fast_reject, TraitRef};
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 
-use rustc_data_structures::fx::FxHashMap;
+use crate::ty::layout::HasTyCtxt;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
+use rustc_span::def_id::CrateNum;
 
 /// A trait's definition with type information.
 #[derive(HashStable)]
@@ -83,16 +85,96 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Iterate over every impl that could possibly match the
     /// self type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(self, def_id: DefId, self_ty: Ty<'tcx>, f: F) {
+        self.for_each_relevant_impl_inner(def_id, self_ty, None::<std::iter::Empty<Ty<'tcx>>>, f)
+    }
+
+    pub fn for_each_relevant_impl_trait_ref<F: FnMut(DefId)>(
+        self,
+        def_id: DefId,
+        trait_ref: TraitRef<'tcx>,
+        f: F,
+    ) {
+        self.for_each_relevant_impl_inner(
+            def_id,
+            trait_ref.self_ty(),
+            Some(trait_ref.input_types().skip(1)),
+            f,
+        )
+    }
+
+    fn for_each_relevant_impl_inner<F: FnMut(DefId)>(
         self,
         def_id: DefId,
         self_ty: Ty<'tcx>,
+        input_tys: Option<impl Iterator<Item = Ty<'tcx>>>,
         mut f: F,
     ) {
         let impls = self.trait_impls_of(def_id);
 
+        let trait_krate = def_id.krate;
+        let get_ty_crate = |ty: Ty<'tcx>| match ty.kind {
+            // Built-in types: these are defined in libcore
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Never
+            | ty::Tuple(..) => {
+                // HACK: Find a better way to get the CrateNum of libcore
+                Some(self.tcx().lang_items().sized_trait().unwrap().krate)
+            }
+
+            ty::Adt(adt, _) => {
+                // FIXME: Consider 'peeling away' fundamental types to
+                // determine the crates that could define impls for this type.
+                // For now, we conservatively check all crates for impls.
+                if adt.is_fundamental() { None } else { Some(adt.did.krate) }
+            }
+
+            ty::Foreign(did) => Some(did.krate),
+
+            // FIXME: Handle this similar to #[fundamental] types
+            ty::Ref(..) => None,
+
+            ty::Generator(did, ..) => Some(did.krate),
+            ty::GeneratorWitness(..) => None,
+            ty::Projection(..) | ty::UnnormalizedProjection(..) => None,
+            ty::Opaque(..) => None,
+
+            // The only possible impls are blanket impls, which
+            // must come from the crate that defined the trait
+            ty::Param(..) => Some(trait_krate),
+            ty::Dynamic(..) => None,
+            ty::Closure(did, _) => Some(did.krate),
+
+            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) | ty::Error => None,
+        };
+
+        let all_crates = input_tys.and_then(|tys| {
+            let mut crates: Option<FxHashSet<CrateNum>> =
+                tys.chain(std::iter::once(self_ty)).map(get_ty_crate).collect();
+            if let Some(crates) = crates.as_mut() {
+                crates.insert(trait_krate);
+            }
+            crates
+        });
+
+        let check_krate = |cnum: CrateNum| {
+            if let Some(all_crates) = &all_crates { all_crates.contains(&cnum) } else { true }
+        };
+
         for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
+            if check_krate(impl_def_id.krate) {
+                f(impl_def_id);
+            }
         }
 
         // simplify_type(.., false) basically replaces type parameters and
@@ -123,12 +205,16 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
-                    f(impl_def_id);
+                    if check_krate(impl_def_id.krate) {
+                        f(impl_def_id);
+                    }
                 }
             }
         } else {
             for &impl_def_id in impls.non_blanket_impls.values().flatten() {
-                f(impl_def_id);
+                if check_krate(impl_def_id.krate) {
+                    f(impl_def_id);
+                }
             }
         }
     }
