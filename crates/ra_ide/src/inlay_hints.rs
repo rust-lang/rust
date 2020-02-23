@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Function, HirDisplay, SourceAnalyzer, SourceBinder};
+use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
@@ -112,58 +112,74 @@ fn get_param_name_hints(
     // we need args len to determine whether to skip or not the &self parameter
     .collect::<Vec<_>>();
 
-    let (has_self_param, fn_signature) = get_fn_signature(db, analyzer, &expr)?;
-    let parameters = if has_self_param && fn_signature.parameter_names.len() > args.len() {
-        fn_signature.parameter_names.into_iter().skip(1)
-    } else {
-        fn_signature.parameter_names.into_iter().skip(0)
-    };
+    let fn_signature = get_fn_signature(db, analyzer, &expr)?;
+    let n_params_to_skip =
+        if fn_signature.has_self_param && fn_signature.parameter_names.len() > args.len() {
+            1
+        } else {
+            0
+        };
+    let parameters = fn_signature.parameter_names.iter().skip(n_params_to_skip);
 
-    let hints =
-        parameters
-            .zip(args)
-            .filter_map(|(param, arg)| {
-                if !param.is_empty() {
-                    Some((arg.syntax().text_range(), param))
-                } else {
-                    None
-                }
-            })
-            .map(|(range, param_name)| InlayHint {
-                range,
-                kind: InlayKind::ParameterHint,
-                label: param_name.into(),
-            });
+    let hints = parameters
+        .zip(args)
+        .filter(|(param, arg)| {
+            should_show_param_hint(&fn_signature, param, &arg.syntax().to_string())
+        })
+        .map(|(param_name, arg)| InlayHint {
+            range: arg.syntax().text_range(),
+            kind: InlayKind::ParameterHint,
+            label: param_name.into(),
+        });
 
     acc.extend(hints);
     Some(())
+}
+
+fn should_show_param_hint(
+    fn_signature: &FunctionSignature,
+    param_name: &str,
+    argument_string: &str,
+) -> bool {
+    if param_name.is_empty() || argument_string.ends_with(param_name) {
+        return false;
+    }
+
+    let parameters_len = if fn_signature.has_self_param {
+        fn_signature.parameters.len() - 1
+    } else {
+        fn_signature.parameters.len()
+    };
+    // avoid displaying hints for common functions like map, filter, etc.
+    if parameters_len == 1 && (param_name.len() == 1 || param_name == "predicate") {
+        return false;
+    }
+
+    true
 }
 
 fn get_fn_signature(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     expr: &ast::Expr,
-) -> Option<(bool, FunctionSignature)> {
+) -> Option<FunctionSignature> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             // FIXME: Type::as_callable is broken for closures
             let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
-                    let fn_def: Function = it.into();
-                    Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
+                    Some(FunctionSignature::from_hir(db, it.into()))
                 }
-                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into())
-                    .map(|signature| (false, signature)),
+                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into()),
                 hir::CallableDef::EnumVariantId(it) => {
                     FunctionSignature::from_enum_variant(db, it.into())
-                        .map(|signature| (false, signature))
                 }
             }
         }
         ast::Expr::MethodCallExpr(expr) => {
             let fn_def = analyzer.resolve_method_call(&expr)?;
-            Some((fn_def.has_self_param(db), FunctionSignature::from_hir(db, fn_def)))
+            Some(FunctionSignature::from_hir(db, fn_def))
         }
         _ => None,
     }
@@ -723,11 +739,41 @@ fn main() {
     fn function_call_parameter_hint() {
         let (analysis, file_id) = single_file(
             r#"
+enum CustomOption<T> {
+    None,
+    Some(T),
+}
+
+struct FileId {}
+struct SmolStr {}
+
+impl From<&str> for SmolStr {
+    fn from(_: &str) -> Self {
+        unimplemented!()
+    }
+}
+
+struct TextRange {}
+struct SyntaxKind {}
+struct NavigationTarget {}
+
 struct Test {}
 
 impl Test {
     fn method(&self, mut param: i32) -> i32 {
         param * 2
+    }
+
+    fn from_syntax(
+        file_id: FileId,
+        name: SmolStr,
+        focus_range: CustomOption<TextRange>,
+        full_range: TextRange,
+        kind: SyntaxKind,
+        docs: CustomOption<String>,
+        description: CustomOption<String>,
+    ) -> NavigationTarget {
+        NavigationTarget {}
     }
 }
 
@@ -741,52 +787,143 @@ fn main() {
     let t: Test = Test {};
     t.method(123);
     Test::method(&t, 3456);
+
+    Test::from_syntax(
+        FileId {},
+        "impl".into(),
+        CustomOption::None,
+        TextRange {},
+        SyntaxKind {},
+        CustomOption::None,
+        CustomOption::None,
+    );
 }"#,
         );
 
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [215; 226),
+                range: [777; 788),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [259; 260),
+                range: [821; 822),
                 kind: ParameterHint,
                 label: "foo",
             },
             InlayHint {
-                range: [262; 263),
+                range: [824; 825),
                 kind: ParameterHint,
                 label: "bar",
             },
             InlayHint {
-                range: [265; 272),
+                range: [827; 834),
                 kind: ParameterHint,
                 label: "msg",
             },
             InlayHint {
-                range: [277; 288),
+                range: [839; 850),
                 kind: ParameterHint,
                 label: "last",
             },
             InlayHint {
-                range: [331; 334),
+                range: [893; 896),
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: [354; 356),
+                range: [916; 918),
                 kind: ParameterHint,
                 label: "&self",
             },
             InlayHint {
-                range: [358; 362),
+                range: [920; 924),
                 kind: ParameterHint,
                 label: "param",
             },
+            InlayHint {
+                range: [959; 968),
+                kind: ParameterHint,
+                label: "file_id",
+            },
+            InlayHint {
+                range: [978; 991),
+                kind: ParameterHint,
+                label: "name",
+            },
+            InlayHint {
+                range: [1001; 1019),
+                kind: ParameterHint,
+                label: "focus_range",
+            },
+            InlayHint {
+                range: [1029; 1041),
+                kind: ParameterHint,
+                label: "full_range",
+            },
+            InlayHint {
+                range: [1051; 1064),
+                kind: ParameterHint,
+                label: "kind",
+            },
+            InlayHint {
+                range: [1074; 1092),
+                kind: ParameterHint,
+                label: "docs",
+            },
+            InlayHint {
+                range: [1102; 1120),
+                kind: ParameterHint,
+                label: "description",
+            },
         ]
+        "###
+        );
+    }
+
+    #[test]
+    fn omitted_parameters_hints_heuristics() {
+        let (analysis, file_id) = single_file(
+            r#"
+fn map(f: i32) {}
+fn filter(predicate: i32) {}
+
+struct TestVarContainer {
+    test_var: i32,
+}
+
+struct Test {}
+
+impl Test {
+    fn map(self, f: i32) -> Self {
+        self
+    }
+
+    fn filter(self, predicate: i32) -> Self {
+        self
+    }
+
+    fn no_hints_expected(&self, _: i32, test_var: i32) {}
+}
+
+fn main() {
+    let container: TestVarContainer = TestVarContainer { test_var: 42 };
+    let test: Test = Test {};
+
+    map(22);
+    filter(33);
+
+    let test_processed: Test = test.map(1).filter(2);
+
+    let test_var: i32 = 55;
+    test_processed.no_hints_expected(22, test_var);
+    test_processed.no_hints_expected(33, container.test_var);
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
+        []
         "###
         );
     }
