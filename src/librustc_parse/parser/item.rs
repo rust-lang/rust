@@ -36,9 +36,6 @@ impl<'a> Parser<'a> {
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
         let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
-        if let Some(ref item) = item {
-            self.error_on_illegal_default(item.defaultness);
-        }
         Ok(item.map(P))
     }
 
@@ -98,9 +95,10 @@ impl<'a> Parser<'a> {
         let mut def = self.parse_defaultness();
         let kind = self.parse_item_kind(&mut attrs, mac_allowed, lo, &vis, &mut def, req_name)?;
         if let Some((ident, kind)) = kind {
+            self.error_on_unconsumed_default(def, &kind);
             let span = lo.to(self.prev_span);
             let id = DUMMY_NODE_ID;
-            let item = Item { ident, attrs, id, kind, vis, defaultness: def, span, tokens: None };
+            let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
             return Ok(Some(item));
         }
 
@@ -137,9 +135,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Error in-case `default` was parsed in an in-appropriate context.
-    fn error_on_illegal_default(&self, def: Defaultness) {
+    fn error_on_unconsumed_default(&self, def: Defaultness, kind: &ItemKind) {
         if let Defaultness::Default(span) = def {
-            self.struct_span_err(span, "item cannot be `default`")
+            let msg = format!("{} {} cannot be `default`", kind.article(), kind.descr());
+            self.struct_span_err(span, &msg)
                 .span_label(span, "`default` because of this")
                 .note("only associated `fn`, `const`, and `type` items can be `default`")
                 .emit();
@@ -156,6 +155,8 @@ impl<'a> Parser<'a> {
         def: &mut Defaultness,
         req_name: ReqName,
     ) -> PResult<'a, Option<ItemInfo>> {
+        let mut def = || mem::replace(def, Defaultness::Final);
+
         let info = if self.eat_keyword(kw::Use) {
             // USE ITEM
             let tree = self.parse_use_tree()?;
@@ -164,7 +165,7 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name)?;
-            (ident, ItemKind::Fn(sig, generics, body))
+            (ident, ItemKind::Fn(def(), sig, generics, body))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
@@ -177,11 +178,13 @@ impl<'a> Parser<'a> {
             // STATIC ITEM
             self.bump(); // `static`
             let m = self.parse_mutability();
-            self.parse_item_const(Some(m))?
+            let (ident, ty, expr) = self.parse_item_global(Some(m))?;
+            (ident, ItemKind::Static(ty, m, expr))
         } else if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             self.recover_const_mut(const_span);
-            self.parse_item_const(None)?
+            let (ident, ty, expr) = self.parse_item_global(None)?;
+            (ident, ItemKind::Const(def(), ty, expr))
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
@@ -189,13 +192,13 @@ impl<'a> Parser<'a> {
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
         {
             // IMPL ITEM
-            self.parse_item_impl(attrs, mem::replace(def, Defaultness::Final))?
+            self.parse_item_impl(attrs, def())?
         } else if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
-            self.parse_type_alias()?
+            self.parse_type_alias(def())?
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -652,19 +655,19 @@ impl<'a> Parser<'a> {
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         let attrs = self.parse_outer_attributes()?;
         let it = self.parse_item_common(attrs, true, false, req_name)?;
-        Ok(it.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
+        Ok(it.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
             let kind = match kind {
                 ItemKind::Mac(a) => AssocItemKind::Macro(a),
-                ItemKind::Fn(a, b, c) => AssocItemKind::Fn(a, b, c),
-                ItemKind::TyAlias(a, b, c) => AssocItemKind::TyAlias(a, b, c),
-                ItemKind::Const(a, c) => AssocItemKind::Const(a, c),
+                ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
+                ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
+                ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
                 ItemKind::Static(a, _, b) => {
                     self.struct_span_err(span, "associated `static` items are not allowed").emit();
-                    AssocItemKind::Const(a, b)
+                    AssocItemKind::Const(Defaultness::Final, a, b)
                 }
                 _ => return self.error_bad_item_kind(span, &kind, "`trait` or `impl`"),
             };
-            Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
+            Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
     }
 
@@ -673,7 +676,7 @@ impl<'a> Parser<'a> {
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
     /// ```
     /// The `"type"` has already been eaten.
-    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, ItemKind)> {
+    fn parse_type_alias(&mut self, def: Defaultness) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -685,7 +688,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, ItemKind::TyAlias(generics, bounds, default)))
+        Ok((ident, ItemKind::TyAlias(def, generics, bounds, default)))
     }
 
     /// Parses a `UseTree`.
@@ -843,20 +846,19 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         let item = self.parse_item_common(attrs, true, false, |_| true)?;
-        Ok(item.map(|Item { attrs, id, span, vis, ident, defaultness, kind, tokens }| {
-            self.error_on_illegal_default(defaultness);
+        Ok(item.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
             let kind = match kind {
                 ItemKind::Mac(a) => ForeignItemKind::Macro(a),
-                ItemKind::Fn(a, b, c) => ForeignItemKind::Fn(a, b, c),
-                ItemKind::TyAlias(a, b, c) => ForeignItemKind::TyAlias(a, b, c),
+                ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
+                ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
                 ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
-                ItemKind::Const(a, b) => {
+                ItemKind::Const(_, a, b) => {
                     self.error_on_foreign_const(span, ident);
                     ForeignItemKind::Static(a, Mutability::Not, b)
                 }
                 _ => return self.error_bad_item_kind(span, &kind, "`extern` block"),
             };
-            Some(P(Item { attrs, id, span, vis, ident, defaultness, kind, tokens }))
+            Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
     }
 
@@ -916,7 +918,10 @@ impl<'a> Parser<'a> {
     /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
     ///
     /// When `m` is `"const"`, `$ident` may also be `"_"`.
-    fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
+    fn parse_item_global(
+        &mut self,
+        m: Option<Mutability>,
+    ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
         let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
 
         // Parse the type of a `const` or `static mut?` item.
@@ -929,12 +934,7 @@ impl<'a> Parser<'a> {
 
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
         self.expect_semi()?;
-
-        let item = match m {
-            Some(m) => ItemKind::Static(ty, m, expr),
-            None => ItemKind::Const(ty, expr),
-        };
-        Ok((id, item))
+        Ok((id, ty, expr))
     }
 
     /// We were supposed to parse `:` but the `:` was missing.

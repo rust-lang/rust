@@ -462,7 +462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::TyAlias(ref generics, ..)
+                    | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -490,7 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lctx.allocate_hir_id_counter(item.id);
                 let owner = match (&item.kind, ctxt) {
                     // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, _, None), AssocCtxt::Trait) => None,
+                    (AssocItemKind::Fn(_, _, _, None), AssocCtxt::Trait) => None,
                     _ => Some(item.id),
                 };
                 self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));

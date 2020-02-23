@@ -464,7 +464,6 @@ impl CStore {
                     legacy: def.legacy,
                 }),
                 vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                defaultness: ast::Defaultness::Final,
                 tokens: None,
             },
             data.root.edition,

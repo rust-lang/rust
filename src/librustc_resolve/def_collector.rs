@@ -117,7 +117,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.is_async() => {
+            ItemKind::Fn(_, sig, generics, body) if sig.header.asyncness.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -215,7 +215,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
-            AssocItemKind::Fn(FnSig { header, decl }, generics, body)
+            AssocItemKind::Fn(_, FnSig { header, decl }, generics, body)
                 if header.asyncness.is_async() =>
             {
                 return self.visit_async_fn(

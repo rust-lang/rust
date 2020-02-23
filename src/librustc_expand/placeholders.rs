@@ -26,7 +26,6 @@ pub fn placeholder(
     let ident = ast::Ident::invalid();
     let attrs = Vec::new();
     let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
-    let defaultness = ast::Defaultness::Final;
     let span = DUMMY_SP;
     let expr_placeholder = || {
         P(ast::Expr {
@@ -47,7 +46,6 @@ pub fn placeholder(
             span,
             ident,
             vis,
-            defaultness,
             attrs,
             kind: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
@@ -59,7 +57,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
@@ -69,7 +66,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ForeignItems => {
@@ -78,7 +74,6 @@ pub fn placeholder(
                 span,
                 ident,
                 vis,
-                defaultness,
                 attrs,
                 kind: ast::ForeignItemKind::Macro(mac_placeholder()),
                 tokens: None,

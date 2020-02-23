@@ -437,8 +437,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(_, ref generics, _)
-            | ForeignItemKind::TyAlias(ref generics, ..) => {
+            ForeignItemKind::Fn(_, _, ref generics, _)
+            | ForeignItemKind::TyAlias(_, ref generics, ..) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -797,7 +797,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
         match item.kind {
-            ItemKind::TyAlias(ref generics, _, _) | ItemKind::Fn(_, ref generics, _) => {
+            ItemKind::TyAlias(_, ref generics, _, _) | ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
                 });
@@ -837,7 +837,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             this.with_trait_items(trait_items, |this| {
                                 match &item.kind {
                                     AssocItemKind::Static(ty, _, default)
-                                    | AssocItemKind::Const(ty, default) => {
+                                    | AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
                                         // Only impose the restrictions of `ConstRibKind` for an
                                         // actual constant expression in a provided default.
@@ -845,10 +845,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             this.with_constant_rib(|this| this.visit_expr(expr));
                                         }
                                     }
-                                    AssocItemKind::Fn(_, generics, _) => {
+                                    AssocItemKind::Fn(_, _, generics, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::TyAlias(generics, _, _) => {
+                                    AssocItemKind::TyAlias(_, generics, _, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
                                     AssocItemKind::Macro(_) => {
@@ -878,7 +878,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(ref ty, ref expr) => {
+            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
                 debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
@@ -1015,7 +1015,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             trait_items
                 .iter()
                 .filter_map(|item| match &item.kind {
-                    AssocItemKind::TyAlias(_, bounds, _) if bounds.len() == 0 => Some(item.ident),
+                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.len() == 0 => {
+                        Some(item.ident)
+                    }
                     _ => None,
                 })
                 .collect(),
@@ -1125,7 +1127,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 visit::walk_assoc_item(this, item, AssocCtxt::Impl)
                                             });
                                         }
-                                        AssocItemKind::Fn(_, generics, _) => {
+                                        AssocItemKind::Fn(_, _, generics, _) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1148,7 +1150,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::TyAlias(generics, _, _) => {
+                                        AssocItemKind::TyAlias(_, generics, _, _) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,

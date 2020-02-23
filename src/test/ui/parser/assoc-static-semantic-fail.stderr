@@ -10,62 +10,110 @@ error: associated `static` items are not allowed
 LL |     static IB: u8;
    |     ^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:14:5
+   |
+LL |     default static IC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
   --> $DIR/assoc-static-semantic-fail.rs:14:5
    |
 LL |     default static IC: u8 = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:17:16
+   |
+LL |     pub(crate) default static ID: u8;
+   |                ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:16:5
+  --> $DIR/assoc-static-semantic-fail.rs:17:5
    |
 LL |     pub(crate) default static ID: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:22:5
+  --> $DIR/assoc-static-semantic-fail.rs:24:5
    |
 LL |     static TA: u8 = 0;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:24:5
+  --> $DIR/assoc-static-semantic-fail.rs:26:5
    |
 LL |     static TB: u8;
    |     ^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:28:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:26:5
+  --> $DIR/assoc-static-semantic-fail.rs:28:5
    |
 LL |     default static TC: u8 = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:31:16
+   |
+LL |     pub(crate) default static TD: u8;
+   |                ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:29:5
+  --> $DIR/assoc-static-semantic-fail.rs:31:5
    |
 LL |     pub(crate) default static TD: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:36:5
+  --> $DIR/assoc-static-semantic-fail.rs:38:5
    |
 LL |     static TA: u8 = 0;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:38:5
+  --> $DIR/assoc-static-semantic-fail.rs:40:5
    |
 LL |     static TB: u8;
    |     ^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:43:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:41:5
+  --> $DIR/assoc-static-semantic-fail.rs:43:5
    |
 LL |     default static TC: u8 = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-semantic-fail.rs:46:9
+   |
+LL |     pub default static TD: u8;
+   |         ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
 error: associated `static` items are not allowed
-  --> $DIR/assoc-static-semantic-fail.rs:43:5
+  --> $DIR/assoc-static-semantic-fail.rs:46:5
    |
 LL |     pub default static TD: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,37 +127,21 @@ LL |     static IB: u8;
    |                  help: provide a definition for the constant: `= <expr>;`
 
 error: associated constant in `impl` without body
-  --> $DIR/assoc-static-semantic-fail.rs:16:5
+  --> $DIR/assoc-static-semantic-fail.rs:17:5
    |
 LL |     pub(crate) default static ID: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |                                     |
    |                                     help: provide a definition for the constant: `= <expr>;`
 
-error: `default` is only allowed on items in `impl` definitions
-  --> $DIR/assoc-static-semantic-fail.rs:26:5
-   |
-LL |     default static TC: u8 = 0;
-   |     -------^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     `default` because of this
-
-error: `default` is only allowed on items in `impl` definitions
-  --> $DIR/assoc-static-semantic-fail.rs:29:5
-   |
-LL |     pub(crate) default static TD: u8;
-   |     ^^^^^^^^^^^-------^^^^^^^^^^^^^^^
-   |                |
-   |                `default` because of this
-
 error[E0449]: unnecessary visibility qualifier
-  --> $DIR/assoc-static-semantic-fail.rs:29:5
+  --> $DIR/assoc-static-semantic-fail.rs:31:5
    |
 LL |     pub(crate) default static TD: u8;
    |     ^^^^^^^^^^
 
 error: associated constant in `impl` without body
-  --> $DIR/assoc-static-semantic-fail.rs:38:5
+  --> $DIR/assoc-static-semantic-fail.rs:40:5
    |
 LL |     static TB: u8;
    |     ^^^^^^^^^^^^^-
@@ -117,7 +149,7 @@ LL |     static TB: u8;
    |                  help: provide a definition for the constant: `= <expr>;`
 
 error: associated constant in `impl` without body
-  --> $DIR/assoc-static-semantic-fail.rs:43:5
+  --> $DIR/assoc-static-semantic-fail.rs:46:5
    |
 LL |     pub default static TD: u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -125,11 +157,11 @@ LL |     pub default static TD: u8;
    |                              help: provide a definition for the constant: `= <expr>;`
 
 error[E0449]: unnecessary visibility qualifier
-  --> $DIR/assoc-static-semantic-fail.rs:43:5
+  --> $DIR/assoc-static-semantic-fail.rs:46:5
    |
 LL |     pub default static TD: u8;
    |     ^^^ `pub` not permitted here because it's implied
 
-error: aborting due to 20 previous errors
+error: aborting due to 24 previous errors
 
 For more information about this error, try `rustc --explain E0449`.

@@ -2421,9 +2421,6 @@ pub struct Item<K = ItemKind> {
     /// The name of the item.
     /// It might be a dummy name in case of anonymous items.
     pub ident: Ident,
-    /// The `default`ness of this item.
-    /// This should only occur in syntactically well-formed code in associated contexts.
-    pub defaultness: Defaultness,
 
     pub kind: K,
 
@@ -2509,11 +2506,11 @@ pub enum ItemKind {
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(P<Ty>, Option<P<Expr>>),
+    Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(FnSig, Generics, Option<P<Block>>),
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2527,7 +2524,7 @@ pub enum ItemKind {
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2607,8 +2604,8 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(_, generics, _)
-            | Self::TyAlias(generics, ..)
+            Self::Fn(_, _, generics, _)
+            | Self::TyAlias(_, generics, ..)
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)
@@ -2640,13 +2637,22 @@ pub type AssocItem = Item<AssocItemKind>;
 pub enum AssocItemKind {
     /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
     /// If `def` is parsed, then the constant is provided, and otherwise required.
-    Const(P<Ty>, Option<P<Expr>>),
+    Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// A static item (`static FOO: u8`).
     Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A function.
-    Fn(FnSig, Generics, Option<P<Block>>),
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
     /// A type.
-    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// A macro expanding to items.
     Macro(Mac),
+}
+
+impl AssocItemKind {
+    pub fn defaultness(&self) -> Defaultness {
+        match *self {
+            Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
+            Self::Macro(..) | Self::Static(..) => Defaultness::Final,
+        }
+    }
 }
