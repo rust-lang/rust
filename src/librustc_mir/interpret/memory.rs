@@ -150,7 +150,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// through a pointer that was created by the program.
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
+        let id = M::canonical_alloc_id(self, ptr.alloc_id);
+        ptr.with_tag(M::tag_static_base_pointer(&self.extra, id))
     }
 
     pub fn create_fn_alloc(

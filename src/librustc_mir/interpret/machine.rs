@@ -253,6 +253,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Return the "base" tag for the given *static* allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
     /// this will return an unusable tag (i.e., accesses will be UB)!
+    ///
+    /// Expects `id` to be already canonical, if needed.
     fn tag_static_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
 
     /// Executes a retagging operation
