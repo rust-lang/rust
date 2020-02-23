@@ -373,7 +373,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// if this is not the case.
     fn assert_platform(&self, platform: &str, name: &str) {
         assert_eq!(
-            self.eval_context_ref().tcx.sess.target.target.target_os.to_lowercase(),
+            self.eval_context_ref().tcx.sess.target.target.target_os,
             platform,
             "`{}` is only available on the `{}` platform",
             name,

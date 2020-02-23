@@ -455,7 +455,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
-            _ => match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
+            _ => match this.tcx.sess.target.target.target_os.as_str() {
                 "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 target => throw_unsup_format!("The {} target platform is not supported", target),
