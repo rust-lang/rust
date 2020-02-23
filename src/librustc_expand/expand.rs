@@ -14,6 +14,8 @@ use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
+use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
@@ -1086,6 +1088,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
+            }
+
+            if attr.doc_str().is_some() {
+                self.cx.parse_sess.buffer_lint_with_diagnostic(
+                    &UNUSED_DOC_COMMENTS,
+                    attr.span,
+                    ast::CRATE_NODE_ID,
+                    "unused doc comment",
+                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                );
             }
         }
     }

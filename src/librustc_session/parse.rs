@@ -176,6 +176,25 @@ impl ParseSess {
         });
     }
 
+    pub fn buffer_lint_with_diagnostic(
+        &self,
+        lint: &'static Lint,
+        span: impl Into<MultiSpan>,
+        node_id: NodeId,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        self.buffered_lints.with_lock(|buffered_lints| {
+            buffered_lints.push(BufferedEarlyLint {
+                span: span.into(),
+                node_id,
+                msg: msg.into(),
+                lint_id: LintId::of(lint),
+                diagnostic,
+            });
+        });
+    }
+
     /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
     /// parser to continue parsing the following operation as part of the same expression.
     pub fn expr_parentheses_needed(
