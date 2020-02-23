@@ -1,3 +1,4 @@
+// run-rustfix
 #![warn(clippy::suboptimal_flops)]
 
 fn main() {
@@ -12,8 +13,12 @@ fn main() {
     let _ = x.powf(1.0 / 3.0);
     let _ = x.powf(2.0);
     let _ = x.powf(-2.0);
+    let _ = x.powf(16_777_215.0);
+    let _ = x.powf(-16_777_215.0);
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);
+    let _ = x.powf(16_777_216.0);
+    let _ = x.powf(-16_777_216.0);
 
     let x = 3f64;
     let _ = 2f64.powf(x);
@@ -26,6 +31,10 @@ fn main() {
     let _ = x.powf(1.0 / 3.0);
     let _ = x.powf(2.0);
     let _ = x.powf(-2.0);
+    let _ = x.powf(-2_147_483_648.0);
+    let _ = x.powf(2_147_483_647.0);
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);
+    let _ = x.powf(-2_147_483_649.0);
+    let _ = x.powf(2_147_483_648.0);
 }

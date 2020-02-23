@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+// run-rustfix
+#![allow(dead_code, clippy::double_parens)]
 #![warn(clippy::suboptimal_flops)]
 
 const TWO: f32 = 2.0;
