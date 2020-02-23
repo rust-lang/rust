@@ -1,7 +1,8 @@
 //! ICH - Incremental Compilation Hash
 
 pub use self::hcx::{
-    hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
+    hash_stable_trait_impls, hash_stable_trait_impls_by_crate, NodeIdHashingMode,
+    StableHashingContext, StableHashingContextProvider,
 };
 crate use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::symbol::{sym, Symbol};

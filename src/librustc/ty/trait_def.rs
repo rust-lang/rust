@@ -42,9 +42,9 @@ pub struct TraitDef {
 
 #[derive(Default)]
 pub struct TraitImpls {
-    blanket_impls: Vec<DefId>,
+    blanket_impls: FxHashMap<CrateNum, Vec<DefId>>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: FxHashMap<CrateNum, FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>>,
 }
 
 impl<'tcx> TraitDef {
@@ -72,11 +72,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
         let impls = self.trait_impls_of(def_id);
 
-        for &impl_def_id in impls.blanket_impls.iter() {
+        for &impl_def_id in impls.blanket_impls.values().flat_map(std::convert::identity) {
             f(impl_def_id);
         }
 
-        for v in impls.non_blanket_impls.values() {
+        for v in impls.non_blanket_impls.values().flat_map(|m| m.values()) {
             for &impl_def_id in v {
                 f(impl_def_id);
             }
@@ -167,14 +167,35 @@ impl<'tcx> TyCtxt<'tcx> {
             crates
         });
 
-        let check_krate = |cnum: CrateNum| {
+        fn for_each_non_blanket_impl(
+            all_crates: &Option<FxHashSet<CrateNum>>,
+            impls: &TraitImpls,
+            mut cb: impl FnMut(&FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>),
+        ) {
+            if let Some(all_crates) = &all_crates {
+                for cnum in all_crates {
+                    impls.non_blanket_impls.get(&cnum).map(|val| cb(val));
+                }
+            } else {
+                impls.non_blanket_impls.values().for_each(|val| cb(val));
+            }
+        }
+        /*let check_krate = |cnum: CrateNum| {
             if let Some(all_crates) = &all_crates { all_crates.contains(&cnum) } else { true }
-        };
+        };*/
 
-        for &impl_def_id in impls.blanket_impls.iter() {
+        /*for &impl_def_id in impls.blanket_impls.iter() {
             if check_krate(impl_def_id.krate) {
                 f(impl_def_id);
             }
+        }*/
+
+        if let Some(all_crates) = &all_crates {
+            for cnum in all_crates {
+                impls.blanket_impls.get(&cnum).map(|impls| impls.iter().for_each(|val| f(*val)));
+            }
+        } else {
+            impls.blanket_impls.values().flat_map(std::convert::identity).for_each(|val| f(*val));
         }
 
         // simplify_type(.., false) basically replaces type parameters and
@@ -203,19 +224,31 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // I think we'll cross that bridge when we get to it.
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                for &impl_def_id in impls {
-                    if check_krate(impl_def_id.krate) {
-                        f(impl_def_id);
+            for_each_non_blanket_impl(
+                &all_crates,
+                &impls,
+                |non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>| {
+                    if let Some(impls) = non_blanket_impls.get(&simp) {
+                        for &impl_def_id in impls {
+                            //if check_krate(impl_def_id.krate) {
+                            f(impl_def_id);
+                            //}
+                        }
                     }
-                }
-            }
+                },
+            );
         } else {
-            for &impl_def_id in impls.non_blanket_impls.values().flatten() {
-                if check_krate(impl_def_id.krate) {
-                    f(impl_def_id);
-                }
-            }
+            for_each_non_blanket_impl(
+                &all_crates,
+                &impls,
+                |non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>| {
+                    for &impl_def_id in non_blanket_impls.values().flatten() {
+                        //if check_krate(impl_def_id.krate) {
+                        f(impl_def_id);
+                        //}
+                    }
+                },
+            );
         }
     }
 
@@ -225,8 +258,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
         impls
             .blanket_impls
-            .iter()
-            .chain(impls.non_blanket_impls.values().flatten())
+            .values()
+            .flatten()
+            .chain(impls.non_blanket_impls.values().flat_map(|v| v.values()).flatten())
             .cloned()
             .collect()
     }
@@ -244,9 +278,15 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> &Trai
             }
 
             if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
-                impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+                impls
+                    .non_blanket_impls
+                    .entry(impl_def_id.krate)
+                    .or_default()
+                    .entry(simplified_self_ty)
+                    .or_default()
+                    .push(impl_def_id);
             } else {
-                impls.blanket_impls.push(impl_def_id);
+                impls.blanket_impls.entry(impl_def_id.krate).or_default().push(impl_def_id);
             }
         };
 
@@ -272,6 +312,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TraitImpls { ref blanket_impls, ref non_blanket_impls } = *self;
 
-        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
+        ich::hash_stable_trait_impls_by_crate(hcx, hasher, blanket_impls, non_blanket_impls);
     }
 }

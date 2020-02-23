@@ -15,6 +15,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
 use syntax::ast;
 
+use rustc_span::def_id::CrateNum;
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
@@ -241,6 +242,49 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         byte: BytePos,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.source_map().byte_pos_to_line_and_col(byte)
+    }
+}
+
+pub fn hash_stable_trait_impls_by_crate<'a>(
+    hcx: &mut StableHashingContext<'a>,
+    hasher: &mut StableHasher,
+    blanket_impls: &FxHashMap<CrateNum, Vec<DefId>>,
+    non_blanket_impls: &FxHashMap<CrateNum, FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>>,
+) {
+    {
+        let mut blanket_impls: SmallVec<[_; 8]> =
+            blanket_impls.values().flatten().map(|&def_id| hcx.def_path_hash(def_id)).collect();
+
+        if blanket_impls.len() > 1 {
+            blanket_impls.sort_unstable();
+        }
+
+        blanket_impls.hash_stable(hcx, hasher);
+    }
+
+    {
+        let mut keys: SmallVec<[_; 8]> = non_blanket_impls
+            .iter()
+            .flat_map(|(krate, m)| {
+                let hcx = &hcx;
+                m.keys().map(move |k| ((krate, k), k.map_def(|d| hcx.def_path_hash(d))))
+            })
+            .collect();
+        keys.sort_unstable_by(|&(_, ref k1), &(_, ref k2)| k1.cmp(k2));
+        keys.len().hash_stable(hcx, hasher);
+        for ((krate, key), ref stable_key) in keys {
+            stable_key.hash_stable(hcx, hasher);
+            let mut impls: SmallVec<[_; 8]> = non_blanket_impls[&krate][key]
+                .iter()
+                .map(|&impl_id| hcx.def_path_hash(impl_id))
+                .collect();
+
+            if impls.len() > 1 {
+                impls.sort_unstable();
+            }
+
+            impls.hash_stable(hcx, hasher);
+        }
     }
 }
 

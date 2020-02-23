@@ -33,6 +33,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(marker_trait_attr)]
 #![feature(extern_types)]
+#![feature(fn_traits)]
 #![feature(nll)]
 #![feature(option_expect_none)]
 #![feature(range_is_empty)]
