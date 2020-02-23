@@ -722,4 +722,254 @@ make_backup = false
             assert_eq!(config.imports_granularity(), ImportGranularity::Module);
         }
     }
+
+    #[cfg(test)]
+    mod use_small_heuristics {
+        use super::*;
+
+        #[test]
+        fn test_default_sets_correct_widths() {
+            let toml = r#"
+                use_small_heuristics = "Default"
+                max_width = 200
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), 120);
+            assert_eq!(config.attr_fn_like_width(), 140);
+            assert_eq!(config.chain_width(), 120);
+            assert_eq!(config.fn_call_width(), 120);
+            assert_eq!(config.single_line_if_else_max_width(), 100);
+            assert_eq!(config.struct_lit_width(), 36);
+            assert_eq!(config.struct_variant_width(), 70);
+        }
+
+        #[test]
+        fn test_max_sets_correct_widths() {
+            let toml = r#"
+                use_small_heuristics = "Max"
+                max_width = 120
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), 120);
+            assert_eq!(config.attr_fn_like_width(), 120);
+            assert_eq!(config.chain_width(), 120);
+            assert_eq!(config.fn_call_width(), 120);
+            assert_eq!(config.single_line_if_else_max_width(), 120);
+            assert_eq!(config.struct_lit_width(), 120);
+            assert_eq!(config.struct_variant_width(), 120);
+        }
+
+        #[test]
+        fn test_off_sets_correct_widths() {
+            let toml = r#"
+                use_small_heuristics = "Off"
+                max_width = 100
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), usize::max_value());
+            assert_eq!(config.attr_fn_like_width(), usize::max_value());
+            assert_eq!(config.chain_width(), usize::max_value());
+            assert_eq!(config.fn_call_width(), usize::max_value());
+            assert_eq!(config.single_line_if_else_max_width(), 0);
+            assert_eq!(config.struct_lit_width(), 0);
+            assert_eq!(config.struct_variant_width(), 0);
+        }
+
+        #[test]
+        fn test_override_works_with_default() {
+            let toml = r#"
+                use_small_heuristics = "Default"
+                array_width = 20
+                attr_fn_like_width = 40
+                chain_width = 20
+                fn_call_width = 90
+                single_line_if_else_max_width = 40
+                struct_lit_width = 30
+                struct_variant_width = 34
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), 20);
+            assert_eq!(config.attr_fn_like_width(), 40);
+            assert_eq!(config.chain_width(), 20);
+            assert_eq!(config.fn_call_width(), 90);
+            assert_eq!(config.single_line_if_else_max_width(), 40);
+            assert_eq!(config.struct_lit_width(), 30);
+            assert_eq!(config.struct_variant_width(), 34);
+        }
+
+        #[test]
+        fn test_override_with_max() {
+            let toml = r#"
+                use_small_heuristics = "Max"
+                array_width = 20
+                attr_fn_like_width = 40
+                chain_width = 20
+                fn_call_width = 90
+                single_line_if_else_max_width = 40
+                struct_lit_width = 30
+                struct_variant_width = 34
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), 20);
+            assert_eq!(config.attr_fn_like_width(), 40);
+            assert_eq!(config.chain_width(), 20);
+            assert_eq!(config.fn_call_width(), 90);
+            assert_eq!(config.single_line_if_else_max_width(), 40);
+            assert_eq!(config.struct_lit_width(), 30);
+            assert_eq!(config.struct_variant_width(), 34);
+        }
+
+        #[test]
+        fn test_override_with_off() {
+            let toml = r#"
+                use_small_heuristics = "Off"
+                array_width = 20
+                attr_fn_like_width = 40
+                chain_width = 20
+                fn_call_width = 90
+                single_line_if_else_max_width = 40
+                struct_lit_width = 30
+                struct_variant_width = 34
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.array_width(), 20);
+            assert_eq!(config.attr_fn_like_width(), 40);
+            assert_eq!(config.chain_width(), 20);
+            assert_eq!(config.fn_call_width(), 90);
+            assert_eq!(config.single_line_if_else_max_width(), 40);
+            assert_eq!(config.struct_lit_width(), 30);
+            assert_eq!(config.struct_variant_width(), 34);
+        }
+
+        #[test]
+        #[should_panic(expected = "`fn_call_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_fn_call_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                fn_call_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`attr_fn_like_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_attr_fn_like_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                attr_fn_like_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(expected = "`struct_lit_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_struct_lit_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                struct_lit_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`struct_variant_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_struct_variant_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                struct_variant_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(expected = "`array_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_array_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                array_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(expected = "`chain_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_chain_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                chain_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`single_line_if_else_max_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_single_line_if_else_max_width_config_exceeds_max_width() {
+            let toml = r#"
+                max_width = 80
+                single_line_if_else_max_width = 90
+            "#;
+            Config::from_toml(toml, Path::new("")).unwrap();
+        }
+
+        #[test]
+        #[should_panic(expected = "`fn_call_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_fn_call_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("fn_call_width", "101");
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`attr_fn_like_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_attr_fn_like_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("attr_fn_like_width", "101");
+        }
+
+        #[test]
+        #[should_panic(expected = "`struct_lit_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_struct_lit_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("struct_lit_width", "101");
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`struct_variant_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_struct_variant_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("struct_variant_width", "101");
+        }
+
+        #[test]
+        #[should_panic(expected = "`array_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_array_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("array_width", "101");
+        }
+
+        #[test]
+        #[should_panic(expected = "`chain_width` cannot have a value that exceeds `max_width")]
+        fn test_panics_when_chain_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("chain_width", "101");
+        }
+
+        #[test]
+        #[should_panic(
+            expected = "`single_line_if_else_max_width` cannot have a value that exceeds `max_width"
+        )]
+        fn test_panics_when_single_line_if_else_max_width_override_exceeds_max_width() {
+            let mut config = Config::default();
+            config.override_value("single_line_if_else_max_width", "101");
+        }
+    }
 }
