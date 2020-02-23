@@ -156,8 +156,7 @@ impl<'a> Parser<'a> {
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
-            let (ident, ty, generics) = self.parse_type_alias()?;
-            (ident, ItemKind::TyAlias(ty, generics))
+            self.parse_type_alias()?
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -676,7 +675,10 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
     ) -> PResult<'a, (Ident, AssocItemKind)> {
         if self.eat_keyword(kw::Type) {
-            self.parse_assoc_ty()
+            match self.parse_type_alias()? {
+                (ident, ItemKind::TyAlias(a, b, c)) => Ok((ident, AssocItemKind::TyAlias(a, b, c))),
+                _ => unreachable!(),
+            }
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, req_name)?;
             Ok((ident, AssocItemKind::Fn(sig, generics, body)))
@@ -700,10 +702,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses the following grammar:
-    ///
-    ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
+    /// Parses a `type` alias with the following grammar:
+    /// ```
+    /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
+    /// ```
+    /// The `"type"` has already been eaten.
+    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, ItemKind)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -715,7 +719,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, AssocItemKind::TyAlias(generics, bounds, default)))
+        Ok((ident, ItemKind::TyAlias(generics, bounds, default)))
     }
 
     /// Parses a `UseTree`.
@@ -987,18 +991,6 @@ impl<'a> Parser<'a> {
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
         P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID })
-    }
-
-    /// Parses the grammar:
-    ///     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
-    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, P<Ty>, Generics)> {
-        let ident = self.parse_ident()?;
-        let mut tps = self.parse_generics()?;
-        tps.where_clause = self.parse_where_clause()?;
-        self.expect(&token::Eq)?;
-        let ty = self.parse_ty()?;
-        self.expect_semi()?;
-        Ok((ident, ty, tps))
     }
 
     /// Parses an enum declaration.

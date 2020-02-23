@@ -1311,12 +1311,15 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.process_mod(item);
                 visit::walk_mod(self, m);
             }
-            TyAlias(ref ty, ref ty_params) => {
+            TyAlias(ref ty_params, _, ref ty) => {
                 let qualname = format!(
                     "::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
                 );
-                let value = ty_to_string(&ty);
+                let value = match ty {
+                    Some(ty) => ty_to_string(&ty),
+                    None => "_".to_string(),
+                };
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_node_id(item.id, &self.save_ctxt);
@@ -1341,7 +1344,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
 
-                self.visit_ty(&ty);
+                walk_list!(self, visit_ty, ty);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
             Mac(_) => (),

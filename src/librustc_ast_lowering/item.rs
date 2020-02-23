@@ -297,28 +297,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
+            ItemKind::TyAlias(ref generics, _, Some(ref ty)) => match ty.kind.opaque_top_hack() {
                 None => {
                     let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                     let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
                     hir::ItemKind::TyAlias(ty, generics)
                 }
                 Some(bounds) => {
+                    let ctx = || ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc);
                     let ty = hir::OpaqueTy {
-                        generics: self.lower_generics(
-                            generics,
-                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
-                        ),
-                        bounds: self.lower_param_bounds(
-                            bounds,
-                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
-                        ),
+                        generics: self.lower_generics(generics, ctx()),
+                        bounds: self.lower_param_bounds(bounds, ctx()),
                         impl_trait_fn: None,
                         origin: hir::OpaqueTyOrigin::TypeAlias,
                     };
                     hir::ItemKind::OpaqueTy(ty)
                 }
             },
+            ItemKind::TyAlias(ref generics, _, None) => {
+                let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
+                let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
+                hir::ItemKind::TyAlias(ty, generics)
+            }
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
                     variants: self.arena.alloc_from_iter(
