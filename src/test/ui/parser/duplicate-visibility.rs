@@ -2,6 +2,6 @@ fn main() {}
 
 extern {
     pub pub fn foo();
-    //~^ ERROR visibility `pub` not followed by an item
+    //~^ ERROR visibility `pub` is not followed by an item
     //~| ERROR non-item in item list
 }

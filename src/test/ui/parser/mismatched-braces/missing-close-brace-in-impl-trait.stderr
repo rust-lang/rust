@@ -7,13 +7,13 @@ LL | impl T for () {
 LL |
    |                                                    ^
 
-error: trait not supported in `trait` or `impl`
+error: trait is not supported in `trait`s or `impl`s
   --> $DIR/missing-close-brace-in-impl-trait.rs:7:1
    |
 LL | trait T {
    | ^^^^^^^
 
-error: struct not supported in `trait` or `impl`
+error: struct is not supported in `trait`s or `impl`s
   --> $DIR/missing-close-brace-in-impl-trait.rs:11:1
    |
 LL | pub(crate) struct Bar<T>();

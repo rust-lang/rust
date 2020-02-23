@@ -1,4 +1,4 @@
-error: visibility `pub` not followed by an item
+error: visibility `pub` is not followed by an item
   --> $DIR/issue-41155.rs:4:5
    |
 LL |     pub

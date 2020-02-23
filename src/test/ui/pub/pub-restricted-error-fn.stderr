@@ -1,4 +1,4 @@
-error: visibility `pub(crate)` not followed by an item
+error: visibility `pub(crate)` is not followed by an item
   --> $DIR/pub-restricted-error-fn.rs:1:1
    |
 LL | pub(crate) () fn foo() {}
