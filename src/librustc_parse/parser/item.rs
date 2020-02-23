@@ -31,16 +31,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_item_(
         &mut self,
-        mut attrs: Vec<Attribute>,
+        attrs: Vec<Attribute>,
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
-        maybe_whole!(self, NtItem, |item| {
-            let mut item = item;
-            mem::swap(&mut item.attrs, &mut attrs);
-            item.attrs.extend(attrs);
-            Some(item)
-        });
         let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
         if let Some(ref item) = item {
             self.error_on_illegal_default(item.defaultness);
@@ -50,11 +44,18 @@ impl<'a> Parser<'a> {
 
     fn parse_item_common(
         &mut self,
-        attrs: Vec<Attribute>,
+        mut attrs: Vec<Attribute>,
         mac_allowed: bool,
         attrs_allowed: bool,
         req_name: ReqName,
     ) -> PResult<'a, Option<Item>> {
+        maybe_whole!(self, NtItem, |item| {
+            let mut item = item;
+            mem::swap(&mut item.attrs, &mut attrs);
+            item.attrs.extend(attrs);
+            Some(item.into_inner())
+        });
+
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
