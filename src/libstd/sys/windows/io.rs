@@ -2,6 +2,7 @@ use crate::marker::PhantomData;
 use crate::slice;
 use crate::sys::c;
 
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a> {
     vec: c::WSABUF,

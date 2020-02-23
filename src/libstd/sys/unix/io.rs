@@ -3,6 +3,7 @@ use crate::slice;
 
 use libc::{c_void, iovec};
 
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a> {
     vec: iovec,
