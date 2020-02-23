@@ -105,6 +105,21 @@ Start `cargo watch` for live error highlighting. Will prompt to install if it's 
 
 Stop `cargo watch`.
 
+#### Structural Seach and Replace 
+
+Search and replace with named wildcards that will match any expression. 
+The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`. A `$<name>:expr` placeholder in the search pattern will match any expression and `$<name>` will reference it in the replacement. Available via the command `rust-analyzer.ssr`.
+
+```rust
+// Using structural search replace command [foo($a:expr, $b:expr) ==>> ($a).foo($b)]
+
+// BEFORE
+String::from(foo(y + 5, z))
+
+// AFTER
+String::from((y + 5).foo(z))
+```
+
 ### Assists (Code Actions)
 
 Assists, or code actions, are small local refactorings, available in a particular context.
