@@ -63,6 +63,105 @@ impl FileHandler {
     }
 }
 
+impl<'mir, 'tcx> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Emulate `stat` or `lstat` on the `macos` platform. This function is not intended to be
+    /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
+    /// disabled or if the target platform is the correct one. Please use `macos_stat` or
+    /// `macos_lstat` instead.
+    fn macos_stat_or_lstat(
+        &mut self,
+        follow_symlink: bool,
+        path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let path_scalar = this.read_scalar(path_op)?.not_undef()?;
+        let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
+
+        let metadata = match FileMetadata::from_path(this, path, follow_symlink)? {
+            Some(metadata) => metadata,
+            None => return Ok(-1),
+        };
+        this.macos_stat_write_buf(metadata, buf_op)
+    }
+
+    fn macos_stat_write_buf(
+        &mut self,
+        metadata: FileMetadata,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let mode: u16 = metadata.mode.to_u16()?;
+
+        let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
+        let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
+        let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
+
+        let dev_t_layout = this.libc_ty_layout("dev_t")?;
+        let mode_t_layout = this.libc_ty_layout("mode_t")?;
+        let nlink_t_layout = this.libc_ty_layout("nlink_t")?;
+        let ino_t_layout = this.libc_ty_layout("ino_t")?;
+        let uid_t_layout = this.libc_ty_layout("uid_t")?;
+        let gid_t_layout = this.libc_ty_layout("gid_t")?;
+        let time_t_layout = this.libc_ty_layout("time_t")?;
+        let long_layout = this.libc_ty_layout("c_long")?;
+        let off_t_layout = this.libc_ty_layout("off_t")?;
+        let blkcnt_t_layout = this.libc_ty_layout("blkcnt_t")?;
+        let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
+        let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
+
+        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
+        let pad_layout = if this.tcx.sess.target.ptr_width == 64 {
+            uint32_t_layout
+        } else {
+            this.layout_of(this.tcx.mk_unit())?
+        };
+
+        let imms = [
+            immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
+            immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
+            immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
+            immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
+            immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
+            immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
+            immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
+            immty_from_uint_checked(0u128, pad_layout)?, // padding for 64-bit targets
+            immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
+            immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
+            immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
+            immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
+            immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
+            immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
+            immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
+            immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
+            immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
+            immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
+            immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
+            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
+            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_gen
+        ];
+
+        let buf = this.deref_operand(buf_op)?;
+        this.write_packed_immediates(buf, &imms)?;
+
+        Ok(0)
+    }
+
+    /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
+    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
+    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
+    /// types (like `read`, that returns an `i64`).
+    fn handle_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
+        let this = self.eval_context_mut();
+        let ebadf = this.eval_libc("EBADF")?;
+        this.set_last_error(ebadf)?;
+        Ok((-1).into())
+    }
+}
+
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn open(
@@ -432,29 +531,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        macos_stat_write_buf(this, metadata, buf_op)
-    }
-
-    /// Emulate `stat` or `lstat` on the `macos` platform. This function is not intended to be
-    /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
-    /// disabled or if the target platform is the correct one. Please use `macos_stat` or
-    /// `macos_lstat` instead.
-    fn macos_stat_or_lstat(
-        &mut self,
-        follow_symlink: bool,
-        path_op: OpTy<'tcx, Tag>,
-        buf_op: OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
-        let this = self.eval_context_mut();
-
-        let path_scalar = this.read_scalar(path_op)?.not_undef()?;
-        let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
-
-        let metadata = match FileMetadata::from_path(this, path, follow_symlink)? {
-            Some(metadata) => metadata,
-            None => return Ok(-1),
-        };
-        macos_stat_write_buf(this, metadata, buf_op)
+        this.macos_stat_write_buf(metadata, buf_op)
     }
 
     fn linux_statx(
@@ -620,17 +697,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
-    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
-    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
-    /// types (like `read`, that returns an `i64`).
-    fn handle_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
-        let this = self.eval_context_mut();
-        let ebadf = this.eval_libc("EBADF")?;
-        this.set_last_error(ebadf)?;
-        Ok((-1).into())
-    }
-
     fn rename(
         &mut self,
         oldpath_op: OpTy<'tcx, Tag>,
@@ -742,65 +808,4 @@ impl FileMetadata {
         // FIXME: Provide more fields using platform specific methods.
         Ok(Some(FileMetadata { mode, size, created, accessed, modified }))
     }
-}
-
-fn macos_stat_write_buf<'tcx, 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    metadata: FileMetadata,
-    buf_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, i32> {
-    let mode: u16 = metadata.mode.to_u16()?;
-
-    let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
-    let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
-    let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
-
-    let dev_t_layout = ecx.libc_ty_layout("dev_t")?;
-    let mode_t_layout = ecx.libc_ty_layout("mode_t")?;
-    let nlink_t_layout = ecx.libc_ty_layout("nlink_t")?;
-    let ino_t_layout = ecx.libc_ty_layout("ino_t")?;
-    let uid_t_layout = ecx.libc_ty_layout("uid_t")?;
-    let gid_t_layout = ecx.libc_ty_layout("gid_t")?;
-    let time_t_layout = ecx.libc_ty_layout("time_t")?;
-    let long_layout = ecx.libc_ty_layout("c_long")?;
-    let off_t_layout = ecx.libc_ty_layout("off_t")?;
-    let blkcnt_t_layout = ecx.libc_ty_layout("blkcnt_t")?;
-    let blksize_t_layout = ecx.libc_ty_layout("blksize_t")?;
-    let uint32_t_layout = ecx.libc_ty_layout("uint32_t")?;
-
-    // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
-    let pad_layout = if ecx.tcx.sess.target.ptr_width == 64 {
-        uint32_t_layout
-    } else {
-        ecx.layout_of(ecx.tcx.mk_unit())?
-    };
-
-    let imms = [
-        immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
-        immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
-        immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
-        immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
-        immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
-        immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
-        immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
-        immty_from_uint_checked(0u128, pad_layout)?, // padding for 64-bit targets
-        immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
-        immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
-        immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
-        immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
-        immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
-        immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
-        immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
-        immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
-        immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
-        immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
-        immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
-        immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
-        immty_from_uint_checked(0u128, uint32_t_layout)?, // st_gen
-    ];
-
-    let buf = ecx.deref_operand(buf_op)?;
-    ecx.write_packed_immediates(buf, &imms)?;
-
-    Ok(0)
 }
