@@ -275,7 +275,7 @@ crate enum ParseResult<T> {
 
 /// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
-crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
+crate type NamedParseResult = ParseResult<FxHashMap<Name, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
 pub(super) fn count_names(ms: &[TokenTree]) -> usize {
@@ -368,7 +368,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
         res: &mut I,
-        ret_val: &mut FxHashMap<Ident, NamedMatch>,
+        ret_val: &mut FxHashMap<Name, NamedMatch>,
     ) -> Result<(), (rustc_span::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
@@ -386,7 +386,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
-            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val.entry(bind_name) {
+            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val.entry(bind_name.name) {
                 Vacant(spot) => {
                     spot.insert(res.next().unwrap());
                 }

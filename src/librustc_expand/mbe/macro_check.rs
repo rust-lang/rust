@@ -111,7 +111,7 @@ use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::Ident, MultiSpan, Span};
-use syntax::ast::NodeId;
+use syntax::ast::{Name, NodeId};
 use syntax::token::{DelimToken, Token, TokenKind};
 
 use smallvec::SmallVec;
@@ -179,7 +179,7 @@ struct BinderInfo {
 }
 
 /// An environment of meta-variables to their binder information.
-type Binders = FxHashMap<Ident, BinderInfo>;
+type Binders = FxHashMap<Name, BinderInfo>;
 
 /// The state at which we entered a macro definition in the RHS of another macro definition.
 struct MacroState<'a> {
@@ -246,14 +246,14 @@ fn check_binders(
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVar in lhs");
             }
             // There are 3 possibilities:
-            if let Some(prev_info) = binders.get(&name) {
+            if let Some(prev_info) = binders.get(&name.name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
                 let mut span = MultiSpan::from_span(span);
                 span.push_span_label(prev_info.span, "previous declaration".into());
                 buffer_lint(sess, span, node_id, "duplicate matcher binding");
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
-                binders.insert(name, BinderInfo { span, ops: ops.into() });
+                binders.insert(name.name, BinderInfo { span, ops: ops.into() });
             } else {
                 // 3. The meta-variable is bound: This is an occurrence.
                 check_occurrences(sess, node_id, lhs, macros, binders, ops, valid);
@@ -274,7 +274,7 @@ fn check_binders(
                     .emit();
                 *valid = false;
             } else {
-                binders.insert(name, BinderInfo { span, ops: ops.into() });
+                binders.insert(name.name, BinderInfo { span, ops: ops.into() });
             }
         }
         TokenTree::Delimited(_, ref del) => {
@@ -302,7 +302,7 @@ fn get_binder_info<'a>(
     binders: &'a Binders,
     name: Ident,
 ) -> Option<&'a BinderInfo> {
-    binders.get(&name).or_else(|| macros.find_map(|state| state.binders.get(&name)))
+    binders.get(&name.name).or_else(|| macros.find_map(|state| state.binders.get(&name.name)))
 }
 
 /// Checks `rhs` as part of the RHS of a macro definition and sets `valid` to false in case of
@@ -560,7 +560,7 @@ fn check_ops_is_prefix(
     let mut acc: SmallVec<[&SmallVec<[KleeneToken; 1]>; 1]> = SmallVec::new();
     for state in &macros {
         acc.push(&state.ops);
-        if let Some(binder) = state.binders.get(&name) {
+        if let Some(binder) = state.binders.get(&name.name) {
             // This variable concatenates the stack of operators from the RHS of the LHS where the
             // meta-variable was defined to where it is used (in possibly nested macros). The
             // outermost operator is first.

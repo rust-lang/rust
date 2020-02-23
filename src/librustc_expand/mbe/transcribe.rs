@@ -7,7 +7,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::pluralize;
 use rustc_span::hygiene::{ExpnId, Transparency};
 use rustc_span::Span;
-use syntax::ast::{Ident, Mac};
+use syntax::ast::{Ident, Mac, Name};
 use syntax::mut_visit::{self, MutVisitor};
 use syntax::token::{self, NtTT, Token};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
@@ -81,7 +81,7 @@ impl Iterator for Frame {
 /// Along the way, we do some additional error checking.
 pub(super) fn transcribe(
     cx: &ExtCtxt<'_>,
-    interp: &FxHashMap<Ident, NamedMatch>,
+    interp: &FxHashMap<Name, NamedMatch>,
     src: Vec<mbe::TokenTree>,
     transparency: Transparency,
 ) -> TokenStream {
@@ -289,10 +289,10 @@ pub(super) fn transcribe(
 /// made a mistake, and we return `None`.
 fn lookup_cur_matched<'a>(
     ident: Ident,
-    interpolations: &'a FxHashMap<Ident, NamedMatch>,
+    interpolations: &'a FxHashMap<Name, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> Option<&'a NamedMatch> {
-    interpolations.get(&ident).map(|matched| {
+    interpolations.get(&ident.name).map(|matched| {
         let mut matched = matched;
         for &(idx, _) in repeats {
             match matched {
@@ -361,7 +361,7 @@ impl LockstepIterSize {
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
-    interpolations: &FxHashMap<Ident, NamedMatch>,
+    interpolations: &FxHashMap<Name, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
     use mbe::TokenTree;
