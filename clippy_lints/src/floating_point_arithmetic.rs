@@ -2,11 +2,11 @@ use crate::consts::{
     constant, Constant,
     Constant::{F32, F64},
 };
-use crate::utils::*;
+use crate::utils::{span_lint_and_sugg, sugg};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::f32::consts as f32_consts;
@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// let _ = (1.0 + a).ln();
     /// let _ = a.exp() - 1.0;
     /// let _ = a.powf(2.0);
+    /// let _ = a * 2.0 + 4.0;
     /// ```
     ///
     /// is better expressed as
@@ -57,6 +58,7 @@ declare_clippy_lint! {
     /// let _ = a.ln_1p();
     /// let _ = a.exp_m1();
     /// let _ = a.powi(2);
+    /// let _ = a.mul_add(2.0, 4.0);
     /// ```
     pub SUBOPTIMAL_FLOPS,
     nursery,
@@ -211,12 +213,12 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         let (help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 "square-root of a number can be computed more efficiently and accurately",
-                format!("{}.sqrt()", Sugg::hir(cx, &args[0], ".."))
+                format!("{}.sqrt()", Sugg::hir(cx, &args[0], "..")),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
                 "cube-root of a number can be computed more accurately",
-                format!("{}.cbrt()", Sugg::hir(cx, &args[0], ".."))
+                format!("{}.cbrt()", Sugg::hir(cx, &args[0], "..")),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
@@ -225,7 +227,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                     "{}.powi({})",
                     Sugg::hir(cx, &args[0], ".."),
                     format_numeric_literal(&exponent.to_string(), None, false)
-                )
+                ),
             )
         } else {
             return;
@@ -272,6 +274,52 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
+fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
+    if_chain! {
+        if let ExprKind::Binary(op, ref lhs, ref rhs) = &expr.kind;
+        if let BinOpKind::Mul = op.node;
+        if cx.tables.expr_ty(lhs).is_floating_point();
+        if cx.tables.expr_ty(rhs).is_floating_point();
+        then {
+            return Some((lhs, rhs));
+        }
+    }
+
+    None
+}
+
+// TODO: Fix rust-lang/rust-clippy#4735
+fn check_fma(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let ExprKind::Binary(op, lhs, rhs) = &expr.kind;
+        if let BinOpKind::Add = op.node;
+        then {
+            let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
+                (inner_lhs, inner_rhs, rhs)
+            } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
+                (inner_lhs, inner_rhs, lhs)
+            } else {
+                return;
+            };
+
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                "multiply and add expressions can be calculated more efficiently and accurately",
+                "consider using",
+                format!(
+                    "{}.mul_add({}, {})",
+                    prepare_receiver_sugg(cx, recv),
+                    Sugg::hir(cx, arg1, ".."),
+                    Sugg::hir(cx, arg2, ".."),
+                ),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args) = &expr.kind {
@@ -287,6 +335,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
             }
         } else {
             check_expm1(cx, expr);
+            check_fma(cx, expr);
         }
     }
 }

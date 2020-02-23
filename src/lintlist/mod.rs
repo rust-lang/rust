@@ -1023,13 +1023,6 @@ pub const ALL_LINTS: [Lint; 357] = [
         module: "loops",
     },
     Lint {
-        name: "manual_mul_add",
-        group: "nursery",
-        desc: "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`",
-        deprecation: None,
-        module: "mul_add",
-    },
-    Lint {
         name: "manual_saturating_arithmetic",
         group: "style",
         desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",

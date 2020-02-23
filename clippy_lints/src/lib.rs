@@ -208,6 +208,7 @@ pub mod exit;
 pub mod explicit_write;
 pub mod fallible_impl_from;
 pub mod float_literal;
+pub mod floating_point_arithmetic;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -248,7 +249,6 @@ pub mod missing_const_for_fn;
 pub mod missing_doc;
 pub mod missing_inline;
 pub mod modulo_arithmetic;
-pub mod mul_add;
 pub mod multiple_crate_versions;
 pub mod mut_key;
 pub mod mut_mut;
@@ -691,7 +691,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         &missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         &modulo_arithmetic::MODULO_ARITHMETIC,
-        &mul_add::MANUAL_MUL_ADD,
         &multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         &mut_key::MUTABLE_KEY_TYPE,
         &mut_mut::MUT_MUT,
@@ -967,7 +966,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box inherent_to_string::InherentToString);
     store.register_late_pass(|| box trait_bounds::TraitBounds);
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
-    store.register_late_pass(|| box mul_add::MulAddCheck);
     store.register_late_pass(|| box mut_key::MutableKeyType);
     store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
     store.register_early_pass(|| box reference::DerefAddrOf);
@@ -1652,7 +1650,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
-        LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
