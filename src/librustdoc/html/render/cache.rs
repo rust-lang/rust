@@ -588,21 +588,21 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 
     for item in search_index {
         item.parent_idx = item.parent.and_then(|defid| {
-        if defid_to_pathid.contains_key(&defid) {
-            defid_to_pathid.get(&defid).map(|x| *x)
-        } else {
-            let pathid = lastpathid;
-            defid_to_pathid.insert(defid, pathid);
-            lastpathid += 1;
-
-            if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                crate_paths.push((short, fqp.last().unwrap().clone()));
-                Some(pathid)
+            if defid_to_pathid.contains_key(&defid) {
+                defid_to_pathid.get(&defid).map(|x| *x)
             } else {
-                None
+                let pathid = lastpathid;
+                defid_to_pathid.insert(defid, pathid);
+                lastpathid += 1;
+
+                if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                    crate_paths.push((short, fqp.last().unwrap().clone()));
+                    Some(pathid)
+                } else {
+                    None
+                }
             }
-        }
-    });
+        });
 
         // Omit the parent path if it is same to that of the prior item.
         if lastpath == item.path {
@@ -696,10 +696,12 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
     clean_type.generics().and_then(|types| {
         let r = types
             .iter()
-            .filter_map(|t| if let Some(name) = get_index_type_name(t, false) {
-                Some(Generic { name: name.to_ascii_lowercase(), defid: t.def_id(), idx: None })
-            } else {
-                None
+            .filter_map(|t| {
+                if let Some(name) = get_index_type_name(t, false) {
+                    Some(Generic { name: name.to_ascii_lowercase(), defid: t.def_id(), idx: None })
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
         if r.is_empty() { None } else { Some(r) }
