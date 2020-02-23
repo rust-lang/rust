@@ -1,7 +1,10 @@
-const QUERY = 'struct:chunksmut';
+const QUERY = 'struct:string';
 
 const EXPECTED = {
+    'in_args': [
+        { 'path': 'std::string::String', 'name': 'ne' },
+    ],
     'returned': [
-        { 'path': 'std::slice::chunks_mut', 'name': 'chunks_mut' },
+        { 'path': 'std::string::String', 'name': 'add' },
     ],
 };
