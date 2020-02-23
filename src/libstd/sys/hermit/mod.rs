@@ -92,7 +92,9 @@ pub unsafe extern "C" fn __rust_abort() {
 }
 
 #[cfg(not(test))]
-pub fn init() {}
+pub fn init() {
+    let _ = net::init();
+}
 
 #[cfg(not(test))]
 #[no_mangle]

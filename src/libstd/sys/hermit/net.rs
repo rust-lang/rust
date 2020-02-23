@@ -3,120 +3,162 @@ use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::str;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::hermit::abi;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
 
 /// Checks whether the HermitCore's socket interface has been started already, and
 /// if not, starts it.
-fn init() -> io::Result<()> {
-    static START: AtomicBool = AtomicBool::new(false);
-
-    if START.swap(true, Ordering::SeqCst) == false {
-        if abi::network_init() < 0 {
-            return Err(io::Error::new(ErrorKind::Other, "Unable to initialize network interface"));
-        }
+pub fn init() -> io::Result<()> {
+    if abi::network_init() < 0 {
+        return Err(io::Error::new(ErrorKind::Other, "Unable to initialize network interface"));
     }
 
     Ok(())
 }
 
-pub struct TcpStream(i32);
+pub struct TcpStream(abi::Handle);
 
 impl TcpStream {
-    pub fn connect(result_addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        init()?;
+    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+        let addr = addr?;
 
-        // unpack socker address
-        if result_addr.is_err() {
-            return Err(result_addr.unwrap_err());
+        match abi::tcpstream::connect(addr.ip().to_string().as_bytes(), addr.port(), None) {
+            Ok(handle) =>  Ok(TcpStream(handle)),
+            _ => Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket")),
         }
-        let _saddr = result_addr.unwrap();
-
-        Ok(TcpStream(0))
     }
 
-    pub fn connect_timeout(_: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
-        init()?;
-
-		Ok(TcpStream(0))
+    pub fn connect_timeout(saddr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
+        match abi::tcpstream::connect(saddr.ip().to_string().as_bytes(), saddr.port(), Some(duration.as_millis() as u64)) {
+            Ok(handle) =>  Ok(TcpStream(handle)),
+            _ => Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket")),
+        }
     }
 
-    pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn set_read_timeout(&self, duration: Option<Duration>) -> io::Result<()> {
+        abi::tcpstream::set_read_timeout(self.0, duration.map(|d| d.as_millis() as u64))
+            .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to set timeout value"))
     }
 
-    pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn set_write_timeout(&self, duration: Option<Duration>) -> io::Result<()> {
+        abi::tcpstream::set_write_timeout(self.0, duration.map(|d| d.as_millis() as u64))
+            .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to set timeout value"))
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        let duration = abi::tcpstream::get_read_timeout(self.0)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to determine timeout value"))?;
+
+        Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        let duration = abi::tcpstream::get_write_timeout(self.0)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to determine timeout value"))?;
+
+        Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
-    pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        abi::tcpstream::peek(self.0, buf)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "set_nodelay failed"))
     }
 
-    pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn read(&self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.read_vectored(&mut [IoSliceMut::new(buffer)])
     }
 
-    pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn read_vectored(&self, ioslice: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        let mut size: usize = 0;
+
+        for i in ioslice.iter_mut() {
+            let mut pos: usize = 0;
+
+            while pos < i.len() {
+                let ret = abi::tcpstream::read(self.0, &mut i[pos..])
+                    .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to read on socket"))?;
+
+                if ret == 0 {
+                    return Ok(size)
+                } else {
+                    size += ret;
+                    pos += ret;
+                }
+            }
+        }
+
+        Ok(size)
     }
 
-    pub fn write(&self, _: &[u8]) -> io::Result<usize> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
+        self.write_vectored(&[IoSlice::new(buffer)])
     }
 
-    pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn write_vectored(&self, ioslice: &[IoSlice<'_>]) -> io::Result<usize> {
+        let mut size: usize = 0;
+
+        for i in ioslice.iter() {
+            size += abi::tcpstream::write(self.0, i)
+                .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to write on socket"))?;
+        }
+
+        Ok(size)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        Err(io::Error::new(ErrorKind::Other, "peer_addr isn't supported"))
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        Err(io::Error::new(ErrorKind::Other, "socket_addr isn't supported"))
     }
 
-    pub fn shutdown(&self, _: Shutdown) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        abi::tcpstream::shutdown(self.0, how as i32)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "unable to shutdown socket"))
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        let handle = abi::tcpstream::duplicate(self.0)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "unable to duplicate stream"))?;
+
+        Ok(TcpStream(handle))
     }
 
-    pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn set_nodelay(&self, mode: bool) -> io::Result<()> {
+        abi::tcpstream::set_nodelay(self.0, mode)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "set_nodelay failed"))
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        abi::tcpstream::nodelay(self.0)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "nodelay failed"))
     }
 
-    pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn set_ttl(&self, tll: u32) -> io::Result<()> {
+        abi::tcpstream::set_tll(self.0, tll)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "unable to set TTL"))
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        abi::tcpstream::get_tll(self.0)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "unable to get TTL"))
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+        Err(io::Error::new(ErrorKind::Other, "take_error isn't supported"))
     }
 
-    pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "not supported"))
+    pub fn set_nonblocking(&self, mode: bool) -> io::Result<()> {
+        abi::tcpstream::set_nonblocking(self.0, mode)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "unable to set blocking mode"))
+    }
+}
+
+impl Drop for TcpStream {
+    fn drop(&mut self) {
+        let _ = abi::tcpstream::close(self.0);
     }
 }
 
@@ -126,13 +168,11 @@ impl fmt::Debug for TcpStream {
     }
 }
 
-pub struct TcpListener(i32);
+pub struct TcpListener(abi::Handle);
 
 impl TcpListener {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
-        init()?;
-
-        Ok(TcpListener(0))
+        Err(io::Error::new(ErrorKind::Other, "not supported"))
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -178,13 +218,11 @@ impl fmt::Debug for TcpListener {
     }
 }
 
-pub struct UdpSocket(i32);
+pub struct UdpSocket(abi::Handle);
 
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
-        init()?;
-
-        Ok(UdpSocket(0))
+        Err(io::Error::new(ErrorKind::Other, "not supported"))
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -341,8 +379,6 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     type Error = io::Error;
 
     fn try_from(_v: (&'a str, u16)) -> io::Result<LookupHost> {
-        init()?;
-
         unsupported()
     }
 }

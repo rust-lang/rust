@@ -1369,7 +1369,7 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.6"
+version = "0.1.8"
 dependencies = [
  "compiler_builtins",
  "libc",
