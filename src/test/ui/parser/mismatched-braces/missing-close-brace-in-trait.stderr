@@ -7,13 +7,13 @@ LL | trait T {
 LL | fn main() {}
    |                                                                 ^
 
-error: item kind not supported in `trait` or `impl`
+error: struct not supported in `trait` or `impl`
   --> $DIR/missing-close-brace-in-trait.rs:4:1
    |
 LL | pub(crate) struct Bar<T>();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: item kind not supported in `trait` or `impl`
+error: implementation not supported in `trait` or `impl`
   --> $DIR/missing-close-brace-in-trait.rs:7:1
    |
 LL | impl T for Bar<usize> {
