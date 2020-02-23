@@ -11,7 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
-use sugg::Sugg;
+use sugg::{format_numeric_literal, Sugg};
 use syntax::ast;
 
 declare_clippy_lint! {
@@ -159,23 +159,23 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
-// Returns an integer if the float constant is a whole number and it
-// can be converted to an integer without loss
-// TODO: Add a better check to determine whether the float can be
-// casted without loss
+// Returns an integer if the float constant is a whole number and it can be
+// converted to an integer without loss of precision. For now we only check
+// ranges [-16777215, 16777216) for type f32 as whole number floats outside
+// this range are lossy and ambiguous.
 #[allow(clippy::cast_possible_truncation)]
-fn get_integer_from_float_constant(value: &Constant) -> Option<i64> {
+fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
     match value {
-        F32(num) if (num.trunc() - num).abs() <= std::f32::EPSILON => {
-            if *num > -16_777_217.0 && *num < 16_777_217.0 {
-                Some(num.round() as i64)
+        F32(num) if num.fract() == 0.0 => {
+            if (-16_777_215.0..16_777_216.0).contains(num) {
+                Some(num.round() as i32)
             } else {
                 None
             }
         },
-        F64(num) if (num.trunc() - num).abs() <= std::f64::EPSILON => {
-            if *num > -9_007_199_254_740_993.0 && *num < 9_007_199_254_740_993.0 {
-                Some(num.round() as i64)
+        F64(num) if num.fract() == 0.0 => {
+            if (-2_147_483_648.0..2_147_483_648.0).contains(num) {
+                Some(num.round() as i32)
             } else {
                 None
             }
@@ -187,15 +187,13 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i64> {
 fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
     if let Some((value, _)) = constant(cx, cx.tables, &args[0]) {
-        let method;
-
-        if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
-            method = "exp";
+        let method = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
+            "exp"
         } else if F32(2.0) == value || F64(2.0) == value {
-            method = "exp2";
+            "exp2"
         } else {
             return;
-        }
+        };
 
         span_lint_and_sugg(
             cx,
@@ -210,30 +208,28 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
     // Check argument
     if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
-        let help;
-        let method;
-
-        if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
-            help = "square-root of a number can be computed more efficiently and accurately";
-            method = "sqrt";
+        let (help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
+            (
+                "square-root of a number can be computed more efficiently and accurately",
+                format!("{}.sqrt()", Sugg::hir(cx, &args[0], ".."))
+            )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
-            help = "cube-root of a number can be computed more accurately";
-            method = "cbrt";
+            (
+                "cube-root of a number can be computed more accurately",
+                format!("{}.cbrt()", Sugg::hir(cx, &args[0], ".."))
+            )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
-            span_lint_and_sugg(
-                cx,
-                SUBOPTIMAL_FLOPS,
-                expr.span,
+            (
                 "exponentiation with integer powers can be computed more efficiently",
-                "consider using",
-                format!("{}.powi({})", Sugg::hir(cx, &args[0], ".."), exponent),
-                Applicability::MachineApplicable,
-            );
-
-            return;
+                format!(
+                    "{}.powi({})",
+                    Sugg::hir(cx, &args[0], ".."),
+                    format_numeric_literal(&exponent.to_string(), None, false)
+                )
+            )
         } else {
             return;
-        }
+        };
 
         span_lint_and_sugg(
             cx,
@@ -241,7 +237,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             expr.span,
             help,
             "consider using",
-            format!("{}.{}()", Sugg::hir(cx, &args[0], ".."), method),
+            suggestion,
             Applicability::MachineApplicable,
         );
     }
