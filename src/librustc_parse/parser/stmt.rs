@@ -58,33 +58,11 @@ impl<'a> Parser<'a> {
         // (1 token), but it fact not a path. Also, we avoid stealing syntax from `parse_item_`.
         if self.token.is_path_start() && !self.token.is_qpath_start() && !self.is_path_start_item()
         {
-            let path = self.parse_path(PathStyle::Expr)?;
-
-            if self.eat(&token::Not) {
-                return self.parse_stmt_mac(lo, attrs.into(), path);
-            }
-
-            let expr = if self.check(&token::OpenDelim(token::Brace)) {
-                self.parse_struct_expr(lo, path, AttrVec::new())?
-            } else {
-                let hi = self.prev_span;
-                self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
-            };
-
-            let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
-                this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
-            })?;
-            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr))));
+            return self.parse_stmt_path_start(lo, attrs).map(Some);
         }
 
-        // FIXME: Bad copy of attrs
-        let old_directory_ownership =
-            mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-        let item = self.parse_item_common(attrs.clone(), false, true, |_| true)?;
-        self.directory.ownership = old_directory_ownership;
-
-        if let Some(item) = item {
+        if let Some(item) = self.parse_stmt_item(attrs.clone())? {
+            // FIXME: Bad copy of attrs
             return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))));
         }
 
@@ -117,14 +95,37 @@ impl<'a> Parser<'a> {
         Ok(Some(self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))))
     }
 
+    fn parse_stmt_item(&mut self, attrs: Vec<Attribute>) -> PResult<'a, Option<ast::Item>> {
+        let old = mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
+        let item = self.parse_item_common(attrs.clone(), false, true, |_| true)?;
+        self.directory.ownership = old;
+        Ok(item)
+    }
+
+    fn parse_stmt_path_start(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, Stmt> {
+        let path = self.parse_path(PathStyle::Expr)?;
+
+        if self.eat(&token::Not) {
+            return self.parse_stmt_mac(lo, attrs.into(), path);
+        }
+
+        let expr = if self.check(&token::OpenDelim(token::Brace)) {
+            self.parse_struct_expr(lo, path, AttrVec::new())?
+        } else {
+            let hi = self.prev_span;
+            self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
+        };
+
+        let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
+            let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
+            this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
+        })?;
+        Ok(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr)))
+    }
+
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
     /// At this point, the `!` token after the path has already been eaten.
-    fn parse_stmt_mac(
-        &mut self,
-        lo: Span,
-        attrs: AttrVec,
-        path: ast::Path,
-    ) -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
         let args = self.parse_mac_args()?;
         let delim = args.delim();
         let hi = self.prev_span;
@@ -145,7 +146,7 @@ impl<'a> Parser<'a> {
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
             StmtKind::Expr(e)
         };
-        Ok(Some(self.mk_stmt(lo.to(hi), kind)))
+        Ok(self.mk_stmt(lo.to(hi), kind))
     }
 
     /// Error on outer attributes in this context.
