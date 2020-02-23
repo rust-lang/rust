@@ -25,21 +25,15 @@ pub(super) type ItemInfo = (Ident, ItemKind);
 
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
+        self.parse_item_(|_| true).map(|i| i.map(P))
+    }
+
+    fn parse_item_(&mut self, req_name: ReqName) -> PResult<'a, Option<Item>> {
         let attrs = self.parse_outer_attributes()?;
-        self.parse_item_(attrs, true, false)
+        self.parse_item_common(attrs, true, false, req_name)
     }
 
-    pub(super) fn parse_item_(
-        &mut self,
-        attrs: Vec<Attribute>,
-        macros_allowed: bool,
-        attributes_allowed: bool,
-    ) -> PResult<'a, Option<P<Item>>> {
-        let item = self.parse_item_common(attrs, macros_allowed, attributes_allowed, |_| true)?;
-        Ok(item.map(P))
-    }
-
-    fn parse_item_common(
+    pub(super) fn parse_item_common(
         &mut self,
         mut attrs: Vec<Attribute>,
         mac_allowed: bool,
@@ -653,9 +647,7 @@ impl<'a> Parser<'a> {
 
     /// Parses associated items.
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        let attrs = self.parse_outer_attributes()?;
-        let it = self.parse_item_common(attrs, true, false, req_name)?;
-        Ok(it.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
+        Ok(self.parse_item_(req_name)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
             let kind = match kind {
                 ItemKind::Mac(a) => AssocItemKind::Macro(a),
                 ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
@@ -844,9 +836,7 @@ impl<'a> Parser<'a> {
     pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
         maybe_whole!(self, NtForeignItem, |item| Some(Some(item)));
 
-        let attrs = self.parse_outer_attributes()?;
-        let item = self.parse_item_common(attrs, true, false, |_| true)?;
-        Ok(item.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
+        Ok(self.parse_item_(|_| true)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
             let kind = match kind {
                 ItemKind::Mac(a) => ForeignItemKind::Macro(a),
                 ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),

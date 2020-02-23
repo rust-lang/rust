@@ -81,11 +81,11 @@ impl<'a> Parser<'a> {
         // FIXME: Bad copy of attrs
         let old_directory_ownership =
             mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-        let item = self.parse_item_(attrs.clone(), false, true)?;
+        let item = self.parse_item_common(attrs.clone(), false, true, |_| true)?;
         self.directory.ownership = old_directory_ownership;
 
         if let Some(item) = item {
-            return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(item))));
+            return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))));
         }
 
         // Do not attempt to parse an expression if we're done here.
