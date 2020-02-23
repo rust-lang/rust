@@ -394,10 +394,7 @@ pub struct TypeWithKind {
 
 impl From<(Type, TypeKind)> for TypeWithKind {
     fn from(x: (Type, TypeKind)) -> TypeWithKind {
-        TypeWithKind {
-            ty: x.0,
-            kind: x.1,
-        }
+        TypeWithKind { ty: x.0, kind: x.1 }
     }
 }
 
