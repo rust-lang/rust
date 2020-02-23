@@ -836,8 +836,8 @@ pub struct Method {
     pub decl: FnDecl,
     pub header: hir::FnHeader,
     pub defaultness: Option<hir::Defaultness>,
-    pub all_types: Vec<Type>,
-    pub ret_types: Vec<Type>,
+    pub all_types: Vec<(Type, TypeKind)>,
+    pub ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, Debug)]
@@ -845,8 +845,8 @@ pub struct TyMethod {
     pub header: hir::FnHeader,
     pub decl: FnDecl,
     pub generics: Generics,
-    pub all_types: Vec<Type>,
-    pub ret_types: Vec<Type>,
+    pub all_types: Vec<(Type, TypeKind)>,
+    pub ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, Debug)]
@@ -854,8 +854,8 @@ pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: hir::FnHeader,
-    pub all_types: Vec<Type>,
-    pub ret_types: Vec<Type>,
+    pub all_types: Vec<(Type, TypeKind)>,
+    pub ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1042,7 +1042,7 @@ pub enum PrimitiveType {
     Never,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
 pub enum TypeKind {
     Enum,
     Function,
