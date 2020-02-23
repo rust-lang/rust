@@ -52,24 +52,3 @@ export interface Disposable {
     dispose(): void;
 }
 export type Cmd = (...args: any[]) => unknown;
-
-export async function sendRequestWithRetry<R>(
-    client: lc.LanguageClient,
-    method: string,
-    param: unknown,
-    token?: vscode.CancellationToken,
-): Promise<R> {
-    for (const delay of [2, 4, 6, 8, 10, null]) {
-        try {
-            return await (token ? client.sendRequest(method, param, token) : client.sendRequest(method, param));
-        } catch (err) {
-            if (delay === null || err.code !== lc.ErrorCodes.ContentModified) {
-                throw err;
-            }
-            await sleep(10 * (1 << delay));
-        }
-    }
-    throw 'unreachable';
-}
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

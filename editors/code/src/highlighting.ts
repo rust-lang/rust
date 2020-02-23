@@ -3,7 +3,8 @@ import * as lc from 'vscode-languageclient';
 
 import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
-import { Ctx, sendRequestWithRetry } from './ctx';
+import { Ctx } from './ctx';
+import { sendRequestWithRetry } from './util';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
