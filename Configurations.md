@@ -17,6 +17,29 @@ To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or 
 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
+## `array_width` 
+
+Maximum width of an array literal before falling back to vertical formatting.
+
+- **Default value**: `60`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `array_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
+
+## `attr_fn_like_width` 
+
+Maximum width of the args of a function-like attributes before falling back to vertical formatting.
+
+- **Default value**: `70`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `attr_fn_like_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
 ## `binop_separator`
 
@@ -272,6 +295,17 @@ where
 }
 ```
 
+## `chain_width` 
+
+Maximum width of a chain to fit on one line.
+
+- **Default value**: `60`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `chain_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
 ## `color`
 
@@ -717,6 +751,17 @@ trait Lorem {
 }
 ```
 
+## `fn_call_width` 
+
+Maximum width of the args of a function call before falling back to vertical formatting.
+
+- **Default value**: `60`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `fn_call_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
 ## `fn_single_line`
 
@@ -2079,6 +2124,18 @@ Don't reformat out of line modules
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: #3389)
 
+## `single_line_if_else_max_width` 
+
+Maximum line length for single line if-else expressions. A value of `0` (zero) results in if-else expressions always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
+
+- **Default value**: `50`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_if_else_max_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
+
 ## `space_after_colon`
 
 Leave a space after the colon.
@@ -2256,6 +2313,29 @@ fn main() {
 
 See also: [`indent_style`](#indent_style).
 
+## `struct_lit_width` 
+
+Maximum width in the body of a struct literal before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
+
+- **Default value**: `18`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_lit_width` will take precedence. 
+
+See also [`max_width`](#max_width), [`use_small_heuristics`](#use_small_heuristics), and [`struct_lit_single_line`](#struct_lit_single_line)
+
+## `struct_variant_width` 
+
+Maximum width in the body of a struct variant before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
+
+- **Default value**: `35`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_variant_width` will take precedence. 
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
 ## `tab_spaces`
 
@@ -2448,13 +2528,43 @@ fn main() {
 
 ## `use_small_heuristics`
 
-Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
+This option can be used to simplify the management and bulk updates of the granular width configuration settings ([`fn_call_width`](#fn_call_width), [`attr_fn_like_width`](#attr_fn_like_width), [`struct_lit_width`](#struct_lit_width), [`struct_variant_width`](#struct_variant_width), [`array_width`](#array_width), [`chain_width`](#chain_width), [`single_line_if_else_max_width`](#single_line_if_else_max_width)), that respectively control when formatted constructs are multi-lined/vertical based on width.
+
+Note that explicitly provided values for the width configuration settings take precedence and override the calculated values determined by `use_small_heuristics`. 
 
 - **Default value**: `"Default"`
 - **Possible values**: `"Default"`, `"Off"`, `"Max"`
 - **Stable**: Yes
 
 #### `Default` (default):
+When `use_small_heuristics` is set to `Default`, the values for the granular width settings are calculated as a ratio of the value for `max_width`.
+
+The ratios are:
+* [`fn_call_width`](#fn_call_width) - `60%`
+* [`attr_fn_like_width`](#attr_fn_like_width) - `70%`
+* [`struct_lit_width`](#struct_lit_width) - `18%`
+* [`struct_variant_width`](#struct_variant_width) - `35%`
+* [`array_width`](#array_width) - `60%`
+* [`chain_width`](#chain_width) - `60%`
+* [`single_line_if_else_max_width`](#single_line_if_else_max_width) - `50%`
+
+For example when `max_width` is set to `100`, the width settings are:
+* `fn_call_width=60`
+* `attr_fn_like_width=70`
+* `struct_lit_width=18`
+* `struct_variant_width=35`
+* `array_width=60`
+* `chain_width=60`
+* `single_line_if_else_max_width=50`
+
+and when `max_width` is set to `200`:
+* `fn_call_width=120`
+* `attr_fn_like_width=140`
+* `struct_lit_width=36`
+* `struct_variant_width=70`
+* `array_width=120`
+* `chain_width=120`
+* `single_line_if_else_max_width=100`
 
 ```rust
 enum Lorem {
@@ -2485,6 +2595,7 @@ fn main() {
 ```
 
 #### `Off`:
+When `use_small_heuristics` is set to `Off`, the granular width settings are functionally disabled and ignored. See the documentation for the respective width config options for specifics. 
 
 ```rust
 enum Lorem {
@@ -2513,6 +2624,16 @@ fn main() {
 ```
 
 #### `Max`:
+When `use_small_heuristics` is set to `Max`, then each granular width setting is set to the same value as `max_width`.
+
+So if `max_width` is set to `200`, then all the width settings are also set to `200`.
+* `fn_call_width=200`
+* `attr_fn_like_width=200`
+* `struct_lit_width=200`
+* `struct_variant_width=200`
+* `array_width=200`
+* `chain_width=200`
+* `single_line_if_else_max_width=200`
 
 ```rust
 enum Lorem {
@@ -2529,6 +2650,17 @@ fn main() {
     let lorem = if ipsum { dolor } else { sit };
 }
 ```
+
+
+See also:
+* [`max_width`](#max_width)
+* [`fn_call_width`](#fn_call_width)
+* [`attr_fn_like_width`](#attr_fn_like_width)
+* [`struct_lit_width`](#struct_lit_width)
+* [`struct_variant_width`](#struct_variant_width)
+* [`array_width`](#array_width)
+* [`chain_width`](#chain_width)
+* [`single_line_if_else_max_width`](#single_line_if_else_max_width)
 
 ## `use_try_shorthand`
 
