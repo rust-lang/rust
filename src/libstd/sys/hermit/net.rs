@@ -1,6 +1,6 @@
 use crate::convert::TryFrom;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, ErrorKind};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::str;
 use crate::sys::hermit::abi;
@@ -24,15 +24,23 @@ impl TcpStream {
         let addr = addr?;
 
         match abi::tcpstream::connect(addr.ip().to_string().as_bytes(), addr.port(), None) {
-            Ok(handle) =>  Ok(TcpStream(handle)),
-            _ => Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket")),
+            Ok(handle) => Ok(TcpStream(handle)),
+            _ => {
+                Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket"))
+            }
         }
     }
 
     pub fn connect_timeout(saddr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
-        match abi::tcpstream::connect(saddr.ip().to_string().as_bytes(), saddr.port(), Some(duration.as_millis() as u64)) {
-            Ok(handle) =>  Ok(TcpStream(handle)),
-            _ => Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket")),
+        match abi::tcpstream::connect(
+            saddr.ip().to_string().as_bytes(),
+            saddr.port(),
+            Some(duration.as_millis() as u64),
+        ) {
+            Ok(handle) => Ok(TcpStream(handle)),
+            _ => {
+                Err(io::Error::new(ErrorKind::Other, "Unable to initiate a connection on a socket"))
+            }
         }
     }
 
@@ -80,7 +88,7 @@ impl TcpStream {
                     .map_err(|_| io::Error::new(ErrorKind::Other, "Unable to read on socket"))?;
 
                 if ret == 0 {
-                    return Ok(size)
+                    return Ok(size);
                 } else {
                     size += ret;
                     pos += ret;
