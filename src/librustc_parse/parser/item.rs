@@ -119,17 +119,18 @@ impl<'a> Parser<'a> {
         }
         let vs = pprust::vis_to_string(&vis);
         let vs = vs.trim_end();
-        self.struct_span_err(vis.span, &format!("unmatched visibility `{}`", vs))
-            .span_label(vis.span, "the unmatched visibility")
+        self.struct_span_err(vis.span, &format!("visibility `{}` not followed by an item", vs))
+            .span_label(vis.span, "the visibility")
             .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
             .emit();
     }
 
     /// Error in-case a `default` was parsed but no item followed.
     fn error_on_unmatched_defaultness(&self, def: Defaultness) {
-        if let Defaultness::Default(span) = def {
-            self.struct_span_err(span, "unmatched `default`")
-                .span_label(span, "the unmatched `default`")
+        if let Defaultness::Default(sp) = def {
+            self.struct_span_err(sp, "`default` not followed by an item")
+                .span_label(sp, "the `default` qualifier")
+                .note("only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`")
                 .emit();
         }
     }

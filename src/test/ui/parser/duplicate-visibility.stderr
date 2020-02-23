@@ -1,8 +1,8 @@
-error: unmatched visibility `pub`
+error: visibility `pub` not followed by an item
   --> $DIR/duplicate-visibility.rs:4:5
    |
 LL |     pub pub fn foo();
-   |     ^^^ the unmatched visibility
+   |     ^^^ the visibility
    |
    = help: you likely meant to define an item, e.g., `pub fn foo() {}`
 

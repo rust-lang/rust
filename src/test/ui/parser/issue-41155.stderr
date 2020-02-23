@@ -1,8 +1,8 @@
-error: unmatched visibility `pub`
+error: visibility `pub` not followed by an item
   --> $DIR/issue-41155.rs:4:5
    |
 LL |     pub
-   |     ^^^ the unmatched visibility
+   |     ^^^ the visibility
    |
    = help: you likely meant to define an item, e.g., `pub fn foo() {}`
 
