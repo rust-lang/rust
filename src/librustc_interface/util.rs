@@ -83,7 +83,7 @@ pub fn create_session(
     (Lrc::new(sess), Lrc::new(codegen_backend), source_map)
 }
 
-const STACK_SIZE: usize = 2 * 1024 * 1024;
+const STACK_SIZE: usize = 8 * 1024 * 1024;
 
 fn get_stack_size() -> Option<usize> {
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
