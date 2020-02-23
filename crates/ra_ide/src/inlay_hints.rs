@@ -113,12 +113,13 @@ fn get_param_name_hints(
     .collect::<Vec<_>>();
 
     let fn_signature = get_fn_signature(db, analyzer, &expr)?;
-    let parameters =
+    let n_params_to_skip =
         if fn_signature.has_self_param && fn_signature.parameter_names.len() > args.len() {
-            fn_signature.parameter_names.iter().skip(1)
+            1
         } else {
-            fn_signature.parameter_names.iter().skip(0)
+            0
         };
+    let parameters = fn_signature.parameter_names.iter().skip(n_params_to_skip);
 
     let hints = parameters
         .zip(args)
