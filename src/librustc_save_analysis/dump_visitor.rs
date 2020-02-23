@@ -1233,8 +1233,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         let qualname =
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id)));
 
-        let cm = self.tcx.sess.source_map();
-        let filename = cm.span_to_filename(span);
+        let sm = self.tcx.sess.source_map();
+        let filename = sm.span_to_filename(span);
         let data_id = id_from_node_id(id, &self.save_ctxt);
         let children = m.items.iter().map(|i| id_from_node_id(i.id, &self.save_ctxt)).collect();
         let span = self.span_from_span(span);

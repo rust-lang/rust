@@ -725,21 +725,21 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
     /// Only used in a specific case of type ascription suggestions
     fn get_colon_suggestion_span(&self, start: Span) -> Span {
-        let cm = self.r.session.source_map();
-        start.to(cm.next_point(start))
+        let sm = self.r.session.source_map();
+        start.to(sm.next_point(start))
     }
 
     fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) {
-        let cm = self.r.session.source_map();
-        let base_snippet = cm.span_to_snippet(base_span);
+        let sm = self.r.session.source_map();
+        let base_snippet = sm.span_to_snippet(base_span);
         if let Some(sp) = self.diagnostic_metadata.current_type_ascription.last() {
             let mut sp = *sp;
             loop {
                 // Try to find the `:`; bail on first non-':' / non-whitespace.
-                sp = cm.next_point(sp);
-                if let Ok(snippet) = cm.span_to_snippet(sp.to(cm.next_point(sp))) {
-                    let line_sp = cm.lookup_char_pos(sp.hi()).line;
-                    let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
+                sp = sm.next_point(sp);
+                if let Ok(snippet) = sm.span_to_snippet(sp.to(sm.next_point(sp))) {
+                    let line_sp = sm.lookup_char_pos(sp.hi()).line;
+                    let line_base_sp = sm.lookup_char_pos(base_span.lo()).line;
                     if snippet == ":" {
                         let mut show_label = true;
                         if line_sp != line_base_sp {
@@ -753,7 +753,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             let colon_sp = self.get_colon_suggestion_span(sp);
                             let after_colon_sp =
                                 self.get_colon_suggestion_span(colon_sp.shrink_to_hi());
-                            if !cm
+                            if !sm
                                 .span_to_snippet(after_colon_sp)
                                 .map(|s| s == " ")
                                 .unwrap_or(false)
@@ -770,8 +770,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                                 let mut sp = after_colon_sp;
                                 for _ in 0..100 {
                                     // Try to find an assignment
-                                    sp = cm.next_point(sp);
-                                    let snippet = cm.span_to_snippet(sp.to(cm.next_point(sp)));
+                                    sp = sm.next_point(sp);
+                                    let snippet = sm.span_to_snippet(sp.to(sm.next_point(sp)));
                                     match snippet {
                                         Ok(ref x) if x.as_str() == "=" => {
                                             err.span_suggestion(

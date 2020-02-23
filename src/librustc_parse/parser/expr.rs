@@ -1625,10 +1625,10 @@ impl<'a> Parser<'a> {
         let hi = self.token.span;
 
         if require_comma {
-            let cm = self.sess.source_map();
+            let sm = self.sess.source_map();
             self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]).map_err(
                 |mut err| {
-                    match (cm.span_to_lines(expr.span), cm.span_to_lines(arm_start_span)) {
+                    match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
                         (Ok(ref expr_lines), Ok(ref arm_start_lines))
                             if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                                 && expr_lines.lines.len() == 2

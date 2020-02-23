@@ -263,9 +263,9 @@ impl Clean<Item> for doctree::Module<'_> {
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
         let whence = {
-            let cm = cx.sess().source_map();
-            let outer = cm.lookup_char_pos(self.where_outer.lo());
-            let inner = cm.lookup_char_pos(self.where_inner.lo());
+            let sm = cx.sess().source_map();
+            let outer = sm.lookup_char_pos(self.where_outer.lo());
+            let inner = sm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
                 // mod foo { ... }
                 self.where_outer
@@ -1917,10 +1917,10 @@ impl Clean<Span> for rustc_span::Span {
             return Span::empty();
         }
 
-        let cm = cx.sess().source_map();
-        let filename = cm.span_to_filename(*self);
-        let lo = cm.lookup_char_pos(self.lo());
-        let hi = cm.lookup_char_pos(self.hi());
+        let sm = cx.sess().source_map();
+        let filename = sm.span_to_filename(*self);
+        let lo = sm.lookup_char_pos(self.lo());
+        let hi = sm.lookup_char_pos(self.hi());
         Span {
             filename,
             loline: lo.line,
