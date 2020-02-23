@@ -1,7 +1,7 @@
 use super::*;
 
 use rustc_span;
-use rustc_span::source_map::{dummy_spanned, respan};
+use rustc_span::source_map::respan;
 use syntax::ast;
 use syntax::with_default_globals;
 
@@ -13,13 +13,7 @@ fn fun_to_string(
 ) -> String {
     to_string(|s| {
         s.head("");
-        s.print_fn(
-            decl,
-            header,
-            Some(name),
-            generics,
-            &dummy_spanned(ast::VisibilityKind::Inherited),
-        );
+        s.print_fn(decl, header, Some(name), generics);
         s.end(); // Close the head box.
         s.end(); // Close the outer box.
     })
