@@ -850,8 +850,7 @@ function getSearchElement() {
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
                         }
-                        tmp[0] = tmp[NAME];
-                        var tmp = checkType(tmp, val, literalSearch);
+                        tmp = checkType(tmp, val, literalSearch);
                         if (literalSearch === true) {
                             if (tmp === true) {
                                 return true;
@@ -876,12 +875,11 @@ function getSearchElement() {
                         ret = [ret];
                     }
                     for (var x = 0; x < ret.length; ++x) {
-                        var r = ret[x];
-                        if (typePassesFilter(typeFilter, r[1]) === false) {
+                        var tmp = ret[x];
+                        if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
                         }
-                        r[0] = r[NAME];
-                        var tmp = checkType(r, val, literalSearch);
+                        tmp = checkType(r, val, literalSearch);
                         if (literalSearch === true) {
                             if (tmp === true) {
                                 return true;
