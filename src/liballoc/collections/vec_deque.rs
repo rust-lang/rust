@@ -2155,7 +2155,8 @@ impl<T> VecDeque<T> {
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by`](#method.sort_unstable_by).
+    ///
+    /// FIXME: add link to `sort_unstable_by`.
     ///
     /// # Current implementation
     ///
