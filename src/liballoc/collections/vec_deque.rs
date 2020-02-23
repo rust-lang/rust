@@ -2141,6 +2141,55 @@ impl<T> VecDeque<T> {
         }
     }
 
+    /// Sorts the deque with a comparator function.
+    ///
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// The comparator function must define a total ordering for the elements in the deque. If
+    /// the ordering is not total, the order of the elements is unspecified. An order is a
+    /// total order if it is (for all `a`, `b` and `c`):
+    ///
+    /// * total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true, and
+    /// * transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+    ///
+    /// When applicable, unstable sorting is preferred because it is generally faster than stable
+    /// sorting and it doesn't allocate auxiliary memory.
+    /// See [`sort_unstable_by`](#method.sort_unstable_by).
+    ///
+    /// # Current implementation
+    ///
+    /// The current implementation moves all elements of the internal buffer into one continous slice without
+    /// allocating, which is then sorted using [`slice::sort_by`] (which may allocate).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_sort)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut v: VecDeque<_> = [5, 4, 1, 3, 2].iter().collect();
+    ///
+    /// v.sort_by(|a, b| a.cmp(b));
+    /// let expected: VecDeque<_> = [1, 2, 3, 4, 5].iter().collect();
+    /// assert_eq!(v, expected);
+    ///
+    /// // reverse sorting
+    /// v.sort_by(|a, b| b.cmp(a));
+    /// let expected: VecDeque<_> = [5, 4, 3, 2, 1].iter().collect();
+    /// assert_eq!(v, expected);
+    /// ```
+    ///
+    /// [`slice::sort_by`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by
+    #[unstable(feature = "vecdeque_sort", issue = "none")]
+    pub fn sort_by<F>(&mut self, compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+    {
+        self.make_continuous();
+
+        self.as_mut_slices().0.sort_by(compare);
+    }
+
     /// Rotates the double-ended queue `k` places to the right.
     ///
     /// Equivalently,
@@ -2971,7 +3020,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             let buf = other.buf.ptr();
             let len = other.len();
             let cap = other.cap();
-        
+
             if other.head != 0 {
                 ptr::copy(buf.add(other.tail), buf, len);
             }
