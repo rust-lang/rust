@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // First arg: Message.
                 let msg = msg.description();
-                let msg = this.allocate_str(msg, MiriMemoryKind::Env.into());
+                let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into());
 
                 // Call the lang item.
                 let panic = this.tcx.lang_items().panic_fn().unwrap();
