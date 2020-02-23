@@ -318,7 +318,7 @@ pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>
         span,
         lhs,
         rhs,
-        context.config.width_heuristics().array_width,
+        context.config.array_width(),
         force_separator_tactic,
         Some(("[", "]")),
     )

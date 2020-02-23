@@ -505,8 +505,8 @@ impl<'a> FmtVisitor<'a> {
             )
             .collect()
         };
-        let mut items: Vec<_> =
-            itemize_list_with(self.config.width_heuristics().struct_variant_width);
+        let mut items: Vec<_> = itemize_list_with(self.config.struct_variant_width());
+
         // If one of the variants use multiple lines, use multi-lined formatting for all variants.
         let has_multiline_variant = items.iter().any(|item| item.inner_as_ref().contains('\n'));
         let has_single_line_variant = items.iter().any(|item| !item.inner_as_ref().contains('\n'));
@@ -1479,7 +1479,7 @@ fn format_tuple_struct(
             fields.iter(),
             shape,
             span,
-            context.config.width_heuristics().fn_call_width,
+            context.config.fn_call_width(),
             None,
         )?;
     }

@@ -382,7 +382,7 @@ fn rewrite_macro_inner(
                     arg_vec.iter(),
                     shape,
                     mac.span(),
-                    context.config.width_heuristics().fn_call_width,
+                    context.config.fn_call_width(),
                     if trailing_comma {
                         Some(SeparatorTactic::Always)
                     } else {

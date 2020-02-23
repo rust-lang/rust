@@ -899,22 +899,11 @@ impl<'a> ControlFlow<'a> {
                 || last_line_offsetted(shape.used_width(), &pat_expr_string));
 
         // Try to format if-else on single line.
-        if self.allow_single_line
-            && context
-                .config
-                .width_heuristics()
-                .single_line_if_else_max_width
-                > 0
-        {
+        if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
             let trial = self.rewrite_single_line(&pat_expr_string, context, shape.width);
 
             if let Some(cond_str) = trial {
-                if cond_str.len()
-                    <= context
-                        .config
-                        .width_heuristics()
-                        .single_line_if_else_max_width
-                {
+                if cond_str.len() <= context.config.single_line_if_else_max_width() {
                     return Some((cond_str, 0));
                 }
             }
@@ -1246,7 +1235,7 @@ pub(crate) fn rewrite_call(
         args.iter(),
         shape,
         span,
-        context.config.width_heuristics().fn_call_width,
+        context.config.fn_call_width(),
         choose_separator_tactic(context, span),
     )
 }
@@ -1785,7 +1774,7 @@ pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
             items,
             shape,
             span,
-            context.config.width_heuristics().fn_call_width,
+            context.config.fn_call_width(),
             force_tactic,
         )
     } else {

@@ -577,7 +577,7 @@ impl<'a> ChainFormatterShared<'a> {
         let one_line_budget = if self.child_count == 1 {
             shape.width
         } else {
-            min(shape.width, context.config.width_heuristics().chain_width)
+            min(shape.width, context.config.chain_width())
         }
         .saturating_sub(almost_total);
 

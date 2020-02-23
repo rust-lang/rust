@@ -863,7 +863,7 @@ pub(crate) fn struct_lit_shape(
     };
     let shape_width = shape.width.checked_sub(prefix_width + suffix_width);
     if let Some(w) = shape_width {
-        let shape_width = cmp::min(w, context.config.width_heuristics().struct_lit_width);
+        let shape_width = cmp::min(w, context.config.struct_lit_width());
         Some((Some(Shape::legacy(shape_width, shape.indent)), v_shape))
     } else {
         Some((None, v_shape))
