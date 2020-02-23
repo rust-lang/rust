@@ -79,13 +79,15 @@ pub enum TypeDensity {
 }
 
 #[config_type]
-/// To what extent does rustfmt pursue its heuristics?
+/// Heuristic settings that can be used to simply
+/// the configuration of the granular width configurations
+/// like `struct_lit_width`, `array_width`, etc.
 pub enum Heuristics {
     /// Turn off any heuristics
     Off,
     /// Turn on max heuristics
     Max,
-    /// Use Rustfmt's defaults
+    /// Use scaled values based on the value of `max_width`
     Default,
 }
 
