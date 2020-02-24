@@ -345,7 +345,7 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Const(ref ty, ref expr) => {
+            ast::ItemKind::Const(_, ref ty, ref expr) => {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -369,7 +369,7 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
+            ast::ItemKind::Fn(_, ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
                 if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
@@ -423,7 +423,7 @@ impl Sig for ast::Item {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            ast::ItemKind::TyAlias(ref generics, _, ref ty) => {
+            ast::ItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
@@ -502,7 +502,7 @@ impl Sig for ast::Item {
                 items: _,
             } => {
                 let mut text = String::new();
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     text.push_str("default ");
                 }
                 if let ast::Unsafe::Yes(_) = unsafety {
@@ -732,7 +732,7 @@ impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                 let decl = &sig.decl;
                 let mut text = String::new();
                 text.push_str("fn ");

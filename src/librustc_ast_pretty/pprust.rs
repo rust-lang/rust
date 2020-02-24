@@ -1016,8 +1016,8 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
-        let ast::ForeignItem { id, span, ident, attrs, kind, vis, tokens: _ } = item;
-        self.print_nested_item_kind(*id, *span, *ident, attrs, ast::Defaultness::Final, kind, vis);
+        let ast::Item { id, span, ident, attrs, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, kind, vis);
     }
 
     fn print_nested_item_kind(
@@ -1026,7 +1026,6 @@ impl<'a> State<'a> {
         span: Span,
         ident: ast::Ident,
         attrs: &[Attribute],
-        def: ast::Defaultness,
         kind: &ast::AssocItemKind,
         vis: &ast::Visibility,
     ) {
@@ -1035,17 +1034,18 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::ForeignItemKind::Fn(sig, gen, body) => {
-                self.print_fn_full(sig, ident, gen, vis, def, body.as_deref(), attrs);
+            ast::ForeignItemKind::Fn(def, sig, gen, body) => {
+                self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Const(ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, def);
+            ast::ForeignItemKind::Const(def, ty, body) => {
+                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
+                let def = ast::Defaultness::Final;
                 self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
             }
-            ast::ForeignItemKind::TyAlias(generics, bounds, ty) => {
-                self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, def);
+            ast::ForeignItemKind::TyAlias(def, generics, bounds, ty) => {
+                self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
             ast::ForeignItemKind::Macro(m) => {
                 self.print_mac(m);
@@ -1146,12 +1146,10 @@ impl<'a> State<'a> {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis, def);
             }
-            ast::ItemKind::Const(ref ty, ref body) => {
-                let def = ast::Defaultness::Final;
+            ast::ItemKind::Const(def, ref ty, ref body) => {
                 self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
             }
-            ast::ItemKind::Fn(ref sig, ref gen, ref body) => {
-                let def = ast::Defaultness::Final;
+            ast::ItemKind::Fn(def, ref sig, ref gen, ref body) => {
                 let body = body.as_deref();
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
@@ -1185,8 +1183,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.to_string());
                 self.end();
             }
-            ast::ItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
-                let def = ast::Defaultness::Final;
+            ast::ItemKind::TyAlias(def, ref generics, ref bounds, ref ty) => {
                 let ty = ty.as_deref();
                 self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
@@ -1389,7 +1386,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
-        if let ast::Defaultness::Default = defaultness {
+        if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
         }
     }
@@ -1461,8 +1458,8 @@ impl<'a> State<'a> {
     }
 
     crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
-        let ast::AssocItem { id, span, ident, attrs, defaultness, kind, vis, tokens: _ } = item;
-        self.print_nested_item_kind(*id, *span, *ident, attrs, *defaultness, kind, vis);
+        let ast::Item { id, span, ident, attrs, kind, vis, tokens: _ } = item;
+        self.print_nested_item_kind(*id, *span, *ident, attrs, kind, vis);
     }
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {

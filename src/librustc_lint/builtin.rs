@@ -640,7 +640,7 @@ declare_lint_pass!(
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         match it.kind {
-            ast::AssocItemKind::Fn(ref sig, _, _) => {
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.kind {
                         ast::PatKind::Ident(_, ident, None) => {

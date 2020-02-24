@@ -170,22 +170,13 @@ impl MutVisitor for EntryPointCleaner {
                     ));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+                    let attrs = attrs
+                        .into_iter()
+                        .filter(|attr| !attr.check_name(sym::main) && !attr.check_name(sym::start))
+                        .chain(iter::once(allow_dead_code))
+                        .collect();
 
-                    ast::Item {
-                        id,
-                        ident,
-                        attrs: attrs
-                            .into_iter()
-                            .filter(|attr| {
-                                !attr.check_name(sym::main) && !attr.check_name(sym::start)
-                            })
-                            .chain(iter::once(allow_dead_code))
-                            .collect(),
-                        kind,
-                        vis,
-                        span,
-                        tokens,
-                    }
+                    ast::Item { id, ident, attrs, kind, vis, span, tokens }
                 }),
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
@@ -307,7 +298,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
-    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), Some(main_body));
+    let def = ast::Defaultness::Final;
+    let main = ast::ItemKind::Fn(def, sig, ast::Generics::default(), Some(main_body));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {

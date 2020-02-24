@@ -349,7 +349,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
 
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
@@ -372,7 +372,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(_, _, Some(ref ty)) => self.check_impl_trait(&ty),
+            ast::ItemKind::TyAlias(_, _, _, Some(ref ty)) => self.check_impl_trait(&ty),
 
             _ => {}
         }
@@ -543,17 +543,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        if i.defaultness == ast::Defaultness::Default {
+        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
             gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
         }
 
         match i.kind {
-            ast::AssocItemKind::Fn(ref sig, _, _) => {
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }
-            ast::AssocItemKind::TyAlias(ref generics, _, ref ty) => {
+            ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,

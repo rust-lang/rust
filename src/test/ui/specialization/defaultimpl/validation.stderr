@@ -1,10 +1,12 @@
-error: inherent impls cannot be default
+error: inherent impls cannot be `default`
   --> $DIR/validation.rs:7:1
    |
 LL | default impl S {}
-   | ^^^^^^^^^^^^^^^^^
+   | -------^^^^^^^
+   | |
+   | `default` because of this
    |
-   = note: only trait implementations may be annotated with default
+   = note: only trait implementations may be annotated with `default`
 
 error: impls of auto traits cannot be default
   --> $DIR/validation.rs:9:1

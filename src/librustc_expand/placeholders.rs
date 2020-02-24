@@ -57,7 +57,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
@@ -67,7 +66,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ForeignItems => {

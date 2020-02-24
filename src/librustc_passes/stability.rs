@@ -362,7 +362,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant()),
+            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descr()),
         }
 
         intravisit::walk_item(self, i)

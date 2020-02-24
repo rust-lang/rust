@@ -1,8 +1,11 @@
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `static`, `type`, `unsafe`, `}`, or identifier, found `...`
+error: non-item in item list
   --> $DIR/issue-32446.rs:4:11
    |
 LL | trait T { ... }
-   |           ^^^ expected one of 12 possible tokens
+   |         - ^^^ - item list ends here
+   |         | |
+   |         | non-item starts here
+   |         item list starts here
 
 error: aborting due to previous error
 

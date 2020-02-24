@@ -601,13 +601,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(
-                item.hir_id,
-                span,
-                item.ident.name,
-                item.kind.descriptive_variant(),
-                participle,
-            );
+            self.warn_dead_code(item.hir_id, span, item.ident.name, item.kind.descr(), participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);
