@@ -1,4 +1,5 @@
 // compile-flags: -Zsave-analysis
+// Also regression test for #69416
 
 mod my_mod {
     pub struct MyStruct {
