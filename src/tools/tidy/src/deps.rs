@@ -1,12 +1,8 @@
-//! Checks the licenses of third-party dependencies by inspecting vendors.
+//! Checks the licenses of third-party dependencies.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fs;
+use cargo_metadata::{Metadata, Package, PackageId};
+use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
-use std::process::Command;
-
-use serde::Deserialize;
-use serde_json;
 
 const LICENSES: &[&str] = &[
     "MIT/Apache-2.0",
@@ -32,6 +28,7 @@ const EXCEPTIONS: &[&str] = &[
     "arrayref",           // BSD-2-Clause, mdbook via handlebars via pest
     "thread-id",          // Apache-2.0, mdbook
     "toml-query",         // MPL-2.0, mdbook
+    "toml-query_derive",  // MPL-2.0, mdbook
     "is-match",           // MPL-2.0, mdbook
     "cssparser",          // MPL-2.0, rustdoc
     "smallvec",           // MPL-2.0, rustdoc
@@ -63,223 +60,179 @@ const EXCEPTIONS: &[&str] = &[
 ];
 
 /// Which crates to check against the whitelist?
-const WHITELIST_CRATES: &[CrateVersion<'_>] =
-    &[CrateVersion("rustc", "0.0.0"), CrateVersion("rustc_codegen_llvm", "0.0.0")];
+const WHITELIST_CRATES: &[&str] = &["rustc", "rustc_codegen_llvm"];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
-const WHITELIST: &[Crate<'_>] = &[
-    Crate("adler32"),
-    Crate("aho-corasick"),
-    Crate("annotate-snippets"),
-    Crate("ansi_term"),
-    Crate("arrayvec"),
-    Crate("atty"),
-    Crate("autocfg"),
-    Crate("backtrace"),
-    Crate("backtrace-sys"),
-    Crate("bitflags"),
-    Crate("build_const"),
-    Crate("byteorder"),
-    Crate("c2-chacha"),
-    Crate("cc"),
-    Crate("cfg-if"),
-    Crate("chalk-engine"),
-    Crate("chalk-macros"),
-    Crate("cloudabi"),
-    Crate("cmake"),
-    Crate("compiler_builtins"),
-    Crate("crc"),
-    Crate("crc32fast"),
-    Crate("crossbeam-deque"),
-    Crate("crossbeam-epoch"),
-    Crate("crossbeam-queue"),
-    Crate("crossbeam-utils"),
-    Crate("datafrog"),
-    Crate("dlmalloc"),
-    Crate("either"),
-    Crate("ena"),
-    Crate("env_logger"),
-    Crate("filetime"),
-    Crate("flate2"),
-    Crate("fortanix-sgx-abi"),
-    Crate("fuchsia-zircon"),
-    Crate("fuchsia-zircon-sys"),
-    Crate("getopts"),
-    Crate("getrandom"),
-    Crate("hashbrown"),
-    Crate("humantime"),
-    Crate("indexmap"),
-    Crate("itertools"),
-    Crate("jobserver"),
-    Crate("kernel32-sys"),
-    Crate("lazy_static"),
-    Crate("libc"),
-    Crate("libz-sys"),
-    Crate("lock_api"),
-    Crate("log"),
-    Crate("log_settings"),
-    Crate("measureme"),
-    Crate("memchr"),
-    Crate("memmap"),
-    Crate("memoffset"),
-    Crate("miniz-sys"),
-    Crate("miniz_oxide"),
-    Crate("miniz_oxide_c_api"),
-    Crate("nodrop"),
-    Crate("num_cpus"),
-    Crate("owning_ref"),
-    Crate("parking_lot"),
-    Crate("parking_lot_core"),
-    Crate("pkg-config"),
-    Crate("polonius-engine"),
-    Crate("ppv-lite86"),
-    Crate("proc-macro2"),
-    Crate("punycode"),
-    Crate("quick-error"),
-    Crate("quote"),
-    Crate("rand"),
-    Crate("rand_chacha"),
-    Crate("rand_core"),
-    Crate("rand_hc"),
-    Crate("rand_isaac"),
-    Crate("rand_pcg"),
-    Crate("rand_xorshift"),
-    Crate("redox_syscall"),
-    Crate("redox_termios"),
-    Crate("regex"),
-    Crate("regex-syntax"),
-    Crate("remove_dir_all"),
-    Crate("rustc-demangle"),
-    Crate("rustc-hash"),
-    Crate("rustc-rayon"),
-    Crate("rustc-rayon-core"),
-    Crate("rustc_version"),
-    Crate("scoped-tls"),
-    Crate("scopeguard"),
-    Crate("semver"),
-    Crate("semver-parser"),
-    Crate("serde"),
-    Crate("serde_derive"),
-    Crate("smallvec"),
-    Crate("stable_deref_trait"),
-    Crate("syn"),
-    Crate("synstructure"),
-    Crate("tempfile"),
-    Crate("termcolor"),
-    Crate("terminon"),
-    Crate("termion"),
-    Crate("termize"),
-    Crate("thread_local"),
-    Crate("ucd-util"),
-    Crate("unicode-normalization"),
-    Crate("unicode-script"),
-    Crate("unicode-security"),
-    Crate("unicode-width"),
-    Crate("unicode-xid"),
-    Crate("unreachable"),
-    Crate("utf8-ranges"),
-    Crate("vcpkg"),
-    Crate("version_check"),
-    Crate("void"),
-    Crate("wasi"),
-    Crate("winapi"),
-    Crate("winapi-build"),
-    Crate("winapi-i686-pc-windows-gnu"),
-    Crate("winapi-util"),
-    Crate("winapi-x86_64-pc-windows-gnu"),
-    Crate("wincolor"),
-    Crate("hermit-abi"),
+const WHITELIST: &[&str] = &[
+    "adler32",
+    "aho-corasick",
+    "annotate-snippets",
+    "ansi_term",
+    "arrayvec",
+    "atty",
+    "autocfg",
+    "backtrace",
+    "backtrace-sys",
+    "bitflags",
+    "build_const",
+    "byteorder",
+    "c2-chacha",
+    "cc",
+    "cfg-if",
+    "chalk-engine",
+    "chalk-macros",
+    "cloudabi",
+    "cmake",
+    "compiler_builtins",
+    "crc",
+    "crc32fast",
+    "crossbeam-deque",
+    "crossbeam-epoch",
+    "crossbeam-queue",
+    "crossbeam-utils",
+    "datafrog",
+    "dlmalloc",
+    "either",
+    "ena",
+    "env_logger",
+    "filetime",
+    "flate2",
+    "fortanix-sgx-abi",
+    "fuchsia-zircon",
+    "fuchsia-zircon-sys",
+    "getopts",
+    "getrandom",
+    "hashbrown",
+    "humantime",
+    "indexmap",
+    "itertools",
+    "jobserver",
+    "kernel32-sys",
+    "lazy_static",
+    "libc",
+    "libz-sys",
+    "lock_api",
+    "log",
+    "log_settings",
+    "measureme",
+    "memchr",
+    "memmap",
+    "memoffset",
+    "miniz-sys",
+    "miniz_oxide",
+    "miniz_oxide_c_api",
+    "nodrop",
+    "num_cpus",
+    "owning_ref",
+    "parking_lot",
+    "parking_lot_core",
+    "pkg-config",
+    "polonius-engine",
+    "ppv-lite86",
+    "proc-macro2",
+    "punycode",
+    "quick-error",
+    "quote",
+    "rand",
+    "rand_chacha",
+    "rand_core",
+    "rand_hc",
+    "rand_isaac",
+    "rand_pcg",
+    "rand_xorshift",
+    "redox_syscall",
+    "redox_termios",
+    "regex",
+    "regex-syntax",
+    "remove_dir_all",
+    "rustc-demangle",
+    "rustc-hash",
+    "rustc-rayon",
+    "rustc-rayon-core",
+    "rustc_version",
+    "scoped-tls",
+    "scopeguard",
+    "semver",
+    "semver-parser",
+    "serde",
+    "serde_derive",
+    "smallvec",
+    "stable_deref_trait",
+    "syn",
+    "synstructure",
+    "tempfile",
+    "termcolor",
+    "terminon",
+    "termion",
+    "termize",
+    "thread_local",
+    "ucd-util",
+    "unicode-normalization",
+    "unicode-script",
+    "unicode-security",
+    "unicode-width",
+    "unicode-xid",
+    "unreachable",
+    "utf8-ranges",
+    "vcpkg",
+    "version_check",
+    "void",
+    "wasi",
+    "winapi",
+    "winapi-build",
+    "winapi-i686-pc-windows-gnu",
+    "winapi-util",
+    "winapi-x86_64-pc-windows-gnu",
+    "wincolor",
+    "hermit-abi",
 ];
 
-// Some types for Serde to deserialize the output of `cargo metadata` to.
-
-#[derive(Deserialize)]
-struct Output {
-    resolve: Resolve,
-}
-
-#[derive(Deserialize)]
-struct Resolve {
-    nodes: Vec<ResolveNode>,
-}
-
-#[derive(Deserialize)]
-struct ResolveNode {
-    id: String,
-    dependencies: Vec<String>,
-}
-
-/// A unique identifier for a crate.
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
-struct Crate<'a>(&'a str); // (name)
-
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
-struct CrateVersion<'a>(&'a str, &'a str); // (name, version)
-
-impl Crate<'_> {
-    pub fn id_str(&self) -> String {
-        format!("{} ", self.0)
-    }
-}
-
-impl<'a> CrateVersion<'a> {
-    /// Returns the struct and whether or not the dependency is in-tree.
-    pub fn from_str(s: &'a str) -> (Self, bool) {
-        let mut parts = s.split(' ');
-        let name = parts.next().unwrap();
-        let version = parts.next().unwrap();
-        let path = parts.next().unwrap();
-
-        let is_path_dep = path.starts_with("(path+");
-
-        (CrateVersion(name, version), is_path_dep)
-    }
-
-    pub fn id_str(&self) -> String {
-        format!("{} {}", self.0, self.1)
-    }
-}
-
-impl<'a> From<CrateVersion<'a>> for Crate<'a> {
-    fn from(cv: CrateVersion<'a>) -> Crate<'a> {
-        Crate(cv.0)
-    }
-}
-
-/// Checks the dependency at the given path. Changes `bad` to `true` if a check failed.
+/// Dependency checks.
 ///
-/// Specifically, this checks that the license is correct.
-pub fn check(path: &Path, bad: &mut bool) {
-    // Check licences.
-    let path = path.join("../vendor");
-    assert!(path.exists(), "vendor directory missing");
-    let mut saw_dir = false;
-    for dir in t!(path.read_dir()) {
-        saw_dir = true;
-        let dir = t!(dir);
+/// `path` is path to the `src` directory, `cargo` is path to the cargo executable.
+pub fn check(path: &Path, cargo: &Path, bad: &mut bool) {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.cargo_path(cargo)
+        .manifest_path(path.parent().unwrap().join("Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::AllFeatures);
+    let metadata = t!(cmd.exec());
+    check_exceptions(&metadata, bad);
+    check_whitelist(&metadata, bad);
+    check_crate_duplicate(&metadata, bad);
+}
 
-        // Skip our exceptions.
-        let is_exception = EXCEPTIONS.iter().any(|exception| {
-            dir.path().to_str().unwrap().contains(&format!("vendor/{}", exception))
-        });
-        if is_exception {
+/// Check that all licenses are in the valid list in `LICENSES`.
+///
+/// Packages listed in `EXCEPTIONS` are allowed for tools.
+fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
+    for pkg in &metadata.packages {
+        if pkg.source.is_none() {
+            // No need to check local packages.
             continue;
         }
-
-        let toml = dir.path().join("Cargo.toml");
-        *bad = !check_license(&toml) || *bad;
+        if EXCEPTIONS.contains(&pkg.name.as_str()) {
+            continue;
+        }
+        let license = match &pkg.license {
+            Some(license) => license,
+            None => {
+                println!("dependency `{}` does not define a license expression", pkg.id,);
+                *bad = true;
+                continue;
+            }
+        };
+        if !LICENSES.contains(&license.as_str()) {
+            println!("invalid license `{}` in `{}`", license, pkg.id);
+            *bad = true;
+        }
     }
-    assert!(saw_dir, "no vendored source");
 }
 
 /// Checks the dependency of `WHITELIST_CRATES` at the given path. Changes `bad` to `true` if a
 /// check failed.
 ///
 /// Specifically, this checks that the dependencies are on the `WHITELIST`.
-pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
-    // Get dependencies from Cargo metadata.
-    let resolve = get_deps(path, cargo);
-
+fn check_whitelist(metadata: &Metadata, bad: &mut bool) {
     // Get the whitelist in a convenient form.
     let whitelist: HashSet<_> = WHITELIST.iter().cloned().collect();
 
@@ -287,122 +240,59 @@ pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
     let mut visited = BTreeSet::new();
     let mut unapproved = BTreeSet::new();
     for &krate in WHITELIST_CRATES.iter() {
-        let mut bad = check_crate_whitelist(&whitelist, &resolve, &mut visited, krate, false);
+        let pkg = pkg_from_name(metadata, krate);
+        let mut bad = check_crate_whitelist(&whitelist, metadata, &mut visited, pkg);
         unapproved.append(&mut bad);
     }
 
     if !unapproved.is_empty() {
         println!("Dependencies not on the whitelist:");
         for dep in unapproved {
-            println!("* {}", dep.id_str());
+            println!("* {}", dep);
         }
         *bad = true;
     }
-
-    check_crate_duplicate(&resolve, bad);
-}
-
-fn check_license(path: &Path) -> bool {
-    if !path.exists() {
-        panic!("{} does not exist", path.display());
-    }
-    let contents = t!(fs::read_to_string(&path));
-
-    let mut found_license = false;
-    for line in contents.lines() {
-        if !line.starts_with("license") {
-            continue;
-        }
-        let license = extract_license(line);
-        if !LICENSES.contains(&&*license) {
-            println!("invalid license {} in {}", license, path.display());
-            return false;
-        }
-        found_license = true;
-        break;
-    }
-    if !found_license {
-        println!("no license in {}", path.display());
-        return false;
-    }
-
-    true
-}
-
-fn extract_license(line: &str) -> String {
-    let first_quote = line.find('"');
-    let last_quote = line.rfind('"');
-    if let (Some(f), Some(l)) = (first_quote, last_quote) {
-        let license = &line[f + 1..l];
-        license.into()
-    } else {
-        "bad-license-parse".into()
-    }
-}
-
-/// Gets the dependencies of the crate at the given path using `cargo metadata`.
-fn get_deps(path: &Path, cargo: &Path) -> Resolve {
-    // Run `cargo metadata` to get the set of dependencies.
-    let output = Command::new(cargo)
-        .arg("metadata")
-        .arg("--format-version")
-        .arg("1")
-        .arg("--manifest-path")
-        .arg(path.join("../Cargo.toml"))
-        .output()
-        .expect("Unable to run `cargo metadata`")
-        .stdout;
-    let output = String::from_utf8_lossy(&output);
-    let output: Output = serde_json::from_str(&output).unwrap();
-
-    output.resolve
 }
 
 /// Checks the dependencies of the given crate from the given cargo metadata to see if they are on
 /// the whitelist. Returns a list of illegal dependencies.
 fn check_crate_whitelist<'a>(
-    whitelist: &'a HashSet<Crate<'_>>,
-    resolve: &'a Resolve,
-    visited: &mut BTreeSet<CrateVersion<'a>>,
-    krate: CrateVersion<'a>,
-    must_be_on_whitelist: bool,
-) -> BTreeSet<Crate<'a>> {
+    whitelist: &'a HashSet<&'static str>,
+    metadata: &'a Metadata,
+    visited: &mut BTreeSet<&'a PackageId>,
+    krate: &'a Package,
+) -> BTreeSet<&'a PackageId> {
     // This will contain bad deps.
     let mut unapproved = BTreeSet::new();
 
     // Check if we have already visited this crate.
-    if visited.contains(&krate) {
+    if visited.contains(&krate.id) {
         return unapproved;
     }
 
-    visited.insert(krate);
+    visited.insert(&krate.id);
 
     // If this path is in-tree, we don't require it to be on the whitelist.
-    if must_be_on_whitelist {
+    if krate.source.is_some() {
         // If this dependency is not on `WHITELIST`, add to bad set.
-        if !whitelist.contains(&krate.into()) {
-            unapproved.insert(krate.into());
+        if !whitelist.contains(krate.name.as_str()) {
+            unapproved.insert(&krate.id);
         }
     }
 
-    // Do a DFS in the crate graph (it's a DAG, so we know we have no cycles!).
-    let to_check = resolve
-        .nodes
-        .iter()
-        .find(|n| n.id.starts_with(&krate.id_str()))
-        .expect("crate does not exist");
+    // Do a DFS in the crate graph.
+    let to_check = deps_of(metadata, &krate.id);
 
-    for dep in to_check.dependencies.iter() {
-        let (krate, is_path_dep) = CrateVersion::from_str(dep);
-
-        let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate, !is_path_dep);
+    for dep in to_check {
+        let mut bad = check_crate_whitelist(whitelist, metadata, visited, dep);
         unapproved.append(&mut bad);
     }
 
     unapproved
 }
 
-fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
+/// Prevents multiple versions of some expensive crates.
+fn check_crate_duplicate(metadata: &Metadata, bad: &mut bool) {
     const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
         // These two crates take quite a long time to build, so don't allow two versions of them
         // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
@@ -410,19 +300,60 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
         "cargo",
         "rustc-ap-syntax",
     ];
-    let mut name_to_id: HashMap<_, Vec<_>> = HashMap::new();
-    for node in resolve.nodes.iter() {
-        name_to_id.entry(node.id.split_whitespace().next().unwrap()).or_default().push(&node.id);
-    }
 
-    for name in FORBIDDEN_TO_HAVE_DUPLICATES {
-        if name_to_id[name].len() <= 1 {
-            continue;
+    for &name in FORBIDDEN_TO_HAVE_DUPLICATES {
+        let matches: Vec<_> = metadata.packages.iter().filter(|pkg| pkg.name == name).collect();
+        match matches.len() {
+            0 => {
+                println!(
+                    "crate `{}` is missing, update `check_crate_duplicate` \
+                    if it is no longer used",
+                    name
+                );
+                *bad = true;
+            }
+            1 => {}
+            _ => {
+                println!(
+                    "crate `{}` is duplicated in `Cargo.lock`, \
+                    it is too expensive to build multiple times, \
+                    so make sure only one version appears across all dependencies",
+                    name
+                );
+                for pkg in matches {
+                    println!("  * {}", pkg.id);
+                }
+                *bad = true;
+            }
         }
-        println!("crate `{}` is duplicated in `Cargo.lock`", name);
-        for id in name_to_id[name].iter() {
-            println!("  * {}", id);
-        }
-        *bad = true;
     }
+}
+
+/// Returns a list of dependencies for the given package.
+fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package> {
+    let node = metadata
+        .resolve
+        .as_ref()
+        .unwrap()
+        .nodes
+        .iter()
+        .find(|n| &n.id == pkg_id)
+        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+    node.deps
+        .iter()
+        .map(|dep| {
+            metadata.packages.iter().find(|pkg| pkg.id == dep.pkg).unwrap_or_else(|| {
+                panic!("could not find dep `{}` for pkg `{}` in resolve", dep.pkg, pkg_id)
+            })
+        })
+        .collect()
+}
+
+/// Finds a package with the given name.
+fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
+    let mut i = metadata.packages.iter().filter(|p| p.name == name);
+    let result =
+        i.next().unwrap_or_else(|| panic!("could not find package `{}` in package list", name));
+    assert!(i.next().is_none(), "more than one package found for `{}`", name);
+    result
 }
