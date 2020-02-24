@@ -987,8 +987,7 @@ dependencies = [
 [[package]]
 name = "ena"
 version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8944dc8fa28ce4a38f778bd46bf7d923fe73eed5a439398507246c8e017e6f36"
+source = "git+https://github.com/Marwes/ena?branch=detach_undo_log#9b977ea7f209a35f46d65d33cdd74b8f4931fb8a"
 dependencies = [
  "log",
 ]

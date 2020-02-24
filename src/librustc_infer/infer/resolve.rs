@@ -123,7 +123,8 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
                 let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
-                    let ty_vars = &self.infcx.inner.borrow().type_variables;
+                    let mut inner = self.infcx.inner.borrow_mut();
+                    let ty_vars = &inner.type_variables();
                     if let TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
                         span,

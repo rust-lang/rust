@@ -10,7 +10,9 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::undo_log::{Rollback, Snapshots, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
@@ -36,6 +38,7 @@ use rustc_span::Span;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::marker::PhantomData;
 
 use self::combine::CombineFields;
 use self::free_regions::RegionRelations;
@@ -141,16 +144,17 @@ pub struct InferCtxtInner<'tcx> {
     /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
-    type_variables: type_variable::TypeVariableTable<'tcx>,
+    type_variables: type_variable::TypeVariableStorage<'tcx>,
+    undo_log: Logs<'tcx>,
 
     /// Map from const parameter variable to the kind of const it represents.
-    const_unification_table: ut::UnificationTable<ut::InPlace<ty::ConstVid<'tcx>>>,
+    const_unification_table: ut::UnificationStorage<ty::ConstVid<'tcx>>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_table: ut::UnificationTable<ut::InPlace<ty::IntVid>>,
+    int_unification_table: ut::UnificationStorage<ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_table: ut::UnificationTable<ut::InPlace<ty::FloatVid>>,
+    float_unification_table: ut::UnificationStorage<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     /// This is initially `Some(_)` but when
@@ -197,17 +201,217 @@ impl<'tcx> InferCtxtInner<'tcx> {
     fn new() -> InferCtxtInner<'tcx> {
         InferCtxtInner {
             projection_cache: Default::default(),
-            type_variables: type_variable::TypeVariableTable::new(),
-            const_unification_table: ut::UnificationTable::new(),
-            int_unification_table: ut::UnificationTable::new(),
-            float_unification_table: ut::UnificationTable::new(),
+            type_variables: type_variable::TypeVariableStorage::new(),
+            undo_log: Logs::default(),
+            const_unification_table: ut::UnificationStorage::new(),
+            int_unification_table: ut::UnificationStorage::new(),
+            float_unification_table: ut::UnificationStorage::new(),
             region_constraints: Some(RegionConstraintCollector::new()),
             region_obligations: vec![],
         }
     }
 
+    fn type_variables(&mut self) -> type_variable::TypeVariableTable<'tcx, '_> {
+        self.type_variables.with_log(&mut self.undo_log)
+    }
+
+    fn int_unification_table(
+        &mut self,
+    ) -> ut::UnificationTable<
+        ut::InPlace<ty::IntVid, &mut ut::UnificationStorage<ty::IntVid>, &mut Logs<'tcx>>,
+    > {
+        ut::UnificationTable::with_log(&mut self.int_unification_table, &mut self.undo_log)
+    }
+
+    fn float_unification_table(
+        &mut self,
+    ) -> ut::UnificationTable<
+        ut::InPlace<ty::FloatVid, &mut ut::UnificationStorage<ty::FloatVid>, &mut Logs<'tcx>>,
+    > {
+        ut::UnificationTable::with_log(&mut self.float_unification_table, &mut self.undo_log)
+    }
+
+    fn const_unification_table(
+        &mut self,
+    ) -> ut::UnificationTable<
+        ut::InPlace<
+            ty::ConstVid<'tcx>,
+            &mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
+            &mut Logs<'tcx>,
+        >,
+    > {
+        ut::UnificationTable::with_log(&mut self.const_unification_table, &mut self.undo_log)
+    }
+
     pub fn unwrap_region_constraints(&mut self) -> &mut RegionConstraintCollector<'tcx> {
         self.region_constraints.as_mut().expect("region constraints already solved")
+    }
+}
+
+pub struct Snapshot<'tcx> {
+    undo_len: usize,
+    _marker: PhantomData<&'tcx ()>,
+}
+
+pub(crate) enum UndoLog<'tcx> {
+    TypeVariables(type_variable::UndoLog<'tcx>),
+    ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
+    IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
+    FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
+}
+
+impl<'tcx> From<sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>) -> Self {
+        UndoLog::TypeVariables(type_variable::UndoLog::EqRelation(l))
+    }
+}
+
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
+        UndoLog::TypeVariables(type_variable::UndoLog::SubRelation(l))
+    }
+}
+
+impl<'tcx> From<sv::UndoLog<type_variable::Delegate>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<type_variable::Delegate>) -> Self {
+        UndoLog::TypeVariables(type_variable::UndoLog::Values(l))
+    }
+}
+
+impl<'tcx> From<type_variable::Instantiate> for UndoLog<'tcx> {
+    fn from(l: type_variable::Instantiate) -> Self {
+        UndoLog::TypeVariables(type_variable::UndoLog::from(l))
+    }
+}
+
+impl From<type_variable::UndoLog<'tcx>> for UndoLog<'tcx> {
+    fn from(t: type_variable::UndoLog<'tcx>) -> Self {
+        Self::TypeVariables(t)
+    }
+}
+
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>) -> Self {
+        Self::ConstUnificationTable(l)
+    }
+}
+
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::IntVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::IntVid>>) -> Self {
+        Self::IntUnificationTable(l)
+    }
+}
+
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::FloatVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::FloatVid>>) -> Self {
+        Self::FloatUnificationTable(l)
+    }
+}
+
+pub(crate) type UnificationTable<'a, 'tcx, T> =
+    ut::UnificationTable<ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut Logs<'tcx>>>;
+
+struct RollbackView<'tcx, 'a> {
+    type_variables: type_variable::RollbackView<'tcx, 'a>,
+    const_unification_table: &'a mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
+    int_unification_table: &'a mut ut::UnificationStorage<ty::IntVid>,
+    float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
+}
+
+impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
+    fn reverse(&mut self, undo: UndoLog<'tcx>) {
+        match undo {
+            UndoLog::TypeVariables(undo) => self.type_variables.reverse(undo),
+            UndoLog::ConstUnificationTable(undo) => self.const_unification_table.reverse(undo),
+            UndoLog::IntUnificationTable(undo) => self.int_unification_table.reverse(undo),
+            UndoLog::FloatUnificationTable(undo) => self.float_unification_table.reverse(undo),
+        }
+    }
+}
+
+pub(crate) struct Logs<'tcx> {
+    logs: Vec<UndoLog<'tcx>>,
+    num_open_snapshots: usize,
+}
+
+impl Default for Logs<'_> {
+    fn default() -> Self {
+        Self { logs: Default::default(), num_open_snapshots: Default::default() }
+    }
+}
+
+impl<'tcx, T> UndoLogs<T> for Logs<'tcx>
+where
+    UndoLog<'tcx>: From<T>,
+{
+    fn num_open_snapshots(&self) -> usize {
+        self.num_open_snapshots
+    }
+    fn push(&mut self, undo: T) {
+        if self.in_snapshot() {
+            self.logs.push(undo.into())
+        }
+    }
+    fn extend<J>(&mut self, undos: J)
+    where
+        Self: Sized,
+        J: IntoIterator<Item = T>,
+    {
+        if self.in_snapshot() {
+            self.logs.extend(undos.into_iter().map(UndoLog::from))
+        }
+    }
+}
+
+impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
+    type Snapshot = Snapshot<'tcx>;
+    fn actions_since_snapshot(&self, snapshot: &Self::Snapshot) -> &[UndoLog<'tcx>] {
+        &self.logs[snapshot.undo_len..]
+    }
+
+    fn start_snapshot(&mut self) -> Self::Snapshot {
+        unreachable!()
+    }
+
+    fn rollback_to(&mut self, values: &mut impl Rollback<UndoLog<'tcx>>, snapshot: Self::Snapshot) {
+        debug!("rollback_to({})", snapshot.undo_len);
+        self.assert_open_snapshot(&snapshot);
+
+        while self.logs.len() > snapshot.undo_len {
+            values.reverse(self.logs.pop().unwrap());
+        }
+
+        if self.num_open_snapshots == 1 {
+            // The root snapshot. It's safe to clear the undo log because
+            // there's no snapshot further out that we might need to roll back
+            // to.
+            assert!(snapshot.undo_len == 0);
+            self.logs.clear();
+        }
+
+        self.num_open_snapshots -= 1;
+    }
+
+    fn commit(&mut self, snapshot: Self::Snapshot) {
+        debug!("commit({})", snapshot.undo_len);
+
+        if self.num_open_snapshots == 1 {
+            // The root snapshot. It's safe to clear the undo log because
+            // there's no snapshot further out that we might need to roll back
+            // to.
+            assert!(snapshot.undo_len == 0);
+            self.logs.clear();
+        }
+
+        self.num_open_snapshots -= 1;
+    }
+}
+
+impl<'tcx> Logs<'tcx> {
+    fn assert_open_snapshot(&self, snapshot: &Snapshot<'tcx>) {
+        // Failures here may indicate a failure to follow a stack discipline.
+        assert!(self.logs.len() >= snapshot.undo_len);
+        assert!(self.num_open_snapshots > 0);
     }
 }
 
@@ -644,10 +848,11 @@ impl<'tcx> InferOk<'tcx, ()> {
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
+    undo_snapshot: Snapshot<'tcx>,
     type_snapshot: type_variable::Snapshot<'tcx>,
-    const_snapshot: ut::Snapshot<ut::InPlace<ty::ConstVid<'tcx>>>,
-    int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
-    float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
+    const_snapshot: usize,
+    int_snapshot: usize,
+    float_snapshot: usize,
     region_constraints_snapshot: RegionSnapshot,
     region_obligations_snapshot: usize,
     universe: ty::UniverseIndex,
@@ -667,7 +872,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
         match ty.kind {
-            ty::Infer(ty::TyVar(vid)) => self.inner.borrow().type_variables.var_diverges(vid),
+            ty::Infer(ty::TyVar(vid)) => self.inner.borrow_mut().type_variables().var_diverges(vid),
             _ => false,
         }
     }
@@ -681,14 +886,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.kind {
             ty::Infer(ty::IntVar(vid)) => {
-                if self.inner.borrow_mut().int_unification_table.probe_value(vid).is_some() {
+                if self.inner.borrow_mut().int_unification_table().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedInt
                 }
             }
             ty::Infer(ty::FloatVar(vid)) => {
-                if self.inner.borrow_mut().float_unification_table.probe_value(vid).is_some() {
+                if self.inner.borrow_mut().float_unification_table().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedFloat
@@ -703,21 +908,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // FIXME(const_generics): should there be an equivalent function for const variables?
 
         let mut vars: Vec<Ty<'_>> = inner
-            .type_variables
+            .type_variables()
             .unsolved_variables()
             .into_iter()
             .map(|t| self.tcx.mk_ty_var(t))
             .collect();
         vars.extend(
-            (0..inner.int_unification_table.len())
+            (0..inner.int_unification_table().len())
                 .map(|i| ty::IntVid { index: i as u32 })
-                .filter(|&vid| inner.int_unification_table.probe_value(vid).is_none())
+                .filter(|&vid| inner.int_unification_table().probe_value(vid).is_none())
                 .map(|v| self.tcx.mk_int_var(v)),
         );
         vars.extend(
-            (0..inner.float_unification_table.len())
+            (0..inner.float_unification_table().len())
                 .map(|i| ty::FloatVid { index: i as u32 })
-                .filter(|&vid| inner.float_unification_table.probe_value(vid).is_none())
+                .filter(|&vid| inner.float_unification_table().probe_value(vid).is_none())
                 .map(|v| self.tcx.mk_float_var(v)),
         );
         vars
@@ -769,12 +974,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let in_snapshot = self.in_snapshot.replace(true);
 
         let mut inner = self.inner.borrow_mut();
+
+        inner.undo_log.num_open_snapshots += 1;
+        let undo_snapshot = Snapshot { undo_len: inner.undo_log.logs.len(), _marker: PhantomData };
         CombinedSnapshot {
             projection_cache_snapshot: inner.projection_cache.snapshot(),
-            type_snapshot: inner.type_variables.snapshot(),
-            const_snapshot: inner.const_unification_table.snapshot(),
-            int_snapshot: inner.int_unification_table.snapshot(),
-            float_snapshot: inner.float_unification_table.snapshot(),
+            undo_snapshot,
+            type_snapshot: inner.type_variables().snapshot(),
+            const_snapshot: inner.const_unification_table().len(),
+            int_snapshot: inner.int_unification_table().len(),
+            float_snapshot: inner.float_unification_table().len(),
             region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             region_obligations_snapshot: inner.region_obligations.len(),
             universe: self.universe(),
@@ -790,10 +999,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot {
             projection_cache_snapshot,
-            type_snapshot,
-            const_snapshot,
-            int_snapshot,
-            float_snapshot,
+            undo_snapshot,
+            type_snapshot: _,
+            const_snapshot: _,
+            int_snapshot: _,
+            float_snapshot: _,
             region_constraints_snapshot,
             region_obligations_snapshot,
             universe,
@@ -807,11 +1017,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.skip_leak_check.set(was_skip_leak_check);
 
         let mut inner = self.inner.borrow_mut();
+        let inner = &mut *inner;
+        let InferCtxtInner {
+            type_variables,
+            const_unification_table,
+            int_unification_table,
+            float_unification_table,
+            ..
+        } = inner;
+        inner.undo_log.rollback_to(
+            &mut RollbackView {
+                type_variables: type_variable::RollbackView::from(type_variables),
+                const_unification_table,
+                int_unification_table,
+                float_unification_table,
+            },
+            undo_snapshot,
+        );
         inner.projection_cache.rollback_to(projection_cache_snapshot);
-        inner.type_variables.rollback_to(type_snapshot);
-        inner.const_unification_table.rollback_to(const_snapshot);
-        inner.int_unification_table.rollback_to(int_snapshot);
-        inner.float_unification_table.rollback_to(float_snapshot);
         inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
         inner.region_obligations.truncate(region_obligations_snapshot);
     }
@@ -820,10 +1043,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("commit_from()");
         let CombinedSnapshot {
             projection_cache_snapshot,
-            type_snapshot,
-            const_snapshot,
-            int_snapshot,
-            float_snapshot,
+            undo_snapshot,
+            type_snapshot: _,
+            const_snapshot: _,
+            int_snapshot: _,
+            float_snapshot: _,
             region_constraints_snapshot,
             region_obligations_snapshot: _,
             universe: _,
@@ -836,11 +1060,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.skip_leak_check.set(was_skip_leak_check);
 
         let mut inner = self.inner.borrow_mut();
+        inner.undo_log.commit(undo_snapshot);
         inner.projection_cache.commit(projection_cache_snapshot);
-        inner.type_variables.commit(type_snapshot);
-        inner.const_unification_table.commit(const_snapshot);
-        inner.int_unification_table.commit(int_snapshot);
-        inner.float_unification_table.commit(float_snapshot);
         inner.unwrap_region_constraints().commit(region_constraints_snapshot);
     }
 
@@ -1032,7 +1253,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
-        self.inner.borrow_mut().type_variables.new_var(self.universe(), diverging, origin)
+        self.inner.borrow_mut().type_variables().new_var(self.universe(), diverging, origin)
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -1044,7 +1265,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: TypeVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables.new_var(universe, false, origin);
+        let vid = self.inner.borrow_mut().type_variables().new_var(universe, false, origin);
         self.tcx.mk_ty_var(vid)
     }
 
@@ -1069,20 +1290,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let vid = self
             .inner
             .borrow_mut()
-            .const_unification_table
+            .const_unification_table()
             .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } });
         self.tcx.mk_const_var(vid, ty)
     }
 
     pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
-        self.inner.borrow_mut().const_unification_table.new_key(ConstVarValue {
+        self.inner.borrow_mut().const_unification_table().new_key(ConstVarValue {
             origin,
             val: ConstVariableValue::Unknown { universe: self.universe() },
         })
     }
 
     fn next_int_var_id(&self) -> IntVid {
-        self.inner.borrow_mut().int_unification_table.new_key(None)
+        self.inner.borrow_mut().int_unification_table().new_key(None)
     }
 
     pub fn next_int_var(&self) -> Ty<'tcx> {
@@ -1090,7 +1311,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     fn next_float_var_id(&self) -> FloatVid {
-        self.inner.borrow_mut().float_unification_table.new_key(None)
+        self.inner.borrow_mut().float_unification_table().new_key(None)
     }
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
@@ -1161,7 +1382,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // used in a path such as `Foo::<T, U>::new()` will
                 // use an inference variable for `C` with `[T, U]`
                 // as the substitutions for the default, `(T, U)`.
-                let ty_var_id = self.inner.borrow_mut().type_variables.new_var(
+                let ty_var_id = self.inner.borrow_mut().type_variables().new_var(
                     self.universe(),
                     false,
                     TypeVariableOrigin {
@@ -1181,7 +1402,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     span,
                 };
                 let const_var_id =
-                    self.inner.borrow_mut().const_unification_table.new_key(ConstVarValue {
+                    self.inner.borrow_mut().const_unification_table().new_key(ConstVarValue {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
@@ -1335,7 +1556,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
         use self::type_variable::TypeVariableValue;
 
-        match self.inner.borrow_mut().type_variables.probe(vid) {
+        match self.inner.borrow_mut().type_variables().probe(vid) {
             TypeVariableValue::Known { value } => Ok(value),
             TypeVariableValue::Unknown { universe } => Err(universe),
         }
@@ -1357,7 +1578,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
-        self.inner.borrow_mut().type_variables.root_var(var)
+        self.inner.borrow_mut().type_variables().root_var(var)
     }
 
     /// Where possible, replaces type/const variables in
@@ -1395,7 +1616,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         vid: ty::ConstVid<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
-        match self.inner.borrow_mut().const_unification_table.probe_value(vid).val {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
         }
@@ -1576,14 +1797,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //
                 // Note: if these two lines are combined into one we get
                 // dynamic borrow errors on `self.inner`.
-                let known = self.inner.borrow_mut().type_variables.probe(v).known();
+                let known = self.inner.borrow_mut().type_variables().probe(v).known();
                 known.map(|t| self.shallow_resolve_ty(t)).unwrap_or(typ)
             }
 
             ty::Infer(ty::IntVar(v)) => self
                 .inner
                 .borrow_mut()
-                .int_unification_table
+                .int_unification_table()
                 .probe_value(v)
                 .map(|v| v.to_type(self.tcx))
                 .unwrap_or(typ),
@@ -1591,7 +1812,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::Infer(ty::FloatVar(v)) => self
                 .inner
                 .borrow_mut()
-                .float_unification_table
+                .float_unification_table()
                 .probe_value(v)
                 .map(|v| v.to_type(self.tcx))
                 .unwrap_or(typ),
@@ -1617,7 +1838,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 // If `inlined_probe` returns a `Known` value, it never equals
                 // `ty::Infer(ty::TyVar(v))`.
-                match self.inner.borrow_mut().type_variables.inlined_probe(v) {
+                match self.inner.borrow_mut().type_variables().inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
@@ -1627,7 +1848,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                self.inner.borrow_mut().int_unification_table.inlined_probe_value(v).is_some()
+                self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_some()
             }
 
             TyOrConstInferVar::TyFloat(v) => {
@@ -1635,7 +1856,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                self.inner.borrow_mut().float_unification_table.probe_value(v).is_some()
+                self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
             }
 
             TyOrConstInferVar::Const(v) => {
@@ -1718,7 +1939,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
             self.infcx
                 .inner
                 .borrow_mut()
-                .const_unification_table
+                .const_unification_table()
                 .probe_value(*vid)
                 .val
                 .known()

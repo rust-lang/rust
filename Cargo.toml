@@ -65,5 +65,7 @@ rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'src/tools/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'src/tools/rustc-std-workspace-std' }
 
+ena = { version = "0.13.1", git = "https://github.com/Marwes/ena", branch = "detach_undo_log" }
+
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

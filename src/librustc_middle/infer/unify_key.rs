@@ -1,6 +1,9 @@
 use crate::ty::{self, FloatVarValue, InferConst, IntVarValue, Ty, TyCtxt};
-use rustc_data_structures::unify::InPlace;
-use rustc_data_structures::unify::{EqUnifyValue, NoError, UnificationTable, UnifyKey, UnifyValue};
+use rustc_data_structures::snapshot_vec;
+use rustc_data_structures::undo_log::UndoLogs;
+use rustc_data_structures::unify::{
+    self, EqUnifyValue, InPlace, NoError, UnificationTable, UnifyKey, UnifyValue,
+};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -212,10 +215,14 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 
 impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
-pub fn replace_if_possible(
-    table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>>>,
+pub fn replace_if_possible<V, L>(
+    table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>, V, L>>,
     c: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> &'tcx ty::Const<'tcx>
+where
+    V: snapshot_vec::VecLike<unify::Delegate<ty::ConstVid<'tcx>>>,
+    L: UndoLogs<snapshot_vec::UndoLog<unify::Delegate<ty::ConstVid<'tcx>>>>,
+{
     if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
         match table.probe_value(*vid).val.known() {
             Some(c) => c,
