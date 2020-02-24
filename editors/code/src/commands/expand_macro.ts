@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 
@@ -26,12 +26,7 @@ export function expandMacro(ctx: Ctx): Cmd {
     };
 }
 
-interface ExpandedMacro {
-    name: string;
-    expansion: string;
-}
-
-function codeFormat(expanded: ExpandedMacro): string {
+function codeFormat(expanded: ra.ExpandedMacro): string {
     let result = `// Recursive expansion of ${expanded.name}! macro\n`;
     result += '// ' + '='.repeat(result.length - 3);
     result += '\n\n';
@@ -54,14 +49,11 @@ class TextDocumentContentProvider
         if (!editor || !client) return '';
 
         const position = editor.selection.active;
-        const request: lc.TextDocumentPositionParams = {
+
+        const expanded = await client.sendRequest(ra.expandMacro, {
             textDocument: { uri: editor.document.uri.toString() },
             position,
-        };
-        const expanded = await client.sendRequest<ExpandedMacro>(
-            'rust-analyzer/expandMacro',
-            request,
-        );
+        });
 
         if (expanded == null) return 'Not available';
 
