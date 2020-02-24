@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
-import { applySourceChange, SourceChange } from '../source_change';
+import { applySourceChange } from '../source_change';
 import { Cmd, Ctx } from '../ctx';
 
 async function handleKeypress(ctx: Ctx) {
@@ -10,22 +10,15 @@ async function handleKeypress(ctx: Ctx) {
 
     if (!editor || !client) return false;
 
-    const request: lc.TextDocumentPositionParams = {
+    const change = await client.sendRequest(ra.onEnter, {
         textDocument: { uri: editor.document.uri.toString() },
         position: client.code2ProtocolConverter.asPosition(
             editor.selection.active,
         ),
-    };
-    const change = await client.sendRequest<undefined | SourceChange>(
-        'rust-analyzer/onEnter',
-        request,
-    ).catch(
-        (_error: any) => {
-            // FIXME: switch to the more modern (?) typed request infrastructure
-            // client.logFailedRequest(OnEnterRequest.type, error);
-            return Promise.resolve(null);
-        }
-    );
+    }).catch(_error => {
+        // client.logFailedRequest(OnEnterRequest.type, error);
+        return null;
+    });
     if (!change) return false;
 
     await applySourceChange(ctx, change);
