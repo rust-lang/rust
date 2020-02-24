@@ -1285,9 +1285,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         result: &SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) -> bool {
         match result {
-            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => {
-                !trait_ref.skip_binder().input_types().any(|t| t.walk().any(|t_| t_.is_ty_infer()))
-            }
+            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.needs_infer(),
             _ => true,
         }
     }
