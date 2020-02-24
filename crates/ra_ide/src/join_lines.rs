@@ -228,6 +228,31 @@ fn foo() {
     }
 
     #[test]
+    fn test_join_lines_diverging_block() {
+        let before = r"
+            fn foo() {
+                loop {
+                    match x {
+                        92 => <|>{
+                            continue;
+                        }
+                    }
+                }
+            }
+        ";
+        let after = r"
+            fn foo() {
+                loop {
+                    match x {
+                        92 => <|>continue,
+                    }
+                }
+            }
+        ";
+        check_join_lines(before, after);
+    }
+
+    #[test]
     fn join_lines_adds_comma_for_block_in_match_arm() {
         check_join_lines(
             r"
