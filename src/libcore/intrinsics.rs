@@ -1515,6 +1515,7 @@ fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
 /// ```
 ///
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
+#[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
@@ -1579,6 +1580,7 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 ///     dst
 /// }
 /// ```
+#[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
