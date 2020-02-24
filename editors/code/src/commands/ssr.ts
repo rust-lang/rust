@@ -1,6 +1,8 @@
-import { Ctx, Cmd } from '../ctx';
-import { applySourceChange, SourceChange } from '../source_change';
 import * as vscode from 'vscode';
+import * as ra from "../rust-analyzer-api";
+
+import { Ctx, Cmd } from '../ctx';
+import { applySourceChange } from '../source_change';
 
 export function ssr(ctx: Ctx): Cmd {
     return async () => {
@@ -21,16 +23,8 @@ export function ssr(ctx: Ctx): Cmd {
 
         if (!request) return;
 
-        const ssrRequest: SsrRequest = { arg: request };
-        const change = await client.sendRequest<SourceChange>(
-            'rust-analyzer/ssr',
-            ssrRequest,
-        );
+        const change = await client.sendRequest(ra.ssr, { arg: request },);
 
         await applySourceChange(ctx, change);
     };
-}
-
-interface SsrRequest {
-    arg: string;
 }
