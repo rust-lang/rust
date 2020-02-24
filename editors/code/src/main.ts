@@ -12,6 +12,26 @@ import { log } from './util';
 let ctx: Ctx | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
+    // Register a "dumb" onEnter command for the case where server fails to
+    // start.
+    //
+    // FIXME: refactor command registration code such that commands are
+    // **always** registered, even if the server does not start. Use API like
+    // this perhaps?
+    //
+    // ```TypeScript
+    // registerCommand(
+    //    factory: (Ctx) => ((Ctx) => any),
+    //    fallback: () => any = () => vscode.window.showErrorMessage(
+    //        "rust-analyzer is not available"
+    //    ),
+    // )
+    const defaultOnEnter = vscode.commands.registerCommand(
+        'rust-analyzer.onEnter',
+        () => vscode.commands.executeCommand('default:type', { text: '\n' }),
+    );
+    context.subscriptions.push(defaultOnEnter);
+
     const config = new Config(context);
 
     const serverPath = await ensureServerBinary(config.serverSource);
@@ -54,7 +74,10 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+
+    defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);
+
     ctx.registerCommand('ssr', commands.ssr);
     ctx.registerCommand('serverVersion', commands.serverVersion);
 
