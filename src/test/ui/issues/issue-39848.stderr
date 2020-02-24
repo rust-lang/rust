@@ -1,13 +1,17 @@
 error: expected `{`, found `foo`
-  --> $DIR/issue-39848.rs:8:19
+  --> $DIR/issue-39848.rs:3:21
    |
 LL |         if $tgt.has_$field() {}
-   |         --                -- help: try placing this code inside a block: `{ () }`
-   |         |
+   |         --          ^^^^^^--
+   |         |           |
+   |         |           expected `{`
+   |         |           help: try placing this code inside a block: `{ $field() }`
    |         this `if` expression has a condition, but no block
 ...
 LL |     get_opt!(bar, foo);
-   |                   ^^^ expected `{`
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -889,9 +889,8 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         // this could be handled like a token, since it is one
         sym::ident => {
             if let Some((name, is_raw)) = get_macro_name(&p.token) {
-                let span = p.token.span;
                 p.bump();
-                token::NtIdent(Ident::new(name, span), is_raw)
+                token::NtIdent(Ident::new(name, p.normalized_prev_token.span), is_raw)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
                 let msg = &format!("expected ident, found {}", &token_str);

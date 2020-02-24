@@ -192,12 +192,12 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(token::DelimToken::Brace),
             TokenKind::CloseDelim(token::DelimToken::Paren),
         ];
-        if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.token.span).is_raw_guess()
+        if let token::Ident(name, false) = self.normalized_token.kind {
+            if Ident::new(name, self.normalized_token.span).is_raw_guess()
                 && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
             {
                 err.span_suggestion(
-                    self.token.span,
+                    self.normalized_token.span,
                     "you can escape reserved keywords to use them as identifiers",
                     format!("r#{}", name),
                     Applicability::MaybeIncorrect,

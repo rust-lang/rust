@@ -97,15 +97,14 @@ impl<'a> Parser<'a> {
     fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
         match self.parse_expr() {
             Ok(expr) => Ok(expr),
-            Err(mut err) => match self.token.kind {
+            Err(mut err) => match self.normalized_token.kind {
                 token::Ident(name, false)
                     if name == kw::Underscore && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
-                    let sp = self.token.span;
                     self.bump();
-                    Ok(self.mk_expr(sp, ExprKind::Err, AttrVec::new()))
+                    Ok(self.mk_expr(self.prev_token.span, ExprKind::Err, AttrVec::new()))
                 }
                 _ => Err(err),
             },
@@ -166,7 +165,7 @@ impl<'a> Parser<'a> {
         while let Some(op) = self.check_assoc_op() {
             // Adjust the span for interpolated LHS to point to the `$lhs` token
             // and not to what it refers to.
-            let lhs_span = match self.unnormalized_prev_token.kind {
+            let lhs_span = match self.prev_token.kind {
                 TokenKind::Interpolated(..) => self.prev_span,
                 _ => lhs.span,
             };
@@ -337,7 +336,7 @@ impl<'a> Parser<'a> {
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
         Some(Spanned {
-            node: match (AssocOp::from_token(&self.token), &self.token.kind) {
+            node: match (AssocOp::from_token(&self.token), &self.normalized_token.kind) {
                 (Some(op), _) => op,
                 (None, token::Ident(sym::and, false)) => {
                     self.error_bad_logical_op("and", "&&", "conjunction");
@@ -349,7 +348,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => return None,
             },
-            span: self.token.span,
+            span: self.normalized_token.span,
         })
     }
 
@@ -441,7 +440,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        let (hi, ex) = match self.token.kind {
+        let (hi, ex) = match self.normalized_token.kind {
             token::Not => self.parse_unary_expr(lo, UnOp::Not), // `!expr`
             token::Tilde => self.recover_tilde_expr(lo),        // `~expr`
             token::BinOp(token::Minus) => self.parse_unary_expr(lo, UnOp::Neg), // `-expr`
@@ -527,7 +526,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
             (
-                match self.unnormalized_prev_token.kind {
+                match self.prev_token.kind {
                     TokenKind::Interpolated(..) => self.prev_span,
                     _ => e.span,
                 },
@@ -708,7 +707,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
-        match self.token.kind {
+        match self.normalized_token.kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))
@@ -777,8 +776,8 @@ impl<'a> Parser<'a> {
         field: Symbol,
         suffix: Option<Symbol>,
     ) -> P<Expr> {
-        let span = self.token.span;
         self.bump();
+        let span = self.prev_token.span;
         let field = ExprKind::Field(base, Ident::new(field, span));
         self.expect_no_suffix(span, "a tuple index", suffix);
         self.mk_expr(lo.to(span), field, AttrVec::new())
@@ -802,7 +801,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        if self.token.span.rust_2018() && self.eat_keyword(kw::Await) {
+        if self.normalized_token.span.rust_2018() && self.eat_keyword(kw::Await) {
             return self.mk_await_expr(self_arg, lo);
         }
 
@@ -916,7 +915,7 @@ impl<'a> Parser<'a> {
             //       |             ^ expected expression
             self.bump();
             Ok(self.mk_expr_err(self.token.span))
-        } else if self.token.span.rust_2018() {
+        } else if self.normalized_token.span.rust_2018() {
             // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
                 if self.is_async_block() {
@@ -1346,7 +1345,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness =
-            if self.token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
+            if self.normalized_token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
         if asyncness.is_async() {
             // Feature-gate `async ||` closures.
             self.sess.gated_spans.gate(sym::async_closure, self.prev_span);
@@ -1560,9 +1559,8 @@ impl<'a> Parser<'a> {
 
     fn eat_label(&mut self) -> Option<Label> {
         self.token.lifetime().map(|ident| {
-            let span = self.token.span;
             self.bump();
-            Label { ident: Ident::new(ident.name, span) }
+            Label { ident }
         })
     }
 
@@ -1704,7 +1702,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-        self.token.span.rust_2018() &&
+        self.normalized_token.span.rust_2018() &&
         // Prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
@@ -1854,13 +1852,12 @@ impl<'a> Parser<'a> {
 
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
     fn find_struct_error_after_field_looking_code(&self) -> Option<Field> {
-        if let token::Ident(name, _) = self.token.kind {
+        if let token::Ident(name, _) = self.normalized_token.kind {
             if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
-                let span = self.token.span;
                 return Some(ast::Field {
-                    ident: Ident::new(name, span),
-                    span,
-                    expr: self.mk_expr_err(span),
+                    ident: Ident::new(name, self.normalized_token.span),
+                    span: self.token.span,
+                    expr: self.mk_expr_err(self.token.span),
                     is_shorthand: false,
                     attrs: AttrVec::new(),
                     id: DUMMY_NODE_ID,
