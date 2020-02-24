@@ -302,7 +302,7 @@ impl Stdin {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 
-    /// Locks this handle and reads a line of input into the specified buffer.
+    /// Locks this handle and reads a line of input, appending it to the specified buffer.
     ///
     /// For detailed semantics of this method, see the documentation on
     /// [`BufRead::read_line`].
