@@ -23,7 +23,7 @@ export function ssr(ctx: Ctx): Cmd {
 
         if (!request) return;
 
-        const change = await client.sendRequest(ra.ssr, { arg: request },);
+        const change = await client.sendRequest(ra.ssr, { arg: request });
 
         await applySourceChange(ctx, change);
     };
