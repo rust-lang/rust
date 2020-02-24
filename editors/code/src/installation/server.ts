@@ -88,9 +88,12 @@ async function downloadServer(source: BinarySource.GithubRelease): Promise<boole
         return false;
     }
 
-    if (!isBinaryAvailable(path.join(source.dir, source.file))) assert(false,
+    const binaryPath = path.join(source.dir, source.file);
+    
+    if (!isBinaryAvailable(binaryPath)) assert(false,
         `Downloaded language server binary is not functional.` +
-        `Downloaded from: ${JSON.stringify(source, null, 4)}`
+        `Downloaded from GitHub repo ${source.repo.owner}/${source.repo.name} ` +
+        `to ${binaryPath}`
     );
 
     vscode.window.showInformationMessage(
