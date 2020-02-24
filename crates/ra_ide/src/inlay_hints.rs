@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
+use hir::{Adt, HirDisplay, SourceAnalyzer, SourceBinder, Type};
 use once_cell::unsync::Lazy;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
@@ -57,12 +57,10 @@ fn get_inlay_hints(
                 get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
             ast::BindPat(it) => {
-                if should_not_display_type_hint(&it) {
-                    return None;
-                }
-                let pat = ast::Pat::from(it);
+                let pat = ast::Pat::from(it.clone());
                 let ty = analyzer.type_of_pat(db, &pat)?;
-                if ty.is_unknown() {
+
+                if should_not_display_type_hint(db, &it, &ty) {
                     return None;
                 }
 
@@ -80,7 +78,24 @@ fn get_inlay_hints(
     Some(())
 }
 
-fn should_not_display_type_hint(bind_pat: &ast::BindPat) -> bool {
+fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+    if let Some(Adt::Enum(enum_data)) = pat_ty.as_adt() {
+        let pat_text = bind_pat.syntax().to_string();
+        enum_data
+            .variants(db)
+            .into_iter()
+            .map(|variant| variant.name(db).to_string())
+            .any(|enum_name| enum_name == pat_text)
+    } else {
+        false
+    }
+}
+
+fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+    if pat_ty.is_unknown() {
+        return true;
+    }
+
     for node in bind_pat.syntax().ancestors() {
         match_ast! {
             match node {
@@ -89,6 +104,17 @@ fn should_not_display_type_hint(bind_pat: &ast::BindPat) -> bool {
                 },
                 ast::Param(it) => {
                     return it.ascribed_type().is_some()
+                },
+                ast::MatchArm(_it) => {
+                    return pat_is_enum_variant(db, bind_pat, pat_ty);
+                },
+                ast::IfExpr(it) => {
+                    return it.condition().and_then(|condition| condition.pat()).is_some()
+                        && pat_is_enum_variant(db, bind_pat, pat_ty);
+                },
+                ast::WhileExpr(it) => {
+                    return it.condition().and_then(|condition| condition.pat()).is_some()
+                        && pat_is_enum_variant(db, bind_pat, pat_ty);
                 },
                 _ => (),
             }
@@ -119,13 +145,12 @@ fn get_param_name_hints(
         } else {
             0
         };
-    let parameters = fn_signature.parameter_names.iter().skip(n_params_to_skip);
-
-    let hints = parameters
+    let hints = fn_signature
+        .parameter_names
+        .iter()
+        .skip(n_params_to_skip)
         .zip(args)
-        .filter(|(param, arg)| {
-            should_show_param_hint(&fn_signature, param, &arg.syntax().to_string())
-        })
+        .filter(|(param, arg)| should_show_param_hint(&fn_signature, param, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -139,8 +164,9 @@ fn get_param_name_hints(
 fn should_show_param_hint(
     fn_signature: &FunctionSignature,
     param_name: &str,
-    argument_string: &str,
+    argument: &ast::Expr,
 ) -> bool {
+    let argument_string = argument.syntax().to_string();
     if param_name.is_empty() || argument_string.ends_with(param_name) {
         return false;
     }
@@ -440,75 +466,77 @@ struct Test {
     b: u8,
 }
 
-fn main() {
-    let test = CustomOption::Some(Test { a: CustomOption::Some(3), b: 1 });
-    if let CustomOption::None = &test {};
-    if let test = &test {};
-    if let CustomOption::Some(test) = &test {};
-    if let CustomOption::Some(Test { a, b }) = &test {};
-    if let CustomOption::Some(Test { a: x, b: y }) = &test {};
-    if let CustomOption::Some(Test { a: CustomOption::Some(x), b: y }) = &test {};
-    if let CustomOption::Some(Test { a: CustomOption::None, b: y }) = &test {};
-    if let CustomOption::Some(Test { b: y, .. }) = &test {};
+use CustomOption::*;
 
-    if test == CustomOption::None {}
+fn main() {
+    let test = Some(Test { a: Some(3), b: 1 });
+    if let None = &test {};
+    if let test = &test {};
+    if let Some(test) = &test {};
+    if let Some(Test { a, b }) = &test {};
+    if let Some(Test { a: x, b: y }) = &test {};
+    if let Some(Test { a: Some(x), b: y }) = &test {};
+    if let Some(Test { a: None, b: y }) = &test {};
+    if let Some(Test { b: y, .. }) = &test {};
+
+    if test == None {}
 }"#,
         );
 
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [166; 170),
+                range: [188; 192),
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: [287; 291),
+                range: [267; 271),
                 kind: TypeHint,
                 label: "&CustomOption<Test>",
             },
             InlayHint {
-                range: [334; 338),
+                range: [300; 304),
                 kind: TypeHint,
                 label: "&Test",
             },
             InlayHint {
-                range: [389; 390),
+                range: [341; 342),
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: [392; 393),
+                range: [344; 345),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [449; 450),
+                range: [387; 388),
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: [455; 456),
+                range: [393; 394),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [531; 532),
+                range: [441; 442),
                 kind: TypeHint,
                 label: "&u32",
             },
             InlayHint {
-                range: [538; 539),
+                range: [448; 449),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [618; 619),
+                range: [500; 501),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [675; 676),
+                range: [543; 544),
                 kind: TypeHint,
                 label: "&u8",
             },
@@ -533,75 +561,77 @@ struct Test {
     b: u8,
 }
 
-fn main() {
-    let test = CustomOption::Some(Test { a: CustomOption::Some(3), b: 1 });
-    while let CustomOption::None = &test {};
-    while let test = &test {};
-    while let CustomOption::Some(test) = &test {};
-    while let CustomOption::Some(Test { a, b }) = &test {};
-    while let CustomOption::Some(Test { a: x, b: y }) = &test {};
-    while let CustomOption::Some(Test { a: CustomOption::Some(x), b: y }) = &test {};
-    while let CustomOption::Some(Test { a: CustomOption::None, b: y }) = &test {};
-    while let CustomOption::Some(Test { b: y, .. }) = &test {};
+use CustomOption::*;
 
-    while test == CustomOption::None {}
+fn main() {
+    let test = Some(Test { a: Some(3), b: 1 });
+    while let None = &test {};
+    while let test = &test {};
+    while let Some(test) = &test {};
+    while let Some(Test { a, b }) = &test {};
+    while let Some(Test { a: x, b: y }) = &test {};
+    while let Some(Test { a: Some(x), b: y }) = &test {};
+    while let Some(Test { a: None, b: y }) = &test {};
+    while let Some(Test { b: y, .. }) = &test {};
+
+    while test == None {}
 }"#,
         );
 
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [166; 170),
+                range: [188; 192),
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: [293; 297),
+                range: [273; 277),
                 kind: TypeHint,
                 label: "&CustomOption<Test>",
             },
             InlayHint {
-                range: [343; 347),
+                range: [309; 313),
                 kind: TypeHint,
                 label: "&Test",
             },
             InlayHint {
-                range: [401; 402),
+                range: [353; 354),
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: [404; 405),
+                range: [356; 357),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [464; 465),
+                range: [402; 403),
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: [470; 471),
+                range: [408; 409),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [549; 550),
+                range: [459; 460),
                 kind: TypeHint,
                 label: "&u32",
             },
             InlayHint {
-                range: [556; 557),
+                range: [466; 467),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [639; 640),
+                range: [521; 522),
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: [699; 700),
+                range: [567; 568),
                 kind: TypeHint,
                 label: "&u8",
             },
@@ -626,16 +656,18 @@ struct Test {
     b: u8,
 }
 
+use CustomOption::*;
+
 fn main() {
-    match CustomOption::Some(Test { a: CustomOption::Some(3), b: 1 }) {
-        CustomOption::None => (),
+    match Some(Test { a: Some(3), b: 1 }) {
+        None => (),
         test => (),
-        CustomOption::Some(test) => (),
-        CustomOption::Some(Test { a, b }) => (),
-        CustomOption::Some(Test { a: x, b: y }) => (),
-        CustomOption::Some(Test { a: CustomOption::Some(x), b: y }) => (),
-        CustomOption::Some(Test { a: CustomOption::None, b: y }) => (),
-        CustomOption::Some(Test { b: y, .. }) => (),
+        Some(test) => (),
+        Some(Test { a, b }) => (),
+        Some(Test { a: x, b: y }) => (),
+        Some(Test { a: Some(x), b: y }) => (),
+        Some(Test { a: None, b: y }) => (),
+        Some(Test { b: y, .. }) => (),
         _ => {}
     }
 }"#,
@@ -644,52 +676,52 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [272; 276),
+                range: [252; 256),
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: [311; 315),
+                range: [277; 281),
                 kind: TypeHint,
                 label: "Test",
             },
             InlayHint {
-                range: [358; 359),
+                range: [310; 311),
                 kind: TypeHint,
                 label: "CustomOption<u32>",
             },
             InlayHint {
-                range: [361; 362),
+                range: [313; 314),
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: [410; 411),
+                range: [348; 349),
                 kind: TypeHint,
                 label: "CustomOption<u32>",
             },
             InlayHint {
-                range: [416; 417),
+                range: [354; 355),
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: [484; 485),
+                range: [394; 395),
                 kind: TypeHint,
                 label: "u32",
             },
             InlayHint {
-                range: [491; 492),
+                range: [401; 402),
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: [563; 564),
+                range: [445; 446),
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: [612; 613),
+                range: [480; 481),
                 kind: TypeHint,
                 label: "u8",
             },
@@ -743,6 +775,7 @@ enum CustomOption<T> {
     None,
     Some(T),
 }
+use CustomOption::*;
 
 struct FileId {}
 struct SmolStr {}
@@ -791,11 +824,11 @@ fn main() {
     Test::from_syntax(
         FileId {},
         "impl".into(),
-        CustomOption::None,
+        None,
         TextRange {},
         SyntaxKind {},
-        CustomOption::None,
-        CustomOption::None,
+        None,
+        None,
     );
 }"#,
         );
@@ -803,77 +836,77 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [777; 788),
+                range: [798; 809),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [821; 822),
+                range: [842; 843),
                 kind: ParameterHint,
                 label: "foo",
             },
             InlayHint {
-                range: [824; 825),
+                range: [845; 846),
                 kind: ParameterHint,
                 label: "bar",
             },
             InlayHint {
-                range: [827; 834),
+                range: [848; 855),
                 kind: ParameterHint,
                 label: "msg",
             },
             InlayHint {
-                range: [839; 850),
+                range: [860; 871),
                 kind: ParameterHint,
                 label: "last",
             },
             InlayHint {
-                range: [893; 896),
+                range: [914; 917),
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: [916; 918),
+                range: [937; 939),
                 kind: ParameterHint,
                 label: "&self",
             },
             InlayHint {
-                range: [920; 924),
+                range: [941; 945),
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: [959; 968),
+                range: [980; 989),
                 kind: ParameterHint,
                 label: "file_id",
             },
             InlayHint {
-                range: [978; 991),
+                range: [999; 1012),
                 kind: ParameterHint,
                 label: "name",
             },
             InlayHint {
-                range: [1001; 1019),
+                range: [1022; 1026),
                 kind: ParameterHint,
                 label: "focus_range",
             },
             InlayHint {
-                range: [1029; 1041),
+                range: [1036; 1048),
                 kind: ParameterHint,
                 label: "full_range",
             },
             InlayHint {
-                range: [1051; 1064),
+                range: [1058; 1071),
                 kind: ParameterHint,
                 label: "kind",
             },
             InlayHint {
-                range: [1074; 1092),
+                range: [1081; 1085),
                 kind: ParameterHint,
                 label: "docs",
             },
             InlayHint {
-                range: [1102; 1120),
+                range: [1095; 1099),
                 kind: ParameterHint,
                 label: "description",
             },
