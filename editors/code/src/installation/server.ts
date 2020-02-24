@@ -89,8 +89,8 @@ async function downloadServer(source: BinarySource.GithubRelease): Promise<boole
     }
 
     const binaryPath = path.join(source.dir, source.file);
-    
-    if (!isBinaryAvailable(binaryPath)) assert(false,
+
+    assert(isBinaryAvailable(binaryPath),
         `Downloaded language server binary is not functional.` +
         `Downloaded from GitHub repo ${source.repo.owner}/${source.repo.name} ` +
         `to ${binaryPath}`
