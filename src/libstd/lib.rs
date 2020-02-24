@@ -550,7 +550,7 @@ pub use core::{
     trace_macros,
 };
 
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 
 // Include a number of private modules that exist solely to provide

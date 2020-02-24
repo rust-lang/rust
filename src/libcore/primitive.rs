@@ -31,37 +31,37 @@
 //! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
 //! ```
 
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use bool;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use char;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f32;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f64;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i128;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i16;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i32;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i64;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i8;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use isize;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use str;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u128;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u16;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u32;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u64;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u8;
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub use usize;

@@ -262,7 +262,7 @@ mod bool;
 mod tuple;
 mod unit;
 
-#[stable(feature = "core_primitive", since = "1.42.0")]
+#[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
 
 // Pull in the `core_arch` crate directly into libcore. The contents of
