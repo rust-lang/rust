@@ -533,17 +533,17 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
-                        if let Some(index) = self.tcx.find_field_index(ident, variant) {
-                            filter!(self.span_utils, ident.span);
-                            let span = self.span_from_span(ident.span);
-                            return Some(Data::RefData(Ref {
-                                kind: RefKind::Variable,
-                                span,
-                                ref_id: id_from_def_id(variant.fields[index].did),
-                            }));
-                        }
-
-                        None
+                        filter!(self.span_utils, ident.span);
+                        let span = self.span_from_span(ident.span);
+                        return Some(Data::RefData(Ref {
+                            kind: RefKind::Variable,
+                            span,
+                            ref_id: self
+                                .tcx
+                                .find_field_index(ident, variant)
+                                .map(|index| id_from_def_id(variant.fields[index].did))
+                                .unwrap_or_else(|| null_id()),
+                        }));
                     }
                     ty::Tuple(..) => None,
                     _ => {
