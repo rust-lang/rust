@@ -53,9 +53,6 @@ impl CrateSource {
     HashStable
 )]
 pub enum DepKind {
-    /// A dependency that is only used for its macros, none of which are visible from other crates.
-    /// These are included in the metadata only as placeholders and are ignored when decoding.
-    UnexportedMacrosOnly,
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
@@ -69,7 +66,7 @@ pub enum DepKind {
 impl DepKind {
     pub fn macros_only(self) -> bool {
         match self {
-            DepKind::UnexportedMacrosOnly | DepKind::MacrosOnly => true,
+            DepKind::MacrosOnly => true,
             DepKind::Implicit | DepKind::Explicit => false,
         }
     }
