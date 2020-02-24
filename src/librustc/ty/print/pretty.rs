@@ -64,8 +64,7 @@ thread_local! {
 /// calling the same query.
 pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
     NO_QUERIES.with(|no_queries| {
-        let old = no_queries.get();
-        no_queries.set(true);
+        let old = no_queries.replace(true);
         let result = f();
         no_queries.set(old);
         result
@@ -78,8 +77,7 @@ pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
 /// so this variable disables that check.
 pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
     FORCE_IMPL_FILENAME_LINE.with(|force| {
-        let old = force.get();
-        force.set(true);
+        let old = force.replace(true);
         let result = f();
         force.set(old);
         result
@@ -89,8 +87,7 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
 /// Adds the `crate::` prefix to paths where appropriate.
 pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
-        let old = flag.get();
-        flag.set(true);
+        let old = flag.replace(true);
         let result = f();
         flag.set(old);
         result
