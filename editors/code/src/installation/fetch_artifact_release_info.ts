@@ -51,9 +51,11 @@ export async function fetchArtifactReleaseInfo(
 
     const artifact = release.assets.find(artifact => artifact.name === artifactFileName);
 
-    if (!artifact) throw new Error(
-        `Artifact ${artifactFileName} was not found in ${release.name} release!`
-    );
+    if (!artifact) {
+        throw new Error(
+            `Artifact ${artifactFileName} was not found in ${release.name} release!`
+        );
+    }
 
     return {
         releaseName: release.name,
