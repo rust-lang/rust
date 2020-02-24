@@ -68,7 +68,6 @@ mod def_collector;
 mod diagnostics;
 mod imports;
 mod late;
-mod lifetimes;
 mod macros;
 
 enum Weak {
@@ -2959,5 +2958,5 @@ impl CrateLint {
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
-    lifetimes::provide(providers);
+    late::lifetimes::provide(providers);
 }

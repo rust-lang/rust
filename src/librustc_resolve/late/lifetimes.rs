@@ -5,7 +5,7 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
+use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
