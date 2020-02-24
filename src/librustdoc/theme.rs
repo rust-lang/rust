@@ -253,9 +253,9 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
                     break;
                 }
             }
-            if found == false {
+            if !found {
                 v.push(format!("  Missing \"{}\" rule", child.name));
-            } else if found_working == false {
+            } else if !found_working {
                 v.extend(tmp.iter().cloned());
             }
         }

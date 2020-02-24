@@ -495,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir_id) => hir_id,
                 None => return false,
             };
-            if self.tcx.has_typeck_tables(def_id) == false {
+            if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
             let fn_sig = {
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(hir_id) => hir_id,
                     None => return false,
                 };
-                if self.tcx.has_typeck_tables(def_id) == false {
+                if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
                 match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {

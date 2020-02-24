@@ -444,7 +444,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 PathSource::Expr(Some(parent)) => {
                     suggested = path_sep(err, &parent);
                 }
-                PathSource::Expr(None) if followed_by_brace == true => {
+                PathSource::Expr(None) if followed_by_brace => {
                     if let Some((sp, snippet)) = closing_brace {
                         err.span_suggestion(
                             sp,
