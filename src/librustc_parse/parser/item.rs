@@ -1171,13 +1171,13 @@ impl<'a> Parser<'a> {
                 let comma_after_doc_seen = self.eat(&token::Comma);
                 // `seen_comma` is always false, because we are inside doc block
                 // condition is here to make code more readable
-                if seen_comma == false && comma_after_doc_seen == true {
+                if !seen_comma && comma_after_doc_seen {
                     seen_comma = true;
                 }
                 if comma_after_doc_seen || self.token == token::CloseDelim(token::Brace) {
                     err.emit();
                 } else {
-                    if seen_comma == false {
+                    if !seen_comma {
                         let sp = self.sess.source_map().next_point(previous_span);
                         err.span_suggestion(
                             sp,
