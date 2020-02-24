@@ -1,8 +1,36 @@
-error: expected one of `!` or `::`, found `cat`
-  --> $DIR/class-implements-bad-trait.rs:2:7
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
+  --> $DIR/class-implements-bad-trait.rs:4:21
    |
-LL | class cat : nonexistent {
-   |       ^^^ expected one of `!` or `::`
+LL |   new(in_x : usize) { self.meows = in_x; }
+   |                     ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
-error: aborting due to previous error
+error: statements cannot reside in modules
+  --> $DIR/class-implements-bad-trait.rs:2:1
+   |
+LL |   class cat : nonexistent {
+   |  _^^^^^___________________^
+LL | |   let meows: usize;
+LL | |   new(in_x : usize) { self.meows = in_x; }
+LL | | }
+   | |_^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | fn my_function() -> _ {
+LL |     class;
+LL |     cat: nonexistent;
+LL |     { let meows: usize; (/*ERROR*/) }
+LL | }
+   |
 
+error[E0425]: cannot find function `cat` in this scope
+  --> $DIR/class-implements-bad-trait.rs:8:14
+   |
+LL |   let nyan = cat(0);
+   |              ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

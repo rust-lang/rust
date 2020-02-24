@@ -1,12 +1,12 @@
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/extern-no-fn.rs:2:6
+error: non-item in item list
+  --> $DIR/extern-no-fn.rs:2:5
    |
 LL | extern {
-   |        - while parsing this item list starting here
+   |        - item list starts here
 LL |     f();
-   |      ^ expected one of `!` or `::`
+   |     ^ non-item starts here
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
 error: aborting due to previous error
 

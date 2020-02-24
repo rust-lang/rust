@@ -1,8 +1,8 @@
-error: expected one of `!` or `::`, found `-`
-  --> $DIR/feature-gate-extern_prelude.rs:1:4
+error: expected item, found `can`
+  --> $DIR/feature-gate-extern_prelude.rs:1:1
    |
 LL | can-only-test-this-in-run-make-fulldeps
-   |    ^ expected one of `!` or `::`
+   | ^^^ expected item
 
 error: aborting due to previous error
 

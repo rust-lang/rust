@@ -1,11 +1,11 @@
 impl dyn A {
-    Y
-} //~ ERROR expected one of `!` or `::`, found `}`
+    Y //~ ERROR non-item in item list
+}
 
 struct S;
 
 trait X {
-    X() {} //~ ERROR expected one of `!` or `::`, found `(`
+    X() {} //~ ERROR non-item in item list
     fn xxx() { ### }
     L = M;
     Z = { 2 + 3 };
@@ -13,19 +13,19 @@ trait X {
 }
 
 trait A {
-    X() {} //~ ERROR expected one of `!` or `::`, found `(`
+    X() {} //~ ERROR non-item in item list
 }
 trait B {
     fn xxx() { ### } //~ ERROR expected
 }
 trait C {
-    L = M; //~ ERROR expected one of `!` or `::`, found `=`
+    L = M; //~ ERROR non-item in item list
 }
 trait D {
-    Z = { 2 + 3 }; //~ ERROR expected one of `!` or `::`, found `=`
+    Z = { 2 + 3 }; //~ ERROR non-item in item list
 }
 trait E {
-    ::Y (); //~ ERROR expected one of
+    ::Y (); //~ ERROR non-item in item list
 }
 
 impl S {

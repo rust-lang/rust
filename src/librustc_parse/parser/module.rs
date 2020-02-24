@@ -195,7 +195,9 @@ impl<'a> Parser<'a> {
 
         // Construct the return type; either default, `-> _`, or `-> Result<_, _>`.
         let output = match (has_ret_unit, has_ret_expr, has_try_expr) {
+            // `-> ()`; We either had `return;`, so return type is unit, or nothing was returned.
             (true, _, _) | (false, false, false) => FnRetTy::Default(span),
+            // `-> Result<_, _>`; We had `?` somewhere so `-> Result<_, _>` is a good bet.
             (_, _, true) => {
                 let arg = GenericArg::Type(self.mk_ty(span, TyKind::Infer));
                 let args = [arg.clone(), arg].to_vec();
@@ -204,10 +206,11 @@ impl<'a> Parser<'a> {
                 path.segments[0].args = Some(P(GenericArgs::AngleBracketed(args)));
                 FnRetTy::Ty(self.mk_ty(span, TyKind::Path(None, path)))
             }
+            // `-> _`; We had `return $expr;` so it's probably not `()` as return type.
             (_, true, _) => FnRetTy::Ty(self.mk_ty(span, TyKind::Infer)),
         };
 
-        // Finalize the AST for the function item.
+        // Finalize the AST for the function item: `fn $ident() $output { $stmts }`.
         let sig = FnSig { header: FnHeader::default(), decl: P(FnDecl { inputs: vec![], output }) };
         let body = self.mk_block(stmts, BlockCheckMode::Default, span);
         let kind = ItemKind::Fn(Defaultness::Final, sig, Generics::default(), Some(body));

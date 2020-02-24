@@ -1,5 +1,5 @@
 extern {
-    f(); //~ ERROR expected one of `!` or `::`, found `(`
+    f(); //~ ERROR non-item in item list
 }
 
 fn main() {

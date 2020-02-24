@@ -18,6 +18,6 @@ if true {} //~ ERROR statements cannot reside in modules
 
 enum E {}
 
-x.y();
+x.y(); //~ ERROR statements cannot reside in modules
 let x = 0;
 x;

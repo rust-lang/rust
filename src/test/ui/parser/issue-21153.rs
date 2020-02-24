@@ -1,6 +1,6 @@
 trait MyTrait<T>: Iterator {
     Item = T;
-    //~^ ERROR expected one of `!` or `::`, found `=`
+    //~^ ERROR non-item in item list
 }
 
 fn main() {}

@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
 
     fn parse_item_(&mut self, req_name: ReqName) -> PResult<'a, Option<Item>> {
         let attrs = self.parse_outer_attributes()?;
-        self.parse_item_common(attrs, true, false, req_name)
+        self.parse_item_common(attrs, true, false, req_name, true)
     }
 
     pub(super) fn parse_item_common(
@@ -39,6 +39,7 @@ impl<'a> Parser<'a> {
         mac_allowed: bool,
         attrs_allowed: bool,
         req_name: ReqName,
+        mod_stmt: bool,
     ) -> PResult<'a, Option<Item>> {
         maybe_whole!(self, NtItem, |item| {
             let mut item = item;
@@ -49,9 +50,9 @@ impl<'a> Parser<'a> {
 
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
+            let i = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name, mod_stmt);
             unclosed_delims.append(&mut this.unclosed_delims);
-            item
+            i
         })?;
         self.unclosed_delims.append(&mut unclosed_delims);
 
@@ -83,11 +84,13 @@ impl<'a> Parser<'a> {
         mac_allowed: bool,
         attrs_allowed: bool,
         req_name: ReqName,
+        mod_stmt: bool,
     ) -> PResult<'a, Option<Item>> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let mut def = self.parse_defaultness();
-        let kind = self.parse_item_kind(&mut attrs, mac_allowed, lo, &vis, &mut def, req_name)?;
+        let kind =
+            self.parse_item_kind(&mut attrs, mac_allowed, lo, &vis, &mut def, req_name, mod_stmt)?;
         if let Some((ident, kind)) = kind {
             self.error_on_unconsumed_default(def, &kind);
             let span = lo.to(self.prev_span);
@@ -148,6 +151,7 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
         def: &mut Defaultness,
         req_name: ReqName,
+        mod_stmt: bool,
     ) -> PResult<'a, Option<ItemInfo>> {
         let mut def = || mem::replace(def, Defaultness::Final);
 
@@ -212,9 +216,13 @@ impl<'a> Parser<'a> {
         } else if vis.node.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
-        } else if macros_allowed && self.token.is_path_start() {
+        } else if let Some(kind) = if macros_allowed && self.token.is_path_start() {
+            self.parse_item_macro(vis, mod_stmt)?
+        } else {
+            None
+        } {
             // MACRO INVOCATION ITEM
-            (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
+            (Ident::invalid(), ItemKind::Mac(kind))
         } else {
             return Ok(None);
         };
@@ -333,13 +341,36 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item macro, e.g., `item!();`.
-    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, Mac> {
-        let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
-        self.expect(&token::Not)?; // `!`
+    fn parse_item_macro(&mut self, vis: &Visibility, mod_stmt: bool) -> PResult<'a, Option<Mac>> {
+        let parse_prefix = |p: &mut Self| -> PResult<'a, ast::Path> {
+            let path = p.parse_path(PathStyle::Mod)?; // `foo::bar`
+            p.expect(&token::Not)?; // `!`
+            Ok(path)
+        };
+        let path = if mod_stmt {
+            // We're in statement-as-module-item recovery mode.
+            // To avoid "stealing" syntax from e.g. `x.f()` as a module-level statement,
+            // we backtrack if we failed to parse `$path!`; after we have, we commit firmly.
+            // This is only done when `mod_stmt` holds to avoid backtracking inside functions.
+            let snapshot = self.clone();
+            match parse_prefix(self) {
+                Ok(path) => path,
+                Err(mut err) => {
+                    // Assert that this is only for diagnostics!
+                    // This is a safeguard against breaking LL(k) accidentally in the spec,
+                    // assuming no one has gated the syntax with something like `#[cfg(FALSE)]`.
+                    err.delay_as_bug();
+                    *self = snapshot;
+                    return Ok(None);
+                }
+            }
+        } else {
+            parse_prefix(self)?
+        };
         let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
         self.eat_semi_for_macro_if_needed(&args);
         self.complain_if_pub_macro(vis, false);
-        Ok(Mac { path, args, prior_type_ascription: self.last_type_ascription })
+        Ok(Some(Mac { path, args, prior_type_ascription: self.last_type_ascription }))
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.

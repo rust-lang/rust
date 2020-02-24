@@ -1,36 +1,33 @@
-error: expected one of `!` or `::`, found `}`
-  --> $DIR/issue-40006.rs:3:1
+error: non-item in item list
+  --> $DIR/issue-40006.rs:2:5
    |
 LL | impl dyn A {
-   |            - while parsing this item list starting here
+   |            - item list starts here
 LL |     Y
-   |      - expected one of `!` or `::`
+   |     ^ non-item starts here
 LL | }
-   | ^
-   | |
-   | unexpected token
-   | the item list ends here
+   | - item list ends here
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:8:6
+error: non-item in item list
+  --> $DIR/issue-40006.rs:8:5
    |
 LL | trait X {
-   |         - while parsing this item list starting here
+   |         - item list starts here
 LL |     X() {}
-   |      ^ expected one of `!` or `::`
+   |     ^ non-item starts here
 ...
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:16:6
+error: non-item in item list
+  --> $DIR/issue-40006.rs:16:5
    |
 LL | trait A {
-   |         - while parsing this item list starting here
+   |         - item list starts here
 LL |     X() {}
-   |      ^ expected one of `!` or `::`
+   |     ^ non-item starts here
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:19:17
@@ -38,35 +35,35 @@ error: expected `[`, found `#`
 LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
-error: expected one of `!` or `::`, found `=`
-  --> $DIR/issue-40006.rs:22:7
+error: non-item in item list
+  --> $DIR/issue-40006.rs:22:5
    |
 LL | trait C {
-   |         - while parsing this item list starting here
+   |         - item list starts here
 LL |     L = M;
-   |       ^ expected one of `!` or `::`
+   |     ^ non-item starts here
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
-error: expected one of `!` or `::`, found `=`
-  --> $DIR/issue-40006.rs:25:7
+error: non-item in item list
+  --> $DIR/issue-40006.rs:25:5
    |
 LL | trait D {
-   |         - while parsing this item list starting here
+   |         - item list starts here
 LL |     Z = { 2 + 3 };
-   |       ^ expected one of `!` or `::`
+   |     ^ non-item starts here
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:28:9
+error: non-item in item list
+  --> $DIR/issue-40006.rs:28:5
    |
 LL | trait E {
-   |         - while parsing this item list starting here
+   |         - item list starts here
 LL |     ::Y ();
-   |         ^ expected one of `!` or `::`
+   |     ^^ non-item starts here
 LL | }
-   | - the item list ends here
+   | - item list ends here
 
 error: missing `fn` for method definition
   --> $DIR/issue-40006.rs:32:8

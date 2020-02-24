@@ -64,11 +64,24 @@ error: expected identifier, found reserved identifier `_`
 LL | macro_rules! _ { () => {} }
    |              ^ expected identifier, found reserved identifier
 
-error: expected one of `!` or `::`, found reserved identifier `_`
+error: statements cannot reside in modules
+  --> $DIR/underscore_item_not_const.rs:14:1
+   |
+LL | union _ { f: u8 }
+   | ^^^^^
+   |
+   = note: the program entry point starts in `fn main() { ... }`, defined in `main.rs`
+   = note: for more on functions and how to structure your program, see https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
+help: consider moving the statements into a function
+   |
+LL | fn my_function() -> _ { union } _ { f: u8 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected item, found reserved identifier `_`
   --> $DIR/underscore_item_not_const.rs:14:7
    |
 LL | union _ { f: u8 }
-   |       ^ expected one of `!` or `::`
+   |       ^ expected item
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
