@@ -9,6 +9,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Spanned;
+
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::{format_numeric_literal, Sugg};
@@ -138,26 +140,29 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) 
 // TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
 // suggest usage of `(x + (y - 1)).ln_1p()` instead
 fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    if_chain! {
-        if let ExprKind::Binary(op, ref lhs, ref rhs) = &args[0].kind;
-        if op.node == BinOpKind::Add;
-        then {
-            let recv = match (constant(cx, cx.tables, lhs), constant(cx, cx.tables, rhs)) {
-                (Some((value, _)), _) if F32(1.0) == value || F64(1.0) == value => rhs,
-                (_, Some((value, _))) if F32(1.0) == value || F64(1.0) == value => lhs,
-                _ => return,
-            };
+    if let ExprKind::Binary(
+        Spanned {
+            node: BinOpKind::Add, ..
+        },
+        lhs,
+        rhs,
+    ) = &args[0].kind
+    {
+        let recv = match (constant(cx, cx.tables, lhs), constant(cx, cx.tables, rhs)) {
+            (Some((value, _)), _) if F32(1.0) == value || F64(1.0) == value => rhs,
+            (_, Some((value, _))) if F32(1.0) == value || F64(1.0) == value => lhs,
+            _ => return,
+        };
 
-            span_lint_and_sugg(
-                cx,
-                SUBOPTIMAL_FLOPS,
-                expr.span,
-                "ln(1 + x) can be computed more accurately",
-                "consider using",
-                format!("{}.ln_1p()", prepare_receiver_sugg(cx, recv)),
-                Applicability::MachineApplicable,
-            );
-        }
+        span_lint_and_sugg(
+            cx,
+            SUBOPTIMAL_FLOPS,
+            expr.span,
+            "ln(1 + x) can be computed more accurately",
+            "consider using",
+            format!("{}.ln_1p()", prepare_receiver_sugg(cx, recv)),
+            Applicability::MachineApplicable,
+        );
     }
 }
 
@@ -249,8 +254,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
 fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::Binary(op, ref lhs, ref rhs) = expr.kind;
-        if op.node == BinOpKind::Sub;
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) = expr.kind;
         if cx.tables.expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.tables, rhs);
         if F32(1.0) == value || F64(1.0) == value;
@@ -276,8 +280,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 
 fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
-        if let ExprKind::Binary(op, ref lhs, ref rhs) = &expr.kind;
-        if let BinOpKind::Mul = op.node;
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lhs, ref rhs) = &expr.kind;
         if cx.tables.expr_ty(lhs).is_floating_point();
         if cx.tables.expr_ty(rhs).is_floating_point();
         then {
@@ -289,34 +292,37 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
 }
 
 // TODO: Fix rust-lang/rust-clippy#4735
-fn check_fma(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    if_chain! {
-        if let ExprKind::Binary(op, lhs, rhs) = &expr.kind;
-        if let BinOpKind::Add = op.node;
-        then {
-            let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
-                (inner_lhs, inner_rhs, rhs)
-            } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
-                (inner_lhs, inner_rhs, lhs)
-            } else {
-                return;
-            };
+fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if let ExprKind::Binary(
+        Spanned {
+            node: BinOpKind::Add, ..
+        },
+        lhs,
+        rhs,
+    ) = &expr.kind
+    {
+        let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
+            (inner_lhs, inner_rhs, rhs)
+        } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
+            (inner_lhs, inner_rhs, lhs)
+        } else {
+            return;
+        };
 
-            span_lint_and_sugg(
-                cx,
-                SUBOPTIMAL_FLOPS,
-                expr.span,
-                "multiply and add expressions can be calculated more efficiently and accurately",
-                "consider using",
-                format!(
-                    "{}.mul_add({}, {})",
-                    prepare_receiver_sugg(cx, recv),
-                    Sugg::hir(cx, arg1, ".."),
-                    Sugg::hir(cx, arg2, ".."),
-                ),
-                Applicability::MachineApplicable,
-            );
-        }
+        span_lint_and_sugg(
+            cx,
+            SUBOPTIMAL_FLOPS,
+            expr.span,
+            "multiply and add expressions can be calculated more efficiently and accurately",
+            "consider using",
+            format!(
+                "{}.mul_add({}, {})",
+                prepare_receiver_sugg(cx, recv),
+                Sugg::hir(cx, arg1, ".."),
+                Sugg::hir(cx, arg2, ".."),
+            ),
+            Applicability::MachineApplicable,
+        );
     }
 }
 
@@ -335,7 +341,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
             }
         } else {
             check_expm1(cx, expr);
-            check_fma(cx, expr);
+            check_mul_add(cx, expr);
         }
     }
 }
