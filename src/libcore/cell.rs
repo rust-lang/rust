@@ -1272,9 +1272,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
     pub fn leak(orig: Ref<'b, T>) -> &'b T {
-        // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell never
-        // goes back to UNUSED again. No further references can be created from the original cell,
-        // making the current borrow the only reference for the remaining lifetime.
+        // By forgetting this Ref we ensure that the borrow counter in the RefCell never goes back
+        // to UNUSED again. No further mutable references can be created from the original cell.
         mem::forget(orig.borrow);
         orig.value
     }
