@@ -1,3 +1,5 @@
+// compile-flags: -Zsave-analysis
+
 struct Cat {
   meows : usize,
 

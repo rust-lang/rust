@@ -1,3 +1,5 @@
+// compile-flags: -Zsave-analysis
+
 mod my_mod {
     pub struct MyStruct {
         priv_field: isize

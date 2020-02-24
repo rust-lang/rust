@@ -1,5 +1,5 @@
 error[E0615]: attempted to take value of method `speak` on type `Cat`
-  --> $DIR/assign-to-method.rs:20:8
+  --> $DIR/assign-to-method.rs:22:8
    |
 LL |   nyan.speak = || println!("meow");
    |        ^^^^^
@@ -7,7 +7,7 @@ LL |   nyan.speak = || println!("meow");
    = help: methods are immutable and cannot be assigned to
 
 error[E0615]: attempted to take value of method `speak` on type `Cat`
-  --> $DIR/assign-to-method.rs:21:8
+  --> $DIR/assign-to-method.rs:23:8
    |
 LL |   nyan.speak += || println!("meow");
    |        ^^^^^
