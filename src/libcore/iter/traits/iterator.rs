@@ -1036,9 +1036,6 @@ pub trait Iterator {
     /// closure on each element of the iterator, and yield elements
     /// while it returns [`Some(_)`][`Some`].
     ///
-    /// After [`None`] is returned, `map_while()`'s job is over, and the
-    /// rest of the elements are ignored.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1078,15 +1075,14 @@ pub trait Iterator {
     /// #![feature(iter_map_while)]
     /// use std::convert::TryFrom;
     ///
-    /// let a = [0, -1, 1, -2];
+    /// let a = [0, 1, 2, -3, 4, 5, -6];
     ///
-    /// let mut iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let vec = iter.collect::<Vec<_>>();
     ///
-    /// assert_eq!(iter.next(), Some(0u32));
-    ///
-    /// // We have more elements that are fit in u32, but since we already
-    /// // got a None, map_while() isn't used any more
-    /// assert_eq!(iter.next(), None);
+    /// // We have more elements which could fit in u32 (4, 5), but `map_while`
+    /// // has stopped on the first `None` from predicate (when working with `-3`)
+    /// assert_eq!(vec, vec![0, 1, 2]);
     /// ```
     ///
     /// Because `map_while()` needs to look at the value in order to see if it
