@@ -575,7 +575,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // breaking `Rc::from_raw`.
             RefKind::Raw { .. } => Tag::Untagged,
             // All other pointesr are properly tracked.
-            _ => Tag::Tagged(this.memory.extra.stacked_borrows.borrow_mut().new_ptr()),
+            _ => Tag::Tagged(this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut().new_ptr()),
         };
 
         // Reborrow.

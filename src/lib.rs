@@ -56,7 +56,7 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    EvalContextExt as StackedBorEvalContextExt, GlobalState, Item, Permission, PtrId, Stack,
+    EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack,
     Stacks, Tag,
 };
 

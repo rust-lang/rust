@@ -4,6 +4,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::num::NonZeroU64;
 
 use rand::rngs::StdRng;
 
@@ -63,14 +64,14 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
 /// Extra per-allocation data
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
-    /// Stacked Borrows state is only added if validation is enabled.
+    /// Stacked Borrows state is only added if it is enabled.
     pub stacked_borrows: Option<stacked_borrows::AllocExtra>,
 }
 
 /// Extra global memory data
 #[derive(Clone, Debug)]
 pub struct MemoryExtra {
-    pub stacked_borrows: stacked_borrows::MemoryExtra,
+    pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
 
     /// The random number generator used for resolving non-determinism.
@@ -81,9 +82,14 @@ pub struct MemoryExtra {
 }
 
 impl MemoryExtra {
-    pub fn new(rng: StdRng, validate: bool, tracked_pointer_tag: Option<PtrId>) -> Self {
+    pub fn new(rng: StdRng, validate: bool, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>) -> Self {
+        let stacked_borrows = if stacked_borrows {
+            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
+        } else {
+            None
+        };
         MemoryExtra {
-            stacked_borrows: Rc::new(RefCell::new(GlobalState::new(tracked_pointer_tag))),
+            stacked_borrows,
             intptrcast: Default::default(),
             rng: RefCell::new(rng),
             validate,
@@ -299,11 +305,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if memory_extra.validate {
+        let (stacks, base_tag) = if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
             let (stacks, base_tag) = Stacks::new_allocation(
                 id,
                 alloc.size,
-                Rc::clone(&memory_extra.stacked_borrows),
+                Rc::clone(stacked_borrows),
                 kind,
             );
             (Some(stacks), base_tag)
@@ -311,15 +317,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             // No stacks, no tag.
             (None, Tag::Untagged)
         };
-        let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
+        let mut stacked_borrows = memory_extra.stacked_borrows.as_ref().map(|sb| sb.borrow_mut());
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| {
-                if !memory_extra.validate {
-                    Tag::Untagged
-                } else {
+                if let Some(stacked_borrows) = stacked_borrows.as_mut() {
                     // Only statics may already contain pointers at this point
                     assert_eq!(kind, MiriMemoryKind::Static.into());
                     stacked_borrows.static_base_ptr(alloc)
+                } else {
+                    Tag::Untagged
                 }
             },
             AllocExtra { stacked_borrows: stacks },
@@ -329,10 +335,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn tag_static_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
-        if !memory_extra.validate {
-            Tag::Untagged
+        if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
+            stacked_borrows.borrow_mut().static_base_ptr(id)
         } else {
-            memory_extra.stacked_borrows.borrow_mut().static_base_ptr(id)
+            Tag::Untagged
         }
     }
 
@@ -342,7 +348,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if !Self::enforce_validity(ecx) {
+        if ecx.memory.extra.stacked_borrows.is_none() {
             // No tracking.
             Ok(())
         } else {
@@ -352,8 +358,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, FrameData<'tcx>> {
+        let call_id = ecx.memory.extra.stacked_borrows.as_ref().map_or(
+            NonZeroU64::new(1).unwrap(),
+            |stacked_borrows| stacked_borrows.borrow_mut().new_call(),
+        );
         Ok(FrameData {
-            call_id: ecx.memory.extra.stacked_borrows.borrow_mut().new_call(),
+            call_id,
             catch_panic: None,
         })
     }

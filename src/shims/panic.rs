@@ -146,7 +146,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             StackPopInfo::Normal
         };
-        this.memory.extra.stacked_borrows.borrow_mut().end_call(extra.call_id);
+        if let Some(stacked_borrows) = this.memory.extra.stacked_borrows.as_ref() {
+            stacked_borrows.borrow_mut().end_call(extra.call_id);
+        }
         Ok(res)
     }
 

@@ -1,5 +1,5 @@
-// This should fail even without validation
-// compile-flags: -Zmiri-disable-validation
+// This should fail even without validation/SB
+// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
 #![allow(dead_code, unused_variables)]
 

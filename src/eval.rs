@@ -14,8 +14,10 @@ use crate::*;
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
-    /// Determine if validity checking and Stacked Borrows are enabled.
+    /// Determine if validity checking is enabled.
     pub validate: bool,
+    /// Determines if Stacked Borrows is enabled.
+    pub stacked_borrows: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     /// Determines if memory leaks should be ignored.
@@ -52,6 +54,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         MemoryExtra::new(
             StdRng::seed_from_u64(config.seed.unwrap_or(0)),
             config.validate,
+            config.stacked_borrows,
             config.tracked_pointer_tag,
         ),
     );
