@@ -1,6 +1,6 @@
 //! Checks the licenses of third-party dependencies.
 
-use cargo_metadata::{Metadata, Package, PackageId};
+use cargo_metadata::{Metadata, Package, PackageId, Resolve};
 use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
 
@@ -49,6 +49,10 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("codespan", "Apache-2.0"),      // mdbook-linkcheck
     ("crossbeam-channel", "MIT/Apache-2.0 AND BSD-2-Clause"), // cargo
 ];
+
+/// These are the root crates that are part of the runtime. The licenses for
+/// these and all their dependencies *must not* be in the exception list.
+const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "panic_abort", "panic_unwind"];
 
 /// Which crates to check against the whitelist?
 const WHITELIST_CRATES: &[&str] = &["rustc", "rustc_codegen_llvm"];
@@ -227,14 +231,17 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
             }
         }
     }
+
     let exception_names: Vec<_> = EXCEPTIONS.iter().map(|(name, _license)| *name).collect();
+    let runtime_ids = compute_runtime_crates(metadata);
+
     // Check if any package does not have a valid license.
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
             continue;
         }
-        if exception_names.contains(&pkg.name.as_str()) {
+        if !runtime_ids.contains(&pkg.id) && exception_names.contains(&pkg.name.as_str()) {
             continue;
         }
         let license = match &pkg.license {
@@ -246,6 +253,13 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
             }
         };
         if !LICENSES.contains(&license.as_str()) {
+            if pkg.name == "fortanix-sgx-abi" {
+                // This is a specific exception because SGX is considered
+                // "third party". See
+                // https://github.com/rust-lang/rust/issues/62620 for more. In
+                // general, these should never be added.
+                continue;
+            }
             println!("invalid license `{}` in `{}`", license, pkg.id);
             *bad = true;
         }
@@ -366,10 +380,8 @@ fn check_crate_duplicate(metadata: &Metadata, bad: &mut bool) {
 
 /// Returns a list of dependencies for the given package.
 fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package> {
-    let node = metadata
-        .resolve
-        .as_ref()
-        .unwrap()
+    let resolve = metadata.resolve.as_ref().unwrap();
+    let node = resolve
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
@@ -391,4 +403,43 @@ fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package 
         i.next().unwrap_or_else(|| panic!("could not find package `{}` in package list", name));
     assert!(i.next().is_none(), "more than one package found for `{}`", name);
     result
+}
+
+/// Finds all the packages that are in the rust runtime.
+fn compute_runtime_crates<'a>(metadata: &'a Metadata) -> HashSet<&'a PackageId> {
+    let resolve = metadata.resolve.as_ref().unwrap();
+    let mut result = HashSet::new();
+    for name in RUNTIME_CRATES {
+        let id = &pkg_from_name(metadata, name).id;
+        normal_deps_of_r(resolve, id, &mut result);
+    }
+    result
+}
+
+/// Recursively find all normal dependencies.
+fn normal_deps_of_r<'a>(
+    resolve: &'a Resolve,
+    pkg_id: &'a PackageId,
+    result: &mut HashSet<&'a PackageId>,
+) {
+    if !result.insert(pkg_id) {
+        return;
+    }
+    let node = resolve
+        .nodes
+        .iter()
+        .find(|n| &n.id == pkg_id)
+        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+    // Don't care about dev-dependencies.
+    // Build dependencies *shouldn't* matter unless they do some kind of
+    // codegen. For now we'll assume they don't.
+    let deps = node.deps.iter().filter(|node_dep| {
+        node_dep
+            .dep_kinds
+            .iter()
+            .any(|kind_info| kind_info.kind == cargo_metadata::DependencyKind::Normal)
+    });
+    for dep in deps {
+        normal_deps_of_r(resolve, &dep.pkg, result);
+    }
 }
