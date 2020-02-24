@@ -7,6 +7,7 @@ mod sysroot;
 use std::{
     error::Error,
     fs::File,
+    fs::read_dir,
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
@@ -406,18 +407,54 @@ fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
-    if path.ends_with("Cargo.toml") {
-        return Ok(path.to_path_buf());
-    }
+fn find_cargo_toml_down_the_fs(path: &Path) -> Option<PathBuf> {
     let mut curr = Some(path);
     while let Some(path) = curr {
         let candidate = path.join("Cargo.toml");
         if candidate.exists() {
-            return Ok(candidate);
+            return Some(candidate);
         }
         curr = path.parent();
     }
+    
+    None
+}
+
+fn find_cargo_toml_up_the_fs(path: &Path) -> Option<PathBuf> {
+    log::info!("find_cargo_toml_up_the_fs()");
+    let entities = match read_dir(path) {
+        Ok(entities) => entities,
+        Err(e) => {
+            log::info!("err {}", e);
+            return None
+        }
+    };
+
+    log::info!("entities: {:?}", entities);
+    for entity in entities.filter_map(Result::ok) {
+        let candidate = entity.path().join("Cargo.toml");
+        log::info!("candidate: {:?}, exists: {}", candidate, candidate.exists());
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
+fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
+    if path.ends_with("Cargo.toml") {
+        return Ok(path.to_path_buf());
+    }
+
+    if let Some(p) = find_cargo_toml_down_the_fs(path) {
+        return Ok(p)
+    }
+
+    if let Some(p) = find_cargo_toml_up_the_fs(path) {
+        return Ok(p)
+    }
+
     Err(CargoTomlNotFoundError(path.to_path_buf()).into())
 }
 
