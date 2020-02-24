@@ -26,18 +26,14 @@ const EXCEPTIONS: &[&str] = &[
     "openssl",            // BSD+advertising clause, cargo, mdbook
     "pest",               // MPL2, mdbook via handlebars
     "arrayref",           // BSD-2-Clause, mdbook via handlebars via pest
-    "thread-id",          // Apache-2.0, mdbook
     "toml-query",         // MPL-2.0, mdbook
     "toml-query_derive",  // MPL-2.0, mdbook
     "is-match",           // MPL-2.0, mdbook
-    "cssparser",          // MPL-2.0, rustdoc
     "smallvec",           // MPL-2.0, rustdoc
     "rdrand",             // ISC, mdbook, rustfmt
     "fuchsia-cprng",      // BSD-3-Clause, mdbook, rustfmt
     "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
     "fuchsia-zircon",     // BSD-3-Clause, rustdoc, rustc, cargo (jobserver & tempdir)
-    "cssparser-macros",   // MPL-2.0, rustdoc
-    "selectors",          // MPL-2.0, rustdoc
     "clippy_lints",       // MPL-2.0, rls
     "colored",            // MPL-2.0, rustfmt
     "ordslice",           // Apache-2.0, rls
@@ -74,7 +70,6 @@ const WHITELIST: &[&str] = &[
     "backtrace",
     "backtrace-sys",
     "bitflags",
-    "build_const",
     "byteorder",
     "c2-chacha",
     "cc",
@@ -84,7 +79,6 @@ const WHITELIST: &[&str] = &[
     "cloudabi",
     "cmake",
     "compiler_builtins",
-    "crc",
     "crc32fast",
     "crossbeam-deque",
     "crossbeam-epoch",
@@ -118,12 +112,9 @@ const WHITELIST: &[&str] = &[
     "memchr",
     "memmap",
     "memoffset",
-    "miniz-sys",
     "miniz_oxide",
-    "miniz_oxide_c_api",
     "nodrop",
     "num_cpus",
-    "owning_ref",
     "parking_lot",
     "parking_lot_core",
     "pkg-config",
@@ -162,7 +153,6 @@ const WHITELIST: &[&str] = &[
     "synstructure",
     "tempfile",
     "termcolor",
-    "terminon",
     "termion",
     "termize",
     "thread_local",
@@ -172,11 +162,9 @@ const WHITELIST: &[&str] = &[
     "unicode-security",
     "unicode-width",
     "unicode-xid",
-    "unreachable",
     "utf8-ranges",
     "vcpkg",
     "version_check",
-    "void",
     "wasi",
     "winapi",
     "winapi-build",
@@ -205,6 +193,18 @@ pub fn check(path: &Path, cargo: &Path, bad: &mut bool) {
 ///
 /// Packages listed in `EXCEPTIONS` are allowed for tools.
 fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
+    // Check that the EXCEPTIONS list does not have unused entries.
+    for exception in EXCEPTIONS {
+        if !metadata.packages.iter().any(|p| p.name == *exception) {
+            println!(
+                "could not find exception package `{}`\n\
+                Remove from EXCEPTIONS list if it is no longer used.",
+                exception
+            );
+            *bad = true;
+        }
+    }
+    // Check if any package does not have a valid license.
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
@@ -233,6 +233,17 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
 ///
 /// Specifically, this checks that the dependencies are on the `WHITELIST`.
 fn check_whitelist(metadata: &Metadata, bad: &mut bool) {
+    // Check that the WHITELIST does not have unused entries.
+    for name in WHITELIST {
+        if !metadata.packages.iter().any(|p| p.name == *name) {
+            println!(
+                "could not find whitelisted package `{}`\n\
+                Remove from WHITELIST list if it is no longer used.",
+                name
+            );
+            *bad = true;
+        }
+    }
     // Get the whitelist in a convenient form.
     let whitelist: HashSet<_> = WHITELIST.iter().cloned().collect();
 
