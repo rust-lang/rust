@@ -465,7 +465,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 _ => true,
             };
-            return if is_allowed_tag == false {
+            return if !is_allowed_tag {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
                 } else {
@@ -671,7 +671,7 @@ impl LangString {
                 "" => {}
                 "should_panic" => {
                     data.should_panic = true;
-                    seen_rust_tags = seen_other_tags == false;
+                    seen_rust_tags = !seen_other_tags;
                 }
                 "no_run" => {
                     data.no_run = true;

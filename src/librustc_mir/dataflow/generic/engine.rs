@@ -104,7 +104,7 @@ where
     ) -> Self {
         let bits_per_block = analysis.bits_per_block(body);
 
-        let bottom_value_set = if A::BOTTOM_VALUE == true {
+        let bottom_value_set = if A::BOTTOM_VALUE {
             BitSet::new_filled(bits_per_block)
         } else {
             BitSet::new_empty(bits_per_block)
