@@ -19,6 +19,12 @@ async function handleKeypress(ctx: Ctx) {
     const change = await client.sendRequest<undefined | SourceChange>(
         'rust-analyzer/onEnter',
         request,
+    ).catch(
+        (_error: any) => {
+            // FIXME: switch to the more modern (?) typed request infrastructure
+            // client.logFailedRequest(OnEnterRequest.type, error);
+            return Promise.resolve(null);
+        }
     );
     if (!change) return false;
 
