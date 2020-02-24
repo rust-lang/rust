@@ -7,7 +7,7 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};
 
-pub fn check_crate(hir_map: &Map<'_>) {
+pub fn check_crate(hir_map: &Map<'_>, sess: &rustc_session::Session) {
     hir_map.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());
@@ -24,7 +24,7 @@ pub fn check_crate(hir_map: &Map<'_>) {
 
     if !errors.is_empty() {
         let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        bug!("{}", message);
+        sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
     }
 }
 

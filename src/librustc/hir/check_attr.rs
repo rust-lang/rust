@@ -14,7 +14,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
-use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
+use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::Attribute;
@@ -196,7 +196,7 @@ impl CheckAttrVisitor<'tcx> {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
-        self.check_repr(attrs, span, target, item);
+        self.check_repr(attrs, span, target, item, hir_id);
         self.check_used(attrs, target);
     }
 
@@ -357,6 +357,7 @@ impl CheckAttrVisitor<'tcx> {
         span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
+        hir_id: HirId,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
@@ -446,13 +447,15 @@ impl CheckAttrVisitor<'tcx> {
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            struct_span_err!(
-                self.tcx.sess,
-                hint_spans.collect::<Vec<Span>>(),
-                E0566,
-                "conflicting representation hints",
-            )
-            .emit();
+            self.tcx
+                .struct_span_lint_hir(
+                    CONFLICTING_REPR_HINTS,
+                    hir_id,
+                    hint_spans.collect::<Vec<Span>>(),
+                    "conflicting representation hints",
+                )
+                .code(rustc_errors::error_code!(E0566))
+                .emit();
         }
     }
 
