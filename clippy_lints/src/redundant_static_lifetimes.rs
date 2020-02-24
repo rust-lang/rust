@@ -79,7 +79,7 @@ impl RedundantStaticLifetimes {
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if !item.span.from_expansion() {
-            if let ItemKind::Const(ref var_type, _) = item.kind {
+            if let ItemKind::Const(_, ref var_type, _) = item.kind {
                 self.visit_type(var_type, cx, "Constants have by default a `'static` lifetime");
                 // Don't check associated consts because `'static` cannot be elided on those (issue
                 // #2438)
