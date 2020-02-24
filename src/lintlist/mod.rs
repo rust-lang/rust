@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 357] = [
+pub const ALL_LINTS: [Lint; 358] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -750,6 +750,13 @@ pub const ALL_LINTS: [Lint; 357] = [
         module: "implicit_return",
     },
     Lint {
+        name: "imprecise_flops",
+        group: "nursery",
+        desc: "usage of imprecise floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
+    },
+    Lint {
         name: "inconsistent_digit_grouping",
         group: "style",
         desc: "integer literals with digits grouped inconsistently",
@@ -1021,13 +1028,6 @@ pub const ALL_LINTS: [Lint; 357] = [
         desc: "manually copying items between slices",
         deprecation: None,
         module: "loops",
-    },
-    Lint {
-        name: "manual_mul_add",
-        group: "nursery",
-        desc: "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`",
-        deprecation: None,
-        module: "mul_add",
     },
     Lint {
         name: "manual_saturating_arithmetic",
@@ -1959,6 +1959,13 @@ pub const ALL_LINTS: [Lint; 357] = [
         desc: "using too many bools in a struct",
         deprecation: None,
         module: "excessive_bools",
+    },
+    Lint {
+        name: "suboptimal_flops",
+        group: "nursery",
+        desc: "usage of sub-optimal floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
     },
     Lint {
         name: "suspicious_arithmetic_impl",

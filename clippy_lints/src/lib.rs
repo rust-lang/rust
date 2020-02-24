@@ -208,6 +208,7 @@ pub mod exit;
 pub mod explicit_write;
 pub mod fallible_impl_from;
 pub mod float_literal;
+pub mod floating_point_arithmetic;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -248,7 +249,6 @@ pub mod missing_const_for_fn;
 pub mod missing_doc;
 pub mod missing_inline;
 pub mod modulo_arithmetic;
-pub mod mul_add;
 pub mod multiple_crate_versions;
 pub mod mut_key;
 pub mod mut_mut;
@@ -538,6 +538,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
         &float_literal::EXCESSIVE_PRECISION,
         &float_literal::LOSSY_FLOAT_LITERAL,
+        &floating_point_arithmetic::IMPRECISE_FLOPS,
+        &floating_point_arithmetic::SUBOPTIMAL_FLOPS,
         &format::USELESS_FORMAT,
         &formatting::POSSIBLE_MISSING_COMMA,
         &formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
@@ -690,7 +692,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         &missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         &modulo_arithmetic::MODULO_ARITHMETIC,
-        &mul_add::MANUAL_MUL_ADD,
         &multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         &mut_key::MUTABLE_KEY_TYPE,
         &mut_mut::MUT_MUT,
@@ -966,7 +967,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box inherent_to_string::InherentToString);
     store.register_late_pass(|| box trait_bounds::TraitBounds);
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
-    store.register_late_pass(|| box mul_add::MulAddCheck);
     store.register_late_pass(|| box mut_key::MutableKeyType);
     store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
     store.register_early_pass(|| box reference::DerefAddrOf);
@@ -1000,6 +1000,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_late_pass(move || box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
@@ -1648,8 +1649,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
+        LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
+        LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
-        LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
