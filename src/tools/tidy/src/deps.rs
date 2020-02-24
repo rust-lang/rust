@@ -4,6 +4,8 @@ use cargo_metadata::{Metadata, Package, PackageId, Resolve};
 use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
 
+/// These are licenses that are allowed for all crates, including the runtime,
+/// rustc, tools, etc.
 const LICENSES: &[&str] = &[
     "MIT/Apache-2.0",
     "MIT / Apache-2.0",
@@ -58,6 +60,9 @@ const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "panic_abort", "panic_
 const WHITELIST_CRATES: &[&str] = &["rustc", "rustc_codegen_llvm"];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
+///
+/// This list is here to provide a speed-bump to adding a new dependency to
+/// rustc. Please check with the compiler team before adding an entry.
 const WHITELIST: &[&str] = &[
     "adler32",
     "aho-corasick",
