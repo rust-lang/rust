@@ -2,17 +2,17 @@
  * This file mirrors `crates/rust-analyzer/src/req.rs` declarations.
  */
 
-import { RequestType, TextDocumentIdentifier, Position, Range, TextDocumentPositionParams, Location, NotificationType, WorkspaceEdit } from "vscode-languageclient";
+import * as lc from "vscode-languageclient";
 
 type Option<T> = null | T;
 type Vec<T> = T[];
 type FxHashMap<K extends PropertyKey, V> = Record<K, V>;
 
 function request<TParams, TResult>(method: string) {
-    return new RequestType<TParams, TResult, unknown>(`rust-analyzer/${method}`);
+    return new lc.RequestType<TParams, TResult, unknown>(`rust-analyzer/${method}`);
 }
 function notification<TParam>(method: string) {
-    return new NotificationType<TParam>(method);
+    return new lc.NotificationType<TParam>(method);
 }
 
 
@@ -23,15 +23,15 @@ export const collectGarbage = request<null, null>("collectGarbage");
 
 
 export interface SyntaxTreeParams {
-    textDocument: TextDocumentIdentifier;
-    range: Option<Range>;
+    textDocument: lc.TextDocumentIdentifier;
+    range: Option<lc.Range>;
 }
 export const syntaxTree = request<SyntaxTreeParams, string>("syntaxTree");
 
 
 export interface ExpandMacroParams {
-    textDocument: TextDocumentIdentifier;
-    position: Option<Position>;
+    textDocument: lc.TextDocumentIdentifier;
+    position: Option<lc.Position>;
 }
 export interface ExpandedMacro {
     name: string;
@@ -41,10 +41,10 @@ export const expandMacro = request<ExpandMacroParams, Option<ExpandedMacro>>("ex
 
 
 export interface FindMatchingBraceParams {
-    textDocument: TextDocumentIdentifier;
-    offsets: Vec<Position>;
+    textDocument: lc.TextDocumentIdentifier;
+    offsets: Vec<lc.Position>;
 }
-export const findMatchingBrace = request<FindMatchingBraceParams, Vec<Position>>("findMatchingBrace");
+export const findMatchingBrace = request<FindMatchingBraceParams, Vec<lc.Position>>("findMatchingBrace");
 
 
 export interface PublishDecorationsParams {
@@ -52,31 +52,31 @@ export interface PublishDecorationsParams {
     decorations: Vec<Decoration>;
 }
 export interface Decoration {
-    range: Range;
+    range: lc.Range;
     tag: string;
     bindingHash: Option<string>;
 }
-export const decorationsRequest = request<TextDocumentIdentifier, Vec<Decoration>>("decorationsRequest");
+export const decorationsRequest = request<lc.TextDocumentIdentifier, Vec<Decoration>>("decorationsRequest");
 
 
-export const parentModule = request<TextDocumentPositionParams, Vec<Location>>("parentModule");
+export const parentModule = request<lc.TextDocumentPositionParams, Vec<lc.Location>>("parentModule");
 
 
 export interface JoinLinesParams {
-    textDocument: TextDocumentIdentifier;
-    range: Range;
+    textDocument: lc.TextDocumentIdentifier;
+    range: lc.Range;
 }
 export const joinLines = request<JoinLinesParams, SourceChange>("joinLines");
 
 
-export const onEnter = request<TextDocumentPositionParams, Option<SourceChange>>("onEnter");
+export const onEnter = request<lc.TextDocumentPositionParams, Option<SourceChange>>("onEnter");
 
 export interface RunnablesParams {
-    textDocument: TextDocumentIdentifier;
-    position: Option<Position>;
+    textDocument: lc.TextDocumentIdentifier;
+    position: Option<lc.Position>;
 }
 export interface Runnable {
-    range: Range;
+    range: lc.Range;
     label: string;
     bin: string;
     args: Vec<string>;
@@ -91,12 +91,12 @@ export const enum InlayKind {
     ParameterHint = "ParameterHint",
 }
 export interface InlayHint {
-    range: Range;
+    range: lc.Range;
     kind: InlayKind;
     label: string;
 }
 export interface InlayHintsParams {
-    textDocument: TextDocumentIdentifier;
+    textDocument: lc.TextDocumentIdentifier;
 }
 export const inlayHints = request<InlayHintsParams, Vec<InlayHint>>("inlayHints");
 
@@ -112,6 +112,6 @@ export const publishDecorations = notification<PublishDecorationsParams>("publis
 
 export interface SourceChange {
     label: string;
-    workspaceEdit: WorkspaceEdit;
-    cursorPosition: Option<TextDocumentPositionParams>;
+    workspaceEdit: lc.WorkspaceEdit;
+    cursorPosition: Option<lc.TextDocumentPositionParams>;
 }
