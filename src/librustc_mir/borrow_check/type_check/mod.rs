@@ -326,12 +326,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
+            let tcx = self.tcx();
             if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
                 if let Err(terr) = self.cx.fully_perform_op(
                     location.to_locations(),
                     ConstraintCategory::Boring,
                     self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        constant.literal.ty, def_id, UserSubsts { substs, user_self_ty: None },
+                        constant.literal.ty,
+                        def_id,
+                        UserSubsts { substs, user_self_ty: None },
                     )),
                 ) {
                     span_mirbug!(
@@ -342,10 +345,22 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         terr
                     );
                 }
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id);
+                let locations = location.to_locations();
+                let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
+
+                if let Err(terr) = self.cx.eq_types(
+                    normalized_ty,
+                    literal_ty,
+                    locations,
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
             }
             if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
-                let tcx = self.tcx();
-
                 let instantiated_predicates = tcx
                     .predicates_of(def_id)
                     .instantiate(tcx, substs);
@@ -497,46 +512,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
         };
 
-        if place.projection.is_empty() {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let is_promoted = match place.as_ref() {
-                    PlaceRef {
-                        base: &PlaceBase::Static(box Static {
-                            kind: StaticKind::Promoted(..),
-                            ..
-                        }),
-                        projection: &[],
-                    } => true,
-                    _ => false,
-                };
-
-                if !is_promoted {
-                    let tcx = self.tcx();
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.lang_items().copy_trait().unwrap(),
-                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                    };
-
-                    // To have a `Copy` operand, the type `T` of the
-                    // value must be `Copy`. Note that we prove that `T: Copy`,
-                    // rather than using the `is_copy_modulo_regions`
-                    // test. This is important because
-                    // `is_copy_modulo_regions` ignores the resulting region
-                    // obligations and assumes they pass. This can result in
-                    // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                    // #29149). Note that we decide to use `Copy` before knowing
-                    // whether the bounds fully apply: in effect, the rule is
-                    // that if a value of some type could implement `Copy`, then
-                    // it must.
-                    self.cx.prove_trait_ref(
-                        trait_ref,
-                        location.to_locations(),
-                        ConstraintCategory::CopyBound,
-                    );
-                }
-            }
-        }
-
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
@@ -545,6 +520,44 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location)
+        }
+
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let is_promoted = match place.as_ref() {
+                PlaceRef {
+                    base: &PlaceBase::Static(box Static {
+                        kind: StaticKind::Promoted(..),
+                        ..
+                    }),
+                    projection: &[],
+                } => true,
+                _ => false,
+            };
+
+            if !is_promoted {
+                let tcx = self.tcx();
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().copy_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+                };
+
+                // To have a `Copy` operand, the type `T` of the
+                // value must be `Copy`. Note that we prove that `T: Copy`,
+                // rather than using the `is_copy_modulo_regions`
+                // test. This is important because
+                // `is_copy_modulo_regions` ignores the resulting region
+                // obligations and assumes they pass. This can result in
+                // bounds from `Copy` impls being unsoundly ignored (e.g.,
+                // #29149). Note that we decide to use `Copy` before knowing
+                // whether the bounds fully apply: in effect, the rule is
+                // that if a value of some type could implement `Copy`, then
+                // it must.
+                self.cx.prove_trait_ref(
+                    trait_ref,
+                    location.to_locations(),
+                    ConstraintCategory::CopyBound,
+                );
+            }
         }
 
         place_ty
