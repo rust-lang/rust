@@ -4,7 +4,7 @@ error: (e.pow(x) - 1) can be computed more accurately
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
    |
-   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> $DIR/floating_point_exp.rs:7:13

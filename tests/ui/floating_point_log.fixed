@@ -1,6 +1,6 @@
 // run-rustfix
 #![allow(dead_code, clippy::double_parens)]
-#![warn(clippy::suboptimal_flops)]
+#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 
 const TWO: f32 = 2.0;
 const E: f32 = std::f32::consts::E;

@@ -538,6 +538,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
         &float_literal::EXCESSIVE_PRECISION,
         &float_literal::LOSSY_FLOAT_LITERAL,
+        &floating_point_arithmetic::IMPRECISE_FLOPS,
         &floating_point_arithmetic::SUBOPTIMAL_FLOPS,
         &format::USELESS_FORMAT,
         &formatting::POSSIBLE_MISSING_COMMA,
@@ -1648,6 +1649,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
+        LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),

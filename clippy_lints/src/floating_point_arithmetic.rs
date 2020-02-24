@@ -18,6 +18,39 @@ use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
+    /// can be expressed using built-in methods to improve accuracy
+    /// at the cost of performance.
+    ///
+    /// **Why is this bad?** Negatively impacts accuracy.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    ///
+    /// let a = 3f32;
+    /// let _ = a.powf(1.0 / 3.0);
+    /// let _ = (1.0 + a).ln();
+    /// let _ = a.exp() - 1.0;
+    /// ```
+    ///
+    /// is better expressed as
+    ///
+    /// ```rust
+    ///
+    /// let a = 3f32;
+    /// let _ = a.cbrt();
+    /// let _ = a.ln_1p();
+    /// let _ = a.exp_m1();
+    /// ```
+    pub IMPRECISE_FLOPS,
+    nursery,
+    "usage of imprecise floating point operations"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Looks for floating-point expressions that
     /// can be expressed using built-in methods to improve both
     /// accuracy and performance.
     ///
@@ -34,12 +67,9 @@ declare_clippy_lint! {
     /// let _ = (2f32).powf(a);
     /// let _ = E.powf(a);
     /// let _ = a.powf(1.0 / 2.0);
-    /// let _ = a.powf(1.0 / 3.0);
     /// let _ = a.log(2.0);
     /// let _ = a.log(10.0);
     /// let _ = a.log(E);
-    /// let _ = (1.0 + a).ln();
-    /// let _ = a.exp() - 1.0;
     /// let _ = a.powf(2.0);
     /// let _ = a * 2.0 + 4.0;
     /// ```
@@ -53,12 +83,9 @@ declare_clippy_lint! {
     /// let _ = a.exp2();
     /// let _ = a.exp();
     /// let _ = a.sqrt();
-    /// let _ = a.cbrt();
     /// let _ = a.log2();
     /// let _ = a.log10();
     /// let _ = a.ln();
-    /// let _ = a.ln_1p();
-    /// let _ = a.exp_m1();
     /// let _ = a.powi(2);
     /// let _ = a.mul_add(2.0, 4.0);
     /// ```
@@ -67,7 +94,10 @@ declare_clippy_lint! {
     "usage of sub-optimal floating point operations"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [SUBOPTIMAL_FLOPS]);
+declare_lint_pass!(FloatingPointArithmetic => [
+    IMPRECISE_FLOPS,
+    SUBOPTIMAL_FLOPS
+]);
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
@@ -156,7 +186,7 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
         span_lint_and_sugg(
             cx,
-            SUBOPTIMAL_FLOPS,
+            IMPRECISE_FLOPS,
             expr.span,
             "ln(1 + x) can be computed more accurately",
             "consider using",
@@ -215,18 +245,21 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
     // Check argument
     if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
-        let (help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
+        let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
+                SUBOPTIMAL_FLOPS,
                 "square-root of a number can be computed more efficiently and accurately",
                 format!("{}.sqrt()", Sugg::hir(cx, &args[0], "..")),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
+                IMPRECISE_FLOPS,
                 "cube-root of a number can be computed more accurately",
                 format!("{}.cbrt()", Sugg::hir(cx, &args[0], "..")),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
+                SUBOPTIMAL_FLOPS,
                 "exponentiation with integer powers can be computed more efficiently",
                 format!(
                     "{}.powi({})",
@@ -240,7 +273,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
         span_lint_and_sugg(
             cx,
-            SUBOPTIMAL_FLOPS,
+            lint,
             expr.span,
             help,
             "consider using",
@@ -264,7 +297,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         then {
             span_lint_and_sugg(
                 cx,
-                SUBOPTIMAL_FLOPS,
+                IMPRECISE_FLOPS,
                 expr.span,
                 "(e.pow(x) - 1) can be computed more accurately",
                 "consider using",

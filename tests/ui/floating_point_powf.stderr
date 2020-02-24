@@ -47,6 +47,8 @@ error: cube-root of a number can be computed more accurately
    |
 LL |     let _ = x.powf(1.0 / 3.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
+   |
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: exponentiation with integer powers can be computed more efficiently
   --> $DIR/floating_point_powf.rs:14:13

@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 357] = [
+pub const ALL_LINTS: [Lint; 358] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -748,6 +748,13 @@ pub const ALL_LINTS: [Lint; 357] = [
         desc: "use a return statement like `return expr` instead of an expression",
         deprecation: None,
         module: "implicit_return",
+    },
+    Lint {
+        name: "imprecise_flops",
+        group: "nursery",
+        desc: "usage of imprecise floating point operations",
+        deprecation: None,
+        module: "floating_point_arithmetic",
     },
     Lint {
         name: "inconsistent_digit_grouping",
