@@ -21,38 +21,33 @@ const LICENSES: &[&str] = &[
 /// should be considered bugs. Exceptions are only allowed in Rust
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
-const EXCEPTIONS: &[&str] = &[
-    "mdbook",             // MPL2, mdbook
-    "openssl",            // BSD+advertising clause, cargo, mdbook
-    "pest",               // MPL2, mdbook via handlebars
-    "arrayref",           // BSD-2-Clause, mdbook via handlebars via pest
-    "toml-query",         // MPL-2.0, mdbook
-    "toml-query_derive",  // MPL-2.0, mdbook
-    "is-match",           // MPL-2.0, mdbook
-    "smallvec",           // MPL-2.0, rustdoc
-    "rdrand",             // ISC, mdbook, rustfmt
-    "fuchsia-cprng",      // BSD-3-Clause, mdbook, rustfmt
-    "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
-    "fuchsia-zircon",     // BSD-3-Clause, rustdoc, rustc, cargo (jobserver & tempdir)
-    "clippy_lints",       // MPL-2.0, rls
-    "colored",            // MPL-2.0, rustfmt
-    "ordslice",           // Apache-2.0, rls
-    "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
-    "ryu",                // Apache-2.0, rls/cargo/... (because of serde)
-    "bytesize",           // Apache-2.0, cargo
-    "im-rc",              // MPL-2.0+, cargo
-    "adler32",            // BSD-3-Clause AND Zlib, cargo dep that isn't used
-    "constant_time_eq",   // CC0-1.0, rustfmt
-    "utf8parse",          // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
-    "vte",                // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
-    "sized-chunks",       // MPL-2.0+, cargo via im-rc
-    "bitmaps",            // MPL-2.0+, cargo via im-rc
+const EXCEPTIONS: &[(&str, &str)] = &[
+    ("mdbook", "MPL-2.0"),                  // mdbook
+    ("openssl", "Apache-2.0"),              // cargo, mdbook
+    ("arrayref", "BSD-2-Clause"),           // mdbook via handlebars via pest
+    ("toml-query", "MPL-2.0"),              // mdbook
+    ("toml-query_derive", "MPL-2.0"),       // mdbook
+    ("is-match", "MPL-2.0"),                // mdbook
+    ("rdrand", "ISC"),                      // mdbook, rustfmt
+    ("fuchsia-cprng", "BSD-3-Clause"),      // mdbook, rustfmt
+    ("fuchsia-zircon-sys", "BSD-3-Clause"), // rustdoc, rustc, cargo
+    ("fuchsia-zircon", "BSD-3-Clause"),     // rustdoc, rustc, cargo (jobserver & tempdir)
+    ("colored", "MPL-2.0"),                 // rustfmt
+    ("ordslice", "Apache-2.0"),             // rls
+    ("cloudabi", "BSD-2-Clause"),           // (rls -> crossbeam-channel 0.2 -> rand 0.5)
+    ("ryu", "Apache-2.0 OR BSL-1.0"),       // rls/cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),             // cargo
+    ("im-rc", "MPL-2.0+"),                  // cargo
+    ("adler32", "BSD-3-Clause AND Zlib"),   // cargo dep that isn't used
+    ("constant_time_eq", "CC0-1.0"),        // rustfmt
+    ("sized-chunks", "MPL-2.0+"),           // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),                // cargo via im-rc
     // FIXME: this dependency violates the documentation comment above:
-    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
-    "dunce",              // CC0-1.0 mdbook-linkcheck
-    "codespan-reporting", // Apache-2.0 mdbook-linkcheck
-    "codespan",           // Apache-2.0 mdbook-linkcheck
-    "crossbeam-channel",  // MIT/Apache-2.0 AND BSD-2-Clause, cargo
+    ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
+    ("dunce", "CC0-1.0"),            // mdbook-linkcheck
+    ("codespan-reporting", "Apache-2.0"), // mdbook-linkcheck
+    ("codespan", "Apache-2.0"),      // mdbook-linkcheck
+    ("crossbeam-channel", "MIT/Apache-2.0 AND BSD-2-Clause"), // cargo
 ];
 
 /// Which crates to check against the whitelist?
@@ -193,24 +188,53 @@ pub fn check(path: &Path, cargo: &Path, bad: &mut bool) {
 ///
 /// Packages listed in `EXCEPTIONS` are allowed for tools.
 fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
-    // Check that the EXCEPTIONS list does not have unused entries.
-    for exception in EXCEPTIONS {
-        if !metadata.packages.iter().any(|p| p.name == *exception) {
+    // Validate the EXCEPTIONS list hasn't changed.
+    for (name, license) in EXCEPTIONS {
+        // Check that the package actually exists.
+        if !metadata.packages.iter().any(|p| p.name == *name) {
             println!(
                 "could not find exception package `{}`\n\
                 Remove from EXCEPTIONS list if it is no longer used.",
-                exception
+                name
             );
             *bad = true;
         }
+        // Check that the license hasn't changed.
+        for pkg in metadata.packages.iter().filter(|p| p.name == *name) {
+            if pkg.name == "fuchsia-cprng" {
+                // This package doesn't declare a license expression. Manual
+                // inspection of the license file is necessary, which appears
+                // to be BSD-3-Clause.
+                assert!(pkg.license.is_none());
+                continue;
+            }
+            match &pkg.license {
+                None => {
+                    println!(
+                        "dependency exception `{}` does not declare a license expression",
+                        pkg.id
+                    );
+                    *bad = true;
+                }
+                Some(pkg_license) => {
+                    if pkg_license.as_str() != *license {
+                        println!("dependency exception `{}` license has changed", name);
+                        println!("    previously `{}` now `{}`", license, pkg_license);
+                        println!("    update EXCEPTIONS for the new license");
+                        *bad = true;
+                    }
+                }
+            }
+        }
     }
+    let exception_names: Vec<_> = EXCEPTIONS.iter().map(|(name, _license)| *name).collect();
     // Check if any package does not have a valid license.
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
             continue;
         }
-        if EXCEPTIONS.contains(&pkg.name.as_str()) {
+        if exception_names.contains(&pkg.name.as_str()) {
             continue;
         }
         let license = match &pkg.license {
