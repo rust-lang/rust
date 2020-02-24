@@ -6,7 +6,7 @@ fn in_let() {
    let y = 22;
    let foo = Foo::Bar { field: &y };
    //~^ ERROR `y` does not live long enough
-   let Foo::Bar::<'static> { field: _z } = foo;
+   let Foo::Bar::<'static> { field: _z } = foo; //~ WARNING
 }
 
 fn in_match() {
@@ -14,7 +14,7 @@ fn in_match() {
    let foo = Foo::Bar { field: &y };
    //~^ ERROR `y` does not live long enough
    match foo {
-       Foo::Bar::<'static> { field: _z } => {}
+       Foo::Bar::<'static> { field: _z } => {} //~ WARNING
    }
 }
 

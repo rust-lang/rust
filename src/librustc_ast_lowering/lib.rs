@@ -1977,6 +1977,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             args: &[],
             bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
             parenthesized: false,
+            span,
         });
 
         // ::std::future::Future<future_params>
@@ -2655,11 +2656,12 @@ impl<'hir> GenericArgsCtor<'hir> {
         self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
-    fn into_generic_args(self, arena: &'hir Arena<'hir>) -> hir::GenericArgs<'hir> {
+    fn into_generic_args(self, arena: &'hir Arena<'hir>, span: Span) -> hir::GenericArgs<'hir> {
         hir::GenericArgs {
             args: arena.alloc_from_iter(self.args),
             bindings: self.bindings,
             parenthesized: self.parenthesized,
+            span,
         }
     }
 }

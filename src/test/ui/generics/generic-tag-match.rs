@@ -1,6 +1,5 @@
 // run-pass
-#![allow(unused_assignments)]
-#![allow(non_camel_case_types)]
+#![allow(unused_assignments, non_camel_case_types, type_param_on_variant_ctor)]
 
 enum foo<T> { arm(T), }
 

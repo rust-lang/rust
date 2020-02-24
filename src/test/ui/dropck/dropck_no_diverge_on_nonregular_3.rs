@@ -33,4 +33,9 @@ fn main() {
         Some(Wrapper::Simple::<u32>);
     //~^ ERROR overflow while adding drop-check rules for std::option::Option
     //~| ERROR overflow while adding drop-check rules for Wrapper
+    //~| WARNING type parameter on variant
+    let v = //~ ERROR overflow while adding drop-check rules for std::option
+        Some(Wrapper::<u32>::Simple);
+    //~^ ERROR overflow while adding drop-check rules for std::option::Option
+    //~| ERROR overflow while adding drop-check rules for Wrapper
 }

@@ -196,11 +196,13 @@ error[E0109]: type arguments are not allowed for this type
 LL |     AliasFixed::<()>::TSVariant::<()>(());
    |                                   ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/enum-variant-generic-args.rs:72:28
+error: multiple segments with type parameters are not allowed
+  --> $DIR/enum-variant-generic-args.rs:72:5
    |
 LL |     Enum::<()>::SVariant::<()> { v: () };
-   |                            ^^ type argument not allowed
+   |     ^^^^        ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:75:23

@@ -1,6 +1,5 @@
 // run-pass
-#![allow(dead_code)]
-#![allow(non_camel_case_types)]
+#![allow(dead_code, non_camel_case_types, type_param_on_variant_ctor)]
 
 enum opt<T> { none, some(T) }
 

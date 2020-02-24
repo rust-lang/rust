@@ -1,7 +1,6 @@
 // run-pass
 
-#![allow(non_camel_case_types)]
-#![allow(dead_code)]
+#![allow(non_camel_case_types, type_param_on_variant_ctor, dead_code)]
 fn foo(c: Vec<isize> ) {
     let a: isize = 5;
     let mut b: Vec<isize> = Vec::new();

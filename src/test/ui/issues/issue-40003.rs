@@ -1,5 +1,5 @@
 // run-pass
-#![allow(unused_must_use)]
+#![allow(unused_must_use, type_param_on_variant_ctor)]
 fn main() {
     if false { test(); }
 }

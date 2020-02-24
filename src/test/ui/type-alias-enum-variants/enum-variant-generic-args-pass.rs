@@ -1,4 +1,5 @@
 // run-pass
+#![allow(type_param_on_variant_ctor)]
 
 // Check that resolving, in the value namespace, to an `enum` variant
 // through a type alias is well behaved in the presence of generics.

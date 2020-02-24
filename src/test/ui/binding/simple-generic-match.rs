@@ -1,5 +1,5 @@
 // run-pass
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, type_param_on_variant_ctor)]
 
 // pretty-expanded FIXME #23616
 

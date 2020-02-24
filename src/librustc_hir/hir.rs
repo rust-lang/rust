@@ -311,11 +311,13 @@ pub struct GenericArgs<'hir> {
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: bool,
+    /// The `Span` encompassing the entirety of the parameters `<A, B>` or `(A, B)`.
+    pub span: Span,
 }
 
 impl GenericArgs<'_> {
     pub const fn none() -> Self {
-        Self { args: &[], bindings: &[], parenthesized: false }
+        Self { args: &[], bindings: &[], parenthesized: false, span: DUMMY_SP }
     }
 
     pub fn is_empty(&self) -> bool {

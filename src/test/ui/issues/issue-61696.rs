@@ -1,4 +1,5 @@
 // run-pass
+#![allow(type_param_on_variant_ctor)]
 
 pub enum Infallible {}
 

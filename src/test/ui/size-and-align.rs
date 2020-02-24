@@ -1,6 +1,6 @@
 // run-pass
 
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, type_param_on_variant_ctor)]
 enum clam<T> { a(T, isize), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {

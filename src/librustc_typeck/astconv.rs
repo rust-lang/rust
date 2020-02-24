@@ -2500,8 +2500,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let enum_def_id = tcx.parent(def_id).unwrap();
                     (enum_def_id, last - 1)
                 } else {
-                    // FIXME: lint here recommending `Enum::<...>::Variant` form
-                    // instead of `Enum::Variant::<...>` form.
+                    self.lint_type_param_on_variant_ctor(segments);
 
                     // Everything but the final segment should have no
                     // parameters at all.
@@ -2533,6 +2532,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("path_segs = {:?}", path_segs);
 
         path_segs
+    }
+
+    fn lint_type_param_on_variant_ctor(&self, segments: &[hir::PathSegment<'_>]) {
+        // Doing this to get around rustfmt-caused line too long.
+        use hir::PathSegment as P;
+        if let [.., prev, P { hir_id: Some(hir_id), args: Some(args), .. }] = segments {
+            let span = args.span;
+            if span.hi() == span.lo() {
+                // The params were not written by the user, but rather derived. These are expected.
+                return;
+            }
+            self.tcx().struct_span_lint_hir(
+                lint::builtin::TYPE_PARAM_ON_VARIANT_CTOR,
+                *hir_id,
+                span,
+                |lint| {
+                    let mut err = lint.build("type parameter on variant");
+                    let sugg_span = prev.ident.span.shrink_to_hi();
+                    let msg = "set the type parameter on the enum";
+                    match self.tcx().sess.source_map().span_to_snippet(span) {
+                        Ok(snippet) => err.multipart_suggestion(
+                            msg,
+                            vec![(sugg_span, snippet), (span, "".to_string())],
+                            Applicability::MachineApplicable,
+                        ),
+                        Err(_) => err.span_label(sugg_span, msg),
+                    };
+                    err.emit();
+                },
+            );
+        }
     }
 
     // Check a type `Path` and convert it to a `Ty`.

@@ -257,6 +257,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub TYPE_PARAM_ON_VARIANT_CTOR,
+    Warn,
+    "detects generic arguments in path segments corresponding to an enum variant instead of the \
+     enum itself",
+}
+
+declare_lint! {
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
     "trait-object types were treated as different depending on marker-trait order",
@@ -531,6 +538,7 @@ declare_lint_pass! {
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
+        TYPE_PARAM_ON_VARIANT_CTOR,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
         DEPRECATED,

@@ -14,11 +14,17 @@ pub fn main() {
     if let Foo::<String>::Unit = Foo::<String>::Unit {}
     if let Foo::<String>::Tuple() = Foo::<String>::Tuple() {}
     if let Foo::<String>::Struct {} = (Foo::<String>::Struct {}) {}
-    // // FIXME: these should be linted against.
-    let _ = Foo::Unit::<String>;
-    let _ = Foo::Tuple::<String>();
-    let _ = Foo::Struct::<String> {};
+
+    let _ = Foo::Unit::<String>; //~ WARNING type parameter on variant
+    let _ = Foo::Tuple::<String>(); //~ WARNING type parameter on variant
+    let _ = Foo::Struct::<String> {}; //~ WARNING type parameter on variant
     if let Foo::Unit::<String> = Foo::Unit::<String> {}
+    //~^ WARNING type parameter on variant
+    //~| WARNING type parameter on variant
     if let Foo::Tuple::<String>() = Foo::Tuple::<String>() {}
+    //~^ WARNING type parameter on variant
+    //~| WARNING type parameter on variant
     if let Foo::Struct::<String> {} = (Foo::Struct::<String> {}) {}
+    //~^ WARNING type parameter on variant
+    //~| WARNING type parameter on variant
 }

@@ -1,3 +1,26 @@
+warning: type parameter on variant
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:9:16
+   |
+LL |    let Foo::Bar::<'static> { field: _z } = foo;
+   |                ^^^^^^^^^^^
+   |
+   = note: `#[warn(type_param_on_variant_ctor)]` on by default
+help: set the type parameter on the enum
+   |
+LL |    let Foo::<'static>::Bar { field: _z } = foo;
+   |           ^^^^^^^^^^^    --
+
+warning: type parameter on variant
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:17:16
+   |
+LL |        Foo::Bar::<'static> { field: _z } => {}
+   |                ^^^^^^^^^^^
+   |
+help: set the type parameter on the enum
+   |
+LL |        Foo::<'static>::Bar { field: _z } => {}
+   |           ^^^^^^^^^^^    --
+
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_brace_enum_variant.rs:7:32
    |

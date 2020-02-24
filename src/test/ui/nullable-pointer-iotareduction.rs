@@ -1,6 +1,7 @@
 // run-pass
 
 #![feature(box_syntax)]
+#![allow(type_param_on_variant_ctor)]
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,
 // which "says that a destructor applied to an object built from a constructor

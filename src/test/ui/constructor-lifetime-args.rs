@@ -21,6 +21,12 @@ fn main() {
     E::V(&0); // OK
     E::V::<'static>(&0);
     //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
+    //~| WARNING type parameter on variant
     E::V::<'static, 'static, 'static>(&0);
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
+    //~| WARNING type parameter on variant
+    E::<'static>::V(&0);
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
+    E::<'static, 'static, 'static>::V(&0);
     //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
 }

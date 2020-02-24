@@ -1,3 +1,15 @@
+warning: type parameter on variant
+  --> $DIR/no-type-application-on-aliased-enum-variant.rs:11:25
+   |
+LL |     let _ = Option::None::<u8>;
+   |                         ^^^^^^
+   |
+   = note: `#[warn(type_param_on_variant_ctor)]` on by default
+help: set the type parameter on the enum
+   |
+LL |     let _ = Option::<u8>::None;
+   |                   ^^^^^^     --
+
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/no-type-application-on-aliased-enum-variant.rs:13:27
    |

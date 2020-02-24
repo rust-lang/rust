@@ -10,18 +10,53 @@ error[E0107]: wrong number of lifetime arguments: expected 2, found 3
 LL |     S::<'static, 'static, 'static>(&0, &0);
    |                           ^^^^^^^ unexpected lifetime argument
 
+warning: type parameter on variant
+  --> $DIR/constructor-lifetime-args.rs:22:9
+   |
+LL |     E::V::<'static>(&0);
+   |         ^^^^^^^^^^^
+   |
+   = note: `#[warn(type_param_on_variant_ctor)]` on by default
+help: set the type parameter on the enum
+   |
+LL |     E::<'static>::V(&0);
+   |      ^^^^^^^^^^^  --
+
 error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/constructor-lifetime-args.rs:22:5
    |
 LL |     E::V::<'static>(&0);
    |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
+warning: type parameter on variant
+  --> $DIR/constructor-lifetime-args.rs:25:9
+   |
+LL |     E::V::<'static, 'static, 'static>(&0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set the type parameter on the enum
+   |
+LL |     E::<'static, 'static, 'static>::V(&0);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  --
+
 error[E0107]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/constructor-lifetime-args.rs:24:30
+  --> $DIR/constructor-lifetime-args.rs:25:30
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
    |                              ^^^^^^^ unexpected lifetime argument
 
-error: aborting due to 4 previous errors
+error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+  --> $DIR/constructor-lifetime-args.rs:28:5
+   |
+LL |     E::<'static>::V(&0);
+   |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+
+error[E0107]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:30:27
+   |
+LL |     E::<'static, 'static, 'static>::V(&0);
+   |                           ^^^^^^^ unexpected lifetime argument
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

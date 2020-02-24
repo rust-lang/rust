@@ -1,5 +1,5 @@
 // run-pass
-#![allow(unused_variables)]
+#![allow(unused_variables, type_param_on_variant_ctor)]
 // Parsing patterns with paths with type parameters (issue #22544)
 
 use std::default::Default;
@@ -47,6 +47,9 @@ fn main() {
         panic!();
     }
     if let Option::None::<u8> { .. } = Some(8) {
+        panic!();
+    }
+    if let Option::<u8>::None { .. } = Some(8) {
         panic!();
     }
 }

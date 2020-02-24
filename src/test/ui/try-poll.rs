@@ -1,6 +1,6 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![allow(dead_code, unused)]
+#![allow(dead_code, unused, type_param_on_variant_ctor)]
 
 use std::task::Poll;
 

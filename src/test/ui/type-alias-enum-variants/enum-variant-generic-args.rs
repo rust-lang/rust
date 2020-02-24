@@ -70,7 +70,7 @@ fn main() {
     // Struct variant
 
     Enum::<()>::SVariant::<()> { v: () };
-    //~^ ERROR type arguments are not allowed for this type [E0109]
+    //~^ ERROR multiple segments with type parameters are not allowed
 
     Alias::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed for this type [E0109]
