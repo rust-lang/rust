@@ -712,12 +712,6 @@ pub enum Nonterminal {
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
-    // Used only for passing items to proc macro attributes (they are not
-    // strictly necessary for that, `Annotatable` can be converted into
-    // tokens directly, but doing that naively regresses pretty-printing).
-    NtTraitItem(P<ast::AssocItem>),
-    NtImplItem(P<ast::AssocItem>),
-    NtForeignItem(P<ast::ForeignItem>),
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -755,9 +749,6 @@ impl fmt::Debug for Nonterminal {
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
-            NtImplItem(..) => f.pad("NtImplItem(..)"),
-            NtTraitItem(..) => f.pad("NtTraitItem(..)"),
-            NtForeignItem(..) => f.pad("NtForeignItem(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }

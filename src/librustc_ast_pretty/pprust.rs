@@ -319,10 +319,7 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtLifetime(e) => e.to_string(),
         token::NtLiteral(ref e) => expr_to_string(e),
         token::NtTT(ref tree) => tt_to_string(tree.clone()),
-        // FIXME(Centril): merge these variants.
-        token::NtImplItem(ref e) | token::NtTraitItem(ref e) => assoc_item_to_string(e),
         token::NtVis(ref e) => vis_to_string(e),
-        token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
 }
 
@@ -356,10 +353,6 @@ pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
 
 pub fn item_to_string(i: &ast::Item) -> String {
     to_string(|s| s.print_item(i))
-}
-
-fn assoc_item_to_string(i: &ast::AssocItem) -> String {
-    to_string(|s| s.print_assoc_item(i))
 }
 
 pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
@@ -402,10 +395,6 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
 
 pub fn param_to_string(arg: &ast::Param) -> String {
     to_string(|s| s.print_param(arg, false))
-}
-
-fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
-    to_string(|s| s.print_foreign_item(arg))
 }
 
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
