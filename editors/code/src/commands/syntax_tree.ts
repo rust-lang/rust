@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 
@@ -61,13 +61,8 @@ function afterLs(f: () => void) {
     setTimeout(f, 10);
 }
 
-interface SyntaxTreeParams {
-    textDocument: lc.TextDocumentIdentifier;
-    range?: lc.Range;
-}
 
-class TextDocumentContentProvider
-    implements vscode.TextDocumentContentProvider {
+class TextDocumentContentProvider implements vscode.TextDocumentContentProvider {
     uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
     eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
@@ -79,23 +74,15 @@ class TextDocumentContentProvider
         const client = this.ctx.client;
         if (!editor || !client) return '';
 
-        let range: lc.Range | undefined;
-
         // When the range based query is enabled we take the range of the selection
-        if (uri.query === 'range=true') {
-            range = editor.selection.isEmpty
-                ? undefined
-                : client.code2ProtocolConverter.asRange(editor.selection);
-        }
+        const range = uri.query === 'range=true' && !editor.selection.isEmpty
+            ? client.code2ProtocolConverter.asRange(editor.selection)
+            : null;
 
-        const request: SyntaxTreeParams = {
+        return client.sendRequest(ra.syntaxTree, {
             textDocument: { uri: editor.document.uri.toString() },
             range,
-        };
-        return client.sendRequest<string>(
-            'rust-analyzer/syntaxTree',
-            request,
-        );
+        });
     }
 
     get onDidChange(): vscode.Event<vscode.Uri> {
