@@ -50,10 +50,12 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut ecx = InterpCx::new(
         tcx.at(rustc_span::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.communicate),
+        Evaluator::new(
+            config.communicate,
+            config.validate,
+        ),
         MemoryExtra::new(
             StdRng::seed_from_u64(config.seed.unwrap_or(0)),
-            config.validate,
             config.stacked_borrows,
             config.tracked_pointer_tag,
         ),

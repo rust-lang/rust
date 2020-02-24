@@ -76,13 +76,10 @@ pub struct MemoryExtra {
 
     /// The random number generator used for resolving non-determinism.
     pub(crate) rng: RefCell<StdRng>,
-
-    /// Whether to enforce the validity invariant.
-    pub(crate) validate: bool,
 }
 
 impl MemoryExtra {
-    pub fn new(rng: StdRng, validate: bool, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>) -> Self {
+    pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
         } else {
@@ -92,7 +89,6 @@ impl MemoryExtra {
             stacked_borrows,
             intptrcast: Default::default(),
             rng: RefCell::new(rng),
-            validate,
         }
     }
 }
@@ -120,6 +116,9 @@ pub struct Evaluator<'tcx> {
     /// and random number generation is delegated to the host.
     pub(crate) communicate: bool,
 
+    /// Whether to enforce the validity invariant.
+    pub(crate) validate: bool,
+
     pub(crate) file_handler: FileHandler,
 
     /// The temporary used for storing the argument of
@@ -128,7 +127,7 @@ pub struct Evaluator<'tcx> {
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    pub(crate) fn new(communicate: bool) -> Self {
+    pub(crate) fn new(communicate: bool, validate: bool) -> Self {
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -139,6 +138,7 @@ impl<'tcx> Evaluator<'tcx> {
             last_error: None,
             tls: TlsData::default(),
             communicate,
+            validate,
             file_handler: Default::default(),
             panic_payload: None,
         }
@@ -183,7 +183,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        ecx.memory.extra.validate
+        ecx.machine.validate
     }
 
     #[inline(always)]
