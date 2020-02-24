@@ -354,13 +354,13 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Fn(ref sig, _, Some(ref blk)) = item.kind {
+        if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &AssocItem) {
-        if let AssocItemKind::Fn(ref sig, _, Some(ref blk)) = item.kind {
+        if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
