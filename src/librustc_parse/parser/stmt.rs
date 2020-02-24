@@ -366,36 +366,36 @@ impl<'a> Parser<'a> {
 
         let mut eat_semi = true;
         match stmt.kind {
-            StmtKind::Expr(ref expr) if self.token != token::Eof => {
-                // expression without semicolon
-                if classify::expr_requires_semi_to_be_stmt(expr) {
-                    // Just check for errors and recover; do not eat semicolon yet.
-                    if let Err(mut e) =
-                        self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
-                    {
-                        if let TokenKind::DocComment(..) = self.token.kind {
-                            if let Ok(snippet) = self.span_to_snippet(self.token.span) {
-                                let sp = self.token.span;
-                                let marker = &snippet[..3];
-                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
+            // Expression without semicolon.
+            StmtKind::Expr(ref expr)
+                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
+            {
+                // Just check for errors and recover; do not eat semicolon yet.
+                if let Err(mut e) =
+                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+                {
+                    if let TokenKind::DocComment(..) = self.token.kind {
+                        if let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                            let sp = self.token.span;
+                            let marker = &snippet[..3];
+                            let (comment_marker, doc_comment_marker) = marker.split_at(2);
 
-                                e.span_suggestion(
-                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
-                                    &format!(
-                                        "add a space before `{}` to use a regular comment",
-                                        doc_comment_marker,
-                                    ),
-                                    format!("{} {}", comment_marker, doc_comment_marker),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+                            e.span_suggestion(
+                                sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
+                                &format!(
+                                    "add a space before `{}` to use a regular comment",
+                                    doc_comment_marker,
+                                ),
+                                format!("{} {}", comment_marker, doc_comment_marker),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
-                        e.emit();
-                        self.recover_stmt();
-                        // Don't complain about type errors in body tail after parse error (#57383).
-                        let sp = expr.span.to(self.prev_span);
-                        stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
                     }
+                    e.emit();
+                    self.recover_stmt();
+                    // Don't complain about type errors in body tail after parse error (#57383).
+                    let sp = expr.span.to(self.prev_span);
+                    stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
                 }
             }
             StmtKind::Local(..) => {
