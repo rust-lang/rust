@@ -9,7 +9,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::Pattern;
+use rustc_infer::traits::{ObligationCause, Pattern};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use syntax::ast;
@@ -66,6 +66,11 @@ struct TopInfo<'tcx> {
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
+    fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
+        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
+        self.cause(cause_span, code)
+    }
+
     fn demand_eqtype_pat_diag(
         &self,
         cause_span: Span,
@@ -73,9 +78,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
-        let cause = self.cause(cause_span, code);
-        self.demand_eqtype_with_origin(&cause, expected, actual)
+        self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
     }
 
     fn demand_eqtype_pat(
@@ -379,7 +382,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //     &'static str <: expected
         //
         // then that's equivalent to there existing a LUB.
-        if let Some(mut err) = self.demand_suptype_diag(span, expected, pat_ty) {
+        let cause = self.pattern_cause(ti, span);
+        if let Some(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             err.emit_unless(
                 ti.span
                     .filter(|&s| {
