@@ -47,9 +47,8 @@ LL |      .take()
            `Foo: std::iter::Iterator`
            which is required by `&mut Foo: std::iter::Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `take`, perhaps you need to implement one of them:
-           candidate #1: `std::io::Read`
-           candidate #2: `std::iter::Iterator`
+   = note: the following trait defines an item `take`, perhaps you need to implement it:
+           candidate #1: `std::iter::Iterator`
 
 error[E0061]: this function takes 3 arguments but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:21:7

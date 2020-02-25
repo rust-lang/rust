@@ -20,9 +20,6 @@ LL | pub struct Box<T: ?Sized>(Unique<T>);
            which is required by `std::boxed::Box<dyn Foo>: std::clone::Clone`
            `dyn Foo: std::clone::Clone`
            which is required by `std::boxed::Box<dyn Foo>: std::clone::Clone`
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `clone`, perhaps you need to implement it:
-           candidate #1: `std::clone::Clone`
 
 error: aborting due to previous error
 
