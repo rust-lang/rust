@@ -1,6 +1,23 @@
 # Name resolution
 
-The name resolution is a two-phase process. In the first phase, which runs
+## Basics
+
+In our programs we can refer to variables, types, functions, etc, by giving them
+a name. These names are not always unique. For example, take this valid Rust
+program:
+
+```rust
+type x = u32;
+let x: x = 1;
+let y: x = 2;
+```
+
+How do we know on line 3 whether `x` is a type (u32) or a value (1)?
+These conflicts are resolved in `librustc_resolve`.
+In this specific case, name resolution defines that type names and variable
+names live in separate namespaces and therefore can co-exist.
+
+The name resolution in Rust is a two-phase process. In the first phase, which runs
 during macro expansion, we build a tree of modules and resolve imports. Macro
 expansion and name resolution communicate with each other via the `Resolver`
 trait, defined in `libsyntax`.
