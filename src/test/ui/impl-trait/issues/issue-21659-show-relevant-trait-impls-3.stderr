@@ -1,9 +1,6 @@
 error[E0599]: no method named `foo` found for struct `Bar` in the current scope
   --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:20:8
    |
-LL | trait Foo<A> {
-   | ------------ `Foo` defines an item `foo`, perhaps you need to implement it
-...
 LL | struct Bar;
    | ----------- method `foo` not found for this
 ...
@@ -11,6 +8,11 @@ LL |     f1.foo(1usize);
    |        ^^^ method not found in `Bar`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo`, perhaps you need to implement it
+  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:1:1
+   |
+LL | trait Foo<A> {
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

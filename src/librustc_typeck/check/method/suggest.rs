@@ -644,7 +644,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 },
                             })
                         })
-                        .collect::<Vec<String>>();
+                        .enumerate()
+                        .collect::<Vec<(usize, String)>>();
                     for ((span, empty_where), obligations) in type_params.into_iter() {
                         err.span_suggestion_verbose(
                             span,
@@ -662,15 +663,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    bound_list.sort();
-                    bound_list.dedup(); // #35677
+                    bound_list.sort_by(|(_, a), (_, b)| a.cmp(&b)); // Sort alphabetically.
+                    bound_list.dedup_by(|(_, a), (_, b)| a == b); // #35677
+                    bound_list.sort_by_key(|(pos, _)| *pos); // Keep the original predicate order.
                     bound_spans.sort();
                     bound_spans.dedup();
                     for (span, msg) in bound_spans.into_iter() {
                         err.span_label(span, &msg);
                     }
                     if !bound_list.is_empty() {
-                        let bound_list = bound_list.join("\n");
+                        let bound_list = bound_list
+                            .into_iter()
+                            .map(|(_, path)| path)
+                            .collect::<Vec<_>>()
+                            .join("\n");
                         err.note(&format!(
                             "the method `{}` exists but the following trait bounds were not \
                              satisfied:\n{}",
@@ -1095,7 +1101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut use_note = true;
                 if let [trait_info] = &candidates[..] {
                     if let Some(span) = self.tcx.hir().span_if_local(trait_info.def_id) {
-                        err.span_label(
+                        err.span_note(
                             self.tcx.sess.source_map().def_span(span),
                             &format!(
                                 "`{}` defines an item `{}`, perhaps you need to {} it",

@@ -4,13 +4,15 @@ error[E0599]: no method named `a` found for struct `S` in the current scope
 LL | struct S;
    | --------- method `a` not found for this
 ...
-LL |     trait A {
-   |     ------- `method::A` defines an item `a`, perhaps you need to implement it
-...
 LL |     S.a();
    |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `method::A` defines an item `a`, perhaps you need to implement it
+  --> $DIR/trait-item-privacy.rs:6:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 
 error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:68:7
@@ -46,13 +48,15 @@ error[E0599]: no function or associated item named `a` found for struct `S` in t
 LL | struct S;
    | --------- function or associated item `a` not found for this
 ...
-LL |     trait A {
-   |     ------- `method::A` defines an item `a`, perhaps you need to implement it
-...
 LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `method::A` defines an item `a`, perhaps you need to implement it
+  --> $DIR/trait-item-privacy.rs:6:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 
 error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:80:8
@@ -81,13 +85,15 @@ error[E0599]: no associated item named `A` found for struct `S` in the current s
 LL | struct S;
    | --------- associated item `A` not found for this
 ...
-LL |     trait A {
-   |     ------- `assoc_const::A` defines an item `A`, perhaps you need to implement it
-...
 LL |     S::A;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `assoc_const::A` defines an item `A`, perhaps you need to implement it
+  --> $DIR/trait-item-privacy.rs:24:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 
 error[E0599]: no associated item named `B` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:98:8

@@ -11,13 +11,15 @@ LL | fn cant_return_str() -> str {
 error[E0599]: no method named `test` found for type `i32` in the current scope
   --> $DIR/trivial-bounds-leak.rs:24:10
    |
-LL | pub trait Foo {
-   | ------------- `Foo` defines an item `test`, perhaps you need to implement it
-...
 LL |     3i32.test();
    |          ^^^^ method not found in `i32`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `test`, perhaps you need to implement it
+  --> $DIR/trivial-bounds-leak.rs:4:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:25:15
