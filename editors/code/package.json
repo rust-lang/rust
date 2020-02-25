@@ -162,7 +162,7 @@
             {
                 "command": "rust-analyzer.onEnter",
                 "key": "enter",
-                "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
+                "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust && !vim.active || vim.mode == 'Insert' && editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
             }
         ],
         "configuration": {
