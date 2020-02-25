@@ -83,6 +83,7 @@ fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     Some((TextRange::from_to(start, end), text))
 }
 
+#[derive(Clone, Copy)]
 pub enum RangeOrOffset {
     Range(TextRange),
     Offset(TextUnit),

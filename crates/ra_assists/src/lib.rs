@@ -162,7 +162,7 @@ mod helpers {
     use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
     use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
     use ra_syntax::TextRange;
-    use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
+    use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
     use crate::{AssistCtx, AssistHandler};
 
@@ -176,81 +176,65 @@ mod helpers {
     }
 
     pub(crate) fn check_assist(assist: AssistHandler, before: &str, after: &str) {
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = with_single_file(&before);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist =
-            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = assist.0[0].action.clone().unwrap();
-
-        let actual = action.edit.apply(&before);
-        let actual_cursor_pos = match action.cursor_position {
-            None => action
-                .edit
-                .apply_to_offset(before_cursor_pos)
-                .expect("cursor position is affected by the edit"),
-            Some(off) => off,
-        };
-        let actual = add_cursor(&actual, actual_cursor_pos);
-        assert_eq_text!(after, &actual);
+        check(assist, before, ExpectedResult::After(after));
     }
 
-    pub(crate) fn check_assist_range(assist: AssistHandler, before: &str, after: &str) {
-        let (range, before) = extract_range(before);
-        let (db, file_id) = with_single_file(&before);
-        let frange = FileRange { file_id, range };
-        let assist =
-            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = assist.0[0].action.clone().unwrap();
-
-        let mut actual = action.edit.apply(&before);
-        if let Some(pos) = action.cursor_position {
-            actual = add_cursor(&actual, pos);
-        }
-        assert_eq_text!(after, &actual);
-    }
-
+    // FIXME: instead of having a separate function here, maybe use
+    // `extract_ranges` and mark the target as `<target> </target>` in the
+    // fixuture?
     pub(crate) fn check_assist_target(assist: AssistHandler, before: &str, target: &str) {
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = with_single_file(&before);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist =
-            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = assist.0[0].action.clone().unwrap();
-
-        let range = action.target.expect("expected target on action");
-        assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
-    }
-
-    pub(crate) fn check_assist_range_target(assist: AssistHandler, before: &str, target: &str) {
-        let (range, before) = extract_range(before);
-        let (db, file_id) = with_single_file(&before);
-        let frange = FileRange { file_id, range };
-        let assist =
-            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = assist.0[0].action.clone().unwrap();
-
-        let range = action.target.expect("expected target on action");
-        assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
+        check(assist, before, ExpectedResult::Target(target));
     }
 
     pub(crate) fn check_assist_not_applicable(assist: AssistHandler, before: &str) {
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = with_single_file(&before);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist = assist(AssistCtx::new(&db, frange, true));
-        assert!(assist.is_none());
+        check(assist, before, ExpectedResult::NotApplicable);
     }
 
-    pub(crate) fn check_assist_range_not_applicable(assist: AssistHandler, before: &str) {
-        let (range, before) = extract_range(before);
+    enum ExpectedResult<'a> {
+        NotApplicable,
+        After(&'a str),
+        Target(&'a str),
+    }
+
+    fn check(assist: AssistHandler, before: &str, expected: ExpectedResult) {
+        let (range_or_offset, before) = extract_range_or_offset(before);
+        let range: TextRange = range_or_offset.into();
+
         let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
-        let assist = assist(AssistCtx::new(&db, frange, true));
-        assert!(assist.is_none());
+        let assist_ctx = AssistCtx::new(&db, frange, true);
+
+        match (assist(assist_ctx), expected) {
+            (Some(assist), ExpectedResult::After(after)) => {
+                let action = assist.0[0].action.clone().unwrap();
+
+                let mut actual = action.edit.apply(&before);
+                match action.cursor_position {
+                    None => {
+                        if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
+                            let off = action
+                                .edit
+                                .apply_to_offset(before_cursor_pos)
+                                .expect("cursor position is affected by the edit");
+                            actual = add_cursor(&actual, off)
+                        }
+                    }
+                    Some(off) => actual = add_cursor(&actual, off),
+                };
+
+                assert_eq_text!(after, &actual);
+            }
+            (Some(assist), ExpectedResult::Target(target)) => {
+                let action = assist.0[0].action.clone().unwrap();
+                let range = action.target.expect("expected target on action");
+                assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
+            }
+            (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
+            (None, ExpectedResult::After(_)) | (None, ExpectedResult::Target(_)) => {
+                panic!("code action is not applicable")
+            }
+            (None, ExpectedResult::NotApplicable) => (),
+        };
     }
 }
 
