@@ -500,7 +500,6 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
 
         let constraints_to_kill: Vec<usize> = self
             .undo_log
-            .logs
             .iter()
             .enumerate()
             .rev()
@@ -514,7 +513,7 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
             .collect();
 
         for index in constraints_to_kill {
-            let undo_entry = match &mut self.undo_log.logs[index] {
+            let undo_entry = match &mut self.undo_log[index] {
                 super::UndoLog::RegionConstraintCollector(undo_entry) => {
                     mem::replace(undo_entry, Purged)
                 }
@@ -790,9 +789,9 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`].
-    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'_>) -> Option<bool> {
+    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> Option<bool> {
         self.undo_log
-            .region_constraints(mark.undo_len)
+            .region_constraints_in_snapshot(mark)
             .map(|&elt| match elt {
                 AddConstraint(constraint) => Some(constraint.involves_placeholders()),
                 _ => None,

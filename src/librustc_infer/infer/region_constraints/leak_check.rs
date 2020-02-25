@@ -48,7 +48,7 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
             let mut taint_set = TaintSet::new(TaintDirections::both(), placeholder_region);
             taint_set.fixed_point(
                 tcx,
-                self.undo_log.region_constraints(0),
+                self.undo_log.region_constraints(),
                 &self.storage.data.verifys,
             );
             let tainted_regions = taint_set.into_set();
