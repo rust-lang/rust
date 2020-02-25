@@ -918,7 +918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let element_tys = tcx.mk_substs(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
-        if let Some(mut err) = self.demand_eqtype_diag(span, expected, pat_ty) {
+        if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
