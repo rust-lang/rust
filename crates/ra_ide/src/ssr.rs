@@ -223,15 +223,17 @@ fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
     }
     let kind = pattern.pattern.kind();
     let matches = code
-        .descendants_with_tokens()
+        .descendants()
         .filter(|n| n.kind() == kind)
         .filter_map(|code| {
-            let match_ = Match {
-                place: code.as_node().unwrap().clone(),
-                binding: HashMap::new(),
-                ignored_comments: vec![],
-            };
-            check(&SyntaxElement::from(pattern.pattern.clone()), &code, &pattern.vars, match_)
+            let match_ =
+                Match { place: code.clone(), binding: HashMap::new(), ignored_comments: vec![] };
+            check(
+                &SyntaxElement::from(pattern.pattern.clone()),
+                &SyntaxElement::from(code),
+                &pattern.vars,
+                match_,
+            )
         })
         .collect();
     SsrMatches { matches }
