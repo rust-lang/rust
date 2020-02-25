@@ -897,13 +897,18 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
-pub struct CombinedSnapshot<'a, 'tcx> {
-    undo_snapshot: Snapshot<'tcx>,
+pub struct FullSnapshot<'a, 'tcx> {
+    snapshot: CombinedSnapshot<'a, 'tcx>,
+    region_constraints_snapshot: RegionSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
     const_snapshot: usize,
     int_snapshot: usize,
     float_snapshot: usize,
-    region_constraints_snapshot: RegionSnapshot,
+}
+
+#[must_use = "once you start a snapshot, you should always consume it"]
+pub struct CombinedSnapshot<'a, 'tcx> {
+    undo_snapshot: Snapshot<'tcx>,
     region_obligations_snapshot: usize,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
@@ -1018,6 +1023,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         result
     }
 
+    fn start_full_snapshot(&self) -> FullSnapshot<'a, 'tcx> {
+        let snapshot = self.start_snapshot();
+        let mut inner = self.inner.borrow_mut();
+        FullSnapshot {
+            snapshot,
+            type_snapshot: inner.type_variables().snapshot(),
+            const_snapshot: inner.const_unification_table().len(),
+            int_snapshot: inner.int_unification_table().len(),
+            float_snapshot: inner.float_unification_table().len(),
+            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
+        }
+    }
+
     fn start_snapshot(&self) -> CombinedSnapshot<'a, 'tcx> {
         debug!("start_snapshot()");
 
@@ -1029,11 +1047,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let undo_snapshot = Snapshot { undo_len: inner.undo_log.logs.len(), _marker: PhantomData };
         CombinedSnapshot {
             undo_snapshot,
-            type_snapshot: inner.type_variables().snapshot(),
-            const_snapshot: inner.const_unification_table().len(),
-            int_snapshot: inner.int_unification_table().len(),
-            float_snapshot: inner.float_unification_table().len(),
-            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             region_obligations_snapshot: inner.region_obligations.len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
@@ -1048,11 +1061,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot {
             undo_snapshot,
-            type_snapshot: _,
-            const_snapshot: _,
-            int_snapshot: _,
-            float_snapshot: _,
-            region_constraints_snapshot: _,
             region_obligations_snapshot,
             universe,
             was_in_snapshot,
@@ -1093,11 +1101,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("commit_from()");
         let CombinedSnapshot {
             undo_snapshot,
-            type_snapshot: _,
-            const_snapshot: _,
-            int_snapshot: _,
-            float_snapshot: _,
-            region_constraints_snapshot: _,
             region_obligations_snapshot: _,
             universe: _,
             was_in_snapshot,
@@ -1153,6 +1156,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
+        r
+    }
+
+    pub fn probe_full<R, F>(&self, f: F) -> R
+    where
+        F: FnOnce(&FullSnapshot<'a, 'tcx>) -> R,
+    {
+        debug!("probe()");
+        let snapshot = self.start_full_snapshot();
+        let r = f(&snapshot);
+        self.rollback_to("probe", snapshot.snapshot);
         r
     }
 
