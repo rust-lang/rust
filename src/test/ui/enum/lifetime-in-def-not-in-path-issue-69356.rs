@@ -1,4 +1,5 @@
 // check-pass
+#![warn(type_param_on_variant_ctor)]
 
 pub enum Foo<'a, T: 'a> {
     Struct {},

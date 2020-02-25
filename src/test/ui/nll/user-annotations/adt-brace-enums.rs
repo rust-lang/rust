@@ -1,3 +1,4 @@
+#![warn(type_param_on_variant_ctor)]
 // Unit test for the "user substitutions" that are annotated on each
 // node.
 

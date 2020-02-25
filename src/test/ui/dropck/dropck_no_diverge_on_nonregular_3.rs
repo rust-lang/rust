@@ -1,3 +1,4 @@
+#![warn(type_param_on_variant_ctor)]
 // Issue 22443: Reject code using non-regular types that would
 // otherwise cause dropck to loop infinitely.
 //

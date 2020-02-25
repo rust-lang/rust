@@ -1,3 +1,4 @@
+#![deny(type_param_on_variant_ctor)]
 // All lifetime parameters in struct constructors are currently considered early bound,
 // i.e., `S::<ARGS>` is interpreted kinda like an associated item `S::<ARGS>::ctor`.
 // This behavior is a bit weird, because if equivalent constructor were written manually
@@ -21,10 +22,10 @@ fn main() {
     E::V(&0); // OK
     E::V::<'static>(&0);
     //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
-    //~| WARNING type parameter on variant
+    //~| ERROR type parameter on variant
     E::V::<'static, 'static, 'static>(&0);
     //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
-    //~| WARNING type parameter on variant
+    //~| ERROR type parameter on variant
     E::<'static>::V(&0);
     //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     E::<'static, 'static, 'static>::V(&0);

@@ -1,17 +1,21 @@
 warning: type parameter on variant
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:9:18
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:10:18
    |
 LL |    let Foo::Bar::<'static> { field: _z } = foo;
    |                  ^^^^^^^^^
    |
-   = note: `#[warn(type_param_on_variant_ctor)]` on by default
+note: the lint level is defined here
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:1:9
+   |
+LL | #![warn(type_param_on_variant_ctor)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: set the type parameter on the enum
    |
 LL |    let Foo::<'static>::Bar { field: _z } = foo;
    |           ^^^^^^^^^^^    --
 
 warning: type parameter on variant
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:17:18
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:18:18
    |
 LL |        Foo::Bar::<'static> { field: _z } => {}
    |                  ^^^^^^^^^
@@ -22,7 +26,7 @@ LL |        Foo::<'static>::Bar { field: _z } => {}
    |           ^^^^^^^^^^^    --
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:7:32
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:8:32
    |
 LL |    let foo = Foo::Bar { field: &y };
    |                                ^^ borrowed value does not live long enough
@@ -33,7 +37,7 @@ LL | }
    | - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:14:32
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:15:32
    |
 LL |    let foo = Foo::Bar { field: &y };
    |                                ^^ borrowed value does not live long enough
@@ -45,7 +49,7 @@ LL | }
    | - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:23:32
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:24:32
    |
 LL |    let foo = Foo::Bar { field: &y };
    |                                ^^ borrowed value does not live long enough
@@ -56,7 +60,7 @@ LL | }
    | - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_brace_enum_variant.rs:30:32
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:31:32
    |
 LL |    let foo = Foo::Bar { field: &y };
    |                                ^^ borrowed value does not live long enough

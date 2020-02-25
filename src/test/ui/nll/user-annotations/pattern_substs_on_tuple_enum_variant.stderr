@@ -1,17 +1,21 @@
 warning: type parameter on variant
-  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:9:19
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:10:19
    |
 LL |     let Foo::Bar::<'static>(_z) = foo;
    |                   ^^^^^^^^^
    |
-   = note: `#[warn(type_param_on_variant_ctor)]` on by default
+note: the lint level is defined here
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:1:9
+   |
+LL | #![warn(type_param_on_variant_ctor)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: set the type parameter on the enum
    |
 LL |     let Foo::<'static>::Bar(_z) = foo;
    |            ^^^^^^^^^^^    --
 
 warning: type parameter on variant
-  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:17:19
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:18:19
    |
 LL |         Foo::Bar::<'static>(_z) => {}
    |                   ^^^^^^^^^
@@ -22,7 +26,7 @@ LL |         Foo::<'static>::Bar(_z) => {}
    |            ^^^^^^^^^^^    --
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:7:24
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:8:24
    |
 LL |     let foo = Foo::Bar(&y);
    |                        ^^ borrowed value does not live long enough
@@ -33,7 +37,7 @@ LL | }
    | - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:14:24
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:15:24
    |
 LL |     let foo = Foo::Bar(&y);
    |                        ^^ borrowed value does not live long enough

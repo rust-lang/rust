@@ -258,7 +258,7 @@ declare_lint! {
 
 declare_lint! {
     pub TYPE_PARAM_ON_VARIANT_CTOR,
-    Warn,
+    Allow,
     "detects generic arguments in path segments corresponding to an enum variant instead of the \
      enum itself",
 }

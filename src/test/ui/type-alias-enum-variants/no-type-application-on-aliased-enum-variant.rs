@@ -1,3 +1,4 @@
+#![deny(type_param_on_variant_ctor)]
 // Check that a generic type for an `enum` admits type application
 // on both the type constructor and the generic type's variant.
 //
@@ -8,7 +9,7 @@ type Alias<T> = Option<T>;
 
 fn main() {
     let _ = Option::<u8>::None; // OK
-    let _ = Option::None::<u8>; //~ WARNING type parameter on variant
+    let _ = Option::None::<u8>; //~ ERROR type parameter on variant
     let _ = Alias::<u8>::None; // OK
     let _ = Alias::None::<u8>; //~ ERROR type arguments are not allowed for this type
 }

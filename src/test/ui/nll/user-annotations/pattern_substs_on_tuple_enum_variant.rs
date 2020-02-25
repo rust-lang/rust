@@ -1,3 +1,4 @@
+#![warn(type_param_on_variant_ctor)]
 enum Foo<'a> {
     Bar(&'a u32)
 }
