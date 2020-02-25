@@ -1,3 +1,13 @@
+Version 1.41.1 (2020-02-27)
+===========================
+
+* [Always check types of static items][69145]
+* [Always check lifetime bounds of `Copy` impls][69145]
+* [Fix miscompilation in callers of `Layout::repeat`][69225]
+
+[69225]: https://github.com/rust-lang/rust/issues/69225
+[69145]: https://github.com/rust-lang/rust/pull/69145
+
 Version 1.41.0 (2020-01-30)
 ===========================
 
