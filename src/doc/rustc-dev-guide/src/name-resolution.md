@@ -37,7 +37,7 @@ The name resolution lives in the `librustc_resolve` crate, with the meat in
 
 ## Namespaces
 
-Different kind of symbols live in different namespaces ‒ eg. types don't
+Different kind of symbols live in different namespaces ‒ e.g. types don't
 clash with variables. This usually doesn't happen, because variables start with
 lower-case letter while types with upper case one, but this is only a
 convention. This is legal Rust code that'll compile (with warnings):
@@ -99,7 +99,7 @@ fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
 
 Because the rules for different namespaces are a bit different, each namespace
 has its own independent rib stack that is constructed in parallel to the others.
-In addition, there's also a rib stack for local labels (eg. names of loops or
+In addition, there's also a rib stack for local labels (e.g. names of loops or
 blocks), which isn't a full namespace in its own right.
 
 ## Overall strategy
@@ -129,7 +129,7 @@ Still, it probably provides useful first guidepost to what happens in there.
   following stages of compilation?
 * Who calls it and how it is actually used.
 * Is it a pass and then the result is only used, or can it be computed
-  incrementally (eg. for RLS)?
+  incrementally (e.g. for RLS)?
 * The overall strategy description is a bit vague.
 * Where does the name `Rib` come from?
 * Does this thing have its own tests, or is it tested only as part of some e2e
