@@ -4049,7 +4049,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
         return url;
     }
     let mut add = 1;
-    while used_links.insert(format!("{}-{}", url, add)) == false {
+    while !used_links.insert(format!("{}-{}", url, add)) {
         add += 1;
     }
     format!("{}-{}", url, add)

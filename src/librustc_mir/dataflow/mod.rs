@@ -821,7 +821,7 @@ where
         let bits_per_block = denotation.bits_per_block();
         let num_blocks = body.basic_blocks().len();
 
-        let on_entry = if D::BOTTOM_VALUE == true {
+        let on_entry = if D::BOTTOM_VALUE {
             vec![BitSet::new_filled(bits_per_block); num_blocks]
         } else {
             vec![BitSet::new_empty(bits_per_block); num_blocks]
