@@ -4,16 +4,11 @@ use indexmap::IndexMap;
 
 use hir::db::AstDatabase;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
-    ast::{self, DocCommentsOwner},
-    match_ast, AstNode, TextRange,
-};
+use ra_syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{
-    call_info::FnCallNode,
-    display::{ShortLabel, ToNav},
-    expand::descend_into_macros,
-    goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
+    call_info::FnCallNode, display::ToNav, expand::descend_into_macros, goto_definition,
+    references, FilePosition, NavigationTarget, RangeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -49,6 +44,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
     let refs = references::find_all_refs(db, position, None)?;
 
     let mut calls = CallLocations::default();
+    let mut sb = hir::SourceBinder::new(db);
 
     for reference in refs.info.references() {
         let file_id = reference.file_range.file_id;
@@ -62,12 +58,8 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
             match_ast! {
                 match node {
                     ast::FnDef(it) => {
-                        Some(NavigationTarget::from_named(
-                            db,
-                            token.with_value(&it),
-                            it.doc_comment_text(),
-                            it.short_label(),
-                        ))
+                        let def = sb.to_def(token.with_value(it))?;
+                        Some(def.to_nav(sb.db))
                     },
                     _ => { None },
                 }
