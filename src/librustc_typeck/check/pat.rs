@@ -542,8 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
         if var_id != pat.hir_id {
-            let vt = self.local_ty(pat.span, var_id).decl_ty;
-            self.demand_eqtype_pat(pat.span, vt, local_ty, ti);
+            self.check_binding_alt_eq_ty(pat.span, var_id, local_ty, ti);
         }
 
         if let Some(p) = sub {
@@ -551,6 +550,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         local_ty
+    }
+
+    fn check_binding_alt_eq_ty(&self, span: Span, var_id: HirId, ty: Ty<'tcx>, ti: TopInfo<'tcx>) {
+        let var_ty = self.local_ty(span, var_id).decl_ty;
+        if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
+            let hir = self.tcx.hir();
+            let var_ty = self.resolve_vars_with_obligations(var_ty);
+            let msg = format!("first introduced with type `{}` here", var_ty);
+            err.span_label(hir.span(var_id), msg);
+            let in_arm = hir.parent_iter(var_id).any(|(_, n)| matches!(n, hir::Node::Arm(..)));
+            let pre = if in_arm { "in the same arm, " } else { "" };
+            err.note(&format!("{}a binding must have the same type in all alternatives", pre));
+            err.emit();
+        }
     }
 
     fn borrow_pat_suggestion(
