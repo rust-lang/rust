@@ -54,7 +54,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
 
 /// These are the root crates that are part of the runtime. The licenses for
 /// these and all their dependencies *must not* be in the exception list.
-const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "panic_abort", "panic_unwind"];
+const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
 /// Which crates to check against the whitelist?
 const WHITELIST_CRATES: &[&str] = &["rustc", "rustc_codegen_llvm"];
