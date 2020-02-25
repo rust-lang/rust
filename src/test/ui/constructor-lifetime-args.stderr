@@ -11,10 +11,10 @@ LL |     S::<'static, 'static, 'static>(&0, &0);
    |                           ^^^^^^^ unexpected lifetime argument
 
 warning: type parameter on variant
-  --> $DIR/constructor-lifetime-args.rs:22:9
+  --> $DIR/constructor-lifetime-args.rs:22:11
    |
 LL |     E::V::<'static>(&0);
-   |         ^^^^^^^^^^^
+   |           ^^^^^^^^^
    |
    = note: `#[warn(type_param_on_variant_ctor)]` on by default
 help: set the type parameter on the enum
@@ -29,10 +29,10 @@ LL |     E::V::<'static>(&0);
    |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 warning: type parameter on variant
-  --> $DIR/constructor-lifetime-args.rs:25:9
+  --> $DIR/constructor-lifetime-args.rs:25:11
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: set the type parameter on the enum
    |

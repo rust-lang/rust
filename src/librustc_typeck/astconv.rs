@@ -2327,7 +2327,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> bool {
         let segments_with_params = segments
             .into_iter()
-            .filter_map(|segment| segment.args.map(|_| segment.ident.span))
+            .filter_map(|segment| segment.args.map(|arg| arg.span))
             .collect::<Vec<_>>();
         if segments_with_params.len() <= 1 {
             return false;
@@ -2537,16 +2537,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn lint_type_param_on_variant_ctor(&self, segments: &[hir::PathSegment<'_>]) {
         // Doing this to get around rustfmt-caused line too long.
         use hir::PathSegment as P;
-        if let [.., prev, P { hir_id: Some(hir_id), args: Some(args), .. }] = segments {
-            let span = args.span;
-            if span.hi() == span.lo() {
+        if let [.., prev, P { ident, hir_id: Some(hir_id), args: Some(args), .. }] = segments {
+            let sp = args.span;
+            if sp.hi() == sp.lo() || sp == DUMMY_SP || sp.parent().is_some() {
                 // The params were not written by the user, but rather derived. These are expected.
+                // `Enum::Variant` where `Variant` has inferred lifetimes.
                 return;
             }
+            let span = sp.with_lo(ident.span.hi()); // Account for `::`
             self.tcx().struct_span_lint_hir(
                 lint::builtin::TYPE_PARAM_ON_VARIANT_CTOR,
                 *hir_id,
-                span,
+                sp,
                 |lint| {
                     let mut err = lint.build("type parameter on variant");
                     let sugg_span = prev.ident.span.shrink_to_hi();

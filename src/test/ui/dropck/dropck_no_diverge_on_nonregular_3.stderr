@@ -1,8 +1,8 @@
 warning: type parameter on variant
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:29
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:31
    |
 LL |         Some(Wrapper::Simple::<u32>);
-   |                             ^^^^^^^
+   |                               ^^^^^
    |
    = note: `#[warn(type_param_on_variant_ctor)]` on by default
 help: set the type parameter on the enum

@@ -1,8 +1,8 @@
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:20:26
+  --> $DIR/adt-brace-enums.rs:20:28
    |
 LL |     SomeEnum::SomeVariant::<_> { t: &c };
-   |                          ^^^^^
+   |                            ^^^
    |
    = note: `#[warn(type_param_on_variant_ctor)]` on by default
 help: set the type parameter on the enum
@@ -11,10 +11,10 @@ LL |     SomeEnum::<_>::SomeVariant { t: &c };
    |             ^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:30:26
+  --> $DIR/adt-brace-enums.rs:30:28
    |
 LL |     SomeEnum::SomeVariant::<&u32> { t: &c };
-   |                          ^^^^^^^^
+   |                            ^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -22,10 +22,10 @@ LL |     SomeEnum::<&u32>::SomeVariant { t: &c };
    |             ^^^^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:40:26
+  --> $DIR/adt-brace-enums.rs:40:28
    |
 LL |     SomeEnum::SomeVariant::<&'static u32> { t: &c };
-   |                          ^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -33,10 +33,10 @@ LL |     SomeEnum::<&'static u32>::SomeVariant { t: &c };
    |             ^^^^^^^^^^^^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:51:26
+  --> $DIR/adt-brace-enums.rs:51:28
    |
 LL |     SomeEnum::SomeVariant::<&'a u32> { t: &c };
-   |                          ^^^^^^^^^^^
+   |                            ^^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -44,10 +44,10 @@ LL |     SomeEnum::<&'a u32>::SomeVariant { t: &c };
    |             ^^^^^^^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:60:26
+  --> $DIR/adt-brace-enums.rs:60:28
    |
 LL |     SomeEnum::SomeVariant::<&'a u32> { t: c };
-   |                          ^^^^^^^^^^^
+   |                            ^^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -55,10 +55,10 @@ LL |     SomeEnum::<&'a u32>::SomeVariant { t: c };
    |             ^^^^^^^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:73:30
+  --> $DIR/adt-brace-enums.rs:73:32
    |
 LL |         SomeEnum::SomeVariant::<&'a u32> { t: &c };
-   |                              ^^^^^^^^^^^
+   |                                ^^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -66,10 +66,10 @@ LL |         SomeEnum::<&'a u32>::SomeVariant { t: &c };
    |                 ^^^^^^^^^^^            --
 
 warning: type parameter on variant
-  --> $DIR/adt-brace-enums.rs:86:30
+  --> $DIR/adt-brace-enums.rs:86:32
    |
 LL |         SomeEnum::SomeVariant::<&'a u32> { t: c };
-   |                              ^^^^^^^^^^^
+   |                                ^^^^^^^^^
    |
 help: set the type parameter on the enum
    |

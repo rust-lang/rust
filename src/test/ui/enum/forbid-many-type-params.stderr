@@ -1,0 +1,74 @@
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:9:18
+   |
+LL |     let _ = Foo::<String>::Unit::<String>;
+   |                  ^^^^^^^^        ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:10:18
+   |
+LL |     let _ = Foo::<String>::Tuple::<String>();
+   |                  ^^^^^^^^         ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:11:18
+   |
+LL |     let _ = Foo::<String>::Struct::<String> {};
+   |                  ^^^^^^^^          ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:12:49
+   |
+LL |     if let Foo::<String>::Unit::<String> = Foo::<String>::Unit::<String> {}
+   |                                                 ^^^^^^^^        ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:12:17
+   |
+LL |     if let Foo::<String>::Unit::<String> = Foo::<String>::Unit::<String> {}
+   |                 ^^^^^^^^        ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:15:52
+   |
+LL |     if let Foo::<String>::Tuple::<String>() = Foo::<String>::Tuple::<String>() {}
+   |                                                    ^^^^^^^^         ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:15:17
+   |
+LL |     if let Foo::<String>::Tuple::<String>() = Foo::<String>::Tuple::<String>() {}
+   |                 ^^^^^^^^         ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:18:55
+   |
+LL |     if let Foo::<String>::Struct::<String> {} = (Foo::<String>::Struct::<String> {}) {}
+   |                                                       ^^^^^^^^          ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: multiple segments with type parameters are not allowed
+  --> $DIR/forbid-many-type-params.rs:18:17
+   |
+LL |     if let Foo::<String>::Struct::<String> {} = (Foo::<String>::Struct::<String> {}) {}
+   |                 ^^^^^^^^          ^^^^^^^^
+   |
+   = note: only a single path segment can specify type parameters
+
+error: aborting due to 9 previous errors
+

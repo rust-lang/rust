@@ -5378,8 +5378,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
+        let mut is_variant = false;
         match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
+                is_variant = true;
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did, self_ty });
@@ -5415,16 +5417,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
-        let generics_has_err = AstConv::prohibit_generics(
-            self,
-            segments.iter().enumerate().filter_map(|(index, seg)| {
-                if !generic_segs.contains(&index) || is_alias_variant_ctor {
-                    Some(seg)
-                } else {
-                    None
-                }
-            }),
-        );
+        let generics_has_err = (is_variant && AstConv::prohibit_multiple_params(self, segments))
+            || AstConv::prohibit_generics(
+                self,
+                segments.iter().enumerate().filter_map(|(index, seg)| {
+                    if !generic_segs.contains(&index) || is_alias_variant_ctor {
+                        Some(seg)
+                    } else {
+                        None
+                    }
+                }),
+            );
 
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid).decl_ty;

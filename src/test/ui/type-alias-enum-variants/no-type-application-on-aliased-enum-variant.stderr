@@ -1,8 +1,8 @@
 warning: type parameter on variant
-  --> $DIR/no-type-application-on-aliased-enum-variant.rs:11:25
+  --> $DIR/no-type-application-on-aliased-enum-variant.rs:11:27
    |
 LL |     let _ = Option::None::<u8>;
-   |                         ^^^^^^
+   |                           ^^^^
    |
    = note: `#[warn(type_param_on_variant_ctor)]` on by default
 help: set the type parameter on the enum

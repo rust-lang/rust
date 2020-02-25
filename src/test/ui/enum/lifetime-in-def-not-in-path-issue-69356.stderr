@@ -1,8 +1,8 @@
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:18:22
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:18:24
    |
 LL |     let _ = Foo::Unit::<String>;
-   |                      ^^^^^^^^^^
+   |                        ^^^^^^^^
    |
    = note: `#[warn(type_param_on_variant_ctor)]` on by default
 help: set the type parameter on the enum
@@ -11,10 +11,10 @@ LL |     let _ = Foo::<String>::Unit;
    |                ^^^^^^^^^^     --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:19:23
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:19:25
    |
 LL |     let _ = Foo::Tuple::<String>();
-   |                       ^^^^^^^^^^
+   |                         ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -22,10 +22,10 @@ LL |     let _ = Foo::<String>::Tuple();
    |                ^^^^^^^^^^      --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:20:24
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:20:26
    |
 LL |     let _ = Foo::Struct::<String> {};
-   |                        ^^^^^^^^^^
+   |                          ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -33,10 +33,10 @@ LL |     let _ = Foo::<String>::Struct {};
    |                ^^^^^^^^^^       --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:21:43
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:21:45
    |
 LL |     if let Foo::Unit::<String> = Foo::Unit::<String> {}
-   |                                           ^^^^^^^^^^
+   |                                             ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -44,10 +44,10 @@ LL |     if let Foo::Unit::<String> = Foo::<String>::Unit {}
    |                                     ^^^^^^^^^^     --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:21:21
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:21:23
    |
 LL |     if let Foo::Unit::<String> = Foo::Unit::<String> {}
-   |                     ^^^^^^^^^^
+   |                       ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -55,10 +55,10 @@ LL |     if let Foo::<String>::Unit = Foo::Unit::<String> {}
    |               ^^^^^^^^^^     --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:24:47
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:24:49
    |
 LL |     if let Foo::Tuple::<String>() = Foo::Tuple::<String>() {}
-   |                                               ^^^^^^^^^^
+   |                                                 ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -66,10 +66,10 @@ LL |     if let Foo::Tuple::<String>() = Foo::<String>::Tuple() {}
    |                                        ^^^^^^^^^^      --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:24:22
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:24:24
    |
 LL |     if let Foo::Tuple::<String>() = Foo::Tuple::<String>() {}
-   |                      ^^^^^^^^^^
+   |                        ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -77,10 +77,10 @@ LL |     if let Foo::<String>::Tuple() = Foo::Tuple::<String>() {}
    |               ^^^^^^^^^^      --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:27:51
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:27:53
    |
 LL |     if let Foo::Struct::<String> {} = (Foo::Struct::<String> {}) {}
-   |                                                   ^^^^^^^^^^
+   |                                                     ^^^^^^^^
    |
 help: set the type parameter on the enum
    |
@@ -88,10 +88,10 @@ LL |     if let Foo::Struct::<String> {} = (Foo::<String>::Struct {}) {}
    |                                           ^^^^^^^^^^       --
 
 warning: type parameter on variant
-  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:27:23
+  --> $DIR/lifetime-in-def-not-in-path-issue-69356.rs:27:25
    |
 LL |     if let Foo::Struct::<String> {} = (Foo::Struct::<String> {}) {}
-   |                       ^^^^^^^^^^
+   |                         ^^^^^^^^
    |
 help: set the type parameter on the enum
    |

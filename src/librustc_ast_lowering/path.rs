@@ -360,7 +360,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             segment.ident, segment.id, id,
         );
 
-        let param_span = path_span.with_lo(segment.ident.span.shrink_to_hi().lo());
+        let param_sp =
+            segment.args.as_ref().map_or(segment.ident.span.shrink_to_hi(), |args| args.span());
         hir::PathSegment {
             ident: segment.ident,
             hir_id: Some(id),
@@ -369,7 +370,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             args: if generic_args.is_empty() {
                 None
             } else {
-                Some(self.arena.alloc(generic_args.into_generic_args(self.arena, param_span)))
+                Some(self.arena.alloc(generic_args.into_generic_args(self.arena, param_sp)))
             },
         }
     }

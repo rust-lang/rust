@@ -154,11 +154,13 @@ error[E0109]: type arguments are not allowed for this type
 LL |         Self::<()>::UVariant::<()>;
    |                                ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/enum-variant-generic-args.rs:54:29
+error: multiple segments with type parameters are not allowed
+  --> $DIR/enum-variant-generic-args.rs:54:11
    |
 LL |     Enum::<()>::TSVariant::<()>(());
-   |                             ^^ type argument not allowed
+   |           ^^^^             ^^^^
+   |
+   = note: only a single path segment can specify type parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:57:24
@@ -197,10 +199,10 @@ LL |     AliasFixed::<()>::TSVariant::<()>(());
    |                                   ^^ type argument not allowed
 
 error: multiple segments with type parameters are not allowed
-  --> $DIR/enum-variant-generic-args.rs:72:5
+  --> $DIR/enum-variant-generic-args.rs:72:11
    |
 LL |     Enum::<()>::SVariant::<()> { v: () };
-   |     ^^^^        ^^^^^^^^
+   |           ^^^^            ^^^^
    |
    = note: only a single path segment can specify type parameters
 
@@ -240,11 +242,13 @@ error[E0109]: type arguments are not allowed for this type
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
    |                                  ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/enum-variant-generic-args.rs:90:28
+error: multiple segments with type parameters are not allowed
+  --> $DIR/enum-variant-generic-args.rs:90:11
    |
 LL |     Enum::<()>::UVariant::<()>;
-   |                            ^^ type argument not allowed
+   |           ^^^^            ^^^^
+   |
+   = note: only a single path segment can specify type parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:93:23
