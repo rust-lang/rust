@@ -258,6 +258,16 @@ fn test_from_iter() {
 }
 
 #[test]
+fn test_from_vec_cmp() {
+    let vec = vec![9, 8, 7, 6, 5, 4, 3, 2, 1];
+    let cmp = |a: &i32, b: &i32| b.partial_cmp(a);
+
+    let heap = BinaryHeap::from((vec, cmp));
+    assert_eq!(heap.into_iter_sorted().collect::<Vec<_>>(), 
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+}
+
+#[test]
 fn test_drain() {
     let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
 
