@@ -11,7 +11,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Pattern;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::Span;
+use rustc_span::source_map::{Span, Spanned};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -361,16 +361,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
-        if let hir::ExprKind::Lit(ref lt) = lt.kind {
-            if let ast::LitKind::ByteStr(_) = lt.node {
-                let expected_ty = self.structurally_resolved_type(span, expected);
-                if let ty::Ref(_, r_ty, _) = expected_ty.kind {
-                    if let ty::Slice(_) = r_ty.kind {
-                        let tcx = self.tcx;
-                        pat_ty =
-                            tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
-                    }
-                }
+        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(_), .. }) = lt.kind {
+            let expected = self.structurally_resolved_type(span, expected);
+            if let ty::Ref(_, ty::TyS { kind: ty::Slice(_), .. }, _) = expected.kind {
+                let tcx = self.tcx;
+                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
             }
         }
 
