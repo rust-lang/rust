@@ -101,6 +101,7 @@ const WHITELIST: &[&str] = &[
     "getopts",
     "getrandom",
     "hashbrown",
+    "hermit-abi",
     "humantime",
     "indexmap",
     "itertools",
@@ -176,7 +177,6 @@ const WHITELIST: &[&str] = &[
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
     "wincolor",
-    "hermit-abi",
 ];
 
 /// Dependency checks.
