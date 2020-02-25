@@ -153,15 +153,11 @@ pub struct Map<'hir> {
     hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
-struct ParentHirIterator<'map, 'hir> {
+/// An iterator that walks up the ancestor tree of a given `HirId`.
+/// Constructed using `tcx.hir().parent_iter(hir_id)`.
+pub struct ParentHirIterator<'map, 'hir> {
     current_id: HirId,
     map: &'map Map<'hir>,
-}
-
-impl<'map, 'hir> ParentHirIterator<'map, 'hir> {
-    fn new(current_id: HirId, map: &'map Map<'hir>) -> Self {
-        Self { current_id, map }
-    }
 }
 
 impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
@@ -618,6 +614,12 @@ impl<'hir> Map<'hir> {
         self.find_entry(hir_id).and_then(|x| x.parent_node()).unwrap_or(hir_id)
     }
 
+    /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
+    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
+        ParentHirIterator { current_id, map: self }
+    }
+
     /// Checks if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
     pub fn is_argument(&self, id: HirId) -> bool {
@@ -684,7 +686,7 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
-        let mut iter = ParentHirIterator::new(id, &self).peekable();
+        let mut iter = self.parent_iter(id).peekable();
         let mut ignore_tail = false;
         if let Some(entry) = self.find_entry(id) {
             if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = entry.node {
@@ -731,7 +733,7 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
-        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+        for (hir_id, node) in self.parent_iter(hir_id) {
             match node {
                 Node::Crate
                 | Node::Item(_)
@@ -753,7 +755,7 @@ impl<'hir> Map<'hir> {
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
-        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+        for (hir_id, node) in self.parent_iter(hir_id) {
             if let Node::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
                 return hir_id;
             }
@@ -767,7 +769,7 @@ impl<'hir> Map<'hir> {
     /// Used by error reporting when there's a type error in a match arm caused by the `match`
     /// expression needing to be unit.
     pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
-        for (_, node) in ParentHirIterator::new(hir_id, &self) {
+        for (_, node) in self.parent_iter(hir_id) {
             match node {
                 Node::Item(_) | Node::ForeignItem(_) | Node::TraitItem(_) | Node::ImplItem(_) => {
                     break;
@@ -788,7 +790,7 @@ impl<'hir> Map<'hir> {
 
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
-        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+        for (hir_id, node) in self.parent_iter(hir_id) {
             if match node {
                 Node::Item(i) => match i.kind {
                     ItemKind::Fn(..)
