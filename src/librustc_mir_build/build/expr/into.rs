@@ -376,7 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Yield {
                         value,
                         resume,
-                        resume_arg: destination.clone(),
+                        resume_arg: *destination,
                         drop: cleanup,
                     },
                 );

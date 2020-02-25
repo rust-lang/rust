@@ -173,7 +173,7 @@ impl<'tcx> QueryLatch<'tcx> {
                 return CycleError { usage, cycle };
             }
 
-            current_job = info.job.parent.clone();
+            current_job = info.job.parent;
         }
 
         panic!("did not find a cycle")
