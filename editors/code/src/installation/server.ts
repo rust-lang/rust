@@ -63,7 +63,7 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
 
 async function downloadServer(source: BinarySource.GithubRelease): Promise<boolean> {
     try {
-        const releaseInfo = (await fetchArtifactReleaseInfo(source.repo, source.file, source.version))!;
+        const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.version);
 
         await downloadArtifact(releaseInfo, source.file, source.dir, "language server");
         await setServerVersion(source.storage, releaseInfo.releaseName);
