@@ -12,7 +12,7 @@ LL |         self.foo();
            which is required by `Foo<T>: Bar`
            `T: std::default::Default`
            which is required by `Foo<T>: Bar`
-help: consider restricting the type parameters to satisfy the obligations
+help: consider restricting the type parameters to satisfy the trait bounds
    |
 LL | struct Foo<T> where T: Bar, T: std::default::Default {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |         self.foo();
    = note: the method `foo` exists but the following trait bounds were not satisfied:
            `T: std::default::Default`
            which is required by `Fin<T>: Bar`
-help: consider restricting the type parameter to satisfy the obligation
+help: consider restricting the type parameter to satisfy the trait bound
    |
 LL | struct Fin<T> where T: Bar, T: std::default::Default {
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^

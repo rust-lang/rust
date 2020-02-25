@@ -497,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note(
                         "found the following associated functions; to be used as methods, \
-                              functions must have a `self` parameter",
+                         functions must have a `self` parameter",
                     );
                     err.span_label(span, "this is an associated function, not a method");
                 }
@@ -653,7 +653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             &format!(
                                 "consider restricting the type parameter{s} to satisfy the \
-                                 obligation{s}",
+                                 trait bound{s}",
                                 s = pluralize!(obligations.len())
                             ),
                             format!(
