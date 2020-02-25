@@ -263,8 +263,7 @@ impl TokenCursor {
             ]
             .iter()
             .cloned()
-            .collect::<TokenStream>()
-            .into(),
+            .collect::<TokenStream>(),
         );
 
         self.stack.push(mem::replace(
@@ -389,7 +388,7 @@ impl<'a> Parser<'a> {
             root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens.into()),
+                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens),
                 stack: Vec::new(),
             },
             desugar_doc_comments,
@@ -1006,7 +1005,7 @@ impl<'a> Parser<'a> {
                 );
                 self.set_token(Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close));
                 self.bump();
-                TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream.into())
+                TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream)
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {

@@ -92,8 +92,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let a = Scalar::from(Pointer::new(
                     bx.tcx().alloc_map.lock().create_memory_alloc(data),
                     Size::from_bytes(start as u64),
-                ))
-                .into();
+                ));
                 let a_llval = bx.scalar_to_backend(
                     a,
                     a_scalar,

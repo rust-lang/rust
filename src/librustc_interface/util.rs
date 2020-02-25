@@ -639,7 +639,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                     ast::GenericArg::Type(ty) => Some(ty),
                                     _ => None,
                                 });
-                                any_involves_impl_trait(types.into_iter())
+                                any_involves_impl_trait(types)
                                     || data.constraints.iter().any(|c| match c.kind {
                                         ast::AssocTyConstraintKind::Bound { .. } => true,
                                         ast::AssocTyConstraintKind::Equality { ref ty } => {

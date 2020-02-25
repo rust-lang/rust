@@ -529,7 +529,7 @@ impl MetaItemKind {
                     TokenTree::Delimited(
                         DelimSpan::from_single(span),
                         token::Paren,
-                        TokenStream::new(tokens).into(),
+                        TokenStream::new(tokens),
                     )
                     .into(),
                 ]

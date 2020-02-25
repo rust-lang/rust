@@ -56,7 +56,7 @@ impl RegionInferenceContext<'_> {
         let mut scc_regions = FxHashMap::default();
         let mut start = 0;
         for (scc, group) in &paired_scc_regions.into_iter().group_by(|(scc, _)| *scc) {
-            let group_size = group.into_iter().count();
+            let group_size = group.count();
             scc_regions.insert(scc, start..start + group_size);
             start += group_size;
         }

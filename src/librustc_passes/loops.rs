@@ -77,7 +77,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     return;
                 }
 
-                let loop_id = match label.target_id.into() {
+                let loop_id = match label.target_id {
                     Ok(loop_id) => loop_id,
                     Err(hir::LoopIdError::OutsideLoopScope) => hir::DUMMY_HIR_ID,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {

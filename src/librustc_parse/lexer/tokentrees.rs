@@ -212,7 +212,7 @@ impl<'a> TokenTreesReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(delim_span, delim, tts.into()).into())
+                Ok(TokenTree::Delimited(delim_span, delim, tts).into())
             }
             token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no

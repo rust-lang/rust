@@ -3202,7 +3202,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
                     a_last.expect_ty(),
-                    &[b_last.into()],
+                    &[b_last],
                 ));
             }
 

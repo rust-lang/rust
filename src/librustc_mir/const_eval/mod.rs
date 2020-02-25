@@ -52,7 +52,7 @@ pub(crate) fn const_caller_location<'tcx>(
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
-    ConstValue::Scalar(loc_place.ptr.into())
+    ConstValue::Scalar(loc_place.ptr)
 }
 
 // this function uses `unwrap` copiously, because an already validated constant

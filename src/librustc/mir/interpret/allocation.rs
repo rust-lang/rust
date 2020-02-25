@@ -472,7 +472,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: ScalarMaybeUndef<Tag>,
     ) -> InterpResult<'tcx> {
         let ptr_size = cx.data_layout().pointer_size;
-        self.write_scalar(cx, ptr.into(), val, ptr_size)
+        self.write_scalar(cx, ptr, val, ptr_size)
     }
 }
 
