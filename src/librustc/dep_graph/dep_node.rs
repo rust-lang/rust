@@ -360,8 +360,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [anon] TraitSelect,
 
     [] CompileCodegenUnit(Symbol),
-
-    [eval_always] Analysis(CrateNum),
 ]);
 
 pub trait RecoverKey<'tcx>: Sized {

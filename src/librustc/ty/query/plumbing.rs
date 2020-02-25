@@ -1246,20 +1246,6 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
         DepKind::CompileCodegenUnit => {
             bug!("force_from_dep_node: encountered {:?}", dep_node)
         }
-
-        DepKind::Analysis => {
-            let def_id = if let Some(def_id) = dep_node.extract_def_id(tcx) {
-                def_id
-            } else {
-                // Return from the whole function.
-                return false
-            };
-            tcx.force_query::<crate::ty::query::queries::analysis<'_>>(
-                def_id.krate,
-                DUMMY_SP,
-                *dep_node
-            );
-        }
     );
 
     true

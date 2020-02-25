@@ -60,6 +60,11 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        query analysis(key: CrateNum) -> Result<(), ErrorReported> {
+            eval_always
+            desc { "running analysis passes on this crate" }
+        }
+
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
         /// associated generics.
         query generics_of(key: DefId) -> &'tcx ty::Generics {

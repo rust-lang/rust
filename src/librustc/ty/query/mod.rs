@@ -104,9 +104,4 @@ pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
-rustc_query_append! { [define_queries!][ <'tcx>
-    Other {
-        /// Runs analysis passes on the crate.
-        [eval_always] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
-    },
-]}
+rustc_query_append! { [define_queries!][<'tcx>] }
