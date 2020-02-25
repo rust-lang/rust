@@ -43,20 +43,7 @@ impl<'tcx> From<Instantiate> for UndoLog<'tcx> {
     }
 }
 
-pub(crate) struct RollbackView<'tcx, 'a> {
-    pub(crate) eq_relations: &'a mut ut::UnificationStorage<TyVidEqKey<'tcx>>,
-    pub(crate) sub_relations: &'a mut ut::UnificationStorage<ty::TyVid>,
-    pub(crate) values: &'a mut Vec<TypeVariableData>,
-}
-
-impl<'tcx, 'a> From<&'a mut TypeVariableStorage<'tcx>> for RollbackView<'tcx, 'a> {
-    fn from(l: &'a mut TypeVariableStorage<'tcx>) -> Self {
-        let TypeVariableStorage { eq_relations, sub_relations, values } = l;
-        Self { eq_relations, sub_relations, values }
-    }
-}
-
-impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
+impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {
             UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),

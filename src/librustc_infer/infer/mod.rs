@@ -347,7 +347,7 @@ pub(crate) type UnificationTable<'a, 'tcx, T> =
     ut::UnificationTable<ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut Logs<'tcx>>>;
 
 struct RollbackView<'tcx, 'a> {
-    type_variables: type_variable::RollbackView<'tcx, 'a>,
+    type_variables: &'a mut type_variable::TypeVariableStorage<'tcx>,
     const_unification_table: &'a mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
     int_unification_table: &'a mut ut::UnificationStorage<ty::IntVid>,
     float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
@@ -420,7 +420,8 @@ impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
     }
 
     fn start_snapshot(&mut self) -> Self::Snapshot {
-        unreachable!()
+        self.num_open_snapshots += 1;
+        Snapshot { undo_len: self.logs.len(), _marker: PhantomData }
     }
 
     fn rollback_to<R>(&mut self, values: impl FnOnce() -> R, snapshot: Self::Snapshot)
@@ -1056,10 +1057,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let mut inner = self.inner.borrow_mut();
 
-        inner.undo_log.num_open_snapshots += 1;
-        let undo_snapshot = Snapshot { undo_len: inner.undo_log.logs.len(), _marker: PhantomData };
         CombinedSnapshot {
-            undo_snapshot,
+            undo_snapshot: inner.undo_log.start_snapshot(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e., during typeck)
@@ -1089,7 +1088,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         } = &mut *self.inner.borrow_mut();
         undo_log.rollback_to(
             || RollbackView {
-                type_variables: type_variable::RollbackView::from(type_variables),
+                type_variables,
                 const_unification_table,
                 int_unification_table,
                 float_unification_table,
