@@ -902,13 +902,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 //     pub d_name: [c_char; 256],
                 // }
 
-                let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
-                let dirent64_layout = this.libc_ty_layout("dirent64")?;
-                let name_offset = dirent64_layout.details.fields.offset(4);
-                let name_ptr = entry_ptr.offset(name_offset, this)?;
+                let entry_place = this.deref_operand(entry_op)?;
+                let name_place = this.mplace_field(entry_place, 4)?;
 
                 let file_name = dir_entry.file_name();
-                let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 256)?;
+                let name_fits = this.write_os_str_to_c_str(&file_name, name_place.ptr, name_place.layout.size.bytes())?;
                 if !name_fits {
                     throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent64");
                 }
@@ -988,13 +986,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 //     pub d_name: [c_char; 1024],
                 // }
 
-                let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
-                let dirent_layout = this.libc_ty_layout("dirent")?;
-                let name_offset = dirent_layout.details.fields.offset(5);
-                let name_ptr = entry_ptr.offset(name_offset, this)?;
+                let entry_place = this.deref_operand(entry_op)?;
+                let name_place = this.mplace_field(entry_place, 5)?;
 
                 let file_name = dir_entry.file_name();
-                let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 1024)?;
+                let name_fits = this.write_os_str_to_c_str(&file_name, name_place.ptr, name_place.layout.size.bytes())?;
                 if !name_fits {
                     throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent");
                 }
