@@ -155,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
             PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, path_res.unwrap(), qpath, expected)
+                self.check_pat_path(pat, path_res.unwrap(), qpath, expected, ti)
             }
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
@@ -671,6 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
         qpath: &hir::QPath<'_>,
         expected: Ty<'tcx>,
+        ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
@@ -696,7 +697,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id).0;
-        self.demand_suptype(pat.span, expected, pat_ty);
+        if let Some(mut err) =
+            self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
+        {
+            err.emit();
+        }
         pat_ty
     }
 
