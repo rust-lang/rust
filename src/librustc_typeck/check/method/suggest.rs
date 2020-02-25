@@ -535,6 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     report_candidates(span, &mut err, static_sources, sugg_span);
                 }
 
+                let mut restrict_type_params = false;
                 if !unsatisfied_predicates.is_empty() {
                     let def_span =
                         |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
@@ -647,6 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .enumerate()
                         .collect::<Vec<(usize, String)>>();
                     for ((span, empty_where), obligations) in type_params.into_iter() {
+                        restrict_type_params = true;
                         err.span_suggestion_verbose(
                             span,
                             &format!(
@@ -685,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                if actual.is_numeric() && actual.is_fresh() {
+                if actual.is_numeric() && actual.is_fresh() || restrict_type_params {
                 } else {
                     self.suggest_traits_to_import(
                         &mut err,

@@ -12,12 +12,6 @@ LL |         self.foo();
            which is required by `Foo<T>: Bar`
            `T: std::default::Default`
            which is required by `Foo<T>: Bar`
-   = help: items from traits can only be used if the trait is implemented and in scope
-note: `Bar` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/missing-trait-bounds-for-method-call.rs:6:1
-   |
-LL | trait Bar {
-   | ^^^^^^^^^
 help: consider restricting the type parameters to satisfy the obligations
    |
 LL | struct Foo<T> where T: Bar, T: std::default::Default {
@@ -35,12 +29,6 @@ LL |         self.foo();
    = note: the method `foo` exists but the following trait bounds were not satisfied:
            `T: std::default::Default`
            which is required by `Fin<T>: Bar`
-   = help: items from traits can only be used if the trait is implemented and in scope
-note: `Bar` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/missing-trait-bounds-for-method-call.rs:6:1
-   |
-LL | trait Bar {
-   | ^^^^^^^^^
 help: consider restricting the type parameter to satisfy the obligation
    |
 LL | struct Fin<T> where T: Bar, T: std::default::Default {
