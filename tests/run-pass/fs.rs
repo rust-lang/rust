@@ -199,6 +199,8 @@ fn test_directory() {
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
     assert!(dir_path.metadata().unwrap().is_dir());
+    // Creating a directory when it already exists should fail.
+    assert_eq!(ErrorKind::AlreadyExists, create_dir(&dir_path).unwrap_err().kind());
 
     // Create some files inside the directory
     let path_1 = dir_path.join("test_file_1");

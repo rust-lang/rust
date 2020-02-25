@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // The `linux` module has a parallel foreign item, `readdir64_r`, which uses a
             // different struct layout.
             "readdir_r$INODE64" => {
-                let result = this.readdir_r(args[0], args[1], args[2])?;
+                let result = this.macos_readdir_r(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 

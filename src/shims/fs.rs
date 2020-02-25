@@ -809,7 +809,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("mkdir")?;
 
-        let _mode = if this.tcx.sess.target.target.target_os.to_lowercase() == "macos" {
+        let _mode = if this.tcx.sess.target.target.target_os.as_str() == "macos" {
             this.read_scalar(mode_op)?.not_undef()?.to_u16()? as u32
         } else {
             this.read_scalar(mode_op)?.to_u32()?
@@ -863,16 +863,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // The libc API for opendir says that this method returns a pointer to an opaque
                 // structure, but we are returning an ID number. Thus, pass it as a scalar of
                 // pointer width.
-                Ok(Scalar::from_int(id, this.pointer_size()))
+                Ok(Scalar::from_machine_usize(id, this))
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
-                Ok(Scalar::from_int(0, this.memory.pointer_size()))
+                Ok(Scalar::from_machine_usize(0, this))
             }
         }
     }
 
-    fn readdir64_r(
+    fn linux_readdir64_r(
         &mut self,
         dirp_op: OpTy<'tcx, Tag>,
         entry_op: OpTy<'tcx, Tag>,
@@ -884,9 +884,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
-        let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
-        let dirent64_layout = this.libc_ty_layout("dirent64")?;
-
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("The DIR pointer passed to readdir64_r did not come from opendir")
         })?;
@@ -896,13 +893,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // The name is written with write_os_str_to_c_str, while the rest of the
                 // dirent64 struct is written using write_packed_immediates.
 
+                // For reference:
+                // pub struct dirent64 {
+                //     pub d_ino: ino64_t,
+                //     pub d_off: off64_t,
+                //     pub d_reclen: c_ushort,
+                //     pub d_type: c_uchar,
+                //     pub d_name: [c_char; 256],
+                // }
+
+                let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
+                let dirent64_layout = this.libc_ty_layout("dirent64")?;
                 let name_offset = dirent64_layout.details.fields.offset(4);
                 let name_ptr = entry_ptr.offset(name_offset, this)?;
 
                 let file_name = dir_entry.file_name();
                 let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 256)?;
                 if !name_fits {
-                    panic!("A directory entry had a name too large to fit in libc::dirent64");
+                    throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent64");
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
@@ -948,7 +956,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn readdir_r(
+    fn macos_readdir_r(
         &mut self,
         dirp_op: OpTy<'tcx, Tag>,
         entry_op: OpTy<'tcx, Tag>,
@@ -960,8 +968,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
-        let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
-        let dirent_layout = this.libc_ty_layout("dirent")?;
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
@@ -972,13 +978,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // The name is written with write_os_str_to_c_str, while the rest of the
                 // dirent struct is written using write_packed_Immediates.
 
+                // For reference:
+                // pub struct dirent {
+                //     pub d_ino: u64,
+                //     pub d_seekoff: u64,
+                //     pub d_reclen: u16,
+                //     pub d_namlen: u16,
+                //     pub d_type: u8,
+                //     pub d_name: [c_char; 1024],
+                // }
+
+                let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
+                let dirent_layout = this.libc_ty_layout("dirent")?;
                 let name_offset = dirent_layout.details.fields.offset(5);
                 let name_ptr = entry_ptr.offset(name_offset, this)?;
 
                 let file_name = dir_entry.file_name();
                 let name_fits = this.write_os_str_to_c_str(&file_name, Scalar::Ptr(name_ptr), 1024)?;
                 if !name_fits {
-                    panic!("A directory entry had a name too large to fit in libc::dirent");
+                    throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent");
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
