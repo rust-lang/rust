@@ -260,18 +260,24 @@ fn test_from_iter() {
 #[test]
 fn test_from_vec_cmp() {
     // closure
-    let heap = BinaryHeap::from((vec![2, 3, 89, 5, 8, 1, 13, 21, 34, 55, 1],
-                                 |a: &i32, b: &i32| b.partial_cmp(a)));
-    assert_eq!(heap.into_iter_sorted().collect::<Vec<_>>(),
-               vec![1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]);
+    let heap =
+        BinaryHeap::from((vec![2, 3, 89, 5, 8, 1, 13, 21, 34, 55, 1], |a: &i32, b: &i32| {
+            b.partial_cmp(a)
+        }));
+    assert_eq!(
+        heap.into_iter_sorted().collect::<Vec<_>>(),
+        vec![1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+    );
 }
 
 #[test]
 fn test_from_vec_cmp_boxed_closure() {
     // boxed closure
     let vec = vec![2, 3, 89, 5, 8, 1, 13, 21, 34, 55, 1];
-    let cmp1: Box<dyn Fn(&i32, &i32) -> Option<core::cmp::Ordering>> = Box::new(|a: &i32, b: &i32| a.partial_cmp(b));
-    let cmp2: Box<dyn Fn(&i32, &i32) -> Option<core::cmp::Ordering>> = Box::new(|a: &i32, b: &i32| b.partial_cmp(a));
+    let cmp1: Box<dyn Fn(&i32, &i32) -> Option<core::cmp::Ordering>> =
+        Box::new(|a: &i32, b: &i32| a.partial_cmp(b));
+    let cmp2: Box<dyn Fn(&i32, &i32) -> Option<core::cmp::Ordering>> =
+        Box::new(|a: &i32, b: &i32| b.partial_cmp(a));
 
     let mut heap = BinaryHeap::from((vec, cmp1));
     assert_eq!(heap.pop(), Some(89));
