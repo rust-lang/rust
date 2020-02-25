@@ -1,7 +1,8 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
 use rustc_hash::FxHashMap;
 
-use hir::{db::HirDatabase, InFile, PathResolution};
+use hir::{InFile, PathResolution};
+use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode};
 
 pub trait AstTransform<'a> {
@@ -33,18 +34,18 @@ impl<'a> AstTransform<'a> for NullTransformer {
     }
 }
 
-pub struct SubstituteTypeParams<'a, DB: HirDatabase> {
-    db: &'a DB,
+pub struct SubstituteTypeParams<'a> {
+    db: &'a RootDatabase,
     substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
-impl<'a, DB: HirDatabase> SubstituteTypeParams<'a, DB> {
+impl<'a> SubstituteTypeParams<'a> {
     pub fn for_trait_impl(
-        db: &'a DB,
+        db: &'a RootDatabase,
         trait_: hir::Trait,
         impl_block: ast::ImplBlock,
-    ) -> SubstituteTypeParams<'a, DB> {
+    ) -> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_block).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
         let substs_by_param: FxHashMap<_, _> = generic_def
@@ -95,7 +96,7 @@ impl<'a, DB: HirDatabase> SubstituteTypeParams<'a, DB> {
     }
 }
 
-impl<'a, DB: HirDatabase> AstTransform<'a> for SubstituteTypeParams<'a, DB> {
+impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
     fn get_substitution(
         &self,
         node: InFile<&ra_syntax::SyntaxNode>,
@@ -107,14 +108,14 @@ impl<'a, DB: HirDatabase> AstTransform<'a> for SubstituteTypeParams<'a, DB> {
     }
 }
 
-pub struct QualifyPaths<'a, DB: HirDatabase> {
-    db: &'a DB,
+pub struct QualifyPaths<'a> {
+    db: &'a RootDatabase,
     from: Option<hir::Module>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
-impl<'a, DB: HirDatabase> QualifyPaths<'a, DB> {
-    pub fn new(db: &'a DB, from: Option<hir::Module>) -> Self {
+impl<'a> QualifyPaths<'a> {
+    pub fn new(db: &'a RootDatabase, from: Option<hir::Module>) -> Self {
         Self { db, from, previous: Box::new(NullTransformer) }
     }
 
@@ -168,7 +169,7 @@ pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: InFile<N>
     N::cast(result).unwrap()
 }
 
-impl<'a, DB: HirDatabase> AstTransform<'a> for QualifyPaths<'a, DB> {
+impl<'a> AstTransform<'a> for QualifyPaths<'a> {
     fn get_substitution(
         &self,
         node: InFile<&ra_syntax::SyntaxNode>,

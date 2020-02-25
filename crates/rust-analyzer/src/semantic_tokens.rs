@@ -49,7 +49,7 @@ pub(crate) fn supported_token_modifiers() -> &'static [SemanticTokenModifier] {
 }
 
 /// Tokens are encoded relative to each other.
-/// 
+///
 /// This is a direct port of https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45
 #[derive(Default)]
 pub(crate) struct SemanticTokensBuilder {
