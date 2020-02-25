@@ -12,10 +12,10 @@ let x: x = 1;
 let y: x = 2;
 ```
 
-How do we know on line 3 whether `x` is a type (u32) or a value (1)?
-These conflicts are resolved in `librustc_resolve`.
-In this specific case, name resolution defines that type names and variable
-names live in separate namespaces and therefore can co-exist.
+How do we know on line 3 whether `x` is a type (u32) or a value (1)? These
+conflicts are resolved during name resolution. In this specific case, name
+resolution defines that type names and variable names live in separate
+namespaces and therefore can co-exist.
 
 The name resolution in Rust is a two-phase process. In the first phase, which runs
 during macro expansion, we build a tree of modules and resolve imports. Macro
