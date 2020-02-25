@@ -147,7 +147,6 @@ pub struct InferCtxtInner<'tcx> {
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
     type_variables: type_variable::TypeVariableStorage<'tcx>,
-    undo_log: Logs<'tcx>,
 
     /// Map from const parameter variable to the kind of const it represents.
     const_unification_table: ut::UnificationStorage<ty::ConstVid<'tcx>>,
@@ -197,6 +196,8 @@ pub struct InferCtxtInner<'tcx> {
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
+
+    undo_log: InferCtxtUndoLogs<'tcx>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -204,7 +205,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         InferCtxtInner {
             projection_cache: Default::default(),
             type_variables: type_variable::TypeVariableStorage::new(),
-            undo_log: Logs::default(),
+            undo_log: InferCtxtUndoLogs::default(),
             const_unification_table: ut::UnificationStorage::new(),
             int_unification_table: ut::UnificationStorage::new(),
             float_unification_table: ut::UnificationStorage::new(),
@@ -228,7 +229,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     fn int_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
-        ut::InPlace<ty::IntVid, &mut ut::UnificationStorage<ty::IntVid>, &mut Logs<'tcx>>,
+        ut::InPlace<
+            ty::IntVid,
+            &mut ut::UnificationStorage<ty::IntVid>,
+            &mut InferCtxtUndoLogs<'tcx>,
+        >,
     > {
         ut::UnificationTable::with_log(&mut self.int_unification_table, &mut self.undo_log)
     }
@@ -236,7 +241,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     fn float_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
-        ut::InPlace<ty::FloatVid, &mut ut::UnificationStorage<ty::FloatVid>, &mut Logs<'tcx>>,
+        ut::InPlace<
+            ty::FloatVid,
+            &mut ut::UnificationStorage<ty::FloatVid>,
+            &mut InferCtxtUndoLogs<'tcx>,
+        >,
     > {
         ut::UnificationTable::with_log(&mut self.float_unification_table, &mut self.undo_log)
     }
@@ -247,7 +256,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         ut::InPlace<
             ty::ConstVid<'tcx>,
             &mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
-            &mut Logs<'tcx>,
+            &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
         ut::UnificationTable::with_log(&mut self.const_unification_table, &mut self.undo_log)
@@ -343,8 +352,9 @@ impl<'tcx> From<traits::UndoLog<'tcx>> for UndoLog<'tcx> {
     }
 }
 
-pub(crate) type UnificationTable<'a, 'tcx, T> =
-    ut::UnificationTable<ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut Logs<'tcx>>>;
+pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
+    ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'tcx>>,
+>;
 
 struct RollbackView<'tcx, 'a> {
     type_variables: &'a mut type_variable::TypeVariableStorage<'tcx>,
@@ -375,18 +385,18 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
     }
 }
 
-pub(crate) struct Logs<'tcx> {
+pub(crate) struct InferCtxtUndoLogs<'tcx> {
     logs: Vec<UndoLog<'tcx>>,
     num_open_snapshots: usize,
 }
 
-impl Default for Logs<'_> {
+impl Default for InferCtxtUndoLogs<'_> {
     fn default() -> Self {
         Self { logs: Default::default(), num_open_snapshots: Default::default() }
     }
 }
 
-impl<'tcx, T> UndoLogs<T> for Logs<'tcx>
+impl<'tcx, T> UndoLogs<T> for InferCtxtUndoLogs<'tcx>
 where
     UndoLog<'tcx>: From<T>,
 {
@@ -413,7 +423,7 @@ where
     }
 }
 
-impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
+impl<'tcx> Snapshots<UndoLog<'tcx>> for InferCtxtUndoLogs<'tcx> {
     type Snapshot = Snapshot<'tcx>;
     fn actions_since_snapshot(&self, snapshot: &Self::Snapshot) -> &[UndoLog<'tcx>] {
         &self.logs[snapshot.undo_len..]
@@ -464,7 +474,7 @@ impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
     }
 }
 
-impl<'tcx> Logs<'tcx> {
+impl<'tcx> InferCtxtUndoLogs<'tcx> {
     pub(crate) fn region_constraints(
         &self,
         after: usize,

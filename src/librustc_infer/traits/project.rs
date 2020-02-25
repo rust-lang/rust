@@ -2,7 +2,7 @@
 
 use super::PredicateObligation;
 
-use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
+use rustc_data_structures::snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 
@@ -63,7 +63,7 @@ impl<'tcx, T> Normalized<'tcx, T> {
 // reduce the amount of duplication. Let's see what we get with the Chalk reforms.
 pub struct ProjectionCache<'tcx, 'a> {
     map: &'a mut SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
-    undo_log: &'a mut Logs<'tcx>,
+    undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
 #[derive(Default)]
@@ -93,7 +93,7 @@ pub enum ProjectionCacheEntry<'tcx> {
 impl<'tcx> ProjectionCacheStorage<'tcx> {
     pub(crate) fn with_log<'a>(
         &'a mut self,
-        undo_log: &'a mut Logs<'tcx>,
+        undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> ProjectionCache<'tcx, 'a> {
         ProjectionCache { map: &mut self.map, undo_log }
     }
@@ -102,7 +102,12 @@ impl<'tcx> ProjectionCacheStorage<'tcx> {
 impl<'tcx> ProjectionCache<'tcx, '_> {
     fn map(
         &mut self,
-    ) -> SnapshotMapRef<'_, ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>, Logs<'tcx>> {
+    ) -> SnapshotMapRef<
+        '_,
+        ProjectionCacheKey<'tcx>,
+        ProjectionCacheEntry<'tcx>,
+        InferCtxtUndoLogs<'tcx>,
+    > {
         self.map.with_log(self.undo_log)
     }
 

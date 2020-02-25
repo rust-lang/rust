@@ -3,7 +3,7 @@ use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
-use crate::infer::Logs;
+use crate::infer::InferCtxtUndoLogs;
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
@@ -88,7 +88,7 @@ pub struct TypeVariableTable<'tcx, 'a> {
 
     sub_relations: &'a mut ut::UnificationStorage<ty::TyVid>,
 
-    undo_log: &'a mut Logs<'tcx>,
+    undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -167,7 +167,7 @@ impl<'tcx> TypeVariableStorage<'tcx> {
 
     pub(crate) fn with_log<'a>(
         &'a mut self,
-        undo_log: &'a mut Logs<'tcx>,
+        undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> TypeVariableTable<'tcx, 'a> {
         let TypeVariableStorage { values, eq_relations, sub_relations } = self;
         TypeVariableTable { values, eq_relations, sub_relations, undo_log }
@@ -327,7 +327,9 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
         Snapshot { value_count: self.eq_relations().len() as u32, _marker: PhantomData }
     }
 
-    fn values(&mut self) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut Logs<'tcx>> {
+    fn values(
+        &mut self,
+    ) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut InferCtxtUndoLogs<'tcx>> {
         sv::SnapshotVec::with_log(self.values, self.undo_log)
     }
 

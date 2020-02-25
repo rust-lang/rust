@@ -4,7 +4,9 @@ use self::CombineMapType::*;
 use self::UndoLog::*;
 
 use super::unify_key;
-use super::{Logs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin};
+use super::{
+    InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
+};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -61,7 +63,7 @@ pub struct RegionConstraintStorage<'tcx> {
 
 pub struct RegionConstraintCollector<'tcx, 'a> {
     storage: &'a mut RegionConstraintStorage<'tcx>,
-    undo_log: &'a mut Logs<'tcx>,
+    undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
 impl std::ops::Deref for RegionConstraintCollector<'tcx, '_> {
@@ -346,7 +348,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
 
     pub(crate) fn with_log<'a>(
         &'a mut self,
-        undo_log: &'a mut Logs<'tcx>,
+        undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> RegionConstraintCollector<'tcx, 'a> {
         RegionConstraintCollector { storage: self, undo_log }
     }
