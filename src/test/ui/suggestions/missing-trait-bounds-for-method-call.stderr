@@ -4,9 +4,6 @@ error[E0599]: no method named `foo` found for reference `&Foo<T>` in the current
 LL | struct Foo<T> {
    | ------------- doesn't satisfy `Foo<T>: Bar`
 ...
-LL | trait Bar {
-   | --------- `Bar` defines an item `foo`, perhaps you need to implement it
-...
 LL |         self.foo();
    |              ^^^ method not found in `&Foo<T>`
    |
@@ -16,6 +13,11 @@ LL |         self.foo();
            `T: std::default::Default`
            which is required by `Foo<T>: Bar`
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `foo`, perhaps you need to implement it
+  --> $DIR/missing-trait-bounds-for-method-call.rs:6:1
+   |
+LL | trait Bar {
+   | ^^^^^^^^^
 help: consider restricting the type parameters to satisfy the obligations
    |
 LL | struct Foo<T> where T: Bar, T: std::default::Default {
@@ -24,9 +26,6 @@ LL | struct Foo<T> where T: Bar, T: std::default::Default {
 error[E0599]: no method named `foo` found for reference `&Fin<T>` in the current scope
   --> $DIR/missing-trait-bounds-for-method-call.rs:27:14
    |
-LL | trait Bar {
-   | --------- `Bar` defines an item `foo`, perhaps you need to implement it
-...
 LL | struct Fin<T> where T: Bar {
    | -------------------------- doesn't satisfy `Fin<T>: Bar`
 ...
@@ -37,6 +36,11 @@ LL |         self.foo();
            `T: std::default::Default`
            which is required by `Fin<T>: Bar`
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `foo`, perhaps you need to implement it
+  --> $DIR/missing-trait-bounds-for-method-call.rs:6:1
+   |
+LL | trait Bar {
+   | ^^^^^^^^^
 help: consider restricting the type parameter to satisfy the obligation
    |
 LL | struct Fin<T> where T: Bar, T: std::default::Default {

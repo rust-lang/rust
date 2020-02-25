@@ -9,13 +9,15 @@ LL |         for elt in self { r = r + f(*elt); }
 error[E0599]: no method named `bind` found for array `[&str; 1]` in the current scope
   --> $DIR/issue-2149.rs:13:12
    |
-LL | trait VecMonad<A> {
-   | ----------------- `VecMonad` defines an item `bind`, perhaps you need to implement it
-...
 LL |     ["hi"].bind(|x| [x] );
    |            ^^^^ method not found in `[&str; 1]`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `VecMonad` defines an item `bind`, perhaps you need to implement it
+  --> $DIR/issue-2149.rs:1:1
+   |
+LL | trait VecMonad<A> {
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

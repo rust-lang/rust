@@ -1,9 +1,6 @@
 error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
-LL | trait Foo {
-   | --------- `Foo` defines an item `foo_one`, perhaps you need to implement it
-...
 LL | struct MyStruct;
    | ----------------
    | |
@@ -16,6 +13,11 @@ LL |     println!("{}", MyStruct.foo_one());
    = note: the method `foo_one` exists but the following trait bounds were not satisfied:
            `MyStruct: Foo`
    = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo_one`, perhaps you need to implement it
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
 
 error: aborting due to previous error
 
