@@ -17,32 +17,32 @@ use crate::{
 };
 
 pub mod tags {
-    pub(crate) const FIELD: &str = "field";
-    pub(crate) const FUNCTION: &str = "function";
-    pub(crate) const MODULE: &str = "module";
-    pub(crate) const CONSTANT: &str = "constant";
-    pub(crate) const MACRO: &str = "macro";
+    pub const FIELD: &str = "field";
+    pub const FUNCTION: &str = "function";
+    pub const MODULE: &str = "module";
+    pub const CONSTANT: &str = "constant";
+    pub const MACRO: &str = "macro";
 
-    pub(crate) const VARIABLE: &str = "variable";
-    pub(crate) const VARIABLE_MUT: &str = "variable.mut";
+    pub const VARIABLE: &str = "variable";
+    pub const VARIABLE_MUT: &str = "variable.mut";
 
-    pub(crate) const TYPE: &str = "type";
-    pub(crate) const TYPE_BUILTIN: &str = "type.builtin";
-    pub(crate) const TYPE_SELF: &str = "type.self";
-    pub(crate) const TYPE_PARAM: &str = "type.param";
-    pub(crate) const TYPE_LIFETIME: &str = "type.lifetime";
+    pub const TYPE: &str = "type";
+    pub const TYPE_BUILTIN: &str = "type.builtin";
+    pub const TYPE_SELF: &str = "type.self";
+    pub const TYPE_PARAM: &str = "type.param";
+    pub const TYPE_LIFETIME: &str = "type.lifetime";
 
-    pub(crate) const LITERAL_BYTE: &str = "literal.byte";
-    pub(crate) const LITERAL_NUMERIC: &str = "literal.numeric";
-    pub(crate) const LITERAL_CHAR: &str = "literal.char";
+    pub const LITERAL_BYTE: &str = "literal.byte";
+    pub const LITERAL_NUMERIC: &str = "literal.numeric";
+    pub const LITERAL_CHAR: &str = "literal.char";
 
-    pub(crate) const LITERAL_COMMENT: &str = "comment";
-    pub(crate) const LITERAL_STRING: &str = "string";
-    pub(crate) const LITERAL_ATTRIBUTE: &str = "attribute";
+    pub const LITERAL_COMMENT: &str = "comment";
+    pub const LITERAL_STRING: &str = "string";
+    pub const LITERAL_ATTRIBUTE: &str = "attribute";
 
-    pub(crate) const KEYWORD: &str = "keyword";
-    pub(crate) const KEYWORD_UNSAFE: &str = "keyword.unsafe";
-    pub(crate) const KEYWORD_CONTROL: &str = "keyword.control";
+    pub const KEYWORD: &str = "keyword";
+    pub const KEYWORD_UNSAFE: &str = "keyword.unsafe";
+    pub const KEYWORD_CONTROL: &str = "keyword.control";
 }
 
 #[derive(Debug)]

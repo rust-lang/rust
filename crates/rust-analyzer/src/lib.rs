@@ -36,6 +36,7 @@ pub mod req;
 mod config;
 mod world;
 mod diagnostics;
+mod semantic_tokens;
 
 use serde::de::DeserializeOwned;
 
