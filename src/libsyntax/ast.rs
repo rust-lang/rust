@@ -2441,6 +2441,13 @@ impl Item {
     }
 }
 
+impl<K: IntoItemKind> Item<K> {
+    pub fn into_item(self) -> Item {
+        let Item { attrs, id, span, vis, ident, kind, tokens } = self;
+        Item { attrs, id, span, vis, ident, kind: kind.into_item_kind(), tokens }
+    }
+}
+
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub enum Extern {
@@ -2617,6 +2624,10 @@ impl ItemKind {
     }
 }
 
+pub trait IntoItemKind {
+    fn into_item_kind(self) -> ItemKind;
+}
+
 // FIXME(Centril): These definitions should be unmerged;
 // see https://github.com/rust-lang/rust/pull/69194#discussion_r379899975
 pub type ForeignItem = Item<AssocItemKind>;
@@ -2653,6 +2664,18 @@ impl AssocItemKind {
         match *self {
             Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
             Self::Macro(..) | Self::Static(..) => Defaultness::Final,
+        }
+    }
+}
+
+impl IntoItemKind for AssocItemKind {
+    fn into_item_kind(self) -> ItemKind {
+        match self {
+            AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
+            AssocItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
+            AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
+            AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
+            AssocItemKind::Macro(a) => ItemKind::Mac(a),
         }
     }
 }

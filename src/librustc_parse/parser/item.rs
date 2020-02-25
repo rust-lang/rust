@@ -632,16 +632,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_impl_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        maybe_whole!(self, NtImplItem, |x| Some(Some(x)));
         self.parse_assoc_item(|_| true)
     }
 
     pub fn parse_trait_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        maybe_whole!(self, NtTraitItem, |x| Some(Some(x)));
-        // This is somewhat dubious; We don't want to allow
-        // param names to be left off if there is a definition...
-        //
-        // We don't allow param names to be left off in edition 2018.
         self.parse_assoc_item(|t| t.span.rust_2018())
     }
 
@@ -834,8 +828,6 @@ impl<'a> Parser<'a> {
 
     /// Parses a foreign item (one in an `extern { ... }` block).
     pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        maybe_whole!(self, NtForeignItem, |item| Some(Some(item)));
-
         Ok(self.parse_item_(|_| true)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
             let kind = match kind {
                 ItemKind::Mac(a) => ForeignItemKind::Macro(a),

@@ -711,20 +711,7 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),
-        token::NtImplItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_impl_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
-        token::NtTraitItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_trait_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
         token::NtVis(visib) => vis.visit_vis(visib),
-        token::NtForeignItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_foreign_item(item)
-                .expect_one("expected visitor to produce exactly one item")
-        }),
     }
 }
 
