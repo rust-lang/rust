@@ -14,7 +14,7 @@ use crate::db::HirDatabase;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
-use self::chalk::{from_chalk, ToChalk, TypeFamily};
+use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
 mod builtin;
@@ -22,7 +22,7 @@ mod builtin;
 #[derive(Debug, Clone)]
 pub struct TraitSolver {
     krate: CrateId,
-    inner: Arc<Mutex<chalk_solve::Solver<TypeFamily>>>,
+    inner: Arc<Mutex<chalk_solve::Solver<Interner>>>,
 }
 
 /// We need eq for salsa
@@ -38,8 +38,8 @@ impl TraitSolver {
     fn solve(
         &self,
         db: &impl HirDatabase,
-        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<TypeFamily>>>,
-    ) -> Option<chalk_solve::Solution<TypeFamily>> {
+        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
+    ) -> Option<chalk_solve::Solution<Interner>> {
         let context = ChalkContext { db, krate: self.krate };
         log::debug!("solve goal: {:?}", goal);
         let mut solver = match self.inner.lock() {
@@ -110,7 +110,7 @@ pub(crate) fn trait_solver_query(
     TraitSolver { krate, inner: Arc::new(Mutex::new(create_chalk_solver())) }
 }
 
-fn create_chalk_solver() -> chalk_solve::Solver<TypeFamily> {
+fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
     let solver_choice =
         chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE, expected_answers: None };
     solver_choice.into_solver()
@@ -242,9 +242,9 @@ pub(crate) fn trait_solve_query(
 
 fn solution_from_chalk(
     db: &impl HirDatabase,
-    solution: chalk_solve::Solution<TypeFamily>,
+    solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
-    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<TypeFamily>>| {
+    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {
         let value = subst
             .value
             .into_iter()
