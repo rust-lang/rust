@@ -485,7 +485,7 @@ version = "0.0.212"
 dependencies = [
  "cargo_metadata 0.9.1",
  "if_chain",
- "itertools 0.9.0",
+ "itertools 0.8.0",
  "lazy_static 1.4.0",
  "pulldown-cmark 0.7.1",
  "quine-mc_cluskey",
@@ -1630,15 +1630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2188,7 +2179,6 @@ dependencies = [
  "rustc-workspace-hack",
  "rustc_version",
  "serde",
- "serde_json",
  "shell-escape",
  "vergen",
 ]

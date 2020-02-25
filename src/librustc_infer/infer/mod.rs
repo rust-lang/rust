@@ -141,7 +141,7 @@ pub struct InferCtxtInner<'tcx> {
     /// Cache for projections. This cache is snapshotted along with the infcx.
     ///
     /// Public so that `traits::project` can use it.
-    pub projection_cache: traits::ProjectionCache<'tcx>,
+    pub projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
     /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
@@ -213,6 +213,10 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
     }
 
+    pub(crate) fn projection_cache(&mut self) -> traits::ProjectionCache<'tcx, '_> {
+        self.projection_cache.with_log(&mut self.undo_log)
+    }
+
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'tcx, '_> {
         self.type_variables.with_log(&mut self.undo_log)
     }
@@ -265,6 +269,7 @@ pub(crate) enum UndoLog<'tcx> {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
+    ProjectionCache(traits::UndoLog<'tcx>),
 }
 
 impl<'tcx> From<region_constraints::UndoLog<'tcx>> for UndoLog<'tcx> {
@@ -327,6 +332,12 @@ impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::RegionVid>>> for UndoLog<'tcx> {
     }
 }
 
+impl<'tcx> From<traits::UndoLog<'tcx>> for UndoLog<'tcx> {
+    fn from(l: traits::UndoLog<'tcx>) -> Self {
+        Self::ProjectionCache(l)
+    }
+}
+
 pub(crate) type UnificationTable<'a, 'tcx, T> =
     ut::UnificationTable<ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut Logs<'tcx>>>;
 
@@ -336,6 +347,7 @@ struct RollbackView<'tcx, 'a> {
     int_unification_table: &'a mut ut::UnificationStorage<ty::IntVid>,
     float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
     region_constraints: &'a mut RegionConstraintStorage<'tcx>,
+    projection_cache: &'a mut traits::ProjectionCacheStorage<'tcx>,
 }
 
 impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
@@ -349,6 +361,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
             UndoLog::RegionUnificationTable(undo) => {
                 self.region_constraints.unification_table.reverse(undo)
             }
+            UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
         }
     }
 }
@@ -885,7 +898,6 @@ impl<'tcx> InferOk<'tcx, ()> {
 
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx> {
-    projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     undo_snapshot: Snapshot<'tcx>,
     type_snapshot: type_variable::Snapshot<'tcx>,
     const_snapshot: usize,
@@ -1016,7 +1028,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         inner.undo_log.num_open_snapshots += 1;
         let undo_snapshot = Snapshot { undo_len: inner.undo_log.logs.len(), _marker: PhantomData };
         CombinedSnapshot {
-            projection_cache_snapshot: inner.projection_cache.snapshot(),
             undo_snapshot,
             type_snapshot: inner.type_variables().snapshot(),
             const_snapshot: inner.const_unification_table().len(),
@@ -1036,7 +1047,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot {
-            projection_cache_snapshot,
             undo_snapshot,
             type_snapshot: _,
             const_snapshot: _,
@@ -1062,6 +1072,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             int_unification_table,
             float_unification_table,
             region_constraints,
+            projection_cache,
             ..
         } = inner;
         inner.undo_log.rollback_to(
@@ -1071,17 +1082,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 int_unification_table,
                 float_unification_table,
                 region_constraints: region_constraints.as_mut().unwrap(),
+                projection_cache,
             },
             undo_snapshot,
         );
-        inner.projection_cache.rollback_to(projection_cache_snapshot);
         inner.region_obligations.truncate(region_obligations_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("commit_from()");
         let CombinedSnapshot {
-            projection_cache_snapshot,
             undo_snapshot,
             type_snapshot: _,
             const_snapshot: _,
@@ -1100,7 +1110,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.commit(undo_snapshot);
-        inner.projection_cache.commit(projection_cache_snapshot);
     }
 
     /// Executes `f` and commit the bindings.
@@ -1773,7 +1782,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn clear_caches(&self) {
         self.selection_cache.clear();
         self.evaluation_cache.clear();
-        self.inner.borrow_mut().projection_cache.clear();
+        self.inner.borrow_mut().projection_cache().clear();
     }
 
     fn universe(&self) -> ty::UniverseIndex {

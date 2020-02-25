@@ -1,5 +1,6 @@
 use crate::fx::FxHashMap;
 use crate::undo_log::{Rollback, Snapshots, UndoLogs, VecLog};
+use std::borrow::{Borrow, BorrowMut};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops;
@@ -10,6 +11,7 @@ pub use crate::undo_log::Snapshot;
 mod tests;
 
 pub type SnapshotMapStorage<K, V> = SnapshotMap<K, V, FxHashMap<K, V>, ()>;
+pub type SnapshotMapRef<'a, K, V, L> = SnapshotMap<K, V, &'a mut FxHashMap<K, V>, &'a mut L>;
 
 pub struct SnapshotMap<K, V, M = FxHashMap<K, V>, L = VecLog<UndoLog<K, V>>> {
     map: M,
@@ -43,16 +45,16 @@ impl<K, V, M, L> SnapshotMap<K, V, M, L> {
 impl<K, V, M, L> SnapshotMap<K, V, M, L>
 where
     K: Hash + Clone + Eq,
-    M: AsMut<FxHashMap<K, V>> + AsRef<FxHashMap<K, V>>,
+    M: BorrowMut<FxHashMap<K, V>> + Borrow<FxHashMap<K, V>>,
     L: UndoLogs<UndoLog<K, V>>,
 {
     pub fn clear(&mut self) {
-        self.map.as_mut().clear();
+        self.map.borrow_mut().clear();
         self.undo_log.clear();
     }
 
     pub fn insert(&mut self, key: K, value: V) -> bool {
-        match self.map.as_mut().insert(key.clone(), value) {
+        match self.map.borrow_mut().insert(key.clone(), value) {
             None => {
                 self.undo_log.push(UndoLog::Inserted(key));
                 true
@@ -65,7 +67,7 @@ where
     }
 
     pub fn remove(&mut self, key: K) -> bool {
-        match self.map.as_mut().remove(&key) {
+        match self.map.borrow_mut().remove(&key) {
             Some(old_value) => {
                 self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 true
@@ -75,7 +77,7 @@ where
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.map.as_ref().get(key)
+        self.map.borrow().get(key)
     }
 }
 
@@ -99,11 +101,21 @@ where
 impl<'k, K, V, M, L> ops::Index<&'k K> for SnapshotMap<K, V, M, L>
 where
     K: Hash + Clone + Eq,
-    M: AsRef<FxHashMap<K, V>>,
+    M: Borrow<FxHashMap<K, V>>,
 {
     type Output = V;
     fn index(&self, key: &'k K) -> &V {
-        &self.map.as_ref()[key]
+        &self.map.borrow()[key]
+    }
+}
+
+impl<K, V, M, L> Rollback<UndoLog<K, V>> for SnapshotMap<K, V, M, L>
+where
+    K: Eq + Hash,
+    M: Rollback<UndoLog<K, V>>,
+{
+    fn reverse(&mut self, undo: UndoLog<K, V>) {
+        self.map.reverse(undo)
     }
 }
 
