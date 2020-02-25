@@ -255,12 +255,12 @@ where C: Fn(&T, &T) -> Option<Ordering>
     cmp: C,
 }
 
-/// Default comparator
-#[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
+/// Default comparator which is used in Max heap.
+#[unstable(feature = "binary_heap_max_cmp", issue = "38886")]
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub struct MaxCmp;
 
-#[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
+#[unstable(feature = "binary_heap_max_cmp", issue = "38886")]
 impl<T: Ord> FnOnce<(&T, &T)> for MaxCmp {
     type Output = Option<Ordering>;
     extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
@@ -268,14 +268,14 @@ impl<T: Ord> FnOnce<(&T, &T)> for MaxCmp {
     }
 }
 
-#[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
+#[unstable(feature = "binary_heap_max_cmp", issue = "38886")]
 impl<T: Ord> FnMut<(&T, &T)> for MaxCmp {
     extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
         args.0.partial_cmp(args.1)
     }
 }
 
-#[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
+#[unstable(feature = "binary_heap_max_cmp", issue = "38886")]
 impl<T: Ord> Fn<(&T, &T)> for MaxCmp {
     extern "rust-call" fn call(&self, args: (&T, &T)) -> Self::Output {
         args.0.partial_cmp(args.1)
