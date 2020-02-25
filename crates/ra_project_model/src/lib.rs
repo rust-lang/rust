@@ -421,19 +421,14 @@ fn find_cargo_toml_down_the_fs(path: &Path) -> Option<PathBuf> {
 }
 
 fn find_cargo_toml_up_the_fs(path: &Path) -> Option<PathBuf> {
-    log::info!("find_cargo_toml_up_the_fs()");
     let entities = match read_dir(path) {
         Ok(entities) => entities,
-        Err(e) => {
-            log::info!("err {}", e);
-            return None
-        }
+        Err(_) => return None
     };
 
-    log::info!("entities: {:?}", entities);
+    // Only one level up to avoid cycles the easy way and stop a runaway scan with large projects
     for entity in entities.filter_map(Result::ok) {
         let candidate = entity.path().join("Cargo.toml");
-        log::info!("candidate: {:?}, exists: {}", candidate, candidate.exists());
         if candidate.exists() {
             return Some(candidate);
         }
