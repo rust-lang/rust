@@ -196,7 +196,7 @@ pub struct InferCtxtInner<'tcx> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    pub region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
+    region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -211,6 +211,10 @@ impl<'tcx> InferCtxtInner<'tcx> {
             region_constraints: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
+    }
+
+    pub fn region_obligations(&self) -> &[(hir::HirId, RegionObligation<'tcx>)] {
+        &self.region_obligations
     }
 
     pub(crate) fn projection_cache(&mut self) -> traits::ProjectionCache<'tcx, '_> {
@@ -270,6 +274,7 @@ pub(crate) enum UndoLog<'tcx> {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
     ProjectionCache(traits::UndoLog<'tcx>),
+    PushRegionObligation,
 }
 
 impl<'tcx> From<region_constraints::UndoLog<'tcx>> for UndoLog<'tcx> {
@@ -348,6 +353,7 @@ struct RollbackView<'tcx, 'a> {
     float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
     region_constraints: &'a mut RegionConstraintStorage<'tcx>,
     projection_cache: &'a mut traits::ProjectionCacheStorage<'tcx>,
+    region_obligations: &'a mut Vec<(hir::HirId, RegionObligation<'tcx>)>,
 }
 
 impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
@@ -362,6 +368,9 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
                 self.region_constraints.unification_table.reverse(undo)
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
+            UndoLog::PushRegionObligation => {
+                self.region_obligations.pop();
+            }
         }
     }
 }
@@ -915,7 +924,6 @@ pub struct FullSnapshot<'a, 'tcx> {
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx> {
     undo_snapshot: Snapshot<'tcx>,
-    region_obligations_snapshot: usize,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
@@ -1052,7 +1060,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let undo_snapshot = Snapshot { undo_len: inner.undo_log.logs.len(), _marker: PhantomData };
         CombinedSnapshot {
             undo_snapshot,
-            region_obligations_snapshot: inner.region_obligations.len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e., during typeck)
@@ -1063,13 +1070,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("rollback_to(cause={})", cause);
-        let CombinedSnapshot {
-            undo_snapshot,
-            region_obligations_snapshot,
-            universe,
-            was_in_snapshot,
-            _in_progress_tables,
-        } = snapshot;
+        let CombinedSnapshot { undo_snapshot, universe, was_in_snapshot, _in_progress_tables } =
+            snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
@@ -1093,21 +1095,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 float_unification_table,
                 region_constraints: region_constraints.as_mut().unwrap(),
                 projection_cache,
+                region_obligations,
             },
             undo_snapshot,
         );
-        region_obligations.truncate(region_obligations_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("commit_from()");
-        let CombinedSnapshot {
-            undo_snapshot,
-            region_obligations_snapshot: _,
-            universe: _,
-            was_in_snapshot,
-            _in_progress_tables,
-        } = snapshot;
+        let CombinedSnapshot { undo_snapshot, universe: _, was_in_snapshot, _in_progress_tables } =
+            snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
 
