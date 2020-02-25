@@ -3,7 +3,8 @@
 use crate::source_change::SourceFileEdit;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::make::expr_from_text;
-use ra_syntax::{AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+use ra_syntax::ast::{AstToken, Comment};
+use ra_syntax::{AstNode, SyntaxElement, SyntaxNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use rustc_hash::FxHashMap;
 use std::collections::HashMap;
@@ -70,7 +71,7 @@ type Binding = HashMap<Var, SyntaxNode>;
 struct Match {
     place: SyntaxNode,
     binding: Binding,
-    ignored_comments: Vec<SyntaxToken>,
+    ignored_comments: Vec<Comment>,
 }
 
 #[derive(Debug)]
@@ -199,12 +200,7 @@ fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
                     let mut code_children =
                         code.children_with_tokens().filter(|element| !element.kind().is_trivia());
                     let new_ignored_comments = code.children_with_tokens().filter_map(|element| {
-                        if let SyntaxElement::Token(token) = element {
-                            if token.kind() == SyntaxKind::COMMENT {
-                                return Some(token.clone());
-                            }
-                        }
-                        None
+                        element.as_token().and_then(|token| Comment::cast(token.clone()))
                     });
                     match_.ignored_comments.extend(new_ignored_comments);
                     let match_from_children = pattern_children
@@ -254,7 +250,7 @@ fn replace(matches: &SsrMatches, template: &SsrTemplate) -> TextEdit {
 
 fn render_replace(
     binding: &Binding,
-    ignored_comments: &Vec<SyntaxToken>,
+    ignored_comments: &Vec<Comment>,
     template: &SsrTemplate,
 ) -> String {
     let mut builder = TextEditBuilder::default();
@@ -264,7 +260,7 @@ fn render_replace(
         }
     }
     for comment in ignored_comments {
-        builder.insert(template.template.text_range().end(), comment.to_string())
+        builder.insert(template.template.text_range().end(), comment.syntax().to_string())
     }
     builder.finish().apply(&template.template.text().to_string())
 }
