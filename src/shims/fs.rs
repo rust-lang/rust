@@ -906,7 +906,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name_place = this.mplace_field(entry_place, 4)?;
 
                 let file_name = dir_entry.file_name();
-                let name_fits = this.write_os_str_to_c_str(&file_name, name_place.ptr, name_place.layout.size.bytes())?;
+                let (name_fits, _) = this.write_os_str_to_c_str(
+                    &file_name, name_place.ptr,
+                    name_place.layout.size.bytes(),
+                )?;
                 if !name_fits {
                     throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent64");
                 }
@@ -990,7 +993,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name_place = this.mplace_field(entry_place, 5)?;
 
                 let file_name = dir_entry.file_name();
-                let name_fits = this.write_os_str_to_c_str(&file_name, name_place.ptr, name_place.layout.size.bytes())?;
+                let (name_fits, file_name_len) = this.write_os_str_to_c_str(
+                    &file_name, name_place.ptr,
+                    name_place.layout.size.bytes(),
+                )?;
                 if !name_fits {
                     throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent");
                 }
@@ -1007,8 +1013,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                 #[cfg(not(unix))]
                 let ino = 0;
-
-                let file_name_len = this.os_str_length_as_c_str(&file_name)? as u128;
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
 
