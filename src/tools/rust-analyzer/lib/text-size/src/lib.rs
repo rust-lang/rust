@@ -301,6 +301,15 @@ impl TextRange {
 
     // BREAK: pass by value
     #[inline(always)]
+    /// The smallest range that contains both ranges
+    pub fn extend_to(&self, other: &TextRange) -> TextRange {
+        let start = self.start().min(other.start());
+        let end = self.end().max(other.end());
+        TextRange::from_to(start, end)
+    }
+
+    // BREAK: pass by value
+    #[inline(always)]
     pub fn contains(&self, offset: TextUnit) -> bool {
         self.start() <= offset && offset < self.end()
     }
@@ -431,6 +440,13 @@ mod tests {
         assert_eq!(r(1, 2).intersection(&r(2, 3)), Some(r(2, 2)));
         assert_eq!(r(1, 5).intersection(&r(2, 3)), Some(r(2, 3)));
         assert_eq!(r(1, 2).intersection(&r(3, 4)), None);
+    }
+
+    #[test]
+    fn check_extend_to() {
+        assert_eq!(r(1, 2).extend_to(&r(2, 3)), r(1, 3));
+        assert_eq!(r(1, 5).extend_to(&r(2, 3)), r(1, 5));
+        assert_eq!(r(1, 2).extend_to(&r(4, 5)), r(1, 5));
     }
 
     #[test]
