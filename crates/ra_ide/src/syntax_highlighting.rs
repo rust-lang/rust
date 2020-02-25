@@ -5,8 +5,8 @@ use ra_db::SourceDatabase;
 use ra_ide_db::{defs::NameDefinition, RootDatabase};
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken, TextRange,
-    WalkEvent, T,
+    ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken,
+    TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
@@ -69,6 +69,16 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
+    highlight_range(db, file_id, None)
+}
+
+pub(crate) fn highlight_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    range: Option<TextRange>,
+) -> Vec<HighlightedRange> {
+    let _p = profile("highlight_range");
+
     let parse = db.parse(file_id);
     let root = parse.tree().syntax().clone();
 
@@ -78,6 +88,15 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     let analyzer = sb.analyze(InFile::new(file_id.into(), &root), None);
 
     let mut in_macro_call = None;
+
+    // Determine the root based on the range
+    let root = match range {
+        Some(range) => match root.covering_element(range) {
+            NodeOrToken::Node(node) => node,
+            NodeOrToken::Token(token) => token.parent(),
+        },
+        None => root,
+    };
 
     for event in root.preorder_with_tokens() {
         match event {
@@ -374,7 +393,10 @@ mod tests {
 
     use test_utils::{assert_eq_text, project_dir, read_text};
 
-    use crate::mock_analysis::{single_file, MockAnalysis};
+    use crate::{
+        mock_analysis::{single_file, MockAnalysis},
+        FileRange, TextRange,
+    };
 
     #[test]
     fn test_highlighting() {
@@ -474,5 +496,26 @@ fn bar() {
         // let t = std::time::Instant::now();
         let _ = host.analysis().highlight(file_id).unwrap();
         // eprintln!("elapsed: {:?}", t.elapsed());
+    }
+
+    #[test]
+    fn test_ranges() {
+        let (analysis, file_id) = single_file(
+            r#"
+            #[derive(Clone, Debug)]
+            struct Foo {
+                pub x: i32,
+                pub y: i32,
+            }"#,
+        );
+
+        let highlights = &analysis
+            .highlight_range(FileRange {
+                file_id,
+                range: TextRange::offset_len(82.into(), 1.into()), // "x"
+            })
+            .unwrap();
+
+        assert_eq!(highlights[0].tag, "field");
     }
 }

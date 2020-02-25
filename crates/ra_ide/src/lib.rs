@@ -430,6 +430,13 @@ impl Analysis {
         self.with_db(|db| syntax_highlighting::highlight(db, file_id))
     }
 
+    /// Computes syntax highlighting for the given file range.
+    pub fn highlight_range(&self, frange: FileRange) -> Cancelable<Vec<HighlightedRange>> {
+        self.with_db(|db| {
+            syntax_highlighting::highlight_range(db, frange.file_id, Some(frange.range))
+        })
+    }
+
     /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html(&self, file_id: FileId, rainbow: bool) -> Cancelable<String> {
         self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id, rainbow))

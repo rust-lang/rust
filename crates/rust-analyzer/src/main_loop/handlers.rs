@@ -17,8 +17,8 @@ use lsp_types::{
     Diagnostic, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
     PrepareRenameResponse, Range, RenameParams, SemanticTokenModifier, SemanticTokenType,
-    SemanticTokens, SemanticTokensParams, SemanticTokensResult, SymbolInformation,
-    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
+    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
@@ -1083,6 +1083,28 @@ pub fn handle_semantic_tokens(
     let mut builder = SemanticTokensBuilder::default();
 
     for h in world.analysis().highlight(file_id)?.into_iter() {
+        let type_and_modifiers: (SemanticTokenType, Vec<SemanticTokenModifier>) = h.tag.conv();
+        let (token_type, token_modifiers) = type_and_modifiers.conv();
+        builder.push(h.range.conv_with(&line_index), token_type, token_modifiers);
+    }
+
+    let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
+
+    Ok(Some(tokens.into()))
+}
+
+pub fn handle_semantic_tokens_range(
+    world: WorldSnapshot,
+    params: SemanticTokensRangeParams,
+) -> Result<Option<SemanticTokensRangeResult>> {
+    let _p = profile("handle_semantic_tokens_range");
+
+    let frange = (&params.text_document, params.range).try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(frange.file_id)?;
+
+    let mut builder = SemanticTokensBuilder::default();
+
+    for h in world.analysis().highlight_range(frange)?.into_iter() {
         let type_and_modifiers: (SemanticTokenType, Vec<SemanticTokenModifier>) = h.tag.conv();
         let (token_type, token_modifiers) = type_and_modifiers.conv();
         builder.push(h.range.conv_with(&line_index), token_type, token_modifiers);

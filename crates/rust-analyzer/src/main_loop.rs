@@ -527,8 +527,9 @@ fn on_request(
         .on::<req::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)?
         .on::<req::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)?
         .on::<req::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)?
-        .on::<req::Ssr>(handlers::handle_ssr)?
         .on::<req::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
+        .on::<req::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)?
+        .on::<req::Ssr>(handlers::handle_ssr)?
         .finish();
     Ok(())
 }
