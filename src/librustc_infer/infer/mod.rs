@@ -45,7 +45,9 @@ use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
-use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
+use self::region_constraints::{
+    RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
+};
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
@@ -161,7 +163,7 @@ pub struct InferCtxtInner<'tcx> {
     /// `resolve_regions_and_report_errors` is invoked, this gets set to `None`
     /// -- further attempts to perform unification, etc., may fail if new
     /// region constraints would've been added.
-    region_constraints: Option<RegionConstraintCollector<'tcx>>,
+    region_constraints: Option<RegionConstraintStorage<'tcx>>,
 
     /// A set of constraints that regionck must validate. Each
     /// constraint has the form `T:'a`, meaning "some type `T` must
@@ -206,7 +208,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_table: ut::UnificationStorage::new(),
             int_unification_table: ut::UnificationStorage::new(),
             float_unification_table: ut::UnificationStorage::new(),
-            region_constraints: Some(RegionConstraintCollector::new()),
+            region_constraints: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
     }
@@ -243,8 +245,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
         ut::UnificationTable::with_log(&mut self.const_unification_table, &mut self.undo_log)
     }
 
-    pub fn unwrap_region_constraints(&mut self) -> &mut RegionConstraintCollector<'tcx> {
-        self.region_constraints.as_mut().expect("region constraints already solved")
+    pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'tcx, '_> {
+        self.region_constraints
+            .as_mut()
+            .expect("region constraints already solved")
+            .with_log(&mut self.undo_log)
     }
 }
 
@@ -258,6 +263,14 @@ pub(crate) enum UndoLog<'tcx> {
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
+    RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
+    RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
+}
+
+impl<'tcx> From<region_constraints::UndoLog<'tcx>> for UndoLog<'tcx> {
+    fn from(l: region_constraints::UndoLog<'tcx>) -> Self {
+        UndoLog::RegionConstraintCollector(l)
+    }
 }
 
 impl<'tcx> From<sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
@@ -308,6 +321,12 @@ impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::FloatVid>>> for UndoLog<'tcx> {
     }
 }
 
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::RegionVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::RegionVid>>) -> Self {
+        Self::RegionUnificationTable(l)
+    }
+}
+
 pub(crate) type UnificationTable<'a, 'tcx, T> =
     ut::UnificationTable<ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut Logs<'tcx>>>;
 
@@ -316,6 +335,7 @@ struct RollbackView<'tcx, 'a> {
     const_unification_table: &'a mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
     int_unification_table: &'a mut ut::UnificationStorage<ty::IntVid>,
     float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
+    region_constraints: &'a mut RegionConstraintStorage<'tcx>,
 }
 
 impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
@@ -325,6 +345,10 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RollbackView<'tcx, '_> {
             UndoLog::ConstUnificationTable(undo) => self.const_unification_table.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_table.reverse(undo),
             UndoLog::FloatUnificationTable(undo) => self.float_unification_table.reverse(undo),
+            UndoLog::RegionConstraintCollector(undo) => self.region_constraints.reverse(undo),
+            UndoLog::RegionUnificationTable(undo) => {
+                self.region_constraints.unification_table.reverse(undo)
+            }
         }
     }
 }
@@ -408,6 +432,16 @@ impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
 }
 
 impl<'tcx> Logs<'tcx> {
+    pub(crate) fn region_constraints(
+        &self,
+        after: usize,
+    ) -> impl Iterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {
+        self.logs[after..].iter().filter_map(|log| match log {
+            UndoLog::RegionConstraintCollector(log) => Some(log),
+            _ => None,
+        })
+    }
+
     fn assert_open_snapshot(&self, snapshot: &Snapshot<'tcx>) {
         // Failures here may indicate a failure to follow a stack discipline.
         assert!(self.logs.len() >= snapshot.undo_len);
@@ -1004,7 +1038,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             const_snapshot: _,
             int_snapshot: _,
             float_snapshot: _,
-            region_constraints_snapshot,
+            region_constraints_snapshot: _,
             region_obligations_snapshot,
             universe,
             was_in_snapshot,
@@ -1023,6 +1057,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             const_unification_table,
             int_unification_table,
             float_unification_table,
+            region_constraints,
             ..
         } = inner;
         inner.undo_log.rollback_to(
@@ -1031,11 +1066,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 const_unification_table,
                 int_unification_table,
                 float_unification_table,
+                region_constraints: region_constraints.as_mut().unwrap(),
             },
             undo_snapshot,
         );
         inner.projection_cache.rollback_to(projection_cache_snapshot);
-        inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
         inner.region_obligations.truncate(region_obligations_snapshot);
     }
 
@@ -1048,7 +1083,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             const_snapshot: _,
             int_snapshot: _,
             float_snapshot: _,
-            region_constraints_snapshot,
+            region_constraints_snapshot: _,
             region_obligations_snapshot: _,
             universe: _,
             was_in_snapshot,
@@ -1062,7 +1097,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.commit(undo_snapshot);
         inner.projection_cache.commit(projection_cache_snapshot);
-        inner.unwrap_region_constraints().commit(region_constraints_snapshot);
     }
 
     /// Executes `f` and commit the bindings.
@@ -1135,7 +1169,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner
             .borrow_mut()
             .unwrap_region_constraints()
-            .region_constraints_added_in_snapshot(&snapshot.region_constraints_snapshot)
+            .region_constraints_added_in_snapshot(&snapshot.undo_snapshot)
     }
 
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
@@ -1466,6 +1500,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .region_constraints
             .take()
             .expect("regions already resolved")
+            .with_log(&mut inner.undo_log)
             .into_infos_and_data();
 
         let region_rels = &RegionRelations::new(
@@ -1527,12 +1562,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region variables into the NLL region context.
     pub fn take_region_var_origins(&self) -> VarInfos {
-        let (var_infos, data) = self
-            .inner
-            .borrow_mut()
+        let mut inner = self.inner.borrow_mut();
+        let (var_infos, data) = inner
             .region_constraints
             .take()
             .expect("regions already resolved")
+            .with_log(&mut inner.undo_log)
             .into_infos_and_data();
         assert!(data.is_empty());
         var_infos

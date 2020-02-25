@@ -344,23 +344,11 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
         sv::SnapshotVec::with_log(self.values, self.undo_log)
     }
 
-    fn eq_relations(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            TyVidEqKey<'tcx>,
-            &mut ut::UnificationStorage<TyVidEqKey<'tcx>>,
-            &mut Logs<'tcx>,
-        >,
-    > {
+    fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         ut::UnificationTable::with_log(self.eq_relations, self.undo_log)
     }
 
-    fn sub_relations(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<ty::TyVid, &mut ut::UnificationStorage<ty::TyVid>, &mut Logs<'tcx>>,
-    > {
+    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
         ut::UnificationTable::with_log(self.sub_relations, self.undo_log)
     }
 
