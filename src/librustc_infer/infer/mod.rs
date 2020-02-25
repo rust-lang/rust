@@ -414,12 +414,18 @@ impl<'tcx> Snapshots<UndoLog<'tcx>> for Logs<'tcx> {
         unreachable!()
     }
 
-    fn rollback_to(&mut self, values: &mut impl Rollback<UndoLog<'tcx>>, snapshot: Self::Snapshot) {
+    fn rollback_to<R>(&mut self, values: impl FnOnce() -> R, snapshot: Self::Snapshot)
+    where
+        R: Rollback<UndoLog<'tcx>>,
+    {
         debug!("rollback_to({})", snapshot.undo_len);
         self.assert_open_snapshot(&snapshot);
 
-        while self.logs.len() > snapshot.undo_len {
-            values.reverse(self.logs.pop().unwrap());
+        if self.logs.len() > snapshot.undo_len {
+            let mut values = values();
+            while self.logs.len() > snapshot.undo_len {
+                values.reverse(self.logs.pop().unwrap());
+            }
         }
 
         if self.num_open_snapshots == 1 {
@@ -1072,8 +1078,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.universe.set(universe);
         self.skip_leak_check.set(was_skip_leak_check);
 
-        let mut inner = self.inner.borrow_mut();
-        let inner = &mut *inner;
         let InferCtxtInner {
             type_variables,
             const_unification_table,
@@ -1081,10 +1085,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             float_unification_table,
             region_constraints,
             projection_cache,
+            region_obligations,
+            undo_log,
             ..
-        } = inner;
-        inner.undo_log.rollback_to(
-            &mut RollbackView {
+        } = &mut *self.inner.borrow_mut();
+        undo_log.rollback_to(
+            || RollbackView {
                 type_variables: type_variable::RollbackView::from(type_variables),
                 const_unification_table,
                 int_unification_table,
@@ -1094,7 +1100,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             },
             undo_snapshot,
         );
-        inner.region_obligations.truncate(region_obligations_snapshot);
+        region_obligations.truncate(region_obligations_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {

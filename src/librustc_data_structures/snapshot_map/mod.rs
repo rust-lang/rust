@@ -94,7 +94,8 @@ where
     }
 
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
-        self.undo_log.rollback_to(&mut self.map, snapshot)
+        let map = &mut self.map;
+        self.undo_log.rollback_to(|| map, snapshot)
     }
 }
 
