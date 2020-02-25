@@ -220,37 +220,6 @@ impl<S: Sip> Hasher<S> {
         self.state.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
     }
-
-    // Specialized write function that is only valid for buffers with len <= 8.
-    // It's used to force inlining of write_u8 and write_usize, those would normally be inlined
-    // except for composite types (that includes slices and str hashing because of delimiter).
-    // Without this extra push the compiler is very reluctant to inline delimiter writes,
-    // degrading performance substantially for the most common use cases.
-    #[inline]
-    fn short_write(&mut self, msg: &[u8]) {
-        debug_assert!(msg.len() <= 8);
-        let length = msg.len();
-        self.length += length;
-
-        let needed = 8 - self.ntail;
-        let fill = cmp::min(length, needed);
-        if fill == 8 {
-            self.tail = unsafe { load_int_le!(msg, 0, u64) };
-        } else {
-            self.tail |= unsafe { u8to64_le(msg, 0, fill) } << (8 * self.ntail);
-            if length < needed {
-                self.ntail += length;
-                return;
-            }
-        }
-        self.state.v3 ^= self.tail;
-        S::c_rounds(&mut self.state);
-        self.state.v0 ^= self.tail;
-
-        // Buffered tail is now flushed, process new input.
-        self.ntail = length - needed;
-        self.tail = unsafe { u8to64_le(msg, needed, self.ntail) };
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -280,21 +249,13 @@ impl super::Hasher for SipHasher13 {
 }
 
 impl<S: Sip> super::Hasher for Hasher<S> {
-    // see short_write comment for explanation
-    #[inline]
-    fn write_usize(&mut self, i: usize) {
-        let bytes = unsafe {
-            crate::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
-        };
-        self.short_write(bytes);
-    }
-
-    // see short_write comment for explanation
-    #[inline]
-    fn write_u8(&mut self, i: u8) {
-        self.short_write(&[i]);
-    }
-
+    // Note: no integer hashing methods (`write_u*`, `write_i*`) are defined
+    // for this type. We could add them, copy the `short_write` implementation
+    // in librustc_data_structures/sip128.rs, and add `write_u*`/`write_i*`
+    // methods to `SipHasher`, `SipHasher13`, and `DefaultHasher`. This would
+    // greatly speed up integer hashing by those hashers, at the cost of
+    // slightly slowing down compile speeds on some benchmarks. See #69152 for
+    // details.
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
