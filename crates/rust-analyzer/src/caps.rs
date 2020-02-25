@@ -7,9 +7,9 @@ use lsp_types::{
     CompletionOptions, DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
-    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
-    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
+    WorkDoneProgressOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -60,7 +60,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         execute_command_provider: None,
         workspace: None,
         call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
-        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+        semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
                     token_types: semantic_tokens::supported_token_types().iter().cloned().collect(),
@@ -71,9 +71,11 @@ pub fn server_capabilities() -> ServerCapabilities {
                 },
 
                 document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
-                ..SemanticTokensOptions::default()
-            },
-        )),
+                range_provider: Some(true),
+                work_done_progress_options: Default::default(),
+            }
+            .into(),
+        ),
         experimental: Default::default(),
     }
 }

@@ -5,8 +5,8 @@ use ra_db::SourceDatabase;
 use ra_ide_db::{defs::NameDefinition, RootDatabase};
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken, TextRange,
-    WalkEvent, T,
+    ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken,
+    TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
@@ -67,8 +67,13 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
+pub(crate) fn highlight(
+    db: &RootDatabase,
+    file_id: FileId,
+    range: Option<TextRange>,
+) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
+
     let parse = db.parse(file_id);
     let root = parse.tree().syntax().clone();
 
@@ -79,22 +84,56 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
     let mut in_macro_call = None;
 
+    // Determine the root based on the given range.
+    let (root, highlight_range) = if let Some(range) = range {
+        let root = match root.covering_element(range) {
+            NodeOrToken::Node(node) => node,
+            NodeOrToken::Token(token) => token.parent(),
+        };
+        (root, range)
+    } else {
+        (root.clone(), root.text_range())
+    };
+
     for event in root.preorder_with_tokens() {
         match event {
-            WalkEvent::Enter(node) => match node.kind() {
-                MACRO_CALL => {
-                    in_macro_call = Some(node.clone());
-                    if let Some(range) = highlight_macro(InFile::new(file_id.into(), node)) {
-                        res.push(HighlightedRange { range, tag: tags::MACRO, binding_hash: None });
-                    }
+            WalkEvent::Enter(node) => {
+                if node.text_range().intersection(&highlight_range).is_none() {
+                    continue;
                 }
-                _ if in_macro_call.is_some() => {
-                    if let Some(token) = node.as_token() {
-                        if let Some((tag, binding_hash)) = highlight_token_tree(
+
+                match node.kind() {
+                    MACRO_CALL => {
+                        in_macro_call = Some(node.clone());
+                        if let Some(range) = highlight_macro(InFile::new(file_id.into(), node)) {
+                            res.push(HighlightedRange {
+                                range,
+                                tag: tags::MACRO,
+                                binding_hash: None,
+                            });
+                        }
+                    }
+                    _ if in_macro_call.is_some() => {
+                        if let Some(token) = node.as_token() {
+                            if let Some((tag, binding_hash)) = highlight_token_tree(
+                                &mut sb,
+                                &analyzer,
+                                &mut bindings_shadow_count,
+                                InFile::new(file_id.into(), token.clone()),
+                            ) {
+                                res.push(HighlightedRange {
+                                    range: node.text_range(),
+                                    tag,
+                                    binding_hash,
+                                });
+                            }
+                        }
+                    }
+                    _ => {
+                        if let Some((tag, binding_hash)) = highlight_node(
                             &mut sb,
-                            &analyzer,
                             &mut bindings_shadow_count,
-                            InFile::new(file_id.into(), token.clone()),
+                            InFile::new(file_id.into(), node.clone()),
                         ) {
                             res.push(HighlightedRange {
                                 range: node.text_range(),
@@ -104,17 +143,12 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         }
                     }
                 }
-                _ => {
-                    if let Some((tag, binding_hash)) = highlight_node(
-                        &mut sb,
-                        &mut bindings_shadow_count,
-                        InFile::new(file_id.into(), node.clone()),
-                    ) {
-                        res.push(HighlightedRange { range: node.text_range(), tag, binding_hash });
-                    }
-                }
-            },
+            }
             WalkEvent::Leave(node) => {
+                if node.text_range().intersection(&highlight_range).is_none() {
+                    continue;
+                }
+
                 if let Some(m) = in_macro_call.as_ref() {
                     if *m == node {
                         in_macro_call = None;
@@ -265,7 +299,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let mut ranges = highlight(db, file_id);
+    let mut ranges = highlight(db, file_id, None);
     ranges.sort_by_key(|it| it.range.start());
     // quick non-optimal heuristic to intersect token ranges and highlighted ranges
     let mut frontier = 0;
@@ -374,7 +408,10 @@ mod tests {
 
     use test_utils::{assert_eq_text, project_dir, read_text};
 
-    use crate::mock_analysis::{single_file, MockAnalysis};
+    use crate::{
+        mock_analysis::{single_file, MockAnalysis},
+        FileRange, TextRange,
+    };
 
     #[test]
     fn test_highlighting() {
@@ -474,5 +511,27 @@ fn bar() {
         // let t = std::time::Instant::now();
         let _ = host.analysis().highlight(file_id).unwrap();
         // eprintln!("elapsed: {:?}", t.elapsed());
+    }
+
+    #[test]
+    fn test_ranges() {
+        let (analysis, file_id) = single_file(
+            r#"
+            #[derive(Clone, Debug)]
+            struct Foo {
+                pub x: i32,
+                pub y: i32,
+            }"#,
+        );
+
+        // The "x"
+        let highlights = &analysis
+            .highlight_range(FileRange {
+                file_id,
+                range: TextRange::offset_len(82.into(), 1.into()),
+            })
+            .unwrap();
+
+        assert_eq!(highlights[0].tag, "field");
     }
 }
