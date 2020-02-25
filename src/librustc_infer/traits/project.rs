@@ -100,10 +100,6 @@ impl<'tcx> ProjectionCache<'tcx> {
         self.map.rollback_to(snapshot.snapshot);
     }
 
-    pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_placeholders());
-    }
-
     pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
         self.map.commit(snapshot.snapshot);
     }

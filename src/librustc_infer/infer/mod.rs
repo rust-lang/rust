@@ -376,6 +376,10 @@ where
             self.logs.push(undo.into())
         }
     }
+    fn clear(&mut self) {
+        self.logs.clear();
+        self.num_open_snapshots = 0;
+    }
     fn extend<J>(&mut self, undos: J)
     where
         Self: Sized,
