@@ -1222,7 +1222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     let rptr_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
                     debug!("check_pat_ref: demanding {:?} = {:?}", expected, rptr_ty);
-                    let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
+                    let err = self.demand_eqtype_pat_diag(pat.span, expected, rptr_ty, ti);
 
                     // Look for a case like `fn foo(&foo: u32)` and suggest
                     // `fn foo(foo: &u32)`
