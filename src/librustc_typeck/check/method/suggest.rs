@@ -696,6 +696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         item_name,
                         source,
                         out_of_scope_traits,
+                        &unsatisfied_predicates,
                     );
                 }
 
@@ -895,6 +896,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: ast::Ident,
         source: SelfSource<'b>,
         valid_out_of_scope_traits: Vec<DefId>,
+        unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
     ) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
@@ -915,7 +917,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                (type_is_local || info.def_id.is_local())
+                !unsatisfied_predicates.iter().any(|(p, _)| match p {
+                    // Hide traits if they are present in predicates as they can be fixed without
+                    // having to implement them.
+                    ty::Predicate::Trait(t, _) => t.def_id() != info.def_id,
+                    ty::Predicate::Projection(p) => p.item_def_id() != info.def_id,
+                    _ => true,
+                }) && (type_is_local || info.def_id.is_local())
                     && self
                         .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
