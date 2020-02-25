@@ -249,7 +249,7 @@ use super::SpecExtend;
 /// [peek\_mut]: #method.peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T, C = MaxCmp> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     data: Vec<T>,
     cmp: C,
@@ -266,33 +266,26 @@ pub trait Compare<T> {
 pub struct MaxCmp;
 
 #[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
-impl<T: Ord> Compare<T> for MaxCmp {
-    fn compare(&self, a: &T, b: &T) -> Option<Ordering> {
-        a.partial_cmp(&b)
+impl<T: Ord> FnOnce<(&T, &T)> for MaxCmp {
+    type Output = Option<Ordering>;
+    extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
     }
 }
 
 #[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
-impl<T, F> Compare<T> for F 
-where F: Fn(&T, &T) -> Option<Ordering> {
-    fn compare(&self, a: &T, b: &T) -> Option<Ordering> {
-        self(a, b)
+impl<T: Ord> FnMut<(&T, &T)> for MaxCmp {
+    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
     }
 }
 
-// /// Wraps an closure and gives various traits such as `Clone`, `Debug`, `Default`
-// #[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
-// #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
-// pub struct FnCmp<F>(pub F);
-
-// #[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
-// impl<T: Ord, F> Compare<T> for FnCmp<F> 
-// where F: Fn(&T, &T) -> Option<Ordering>
-// {
-//     fn compare(&self, a: &T, b: &T) -> Option<Ordering> {
-//         self.0(a, b)
-//     }
-// }
+#[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
+impl<T: Ord> Fn<(&T, &T)> for MaxCmp {
+    extern "rust-call" fn call(&self, args: (&T, &T)) -> Self::Output {
+        args.0.partial_cmp(args.1)
+    }
+}
 
 
 
@@ -306,7 +299,7 @@ where F: Fn(&T, &T) -> Option<Ordering> {
 /// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord, C = MaxCmp>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     heap: &'a mut BinaryHeap<T, C>,
     sift: bool,
@@ -314,7 +307,7 @@ where C: Compare<T>
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: Ord + fmt::Debug, C> fmt::Debug for PeekMut<'_, T, C> 
-where C: Compare<T> + Debug
+where C: Fn(&T, &T) -> Option<Ordering> + Debug
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
@@ -323,7 +316,7 @@ where C: Compare<T> + Debug
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord, C> Drop for PeekMut<'_, T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn drop(&mut self) {
         if self.sift {
@@ -334,7 +327,7 @@ where C: Compare<T>
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord, C> Deref for PeekMut<'_, T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     type Target = T;
     fn deref(&self) -> &T {
@@ -346,7 +339,7 @@ where C: Compare<T>
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord, C> DerefMut for PeekMut<'_, T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn deref_mut(&mut self) -> &mut T {
         debug_assert!(!self.heap.is_empty());
@@ -356,7 +349,7 @@ where C: Compare<T>
 }
 
 impl<'a, T: Ord, C> PeekMut<'a, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
@@ -369,7 +362,7 @@ where C: Compare<T>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, C> Clone for BinaryHeap<T, C> 
-where C: Compare<T> + Clone
+where C: Fn(&T, &T) -> Option<Ordering> + Clone
 {
     fn clone(&self) -> Self {
         BinaryHeap { data: self.data.clone(), cmp: self.cmp.clone() }
@@ -391,7 +384,7 @@ impl<T: Ord> Default for BinaryHeap<T> {
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
 impl<T: fmt::Debug, C> fmt::Debug for BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
@@ -436,7 +429,7 @@ impl<T: Ord> BinaryHeap<T> {
 }
 
 impl<T: Ord, C> BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
@@ -584,7 +577,7 @@ where C: Compare<T>
 
             while hole.pos() > start {
                 let parent = (hole.pos() - 1) / 2;
-                let res = self.cmp.compare(hole.element(), hole.get(parent));
+                let res = (self.cmp)(hole.element(), hole.get(parent));
                 if res == Some(Ordering::Less) || res == Some(Ordering::Equal) {
                     break;
                 }
@@ -603,11 +596,11 @@ where C: Compare<T>
             while child < end {
                 let right = child + 1;
                 // compare with the greater of the two children
-                if right < end && self.cmp.compare(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
+                if right < end && (self.cmp)(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
                     child = right;
                 }
                 // if we are already in order, stop.
-                let res = self.cmp.compare(hole.element(), hole.get(child));
+                let res = (self.cmp)(hole.element(), hole.get(child));
                 if res == Some(Ordering::Greater) || res == Some(Ordering::Equal) {
                         break;
                 }
@@ -636,7 +629,7 @@ where C: Compare<T>
             while child < end {
                 let right = child + 1;
                 // compare with the greater of the two children
-                if right < end && self.cmp.compare(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
+                if right < end && (self.cmp)(hole.get(child), hole.get(right)) != Some(Ordering::Greater) {
                     child = right;
                 }
                 hole.move_to(child);
@@ -738,7 +731,7 @@ where C: Compare<T>
 }
 
 impl<T, C> BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     /// Returns an iterator visiting all values in the underlying vector, in
     /// arbitrary order.
@@ -1218,14 +1211,14 @@ impl<T> FusedIterator for IntoIter<T> {}
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 #[derive(Clone, Debug)]
 pub struct IntoIterSorted<T, C = MaxCmp> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     inner: BinaryHeap<T, C>,
 }
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord, C> Iterator for IntoIterSorted<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     type Item = T;
 
@@ -1243,17 +1236,17 @@ where C: Compare<T>
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord, C: Debug> ExactSizeIterator for IntoIterSorted<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord, C: Debug> FusedIterator for IntoIterSorted<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T: Ord, C: Debug> TrustedLen for IntoIterSorted<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
@@ -1312,14 +1305,14 @@ impl<T> FusedIterator for Drain<'_, T> {}
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 #[derive(Debug)]
 pub struct DrainSorted<'a, T: Ord, C = MaxCmp> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     inner: &'a mut BinaryHeap<T, C>,
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<'a, T: Ord, C> Drop for DrainSorted<'a, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
@@ -1329,7 +1322,7 @@ where C: Compare<T>
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord, C> Iterator for DrainSorted<'_, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     type Item = T;
 
@@ -1347,17 +1340,17 @@ where C: Compare<T>
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord, C> ExactSizeIterator for DrainSorted<'_, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord, C> FusedIterator for DrainSorted<'_, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T: Ord, C> TrustedLen for DrainSorted<'_, T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
@@ -1374,7 +1367,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
 
 #[unstable(feature = "binary_heap_from_vec_cmp", issue = "38886")]
 impl<T: Ord, C> From<(Vec<T>, C)> for BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     /// Converts a `Vec<T>` and comparator into a `BinaryHeap<T>`.
     ///
@@ -1388,7 +1381,7 @@ where C: Compare<T>
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T, C> From<BinaryHeap<T, C>> for Vec<T>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn from(heap: BinaryHeap<T, C>) -> Vec<T> {
         heap.data
@@ -1404,7 +1397,7 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, C> IntoIterator for BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -1434,7 +1427,7 @@ where C: Compare<T>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, C> IntoIterator for &'a BinaryHeap<T, C> 
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -1446,7 +1439,7 @@ where C: Compare<T>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, C> Extend<T> for BinaryHeap<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
@@ -1455,7 +1448,7 @@ where C: Compare<T>
 }
 
 impl<T: Ord, I: IntoIterator<Item = T>, C> SpecExtend<I> for BinaryHeap<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter.into_iter());
@@ -1463,7 +1456,7 @@ where C: Compare<T>
 }
 
 impl<T: Ord, C> SpecExtend<BinaryHeap<T, C>> for BinaryHeap<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn spec_extend(&mut self, ref mut other: BinaryHeap<T, C>) {
         self.append(other);
@@ -1471,7 +1464,7 @@ where C: Compare<T>
 }
 
 impl<T: Ord, C> BinaryHeap<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
@@ -1485,7 +1478,7 @@ where C: Compare<T>
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy, C> Extend<&'a T> for BinaryHeap<T, C>
-where C: Compare<T>
+where C: Fn(&T, &T) -> Option<Ordering>
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
