@@ -43,15 +43,35 @@ pub fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
 
 pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
     let block = block.block()?;
-    let expr = block.expr()?;
-    let non_trivial_children = block.syntax().children().filter(|it| match it.kind() {
-        WHITESPACE | T!['{'] | T!['}'] => false,
-        _ => it != expr.syntax(),
-    });
-    if non_trivial_children.count() > 0 {
-        return None;
+    let has_anything_else = |thing: &SyntaxNode| -> bool {
+        let mut non_trivial_children =
+            block.syntax().children_with_tokens().filter(|it| match it.kind() {
+                WHITESPACE | T!['{'] | T!['}'] => false,
+                _ => it.as_node() != Some(thing),
+            });
+        non_trivial_children.next().is_some()
+    };
+
+    if let Some(expr) = block.expr() {
+        if has_anything_else(expr.syntax()) {
+            return None;
+        }
+        return Some(expr);
+    } else {
+        // Unwrap `{ continue; }`
+        let (stmt,) = block.statements().next_tuple()?;
+        if has_anything_else(stmt.syntax()) {
+            return None;
+        }
+        if let ast::Stmt::ExprStmt(expr_stmt) = stmt {
+            let expr = expr_stmt.expr()?;
+            match expr.syntax().kind() {
+                CONTINUE_EXPR | BREAK_EXPR | RETURN_EXPR => return Some(expr),
+                _ => (),
+            }
+        }
     }
-    Some(expr)
+    None
 }
 
 pub fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {

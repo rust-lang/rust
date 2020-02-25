@@ -32,6 +32,7 @@ module.exports = {
         "@typescript-eslint/semi": [
             "error",
             "always"
-        ]
+        ],
+        "@typescript-eslint/no-unnecessary-type-assertion": "error"
     }
 };

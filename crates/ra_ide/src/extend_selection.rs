@@ -145,25 +145,25 @@ fn extend_tokens_from_range(
     let src = db.parse_or_expand(expanded.file_id)?;
     let parent = shallowest_node(&find_covering_element(&src, expanded.value))?.parent()?;
 
-    let validate = |token: SyntaxToken| {
+    let validate = |token: &SyntaxToken| {
         let node = descend_into_macros(db, file_id, token.clone());
-        if node.file_id == expanded.file_id
+        node.file_id == expanded.file_id
             && node.value.text_range().is_subrange(&parent.text_range())
-        {
-            Some(token)
-        } else {
-            None
-        }
     };
 
     // Find the first and last text range under expanded parent
     let first = successors(Some(first_token), |token| {
-        validate(skip_whitespace(token.prev_token()?, Direction::Prev)?)
+        let token = token.prev_token()?;
+        skip_whitespace(token, Direction::Prev)
     })
+    .take_while(validate)
     .last()?;
+
     let last = successors(Some(last_token), |token| {
-        validate(skip_whitespace(token.next_token()?, Direction::Next)?)
+        let token = token.next_token()?;
+        skip_whitespace(token, Direction::Next)
     })
+    .take_while(validate)
     .last()?;
 
     let range = union_range(first.text_range(), last.text_range());
@@ -334,9 +334,11 @@ fn adj_comments(comment: &ast::Comment, dir: Direction) -> ast::Comment {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mock_analysis::single_file;
     use test_utils::extract_offset;
+
+    use crate::mock_analysis::single_file;
+
+    use super::*;
 
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);

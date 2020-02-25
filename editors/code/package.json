@@ -42,7 +42,7 @@
         "eslint": "^6.8.0",
         "rollup": "^1.31.1",
         "tslib": "^1.10.0",
-        "typescript": "^3.7.5",
+        "typescript": "^3.8.2",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.73.0"
     },

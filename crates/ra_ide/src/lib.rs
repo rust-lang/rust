@@ -75,7 +75,7 @@ pub use crate::{
     runnables::{Runnable, RunnableKind, TestId},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     ssr::SsrError,
-    syntax_highlighting::HighlightedRange,
+    syntax_highlighting::{tags, HighlightedRange},
 };
 
 pub use hir::Documentation;

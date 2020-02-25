@@ -16,8 +16,9 @@ use lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, CompletionItem,
     Diagnostic, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    PrepareRenameResponse, Range, RenameParams, SemanticTokenModifier, SemanticTokenType,
+    SemanticTokens, SemanticTokensParams, SemanticTokensResult, SymbolInformation,
+    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
@@ -38,6 +39,7 @@ use crate::{
     diagnostics::DiagnosticTask,
     from_json,
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
+    semantic_tokens::SemanticTokensBuilder,
     world::WorldSnapshot,
     LspError, Result,
 };
@@ -1067,4 +1069,26 @@ pub fn handle_call_hierarchy_outgoing(
     }
 
     Ok(Some(res))
+}
+
+pub fn handle_semantic_tokens(
+    world: WorldSnapshot,
+    params: SemanticTokensParams,
+) -> Result<Option<SemanticTokensResult>> {
+    let _p = profile("handle_semantic_tokens");
+
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+
+    let mut builder = SemanticTokensBuilder::default();
+
+    for h in world.analysis().highlight(file_id)?.into_iter() {
+        let type_and_modifiers: (SemanticTokenType, Vec<SemanticTokenModifier>) = h.tag.conv();
+        let (token_type, token_modifiers) = type_and_modifiers.conv();
+        builder.push(h.range.conv_with(&line_index), token_type, token_modifiers);
+    }
+
+    let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
+
+    Ok(Some(tokens.into()))
 }

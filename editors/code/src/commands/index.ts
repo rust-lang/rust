@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 import * as sourceChange from '../source_change';
@@ -16,9 +17,7 @@ export * from './ssr';
 export * from './server_version';
 
 export function collectGarbage(ctx: Ctx): Cmd {
-    return async () => {
-        await ctx.client?.sendRequest<null>('rust-analyzer/collectGarbage', null);
-    };
+    return async () => ctx.client.sendRequest(ra.collectGarbage, null);
 }
 
 export function showReferences(ctx: Ctx): Cmd {
@@ -36,13 +35,13 @@ export function showReferences(ctx: Ctx): Cmd {
 }
 
 export function applySourceChange(ctx: Ctx): Cmd {
-    return async (change: sourceChange.SourceChange) => {
+    return async (change: ra.SourceChange) => {
         await sourceChange.applySourceChange(ctx, change);
     };
 }
 
 export function selectAndApplySourceChange(ctx: Ctx): Cmd {
-    return async (changes: sourceChange.SourceChange[]) => {
+    return async (changes: ra.SourceChange[]) => {
         if (changes.length === 1) {
             await sourceChange.applySourceChange(ctx, changes[0]);
         } else if (changes.length > 0) {

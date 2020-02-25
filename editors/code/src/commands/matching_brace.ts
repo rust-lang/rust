@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 
@@ -9,16 +9,12 @@ export function matchingBrace(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const request: FindMatchingBraceParams = {
+        const response = await client.sendRequest(ra.findMatchingBrace, {
             textDocument: { uri: editor.document.uri.toString() },
             offsets: editor.selections.map(s =>
                 client.code2ProtocolConverter.asPosition(s.active),
             ),
-        };
-        const response = await client.sendRequest<lc.Position[]>(
-            'rust-analyzer/findMatchingBrace',
-            request,
-        );
+        });
         editor.selections = editor.selections.map((sel, idx) => {
             const active = client.protocol2CodeConverter.asPosition(
                 response[idx],
@@ -28,9 +24,4 @@ export function matchingBrace(ctx: Ctx): Cmd {
         });
         editor.revealRange(editor.selection);
     };
-}
-
-interface FindMatchingBraceParams {
-    textDocument: lc.TextDocumentIdentifier;
-    offsets: lc.Position[];
 }

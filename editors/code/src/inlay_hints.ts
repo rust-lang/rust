@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from './rust-analyzer-api';
 
 import { Ctx } from './ctx';
 import { log, sendRequestWithRetry } from './util';
@@ -37,16 +37,6 @@ export function activateInlayHints(ctx: Ctx) {
     // XXX: we don't await this, thus Promise rejections won't be handled, but
     // this should never throw in fact...
     void hintsUpdater.setEnabled(ctx.config.displayInlayHints);
-}
-
-interface InlayHintsParams {
-    textDocument: lc.TextDocumentIdentifier;
-}
-
-interface InlayHint {
-    range: vscode.Range;
-    kind: "TypeHint" | "ParameterHint";
-    label: string;
 }
 
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
@@ -107,9 +97,9 @@ class HintsUpdater {
         if (newHints == null) return;
 
         const newTypeDecorations = newHints
-            .filter(hint => hint.kind === 'TypeHint')
+            .filter(hint => hint.kind === ra.InlayKind.TypeHint)
             .map(hint => ({
-                range: hint.range,
+                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
                 renderOptions: {
                     after: {
                         contentText: `: ${hint.label}`,
@@ -119,9 +109,9 @@ class HintsUpdater {
         this.setTypeDecorations(editor, newTypeDecorations);
 
         const newParameterDecorations = newHints
-            .filter(hint => hint.kind === 'ParameterHint')
+            .filter(hint => hint.kind === ra.InlayKind.ParameterHint)
             .map(hint => ({
-                range: hint.range,
+                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
                 renderOptions: {
                     before: {
                         contentText: `${hint.label}: `,
@@ -151,20 +141,15 @@ class HintsUpdater {
         );
     }
 
-    private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
+    private async queryHints(documentUri: string): Promise<ra.InlayHint[] | null> {
         this.pending.get(documentUri)?.cancel();
 
         const tokenSource = new vscode.CancellationTokenSource();
         this.pending.set(documentUri, tokenSource);
 
-        const request: InlayHintsParams = { textDocument: { uri: documentUri } };
+        const request = { textDocument: { uri: documentUri } };
 
-        return sendRequestWithRetry<InlayHint[]>(
-            this.ctx.client,
-            'rust-analyzer/inlayHints',
-            request,
-            tokenSource.token
-        )
+        return sendRequestWithRetry(this.ctx.client, ra.inlayHints, request, tokenSource.token)
             .catch(_ => null)
             .finally(() => {
                 if (!tokenSource.token.isCancellationRequested) {

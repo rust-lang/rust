@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 
@@ -14,16 +15,13 @@ export function run(ctx: Ctx): Cmd {
         const textDocument: lc.TextDocumentIdentifier = {
             uri: editor.document.uri.toString(),
         };
-        const params: RunnablesParams = {
+
+        const runnables = await client.sendRequest(ra.runnables, {
             textDocument,
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
-        };
-        const runnables = await client.sendRequest<Runnable[]>(
-            'rust-analyzer/runnables',
-            params,
-        );
+        });
         const items: RunnableQuickPick[] = [];
         if (prevRunnable) {
             items.push(prevRunnable);
@@ -48,7 +46,7 @@ export function run(ctx: Ctx): Cmd {
 }
 
 export function runSingle(ctx: Ctx): Cmd {
-    return async (runnable: Runnable) => {
+    return async (runnable: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
@@ -64,26 +62,13 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
-interface RunnablesParams {
-    textDocument: lc.TextDocumentIdentifier;
-    position?: lc.Position;
-}
-
-interface Runnable {
-    label: string;
-    bin: string;
-    args: string[];
-    env: { [index: string]: string };
-    cwd?: string;
-}
-
 class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
     public detail?: string | undefined;
     public picked?: boolean | undefined;
 
-    constructor(public runnable: Runnable) {
+    constructor(public runnable: ra.Runnable) {
         this.label = runnable.label;
     }
 }
@@ -96,7 +81,7 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-function createTask(spec: Runnable): vscode.Task {
+function createTask(spec: ra.Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     const definition: CargoTaskDefinition = {
         type: 'cargo',

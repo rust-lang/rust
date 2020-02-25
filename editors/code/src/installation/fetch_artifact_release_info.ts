@@ -4,41 +4,61 @@ import { log } from "../util";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
-
 /**
- * Fetches the release with `releaseTag` (or just latest release when not specified)
- * from GitHub `repo` and returns metadata about `artifactFileName` shipped with
- * this release or `null` if no such artifact was published.
+ * Fetches the release with `releaseTag` from GitHub `repo` and
+ * returns metadata about `artifactFileName` shipped with
+ * this release.
+ *
+ * @throws Error upon network failure or if no such repository, release, or artifact exists.
  */
 export async function fetchArtifactReleaseInfo(
-    repo: GithubRepo, artifactFileName: string, releaseTag?: string
-): Promise<null | ArtifactReleaseInfo> {
+    repo: GithubRepo,
+    artifactFileName: string,
+    releaseTag: string
+): Promise<ArtifactReleaseInfo> {
 
     const repoOwner = encodeURIComponent(repo.owner);
     const repoName = encodeURIComponent(repo.name);
 
-    const apiEndpointPath = releaseTag
-        ? `/repos/${repoOwner}/${repoName}/releases/tags/${releaseTag}`
-        : `/repos/${repoOwner}/${repoName}/releases/latest`;
+    const apiEndpointPath = `/repos/${repoOwner}/${repoName}/releases/tags/${releaseTag}`;
 
     const requestUrl = GITHUB_API_ENDPOINT_URL + apiEndpointPath;
 
-    // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
-
     log.debug("Issuing request for released artifacts metadata to", requestUrl);
 
-    // FIXME: handle non-ok response
-    const response: GithubRelease = await fetch(requestUrl, {
-        headers: { Accept: "application/vnd.github.v3+json" }
-    })
-        .then(res => res.json());
+    const response = await fetch(requestUrl, { headers: { Accept: "application/vnd.github.v3+json" } });
 
-    const artifact = response.assets.find(artifact => artifact.name === artifactFileName);
+    if (!response.ok) {
+        log.error("Error fetching artifact release info", {
+            requestUrl,
+            releaseTag,
+            artifactFileName,
+            response: {
+                headers: response.headers,
+                status: response.status,
+                body: await response.text(),
+            }
+        });
 
-    if (!artifact) return null;
+        throw new Error(
+            `Got response ${response.status} when trying to fetch ` +
+            `"${artifactFileName}" artifact release info for ${releaseTag} release`
+        );
+    }
+
+    // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
+    const release: GithubRelease = await response.json();
+
+    const artifact = release.assets.find(artifact => artifact.name === artifactFileName);
+
+    if (!artifact) {
+        throw new Error(
+            `Artifact ${artifactFileName} was not found in ${release.name} release!`
+        );
+    }
 
     return {
-        releaseName: response.name,
+        releaseName: release.name,
         downloadUrl: artifact.browser_download_url
     };
 

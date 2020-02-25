@@ -4,11 +4,12 @@
 use lsp_types::{
     self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,
     Location, LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp,
-    SymbolKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem,
-    TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
+    SemanticTokenModifier, SemanticTokenType, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
+    WorkspaceEdit,
 };
 use ra_ide::{
-    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
+    tags, translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
     FileRange, FileSystemEdit, Fold, FoldKind, InsertTextFormat, LineCol, LineIndex,
     NavigationTarget, RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
@@ -16,7 +17,7 @@ use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_vfs::LineEndings;
 
-use crate::{req, world::WorldSnapshot, Result};
+use crate::{req, semantic_tokens, world::WorldSnapshot, Result};
 
 pub trait Conv {
     type Output;
@@ -299,6 +300,76 @@ impl ConvWith<&FoldConvCtx<'_>> for Fold {
                 kind,
             }
         }
+    }
+}
+
+impl Conv for &'static str {
+    type Output = (SemanticTokenType, Vec<SemanticTokenModifier>);
+
+    fn conv(self) -> (SemanticTokenType, Vec<SemanticTokenModifier>) {
+        let token_type: SemanticTokenType = match self {
+            tags::FIELD => SemanticTokenType::MEMBER,
+            tags::FUNCTION => SemanticTokenType::FUNCTION,
+            tags::MODULE => SemanticTokenType::NAMESPACE,
+            tags::CONSTANT => {
+                return (
+                    SemanticTokenType::VARIABLE,
+                    vec![SemanticTokenModifier::STATIC, SemanticTokenModifier::READONLY],
+                )
+            }
+            tags::MACRO => SemanticTokenType::MACRO,
+
+            tags::VARIABLE => {
+                return (SemanticTokenType::VARIABLE, vec![SemanticTokenModifier::READONLY])
+            }
+            tags::VARIABLE_MUT => SemanticTokenType::VARIABLE,
+
+            tags::TYPE => SemanticTokenType::TYPE,
+            tags::TYPE_BUILTIN => SemanticTokenType::TYPE,
+            tags::TYPE_SELF => {
+                return (SemanticTokenType::TYPE, vec![SemanticTokenModifier::REFERENCE])
+            }
+            tags::TYPE_PARAM => SemanticTokenType::TYPE_PARAMETER,
+            tags::TYPE_LIFETIME => {
+                return (SemanticTokenType::LABEL, vec![SemanticTokenModifier::REFERENCE])
+            }
+
+            tags::LITERAL_BYTE => SemanticTokenType::NUMBER,
+            tags::LITERAL_NUMERIC => SemanticTokenType::NUMBER,
+            tags::LITERAL_CHAR => SemanticTokenType::NUMBER,
+
+            tags::LITERAL_COMMENT => {
+                return (SemanticTokenType::COMMENT, vec![SemanticTokenModifier::DOCUMENTATION])
+            }
+
+            tags::LITERAL_STRING => SemanticTokenType::STRING,
+            tags::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
+
+            tags::KEYWORD => SemanticTokenType::KEYWORD,
+            tags::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
+            tags::KEYWORD_CONTROL => SemanticTokenType::KEYWORD,
+            unknown => panic!("Unknown semantic token: {}", unknown),
+        };
+
+        (token_type, vec![])
+    }
+}
+
+impl Conv for (SemanticTokenType, Vec<SemanticTokenModifier>) {
+    type Output = (u32, u32);
+
+    fn conv(self) -> Self::Output {
+        let token_index =
+            semantic_tokens::supported_token_types().iter().position(|it| *it == self.0).unwrap();
+        let mut token_modifier_bitset = 0;
+        for modifier in self.1.iter() {
+            token_modifier_bitset |= semantic_tokens::supported_token_modifiers()
+                .iter()
+                .position(|it| it == modifier)
+                .unwrap();
+        }
+
+        (token_index as u32, token_modifier_bitset as u32)
     }
 }
 
