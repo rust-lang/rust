@@ -125,7 +125,7 @@ impl NavigationTarget {
     }
 
     /// Allows `NavigationTarget` to be created from a `NameOwner`
-    pub(crate) fn from_named(
+    fn from_named(
         db: &RootDatabase,
         node: InFile<&dyn ast::NameOwner>,
         docs: Option<String>,
