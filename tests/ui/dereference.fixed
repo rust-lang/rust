@@ -18,21 +18,21 @@ fn main() {
 
     // these should require linting
 
-    let b: &str = a.deref();
+    let b: &str = &*a;
 
-    let b: &mut str = a.deref_mut();
+    let b: &mut str = &mut *a;
 
     // both derefs should get linted here
-    let b: String = format!("{}, {}", a.deref(), a.deref());
+    let b: String = format!("{}, {}", &*a, &*a);
 
-    println!("{}", a.deref());
+    println!("{}", &*a);
 
     #[allow(clippy::match_single_binding)]
-    match a.deref() {
+    match &*a {
         _ => (),
     }
 
-    let b: String = concat(a.deref());
+    let b: String = concat(&*a);
 
     // following should not require linting
 
