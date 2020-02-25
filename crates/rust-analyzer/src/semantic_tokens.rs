@@ -1,3 +1,5 @@
+//! Semantic Tokens helpers
+
 use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
 const SUPPORTED_TYPES: &[SemanticTokenType] = &[
@@ -36,14 +38,19 @@ const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     SemanticTokenModifier::READONLY,
 ];
 
+/// Token types that the server supports
 pub(crate) fn supported_token_types() -> &'static [SemanticTokenType] {
     SUPPORTED_TYPES
 }
 
+/// Token modifiers that the server supports
 pub(crate) fn supported_token_modifiers() -> &'static [SemanticTokenModifier] {
     SUPPORTED_MODIFIERS
 }
 
+/// Tokens are encoded relative to each other.
+/// 
+/// This is a direct port of https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45
 #[derive(Default)]
 pub(crate) struct SemanticTokensBuilder {
     prev_line: u32,
@@ -52,6 +59,7 @@ pub(crate) struct SemanticTokensBuilder {
 }
 
 impl SemanticTokensBuilder {
+    /// Push a new token onto the builder
     pub fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
         let mut push_line = range.start.line as u32;
         let mut push_char = range.start.character as u32;
