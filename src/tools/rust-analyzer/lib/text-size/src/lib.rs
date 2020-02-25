@@ -301,8 +301,8 @@ impl TextRange {
 
     // BREAK: pass by value
     #[inline(always)]
-    /// The smallest convex set that contains both ranges
-    pub fn convex_hull(&self, other: &TextRange) -> TextRange {
+    /// The smallest range that contains both ranges
+    pub fn extend_to(&self, other: &TextRange) -> TextRange {
         let start = self.start().min(other.start());
         let end = self.end().max(other.end());
         TextRange::from_to(start, end)
@@ -443,10 +443,10 @@ mod tests {
     }
 
     #[test]
-    fn check_convex_hull() {
-        assert_eq!(r(1, 2).convex_hull(&r(2, 3)), r(1, 3));
-        assert_eq!(r(1, 5).convex_hull(&r(2, 3)), r(1, 5));
-        assert_eq!(r(1, 2).convex_hull(&r(4, 5)), r(1, 5));
+    fn check_extend_to() {
+        assert_eq!(r(1, 2).extend_to(&r(2, 3)), r(1, 3));
+        assert_eq!(r(1, 5).extend_to(&r(2, 3)), r(1, 5));
+        assert_eq!(r(1, 2).extend_to(&r(4, 5)), r(1, 5));
     }
 
     #[test]
