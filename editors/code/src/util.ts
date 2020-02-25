@@ -20,21 +20,21 @@ export const log = {
     }
 };
 
-export async function sendRequestWithRetry<R>(
+export async function sendRequestWithRetry<TParam, TRet>(
     client: lc.LanguageClient,
-    method: string,
-    param: unknown,
+    reqType: lc.RequestType<TParam, TRet, unknown>,
+    param: TParam,
     token?: vscode.CancellationToken,
-): Promise<R> {
+): Promise<TRet> {
     for (const delay of [2, 4, 6, 8, 10, null]) {
         try {
             return await (token
-                ? client.sendRequest(method, param, token)
-                : client.sendRequest(method, param)
+                ? client.sendRequest(reqType, param, token)
+                : client.sendRequest(reqType, param)
             );
         } catch (error) {
             if (delay === null) {
-                log.error("LSP request timed out", { method, param, error });
+                log.error("LSP request timed out", { method: reqType.method, param, error });
                 throw error;
             }
 
@@ -43,7 +43,7 @@ export async function sendRequestWithRetry<R>(
             }
 
             if (error.code !== lc.ErrorCodes.ContentModified) {
-                log.error("LSP request failed", { method, param, error });
+                log.error("LSP request failed", { method: reqType.method, param, error });
                 throw error;
             }
 

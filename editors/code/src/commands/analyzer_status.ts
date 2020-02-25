@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import * as ra from '../rust-analyzer-api';
 import { Ctx, Cmd } from '../ctx';
 
 // Shows status of rust-analyzer (for debugging)
@@ -50,10 +51,7 @@ class TextDocumentContentProvider
         const client = this.ctx.client;
         if (!editor || !client) return '';
 
-        return client.sendRequest<string>(
-            'rust-analyzer/analyzerStatus',
-            null,
-        );
+        return client.sendRequest(ra.analyzerStatus, null);
     }
 
     get onDidChange(): vscode.Event<vscode.Uri> {

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from './rust-analyzer-api';
 
 import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
@@ -8,29 +8,25 @@ import { sendRequestWithRetry } from './util';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
-    const client = ctx.client;
-    if (client != null) {
-        client.onNotification(
-            'rust-analyzer/publishDecorations',
-            (params: PublishDecorationsParams) => {
-                if (!ctx.config.highlightingOn) return;
 
-                const targetEditor = vscode.window.visibleTextEditors.find(
-                    editor => {
-                        const unescapedUri = unescape(
-                            editor.document.uri.toString(),
-                        );
-                        // Unescaped URI looks like:
-                        // file:///c:/Workspace/ra-test/src/main.rs
-                        return unescapedUri === params.uri;
-                    },
+    ctx.client.onNotification(ra.publishDecorations, params => {
+        if (!ctx.config.highlightingOn) return;
+
+        const targetEditor = vscode.window.visibleTextEditors.find(
+            editor => {
+                const unescapedUri = unescape(
+                    editor.document.uri.toString(),
                 );
-                if (!targetEditor) return;
-
-                highlighter.setHighlights(targetEditor, params.decorations);
+                // Unescaped URI looks like:
+                // file:///c:/Workspace/ra-test/src/main.rs
+                return unescapedUri === params.uri;
             },
         );
-    }
+        if (!targetEditor) return;
+
+        highlighter.setHighlights(targetEditor, params.decorations);
+    });
+
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),
@@ -45,30 +41,16 @@ export function activateHighlighting(ctx: Ctx) {
             const client = ctx.client;
             if (!client) return;
 
-            const params: lc.TextDocumentIdentifier = {
-                uri: editor.document.uri.toString(),
-            };
-            const decorations = await sendRequestWithRetry<Decoration[]>(
+            const decorations = await sendRequestWithRetry(
                 client,
-                'rust-analyzer/decorationsRequest',
-                params,
+                ra.decorationsRequest,
+                { uri: editor.document.uri.toString() },
             );
             highlighter.setHighlights(editor, decorations);
         },
         null,
         ctx.subscriptions,
     );
-}
-
-interface PublishDecorationsParams {
-    uri: string;
-    decorations: Decoration[];
-}
-
-interface Decoration {
-    range: lc.Range;
-    tag: string;
-    bindingHash?: string;
 }
 
 // Based on this HSL-based color generator: https://gist.github.com/bendc/76c48ce53299e6078a76
@@ -108,7 +90,7 @@ class Highlighter {
         this.decorations = null;
     }
 
-    public setHighlights(editor: vscode.TextEditor, highlights: Decoration[]) {
+    public setHighlights(editor: vscode.TextEditor, highlights: ra.Decoration[]) {
         const client = this.ctx.client;
         if (!client) return;
         // Initialize decorations if necessary

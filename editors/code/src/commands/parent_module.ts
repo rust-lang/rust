@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 
@@ -9,16 +9,12 @@ export function parentModule(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const request: lc.TextDocumentPositionParams = {
+        const response = await client.sendRequest(ra.parentModule, {
             textDocument: { uri: editor.document.uri.toString() },
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
-        };
-        const response = await client.sendRequest<lc.Location[]>(
-            'rust-analyzer/parentModule',
-            request,
-        );
+        });
         const loc = response[0];
         if (loc == null) return;
 

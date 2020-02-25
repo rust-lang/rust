@@ -1,7 +1,7 @@
-import * as lc from 'vscode-languageclient';
+import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
-import { applySourceChange, SourceChange } from '../source_change';
+import { applySourceChange } from '../source_change';
 
 export function joinLines(ctx: Ctx): Cmd {
     return async () => {
@@ -9,19 +9,10 @@ export function joinLines(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const request: JoinLinesParams = {
+        const change = await client.sendRequest(ra.joinLines, {
             range: client.code2ProtocolConverter.asRange(editor.selection),
             textDocument: { uri: editor.document.uri.toString() },
-        };
-        const change = await client.sendRequest<SourceChange>(
-            'rust-analyzer/joinLines',
-            request,
-        );
+        });
         await applySourceChange(ctx, change);
     };
-}
-
-interface JoinLinesParams {
-    textDocument: lc.TextDocumentIdentifier;
-    range: lc.Range;
 }

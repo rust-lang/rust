@@ -1,15 +1,10 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as ra from './rust-analyzer-api';
 
 import { Ctx } from './ctx';
 
-export interface SourceChange {
-    label: string;
-    workspaceEdit: lc.WorkspaceEdit;
-    cursorPosition?: lc.TextDocumentPositionParams;
-}
-
-export async function applySourceChange(ctx: Ctx, change: SourceChange) {
+export async function applySourceChange(ctx: Ctx, change: ra.SourceChange) {
     const client = ctx.client;
     if (!client) return;
 
