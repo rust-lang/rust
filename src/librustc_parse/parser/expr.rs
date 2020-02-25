@@ -628,26 +628,17 @@ impl<'a> Parser<'a> {
         &mut self,
         cast_expr: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::Hasher;
-        // Hash the memory location of expr before parsing any following postfix operators.
-        // This will be compared with the hash of the output expression.
+        // Save the memory location of expr before parsing any following postfix operators.
+        // This will be compared with the memory location of the output expression.
         // If they different we can assume we parsed another expression because the existing expression is not reallocated.
-        let mut before_hasher = DefaultHasher::new();
-        std::ptr::hash(&*cast_expr, &mut before_hasher);
-        let before_hash = before_hasher.finish();
+        let addr_before = &*cast_expr as *const _ as usize;
         let span = cast_expr.span;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
-
-        let mut after_hasher = DefaultHasher::new();
-        std::ptr::hash(&*with_postfix, &mut after_hasher);
-        let after_hash = after_hasher.finish();
+        let changed = addr_before != &*with_postfix as *const _ as usize;
 
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _))
-            || after_hash != before_hash
-        {
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
             let msg = format!(
                 "casts cannot be followed by {}",
                 match with_postfix.kind {
@@ -661,7 +652,7 @@ impl<'a> Parser<'a> {
                 }
             );
             let mut err = self.struct_span_err(span, &msg);
-            // if type ascription is "likely an error", the user will already be getting a useful
+            // If type ascription is "likely an error", the user will already be getting a useful
             // help message, and doesn't need a second.
             if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
                 self.maybe_annotate_with_ascription(&mut err, false);
