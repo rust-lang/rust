@@ -59,9 +59,8 @@ impl<'a> Parser<'a> {
         } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
-        }
-        // Do not attempt to parse an expression if we're done here.
-        else if self.token == token::Semi {
+        } else if self.token == token::Semi {
+            // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(&attrs);
             self.bump();
             let mut last_semi = lo;
