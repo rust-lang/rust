@@ -918,7 +918,6 @@ pub struct CombinedSnapshot<'a, 'tcx> {
     region_obligations_snapshot: usize,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
-    was_skip_leak_check: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
@@ -1056,7 +1055,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot: inner.region_obligations.len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
-            was_skip_leak_check: self.skip_leak_check.get(),
             // Borrow tables "in progress" (i.e., during typeck)
             // to ban writes from within a snapshot to them.
             _in_progress_tables: self.in_progress_tables.map(|tables| tables.borrow()),
@@ -1070,13 +1068,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot,
             universe,
             was_in_snapshot,
-            was_skip_leak_check,
             _in_progress_tables,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
-        self.skip_leak_check.set(was_skip_leak_check);
 
         let InferCtxtInner {
             type_variables,
@@ -1110,12 +1106,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot: _,
             universe: _,
             was_in_snapshot,
-            was_skip_leak_check,
             _in_progress_tables,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
-        self.skip_leak_check.set(was_skip_leak_check);
 
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.commit(undo_snapshot);
@@ -1183,10 +1177,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
-        let skip_leak_check = should_skip || self.skip_leak_check.get();
-        self.skip_leak_check.set(skip_leak_check);
+        let was_skip_leak_check = self.skip_leak_check.get();
+        if should_skip {
+            self.skip_leak_check.set(true);
+        }
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
+        self.skip_leak_check.set(was_skip_leak_check);
         r
     }
 
