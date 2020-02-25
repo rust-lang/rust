@@ -5,7 +5,7 @@ use self::RecursiveTypeDescription::*;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, span_start, DIB,
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
 };
 use super::CrateDebugContext;
 
@@ -2280,10 +2280,10 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let span = tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if !span.is_dummy() {
-        let loc = span_start(cx, span);
-        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
+        let loc = cx.lookup_debug_loc(span.lo());
+        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line)
     } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+        (unknown_file_metadata(cx), None)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
@@ -2308,7 +2308,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
             // which is what we want for no_mangle statics
             linkage_name.as_ref().map_or(ptr::null(), |name| name.as_ptr()),
             file_metadata,
-            line_number,
+            line_number.unwrap_or(UNKNOWN_LINE_NUMBER),
             type_metadata,
             is_local_to_unit,
             global,
