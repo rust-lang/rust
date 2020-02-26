@@ -27,7 +27,6 @@
     "dependencies": {
         "jsonc-parser": "^2.1.0",
         "node-fetch": "^2.6.0",
-        "throttle-debounce": "^2.1.0",
         "vscode-languageclient": "^6.1.1"
     },
     "devDependencies": {
@@ -35,7 +34,6 @@
         "@rollup/plugin-node-resolve": "^7.1.1",
         "@types/node": "^12.12.27",
         "@types/node-fetch": "^2.5.4",
-        "@types/throttle-debounce": "^2.1.0",
         "@types/vscode": "^1.42.0",
         "@typescript-eslint/eslint-plugin": "^2.20.0",
         "@typescript-eslint/parser": "^2.20.0",

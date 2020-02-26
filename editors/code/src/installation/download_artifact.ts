@@ -5,7 +5,6 @@ import { strict as assert } from "assert";
 
 import { ArtifactReleaseInfo } from "./interfaces";
 import { downloadFile } from "./download_file";
-import { throttle } from "throttle-debounce";
 
 /**
  * Downloads artifact from given `downloadUrl`.
@@ -38,19 +37,15 @@ export async function downloadArtifact(
         async (progress, _cancellationToken) => {
             let lastPrecentage = 0;
             const filePermissions = 0o755; // (rwx, r_x, r_x)
-            await downloadFile(downloadUrl, installationPath, filePermissions, throttle(
-                200,
-                /* noTrailing: */ true,
-                (readBytes, totalBytes) => {
-                    const newPercentage = (readBytes / totalBytes) * 100;
-                    progress.report({
-                        message: newPercentage.toFixed(0) + "%",
-                        increment: newPercentage - lastPrecentage
-                    });
+            await downloadFile(downloadUrl, installationPath, filePermissions, (readBytes, totalBytes) => {
+                const newPercentage = (readBytes / totalBytes) * 100;
+                progress.report({
+                    message: newPercentage.toFixed(0) + "%",
+                    increment: newPercentage - lastPrecentage
+                });
 
-                    lastPrecentage = newPercentage;
-                })
-            );
+                lastPrecentage = newPercentage;
+            });
         }
     );
 }
