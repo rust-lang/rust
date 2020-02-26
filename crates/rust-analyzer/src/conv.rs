@@ -9,8 +9,8 @@ use lsp_types::{
     WorkspaceEdit,
 };
 use ra_ide::{
-    tags, translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
-    FileRange, FileSystemEdit, Fold, FoldKind, InsertTextFormat, LineCol, LineIndex,
+    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
+    FileRange, FileSystemEdit, Fold, FoldKind, HighlightTag, InsertTextFormat, LineCol, LineIndex,
     NavigationTarget, RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -303,51 +303,51 @@ impl ConvWith<&FoldConvCtx<'_>> for Fold {
     }
 }
 
-impl Conv for &'static str {
+impl Conv for HighlightTag {
     type Output = (SemanticTokenType, Vec<SemanticTokenModifier>);
 
     fn conv(self) -> (SemanticTokenType, Vec<SemanticTokenModifier>) {
         let token_type: SemanticTokenType = match self {
-            tags::FIELD => SemanticTokenType::MEMBER,
-            tags::FUNCTION => SemanticTokenType::FUNCTION,
-            tags::MODULE => SemanticTokenType::NAMESPACE,
-            tags::CONSTANT => {
+            HighlightTag::FIELD => SemanticTokenType::MEMBER,
+            HighlightTag::FUNCTION => SemanticTokenType::FUNCTION,
+            HighlightTag::MODULE => SemanticTokenType::NAMESPACE,
+            HighlightTag::CONSTANT => {
                 return (
                     SemanticTokenType::VARIABLE,
                     vec![SemanticTokenModifier::STATIC, SemanticTokenModifier::READONLY],
                 )
             }
-            tags::MACRO => SemanticTokenType::MACRO,
+            HighlightTag::MACRO => SemanticTokenType::MACRO,
 
-            tags::VARIABLE => {
+            HighlightTag::VARIABLE => {
                 return (SemanticTokenType::VARIABLE, vec![SemanticTokenModifier::READONLY])
             }
-            tags::VARIABLE_MUT => SemanticTokenType::VARIABLE,
+            HighlightTag::VARIABLE_MUT => SemanticTokenType::VARIABLE,
 
-            tags::TYPE => SemanticTokenType::TYPE,
-            tags::TYPE_BUILTIN => SemanticTokenType::TYPE,
-            tags::TYPE_SELF => {
+            HighlightTag::TYPE => SemanticTokenType::TYPE,
+            HighlightTag::TYPE_BUILTIN => SemanticTokenType::TYPE,
+            HighlightTag::TYPE_SELF => {
                 return (SemanticTokenType::TYPE, vec![SemanticTokenModifier::REFERENCE])
             }
-            tags::TYPE_PARAM => SemanticTokenType::TYPE_PARAMETER,
-            tags::TYPE_LIFETIME => {
+            HighlightTag::TYPE_PARAM => SemanticTokenType::TYPE_PARAMETER,
+            HighlightTag::TYPE_LIFETIME => {
                 return (SemanticTokenType::LABEL, vec![SemanticTokenModifier::REFERENCE])
             }
 
-            tags::LITERAL_BYTE => SemanticTokenType::NUMBER,
-            tags::LITERAL_NUMERIC => SemanticTokenType::NUMBER,
-            tags::LITERAL_CHAR => SemanticTokenType::NUMBER,
+            HighlightTag::LITERAL_BYTE => SemanticTokenType::NUMBER,
+            HighlightTag::LITERAL_NUMERIC => SemanticTokenType::NUMBER,
+            HighlightTag::LITERAL_CHAR => SemanticTokenType::NUMBER,
 
-            tags::LITERAL_COMMENT => {
+            HighlightTag::LITERAL_COMMENT => {
                 return (SemanticTokenType::COMMENT, vec![SemanticTokenModifier::DOCUMENTATION])
             }
 
-            tags::LITERAL_STRING => SemanticTokenType::STRING,
-            tags::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
+            HighlightTag::LITERAL_STRING => SemanticTokenType::STRING,
+            HighlightTag::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
 
-            tags::KEYWORD => SemanticTokenType::KEYWORD,
-            tags::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
-            tags::KEYWORD_CONTROL => SemanticTokenType::KEYWORD,
+            HighlightTag::KEYWORD => SemanticTokenType::KEYWORD,
+            HighlightTag::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
+            HighlightTag::KEYWORD_CONTROL => SemanticTokenType::KEYWORD,
             unknown => panic!("Unknown semantic token: {}", unknown),
         };
 

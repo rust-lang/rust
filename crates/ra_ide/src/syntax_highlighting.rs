@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+mod highlight_tag;
+
 use hir::{Name, Semantics};
 use ra_db::SourceDatabase;
 use ra_ide_db::{
@@ -15,39 +17,12 @@ use rustc_hash::FxHashMap;
 
 use crate::{references::classify_name_ref, FileId};
 
-pub mod tags {
-    pub const FIELD: &str = "field";
-    pub const FUNCTION: &str = "function";
-    pub const MODULE: &str = "module";
-    pub const CONSTANT: &str = "constant";
-    pub const MACRO: &str = "macro";
-
-    pub const VARIABLE: &str = "variable";
-    pub const VARIABLE_MUT: &str = "variable.mut";
-
-    pub const TYPE: &str = "type";
-    pub const TYPE_BUILTIN: &str = "type.builtin";
-    pub const TYPE_SELF: &str = "type.self";
-    pub const TYPE_PARAM: &str = "type.param";
-    pub const TYPE_LIFETIME: &str = "type.lifetime";
-
-    pub const LITERAL_BYTE: &str = "literal.byte";
-    pub const LITERAL_NUMERIC: &str = "literal.numeric";
-    pub const LITERAL_CHAR: &str = "literal.char";
-
-    pub const LITERAL_COMMENT: &str = "comment";
-    pub const LITERAL_STRING: &str = "string";
-    pub const LITERAL_ATTRIBUTE: &str = "attribute";
-
-    pub const KEYWORD: &str = "keyword";
-    pub const KEYWORD_UNSAFE: &str = "keyword.unsafe";
-    pub const KEYWORD_CONTROL: &str = "keyword.control";
-}
+pub use highlight_tag::HighlightTag;
 
 #[derive(Debug)]
 pub struct HighlightedRange {
     pub range: TextRange,
-    pub tag: &'static str,
+    pub tag: HighlightTag,
     pub binding_hash: Option<u64>,
 }
 
@@ -104,7 +79,7 @@ pub(crate) fn highlight(
                         if let Some(range) = highlight_macro(node) {
                             res.push(HighlightedRange {
                                 range,
-                                tag: tags::MACRO,
+                                tag: HighlightTag::MACRO,
                                 binding_hash: None,
                             });
                         }
@@ -175,7 +150,7 @@ fn highlight_token_tree(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     token: SyntaxToken,
-) -> Option<(&'static str, Option<u64>)> {
+) -> Option<(HighlightTag, Option<u64>)> {
     if token.parent().kind() != TOKEN_TREE {
         return None;
     }
@@ -196,7 +171,7 @@ fn highlight_node(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     node: SyntaxElement,
-) -> Option<(&'static str, Option<u64>)> {
+) -> Option<(HighlightTag, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
     let tag = match node.kind() {
@@ -204,11 +179,11 @@ fn highlight_node(
             bindings_shadow_count.clear();
             return None;
         }
-        COMMENT => tags::LITERAL_COMMENT,
-        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
-        ATTR => tags::LITERAL_ATTRIBUTE,
+        COMMENT => HighlightTag::LITERAL_COMMENT,
+        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LITERAL_STRING,
+        ATTR => HighlightTag::LITERAL_ATTRIBUTE,
         // Special-case field init shorthand
-        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
+        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => HighlightTag::FIELD,
         NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => return None,
         NAME_REF => {
             let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
@@ -242,21 +217,21 @@ fn highlight_node(
 
             match name_kind {
                 Some(name_kind) => highlight_name(db, name_kind),
-                None => name.syntax().parent().map_or(tags::FUNCTION, |x| match x.kind() {
-                    STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => tags::TYPE,
-                    TYPE_PARAM => tags::TYPE_PARAM,
-                    RECORD_FIELD_DEF => tags::FIELD,
-                    _ => tags::FUNCTION,
+                None => name.syntax().parent().map_or(HighlightTag::FUNCTION, |x| match x.kind() {
+                    STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => HighlightTag::TYPE,
+                    TYPE_PARAM => HighlightTag::TYPE_PARAM,
+                    RECORD_FIELD_DEF => HighlightTag::FIELD,
+                    _ => HighlightTag::FUNCTION,
                 }),
             }
         }
-        INT_NUMBER | FLOAT_NUMBER => tags::LITERAL_NUMERIC,
-        BYTE => tags::LITERAL_BYTE,
-        CHAR => tags::LITERAL_CHAR,
-        LIFETIME => tags::TYPE_LIFETIME,
-        T![unsafe] => tags::KEYWORD_UNSAFE,
-        k if is_control_keyword(k) => tags::KEYWORD_CONTROL,
-        k if k.is_keyword() => tags::KEYWORD,
+        INT_NUMBER | FLOAT_NUMBER => HighlightTag::LITERAL_NUMERIC,
+        BYTE => HighlightTag::LITERAL_BYTE,
+        CHAR => HighlightTag::LITERAL_CHAR,
+        LIFETIME => HighlightTag::TYPE_LIFETIME,
+        T![unsafe] => HighlightTag::KEYWORD_UNSAFE,
+        k if is_control_keyword(k) => HighlightTag::KEYWORD_CONTROL,
+        k if k.is_keyword() => HighlightTag::KEYWORD,
 
         _ => return None,
     };
@@ -318,7 +293,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         if ranges.is_empty() {
             buf.push_str(&text);
         } else {
-            let classes = ranges.iter().map(|x| x.tag).collect::<Vec<_>>().join(" ");
+            let classes = ranges.iter().map(|x| x.tag.to_string()).collect::<Vec<_>>().join(" ");
             let binding_hash = ranges.first().and_then(|x| x.binding_hash);
             let color = match (rainbow, binding_hash) {
                 (true, Some(hash)) => format!(
@@ -335,26 +310,26 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     buf
 }
 
-fn highlight_name(db: &RootDatabase, def: NameDefinition) -> &'static str {
+fn highlight_name(db: &RootDatabase, def: NameDefinition) -> HighlightTag {
     match def {
-        NameDefinition::Macro(_) => tags::MACRO,
-        NameDefinition::StructField(_) => tags::FIELD,
-        NameDefinition::ModuleDef(hir::ModuleDef::Module(_)) => tags::MODULE,
-        NameDefinition::ModuleDef(hir::ModuleDef::Function(_)) => tags::FUNCTION,
-        NameDefinition::ModuleDef(hir::ModuleDef::Adt(_)) => tags::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Const(_)) => tags::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Static(_)) => tags::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Trait(_)) => tags::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
-        NameDefinition::SelfType(_) => tags::TYPE_SELF,
-        NameDefinition::TypeParam(_) => tags::TYPE_PARAM,
+        NameDefinition::Macro(_) => HighlightTag::MACRO,
+        NameDefinition::StructField(_) => HighlightTag::FIELD,
+        NameDefinition::ModuleDef(hir::ModuleDef::Module(_)) => HighlightTag::MODULE,
+        NameDefinition::ModuleDef(hir::ModuleDef::Function(_)) => HighlightTag::FUNCTION,
+        NameDefinition::ModuleDef(hir::ModuleDef::Adt(_)) => HighlightTag::TYPE,
+        NameDefinition::ModuleDef(hir::ModuleDef::EnumVariant(_)) => HighlightTag::CONSTANT,
+        NameDefinition::ModuleDef(hir::ModuleDef::Const(_)) => HighlightTag::CONSTANT,
+        NameDefinition::ModuleDef(hir::ModuleDef::Static(_)) => HighlightTag::CONSTANT,
+        NameDefinition::ModuleDef(hir::ModuleDef::Trait(_)) => HighlightTag::TYPE,
+        NameDefinition::ModuleDef(hir::ModuleDef::TypeAlias(_)) => HighlightTag::TYPE,
+        NameDefinition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => HighlightTag::TYPE_BUILTIN,
+        NameDefinition::SelfType(_) => HighlightTag::TYPE_SELF,
+        NameDefinition::TypeParam(_) => HighlightTag::TYPE_PARAM,
         NameDefinition::Local(local) => {
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
-                tags::VARIABLE_MUT
+                HighlightTag::VARIABLE_MUT
             } else {
-                tags::VARIABLE
+                HighlightTag::VARIABLE
             }
         }
     }
@@ -523,6 +498,6 @@ fn bar() {
             })
             .unwrap();
 
-        assert_eq!(highlights[0].tag, "field");
+        assert_eq!(&highlights[0].tag.to_string(), "field");
     }
 }
