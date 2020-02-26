@@ -27,7 +27,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
         initializationOptions: {
-            publishDecorations: true,
+            publishDecorations: !config.highlightingSemanticTokens,
             lruCapacity: config.lruCapacity,
             maxInlayHintLength: config.maxInlayHintLength,
             cargoWatchEnable: cargoWatchOpts.enable,
@@ -84,7 +84,10 @@ export async function createClient(config: Config, serverPath: string): Promise<
     // Here we want to just enable CallHierarchyFeature since it is available on stable.
     // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
     res.registerFeature(new CallHierarchyFeature(res));
-    res.registerFeature(new SemanticTokensFeature(res));
+
+    if (config.highlightingSemanticTokens) {
+        res.registerFeature(new SemanticTokensFeature(res));
+    }
 
     return res;
 }

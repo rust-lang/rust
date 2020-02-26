@@ -89,7 +89,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     activateStatusDisplay(ctx);
 
-    activateHighlighting(ctx);
+    if (!ctx.config.highlightingSemanticTokens) {
+        activateHighlighting(ctx);
+    }
     activateInlayHints(ctx);
 }
 

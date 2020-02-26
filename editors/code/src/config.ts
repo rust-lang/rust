@@ -22,6 +22,7 @@ export class Config {
     private static readonly requiresReloadOpts = [
         "cargoFeatures",
         "cargo-watch",
+        "highlighting.semanticTokens"
     ]
         .map(opt => `${Config.rootSection}.${opt}`);
 
@@ -143,6 +144,7 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
+    get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
     get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
     get lruCapacity() { return this.cfg.get("lruCapacity") as null | number; }
