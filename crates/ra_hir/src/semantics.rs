@@ -345,7 +345,6 @@ pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileR
             return FileRange { file_id: original_file, range: range.value };
         }
 
-        // Fail to mapping up more, return the original file range instead
         if range.file_id != elem.file_id {
             if let Some(root) = db.parse_or_expand(range.file_id) {
                 elem = range.with_value(find_covering_element(&root, range.value));
