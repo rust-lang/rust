@@ -649,7 +649,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             PatKind::Or { ref pats } => {
-                self.visit_bindings(&pats[0], pattern_user_ty.clone(), f);
+                self.visit_bindings(&pats[0], pattern_user_ty, f);
             }
         }
     }

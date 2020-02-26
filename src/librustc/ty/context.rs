@@ -1526,7 +1526,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
         ty::tls::with_related_context(tcx, |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
-                query: icx.query.clone(),
+                query: icx.query,
                 diagnostics: icx.diagnostics,
                 layout_depth: icx.layout_depth,
                 task_deps: icx.task_deps,

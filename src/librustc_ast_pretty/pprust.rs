@@ -3,7 +3,7 @@ use crate::pp::{self, Breaks};
 
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, IdentPrinter};
 use rustc_span::{BytePos, FileName, Span};
 use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use syntax::ast::{Attribute, GenericArg, MacArgs};
@@ -196,40 +196,6 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     out
 }
 
-/// Print an ident from AST, `$crate` is converted into its respective crate name.
-pub fn ast_ident_to_string(ident: ast::Ident, is_raw: bool) -> String {
-    ident_to_string(ident.name, is_raw, Some(ident.span))
-}
-
-// AST pretty-printer is used as a fallback for turning AST structures into token streams for
-// proc macros. Additionally, proc macros may stringify their input and expect it survive the
-// stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
-// So we need to somehow pretty-print `$crate` in a way preserving at least some of its
-// hygiene data, most importantly name of the crate it refers to.
-// As a result we print `$crate` as `crate` if it refers to the local crate
-// and as `::other_crate_name` if it refers to some other crate.
-// Note, that this is only done if the ident token is printed from inside of AST pretty-pringing,
-// but not otherwise. Pretty-printing is the only way for proc macros to discover token contents,
-// so we should not perform this lossy conversion if the top level call to the pretty-printer was
-// done for a token stream or a single token.
-fn ident_to_string(name: ast::Name, is_raw: bool, convert_dollar_crate: Option<Span>) -> String {
-    if is_raw {
-        format!("r#{}", name)
-    } else {
-        if name == kw::DollarCrate {
-            if let Some(span) = convert_dollar_crate {
-                let converted = span.ctxt().dollar_crate_name();
-                return if converted.is_path_segment_keyword() {
-                    converted.to_string()
-                } else {
-                    format!("::{}", converted)
-                };
-            }
-        }
-        name.to_string()
-    }
-}
-
 /// Print the token kind precisely, without converting `$crate` into its respective crate name.
 pub fn token_kind_to_string(tok: &TokenKind) -> String {
     token_kind_to_string_ext(tok, None)
@@ -280,7 +246,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Literal(lit) => literal_to_string(lit),
 
         /* Name components */
-        token::Ident(s, is_raw) => ident_to_string(s, is_raw, convert_dollar_crate),
+        token::Ident(s, is_raw) => IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string(),
         token::Lifetime(s) => s.to_string(),
 
         /* Other */
@@ -315,14 +281,11 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtBlock(ref e) => block_to_string(e),
         token::NtStmt(ref e) => stmt_to_string(e),
         token::NtPat(ref e) => pat_to_string(e),
-        token::NtIdent(e, is_raw) => ast_ident_to_string(e, is_raw),
+        token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
         token::NtLifetime(e) => e.to_string(),
         token::NtLiteral(ref e) => expr_to_string(e),
         token::NtTT(ref tree) => tt_to_string(tree.clone()),
-        // FIXME(Centril): merge these variants.
-        token::NtImplItem(ref e) | token::NtTraitItem(ref e) => assoc_item_to_string(e),
         token::NtVis(ref e) => vis_to_string(e),
-        token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
 }
 
@@ -356,10 +319,6 @@ pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
 
 pub fn item_to_string(i: &ast::Item) -> String {
     to_string(|s| s.print_item(i))
-}
-
-fn assoc_item_to_string(i: &ast::AssocItem) -> String {
-    to_string(|s| s.print_assoc_item(i))
 }
 
 pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
@@ -402,10 +361,6 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
 
 pub fn param_to_string(arg: &ast::Param) -> String {
     to_string(|s| s.print_param(arg, false))
-}
-
-fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
-    to_string(|s| s.print_foreign_item(arg))
 }
 
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
@@ -819,7 +774,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 
     fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Ident(&ident))
     }
 

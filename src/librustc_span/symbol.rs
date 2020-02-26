@@ -893,19 +893,17 @@ impl Hash for Ident {
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_raw_guess() {
-            write!(f, "r#")?;
-        }
-        write!(f, "{}{:?}", self.name, self.span.ctxt())
+        fmt::Display::fmt(self, f)?;
+        fmt::Debug::fmt(&self.span.ctxt(), f)
     }
 }
 
+/// This implementation is supposed to be used in error messages, so it's expected to be identical
+/// to printing the original identifier token written in source code (`token_to_string`),
+/// except that AST identifiers don't keep the rawness flag, so we have to guess it.
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_raw_guess() {
-            write!(f, "r#")?;
-        }
-        fmt::Display::fmt(&self.name, f)
+        fmt::Display::fmt(&IdentPrinter::new(self.name, self.is_raw_guess(), None), f)
     }
 }
 
@@ -926,6 +924,59 @@ impl UseSpecializedDecodable for Ident {
                 span: d.read_struct_field("span", 1, Decodable::decode)?,
             })
         })
+    }
+}
+
+/// This is the most general way to print identifiers.
+/// AST pretty-printer is used as a fallback for turning AST structures into token streams for
+/// proc macros. Additionally, proc macros may stringify their input and expect it survive the
+/// stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
+/// So we need to somehow pretty-print `$crate` in a way preserving at least some of its
+/// hygiene data, most importantly name of the crate it refers to.
+/// As a result we print `$crate` as `crate` if it refers to the local crate
+/// and as `::other_crate_name` if it refers to some other crate.
+/// Note, that this is only done if the ident token is printed from inside of AST pretty-pringing,
+/// but not otherwise. Pretty-printing is the only way for proc macros to discover token contents,
+/// so we should not perform this lossy conversion if the top level call to the pretty-printer was
+/// done for a token stream or a single token.
+pub struct IdentPrinter {
+    symbol: Symbol,
+    is_raw: bool,
+    /// Span used for retrieving the crate name to which `$crate` refers to,
+    /// if this field is `None` then the `$crate` conversion doesn't happen.
+    convert_dollar_crate: Option<Span>,
+}
+
+impl IdentPrinter {
+    /// The most general `IdentPrinter` constructor. Do not use this.
+    pub fn new(symbol: Symbol, is_raw: bool, convert_dollar_crate: Option<Span>) -> IdentPrinter {
+        IdentPrinter { symbol, is_raw, convert_dollar_crate }
+    }
+
+    /// This implementation is supposed to be used when printing identifiers
+    /// as a part of pretty-printing for larger AST pieces.
+    /// Do not use this either.
+    pub fn for_ast_ident(ident: Ident, is_raw: bool) -> IdentPrinter {
+        IdentPrinter::new(ident.name, is_raw, Some(ident.span))
+    }
+}
+
+impl fmt::Display for IdentPrinter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_raw {
+            f.write_str("r#")?;
+        } else {
+            if self.symbol == kw::DollarCrate {
+                if let Some(span) = self.convert_dollar_crate {
+                    let converted = span.ctxt().dollar_crate_name();
+                    if !converted.is_path_segment_keyword() {
+                        f.write_str("::")?;
+                    }
+                    return fmt::Display::fmt(&converted, f);
+                }
+            }
+        }
+        fmt::Display::fmt(&self.symbol, f)
     }
 }
 
