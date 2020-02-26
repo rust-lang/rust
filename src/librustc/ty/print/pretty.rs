@@ -1009,7 +1009,11 @@ pub trait PrettyPrinter<'tcx>:
                     let alloc_map = self.tcx().alloc_map.lock();
                     alloc_map.unwrap_fn(ptr.alloc_id)
                 };
-                p!(print_value_path(instance.def_id(), instance.substs));
+                self = self.typed_value(
+                    |this| this.print_value_path(instance.def_id(), instance.substs),
+                    |this| this.print_type(ty),
+                    true,
+                )?;
             }
             // For function type zsts just printing the type is enough
             (Scalar::Raw { size: 0, .. }, ty::FnDef(..)) => p!(print(ty)),
