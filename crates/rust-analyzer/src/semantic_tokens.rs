@@ -1,8 +1,17 @@
 //! Semantic Tokens helpers
 
+use std::ops;
+
 use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
-const SUPPORTED_TYPES: &[SemanticTokenType] = &[
+pub(crate) const ATTRIBUTE: SemanticTokenType = SemanticTokenType::new("attribute");
+
+pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
+pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
+pub(crate) const CONTROL: SemanticTokenModifier = SemanticTokenModifier::new("control");
+pub(crate) const BUILTIN: SemanticTokenModifier = SemanticTokenModifier::new("builtin");
+
+pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::COMMENT,
     SemanticTokenType::KEYWORD,
     SemanticTokenType::STRING,
@@ -23,9 +32,10 @@ const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::VARIABLE,
     SemanticTokenType::PARAMETER,
     SemanticTokenType::LABEL,
+    ATTRIBUTE,
 ];
 
-const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
+pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     SemanticTokenModifier::DOCUMENTATION,
     SemanticTokenModifier::DECLARATION,
     SemanticTokenModifier::DEFINITION,
@@ -36,16 +46,20 @@ const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     SemanticTokenModifier::ASYNC,
     SemanticTokenModifier::VOLATILE,
     SemanticTokenModifier::READONLY,
+    MUTABLE,
+    UNSAFE,
+    CONTROL,
+    BUILTIN,
 ];
 
-/// Token types that the server supports
-pub(crate) fn supported_token_types() -> &'static [SemanticTokenType] {
-    SUPPORTED_TYPES
-}
+#[derive(Default)]
+pub(crate) struct ModifierSet(pub(crate) u32);
 
-/// Token modifiers that the server supports
-pub(crate) fn supported_token_modifiers() -> &'static [SemanticTokenModifier] {
-    SUPPORTED_MODIFIERS
+impl ops::BitOrAssign<SemanticTokenModifier> for ModifierSet {
+    fn bitor_assign(&mut self, rhs: SemanticTokenModifier) {
+        let idx = SUPPORTED_MODIFIERS.iter().position(|it| it == &rhs).unwrap();
+        self.0 |= 1 << idx;
+    }
 }
 
 /// Tokens are encoded relative to each other.
@@ -91,4 +105,8 @@ impl SemanticTokensBuilder {
     pub fn build(self) -> Vec<SemanticToken> {
         self.data
     }
+}
+
+pub fn type_index(type_: SemanticTokenType) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| *it == type_).unwrap() as u32
 }

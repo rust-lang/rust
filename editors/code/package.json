@@ -380,6 +380,25 @@
                 }
             }
         ],
+        "semanticTokenTypes": [
+            {
+                "id": "attribute"
+            }
+        ],
+        "semanticTokenModifiers": [
+            {
+                "id": "mutable"
+            },
+            {
+                "id": "unsafe"
+            },
+            {
+                "id": "control"
+            },
+            {
+                "id": "builtin"
+            }
+        ],
         "semanticTokenStyleDefaults": [
             {
                 "selector": "*.mutable",

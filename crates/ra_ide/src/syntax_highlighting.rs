@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-mod highlight_tag;
+mod highlight;
 
 use hir::{Name, Semantics};
 use ra_db::SourceDatabase;
@@ -17,12 +17,12 @@ use rustc_hash::FxHashMap;
 
 use crate::{references::classify_name_ref, FileId};
 
-pub use highlight_tag::HighlightTag;
+pub use highlight::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
 #[derive(Debug)]
 pub struct HighlightedRange {
     pub range: TextRange,
-    pub tag: HighlightTag,
+    pub highlight: Highlight,
     pub binding_hash: Option<u64>,
 }
 
@@ -79,33 +79,33 @@ pub(crate) fn highlight(
                         if let Some(range) = highlight_macro(node) {
                             res.push(HighlightedRange {
                                 range,
-                                tag: HighlightTag::MACRO,
+                                highlight: HighlightTag::Macro.into(),
                                 binding_hash: None,
                             });
                         }
                     }
                     _ if in_macro_call.is_some() => {
                         if let Some(token) = node.as_token() {
-                            if let Some((tag, binding_hash)) = highlight_token_tree(
+                            if let Some((highlight, binding_hash)) = highlight_token_tree(
                                 &sema,
                                 &mut bindings_shadow_count,
                                 token.clone(),
                             ) {
                                 res.push(HighlightedRange {
                                     range: node.text_range(),
-                                    tag,
+                                    highlight,
                                     binding_hash,
                                 });
                             }
                         }
                     }
                     _ => {
-                        if let Some((tag, binding_hash)) =
+                        if let Some((highlight, binding_hash)) =
                             highlight_node(&sema, &mut bindings_shadow_count, node.clone())
                         {
                             res.push(HighlightedRange {
                                 range: node.text_range(),
-                                tag,
+                                highlight,
                                 binding_hash,
                             });
                         }
@@ -150,7 +150,7 @@ fn highlight_token_tree(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     token: SyntaxToken,
-) -> Option<(HighlightTag, Option<u64>)> {
+) -> Option<(Highlight, Option<u64>)> {
     if token.parent().kind() != TOKEN_TREE {
         return None;
     }
@@ -171,19 +171,21 @@ fn highlight_node(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     node: SyntaxElement,
-) -> Option<(HighlightTag, Option<u64>)> {
+) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
-    let tag = match node.kind() {
+    let highlight: Highlight = match node.kind() {
         FN_DEF => {
             bindings_shadow_count.clear();
             return None;
         }
-        COMMENT => HighlightTag::LITERAL_COMMENT,
-        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LITERAL_STRING,
-        ATTR => HighlightTag::LITERAL_ATTRIBUTE,
+        COMMENT => HighlightTag::Comment.into(),
+        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LiteralString.into(),
+        ATTR => HighlightTag::Attribute.into(),
         // Special-case field init shorthand
-        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => HighlightTag::FIELD,
+        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => {
+            HighlightTag::Field.into()
+        }
         NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => return None,
         NAME_REF => {
             let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
@@ -217,26 +219,30 @@ fn highlight_node(
 
             match name_kind {
                 Some(name_kind) => highlight_name(db, name_kind),
-                None => name.syntax().parent().map_or(HighlightTag::FUNCTION, |x| match x.kind() {
-                    STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => HighlightTag::TYPE,
-                    TYPE_PARAM => HighlightTag::TYPE_PARAM,
-                    RECORD_FIELD_DEF => HighlightTag::FIELD,
-                    _ => HighlightTag::FUNCTION,
+                None => name.syntax().parent().map_or(HighlightTag::Function.into(), |x| {
+                    match x.kind() {
+                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
+                            HighlightTag::Type.into()
+                        }
+                        TYPE_PARAM => HighlightTag::TypeParam.into(),
+                        RECORD_FIELD_DEF => HighlightTag::Field.into(),
+                        _ => HighlightTag::Function.into(),
+                    }
                 }),
             }
         }
-        INT_NUMBER | FLOAT_NUMBER => HighlightTag::LITERAL_NUMERIC,
-        BYTE => HighlightTag::LITERAL_BYTE,
-        CHAR => HighlightTag::LITERAL_CHAR,
-        LIFETIME => HighlightTag::TYPE_LIFETIME,
-        T![unsafe] => HighlightTag::KEYWORD_UNSAFE,
-        k if is_control_keyword(k) => HighlightTag::KEYWORD_CONTROL,
-        k if k.is_keyword() => HighlightTag::KEYWORD,
+        INT_NUMBER | FLOAT_NUMBER => HighlightTag::LiteralNumeric.into(),
+        BYTE => HighlightTag::LiteralByte.into(),
+        CHAR => HighlightTag::LiteralChar.into(),
+        LIFETIME => HighlightTag::TypeLifetime.into(),
+        T![unsafe] => HighlightTag::Keyword | HighlightModifier::Unsafe,
+        k if is_control_keyword(k) => HighlightTag::Keyword | HighlightModifier::Control,
+        k if k.is_keyword() => HighlightTag::Keyword.into(),
 
         _ => return None,
     };
 
-    return Some((tag, binding_hash));
+    return Some((highlight, binding_hash));
 
     fn calc_binding_hash(name: &Name, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
@@ -293,7 +299,11 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         if ranges.is_empty() {
             buf.push_str(&text);
         } else {
-            let classes = ranges.iter().map(|x| x.tag.to_string()).collect::<Vec<_>>().join(" ");
+            let classes = ranges
+                .iter()
+                .map(|it| it.highlight.to_string().replace('.', " "))
+                .collect::<Vec<_>>()
+                .join(" ");
             let binding_hash = ranges.first().and_then(|x| x.binding_hash);
             let color = match (rainbow, binding_hash) {
                 (true, Some(hash)) => format!(
@@ -310,29 +320,32 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     buf
 }
 
-fn highlight_name(db: &RootDatabase, def: NameDefinition) -> HighlightTag {
+fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
     match def {
-        NameDefinition::Macro(_) => HighlightTag::MACRO,
-        NameDefinition::StructField(_) => HighlightTag::FIELD,
-        NameDefinition::ModuleDef(hir::ModuleDef::Module(_)) => HighlightTag::MODULE,
-        NameDefinition::ModuleDef(hir::ModuleDef::Function(_)) => HighlightTag::FUNCTION,
-        NameDefinition::ModuleDef(hir::ModuleDef::Adt(_)) => HighlightTag::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::EnumVariant(_)) => HighlightTag::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Const(_)) => HighlightTag::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Static(_)) => HighlightTag::CONSTANT,
-        NameDefinition::ModuleDef(hir::ModuleDef::Trait(_)) => HighlightTag::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::TypeAlias(_)) => HighlightTag::TYPE,
-        NameDefinition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => HighlightTag::TYPE_BUILTIN,
-        NameDefinition::SelfType(_) => HighlightTag::TYPE_SELF,
-        NameDefinition::TypeParam(_) => HighlightTag::TYPE_PARAM,
+        NameDefinition::Macro(_) => HighlightTag::Macro,
+        NameDefinition::StructField(_) => HighlightTag::Field,
+        NameDefinition::ModuleDef(hir::ModuleDef::Module(_)) => HighlightTag::Module,
+        NameDefinition::ModuleDef(hir::ModuleDef::Function(_)) => HighlightTag::Function,
+        NameDefinition::ModuleDef(hir::ModuleDef::Adt(_)) => HighlightTag::Type,
+        NameDefinition::ModuleDef(hir::ModuleDef::EnumVariant(_)) => HighlightTag::Constant,
+        NameDefinition::ModuleDef(hir::ModuleDef::Const(_)) => HighlightTag::Constant,
+        NameDefinition::ModuleDef(hir::ModuleDef::Static(_)) => HighlightTag::Constant,
+        NameDefinition::ModuleDef(hir::ModuleDef::Trait(_)) => HighlightTag::Type,
+        NameDefinition::ModuleDef(hir::ModuleDef::TypeAlias(_)) => HighlightTag::Type,
+        NameDefinition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
+            return HighlightTag::Type | HighlightModifier::Builtin
+        }
+        NameDefinition::SelfType(_) => HighlightTag::TypeSelf,
+        NameDefinition::TypeParam(_) => HighlightTag::TypeParam,
         NameDefinition::Local(local) => {
+            let mut h = Highlight::new(HighlightTag::Variable);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
-                HighlightTag::VARIABLE_MUT
-            } else {
-                HighlightTag::VARIABLE
+                h |= HighlightModifier::Mutable;
             }
+            return h;
         }
     }
+    .into()
 }
 
 //FIXME: like, real html escaping
@@ -498,6 +511,6 @@ fn bar() {
             })
             .unwrap();
 
-        assert_eq!(&highlights[0].tag.to_string(), "field");
+        assert_eq!(&highlights[0].highlight.to_string(), "field");
     }
 }
