@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 
 import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
+import { SemanticTokensFeature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
 export async function createClient(config: Config, serverPath: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
@@ -83,5 +84,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
     // Here we want to just enable CallHierarchyFeature since it is available on stable.
     // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
     res.registerFeature(new CallHierarchyFeature(res));
+    res.registerFeature(new SemanticTokensFeature(res));
+
     return res;
 }

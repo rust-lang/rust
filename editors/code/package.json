@@ -18,6 +18,7 @@
     "engines": {
         "vscode": "^1.42.0"
     },
+    "enableProposedApi": true,
     "scripts": {
         "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package -o rust-analyzer.vsix",
