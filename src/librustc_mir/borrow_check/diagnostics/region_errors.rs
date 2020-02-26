@@ -427,18 +427,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let escapes_from = match self.regioncx.universal_regions().defining_ty {
-            DefiningTy::Closure(..) => "closure",
-            DefiningTy::Generator(..) => "generator",
-            DefiningTy::FnDef(..) => "function",
-            DefiningTy::Const(..) => "const",
-        };
+        let (_, escapes_from) = self
+            .infcx
+            .tcx
+            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
-            || (*category == ConstraintCategory::Assignment && escapes_from == "function")
-            || escapes_from == "const"
+            || (*category == ConstraintCategory::Assignment
+                && self.regioncx.universal_regions().defining_ty.is_fn_def())
+            || self.regioncx.universal_regions().defining_ty.is_const()
         {
             return self.report_general_error(&ErrorConstraintInfo {
                 fr_is_local: true,
@@ -504,8 +503,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut diag =
             self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not live long enough");
 
-        let mir_def_name =
-            if self.infcx.tcx.is_closure(self.mir_def_id) { "closure" } else { "function" };
+        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id);
 
         let fr_name = self.give_region_a_name(*fr).unwrap();
         fr_name.highlight_region_name(&mut diag);

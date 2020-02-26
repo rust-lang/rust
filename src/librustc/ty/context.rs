@@ -5,7 +5,7 @@ use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
-use crate::hir::map::DefPathHash;
+use crate::hir::map::{DefPathData, DefPathHash};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintSource};
@@ -209,7 +209,7 @@ fn validate_hir_id_for_typeck_tables(
             ty::tls::with(|tcx| {
                 bug!(
                     "node {} with HirId::owner {:?} cannot be placed in \
-                        TypeckTables with local_id_root {:?}",
+                     TypeckTables with local_id_root {:?}",
                     tcx.hir().node_to_string(hir_id),
                     DefId::local(hir_id.owner),
                     local_id_root
@@ -1511,6 +1511,24 @@ impl<'tcx> TyCtxt<'tcx> {
             self.type_of(self.require_lang_item(PanicLocationLangItem, None))
                 .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
         )
+    }
+
+    /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
+    pub fn article_and_description(&self, def_id: DefId) -> (&'static str, &'static str) {
+        match self.def_key(def_id).disambiguated_data.data {
+            DefPathData::TypeNs(..) | DefPathData::ValueNs(..) | DefPathData::MacroNs(..) => {
+                let kind = self.def_kind(def_id).unwrap();
+                (kind.article(), kind.descr(def_id))
+            }
+            DefPathData::ClosureExpr => match self.generator_kind(def_id) {
+                None => ("a", "closure"),
+                Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
+                Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
+            },
+            DefPathData::LifetimeNs(..) => ("a", "lifetime"),
+            DefPathData::Impl => ("an", "implementation"),
+            _ => bug!("article_and_description called on def_id {:?}", def_id),
+        }
     }
 }
 

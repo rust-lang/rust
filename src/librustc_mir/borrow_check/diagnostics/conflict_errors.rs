@@ -1257,7 +1257,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             _ => bug!(
                 "report_escaping_closure_capture called with unexpected constraint \
-                       category: `{:?}`",
+                 category: `{:?}`",
                 category
             ),
         };
@@ -1275,17 +1275,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
-        let escapes_from = if tcx.is_closure(self.mir_def_id) {
-            let tables = tcx.typeck_tables_of(self.mir_def_id);
-            let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
-            match tables.node_type(mir_hir_id).kind {
-                ty::Closure(..) => "closure",
-                ty::Generator(..) => "generator",
-                _ => bug!("Closure body doesn't have a closure or generator type"),
-            }
-        } else {
-            "function"
-        };
+        let (_, escapes_from) = tcx.article_and_description(self.mir_def_id);
 
         let mut err =
             borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);

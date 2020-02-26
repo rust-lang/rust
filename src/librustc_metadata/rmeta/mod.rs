@@ -252,7 +252,7 @@ macro_rules! define_per_def_tables {
 }
 
 define_per_def_tables! {
-    kind: Table<DefIndex, Lazy!(EntryKind<'tcx>)>,
+    kind: Table<DefIndex, Lazy<EntryKind>>,
     visibility: Table<DefIndex, Lazy<ty::Visibility>>,
     span: Table<DefIndex, Lazy<Span>>,
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
@@ -279,7 +279,7 @@ define_per_def_tables! {
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-enum EntryKind<'tcx> {
+enum EntryKind {
     Const(mir::ConstQualifs, Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
@@ -302,7 +302,7 @@ enum EntryKind<'tcx> {
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
     Closure,
-    Generator(Lazy!(GeneratorData<'tcx>)),
+    Generator(hir::GeneratorKind),
     Trait(Lazy<TraitData>),
     Impl(Lazy<ImplData>),
     Method(Lazy<MethodData>),

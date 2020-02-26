@@ -308,6 +308,9 @@ rustc_queries! {
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
 
+        /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
+        query generator_kind(_: DefId) -> Option<hir::GeneratorKind> {}
+
         /// Gets a map with the variance of every item; use `item_variance` instead.
         query crate_variances(_: CrateNum) -> &'tcx ty::CrateVariancesMap<'tcx> {
             desc { "computing the variances for items in this crate" }
