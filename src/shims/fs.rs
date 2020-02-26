@@ -927,7 +927,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[cfg(unix)]
                 let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                 #[cfg(not(unix))]
-                let ino = 0;
+                let ino = 0u64;
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
 
@@ -1015,7 +1015,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[cfg(unix)]
                 let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
                 #[cfg(not(unix))]
-                let ino = 0;
+                let ino = 0u64;
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
 
