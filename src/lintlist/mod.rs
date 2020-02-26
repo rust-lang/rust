@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 359] = [
+pub const ALL_LINTS: [Lint; 360] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1014,6 +1014,13 @@ pub const ALL_LINTS: [Lint; 359] = [
         desc: "lossy whole number float literals",
         deprecation: None,
         module: "float_literal",
+    },
+    Lint {
+        name: "macro_use_import",
+        group: "pedantic",
+        desc: "#[macro_use] is no longer needed",
+        deprecation: None,
+        module: "macro_use",
     },
     Lint {
         name: "main_recursion",
