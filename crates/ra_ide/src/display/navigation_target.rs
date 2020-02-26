@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use either::Either;
-use hir::{AssocItem, FieldSource, HasSource, InFile, ModuleSource};
+use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -11,7 +11,11 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{expand::original_range, references::NameDefinition, FileSymbol};
+use crate::{
+    // expand::original_range,
+    references::NameDefinition,
+    FileSymbol,
+};
 
 use super::short_label::ShortLabel;
 

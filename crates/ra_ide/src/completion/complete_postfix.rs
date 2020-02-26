@@ -29,7 +29,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         dot_receiver.syntax().text().to_string()
     };
 
-    let receiver_ty = match ctx.analyzer.type_of(ctx.db, &dot_receiver) {
+    let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
         Some(it) => it,
         None => return,
     };

@@ -4,10 +4,7 @@ use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     let (ty, variant) = match ctx.record_lit_pat.as_ref().and_then(|it| {
-        Some((
-            ctx.analyzer.type_of_pat(ctx.db, &it.clone().into())?,
-            ctx.analyzer.resolve_record_pattern(it)?,
-        ))
+        Some((ctx.sema.type_of_pat(&it.clone().into())?, ctx.sema.resolve_record_pattern(it)?))
     }) {
         Some(it) => it,
         _ => return,

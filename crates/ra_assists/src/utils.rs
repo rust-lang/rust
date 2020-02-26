@@ -1,16 +1,15 @@
 //! Assorted functions shared by several assists.
 
+use hir::Semantics;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
     AstNode, T,
 };
-
-use hir::db::HirDatabase;
 use rustc_hash::FxHashSet;
 
 pub fn get_missing_impl_items(
-    db: &impl HirDatabase,
-    analyzer: &hir::SourceAnalyzer,
+    sema: &Semantics<RootDatabase>,
     impl_block: &ast::ImplBlock,
 ) -> Vec<hir::AssocItem> {
     // Names must be unique between constants and functions. However, type aliases
@@ -42,15 +41,17 @@ pub fn get_missing_impl_items(
         }
     }
 
-    resolve_target_trait(db, analyzer, impl_block).map_or(vec![], |target_trait| {
+    resolve_target_trait(sema, impl_block).map_or(vec![], |target_trait| {
         target_trait
-            .items(db)
+            .items(sema.db)
             .iter()
             .filter(|i| match i {
-                hir::AssocItem::Function(f) => !impl_fns_consts.contains(&f.name(db).to_string()),
-                hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(db).to_string()),
+                hir::AssocItem::Function(f) => {
+                    !impl_fns_consts.contains(&f.name(sema.db).to_string())
+                }
+                hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(sema.db).to_string()),
                 hir::AssocItem::Const(c) => c
-                    .name(db)
+                    .name(sema.db)
                     .map(|n| !impl_fns_consts.contains(&n.to_string()))
                     .unwrap_or_default(),
             })
@@ -60,8 +61,7 @@ pub fn get_missing_impl_items(
 }
 
 pub(crate) fn resolve_target_trait(
-    db: &impl HirDatabase,
-    analyzer: &hir::SourceAnalyzer,
+    sema: &Semantics<RootDatabase>,
     impl_block: &ast::ImplBlock,
 ) -> Option<hir::Trait> {
     let ast_path = impl_block
@@ -70,7 +70,7 @@ pub(crate) fn resolve_target_trait(
         .and_then(ast::PathType::cast)?
         .path()?;
 
-    match analyzer.resolve_path(db, &ast_path) {
+    match sema.resolve_path(&ast_path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def),
         _ => None,
     }

@@ -1,5 +1,5 @@
 use format_buf::format;
-use hir::{Adt, InFile};
+use hir::Adt;
 use join_to_string::join;
 use ra_syntax::{
     ast::{
@@ -133,16 +133,11 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
     })?;
-    let mut sb = ctx.source_binder();
 
-    let struct_def = {
-        let src = InFile { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
-        sb.to_def(src)?
-    };
+    let struct_def = ctx.sema.to_def(strukt)?;
 
     let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
-        let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
-        let blk = sb.to_def(src)?;
+        let blk = ctx.sema.to_def(&impl_blk)?;
 
         // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
         // (we currently use the wrong type parameter)

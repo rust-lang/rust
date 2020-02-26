@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 
 use itertools::Itertools;
 use ra_text_edit::TextEditBuilder;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
@@ -54,6 +54,11 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
 
 pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
     root.covering_element(range)
+}
+
+pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {
+    let u_ancestors = u.ancestors().collect::<FxHashSet<SyntaxNode>>();
+    v.ancestors().find(|it| u_ancestors.contains(it))
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

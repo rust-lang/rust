@@ -35,7 +35,6 @@ mod typing;
 mod matching_brace;
 mod display;
 mod inlay_hints;
-mod expand;
 mod expand_macro;
 mod ssr;
 
@@ -319,9 +318,7 @@ impl Analysis {
         file_id: FileId,
         max_inlay_hint_length: Option<usize>,
     ) -> Cancelable<Vec<InlayHint>> {
-        self.with_db(|db| {
-            inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree(), max_inlay_hint_length)
-        })
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, max_inlay_hint_length))
     }
 
     /// Returns the set of folding ranges.

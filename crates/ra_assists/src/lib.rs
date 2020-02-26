@@ -19,6 +19,7 @@ use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
 pub use crate::handlers::replace_qualified_name_with_use::insert_use_statement;
+use hir::Semantics;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -63,7 +64,8 @@ pub struct ResolvedAssist {
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.
 pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
-    let ctx = AssistCtx::new(db, range, false);
+    let sema = Semantics::new(db);
+    let ctx = AssistCtx::new(&sema, range, false);
     handlers::all()
         .iter()
         .filter_map(|f| f(ctx.clone()))
@@ -77,7 +79,8 @@ pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
 pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
-    let ctx = AssistCtx::new(db, range, true);
+    let sema = Semantics::new(db);
+    let ctx = AssistCtx::new(&sema, range, true);
     let mut a = handlers::all()
         .iter()
         .filter_map(|f| f(ctx.clone()))
@@ -165,6 +168,7 @@ mod helpers {
     use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
     use crate::{AssistCtx, AssistHandler};
+    use hir::Semantics;
 
     pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
         let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -202,7 +206,8 @@ mod helpers {
 
         let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
-        let assist_ctx = AssistCtx::new(&db, frange, true);
+        let sema = Semantics::new(&db);
+        let assist_ctx = AssistCtx::new(&sema, frange, true);
 
         match (assist(assist_ctx), expected) {
             (Some(assist), ExpectedResult::After(after)) => {

@@ -5,10 +5,7 @@ use crate::completion::{CompletionContext, Completions};
 /// Complete fields in fields literals.
 pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionContext) {
     let (ty, variant) = match ctx.record_lit_syntax.as_ref().and_then(|it| {
-        Some((
-            ctx.analyzer.type_of(ctx.db, &it.clone().into())?,
-            ctx.analyzer.resolve_record_literal(it)?,
-        ))
+        Some((ctx.sema.type_of_expr(&it.clone().into())?, ctx.sema.resolve_record_literal(it)?))
     }) {
         Some(it) => it,
         _ => return,

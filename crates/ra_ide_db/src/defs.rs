@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, FieldSource, HasSource, ImplBlock, InFile, Local, MacroDef, Module, ModuleDef,
-    SourceBinder, StructField, TypeParam,
+    Adt, FieldSource, HasSource, ImplBlock, Local, MacroDef, Module, ModuleDef, Semantics,
+    StructField, TypeParam,
 };
 use ra_prof::profile;
 use ra_syntax::{
@@ -68,78 +68,62 @@ impl NameDefinition {
     }
 }
 
-pub fn classify_name(
-    sb: &mut SourceBinder<RootDatabase>,
-    name: InFile<&ast::Name>,
-) -> Option<NameDefinition> {
+pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameDefinition> {
     let _p = profile("classify_name");
-    let parent = name.value.syntax().parent()?;
+    let parent = name.syntax().parent()?;
 
     match_ast! {
         match parent {
             ast::BindPat(it) => {
-                let src = name.with_value(it);
-                let local = sb.to_def(src)?;
+                let local = sema.to_def(&it)?;
                 Some(NameDefinition::Local(local))
             },
             ast::RecordFieldDef(it) => {
-                let src = name.with_value(it);
-                let field: hir::StructField = sb.to_def(src)?;
+                let field: hir::StructField = sema.to_def(&it)?;
                 Some(from_struct_field(field))
             },
             ast::Module(it) => {
-                let def = sb.to_def(name.with_value(it))?;
+                let def = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::StructDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Struct = sb.to_def(src)?;
+                let def: hir::Struct = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::EnumDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Enum = sb.to_def(src)?;
+                let def: hir::Enum = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::TraitDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Trait = sb.to_def(src)?;
+                let def: hir::Trait = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::StaticDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Static = sb.to_def(src)?;
+                let def: hir::Static = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::EnumVariant(it) => {
-                let src = name.with_value(it);
-                let def: hir::EnumVariant = sb.to_def(src)?;
+                let def: hir::EnumVariant = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::FnDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Function = sb.to_def(src)?;
+                let def: hir::Function = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::ConstDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::Const = sb.to_def(src)?;
+                let def: hir::Const = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::TypeAliasDef(it) => {
-                let src = name.with_value(it);
-                let def: hir::TypeAlias = sb.to_def(src)?;
+                let def: hir::TypeAlias = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
             ast::MacroCall(it) => {
-                let src = name.with_value(it);
-                let def = sb.to_def(src.clone())?;
-
+                let def = sema.to_def(&it)?;
                 Some(NameDefinition::Macro(def))
             },
             ast::TypeParam(it) => {
-                let src = name.with_value(it);
-                let def = sb.to_def(src)?;
+                let def = sema.to_def(&it)?;
                 Some(NameDefinition::TypeParam(def))
             },
             _ => None,

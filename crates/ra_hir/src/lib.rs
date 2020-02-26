@@ -26,6 +26,7 @@ macro_rules! impl_froms {
     }
 }
 
+mod semantics;
 pub mod db;
 pub mod source_analyzer;
 pub mod source_binder;
@@ -45,8 +46,8 @@ pub use crate::{
         StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     has_source::HasSource,
-    source_analyzer::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
-    source_binder::SourceBinder,
+    semantics::{original_range, Semantics, SemanticsScope},
+    source_analyzer::{PathResolution, ScopeEntryWithSyntax},
 };
 
 pub use hir_def::{

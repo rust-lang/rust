@@ -1,12 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, HirDisplay, SourceAnalyzer, SourceBinder, Type};
-use once_cell::unsync::Lazy;
+use hir::{Adt, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, SourceFile, SyntaxNode, TextRange,
+    match_ast, SmolStr, SyntaxNode, TextRange,
 };
 
 use crate::{FileId, FunctionSignature};
@@ -27,38 +26,36 @@ pub struct InlayHint {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    file: &SourceFile,
     max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
-    let mut sb = SourceBinder::new(db);
+    let sema = Semantics::new(db);
+    let file = sema.parse(file_id);
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
-        get_inlay_hints(&mut res, &mut sb, file_id, &node, max_inlay_hint_length);
+        get_inlay_hints(&mut res, &sema, &node, max_inlay_hint_length);
     }
     res
 }
 
 fn get_inlay_hints(
     acc: &mut Vec<InlayHint>,
-    sb: &mut SourceBinder<RootDatabase>,
-    file_id: FileId,
+    sema: &Semantics<RootDatabase>,
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
 ) -> Option<()> {
     let _p = profile("get_inlay_hints");
-    let db = sb.db;
-    let analyzer = Lazy::new(move || sb.analyze(hir::InFile::new(file_id.into(), node), None));
+    let db = sema.db;
     match_ast! {
         match node {
             ast::CallExpr(it) => {
-                get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
+                get_param_name_hints(acc, sema, ast::Expr::from(it));
             },
             ast::MethodCallExpr(it) => {
-                get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
+                get_param_name_hints(acc, sema, ast::Expr::from(it));
             },
             ast::BindPat(it) => {
                 let pat = ast::Pat::from(it.clone());
-                let ty = analyzer.type_of_pat(db, &pat)?;
+                let ty = sema.type_of_pat(&pat)?;
 
                 if should_not_display_type_hint(db, &it, &ty) {
                     return None;
@@ -125,8 +122,7 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
 
 fn get_param_name_hints(
     acc: &mut Vec<InlayHint>,
-    db: &RootDatabase,
-    analyzer: &SourceAnalyzer,
+    sema: &Semantics<RootDatabase>,
     expr: ast::Expr,
 ) -> Option<()> {
     let args = match &expr {
@@ -138,7 +134,7 @@ fn get_param_name_hints(
     // we need args len to determine whether to skip or not the &self parameter
     .collect::<Vec<_>>();
 
-    let fn_signature = get_fn_signature(db, analyzer, &expr)?;
+    let fn_signature = get_fn_signature(sema, &expr)?;
     let n_params_to_skip =
         if fn_signature.has_self_param && fn_signature.parameter_names.len() > args.len() {
             1
@@ -184,28 +180,26 @@ fn should_show_param_hint(
     true
 }
 
-fn get_fn_signature(
-    db: &RootDatabase,
-    analyzer: &SourceAnalyzer,
-    expr: &ast::Expr,
-) -> Option<FunctionSignature> {
+fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<FunctionSignature> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             // FIXME: Type::as_callable is broken for closures
-            let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
+            let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
-                    Some(FunctionSignature::from_hir(db, it.into()))
+                    Some(FunctionSignature::from_hir(sema.db, it.into()))
                 }
-                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into()),
+                hir::CallableDef::StructId(it) => {
+                    FunctionSignature::from_struct(sema.db, it.into())
+                }
                 hir::CallableDef::EnumVariantId(it) => {
-                    FunctionSignature::from_enum_variant(db, it.into())
+                    FunctionSignature::from_enum_variant(sema.db, it.into())
                 }
             }
         }
         ast::Expr::MethodCallExpr(expr) => {
-            let fn_def = analyzer.resolve_method_call(&expr)?;
-            Some(FunctionSignature::from_hir(db, fn_def))
+            let fn_def = sema.resolve_method_call(&expr)?;
+            Some(FunctionSignature::from_hir(sema.db, fn_def))
         }
         _ => None,
     }

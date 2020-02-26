@@ -1,6 +1,6 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
-use hir::{InFile, SourceAnalyzer, SourceBinder};
-use ra_db::{FileRange, SourceDatabase};
+use hir::Semantics;
+use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -74,29 +74,23 @@ pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
 /// Note, however, that we don't actually use such two-phase logic at the
 /// moment, because the LSP API is pretty awkward in this place, and it's much
 /// easier to just compute the edit eagerly :-)
-#[derive(Debug)]
+#[derive(Clone)]
 pub(crate) struct AssistCtx<'a> {
+    pub(crate) sema: &'a Semantics<'a, RootDatabase>,
     pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
     should_compute_edit: bool,
 }
 
-impl Clone for AssistCtx<'_> {
-    fn clone(&self) -> Self {
-        AssistCtx {
-            db: self.db,
-            frange: self.frange,
-            source_file: self.source_file.clone(),
-            should_compute_edit: self.should_compute_edit,
-        }
-    }
-}
-
 impl<'a> AssistCtx<'a> {
-    pub fn new(db: &RootDatabase, frange: FileRange, should_compute_edit: bool) -> AssistCtx {
-        let parse = db.parse(frange.file_id);
-        AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit }
+    pub fn new(
+        sema: &'a Semantics<'a, RootDatabase>,
+        frange: FileRange,
+        should_compute_edit: bool,
+    ) -> AssistCtx<'a> {
+        let source_file = sema.parse(frange.file_id);
+        AssistCtx { sema, db: sema.db, frange, source_file, should_compute_edit }
     }
 
     pub(crate) fn add_assist(
@@ -138,18 +132,6 @@ impl<'a> AssistCtx<'a> {
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
-    pub(crate) fn source_binder(&self) -> SourceBinder<'a, RootDatabase> {
-        SourceBinder::new(self.db)
-    }
-    pub(crate) fn source_analyzer(
-        &self,
-        node: &SyntaxNode,
-        offset: Option<TextUnit>,
-    ) -> SourceAnalyzer {
-        let src = InFile::new(self.frange.file_id.into(), node);
-        self.source_binder().analyze(src, offset)
-    }
-
     pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), range)
     }

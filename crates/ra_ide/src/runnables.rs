@@ -1,8 +1,7 @@
 //! FIXME: write short doc here
 
-use hir::{InFile, SourceBinder};
+use hir::Semantics;
 use itertools::Itertools;
-use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
@@ -42,46 +41,33 @@ pub enum RunnableKind {
 }
 
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
-    let parse = db.parse(file_id);
-    let mut sb = SourceBinder::new(db);
-    parse.tree().syntax().descendants().filter_map(|i| runnable(db, &mut sb, file_id, i)).collect()
+    let sema = Semantics::new(db);
+    let source_file = sema.parse(file_id);
+    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i)).collect()
 }
 
-fn runnable(
-    db: &RootDatabase,
-    source_binder: &mut SourceBinder<RootDatabase>,
-    file_id: FileId,
-    item: SyntaxNode,
-) -> Option<Runnable> {
+fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => { runnable_fn(db, source_binder, file_id, it) },
-            ast::Module(it) => { runnable_mod(db, source_binder, file_id, it) },
-            _ => { None },
+            ast::FnDef(it) => { runnable_fn(sema, it) },
+            ast::Module(it) => { runnable_mod(sema, it) },
+            _ => None,
         }
     }
 }
 
-fn runnable_fn(
-    db: &RootDatabase,
-    source_binder: &mut SourceBinder<RootDatabase>,
-    file_id: FileId,
-    fn_def: ast::FnDef,
-) -> Option<Runnable> {
+fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Runnable> {
     let name_string = fn_def.name()?.text().to_string();
 
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let test_id = if let Some(module) = source_binder
-            .to_def(InFile::new(file_id.into(), fn_def.clone()))
-            .map(|def| def.module(db))
-        {
+        let test_id = if let Some(module) = sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
             let path = module
-                .path_to_root(db)
+                .path_to_root(sema.db)
                 .into_iter()
                 .rev()
-                .filter_map(|it| it.name(db))
+                .filter_map(|it| it.name(sema.db))
                 .map(|name| name.to_string())
                 .chain(std::iter::once(name_string))
                 .join("::");
@@ -115,12 +101,7 @@ fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
         .any(|attribute_text| attribute_text.contains("test"))
 }
 
-fn runnable_mod(
-    db: &RootDatabase,
-    source_binder: &mut SourceBinder<RootDatabase>,
-    file_id: FileId,
-    module: ast::Module,
-) -> Option<Runnable> {
+fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<Runnable> {
     let has_test_function = module
         .item_list()?
         .items()
@@ -133,9 +114,10 @@ fn runnable_mod(
         return None;
     }
     let range = module.syntax().text_range();
-    let module = source_binder.to_def(InFile::new(file_id.into(), module))?;
+    let module = sema.to_def(&module)?;
 
-    let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");
+    let path =
+        module.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
     Some(Runnable { range, kind: RunnableKind::TestMod { path } })
 }
 

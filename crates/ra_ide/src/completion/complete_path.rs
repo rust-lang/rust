@@ -11,7 +11,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(path) => path.clone(),
         _ => return,
     };
-    let def = match ctx.analyzer.resolve_hir_path(ctx.db, &path) {
+    let def = match ctx.scope().resolve_hir_path(&path) {
         Some(PathResolution::Def(def)) => def,
         _ => return,
     };
@@ -49,7 +49,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             // FIXME: complete T::AssocType
             let krate = ctx.module.map(|m| m.krate());
             if let Some(krate) = krate {
-                let traits_in_scope = ctx.analyzer.traits_in_scope(ctx.db);
+                let traits_in_scope = ctx.scope().traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     match item {
                         hir::AssocItem::Function(func) => {

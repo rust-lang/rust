@@ -51,14 +51,13 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
         }
     }
     // Infer type
-    let db = ctx.db;
-    let analyzer = ctx.source_analyzer(stmt.syntax(), None);
-    let ty = analyzer.type_of(db, &expr)?;
+    let ty = ctx.sema.type_of_expr(&expr)?;
     // Assist not applicable if the type is unknown
     if ty.contains_unknown() {
         return None;
     }
 
+    let db = ctx.db;
     ctx.add_assist(
         AssistId("add_explicit_type"),
         format!("Insert explicit type '{}'", ty.display(db)),
