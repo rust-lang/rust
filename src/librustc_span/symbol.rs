@@ -1023,6 +1023,14 @@ impl Symbol {
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
+
+    /// This method is supposed to be used in error messages, so it's expected to be
+    /// identical to printing the original identifier token written in source code
+    /// (`token_to_string`, `Ident::to_string`), except that symbols don't keep the rawness flag
+    /// or edition, so we have to guess the rawness using the global edition.
+    pub fn to_ident_string(self) -> String {
+        Ident::with_dummy_span(self).to_string()
+    }
 }
 
 impl fmt::Debug for Symbol {
