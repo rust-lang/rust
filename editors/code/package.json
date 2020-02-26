@@ -383,6 +383,9 @@
         "semanticTokenTypes": [
             {
                 "id": "attribute"
+            },
+            {
+                "id": "constant"
             }
         ],
         "semanticTokenModifiers": [
@@ -411,6 +414,12 @@
                 "highContrast": {
                     "fontStyle": "underline"
                 }
+            },
+            {
+                "selector": "constant",
+                "scope": [
+                    "entity.name.constant"
+                ]
             }
         ]
     }

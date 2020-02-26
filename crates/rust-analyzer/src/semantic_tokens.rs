@@ -5,6 +5,7 @@ use std::ops;
 use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
 pub(crate) const ATTRIBUTE: SemanticTokenType = SemanticTokenType::new("attribute");
+pub(crate) const CONSTANT: SemanticTokenType = SemanticTokenType::new("constant");
 
 pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
 pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
@@ -33,6 +34,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::PARAMETER,
     SemanticTokenType::LABEL,
     ATTRIBUTE,
+    CONSTANT,
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[

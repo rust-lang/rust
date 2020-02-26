@@ -20,7 +20,7 @@ use ra_vfs::LineEndings;
 
 use crate::{
     req,
-    semantic_tokens::{self, ModifierSet, BUILTIN, CONTROL, MUTABLE, UNSAFE},
+    semantic_tokens::{self, ModifierSet, BUILTIN, CONSTANT, CONTROL, MUTABLE, UNSAFE},
     world::WorldSnapshot,
     Result,
 };
@@ -322,7 +322,7 @@ impl Conv for Highlight {
             HighlightTag::Constant => {
                 mods |= SemanticTokenModifier::STATIC;
                 mods |= SemanticTokenModifier::READONLY;
-                SemanticTokenType::VARIABLE
+                CONSTANT
             }
             HighlightTag::Macro => SemanticTokenType::MACRO,
             HighlightTag::Variable => SemanticTokenType::VARIABLE,
