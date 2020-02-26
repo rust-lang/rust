@@ -6,7 +6,7 @@ use hir_def::{
     dyn_map::DynMap,
     keys::{self, Key},
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
-    StaticId, StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    StaticId, StructFieldId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, InFile, MacroDefId, MacroDefKind};
 use ra_db::FileId;
@@ -17,9 +17,9 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{db::HirDatabase, Local, Module, TypeParam};
+use crate::{db::HirDatabase, Module};
 
-pub struct SourceBinder {
+pub(crate) struct SourceBinder {
     child_by_source_cache: FxHashMap<ChildContainer, DynMap>,
 }
 
@@ -38,7 +38,11 @@ impl SourceBinder {
         Some(Module { id: ModuleId { krate, local_id } })
     }
 
-    fn to_id<T: ToId>(&mut self, db: &impl HirDatabase, src: InFile<T>) -> Option<T::ID> {
+    pub(crate) fn to_id<T: ToId>(
+        &mut self,
+        db: &impl HirDatabase,
+        src: InFile<T>,
+    ) -> Option<T::ID> {
         T::to_id(db, self, src)
     }
 
@@ -117,42 +121,6 @@ pub(crate) trait ToId: Sized {
         src: InFile<Self>,
     ) -> Option<Self::ID>;
 }
-
-pub trait ToDef: Sized + AstNode + 'static {
-    type Def;
-    fn to_def<DB: HirDatabase>(
-        db: &DB,
-        sb: &mut SourceBinder,
-        src: InFile<Self>,
-    ) -> Option<Self::Def>;
-}
-
-macro_rules! to_def_impls {
-    ($(($def:path, $ast:path)),* ,) => {$(
-        impl ToDef for $ast {
-            type Def = $def;
-            fn to_def<DB: HirDatabase>(db: &DB, sb: &mut SourceBinder, src: InFile<Self>)
-                -> Option<Self::Def>
-            { sb.to_id(db, src).map(Into::into) }
-        }
-    )*}
-}
-
-to_def_impls![
-    (crate::Module, ast::Module),
-    (crate::Struct, ast::StructDef),
-    (crate::Enum, ast::EnumDef),
-    (crate::Union, ast::UnionDef),
-    (crate::Trait, ast::TraitDef),
-    (crate::ImplBlock, ast::ImplBlock),
-    (crate::TypeAlias, ast::TypeAliasDef),
-    (crate::Const, ast::ConstDef),
-    (crate::Static, ast::StaticDef),
-    (crate::Function, ast::FnDef),
-    (crate::StructField, ast::RecordFieldDef),
-    (crate::EnumVariant, ast::EnumVariant),
-    (crate::MacroDef, ast::MacroCall), // this one is dubious, not all calls are macros
-];
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum ChildContainer {
@@ -245,37 +213,14 @@ impl ToId for ast::MacroCall {
     }
 }
 
-impl ToDef for ast::BindPat {
-    type Def = Local;
+impl ToId for ast::TypeParam {
+    type ID = TypeParamId;
 
-    fn to_def<DB: HirDatabase>(db: &DB, sb: &mut SourceBinder, src: InFile<Self>) -> Option<Local> {
-        let file_id = src.file_id;
-        let parent: DefWithBodyId = src.value.syntax().ancestors().find_map(|it| {
-            let res = match_ast! {
-                match it {
-                    ast::ConstDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    ast::StaticDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    ast::FnDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    _ => return None,
-                }
-            };
-            Some(res)
-        })?;
-        let (_body, source_map) = db.body_with_source_map(parent);
-        let src = src.map(ast::Pat::from);
-        let pat_id = source_map.node_pat(src.as_ref())?;
-        Some(Local { parent: parent.into(), pat_id })
-    }
-}
-
-impl ToDef for ast::TypeParam {
-    type Def = TypeParam;
-
-    fn to_def<DB: HirDatabase>(
+    fn to_id<DB: HirDatabase>(
         db: &DB,
         sb: &mut SourceBinder,
-        src: InFile<ast::TypeParam>,
-    ) -> Option<TypeParam> {
+        src: InFile<Self>,
+    ) -> Option<Self::ID> {
         let file_id = src.file_id;
         let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
             let res = match_ast! {
@@ -291,8 +236,7 @@ impl ToDef for ast::TypeParam {
             };
             Some(res)
         })?;
-        let &id = sb.child_by_source(db, parent.into())[keys::TYPE_PARAM].get(&src)?;
-        Some(TypeParam { id })
+        sb.child_by_source(db, parent.into())[keys::TYPE_PARAM].get(&src).copied()
     }
 }
 

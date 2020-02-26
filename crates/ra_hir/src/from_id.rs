@@ -40,6 +40,7 @@ from_id![
     (hir_def::ConstId, crate::Const),
     (hir_def::FunctionId, crate::Function),
     (hir_def::ImplId, crate::ImplBlock),
+    (hir_def::TypeParamId, crate::TypeParam),
     (hir_expand::MacroDefId, crate::MacroDef)
 ];
 
