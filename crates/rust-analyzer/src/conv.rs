@@ -343,7 +343,7 @@ impl Conv for HighlightTag {
             }
 
             HighlightTag::LITERAL_STRING => SemanticTokenType::STRING,
-            HighlightTag::LITERAL_ATTRIBUTE => "attribute".into(),
+            HighlightTag::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
 
             HighlightTag::KEYWORD => SemanticTokenType::KEYWORD,
             HighlightTag::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
