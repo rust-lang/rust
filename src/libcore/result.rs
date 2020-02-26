@@ -798,8 +798,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
-    /// Else, it returns `optb`.
+    /// Returns the contained [`Ok`] value or a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
@@ -814,27 +813,25 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// let optb = 2;
+    /// let default = 2;
     /// let x: Result<u32, &str> = Ok(9);
-    /// assert_eq!(x.unwrap_or(optb), 9);
+    /// assert_eq!(x.unwrap_or(default), 9);
     ///
     /// let x: Result<u32, &str> = Err("error");
-    /// assert_eq!(x.unwrap_or(optb), optb);
+    /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, optb: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => optb,
+            Err(_) => default,
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
-    /// If the value is an [`Err`] then it calls `op` with its value.
+    /// Returns the contained [`Ok`] value or computes it from a closure.
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -937,7 +934,44 @@ impl<T: Clone, E> Result<&mut T, E> {
 }
 
 impl<T, E: fmt::Debug> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Err`], with a panic message including the
+    /// passed message, and the content of the [`Err`].
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```{.should_panic}
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect", since = "1.4.0")]
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed(msg, &e),
+        }
+    }
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: #method.unwrap_or
+    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`unwrap_or_default`]: #method.unwrap_or_default
     ///
     /// # Panics
     ///
@@ -969,13 +1003,15 @@ impl<T, E: fmt::Debug> Result<T, E> {
             Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
         }
     }
+}
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
+impl<T: fmt::Debug, E> Result<T, E> {
+    /// Returns the contained [`Err`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
-    /// Panics if the value is an [`Err`], with a panic message including the
-    /// passed message, and the content of the [`Err`].
+    /// Panics if the value is an [`Ok`], with a panic message including the
+    /// passed message, and the content of the [`Ok`].
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
@@ -985,22 +1021,20 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// Basic usage:
     ///
     /// ```{.should_panic}
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
     /// ```
     #[inline]
     #[track_caller]
-    #[stable(feature = "result_expect", since = "1.4.0")]
-    pub fn expect(self, msg: &str) -> T {
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
+    pub fn expect_err(self, msg: &str) -> E {
         match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
+            Ok(t) => unwrap_failed(msg, &t),
+            Err(e) => e,
         }
     }
-}
 
-impl<T: fmt::Debug, E> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Err`].
+    /// Returns the contained [`Err`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
@@ -1031,38 +1065,10 @@ impl<T: fmt::Debug, E> Result<T, E> {
             Err(e) => e,
         }
     }
-
-    /// Unwraps a result, yielding the content of an [`Err`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a panic message including the
-    /// passed message, and the content of the [`Ok`].
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```{.should_panic}
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect_err", since = "1.17.0")]
-    pub fn expect_err(self, msg: &str) -> E {
-        match self {
-            Ok(t) => unwrap_failed(msg, &t),
-            Err(e) => e,
-        }
-    }
 }
 
 impl<T: Default, E> Result<T, E> {
-    /// Returns the contained value or a default
+    /// Returns the contained [`Ok`] value or a default
     ///
     /// Consumes the `self` argument then, if [`Ok`], returns the contained
     /// value, otherwise if [`Err`], returns the default value for that
@@ -1101,7 +1107,7 @@ impl<T: Default, E> Result<T, E> {
 
 #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
 impl<T, E: Into<!>> Result<T, E> {
-    /// Unwraps a result that can never be an [`Err`], yielding the content of the [`Ok`].
+    /// Returns the contained [`Ok`] value, but never panics.
     ///
     /// Unlike [`unwrap`], this method is known to never panic on the
     /// result types it is implemented for. Therefore, it can be used

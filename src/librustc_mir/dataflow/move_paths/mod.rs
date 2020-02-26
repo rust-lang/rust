@@ -72,6 +72,41 @@ impl<'tcx> MovePath<'tcx> {
 
         parents
     }
+
+    /// Finds the closest descendant of `self` for which `f` returns `true` using a breadth-first
+    /// search.
+    ///
+    /// `f` will **not** be called on `self`.
+    pub fn find_descendant(
+        &self,
+        move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
+        f: impl Fn(MovePathIndex) -> bool,
+    ) -> Option<MovePathIndex> {
+        let mut todo = if let Some(child) = self.first_child {
+            vec![child]
+        } else {
+            return None;
+        };
+
+        while let Some(mpi) = todo.pop() {
+            if f(mpi) {
+                return Some(mpi);
+            }
+
+            let move_path = &move_paths[mpi];
+            if let Some(child) = move_path.first_child {
+                todo.push(child);
+            }
+
+            // After we've processed the original `mpi`, we should always
+            // traverse the siblings of any of its children.
+            if let Some(sibling) = move_path.next_sibling {
+                todo.push(sibling);
+            }
+        }
+
+        None
+    }
 }
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
@@ -332,5 +367,17 @@ impl<'tcx> MoveData<'tcx> {
                 return None;
             }
         }
+    }
+
+    pub fn find_in_move_path_or_its_descendants(
+        &self,
+        root: MovePathIndex,
+        pred: impl Fn(MovePathIndex) -> bool,
+    ) -> Option<MovePathIndex> {
+        if pred(root) {
+            return Some(root);
+        }
+
+        self.move_paths[root].find_descendant(&self.move_paths, pred)
     }
 }

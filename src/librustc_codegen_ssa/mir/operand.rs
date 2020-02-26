@@ -8,8 +8,8 @@ use crate::MemFlags;
 
 use rustc::mir;
 use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
-use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
+use rustc::ty::Ty;
 
 use std::fmt;
 
@@ -66,20 +66,16 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: &'tcx ty::Const<'tcx>,
+        val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Self {
-        let layout = bx.layout_of(val.ty);
+        let layout = bx.layout_of(ty);
 
         if layout.is_zst() {
             return OperandRef::new_zst(bx, layout);
         }
 
-        let val_val = match val.val {
-            ty::ConstKind::Value(val_val) => val_val,
-            _ => bug!("encountered bad ConstKind in codegen"),
-        };
-
-        let val = match val_val {
+        let val = match val {
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,

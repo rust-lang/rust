@@ -66,13 +66,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl { constness, ref of_trait, .. } = item.kind {
-                    if constness == Constness::Const {
-                        this.lctx
-                            .diagnostic()
-                            .span_err(item.span, "const trait impls are not yet implemented");
-                    }
-
+                if let ItemKind::Impl { ref of_trait, .. } = item.kind {
                     this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
@@ -179,7 +173,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ids
             }
-            ItemKind::Const(ref ty, ..) => {
+            ItemKind::Const(_, ref ty, ..) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
@@ -267,28 +261,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
-                let ty = self.lower_ty(
-                    t,
-                    if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None)
-                    } else {
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                    },
-                );
-                hir::ItemKind::Static(ty, m, self.lower_const_body(span, Some(e)))
+                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                hir::ItemKind::Static(ty, m, body_id)
             }
-            ItemKind::Const(ref t, ref e) => {
-                let ty = self.lower_ty(
-                    t,
-                    if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::OpaqueTy(None)
-                    } else {
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                    },
-                );
-                hir::ItemKind::Const(ty, self.lower_const_body(span, Some(e)))
+            ItemKind::Const(_, ref t, ref e) => {
+                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                hir::ItemKind::Const(ty, body_id)
             }
-            ItemKind::Fn(FnSig { ref decl, header }, ref generics, ref body) => {
+            ItemKind::Fn(_, FnSig { ref decl, header }, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
@@ -297,7 +277,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let asyncness = header.asyncness.node;
+                    let asyncness = header.asyncness;
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
@@ -317,22 +297,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
+            ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => match ty.kind.opaque_top_hack() {
                 None => {
                     let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                    let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
+                    let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
                     hir::ItemKind::TyAlias(ty, generics)
                 }
                 Some(bounds) => {
+                    let ctx = || ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc);
                     let ty = hir::OpaqueTy {
-                        generics: self.lower_generics(generics, ImplTraitContext::OpaqueTy(None)),
-                        bounds: self.lower_param_bounds(bounds, ImplTraitContext::OpaqueTy(None)),
+                        generics: self.lower_generics(gen, ctx()),
+                        bounds: self.lower_param_bounds(bounds, ctx()),
                         impl_trait_fn: None,
                         origin: hir::OpaqueTyOrigin::TypeAlias,
                     };
                     hir::ItemKind::OpaqueTy(ty)
                 }
             },
+            ItemKind::TyAlias(_, ref generics, _, None) => {
+                let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
+                let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
+                hir::ItemKind::TyAlias(ty, generics)
+            }
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
                     variants: self.arena.alloc_from_iter(
@@ -413,10 +399,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
 
                 hir::ItemKind::Impl {
-                    unsafety,
+                    unsafety: self.lower_unsafety(unsafety),
                     polarity,
                     defaultness: self.lower_defaultness(defaultness, true /* [1] */),
-                    constness,
+                    constness: self.lower_constness(constness),
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
@@ -430,7 +416,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .alloc_from_iter(items.iter().map(|item| self.lower_trait_item_ref(item)));
                 hir::ItemKind::Trait(
                     is_auto,
-                    unsafety,
+                    self.lower_unsafety(unsafety),
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
                     items,
@@ -447,6 +433,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
         //     not cause an assertion failure inside the `lower_defaultness` function.
+    }
+
+    fn lower_const_item(
+        &mut self,
+        ty: &Ty,
+        span: Span,
+        body: Option<&Expr>,
+    ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
+        let itctx = if self.sess.features_untracked().impl_trait_in_bindings {
+            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
+        } else {
+            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
+        };
+        let ty = self.lower_ty(ty, itctx);
+        (ty, self.lower_const_body(span, body))
     }
 
     fn lower_use_tree(
@@ -653,7 +654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
-                ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
                         generics,
@@ -670,11 +671,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
-                ForeignItemKind::Static(ref t, m) => {
+                ForeignItemKind::Static(ref t, m, _) => {
                     let ty = self.lower_ty(t, ImplTraitContext::disallowed());
                     hir::ForeignItemKind::Static(ty, m)
                 }
-                ForeignItemKind::Ty => hir::ForeignItemKind::Type,
+                ForeignItemKind::Const(_, ref t, _) => {
+                    // For recovery purposes.
+                    let ty = self.lower_ty(t, ImplTraitContext::disallowed());
+                    hir::ForeignItemKind::Static(ty, Mutability::Not)
+                }
+                ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
@@ -751,32 +757,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            AssocItemKind::Const(ref ty, ref default) => {
-                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+            AssocItemKind::Static(ref ty, _, ref default) // Let's pretend this is a `const`.
+            | AssocItemKind::Const(_, ref ty, ref default) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                (
-                    generics,
-                    hir::TraitItemKind::Const(
-                        ty,
-                        default.as_ref().map(|x| self.lower_const_body(i.span, Some(x))),
-                    ),
-                )
+                let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
+                (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body))
             }
-            AssocItemKind::Fn(ref sig, None) => {
+            AssocItemKind::Fn(_, ref sig, ref generics, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) =
-                    self.lower_method_sig(&i.generics, sig, trait_item_def_id, false, None);
+                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
-            AssocItemKind::Fn(ref sig, Some(ref body)) => {
+            AssocItemKind::Fn(_, ref sig, ref generics, Some(ref body)) => {
                 let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) =
-                    self.lower_method_sig(&i.generics, sig, trait_item_def_id, false, None);
+                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
-            AssocItemKind::TyAlias(ref bounds, ref default) => {
+            AssocItemKind::TyAlias(_, ref generics, ref bounds, ref default) => {
                 let ty = default.as_ref().map(|x| self.lower_ty(x, ImplTraitContext::disallowed()));
-                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+                let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                     ty,
@@ -798,21 +799,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
-        let (kind, has_default) = match i.kind {
-            AssocItemKind::Const(_, ref default) => (hir::AssocItemKind::Const, default.is_some()),
-            AssocItemKind::TyAlias(_, ref default) => (hir::AssocItemKind::Type, default.is_some()),
-            AssocItemKind::Fn(ref sig, ref default) => {
+        let (kind, has_default) = match &i.kind {
+            AssocItemKind::Static(_, _, default) // Let's pretend this is a `const` for recovery.
+            | AssocItemKind::Const(_, _, default) => {
+                (hir::AssocItemKind::Const, default.is_some())
+            }
+            AssocItemKind::TyAlias(_, _, _, default) => (hir::AssocItemKind::Type, default.is_some()),
+            AssocItemKind::Fn(_, sig, _, default) => {
                 (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
             }
             AssocItemKind::Macro(..) => unimplemented!(),
         };
-        hir::TraitItemRef {
-            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id) },
-            ident: i.ident,
-            span: i.span,
-            defaultness: self.lower_defaultness(Defaultness::Default, has_default),
-            kind,
-        }
+        let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
+        let defaultness = hir::Defaultness::Default { has_value: has_default };
+        hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
@@ -823,36 +823,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
-        let (generics, kind) = match i.kind {
-            AssocItemKind::Const(ref ty, ref expr) => {
-                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+        let (generics, kind) = match &i.kind {
+            AssocItemKind::Static(ty, _, expr) | AssocItemKind::Const(_, ty, expr) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 (
-                    generics,
+                    hir::Generics::empty(),
                     hir::ImplItemKind::Const(ty, self.lower_const_body(i.span, expr.as_deref())),
                 )
             }
-            AssocItemKind::Fn(ref sig, ref body) => {
+            AssocItemKind::Fn(_, sig, generics, body) => {
                 self.current_item = Some(i.span);
-                let body_id = self.lower_maybe_async_body(
-                    i.span,
-                    &sig.decl,
-                    sig.header.asyncness.node,
-                    body.as_deref(),
-                );
+                let asyncness = sig.header.asyncness;
+                let body_id =
+                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, body.as_deref());
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
-                    &i.generics,
+                    generics,
                     sig,
                     impl_item_def_id,
                     impl_trait_return_allow,
-                    sig.header.asyncness.node.opt_return_id(),
+                    asyncness.opt_return_id(),
                 );
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            AssocItemKind::TyAlias(_, ref ty) => {
-                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+            AssocItemKind::TyAlias(_, generics, _, ty) => {
+                let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
                 let kind = match ty {
                     None => {
                         let ty = self.arena.alloc(self.ty(i.span, hir::TyKind::Err));
@@ -880,7 +876,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             attrs: self.lower_attrs(&i.attrs),
             generics,
             vis: self.lower_visibility(&i.vis, None),
-            defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
+            defaultness: self.lower_defaultness(i.kind.defaultness(), true /* [1] */),
             kind,
             span: i.span,
         }
@@ -894,16 +890,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
-            defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
+            defaultness: self.lower_defaultness(i.kind.defaultness(), true /* [1] */),
             kind: match &i.kind {
-                AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-                AssocItemKind::TyAlias(_, ty) => {
+                AssocItemKind::Static(..) // Let's pretend this is a `const` for recovery.
+                | AssocItemKind::Const(..) => hir::AssocItemKind::Const,
+                AssocItemKind::TyAlias(.., ty) => {
                     match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                         None => hir::AssocItemKind::Type,
                         Some(_) => hir::AssocItemKind::OpaqueTy,
                     }
                 }
-                AssocItemKind::Fn(sig, _) => {
+                AssocItemKind::Fn(_, sig, ..) => {
                     hir::AssocItemKind::Method { has_self: sig.decl.has_self() }
                 }
                 AssocItemKind::Macro(..) => unimplemented!(),
@@ -947,7 +944,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_defaultness(&self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
-            Defaultness::Default => hir::Defaultness::Default { has_value: has_value },
+            Defaultness::Default(_) => hir::Defaultness::Default { has_value },
             Defaultness::Final => {
                 assert!(has_value);
                 hir::Defaultness::Final
@@ -1031,12 +1028,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         decl: &FnDecl,
-        asyncness: IsAsync,
+        asyncness: Async,
         body: Option<&Block>,
     ) -> hir::BodyId {
         let closure_id = match asyncness {
-            IsAsync::Async { closure_id, .. } => closure_id,
-            IsAsync::NotAsync => return self.lower_fn_body_block(span, decl, body),
+            Async::Yes { closure_id, .. } => closure_id,
+            Async::No => return self.lower_fn_body_block(span, decl, body),
         };
 
         self.lower_body(|this| {
@@ -1245,9 +1242,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: h.unsafety,
-            asyncness: self.lower_asyncness(h.asyncness.node),
-            constness: h.constness.node,
+            unsafety: self.lower_unsafety(h.unsafety),
+            asyncness: self.lower_asyncness(h.asyncness),
+            constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
     }
@@ -1274,10 +1271,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .emit();
     }
 
-    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+    fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
         match a {
-            IsAsync::Async { .. } => hir::IsAsync::Async,
-            IsAsync::NotAsync => hir::IsAsync::NotAsync,
+            Async::Yes { .. } => hir::IsAsync::Async,
+            Async::No => hir::IsAsync::NotAsync,
+        }
+    }
+
+    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+        match c {
+            Const::Yes(_) => hir::Constness::Const,
+            Const::No => hir::Constness::NotConst,
+        }
+    }
+
+    pub(super) fn lower_unsafety(&mut self, u: Unsafe) -> hir::Unsafety {
+        match u {
+            Unsafe::Yes(_) => hir::Unsafety::Unsafe,
+            Unsafe::No => hir::Unsafety::Normal,
         }
     }
 

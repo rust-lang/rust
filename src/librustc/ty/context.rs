@@ -2,7 +2,7 @@
 
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
-use crate::dep_graph::{self, DepConstructor, DepNode};
+use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
@@ -41,6 +41,7 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -49,7 +50,6 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
-use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
@@ -1161,6 +1161,10 @@ impl<'tcx> TyCtxt<'tcx> {
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
+            let v = v
+                .into_iter()
+                .map(|tc| tc.map_import_ids(|id| hir.definitions().node_to_hir_id(id)))
+                .collect();
             map.insert(hir_id.local_id, StableVec::new(v));
         }
 
@@ -1343,7 +1347,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We cannot use the query versions of crates() and crate_hash(), since
         // those would need the DepNodes that we are allocating here.
         for cnum in self.cstore.crates_untracked() {
-            let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
+            let dep_node = DepConstructor::CrateMetadata(self, cnum);
             let crate_hash = self.cstore.crate_hash_untracked(cnum);
             self.dep_graph.with_task(
                 dep_node,
@@ -1522,7 +1526,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
         ty::tls::with_related_context(tcx, |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
-                query: icx.query.clone(),
+                query: icx.query,
                 diagnostics: icx.diagnostics,
                 layout_depth: icx.layout_depth,
                 task_deps: icx.task_deps,
@@ -1608,7 +1612,7 @@ pub mod tls {
 
     use crate::dep_graph::TaskDeps;
     use crate::ty::query;
-    use rustc_data_structures::sync::{self, Lock, Lrc};
+    use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
     use rustc_data_structures::OnDrop;
     use rustc_errors::Diagnostic;
@@ -1633,7 +1637,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
         /// `ty::query::plumbing` when executing a query.
-        pub query: Option<Lrc<query::QueryJob<'tcx>>>,
+        pub query: Option<query::QueryJobId>,
 
         /// Where to store diagnostics for the current query job, if any.
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
@@ -1684,6 +1688,7 @@ pub mod tls {
 
     /// Gets the pointer to the current `ImplicitCtxt`.
     #[cfg(not(parallel_compiler))]
+    #[inline]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
@@ -2551,16 +2556,6 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 
-    pub fn lint_hir(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        msg: &str,
-    ) {
-        self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
-    }
-
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
     pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
@@ -2604,20 +2599,20 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
     }
 
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, msg)
+        struct_lint_level(self.sess, lint, level, src, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {
@@ -2725,10 +2720,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
-    };
-    providers.get_lang_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
     providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
     providers.maybe_unused_extern_crates = |tcx, cnum| {

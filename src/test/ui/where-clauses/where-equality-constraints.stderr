@@ -4,7 +4,7 @@ error: equality constraints are not yet supported in `where` clauses
 LL | fn f() where u8 = u16 {}
    |              ^^^^^^^^ not supported
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/20041
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
 error: equality constraints are not yet supported in `where` clauses
   --> $DIR/where-equality-constraints.rs:3:14
@@ -12,7 +12,7 @@ error: equality constraints are not yet supported in `where` clauses
 LL | fn g() where for<'a> &'static (u8,) == u16, {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not supported
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/20041
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
 error: aborting due to 2 previous errors
 

@@ -1,10 +1,10 @@
-use rustc::infer::InferCtxt;
 use rustc::lint;
 use rustc::mir::Field;
-use rustc::traits::predicate_for_trait_def;
-use rustc::traits::{self, ObligationCause, PredicateObligation};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::predicate_for_trait_def;
+use rustc_infer::traits::{self, ObligationCause, PredicateObligation};
 
 use rustc_index::vec::Idx;
 
@@ -109,11 +109,14 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                 };
                 let path = self.tcx().def_path_str(adt_def.did);
-                let msg = format!(
-                    "to use a constant of type `{}` in a pattern, \
-                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                    path, path,
-                );
+
+                let make_msg = || -> String {
+                    format!(
+                        "to use a constant of type `{}` in a pattern, \
+                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                        path, path,
+                    )
+                };
 
                 // double-check there even *is* a semantic `PartialEq` to dispatch to.
                 //
@@ -143,13 +146,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
                 if !ty_is_partial_eq {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
-                    self.tcx().sess.span_fatal(self.span, &msg);
+                    self.tcx().sess.span_fatal(self.span, &make_msg());
                 } else {
-                    self.tcx().lint_hir(
+                    self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        &msg,
+                        |lint| lint.build(&make_msg()).emit(),
                     );
                 }
             }
@@ -177,11 +180,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         let kind = match cv.ty.kind {
             ty::Float(_) => {
-                tcx.lint_hir(
+                tcx.struct_span_lint_hir(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
                     span,
-                    "floating-point types cannot be used in patterns",
+                    |lint| lint.build("floating-point types cannot be used in patterns").emit(),
                 );
                 PatKind::Constant { value: cv }
             }

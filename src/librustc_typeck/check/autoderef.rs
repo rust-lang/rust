@@ -1,14 +1,14 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
-use rustc::traits::{self, TraitEngine};
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::traits::{self, TraitEngine};
 
 use rustc_span::Span;
 use syntax::ast::Ident;

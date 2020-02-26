@@ -26,7 +26,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let ..=5 = 0 {}
    |            ^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
@@ -35,7 +35,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let ...5 = 0 {}
    |            ^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
@@ -44,7 +44,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let ..5 = 0 {}
    |            ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
@@ -53,7 +53,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let 5.. = 0 {}
    |            ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
@@ -62,7 +62,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let 5..= = 0 {}
    |            ^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
@@ -71,7 +71,7 @@ error[E0658]: half-open range patterns are unstable
 LL |     if let 5... = 0 {}
    |            ^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67264
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error: aborting due to 9 previous errors

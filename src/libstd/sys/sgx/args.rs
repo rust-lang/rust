@@ -22,12 +22,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     }
 }
 
-pub unsafe fn cleanup() {
-    let args = ARGS.swap(0, Ordering::Relaxed);
-    if args != 0 {
-        drop(Box::<ArgsStore>::from_raw(args as _))
-    }
-}
+pub unsafe fn cleanup() {}
 
 pub fn args() -> Args {
     let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };

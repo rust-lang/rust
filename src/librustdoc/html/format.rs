@@ -933,7 +933,7 @@ impl clean::Arguments {
     }
 }
 
-impl clean::FunctionRetTy {
+impl clean::FnRetTy {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| match self {
             clean::Return(clean::Tuple(tys)) if tys.is_empty() => Ok(()),

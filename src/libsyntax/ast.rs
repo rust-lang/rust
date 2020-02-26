@@ -34,7 +34,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_span::source_map::{dummy_spanned, respan, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -243,7 +243,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -429,6 +429,13 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
+    /// The order of items in the HIR is unrelated to the order of
+    /// items in the AST. However, we generate proc macro harnesses
+    /// based on the AST order, and later refer to these harnesses
+    /// from the HIR. This field keeps track of the order in which
+    /// we generated proc macros harnesses, so that we can map
+    /// HIR proc macros items back to their harness items.
+    pub proc_macros: Vec<NodeId>,
 }
 
 /// Possible values inside of compile-time attribute lists.
@@ -1198,14 +1205,14 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
     ///
     /// The `NodeId` is the `NodeId` for the closure that results from
     /// desugaring an async block, just like the NodeId field in the
-    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// `Async::Yes` variant. This is necessary in order to create a def for the
     /// closure which can be used as a parent of any child defs. Defs
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
@@ -1605,46 +1612,6 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents associated items.
-/// These include items in `impl` and `trait` definitions.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AssocItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub defaultness: Defaultness,
-    pub generics: Generics,
-    pub kind: AssocItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
-/// Represents various kinds of content within an `impl`.
-///
-/// The term "provided" in the variants below refers to the item having a default
-/// definition / body. Meanwhile, a "required" item lacks a definition / body.
-/// In an implementation, all items must be provided.
-/// The `Option`s below denote the bodies, where `Some(_)`
-/// means "provided" and conversely `None` means "required".
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum AssocItemKind {
-    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
-    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
-    Const(P<Ty>, Option<P<Expr>>),
-
-    /// An associated function.
-    Fn(FnSig, Option<P<Block>>),
-
-    /// An associated type.
-    TyAlias(GenericBounds, Option<P<Ty>>),
-
-    /// A macro expanding to an associated item.
-    Macro(Mac),
-}
-
 #[derive(
     Clone,
     Copy,
@@ -1863,7 +1830,7 @@ pub struct Ty {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
-    pub unsafety: Unsafety,
+    pub unsafety: Unsafe,
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
@@ -2076,7 +2043,7 @@ impl Param {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Param>,
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
 }
 
 impl FnDecl {
@@ -2101,77 +2068,45 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic
-)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            Unsafety::Unsafe => "unsafe ",
-            Unsafety::Normal => "",
-        }
-    }
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Unsafe {
+    Yes(Span),
+    No,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum IsAsync {
-    Async { closure_id: NodeId, return_impl_trait_id: NodeId },
-    NotAsync,
+pub enum Async {
+    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    No,
 }
 
-impl IsAsync {
+impl Async {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self { true } else { false }
+        if let Async::Yes { .. } = self { true } else { false }
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-            IsAsync::NotAsync => None,
+            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::No => None,
         }
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 #[derive(HashStable_Generic)]
-pub enum Constness {
-    Const,
-    NotConst,
+pub enum Const {
+    Yes(Span),
+    No,
 }
 
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Defaultness {
-    Default,
+    Default(Span),
     Final,
 }
 
@@ -2193,8 +2128,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum FunctionRetTy {
-    // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
+pub enum FnRetTy {
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
@@ -2204,11 +2138,11 @@ pub enum FunctionRetTy {
     Ty(P<Ty>),
 }
 
-impl FunctionRetTy {
+impl FnRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            FunctionRetTy::Default(span) => span,
-            FunctionRetTy::Ty(ref ty) => ty.span,
+            FnRetTy::Default(span) => span,
+            FnRetTy::Ty(ref ty) => ty.span,
         }
     }
 }
@@ -2477,15 +2411,15 @@ impl VariantData {
     }
 }
 
-/// An item.
-///
-/// The name might be a dummy name in case of anonymous items.
+/// An item definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item<K = ItemKind> {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    /// The name of the item.
+    /// It might be a dummy name in case of anonymous items.
     pub ident: Ident,
 
     pub kind: K,
@@ -2504,6 +2438,13 @@ impl Item {
     /// Return the span that encompasses the attributes.
     pub fn span_with_attributes(&self) -> Span {
         self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span))
+    }
+}
+
+impl<K: IntoItemKind> Item<K> {
+    pub fn into_item(self) -> Item {
+        let Item { attrs, id, span, vis, ident, kind, tokens } = self;
+        Item { attrs, id, span, vis, ident, kind: kind.into_item_kind(), tokens }
     }
 }
 
@@ -2527,9 +2468,9 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
-    pub asyncness: Spanned<IsAsync>,
-    pub constness: Spanned<Constness>,
+    pub unsafety: Unsafe,
+    pub asyncness: Async,
+    pub constness: Const,
     pub ext: Extern,
 }
 
@@ -2537,9 +2478,9 @@ impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
         let Self { unsafety, asyncness, constness, ext } = self;
-        matches!(unsafety, Unsafety::Unsafe)
-            || asyncness.node.is_async()
-            || matches!(constness.node, Constness::Const)
+        matches!(unsafety, Unsafe::Yes(_))
+            || asyncness.is_async()
+            || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
 }
@@ -2547,9 +2488,9 @@ impl FnHeader {
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
-            unsafety: Unsafety::Normal,
-            asyncness: dummy_spanned(IsAsync::NotAsync),
-            constness: dummy_spanned(Constness::NotConst),
+            unsafety: Unsafe::No,
+            asyncness: Async::No,
+            constness: Const::No,
             ext: Extern::None,
         }
     }
@@ -2568,15 +2509,15 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, P<Expr>),
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(P<Ty>, P<Expr>),
+    Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(FnSig, Generics, Option<P<Block>>),
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2590,7 +2531,7 @@ pub enum ItemKind {
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(P<Ty>, Generics),
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2606,7 +2547,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<P<AssocItem>>),
+    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2615,10 +2556,10 @@ pub enum ItemKind {
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl {
-        unsafety: Unsafety,
+        unsafety: Unsafe,
         polarity: ImplPolarity,
         defaultness: Defaultness,
-        constness: Constness,
+        constness: Const,
         generics: Generics,
 
         /// The trait being implemented, if any.
@@ -2637,30 +2578,41 @@ pub enum ItemKind {
 }
 
 impl ItemKind {
-    pub fn descriptive_variant(&self) -> &str {
-        match *self {
+    pub fn article(&self) -> &str {
+        use ItemKind::*;
+        match self {
+            Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
+            ExternCrate(..) | ForeignMod(..) | Mac(..) | Enum(..) | Impl { .. } => "an",
+        }
+    }
+
+    pub fn descr(&self) -> &str {
+        match self {
             ItemKind::ExternCrate(..) => "extern crate",
-            ItemKind::Use(..) => "use",
+            ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
-            ItemKind::ForeignMod(..) => "foreign module",
-            ItemKind::GlobalAsm(..) => "global asm",
+            ItemKind::ForeignMod(..) => "extern block",
+            ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl { .. } => "item",
+            ItemKind::Mac(..) => "item macro invocation",
+            ItemKind::MacroDef(..) => "macro definition",
+            ItemKind::Impl { .. } => "implementation",
         }
     }
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(_, generics, _)
-            | Self::TyAlias(_, generics)
+            Self::Fn(_, _, generics, _)
+            | Self::TyAlias(_, generics, ..)
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)
@@ -2672,28 +2624,58 @@ impl ItemKind {
     }
 }
 
-pub type ForeignItem = Item<ForeignItemKind>;
+pub trait IntoItemKind {
+    fn into_item_kind(self) -> ItemKind;
+}
 
-/// An item within an `extern` block.
+// FIXME(Centril): These definitions should be unmerged;
+// see https://github.com/rust-lang/rust/pull/69194#discussion_r379899975
+pub type ForeignItem = Item<AssocItemKind>;
+pub type ForeignItemKind = AssocItemKind;
+
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
+pub type AssocItem = Item<AssocItemKind>;
+
+/// Represents non-free item kinds.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ForeignItemKind {
-    /// A foreign function.
-    Fn(FnSig, Generics, Option<P<Block>>),
-    /// A foreign static item (`static ext: u8`).
-    Static(P<Ty>, Mutability),
-    /// A foreign type.
-    Ty,
-    /// A macro invocation.
+pub enum AssocItemKind {
+    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the constant is provided, and otherwise required.
+    Const(Defaultness, P<Ty>, Option<P<Expr>>),
+    /// A static item (`static FOO: u8`).
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    /// A function.
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
+    /// A type.
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
+    /// A macro expanding to items.
     Macro(Mac),
 }
 
-impl ForeignItemKind {
-    pub fn descriptive_variant(&self) -> &str {
+impl AssocItemKind {
+    pub fn defaultness(&self) -> Defaultness {
         match *self {
-            ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Static(..) => "foreign static item",
-            ForeignItemKind::Ty => "foreign type",
-            ForeignItemKind::Macro(..) => "macro in foreign module",
+            Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
+            Self::Macro(..) | Self::Static(..) => Defaultness::Final,
+        }
+    }
+}
+
+impl IntoItemKind for AssocItemKind {
+    fn into_item_kind(self) -> ItemKind {
+        match self {
+            AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
+            AssocItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
+            AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
+            AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
+            AssocItemKind::Macro(a) => ItemKind::Mac(a),
         }
     }
 }

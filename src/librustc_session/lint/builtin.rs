@@ -41,9 +41,15 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub EXCEEDING_BITSHIFTS,
+    pub ARITHMETIC_OVERFLOW,
     Deny,
-    "shift exceeds the type's number of bits"
+    "arithmetic operation overflows"
+}
+
+declare_lint! {
+    pub UNCONDITIONAL_PANIC,
+    Deny,
+    "operation will cause a panic at runtime"
 }
 
 declare_lint! {
@@ -495,7 +501,8 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-        EXCEEDING_BITSHIFTS,
+        ARITHMETIC_OVERFLOW,
+        UNCONDITIONAL_PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
         UNUSED_QUALIFICATIONS,
@@ -557,3 +564,11 @@ declare_lint_pass! {
         INLINE_NO_SANITIZE,
     ]
 }
+
+declare_lint! {
+    pub UNUSED_DOC_COMMENTS,
+    Warn,
+    "detects doc comments that aren't used by rustdoc"
+}
+
+declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);

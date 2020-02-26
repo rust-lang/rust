@@ -49,9 +49,10 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::dataflow::generic::{Analysis, ResultsCursor};
 use crate::dataflow::{do_dataflow, DataflowResultsCursor, DebugFormatted};
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{HaveBeenBorrowedLocals, MaybeStorageLive, RequiresStorage};
+use crate::dataflow::{MaybeBorrowedLocals, MaybeStorageLive, RequiresStorage};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
@@ -185,18 +186,24 @@ fn self_arg() -> Local {
     Local::new(1)
 }
 
-/// Generator have not been resumed yet
+/// Generator has not been resumed yet.
 const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
-/// Generator has returned / is completed
+/// Generator has returned / is completed.
 const RETURNED: usize = GeneratorSubsts::RETURNED;
-/// Generator has been poisoned
+/// Generator has panicked and is poisoned.
 const POISONED: usize = GeneratorSubsts::POISONED;
 
+/// A `yield` point in the generator.
 struct SuspensionPoint<'tcx> {
+    /// State discriminant used when suspending or resuming at this point.
     state: usize,
+    /// The block to jump to after resumption.
     resume: BasicBlock,
+    /// Where to move the resume argument after resumption.
     resume_arg: Place<'tcx>,
+    /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
+    /// Set of locals that have live storage while at this suspension point.
     storage_liveness: liveness::LiveVarSet,
 }
 
@@ -323,6 +330,15 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             let state = if let Some((resume, resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
+
+                // The resume arg target location might itself be remapped if its base local is
+                // live across a yield.
+                let resume_arg =
+                    if let Some(&(ty, variant, idx)) = self.remap.get(&resume_arg.local) {
+                        self.make_field(variant, idx, ty)
+                    } else {
+                        resume_arg
+                    };
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
@@ -471,17 +487,10 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body_ref);
-    let borrowed_locals_results = do_dataflow(
-        tcx,
-        body_ref,
-        def_id,
-        &[],
-        &dead_unwinds,
-        borrowed_locals_analysis,
-        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]),
-    );
-    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body_ref);
+    let borrowed_locals_results =
+        MaybeBorrowedLocals::all_borrows().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
+
+    let mut borrowed_locals_cursor = ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
@@ -521,7 +530,7 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor.seek(loc);
+                borrowed_locals_cursor.seek_before(loc);
                 liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
@@ -1022,7 +1031,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, Operation::Resume);
 
-    use rustc::mir::interpret::PanicInfo::{ResumedAfterPanic, ResumedAfterReturn};
+    use rustc::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));

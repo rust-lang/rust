@@ -270,6 +270,39 @@ impl TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
+    // An approximation to proc-macro-style single-character operators used by rustc parser.
+    // If the operator token can be broken into two tokens, the first of which is single-character,
+    // then this function performs that operation, otherwise it returns `None`.
+    pub fn break_two_token_op(&self) -> Option<(TokenKind, TokenKind)> {
+        Some(match *self {
+            Le => (Lt, Eq),
+            EqEq => (Eq, Eq),
+            Ne => (Not, Eq),
+            Ge => (Gt, Eq),
+            AndAnd => (BinOp(And), BinOp(And)),
+            OrOr => (BinOp(Or), BinOp(Or)),
+            BinOp(Shl) => (Lt, Lt),
+            BinOp(Shr) => (Gt, Gt),
+            BinOpEq(Plus) => (BinOp(Plus), Eq),
+            BinOpEq(Minus) => (BinOp(Minus), Eq),
+            BinOpEq(Star) => (BinOp(Star), Eq),
+            BinOpEq(Slash) => (BinOp(Slash), Eq),
+            BinOpEq(Percent) => (BinOp(Percent), Eq),
+            BinOpEq(Caret) => (BinOp(Caret), Eq),
+            BinOpEq(And) => (BinOp(And), Eq),
+            BinOpEq(Or) => (BinOp(Or), Eq),
+            BinOpEq(Shl) => (Lt, Le),
+            BinOpEq(Shr) => (Gt, Ge),
+            DotDot => (Dot, Dot),
+            DotDotDot => (Dot, DotDot),
+            ModSep => (Colon, Colon),
+            RArrow => (BinOp(Minus), Gt),
+            LArrow => (Lt, BinOp(Minus)),
+            FatArrow => (Eq, Gt),
+            _ => return None,
+        })
+    }
+
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
     pub fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
@@ -402,12 +435,14 @@ impl Token {
 
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
+    ///
+    /// Keep this in sync with `Lit::from_token`.
     pub fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match **nt {
-                NtLiteral(..) => true,
+            Interpolated(ref nt) => match &**nt {
+                NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
                 _ => false,
             },
             _ => false,
@@ -530,7 +565,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
-    fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
+    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
         match self.ident() {
             Some((id, false)) => pred(id),
             _ => false,
@@ -677,12 +712,6 @@ pub enum Nonterminal {
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
-    // Used only for passing items to proc macro attributes (they are not
-    // strictly necessary for that, `Annotatable` can be converted into
-    // tokens directly, but doing that naively regresses pretty-printing).
-    NtTraitItem(P<ast::AssocItem>),
-    NtImplItem(P<ast::AssocItem>),
-    NtForeignItem(P<ast::ForeignItem>),
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -720,9 +749,6 @@ impl fmt::Debug for Nonterminal {
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
-            NtImplItem(..) => f.pad("NtImplItem(..)"),
-            NtTraitItem(..) => f.pad("NtTraitItem(..)"),
-            NtForeignItem(..) => f.pad("NtForeignItem(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }

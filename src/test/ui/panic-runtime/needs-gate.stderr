@@ -4,7 +4,7 @@ error[E0658]: the `#[panic_runtime]` attribute is an experimental feature
 LL | #![panic_runtime]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32837
+   = note: see issue #32837 <https://github.com/rust-lang/rust/issues/32837> for more information
    = help: add `#![feature(panic_runtime)]` to the crate attributes to enable
 
 error[E0658]: the `#[needs_panic_runtime]` attribute is an experimental feature
@@ -13,7 +13,7 @@ error[E0658]: the `#[needs_panic_runtime]` attribute is an experimental feature
 LL | #![needs_panic_runtime]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/32837
+   = note: see issue #32837 <https://github.com/rust-lang/rust/issues/32837> for more information
    = help: add `#![feature(needs_panic_runtime)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

@@ -26,7 +26,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
-        archive_format: "bsd".to_string(),
+        archive_format: "darwin".to_string(),
         pre_link_args: LinkArgs::new(),
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,

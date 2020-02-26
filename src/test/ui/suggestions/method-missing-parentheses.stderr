@@ -1,0 +1,17 @@
+error: field expressions cannot have generic arguments
+  --> $DIR/method-missing-parentheses.rs:2:41
+   |
+LL |     let _ = vec![].into_iter().collect::<usize>;
+   |                                         ^^^^^^^
+
+error[E0615]: attempted to take value of method `collect` on type `std::vec::IntoIter<_>`
+  --> $DIR/method-missing-parentheses.rs:2:32
+   |
+LL |     let _ = vec![].into_iter().collect::<usize>;
+   |                                ^^^^^^^---------
+   |                                |
+   |                                help: use parentheses to call the method: `collect::<usize>()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0615`.

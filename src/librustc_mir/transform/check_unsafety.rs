@@ -178,6 +178,16 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
+        // prevent
+        // * `&mut x.field`
+        // * `x.field = y;`
+        // * `&x.field` if `field`'s type has interior mutability
+        // because either of these would allow modifying the layout constrained field and
+        // insert values that violate the layout constraints.
+        if context.is_mutating_use() || context.is_borrow() {
+            self.check_mut_borrowing_layout_constrained_field(place, context.is_mutating_use());
+        }
+
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
 
@@ -198,24 +208,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     );
                 }
             }
-            let is_borrow_of_interior_mut = context.is_borrow()
-                && !Place::ty_from(place.local, proj_base, self.body, self.tcx).ty.is_freeze(
-                    self.tcx,
-                    self.param_env,
-                    self.source_info.span,
-                );
-            // prevent
-            // * `&mut x.field`
-            // * `x.field = y;`
-            // * `&x.field` if `field`'s type has interior mutability
-            // because either of these would allow modifying the layout constrained field and
-            // insert values that violate the layout constraints.
-            if context.is_mutating_use() || is_borrow_of_interior_mut {
-                self.check_mut_borrowing_layout_constrained_field(place, context.is_mutating_use());
-            }
             let old_source_info = self.source_info;
-            if let (local, []) = (&place.local, proj_base) {
-                let decl = &self.body.local_decls[*local];
+            if let [] = proj_base {
+                let decl = &self.body.local_decls[place.local];
                 if decl.internal {
                     if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
                         if self.tcx.is_mutable_static(def_id) {
@@ -240,7 +235,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
                         // desugaring, rather than the source info of the RHS.
-                        self.source_info = self.body.local_decls[*local].source_info;
+                        self.source_info = self.body.local_decls[place.local].source_info;
                     }
                 }
             }
@@ -396,6 +391,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             cursor = proj_base;
 
             match elem {
+                // Modifications behind a dereference don't affect the value of
+                // the pointer.
+                ProjectionElem::Deref => return,
                 ProjectionElem::Field(..) => {
                     let ty =
                         Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
@@ -409,7 +407,14 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                         "mutating layout constrained fields cannot statically be \
                                         checked for valid values",
                                     )
-                                } else {
+
+                                // Check `is_freeze` as late as possible to avoid cycle errors
+                                // with opaque types.
+                                } else if !place.ty(self.body, self.tcx).ty.is_freeze(
+                                    self.tcx,
+                                    self.param_env,
+                                    self.source_info.span,
+                                ) {
                                     (
                                         "borrow of layout constrained field with interior \
                                         mutability",
@@ -417,6 +422,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                         lose the constraints. Coupled with interior mutability, \
                                         the field can be changed to invalid values",
                                     )
+                                } else {
+                                    continue;
                                 };
                                 self.require_unsafe(
                                     description,
@@ -516,18 +523,20 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
         .as_local_hir_id(def_id)
         .unwrap_or_else(|| bug!("checking unsafety for non-local def id {:?}", def_id));
 
-    // FIXME: when we make this a hard error, this should have its
-    // own error code.
-    let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
-        "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
-         type or const parameters (error E0133)"
-            .to_string()
-    } else {
-        "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
-         does not derive Copy (error E0133)"
-            .to_string()
-    };
-    tcx.lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), &message);
+    tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
+        // FIXME: when we make this a hard error, this should have its
+        // own error code.
+        let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
+            "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
+             type or const parameters (error E0133)"
+                .to_string()
+        } else {
+            "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
+             does not derive Copy (error E0133)"
+                .to_string()
+        };
+        lint.build(&message).emit()
+    });
 }
 
 /// Returns the `HirId` for an enclosing scope that is also `unsafe`.
@@ -558,16 +567,18 @@ fn is_enclosed(
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
-    let msg = "unnecessary `unsafe` block";
-    let mut db = tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg);
-    db.span_label(span, msg);
-    if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
-        db.span_label(
-            tcx.sess.source_map().def_span(tcx.hir().span(id)),
-            format!("because it's nested under this `unsafe` {}", kind),
-        );
-    }
-    db.emit();
+    tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
+        let msg = "unnecessary `unsafe` block";
+        let mut db = lint.build(msg);
+        db.span_label(span, msg);
+        if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
+            db.span_label(
+                tcx.sess.source_map().def_span(tcx.hir().span(id)),
+                format!("because it's nested under this `unsafe` {}", kind),
+            );
+        }
+        db.emit();
+    });
 }
 
 fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
@@ -619,13 +630,15 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                         SAFE_PACKED_BORROWS,
                         lint_hir_id,
                         source_info.span,
-                        &format!(
-                            "{} is unsafe and requires unsafe function or block (error E0133)",
-                            description
-                        ),
+                        |lint| {
+                            lint.build(&format!(
+                                "{} is unsafe and requires unsafe function or block (error E0133)",
+                                description
+                            ))
+                            .note(&details.as_str())
+                            .emit()
+                        },
                     )
-                    .note(&details.as_str())
-                    .emit();
                 }
             }
         }

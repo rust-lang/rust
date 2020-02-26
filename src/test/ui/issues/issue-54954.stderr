@@ -1,8 +1,8 @@
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/issue-54954.rs:7:5
    |
 LL |     const fn const_val<T: Sized>() -> usize {
-   |     ^^^^^ trait fns cannot be const
+   |     ^^^^^ functions in traits cannot be const
 
 error[E0283]: type annotations needed
   --> $DIR/issue-54954.rs:3:24

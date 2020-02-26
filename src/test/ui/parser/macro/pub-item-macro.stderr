@@ -1,8 +1,8 @@
 error: can't qualify macro invocation with `pub`
-  --> $DIR/pub-item-macro.rs:8:5
+  --> $DIR/pub-item-macro.rs:10:5
    |
 LL |     pub priv_x!();
-   |     ^^^
+   |     ^^^ help: remove the visibility
 ...
 LL |     pub_x!();
    |     --------- in this macro invocation
@@ -11,16 +11,16 @@ LL |     pub_x!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0603]: static `x` is private
-  --> $DIR/pub-item-macro.rs:17:23
+  --> $DIR/pub-item-macro.rs:20:23
    |
 LL |     let y: u32 = foo::x;
    |                       ^ this static is private
    |
 note: the static `x` is defined here
-  --> $DIR/pub-item-macro.rs:4:5
+  --> $DIR/pub-item-macro.rs:5:9
    |
-LL |     static x: u32 = 0;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         static x: u32 = 0;
+   |         ^^^^^^^^^^^^^^^^^^
 ...
 LL |     pub_x!();
    |     --------- in this macro invocation

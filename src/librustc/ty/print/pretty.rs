@@ -64,8 +64,7 @@ thread_local! {
 /// calling the same query.
 pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
     NO_QUERIES.with(|no_queries| {
-        let old = no_queries.get();
-        no_queries.set(true);
+        let old = no_queries.replace(true);
         let result = f();
         no_queries.set(old);
         result
@@ -78,8 +77,7 @@ pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
 /// so this variable disables that check.
 pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
     FORCE_IMPL_FILENAME_LINE.with(|force| {
-        let old = force.get();
-        force.set(true);
+        let old = force.replace(true);
         let result = f();
         force.set(old);
         result
@@ -89,8 +87,7 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
 /// Adds the `crate::` prefix to paths where appropriate.
 pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
-        let old = flag.get();
-        flag.set(true);
+        let old = flag.replace(true);
         let result = f();
         flag.set(old);
         result
@@ -724,7 +721,7 @@ pub trait PrettyPrinter<'tcx>:
             let mut resugared = false;
 
             // Special-case `Fn(...) -> ...` and resugar it.
-            let fn_trait_kind = self.tcx().lang_items().fn_trait_kind(principal.def_id);
+            let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
                 if let ty::Tuple(ref args) = principal.substs.type_at(0).kind {
                     let mut projections = predicates.projection_bounds();
@@ -1818,7 +1815,7 @@ define_print_and_forward_display! {
     ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref data, constness) => {
-                if let ast::Constness::Const = constness {
+                if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))

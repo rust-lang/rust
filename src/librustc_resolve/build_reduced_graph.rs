@@ -718,8 +718,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(ref ty, _) => {
-                let def_kind = match ty.kind.opaque_top_hack() {
+            ItemKind::TyAlias(_, _, _, ref ty) => {
+                let def_kind = match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                     None => DefKind::TyAlias,
                     Some(_) => DefKind::OpaqueTy,
                 };
@@ -826,10 +826,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Static(..) => {
+            ForeignItemKind::Static(..) | ForeignItemKind::Const(..) => {
                 (Res::Def(DefKind::Static, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Ty => {
+            ForeignItemKind::TyAlias(..) => {
                 (Res::Def(DefKind::ForeignTy, self.r.definitions.local_def_id(item.id)), TypeNS)
             }
             ForeignItemKind::Macro(_) => unreachable!(),
@@ -1251,8 +1251,9 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         // Add the item to the trait info.
         let item_def_id = self.r.definitions.local_def_id(item.id);
         let (res, ns) = match item.kind {
-            AssocItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
-            AssocItemKind::Fn(ref sig, _) => {
+            AssocItemKind::Static(..) // Let's pretend it's a `const` for recovery.
+            | AssocItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
+            AssocItemKind::Fn(_, ref sig, _, _) => {
                 if sig.decl.has_self() {
                     self.r.has_self.insert(item_def_id);
                 }

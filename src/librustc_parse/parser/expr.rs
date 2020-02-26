@@ -1,6 +1,6 @@
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath};
-use super::{BlockMode, Parser, PathStyle, PrevTokenKind, Restrictions, TokenType};
+use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -10,10 +10,8 @@ use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
-use syntax::ast::{
-    AnonConst, BinOp, BinOpKind, FnDecl, FunctionRetTy, Mac, Param, Ty, TyKind, UnOp,
-};
-use syntax::ast::{Arm, BlockCheckMode, Expr, ExprKind, IsAsync, Label, Movability, RangeLimits};
+use syntax::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, Mac, Param, Ty, TyKind, UnOp};
+use syntax::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::classify;
@@ -166,17 +164,10 @@ impl<'a> Parser<'a> {
 
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
-            // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
-            // it refers to. Interpolated identifiers are unwrapped early and never show up here
-            // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
-            // it as "interpolated", it doesn't change the answer for non-interpolated idents.
-            let lhs_span = match (self.prev_token_kind, &lhs.kind) {
-                (PrevTokenKind::Interpolated, _) => self.prev_span,
-                (PrevTokenKind::Ident, &ExprKind::Path(None, ref path))
-                    if path.segments.len() == 1 =>
-                {
-                    self.prev_span
-                }
+            // Adjust the span for interpolated LHS to point to the `$lhs` token
+            // and not to what it refers to.
+            let lhs_span = match self.unnormalized_prev_token.kind {
+                TokenKind::Interpolated(..) => self.prev_span,
                 _ => lhs.span,
             };
 
@@ -535,11 +526,13 @@ impl<'a> Parser<'a> {
         expr: PResult<'a, P<Expr>>,
     ) -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
-            if self.prev_token_kind == PrevTokenKind::Interpolated {
-                (self.prev_span, e)
-            } else {
-                (e.span, e)
-            }
+            (
+                match self.unnormalized_prev_token.kind {
+                    TokenKind::Interpolated(..) => self.prev_span,
+                    _ => e.span,
+                },
+                e,
+            )
         })
     }
 
@@ -828,7 +821,7 @@ impl<'a> Parser<'a> {
             if let Some(args) = segment.args {
                 self.struct_span_err(
                     args.span(),
-                    "field expressions may not have generic arguments",
+                    "field expressions cannot have generic arguments",
                 )
                 .emit();
             }
@@ -1295,7 +1288,10 @@ impl<'a> Parser<'a> {
                         `proc_macro::Literal::*_unsuffixed` for code that will desugar \
                         to tuple field access",
                 );
-                err.note("for more context, see https://github.com/rust-lang/rust/issues/60210");
+                err.note(
+                    "see issue #60210 <https://github.com/rust-lang/rust/issues/60210> \
+                     for more information",
+                );
                 err
             } else {
                 self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
@@ -1350,7 +1346,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness =
-            if self.token.span.rust_2018() { self.parse_asyncness() } else { IsAsync::NotAsync };
+            if self.token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
         if asyncness.is_async() {
             // Feature-gate `async ||` closures.
             self.sess.gated_spans.gate(sym::async_closure, self.prev_span);
@@ -1360,7 +1356,7 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span;
         let body = match decl.output {
-            FunctionRetTy::Default(_) => {
+            FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
             }
@@ -1629,10 +1625,10 @@ impl<'a> Parser<'a> {
         let hi = self.token.span;
 
         if require_comma {
-            let cm = self.sess.source_map();
+            let sm = self.sess.source_map();
             self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]).map_err(
                 |mut err| {
-                    match (cm.span_to_lines(expr.span), cm.span_to_lines(arm_start_span)) {
+                    match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
                         (Ok(ref expr_lines), Ok(ref arm_start_lines))
                             if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                                 && expr_lines.lines.len() == 2
@@ -1834,10 +1830,16 @@ impl<'a> Parser<'a> {
                     }
                 }
                 Err(mut e) => {
+                    e.span_label(struct_sp, "while parsing this struct");
                     if let Some(f) = recovery_field {
                         fields.push(f);
+                        e.span_suggestion(
+                            self.prev_span.shrink_to_hi(),
+                            "try adding a comma",
+                            ",".into(),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     self.eat(&token::Comma);

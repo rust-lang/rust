@@ -4,7 +4,7 @@ error[E0658]: associated type bounds are unstable
 LL |     type A: Iterator<Item: Copy>;
    |                      ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -13,7 +13,7 @@ error[E0658]: associated type bounds are unstable
 LL |     type B: Iterator<Item: 'static>;
    |                      ^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -22,7 +22,7 @@ error[E0658]: associated type bounds are unstable
 LL | struct _St1<T: Tr1<As1: Tr2>> {
    |                    ^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -31,7 +31,7 @@ error[E0658]: associated type bounds are unstable
 LL | enum _En1<T: Tr1<As1: Tr2>> {
    |                  ^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -40,7 +40,7 @@ error[E0658]: associated type bounds are unstable
 LL | union _Un1<T: Tr1<As1: Tr2>> {
    |                   ^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -49,7 +49,7 @@ error[E0658]: associated type bounds are unstable
 LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                                     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -58,7 +58,7 @@ error[E0658]: associated type bounds are unstable
 LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    |                      ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -67,7 +67,7 @@ error[E0658]: associated type bounds are unstable
 LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
    |                          ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -76,7 +76,7 @@ error[E0658]: associated type bounds are unstable
 LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    |                        ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -85,7 +85,7 @@ error[E0658]: associated type bounds are unstable
 LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
    |                               ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -94,7 +94,7 @@ error[E0658]: associated type bounds are unstable
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |                       ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -103,7 +103,7 @@ error[E0658]: associated type bounds are unstable
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |                        ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
@@ -112,7 +112,7 @@ error[E0658]: associated type bounds are unstable
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |                     ^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types

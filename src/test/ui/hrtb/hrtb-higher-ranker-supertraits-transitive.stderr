@@ -6,11 +6,14 @@ LL | fn want_bar_for_any_ccx<B>(b: &B)
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ------------------- required by this bound in `want_bar_for_any_ccx`
 ...
-LL |     where B : Qux
-   |                  - help: consider further restricting type parameter `B`: `, B: for<'ccx> Bar<'ccx>`
-...
 LL |     want_bar_for_any_ccx(b);
    |                          ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+   |
+help: consider further restricting this bound with `+ for<'ccx> Bar<'ccx>`
+  --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:44:11
+   |
+LL |     where B : Qux
+   |           ^^^^^^^
 
 error: aborting due to previous error
 

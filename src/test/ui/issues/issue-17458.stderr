@@ -4,7 +4,7 @@ error[E0658]: casting pointers to integers in statics is unstable
 LL | static X: usize = unsafe { core::ptr::null::<usize>() as usize };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/51910
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error: aborting due to previous error

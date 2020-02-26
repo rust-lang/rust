@@ -7,6 +7,7 @@ merge_derives = false
 # tidy only checks files which are not ignored, each entry follows gitignore style
 ignore = [
     "build",
+    "/vendor/",
 
     # tests for now are not formatted, as they are sometimes pretty-printing constrained
     # (and generally rustfmt can move around comments in UI-testing incompatible ways)

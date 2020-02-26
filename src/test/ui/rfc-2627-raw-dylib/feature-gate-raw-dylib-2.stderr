@@ -4,7 +4,7 @@ error[E0658]: the `#[link_ordinal]` attribute is an experimental feature
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/58713
+   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
    = help: add `#![feature(raw_dylib)]` to the crate attributes to enable
 
 error: aborting due to previous error

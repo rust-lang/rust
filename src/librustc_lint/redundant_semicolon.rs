@@ -26,19 +26,21 @@ impl EarlyLintPass for RedundantSemicolon {
                             } else {
                                 "unnecessary trailing semicolon"
                             };
-                            let mut err = cx.struct_span_lint(REDUNDANT_SEMICOLON, stmt.span, &msg);
-                            let suggest_msg = if multiple {
-                                "remove these semicolons"
-                            } else {
-                                "remove this semicolon"
-                            };
-                            err.span_suggestion(
-                                stmt.span,
-                                &suggest_msg,
-                                String::new(),
-                                Applicability::MaybeIncorrect,
-                            );
-                            err.emit();
+                            cx.struct_span_lint(REDUNDANT_SEMICOLON, stmt.span, |lint| {
+                                let mut err = lint.build(&msg);
+                                let suggest_msg = if multiple {
+                                    "remove these semicolons"
+                                } else {
+                                    "remove this semicolon"
+                                };
+                                err.span_suggestion(
+                                    stmt.span,
+                                    &suggest_msg,
+                                    String::new(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                err.emit();
+                            });
                         }
                     }
                 }

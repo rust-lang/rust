@@ -4,7 +4,7 @@ error[E0658]: compiler plugins are deprecated
 LL | #![plugin(empty_plugin)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29597
+   = note: see issue #29597 <https://github.com/rust-lang/rust/issues/29597> for more information
    = help: add `#![feature(plugin)]` to the crate attributes to enable
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675

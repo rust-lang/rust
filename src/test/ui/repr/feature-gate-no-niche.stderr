@@ -1,0 +1,35 @@
+error[E0658]: the attribute `repr(no_niche)` is currently unstable
+  --> $DIR/feature-gate-no-niche.rs:4:8
+   |
+LL | #[repr(no_niche)]
+   |        ^^^^^^^^
+   |
+   = help: add `#![feature(no_niche)]` to the crate attributes to enable
+
+error[E0658]: the attribute `repr(no_niche)` is currently unstable
+  --> $DIR/feature-gate-no-niche.rs:8:21
+   |
+LL | #[repr(transparent, no_niche)]
+   |                     ^^^^^^^^
+   |
+   = help: add `#![feature(no_niche)]` to the crate attributes to enable
+
+error[E0658]: the attribute `repr(no_niche)` is currently unstable
+  --> $DIR/feature-gate-no-niche.rs:12:8
+   |
+LL | #[repr(no_niche)]
+   |        ^^^^^^^^
+   |
+   = help: add `#![feature(no_niche)]` to the crate attributes to enable
+
+error[E0658]: the attribute `repr(no_niche)` is currently unstable
+  --> $DIR/feature-gate-no-niche.rs:16:8
+   |
+LL | #[repr(no_niche)]
+   |        ^^^^^^^^
+   |
+   = help: add `#![feature(no_niche)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -402,6 +402,38 @@ pub enum CodeGenOptLevel {
     Aggressive,
 }
 
+/// LLVMRustPassBuilderOptLevel
+#[repr(C)]
+pub enum PassBuilderOptLevel {
+    O0,
+    O1,
+    O2,
+    O3,
+    Os,
+    Oz,
+}
+
+/// LLVMRustOptStage
+#[derive(PartialEq)]
+#[repr(C)]
+pub enum OptStage {
+    PreLinkNoLTO,
+    PreLinkThinLTO,
+    PreLinkFatLTO,
+    ThinLTO,
+    FatLTO,
+}
+
+/// LLVMRustSanitizerOptions
+#[repr(C)]
+pub struct SanitizerOptions {
+    pub sanitize_memory: bool,
+    pub sanitize_thread: bool,
+    pub sanitize_address: bool,
+    pub sanitize_recover: bool,
+    pub sanitize_memory_track_origins: c_int,
+}
+
 /// LLVMRelocMode
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -459,6 +491,7 @@ pub enum ArchiveKind {
     Other,
     K_GNU,
     K_BSD,
+    K_DARWIN,
     K_COFF,
 }
 
@@ -675,6 +708,10 @@ pub mod debuginfo {
 extern "C" {
     pub type ModuleBuffer;
 }
+
+pub type SelfProfileBeforePassCallback =
+    unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
+pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
@@ -909,9 +946,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder(Builder: &'a mut Builder<'a>);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: Option<&'a Value>);
-    pub fn LLVMGetCurrentDebugLocation(Builder: &Builder<'a>) -> &'a Value;
-    pub fn LLVMSetInstDebugLocation(Builder: &Builder<'a>, Inst: &'a Value);
+    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: &'a Value);
 
     // Terminators
     pub fn LLVMBuildRetVoid(B: &Builder<'a>) -> &'a Value;
@@ -1314,6 +1349,14 @@ extern "C" {
         DstAlign: c_uint,
         Src: &'a Value,
         SrcAlign: c_uint,
+        Size: &'a Value,
+        IsVolatile: bool,
+    ) -> &'a Value;
+    pub fn LLVMRustBuildMemSet(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Val: &'a Value,
         Size: &'a Value,
         IsVolatile: bool,
     ) -> &'a Value;
@@ -1890,6 +1933,26 @@ extern "C" {
         Output: *const c_char,
         FileType: FileType,
     ) -> LLVMRustResult;
+    pub fn LLVMRustOptimizeWithNewPassManager(
+        M: &'a Module,
+        TM: &'a TargetMachine,
+        OptLevel: PassBuilderOptLevel,
+        OptStage: OptStage,
+        NoPrepopulatePasses: bool,
+        VerifyIR: bool,
+        UseThinLTOBuffers: bool,
+        MergeFunctions: bool,
+        UnrollLoops: bool,
+        SLPVectorize: bool,
+        LoopVectorize: bool,
+        DisableSimplifyLibCalls: bool,
+        SanitizerOptions: Option<&SanitizerOptions>,
+        PGOGenPath: *const c_char,
+        PGOUsePath: *const c_char,
+        llvm_selfprofiler: *mut c_void,
+        begin_callback: SelfProfileBeforePassCallback,
+        end_callback: SelfProfileAfterPassCallback,
+    );
     pub fn LLVMRustPrintModule(
         M: &'a Module,
         Output: *const c_char,

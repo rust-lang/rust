@@ -9,7 +9,7 @@ LL | |     6
 LL | | };
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -23,7 +23,7 @@ LL | |     1
 LL | | };
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const`
@@ -37,7 +37,7 @@ LL | |     _ => 0,
 LL | | };
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `static`
@@ -46,7 +46,7 @@ error[E0658]: `if` is not allowed in a `static`
 LL |     let x = if true { 0 } else { 1 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `static`
@@ -55,7 +55,7 @@ error[E0658]: `match` is not allowed in a `static`
 LL |     let x = match x { 0 => 1, _ => 0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `static`
@@ -64,7 +64,7 @@ error[E0658]: `if` is not allowed in a `static`
 LL |     if let Some(x) = Some(x) { x } else { 1 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `static mut`
@@ -73,7 +73,7 @@ error[E0658]: `if` is not allowed in a `static mut`
 LL |     let x = if true { 0 } else { 1 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `static mut`
@@ -82,7 +82,7 @@ error[E0658]: `match` is not allowed in a `static mut`
 LL |     let x = match x { 0 => 1, _ => 0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `static mut`
@@ -91,7 +91,7 @@ error[E0658]: `if` is not allowed in a `static mut`
 LL |     if let Some(x) = Some(x) { x } else { 1 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const fn`
@@ -100,7 +100,7 @@ error[E0658]: `if` is not allowed in a `const fn`
 LL |     if true { 5 } else { 6 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const fn`
@@ -113,7 +113,7 @@ LL | |         1
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const fn`
@@ -126,7 +126,7 @@ LL | |         _ => 0
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const fn`
@@ -135,7 +135,7 @@ error[E0658]: `if` is not allowed in a `const fn`
 LL |         let x = if y { 0 } else { 1 };
    |                 ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const fn`
@@ -144,7 +144,7 @@ error[E0658]: `match` is not allowed in a `const fn`
 LL |         let x = match x { 0 => 1, _ => 0 };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const fn`
@@ -153,7 +153,7 @@ error[E0658]: `if` is not allowed in a `const fn`
 LL |         if let Some(x) = Some(x) { x } else { 1 }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -162,7 +162,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |         let x = if false { 0 } else { 1 };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const`
@@ -171,7 +171,7 @@ error[E0658]: `match` is not allowed in a `const`
 LL |         let x = match x { 0 => 1, _ => 0 };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -180,7 +180,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |         if let Some(x) = Some(x) { x } else { 1 }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -189,7 +189,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |     const IF: i32 = if true { 5 } else { 6 };
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -198,7 +198,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |     const IF_LET: i32 = if let Some(true) = None { 5 } else { 6 };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const`
@@ -207,7 +207,7 @@ error[E0658]: `match` is not allowed in a `const`
 LL |     const MATCH: i32 = match 0 { 1 => 2, _ => 0 };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -216,7 +216,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |     const IF: i32 = if true { 5 } else { 6 };
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -225,7 +225,7 @@ error[E0658]: `if` is not allowed in a `const`
 LL |     const IF_LET: i32 = if let Some(true) = None { 5 } else { 6 };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const`
@@ -234,7 +234,7 @@ error[E0658]: `match` is not allowed in a `const`
 LL |     const MATCH: i32 = match 0 { 1 => 2, _ => 0 };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0019]: constant contains unimplemented expression type

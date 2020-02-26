@@ -9,7 +9,6 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::stability;
@@ -22,6 +21,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
@@ -43,7 +43,7 @@ use utils::*;
 
 pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub use self::types::FunctionRetTy::*;
+pub use self::types::FnRetTy::*;
 pub use self::types::ItemEnum::*;
 pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
@@ -263,9 +263,9 @@ impl Clean<Item> for doctree::Module<'_> {
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
         let whence = {
-            let cm = cx.sess().source_map();
-            let outer = cm.lookup_char_pos(self.where_outer.lo());
-            let inner = cm.lookup_char_pos(self.where_inner.lo());
+            let sm = cx.sess().source_map();
+            let outer = sm.lookup_char_pos(self.where_outer.lo());
+            let inner = sm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
                 // mod foo { ... }
                 self.where_outer
@@ -1001,8 +1001,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
+impl Clean<FnRetTy> for hir::FnRetTy<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> FnRetTy {
         match *self {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
@@ -1332,7 +1332,9 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
                 let length = match cx.tcx.const_eval_poly(def_id) {
-                    Ok(length) => print_const(cx, length),
+                    Ok(length) => {
+                        print_const(cx, ty::Const::from_value(cx.tcx, length, cx.tcx.types.usize))
+                    }
                     Err(_) => cx
                         .sess()
                         .source_map()
@@ -1915,10 +1917,10 @@ impl Clean<Span> for rustc_span::Span {
             return Span::empty();
         }
 
-        let cm = cx.sess().source_map();
-        let filename = cm.span_to_filename(*self);
-        let lo = cm.lookup_char_pos(self.lo());
-        let hi = cm.lookup_char_pos(self.hi());
+        let sm = cx.sess().source_map();
+        let filename = sm.span_to_filename(*self);
+        let lo = sm.lookup_char_pos(self.lo());
+        let hi = sm.lookup_char_pos(self.hi());
         Span {
             filename,
             loline: lo.line,
@@ -2108,11 +2110,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
         let provided: FxHashSet<String> = trait_
             .def_id()
             .map(|did| {
-                cx.tcx
-                    .provided_trait_methods(did)
-                    .into_iter()
-                    .map(|meth| meth.ident.to_string())
-                    .collect()
+                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
             })
             .unwrap_or_default();
 

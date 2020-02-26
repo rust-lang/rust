@@ -1,0 +1,24 @@
+error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/issue-68060.rs:8:13
+   |
+LL |             #[target_feature(enable = "")]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+...
+LL |             |_| (),
+   |             ------ not an `unsafe` function
+
+error: the feature named `` is not valid for this target
+  --> $DIR/issue-68060.rs:8:30
+   |
+LL |             #[target_feature(enable = "")]
+   |                              ^^^^^^^^^^^ `` is not valid for this target
+
+error[E0737]: `#[track_caller]` requires Rust ABI
+  --> $DIR/issue-68060.rs:11:13
+   |
+LL |             #[track_caller]
+   |             ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0737`.

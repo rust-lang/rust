@@ -8,19 +8,19 @@ mod priv_trait {
     pub trait PubTr: PrivTr {}
 
     pub macro mac1() {
-        let _: Box<PubTr<AssocTy = u8>>;
+        let _: Box<dyn PubTr<AssocTy = u8>>;
         //~^ ERROR trait `priv_trait::PrivTr` is private
         //~| ERROR trait `priv_trait::PrivTr` is private
-        type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
+        type InSignatureTy2 = Box<dyn PubTr<AssocTy = u8>>;
         //~^ ERROR trait `priv_trait::PrivTr` is private
         trait InSignatureTr2: PubTr<AssocTy = u8> {}
         //~^ ERROR trait `priv_trait::PrivTr` is private
     }
     pub macro mac2() {
-        let _: Box<PrivTr<AssocTy = u8>>;
+        let _: Box<dyn PrivTr<AssocTy = u8>>;
         //~^ ERROR trait `priv_trait::PrivTr` is private
         //~| ERROR trait `priv_trait::PrivTr` is private
-        type InSignatureTy1 = Box<PrivTr<AssocTy = u8>>;
+        type InSignatureTy1 = Box<dyn PrivTr<AssocTy = u8>>;
         //~^ ERROR trait `priv_trait::PrivTr` is private
         trait InSignatureTr1: PrivTr<AssocTy = u8> {}
         //~^ ERROR trait `priv_trait::PrivTr` is private
@@ -41,15 +41,15 @@ mod priv_parent_substs {
     pub trait PubTr: PubTrWithParam<Priv> {}
 
     pub macro mac() {
-        let _: Box<PubTrWithParam<AssocTy = u8>>;
+        let _: Box<dyn PubTrWithParam<AssocTy = u8>>;
         //~^ ERROR type `priv_parent_substs::Priv` is private
         //~| ERROR type `priv_parent_substs::Priv` is private
-        let _: Box<PubTr<AssocTy = u8>>;
+        let _: Box<dyn PubTr<AssocTy = u8>>;
         //~^ ERROR type `priv_parent_substs::Priv` is private
         //~| ERROR type `priv_parent_substs::Priv` is private
-        pub type InSignatureTy1 = Box<PubTrWithParam<AssocTy = u8>>;
+        pub type InSignatureTy1 = Box<dyn PubTrWithParam<AssocTy = u8>>;
         //~^ ERROR type `priv_parent_substs::Priv` is private
-        pub type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
+        pub type InSignatureTy2 = Box<dyn PubTr<AssocTy = u8>>;
         //~^ ERROR type `priv_parent_substs::Priv` is private
         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
         //~^ ERROR type `priv_parent_substs::Priv` is private

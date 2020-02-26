@@ -8,11 +8,13 @@ use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use rustc::mir::AssertMessage;
 use rustc_span::source_map::Span;
+use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
-    self, snapshot, AllocId, Allocation, AssertMessage, GlobalId, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    self, snapshot, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory,
+    MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
@@ -55,6 +57,32 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         self.return_to_block(ret.map(|r| r.1))?;
         self.dump_place(*dest);
         return Ok(true);
+    }
+
+    /// "Intercept" a function call to a panic-related function
+    /// because we have something special to do for it.
+    /// If this returns successfully (`Ok`), the function should just be evaluated normally.
+    fn hook_panic_fn(
+        &mut self,
+        span: Span,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx> {
+        let def_id = instance.def_id();
+        if Some(def_id) == self.tcx.lang_items().panic_fn()
+            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+        {
+            // &'static str
+            assert!(args.len() == 1);
+
+            let msg_place = self.deref_operand(args[0])?;
+            let msg = Symbol::intern(self.read_str(msg_place)?);
+            let span = self.find_closest_untracked_caller_location().unwrap_or(span);
+            let (file, line, col) = self.location_triple_for_span(span);
+            Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -198,13 +226,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             } else {
                 // Some functions we support even if they are non-const -- but avoid testing
-                // that for const fn!  We certainly do *not* want to actually call the fn
+                // that for const fn!
+                ecx.hook_panic_fn(span, instance, args)?;
+                // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_panic_fn(span, instance, args)? {
-                    Ok(None)
-                } else {
-                    throw_unsup_format!("calling non-const function `{}`", instance)
-                };
+                throw_unsup_format!("calling non-const function `{}`", instance)
             }
         }
         // This is a const fn. Call it.
@@ -212,7 +238,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             Ok(body) => *body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(ref path)) = err.kind {
-                    return Err(ConstEvalError::NeedsRfc(format!(
+                    return Err(ConstEvalErrKind::NeedsRfc(format!(
                         "calling extern function `{}`",
                         path
                     ))
@@ -246,7 +272,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
         // An intrinsic that we do not support
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
-        Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into())
+        Err(ConstEvalErrKind::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into())
     }
 
     fn assert_panic(
@@ -255,8 +281,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::interpret::PanicInfo::*;
-        Err(match msg {
+        use rustc::mir::AssertKind::*;
+        // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
+        let err = match msg {
             BoundsCheck { ref len, ref index } => {
                 let len = ecx
                     .read_immediate(ecx.eval_operand(len, None)?)
@@ -268,21 +295,20 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     .expect("can't eval index")
                     .to_scalar()?
                     .to_machine_usize(&*ecx)?;
-                err_panic!(BoundsCheck { len, index })
+                BoundsCheck { len, index }
             }
-            Overflow(op) => err_panic!(Overflow(*op)),
-            OverflowNeg => err_panic!(OverflowNeg),
-            DivisionByZero => err_panic!(DivisionByZero),
-            RemainderByZero => err_panic!(RemainderByZero),
-            ResumedAfterReturn(generator_kind) => err_panic!(ResumedAfterReturn(*generator_kind)),
-            ResumedAfterPanic(generator_kind) => err_panic!(ResumedAfterPanic(*generator_kind)),
-            Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
-        }
-        .into())
+            Overflow(op) => Overflow(*op),
+            OverflowNeg => OverflowNeg,
+            DivisionByZero => DivisionByZero,
+            RemainderByZero => RemainderByZero,
+            ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
+            ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
+        };
+        Err(ConstEvalErrKind::AssertFailure(err).into())
     }
 
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
-        Err(ConstEvalError::NeedsRfc("pointer-to-integer cast".to_string()).into())
+        Err(ConstEvalErrKind::NeedsRfc("pointer-to-integer cast".to_string()).into())
     }
 
     fn binary_ptr_op(
@@ -291,7 +317,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        Err(ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
+        Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
     }
 
     fn find_foreign_static(
@@ -321,7 +347,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        Err(ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
+        Err(ConstEvalErrKind::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
@@ -355,7 +381,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         if memory_extra.can_access_statics {
             Ok(())
         } else {
-            Err(ConstEvalError::ConstAccessesStatic.into())
+            Err(ConstEvalErrKind::ConstAccessesStatic.into())
         }
     }
 }

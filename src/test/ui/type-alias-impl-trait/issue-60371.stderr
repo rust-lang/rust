@@ -4,7 +4,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Item = impl Bug;
    |                 ^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied

@@ -5,19 +5,19 @@ mod unify;
 use chalk_engine::fallible::Fallible;
 use chalk_engine::forest::Forest;
 use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause, Literal};
-use rustc::infer::canonical::{
-    Canonical, CanonicalVarValues, Certainty, OriginalQueryValues, QueryRegionConstraints,
-    QueryResponse,
-};
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
-use rustc::traits::{
-    self, ChalkCanonicalGoal, ChalkContextLift, Clause, DomainGoal, Environment, ExClauseFold,
-    Goal, GoalKind, InEnvironment, QuantifierKind,
-};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, TyCtxt};
+use rustc_infer::infer::canonical::{
+    Canonical, CanonicalVarValues, Certainty, OriginalQueryValues, QueryRegionConstraints,
+    QueryResponse,
+};
+use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime, TyCtxtInferExt};
+use rustc_infer::traits::{
+    self, ChalkCanonicalGoal, ChalkContextLift, Clause, DomainGoal, Environment, ExClauseFold,
+    Goal, GoalKind, InEnvironment, QuantifierKind,
+};
 use rustc_macros::{Lift, TypeFoldable};
 use rustc_span::DUMMY_SP;
 

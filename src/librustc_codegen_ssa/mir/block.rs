@@ -11,7 +11,7 @@ use crate::MemFlags;
 
 use rustc::middle::lang_items;
 use rustc::mir;
-use rustc::mir::interpret::PanicInfo;
+use rustc::mir::AssertKind;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
@@ -378,7 +378,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let PanicInfo::OverflowNeg = *msg {
+            if let AssertKind::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -412,7 +412,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            PanicInfo::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
                 (lang_items::PanicBoundsCheckFnLangItem, vec![location, index, len])
@@ -515,12 +515,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        // For normal codegen, this Miri-specific intrinsic is just a NOP.
+        // For normal codegen, this Miri-specific intrinsic should never occur.
         if intrinsic == Some("miri_start_panic") {
-            let target = destination.as_ref().unwrap().1;
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            bug!("`miri_start_panic` should never end up in compiled code");
         }
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
@@ -991,7 +988,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 caller.line as u32,
                 caller.col_display as u32 + 1,
             ));
-            OperandRef::from_const(bx, const_loc)
+            OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
         })
     }
 
@@ -1145,6 +1142,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let op = bx.load_operand(place);
                     place.storage_dead(bx);
                     self.locals[index] = LocalRef::Operand(Some(op));
+                    self.debug_introduce_local(bx, index);
                 }
                 LocalRef::Operand(Some(op)) => {
                     assert!(op.layout.is_zst(), "assigning to initialized SSAtemp");
@@ -1186,6 +1184,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
@@ -1200,6 +1199,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
         }
     }

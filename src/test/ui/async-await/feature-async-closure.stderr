@@ -4,7 +4,7 @@ error[E0658]: async closures are unstable
 LL |     let _ = async || {};
    |             ^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/62290
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
    = help: add `#![feature(async_closure)]` to the crate attributes to enable
 
 error: aborting due to previous error

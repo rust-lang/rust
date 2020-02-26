@@ -554,12 +554,9 @@ impl DeadVisitor<'tcx> {
         participle: &str,
     ) {
         if !name.as_str().starts_with("_") {
-            self.tcx.lint_hir(
-                lint::builtin::DEAD_CODE,
-                id,
-                span,
-                &format!("{} is never {}: `{}`", node_type, participle, name),
-            );
+            self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
+                lint.build(&format!("{} is never {}: `{}`", node_type, participle, name)).emit()
+            });
         }
     }
 }
@@ -604,13 +601,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(
-                item.hir_id,
-                span,
-                item.ident.name,
-                item.kind.descriptive_variant(),
-                participle,
-            );
+            self.warn_dead_code(item.hir_id, span, item.ident.name, item.kind.descr(), participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);

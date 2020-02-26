@@ -35,7 +35,8 @@ macro_rules! arena_types {
                 rustc::mir::Promoted,
                 rustc::mir::BodyAndCache<$tcx>
             >,
-            [] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] borrowck_result: rustc::mir::BorrowCheckResult<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(
                 rustc_hir::def_id::DefId,
@@ -47,22 +48,23 @@ macro_rules! arena_types {
             [] item_local_set: rustc_hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
+            [] associated_items: rustc::ty::AssociatedItems,
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::dropck_outlives::DropckOutlivesResult<'tcx>
+                        rustc::traits::query::DropckOutlivesResult<'tcx>
                     >
                 >,
             [] normalize_projection_ty:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::normalize::NormalizationResult<'tcx>
+                        rustc::traits::query::NormalizationResult<'tcx>
                     >
                 >,
             [] implied_outlives_bounds:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
+                        Vec<rustc::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
             [] type_op_subtype:

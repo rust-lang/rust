@@ -120,11 +120,26 @@ fn enforce_impl_params_are_constrained(
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs
         .iter()
         .map(|item_ref| tcx.hir().local_def_id(item_ref.id.hir_id))
-        .filter(|&def_id| {
+        .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
-            item.kind == ty::AssocKind::Type && item.defaultness.has_value()
+            match item.kind {
+                ty::AssocKind::Type => {
+                    if item.defaultness.has_value() {
+                        cgp::parameters_for(&tcx.type_of(def_id), true)
+                    } else {
+                        Vec::new()
+                    }
+                }
+                ty::AssocKind::OpaqueTy => {
+                    // We don't know which lifetimes appear in the actual
+                    // opaque type, so use all of the lifetimes that appear
+                    // in the type's predicates.
+                    let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
+                    cgp::parameters_for(&predicates, true)
+                }
+                ty::AssocKind::Method | ty::AssocKind::Const => Vec::new(),
+            }
         })
-        .flat_map(|def_id| cgp::parameters_for(&tcx.type_of(def_id), true))
         .collect();
 
     for param in &impl_generics.params {

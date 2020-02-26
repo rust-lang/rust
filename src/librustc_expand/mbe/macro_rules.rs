@@ -1,11 +1,11 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
+use crate::base::{DummyResult, ExpansionData, ExtCtxt, MacResult, TTMacroExpander};
 use crate::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::macro_check;
-use crate::mbe::macro_parser::parse;
+use crate::mbe::macro_parser::parse_tt;
 use crate::mbe::macro_parser::{Error, Failure, Success};
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
+use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast_pretty::pprust;
@@ -87,7 +87,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind, true).map_err(|mut e| {
+        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {
                     // early end of macro arm (#52866)
@@ -166,9 +166,9 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
+fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-    cx.expansions.entry(sp).or_default().push(message);
+    cx_expansions.entry(sp).or_default().push(message);
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
@@ -184,11 +184,33 @@ fn generic_extension<'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
-        trace_macros_note(cx, sp, msg);
+        trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_failure: Option<(Token, &str)> = None;
+
+    // We create a base parser that can be used for the "black box" parts.
+    // Every iteration needs a fresh copy of that parser. However, the parser
+    // is not mutated on many of the iterations, particularly when dealing with
+    // macros like this:
+    //
+    // macro_rules! foo {
+    //     ("a") => (A);
+    //     ("b") => (B);
+    //     ("c") => (C);
+    //     // ... etc. (maybe hundreds more)
+    // }
+    //
+    // as seen in the `html5ever` benchmark. We use a `Cow` so that the base
+    // parser is only cloned when necessary (upon mutation). Furthermore, we
+    // reinitialize the `Cow` with the base parser at the start of every
+    // iteration, so that any mutated parsers are not reused. This is all quite
+    // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
+    // 68836 suggests a more comprehensive but more complex change to deal with
+    // this situation.)
+    let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
+
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -200,13 +222,14 @@ fn generic_extension<'cx>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot =
+            mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
 
-        match parse_tt(cx, lhs_tt, arg.clone()) {
+        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
-                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+                cx.parse_sess.gated_spans.merge(gated_spans_snapshot);
 
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -232,11 +255,11 @@ fn generic_extension<'cx>(
 
                 if cx.trace_macros() {
                     let msg = format!("to `{}`", pprust::tts_to_string(tts.clone()));
-                    trace_macros_note(cx, sp, msg);
+                    trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
                 let directory = Directory {
-                    path: Cow::from(cx.current_expansion.module.directory.as_path()),
+                    path: cx.current_expansion.module.directory.clone(),
                     ownership: cx.current_expansion.directory_ownership,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
@@ -244,7 +267,6 @@ fn generic_extension<'cx>(
                     cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
-                p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {
@@ -267,8 +289,9 @@ fn generic_extension<'cx>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
     }
+    drop(parser);
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
@@ -286,7 +309,8 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match parse_tt(cx, lhs_tt, arg.clone()) {
+            let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
+            match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
                 Success(_) => {
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
@@ -368,7 +392,8 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let argument_map = match parse(sess, body, &argument_gram, None, true) {
+    let parser = Parser::new(sess, body, None, true, true, rustc_parse::MACRO_ARGUMENTS);
+    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
@@ -1184,14 +1209,16 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-/// Use this token tree as a matcher to parse given tts.
-fn parse_tt(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream) -> NamedParseResult {
-    // `None` is because we're not interpolating
+fn parser_from_cx<'cx>(
+    current_expansion: &'cx ExpansionData,
+    sess: &'cx ParseSess,
+    tts: TokenStream,
+) -> Parser<'cx> {
     let directory = Directory {
-        path: Cow::from(cx.current_expansion.module.directory.as_path()),
-        ownership: cx.current_expansion.directory_ownership,
+        path: current_expansion.module.directory.clone(),
+        ownership: current_expansion.directory_ownership,
     };
-    parse(cx.parse_sess(), tts, mtch, Some(directory), true)
+    Parser::new(sess, tts, Some(directory), true, true, rustc_parse::MACRO_ARGUMENTS)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

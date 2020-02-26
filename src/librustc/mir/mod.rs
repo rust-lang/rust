@@ -2,7 +2,7 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
-use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
+use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -36,7 +36,6 @@ pub use syntax::ast::Mutability;
 use syntax::ast::Name;
 
 pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
-pub use self::interpret::AssertMessage;
 pub use self::query::*;
 pub use crate::read_only;
 
@@ -1154,6 +1153,21 @@ pub enum TerminatorKind<'tcx> {
     },
 }
 
+/// Information about an assertion failure.
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
+pub enum AssertKind<O> {
+    BoundsCheck { len: O, index: O },
+    Overflow(BinOp),
+    OverflowNeg,
+    DivisionByZero,
+    RemainderByZero,
+    ResumedAfterReturn(GeneratorKind),
+    ResumedAfterPanic(GeneratorKind),
+}
+
+/// Type for MIR `Assert` terminator error messages.
+pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
+
 pub type Successors<'a> =
     iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
 pub type SuccessorsMut<'a> =
@@ -1383,6 +1397,45 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 }
 
+impl<O> AssertKind<O> {
+    /// Getting a description does not require `O` to be printable, and does not
+    /// require allocation.
+    /// The caller is expected to handle `BoundsCheck` separately.
+    pub fn description(&self) -> &'static str {
+        use AssertKind::*;
+        match self {
+            Overflow(BinOp::Add) => "attempt to add with overflow",
+            Overflow(BinOp::Sub) => "attempt to subtract with overflow",
+            Overflow(BinOp::Mul) => "attempt to multiply with overflow",
+            Overflow(BinOp::Div) => "attempt to divide with overflow",
+            Overflow(BinOp::Rem) => "attempt to calculate the remainder with overflow",
+            OverflowNeg => "attempt to negate with overflow",
+            Overflow(BinOp::Shr) => "attempt to shift right with overflow",
+            Overflow(BinOp::Shl) => "attempt to shift left with overflow",
+            Overflow(op) => bug!("{:?} cannot overflow", op),
+            DivisionByZero => "attempt to divide by zero",
+            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
+            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
+            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
+            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
+            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
+            BoundsCheck { .. } => bug!("Unexpected AssertKind"),
+        }
+    }
+}
+
+impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AssertKind::*;
+        match self {
+            BoundsCheck { ref len, ref index } => {
+                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
+            }
+            _ => write!(f, "{}", self.description()),
+        }
+    }
+}
+
 impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_head(fmt)?;
@@ -1415,21 +1468,21 @@ impl<'tcx> TerminatorKind<'tcx> {
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
         use self::TerminatorKind::*;
-        match *self {
+        match self {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr: ref place, .. } => write!(fmt, "switchInt({:?})", place),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Abort => write!(fmt, "abort"),
-            Yield { ref value, .. } => write!(fmt, "_1 = suspend({:?})", value),
+            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { ref location, ref value, .. } => {
+            Drop { location, .. } => write!(fmt, "drop({:?})", location),
+            DropAndReplace { location, value, .. } => {
                 write!(fmt, "replace({:?} <- {:?})", location, value)
             }
-            Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref destination, _)) = *destination {
+            Call { func, args, destination, .. } => {
+                if let Some((destination, _)) = destination {
                     write!(fmt, "{:?} = ", destination)?;
                 }
                 write!(fmt, "{:?}(", func)?;
@@ -1441,7 +1494,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
-            Assert { ref cond, expected, ref msg, .. } => {
+            Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
                     write!(fmt, "!")?;
@@ -2666,13 +2719,12 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                use PanicInfo::*;
+                use AssertKind::*;
                 let msg = match msg {
                     BoundsCheck { ref len, ref index } => {
                         BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
                     }
-                    Panic { .. }
-                    | Overflow(_)
+                    Overflow(_)
                     | OverflowNeg
                     | DivisionByZero
                     | RemainderByZero
@@ -2716,13 +2768,12 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    use PanicInfo::*;
+                    use AssertKind::*;
                     match msg {
                         BoundsCheck { ref len, ref index } => {
                             len.visit_with(visitor) || index.visit_with(visitor)
                         }
-                        Panic { .. }
-                        | Overflow(_)
+                        Overflow(_)
                         | OverflowNeg
                         | DivisionByZero
                         | RemainderByZero

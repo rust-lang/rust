@@ -52,9 +52,13 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL | trait Super<T: Copy> { }
    | -------------------- required by `Super`
 LL | trait Base<T = String>: Super<T> { }
-   |            -            ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |            |
-   |            help: consider restricting this bound: `T: std::marker::Copy`
+   |                         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: std::marker::Copy`
+  --> $DIR/type-check-defaults.rs:21:12
+   |
+LL | trait Base<T = String>: Super<T> { }
+   |            ^
 
 error[E0277]: cannot add `u8` to `i32`
   --> $DIR/type-check-defaults.rs:24:66

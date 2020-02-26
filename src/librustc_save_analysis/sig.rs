@@ -225,7 +225,7 @@ impl Sig for ast::Ty {
                     text.push('>');
                 }
 
-                if f.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = f.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, f.ext);
@@ -241,7 +241,7 @@ impl Sig for ast::Ty {
                     refs.extend(nested.refs.into_iter());
                 }
                 text.push(')');
-                if let ast::FunctionRetTy::Ty(ref t) = f.decl.output {
+                if let ast::FnRetTy::Ty(ref t) = f.decl.output {
                     text.push_str(" -> ");
                     let nested = t.make(offset + text.len(), None, scx)?;
                     text.push_str(&nested.text);
@@ -334,15 +334,18 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Const(ref ty, ref expr) => {
+            ast::ItemKind::Const(_, ref ty, ref expr) => {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -355,23 +358,26 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
+            ast::ItemKind::Fn(_, ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
-                if header.constness.node == ast::Constness::Const {
+                if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
                 }
-                if header.asyncness.node.is_async() {
+                if header.asyncness.is_async() {
                     text.push_str("async ");
                 }
-                if header.unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = header.unsafety {
                     text.push_str("unsafe ");
                 }
                 push_extern(&mut text, header.ext);
@@ -392,7 +398,7 @@ impl Sig for ast::Item {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -417,12 +423,15 @@ impl Sig for ast::Item {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            ast::ItemKind::TyAlias(ref ty, ref generics) => {
+            ast::ItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");
-                let ty = ty.make(offset + sig.text.len(), id, scx)?;
+                let ty = match ty {
+                    Some(ty) => ty.make(offset + sig.text.len(), id, scx)?,
+                    None => Err("Ty")?,
+                };
                 sig.text.push_str(&ty.text);
                 sig.text.push(';');
 
@@ -453,7 +462,7 @@ impl Sig for ast::Item {
                     text.push_str("auto ");
                 }
 
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("trait ");
@@ -493,14 +502,14 @@ impl Sig for ast::Item {
                 items: _,
             } => {
                 let mut text = String::new();
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     text.push_str("default ");
                 }
-                if unsafety == ast::Unsafety::Unsafe {
+                if let ast::Unsafe::Yes(_) = unsafety {
                     text.push_str("unsafe ");
                 }
                 text.push_str("impl");
-                if constness == ast::Constness::Const {
+                if let ast::Const::Yes(_) = constness {
                     text.push_str(" const");
                 }
 
@@ -723,7 +732,7 @@ impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                 let decl = &sig.decl;
                 let mut text = String::new();
                 text.push_str("fn ");
@@ -743,7 +752,7 @@ impl Sig for ast::ForeignItem {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -754,7 +763,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(sig)
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
+            ast::ForeignItemKind::Static(ref ty, m, _) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mut {
                     text.push_str("mut ");
@@ -773,7 +782,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -786,6 +795,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(Signature { text: text, defs: defs, refs: vec![] })
             }
+            ast::ForeignItemKind::Const(..) => Err("foreign const"),
             ast::ForeignItemKind::Macro(..) => Err("macro"),
         }
     }
@@ -884,13 +894,13 @@ fn make_method_signature(
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
-    if m.header.constness.node == ast::Constness::Const {
+    if let ast::Const::Yes(_) = m.header.constness {
         text.push_str("const ");
     }
-    if m.header.asyncness.node.is_async() {
+    if m.header.asyncness.is_async() {
         text.push_str("async ");
     }
-    if m.header.unsafety == ast::Unsafety::Unsafe {
+    if let ast::Unsafe::Yes(_) = m.header.unsafety {
         text.push_str("unsafe ");
     }
     push_extern(&mut text, m.header.ext);
@@ -911,7 +921,7 @@ fn make_method_signature(
     }
     sig.text.push(')');
 
-    if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {
+    if let ast::FnRetTy::Ty(ref t) = m.decl.output {
         sig.text.push_str(" -> ");
         let nested = t.make(sig.text.len(), None, scx)?;
         sig.text.push_str(&nested.text);

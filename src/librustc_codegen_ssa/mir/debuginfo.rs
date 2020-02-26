@@ -9,12 +9,12 @@ use rustc_index::vec::IndexVec;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
 
-use super::OperandValue;
+use super::operand::OperandValue;
+use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 pub struct FunctionDebugContext<D> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
-    pub source_locations_enabled: bool,
     pub defining_crate: CrateNum,
 }
 
@@ -53,11 +53,10 @@ impl<D> DebugScope<D> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn set_debug_loc(&mut self, bx: &mut Bx, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
-        if let Some(debug_context) = &mut self.debug_context {
-            // FIXME(eddyb) get rid of this unwrap somehow.
-            bx.set_source_location(debug_context, scope.unwrap(), span);
+        if let Some(scope) = scope {
+            bx.set_source_location(scope, span);
         }
     }
 
@@ -113,8 +112,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
     /// or initializing the local with an operand (whichever applies).
-    // FIXME(eddyb) use `llvm.dbg.value` (which would work for operands),
-    // not just `llvm.dbg.declare` (which requires `alloca`).
     pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
 
@@ -182,43 +179,60 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let local_ref = &self.locals[local];
 
-        if !bx.sess().fewer_names() {
-            let name = match whole_local_var.or(fallback_var) {
+        let name = if bx.sess().fewer_names() {
+            None
+        } else {
+            Some(match whole_local_var.or(fallback_var) {
                 Some(var) if var.name != kw::Invalid => var.name.to_string(),
                 _ => format!("{:?}", local),
-            };
+            })
+        };
+
+        if let Some(name) = &name {
             match local_ref {
                 LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
-                    bx.set_var_name(place.llval, &name);
+                    bx.set_var_name(place.llval, name);
                 }
                 LocalRef::Operand(Some(operand)) => match operand.val {
                     OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
-                        bx.set_var_name(x, &name);
+                        bx.set_var_name(x, name);
                     }
                     OperandValue::Pair(a, b) => {
                         // FIXME(eddyb) these are scalar components,
                         // maybe extract the high-level fields?
                         bx.set_var_name(a, &(name.clone() + ".0"));
-                        bx.set_var_name(b, &(name + ".1"));
+                        bx.set_var_name(b, &(name.clone() + ".1"));
                     }
                 },
                 LocalRef::Operand(None) => {}
             }
         }
 
-        if !full_debug_info {
+        if !full_debug_info || vars.is_empty() && fallback_var.is_none() {
             return;
         }
 
-        let debug_context = match &self.debug_context {
-            Some(debug_context) => debug_context,
-            None => return,
-        };
-
-        // FIXME(eddyb) add debuginfo for unsized places too.
         let base = match local_ref {
-            LocalRef::Place(place) => place,
-            _ => return,
+            LocalRef::Operand(None) => return,
+
+            LocalRef::Operand(Some(operand)) => {
+                // "Spill" the value onto the stack, for debuginfo,
+                // without forcing non-debuginfo uses of the local
+                // to also load from the stack every single time.
+                // FIXME(#68817) use `llvm.dbg.value` instead,
+                // at least for the cases which LLVM handles correctly.
+                let spill_slot = PlaceRef::alloca(bx, operand.layout);
+                if let Some(name) = name {
+                    bx.set_var_name(spill_slot.llval, &(name + ".dbg.spill"));
+                }
+                operand.val.store(bx, spill_slot);
+                spill_slot
+            }
+
+            LocalRef::Place(place) => *place,
+
+            // FIXME(eddyb) add debuginfo for unsized places too.
+            LocalRef::UnsizedPlace(_) => return,
         };
 
         let vars = vars.iter().copied().chain(fallback_var);
@@ -264,7 +278,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if let Some(scope) = scope {
                 if let Some(dbg_var) = var.dbg_var {
                     bx.dbg_var_addr(
-                        debug_context,
                         dbg_var,
                         scope,
                         base.llval,

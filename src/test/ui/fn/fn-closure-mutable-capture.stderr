@@ -1,14 +1,13 @@
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/fn-closure-mutable-capture.rs:5:17
    |
+LL | pub fn bar<F: Fn()>(_f: F) {}
+   |                         - change this to accept `FnMut` instead of `Fn`
+...
 LL |     bar(move || x = 1);
-   |                 ^^^^^ cannot assign
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/fn-closure-mutable-capture.rs:5:9
-   |
-LL |     bar(move || x = 1);
-   |         ^^^^^^^^^^^^^
+   |     ---         ^^^^^ cannot assign
+   |     |
+   |     expects `Fn` instead of `FnMut`
 
 error: aborting due to previous error
 

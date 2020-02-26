@@ -1,5 +1,5 @@
 use std::collections::LinkedList;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
 fn test_basic() {
@@ -529,6 +529,74 @@ fn drain_filter_complex() {
         assert_eq!(list.len(), 10);
         assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
+}
+
+#[test]
+fn drain_filter_drop_panic_leak() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = LinkedList::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(false));
+    q.push_front(D(true));
+    q.push_front(D(false));
+
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).ok();
+
+    assert_eq!(unsafe { DROPS }, 8);
+    assert!(q.is_empty());
+}
+
+#[test]
+fn drain_filter_pred_panic_leak() {
+    static mut DROPS: i32 = 0;
+
+    #[derive(Debug)]
+    struct D(u32);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let mut q = LinkedList::new();
+    q.push_back(D(3));
+    q.push_back(D(4));
+    q.push_back(D(5));
+    q.push_back(D(6));
+    q.push_back(D(7));
+    q.push_front(D(2));
+    q.push_front(D(1));
+    q.push_front(D(0));
+
+    catch_unwind(AssertUnwindSafe(|| {
+        drop(q.drain_filter(|item| if item.0 >= 2 { panic!() } else { true }))
+    }))
+    .ok();
+
+    assert_eq!(unsafe { DROPS }, 2); // 0 and 1
+    assert_eq!(q.len(), 6);
 }
 
 #[test]

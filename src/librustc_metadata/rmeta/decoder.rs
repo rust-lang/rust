@@ -408,20 +408,12 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             {
                 last_source_file
             } else {
-                let mut a = 0;
-                let mut b = imported_source_files.len();
+                let index = imported_source_files
+                    .binary_search_by_key(&lo, |source_file| source_file.original_start_pos)
+                    .unwrap_or_else(|index| index - 1);
 
-                while b - a > 1 {
-                    let m = (a + b) / 2;
-                    if imported_source_files[m].original_start_pos > lo {
-                        b = m;
-                    } else {
-                        a = m;
-                    }
-                }
-
-                self.last_source_file_index = a;
-                &imported_source_files[a]
+                self.last_source_file_index = index;
+                &imported_source_files[index]
             }
         };
 
@@ -637,10 +629,6 @@ impl<'a, 'tcx> CrateMetadata {
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
-        // NOTE: If you update the order of macros in 'proc_macro_data' for any reason,
-        // you must also update src/librustc_builtin_macros/proc_macro_harness.rs
-        // Failing to do so will result in incorrect data being associated
-        // with proc macros when deserialized.
         let pos = self.root.proc_macro_data.unwrap().decode(self).position(|i| i == id).unwrap();
         &self.raw_proc_macros.unwrap()[pos]
     }

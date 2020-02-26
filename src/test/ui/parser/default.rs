@@ -19,7 +19,9 @@ impl Foo for u16 {
 }
 
 impl Foo for u32 { //~ ERROR not all trait items implemented, missing: `foo`
-    default pub fn foo<T: Default>() -> T { T::default() } //~ ERROR expected one of
+    default pub fn foo<T: Default>() -> T { T::default() }
+    //~^ ERROR `default` is not followed by an item
+    //~| ERROR non-item in item list
 }
 
 fn main() {}

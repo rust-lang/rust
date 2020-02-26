@@ -2,9 +2,13 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/issue-43784-supertrait.rs:8:9
    |
 LL | impl<T> Complete for T {}
-   |      -  ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |      |
-   |      help: consider restricting this bound: `T: std::marker::Copy`
+   |         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: std::marker::Copy`
+  --> $DIR/issue-43784-supertrait.rs:8:6
+   |
+LL | impl<T> Complete for T {}
+   |      ^
 
 error: aborting due to previous error
 

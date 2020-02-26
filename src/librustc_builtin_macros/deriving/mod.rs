@@ -157,10 +157,10 @@ fn inject_impl_of_structural_trait(
         ast::Ident::invalid(),
         attrs,
         ItemKind::Impl {
-            unsafety: ast::Unsafety::Normal,
+            unsafety: ast::Unsafe::No,
             polarity: ast::ImplPolarity::Positive,
             defaultness: ast::Defaultness::Final,
-            constness: ast::Constness::NotConst,
+            constness: ast::Const::No,
             generics,
             of_trait: Some(trait_ref),
             self_ty: self_type,

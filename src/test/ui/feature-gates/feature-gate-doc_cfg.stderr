@@ -4,7 +4,7 @@ error[E0658]: `#[doc(cfg)]` is experimental
 LL | #[doc(cfg(unix))]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/43781
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
    = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
 
 error: aborting due to previous error

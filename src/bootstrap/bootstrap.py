@@ -80,7 +80,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-s"
         run(["curl", option,
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-             "--connect-timeout", "30", # timeout if cannot connect within 30 seconds
+             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
             exception=exception)
@@ -332,7 +332,6 @@ class RustBuild(object):
         self.use_vendored_sources = ''
         self.verbose = False
 
-
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
 
@@ -351,7 +350,7 @@ class RustBuild(object):
             try:
                 with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                     temp_path = temp_file.name
-                with tarfile.open(temp_path, "w:xz") as tar:
+                with tarfile.open(temp_path, "w:xz"):
                     pass
                 return True
             except tarfile.CompressionError:
@@ -825,7 +824,7 @@ class RustBuild(object):
                 if not os.path.exists(vendor_dir):
                     print('error: vendoring required, but vendor directory does not exist.')
                     print('       Run `cargo vendor` without sudo to initialize the '
-                        'vendor directory.')
+                          'vendor directory.')
                     raise Exception("{} not found".format(vendor_dir))
 
         if self.use_vendored_sources:
@@ -839,7 +838,7 @@ class RustBuild(object):
                     "\n"
                     "[source.vendored-sources]\n"
                     "directory = '{}/vendor'\n"
-                .format(self.rust_root))
+                    .format(self.rust_root))
         else:
             if os.path.exists('.cargo'):
                 shutil.rmtree('.cargo')

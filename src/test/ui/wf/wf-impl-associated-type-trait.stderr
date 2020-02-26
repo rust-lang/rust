@@ -4,10 +4,14 @@ error[E0277]: the trait bound `T: MyHash` is not satisfied
 LL | pub struct MySet<T:MyHash> {
    | -------------------------- required by `MySet`
 ...
-LL | impl<T> Foo for T {
-   |      - help: consider restricting this bound: `T: MyHash`
 LL |     type Bar = MySet<T>;
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyHash` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: MyHash`
+  --> $DIR/wf-impl-associated-type-trait.rs:16:6
+   |
+LL | impl<T> Foo for T {
+   |      ^
 
 error: aborting due to previous error
 

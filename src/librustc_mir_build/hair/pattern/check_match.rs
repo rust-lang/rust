@@ -286,26 +286,27 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
-                        let ty_path = cx.tcx.def_path_str(edef.did);
-                        cx.tcx
-                            .struct_span_lint_hir(
-                                BINDINGS_WITH_VARIANT_NAME,
-                                p.hir_id,
-                                p.span,
-                                &format!(
+                        cx.tcx.struct_span_lint_hir(
+                            BINDINGS_WITH_VARIANT_NAME,
+                            p.hir_id,
+                            p.span,
+                            |lint| {
+                                let ty_path = cx.tcx.def_path_str(edef.did);
+                                lint.build(&format!(
                                     "pattern binding `{}` is named the same as one \
-                                    of the variants of the type `{}`",
+                                                of the variants of the type `{}`",
                                     ident, ty_path
-                                ),
-                            )
-                            .code(error_code!(E0170))
-                            .span_suggestion(
-                                p.span,
-                                "to match on the variant, qualify the path",
-                                format!("{}::{}", ty_path, ident),
-                                Applicability::MachineApplicable,
-                            )
-                            .emit();
+                                ))
+                                .code(error_code!(E0170))
+                                .span_suggestion(
+                                    p.span,
+                                    "to match on the variant, qualify the path",
+                                    format!("{}::{}", ty_path, ident),
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                            },
+                        )
                     }
                 }
             }
@@ -325,22 +326,26 @@ fn pat_is_catchall(pat: &super::Pat<'_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    let mut err = tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, "unreachable pattern");
-    if let Some(catchall) = catchall {
-        // We had a catchall pattern, hint at that.
-        err.span_label(span, "unreachable pattern");
-        err.span_label(catchall, "matches any value");
-    }
-    err.emit();
+    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
+        let mut err = lint.build("unreachable pattern");
+        if let Some(catchall) = catchall {
+            // We had a catchall pattern, hint at that.
+            err.span_label(span, "unreachable pattern");
+            err.span_label(catchall, "matches any value");
+        }
+        err.emit();
+    });
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
-    let msg = match source {
-        hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
-        hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
-        _ => bug!(),
-    };
-    tcx.lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, msg);
+    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| {
+        let msg = match source {
+            hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
+            hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
+            _ => bug!(),
+        };
+        lint.build(msg).emit()
+    });
 }
 
 /// Check for unreachable patterns.
@@ -654,7 +659,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
             });
             if !conflicts_ref.is_empty() {
                 let occurs_because = format!(
-                    "move occurs because `{}` has type `{}` which does implement the `Copy` trait",
+                    "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
                     name,
                     tables.node_type(pat.hir_id),
                 );

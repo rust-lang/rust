@@ -149,7 +149,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => cm,
+            Some(ref mut sm) => sm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
@@ -220,33 +220,20 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match hcx.node_id_hashing_mode {
-            NodeIdHashingMode::Ignore => {
-                // Don't do anything.
-            }
-            NodeIdHashingMode::HashDefPath => {
-                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
+    }
+
+    #[inline]
+    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
     }
 
     fn byte_pos_to_line_and_col(

@@ -4,7 +4,7 @@ error[E0658]: yield syntax is experimental
 LL |     yield true;
    |     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
    = help: add `#![feature(generators)]` to the crate attributes to enable
 
 error[E0658]: yield syntax is experimental
@@ -13,7 +13,7 @@ error[E0658]: yield syntax is experimental
 LL |     yield;
    |     ^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
    = help: add `#![feature(generators)]` to the crate attributes to enable
 
 error[E0658]: yield syntax is experimental
@@ -22,7 +22,7 @@ error[E0658]: yield syntax is experimental
 LL |     yield 0;
    |     ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
    = help: add `#![feature(generators)]` to the crate attributes to enable
 
 error[E0627]: yield expression outside of generator literal

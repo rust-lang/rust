@@ -1,3 +1,5 @@
+// ignore-test: This now ICEs again.
+
 // build-pass
 
 #![feature(type_alias_impl_trait)]

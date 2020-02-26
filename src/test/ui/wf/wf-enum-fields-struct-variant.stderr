@@ -4,11 +4,14 @@ error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
 LL | struct IsCopy<T:Copy> {
    | --------------------- required by `IsCopy`
 ...
-LL | enum AnotherEnum<A> {
-   |                  - help: consider restricting this bound: `A: std::marker::Copy`
-LL |     AnotherVariant {
 LL |         f: IsCopy<A>
    |         ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
+   |
+help: consider restricting this type parameter with `A: std::marker::Copy`
+  --> $DIR/wf-enum-fields-struct-variant.rs:11:18
+   |
+LL | enum AnotherEnum<A> {
+   |                  ^
 
 error: aborting due to previous error
 

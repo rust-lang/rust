@@ -44,14 +44,19 @@ where
         def_id: DefId,
         analysis: A,
     ) -> Self {
+        // If there are no back-edges in the control-flow graph, we only ever need to apply the
+        // transfer function for each block exactly once (assuming that we process blocks in RPO).
+        //
+        // In this case, there's no need to compute the block transfer functions ahead of time.
+        if !body.is_cfg_cyclic() {
+            return Self::new(tcx, body, def_id, analysis, None);
+        }
+
+        // Otherwise, compute and store the cumulative transfer function for each block.
+
         let bits_per_block = analysis.bits_per_block(body);
         let mut trans_for_block =
             IndexVec::from_elem(GenKillSet::identity(bits_per_block), body.basic_blocks());
-
-        // Compute cumulative block transfer functions.
-        //
-        // FIXME: we may want to skip this if the MIR is acyclic, since we will never access a
-        // block transfer function more than once.
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
             let trans = &mut trans_for_block[block];
@@ -62,11 +67,10 @@ where
                 analysis.statement_effect(trans, statement, loc);
             }
 
-            if let Some(terminator) = &block_data.terminator {
-                let loc = Location { block, statement_index: block_data.statements.len() };
-                analysis.before_terminator_effect(trans, terminator, loc);
-                analysis.terminator_effect(trans, terminator, loc);
-            }
+            let terminator = block_data.terminator();
+            let loc = Location { block, statement_index: block_data.statements.len() };
+            analysis.before_terminator_effect(trans, terminator, loc);
+            analysis.terminator_effect(trans, terminator, loc);
         }
 
         Self::new(tcx, body, def_id, analysis, Some(trans_for_block))
@@ -100,7 +104,7 @@ where
     ) -> Self {
         let bits_per_block = analysis.bits_per_block(body);
 
-        let bottom_value_set = if A::BOTTOM_VALUE == true {
+        let bottom_value_set = if A::BOTTOM_VALUE {
             BitSet::new_filled(bits_per_block)
         } else {
             BitSet::new_empty(bits_per_block)
@@ -331,7 +335,7 @@ where
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
-    dot::render(&graphviz, &mut buf)?;
+    dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
     fs::write(&path, buf)?;
     Ok(())
 }

@@ -177,7 +177,7 @@ pub fn new_handler(
             Box::new(
                 EmitterWriter::stderr(
                     color_config,
-                    source_map.map(|cm| cm as _),
+                    source_map.map(|sm| sm as _),
                     short,
                     debugging_opts.teach,
                     debugging_opts.terminal_width,
@@ -416,7 +416,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                          considered deprecated",
                         name
                     ));
-                    msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+                    msg.warn(
+                        "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                         for more information",
+                    );
 
                     if name == "no_default_passes" {
                         msg.help("you may want to use `#![doc(document_private_items)]`");

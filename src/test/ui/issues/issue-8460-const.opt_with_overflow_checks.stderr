@@ -1,0 +1,150 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:14:36
+   |
+LL |     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^^^ attempt to divide with overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:16:36
+   |
+LL |     assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^ attempt to divide with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:18:36
+   |
+LL |     assert!(thread::spawn(move|| { i16::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to divide with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:20:36
+   |
+LL |     assert!(thread::spawn(move|| { i32::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to divide with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:22:36
+   |
+LL |     assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to divide with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:24:36
+   |
+LL |     assert!(thread::spawn(move|| { i128::MIN / -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^^ attempt to divide with overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:26:36
+   |
+LL |     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
+   |                                    ^^^^^^^^^^ attempt to divide by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:28:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
+   |                                    ^^^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:30:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i16 / 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:32:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i32 / 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:34:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:36:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i128 / 0; }).join().is_err());
+   |                                    ^^^^^^^^^ attempt to divide by zero
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:38:36
+   |
+LL |     assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:40:36
+   |
+LL |     assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:42:36
+   |
+LL |     assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:44:36
+   |
+LL |     assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:46:36
+   |
+LL |     assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-8460-const.rs:48:36
+   |
+LL |     assert!(thread::spawn(move|| { i128::MIN % -1; }).join().is_err());
+   |                                    ^^^^^^^^^^^^^^ attempt to calculate the remainder with overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:50:36
+   |
+LL |     assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
+   |                                    ^^^^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:52:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
+   |                                    ^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:54:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i16 % 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:56:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i32 % 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:58:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i64 % 0; }).join().is_err());
+   |                                    ^^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-8460-const.rs:60:36
+   |
+LL |     assert!(thread::spawn(move|| { 1i128 % 0; }).join().is_err());
+   |                                    ^^^^^^^^^ attempt to calculate the remainder with a divisor of zero
+
+error: aborting due to 24 previous errors
+

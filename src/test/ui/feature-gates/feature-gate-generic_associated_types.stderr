@@ -4,7 +4,7 @@ error[E0658]: generic associated types are unstable
 LL |     type Pointer<T>: Deref<Target = T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
@@ -13,7 +13,7 @@ error[E0658]: generic associated types are unstable
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
@@ -22,7 +22,7 @@ error[E0658]: where clauses on associated types are unstable
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
@@ -31,7 +31,7 @@ error[E0658]: generic associated types are unstable
 LL |     type Pointer<Usize> = Box<Usize>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
@@ -40,7 +40,7 @@ error[E0658]: generic associated types are unstable
 LL |     type Pointer2<U32> = Box<U32>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
@@ -49,7 +49,7 @@ error[E0658]: where clauses on associated types are unstable
 LL |     type Assoc where Self: Sized;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
@@ -58,7 +58,7 @@ error[E0658]: where clauses on associated types are unstable
 LL |     type Assoc where Self: Sized = Foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error: type-generic associated types are not yet implemented
@@ -67,7 +67,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Pointer<T>: Deref<Target = T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/feature-gate-generic_associated_types.rs:7:5
@@ -75,7 +75,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: aborting due to 9 previous errors
 

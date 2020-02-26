@@ -620,8 +620,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
         ret
     }
 
-    fn should_ignore_fn(ret_ty: &ast::FunctionRetTy) -> bool {
-        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty {
+    fn should_ignore_fn(ret_ty: &ast::FnRetTy) -> bool {
+        if let ast::FnRetTy::Ty(ref ty) = ret_ty {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
@@ -668,7 +668,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
-        sig.header.constness.node == ast::Constness::Const
+        matches!(sig.header.constness, ast::Const::Yes(_))
             || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }
@@ -677,7 +677,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(ref sig, _, _) => Self::is_sig_const(sig),
+            ast::ItemKind::Fn(_, ref sig, _, _) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_visit_item_kind(i, s))
@@ -686,7 +686,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let is_const = match i.kind {
             ast::AssocItemKind::Const(..) => true,
-            ast::AssocItemKind::Fn(ref sig, _) => Self::is_sig_const(sig),
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_flat_map_assoc_item(i, s))

@@ -1235,7 +1235,7 @@ pub fn map_crate<'hir>(
     let map = Map { krate, dep_graph, crate_hash, map, hir_to_node_id, definitions };
 
     sess.time("validate_HIR_map", || {
-        hir_id_validator::check_crate(&map);
+        hir_id_validator::check_crate(&map, sess);
     });
 
     map

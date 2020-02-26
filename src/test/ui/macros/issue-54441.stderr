@@ -1,13 +1,13 @@
-error: expected one of `async`, `const`, `crate`, `extern`, `fn`, `pub`, `static`, `type`, or `unsafe`, found keyword `let`
+error: macro expansion ignores token `let` and any following
   --> $DIR/issue-54441.rs:3:9
    |
 LL |         let
-   |         ^^^ expected one of 9 possible tokens
+   |         ^^^
 ...
 LL |     m!();
-   |     ----- in this macro invocation
+   |     ----- caused by the macro expansion here
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the usage of `m!` is likely invalid in foreign item context
 
 error: aborting due to previous error
 

@@ -1364,14 +1364,15 @@ function getSearchElement() {
             var href;
             var type = itemTypes[item.ty];
             var name = item.name;
+            var path = item.path;
 
             if (type === "mod") {
-                displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") + "/" +
+                displayPath = path + "::";
+                href = rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
@@ -1380,14 +1381,27 @@ function getSearchElement() {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
                 var parentType = itemTypes[myparent.ty];
+                var pageType = parentType;
+                var pageName = myparent.name;
+
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
+                } else if (type === "structfield" && parentType === "variant") {
+                    // Structfields belonging to variants are special: the
+                    // final path element is the enum name.
+                    var splitPath = item.path.split("::");
+                    var enumName = splitPath.pop();
+                    path = splitPath.join("::");
+                    displayPath = path + "::" + enumName + "::" + myparent.name + "::";
+                    anchor = "#variant." + myparent.name + ".field." + name;
+                    pageType = "enum";
+                    pageName = enumName;
                 } else {
-                    displayPath = item.path + "::" + myparent.name + "::";
+                    displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + item.path.replace(/::/g, "/") +
-                       "/" + parentType +
-                       "." + myparent.name +
+                href = rootPath + path.replace(/::/g, "/") +
+                       "/" + pageType +
+                       "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
@@ -1668,7 +1682,7 @@ function getSearchElement() {
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
 
-                // convert `paths` into an object form
+                // convert `rawPaths` entries into object form
                 var len = paths.length;
                 for (i = 0; i < len; ++i) {
                     paths[i] = {ty: paths[i][0], name: paths[i][1]};

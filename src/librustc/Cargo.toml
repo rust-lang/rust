@@ -12,8 +12,6 @@ doctest = false
 [dependencies]
 arena = { path = "../libarena" }
 bitflags = "1.2.1"
-fmt_macros = { path = "../libfmt_macros" }
-graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }

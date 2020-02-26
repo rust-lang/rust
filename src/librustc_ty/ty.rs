@@ -1,15 +1,19 @@
 use rustc::hir::map as hir_map;
 use rustc::session::CrateDisambiguator;
-use rustc::traits::{self};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_infer::traits;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
-fn sized_constraint_for_ty(tcx: TyCtxt<'tcx>, adtdef: &ty::AdtDef, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+fn sized_constraint_for_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adtdef: &ty::AdtDef,
+    ty: Ty<'tcx>,
+) -> Vec<Ty<'tcx>> {
     use ty::TyKind::*;
 
     let result = match ty.kind {
@@ -206,12 +210,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AssocItemsIterator<'tcx> {
-    ty::AssocItemsIterator {
-        items: tcx.arena.alloc_from_iter(
-            tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did)),
-        ),
-    }
+fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::AssociatedItems {
+    let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
+    tcx.arena.alloc(ty::AssociatedItems::new(items))
 }
 
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {

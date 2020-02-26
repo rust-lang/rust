@@ -1100,10 +1100,28 @@ mod trait_keyword {}
 //
 /// A value of type [`bool`] representing logical **true**.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Logically `true` is not equal to [`false`].
 ///
+/// ## Control structures that check for **true**
+///
+/// Several of Rust's control structures will check for a `bool` condition evaluating to **true**.
+///
+///   * The condition in an [`if`] expression must be of type `bool`.
+///     Whenever that condition evaluates to **true**, the `if` expression takes
+///     on the value of the first block. If however, the condition evaluates
+///     to `false`, the expression takes on value of the `else` block if there is one.
+///
+///   * [`while`] is another control flow construct expecting a `bool`-typed condition.
+///     As long as the condition evaluates to **true**, the `while` loop will continually
+///     evaluate its associated block.
+///
+///   * [`match`] arms can have guard clauses on them.
+///
+/// [`if`]: keyword.if.html
+/// [`while`]: keyword.while.html
+/// [`match`]: ../reference/expressions/match-expr.html#match-guards
+/// [`false`]: keyword.false.html
 /// [`bool`]: primitive.bool.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod true_keyword {}
 
 #[doc(keyword = "type")]
@@ -1186,12 +1204,33 @@ mod await_keyword {}
 
 #[doc(keyword = "dyn")]
 //
-/// Name the type of a [trait object].
+/// `dyn` is a prefix of a [trait object]'s type.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
+/// are dynamically dispatched. To use the trait this way, it must be 'object safe'.
+///
+/// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
+/// is being passed. That is, the type has been [erased].
+/// As such, a `dyn Trait` reference contains _two_ pointers.
+/// One pointer goes to the data (e.g., an instance of a struct).
+/// Another pointer goes to a map of method call names to function pointers
+/// (known as a virtual method table or vtable).
+///
+/// At run-time, when a method needs to be called on the `dyn Trait`, the vtable is consulted to get
+/// the function pointer and then that function pointer is called.
+///
+/// ## Trade-offs
+///
+/// The above indirection is the additional runtime cost of calling a function on a `dyn Trait`.
+/// Methods called by dynamic dispatch generally cannot be inlined by the compiler.
+///
+/// However, `dyn Trait` is likely to produce smaller code than `impl Trait` / generic parameters as
+/// the method won't be duplicated for each concrete type.
+///
+/// Read more about `object safety` and [trait object]s.
 ///
 /// [trait object]: ../book/ch17-02-trait-objects.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [erased]: https://en.wikipedia.org/wiki/Type_erasure
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

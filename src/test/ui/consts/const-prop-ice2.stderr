@@ -1,10 +1,10 @@
-error: index out of bounds: the len is 1 but the index is 1
+error: this operation will panic at runtime
   --> $DIR/const-prop-ice2.rs:6:20
    |
 LL |     println!("{}", xs[Enum::One as usize]);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the len is 1 but the index is 1
    |
-   = note: `#[deny(const_err)]` on by default
+   = note: `#[deny(unconditional_panic)]` on by default
 
 error: aborting due to previous error
 

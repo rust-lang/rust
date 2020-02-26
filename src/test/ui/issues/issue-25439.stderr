@@ -6,7 +6,8 @@ LL |     fix(|_, x| x);
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
-           see https://github.com/rust-lang/rust/issues/46062 for more details
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
 
 error: aborting due to previous error
 

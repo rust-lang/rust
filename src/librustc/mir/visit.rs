@@ -519,12 +519,12 @@ macro_rules! make_mir_visitor {
                         resume_arg,
                         drop: _,
                     } => {
+                        self.visit_operand(value, source_location);
                         self.visit_place(
                             resume_arg,
                             PlaceContext::MutatingUse(MutatingUseContext::Store),
                             source_location,
                         );
-                        self.visit_operand(value, source_location);
                     }
 
                 }
@@ -533,13 +533,13 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
-                use crate::mir::interpret::PanicInfo::*;
+                use crate::mir::AssertKind::*;
                 match msg {
                     BoundsCheck { len, index } => {
                         self.visit_operand(len, location);
                         self.visit_operand(index, location);
                     }
-                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }

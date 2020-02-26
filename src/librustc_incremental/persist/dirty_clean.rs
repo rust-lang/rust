@@ -78,7 +78,7 @@ const BASE_STRUCT: &[&str] =
 const BASE_TRAIT_DEF: &[&str] = &[
     label_strs::associated_item_def_ids,
     label_strs::generics_of,
-    label_strs::is_object_safe,
+    label_strs::object_safety_violations,
     label_strs::predicates_of,
     label_strs::specialization_graph_of,
     label_strs::trait_def,

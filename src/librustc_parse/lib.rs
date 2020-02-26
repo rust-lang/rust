@@ -9,11 +9,10 @@ use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 use syntax::ast;
-use syntax::token::{self, Nonterminal};
+use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
-use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str;
 
 use log::info;
@@ -29,8 +28,8 @@ pub mod validate_attr;
 pub mod config;
 
 #[derive(Clone)]
-pub struct Directory<'a> {
-    pub path: Cow<'a, Path>,
+pub struct Directory {
+    pub path: PathBuf,
     pub ownership: DirectoryOwnership,
 }
 
@@ -171,8 +170,9 @@ fn maybe_source_file_to_parser(
     let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
-    if parser.token == token::Eof && parser.token.span.is_dummy() {
-        parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
+    if parser.token == token::Eof {
+        let span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
+        parser.set_token(Token::new(token::Eof, span));
     }
 
     Ok(parser)
@@ -274,7 +274,7 @@ pub fn stream_to_parser<'a>(
 pub fn stream_to_parser_with_base_dir<'a>(
     sess: &'a ParseSess,
     stream: TokenStream,
-    base_dir: Directory<'a>,
+    base_dir: Directory,
 ) -> Parser<'a> {
     Parser::new(sess, stream, Some(base_dir), true, false, None)
 }
@@ -312,9 +312,6 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // before we fall back to the stringification.
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => {
-            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-        }
-        Nonterminal::NtTraitItem(ref item) | Nonterminal::NtImplItem(ref item) => {
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
         Nonterminal::NtIdent(ident, is_raw) => {

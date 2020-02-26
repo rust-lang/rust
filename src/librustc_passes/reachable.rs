@@ -362,12 +362,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                     return;
                 }
 
-                let provided_trait_methods = self.tcx.provided_trait_methods(trait_def_id);
-                self.worklist.reserve(provided_trait_methods.len());
-                for default_method in provided_trait_methods {
-                    let hir_id = self.tcx.hir().as_local_hir_id(default_method.def_id).unwrap();
-                    self.worklist.push(hir_id);
-                }
+                // FIXME(#53488) remove `let`
+                let tcx = self.tcx;
+                self.worklist.extend(
+                    tcx.provided_trait_methods(trait_def_id)
+                        .map(|assoc| tcx.hir().as_local_hir_id(assoc.def_id).unwrap()),
+                );
             }
         }
     }

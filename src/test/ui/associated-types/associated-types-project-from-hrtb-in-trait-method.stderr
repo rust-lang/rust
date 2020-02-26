@@ -1,8 +1,14 @@
 error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
-  --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:11:32
+  --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:13:32
    |
 LL |     fn some_method(&self, arg: I::A);
-   |                                ^^^^
+   |                                ^^^^ help: use a fully qualified path with inferred lifetimes: `<I as Foo<&isize>>::A`
 
-error: aborting due to previous error
+error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+  --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:32:24
+   |
+LL |     fn mango(&self) -> X::Assoc {
+   |                        ^^^^^^^^ help: use a fully qualified path with inferred lifetimes: `<X as Banana<'_>>::Assoc`
+
+error: aborting due to 2 previous errors
 

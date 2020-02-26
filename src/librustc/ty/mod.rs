@@ -30,12 +30,13 @@ use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::{GlobMap, Node, TraitMap};
+use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
@@ -43,7 +44,7 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
-use syntax::ast::{self, Constness, Ident, Name};
+use syntax::ast::{self, Ident, Name};
 use syntax::node_id::{NodeId, NodeMap, NodeSet};
 
 use std::cell::RefCell;
@@ -83,6 +84,7 @@ pub use self::context::{
     CtxtInterners, GeneratorInteriorTypeCause, GlobalCtxt, Lift, TypeckTables,
 };
 
+pub use self::instance::RESOLVE_INSTANCE;
 pub use self::instance::{Instance, InstanceDef};
 
 pub use self::trait_def::TraitDef;
@@ -126,7 +128,7 @@ pub struct ResolverOutputs {
     pub definitions: hir_map::Definitions,
     pub cstore: Box<CrateStoreDyn>,
     pub extern_crate_map: NodeMap<CrateNum>,
-    pub trait_map: TraitMap,
+    pub trait_map: TraitMap<NodeId>,
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
     pub export_map: ExportMap<NodeId>,
@@ -215,6 +217,13 @@ impl AssocKind {
             ty::AssocKind::Const => "associated constant",
         }
     }
+
+    pub fn namespace(&self) -> Namespace {
+        match *self {
+            ty::AssocKind::OpaqueTy | ty::AssocKind::Type => Namespace::TypeNS,
+            ty::AssocKind::Const | ty::AssocKind::Method => Namespace::ValueNS,
+        }
+    }
 }
 
 impl AssocItem {
@@ -253,6 +262,81 @@ impl AssocItem {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
         }
+    }
+}
+
+/// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.
+///
+/// When doing lookup by name, we try to postpone hygienic comparison for as long as possible since
+/// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
+/// done only on items with the same name.
+#[derive(Debug, Clone, PartialEq, HashStable)]
+pub struct AssociatedItems {
+    items: SortedIndexMultiMap<u32, Symbol, ty::AssocItem>,
+}
+
+impl AssociatedItems {
+    /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
+    pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
+        let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
+        AssociatedItems { items }
+    }
+
+    /// Returns a slice of associated items in the order they were defined.
+    ///
+    /// New code should avoid relying on definition order. If you need a particular associated item
+    /// for a known trait, make that trait a lang item instead of indexing this array.
+    pub fn in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.items.iter().map(|(_, v)| v)
+    }
+
+    /// Returns an iterator over all associated items with the given name, ignoring hygiene.
+    pub fn filter_by_name_unhygienic(
+        &self,
+        name: Symbol,
+    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.items.get_by_key(&name)
+    }
+
+    /// Returns an iterator over all associated items with the given name.
+    ///
+    /// Multiple items may have the same name if they are in different `Namespace`s. For example,
+    /// an associated type can have the same name as a method. Use one of the `find_by_name_and_*`
+    /// methods below if you know which item you are looking for.
+    pub fn filter_by_name(
+        &'a self,
+        tcx: TyCtxt<'a>,
+        ident: Ident,
+        parent_def_id: DefId,
+    ) -> impl 'a + Iterator<Item = &'a ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(move |item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+    }
+
+    /// Returns the associated item with the given name and `AssocKind`, if one exists.
+    pub fn find_by_name_and_kind(
+        &self,
+        tcx: TyCtxt<'_>,
+        ident: Ident,
+        kind: AssocKind,
+        parent_def_id: DefId,
+    ) -> Option<&ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(|item| item.kind == kind)
+            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+    }
+
+    /// Returns the associated item with the given name in the given `Namespace`, if one exists.
+    pub fn find_by_name_and_namespace(
+        &self,
+        tcx: TyCtxt<'_>,
+        ident: Ident,
+        ns: Namespace,
+        parent_def_id: DefId,
+    ) -> Option<&ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(|item| item.kind.namespace() == ns)
+            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
     }
 }
 
@@ -473,10 +557,15 @@ bitflags! {
         /// if a global bound is safe to evaluate.
         const HAS_RE_LATE_BOUND  = 1 << 11;
 
-        const HAS_TY_PLACEHOLDER = 1 << 12;
+        /// Does this have any `ReErased` regions?
+        const HAS_RE_ERASED  = 1 << 12;
 
-        const HAS_CT_INFER       = 1 << 13;
-        const HAS_CT_PLACEHOLDER = 1 << 14;
+        const HAS_TY_PLACEHOLDER = 1 << 13;
+
+        const HAS_CT_INFER       = 1 << 14;
+        const HAS_CT_PLACEHOLDER = 1 << 15;
+        /// Does this have any [Opaque] types.
+        const HAS_TY_OPAQUE      = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -496,9 +585,11 @@ bitflags! {
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
+                                  TypeFlags::HAS_RE_ERASED.bits |
                                   TypeFlags::HAS_TY_PLACEHOLDER.bits |
                                   TypeFlags::HAS_CT_INFER.bits |
-                                  TypeFlags::HAS_CT_PLACEHOLDER.bits;
+                                  TypeFlags::HAS_CT_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_TY_OPAQUE.bits;
     }
 }
 
@@ -1356,7 +1447,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
     fn to_predicate(&self) -> Predicate<'tcx> {
         ty::Predicate::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value.clone() }),
+            ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
             self.constness,
         )
     }
@@ -1796,19 +1887,22 @@ bitflags! {
         const IS_STRUCT           = 1 << 2;
         /// Indicates whether the ADT is a struct and has a constructor.
         const HAS_CTOR            = 1 << 3;
-        /// Indicates whether the type is a `PhantomData`.
+        /// Indicates whether the type is `PhantomData`.
         const IS_PHANTOM_DATA     = 1 << 4;
         /// Indicates whether the type has a `#[fundamental]` attribute.
         const IS_FUNDAMENTAL      = 1 << 5;
-        /// Indicates whether the type is a `Box`.
+        /// Indicates whether the type is `Box`.
         const IS_BOX              = 1 << 6;
+        /// Indicates whether the type is `ManuallyDrop`.
+        const IS_MANUALLY_DROP    = 1 << 7;
+        // FIXME(matthewjasper) replace these with diagnostic items
         /// Indicates whether the type is an `Arc`.
-        const IS_ARC              = 1 << 7;
+        const IS_ARC              = 1 << 8;
         /// Indicates whether the type is an `Rc`.
-        const IS_RC               = 1 << 8;
+        const IS_RC               = 1 << 9;
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
-        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 9;
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 10;
     }
 }
 
@@ -2041,7 +2135,8 @@ bitflags! {
         const IS_TRANSPARENT     = 1 << 2;
         // Internal only for now. If true, don't reorder fields.
         const IS_LINEAR          = 1 << 3;
-
+        // If true, don't expose any niche to type's context.
+        const HIDE_NICHE         = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
                                    ReprFlags::IS_SIMD.bits |
@@ -2078,6 +2173,7 @@ impl ReprOptions {
                         ReprFlags::empty()
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
+                    attr::ReprNoNiche => ReprFlags::HIDE_NICHE,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
                         size = Some(i);
@@ -2117,6 +2213,10 @@ impl ReprOptions {
     #[inline]
     pub fn linear(&self) -> bool {
         self.flags.contains(ReprFlags::IS_LINEAR)
+    }
+    #[inline]
+    pub fn hide_niche(&self) -> bool {
+        self.flags.contains(ReprFlags::HIDE_NICHE)
     }
 
     pub fn discr_type(&self) -> attr::IntType {
@@ -2183,6 +2283,9 @@ impl<'tcx> AdtDef {
         }
         if Some(did) == tcx.lang_items().owned_box() {
             flags |= AdtFlags::IS_BOX;
+        }
+        if Some(did) == tcx.lang_items().manually_drop() {
+            flags |= AdtFlags::IS_MANUALLY_DROP;
         }
         if Some(did) == tcx.lang_items().arc() {
             flags |= AdtFlags::IS_ARC;
@@ -2284,6 +2387,12 @@ impl<'tcx> AdtDef {
         self.flags.contains(AdtFlags::IS_BOX)
     }
 
+    /// Returns `true` if this is `ManuallyDrop<T>`.
+    #[inline]
+    pub fn is_manually_drop(&self) -> bool {
+        self.flags.contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
     /// Returns `true` if this type has a destructor.
     pub fn has_dtor(&self, tcx: TyCtxt<'tcx>) -> bool {
         self.destructor(tcx).is_some()
@@ -2362,10 +2471,10 @@ impl<'tcx> AdtDef {
         let repr_type = self.repr.discr_type();
         match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
-                // FIXME: Find the right type and use it instead of `val.ty` here
-                if let Some(b) = val.try_eval_bits(tcx, param_env, val.ty) {
+                let ty = repr_type.to_ty(tcx);
+                if let Some(b) = val.try_to_bits_for_ty(tcx, param_env, ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
-                    Some(Discr { val: b, ty: val.ty })
+                    Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
                     crate::mir::interpret::struct_error(
@@ -2705,14 +2814,14 @@ impl<'tcx> TyCtxt<'tcx> {
             .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> Vec<AssocItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
+            .in_definition_order()
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
-            .collect()
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {
-        self.associated_items(did).any(|item| item.relevant_for_never())
+        self.associated_items(did).in_definition_order().any(|item| item.relevant_for_never())
     }
 
     pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {
@@ -2972,24 +3081,9 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         (ident, scope)
     }
-}
 
-#[derive(Copy, Clone, HashStable)]
-pub struct AssocItemsIterator<'tcx> {
-    pub items: &'tcx [AssocItem],
-}
-
-impl<'tcx> Iterator for AssocItemsIterator<'tcx> {
-    type Item = AssocItem;
-
-    #[inline]
-    fn next(&mut self) -> Option<AssocItem> {
-        if let Some((first, rest)) = self.items.split_first() {
-            self.items = rest;
-            Some(*first)
-        } else {
-            None
-        }
+    pub fn is_object_safe(self, key: DefId) -> bool {
+        self.object_safety_violations(key).is_empty()
     }
 }
 

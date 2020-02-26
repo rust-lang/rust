@@ -1,11 +1,11 @@
 use crate::check::coercion::CoerceMany;
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::traits::ObligationCauseCode;
-use rustc::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
 use rustc::ty::Ty;
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
 use rustc_span::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {

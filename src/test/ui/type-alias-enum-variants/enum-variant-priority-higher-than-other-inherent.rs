@@ -18,6 +18,6 @@ impl E2 {
 }
 
 fn main() {
-    <E>::V(); //~ ERROR this function takes 1 parameter but 0 parameters were supplied
+    <E>::V(); //~ ERROR this function takes 1 argument but 0 arguments were supplied
     let _: u8 = <E2>::V; //~ ERROR mismatched types
 }

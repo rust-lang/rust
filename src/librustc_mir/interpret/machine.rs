@@ -11,8 +11,8 @@ use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 use super::{
-    AllocId, Allocation, AllocationExtra, AssertMessage, Frame, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
+    AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
+    OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -171,7 +171,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
-        msg: &AssertMessage<'tcx>,
+        msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 

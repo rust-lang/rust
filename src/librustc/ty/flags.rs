@@ -138,7 +138,7 @@ impl FlagComputation {
             }
 
             &ty::Opaque(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_PROJECTION | TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
             }
 

@@ -114,7 +114,7 @@ pub trait MutVisitor: Sized {
         noop_visit_fn_decl(d, self);
     }
 
-    fn visit_asyncness(&mut self, a: &mut IsAsync) {
+    fn visit_asyncness(&mut self, a: &mut Async) {
         noop_visit_asyncness(a, self);
     }
 
@@ -711,30 +711,17 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),
-        token::NtImplItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_impl_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
-        token::NtTraitItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_trait_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
         token::NtVis(visib) => vis.visit_vis(visib),
-        token::NtForeignItem(item) => visit_clobber(item, |item| {
-            // See reasoning above.
-            vis.flat_map_foreign_item(item)
-                .expect_one("expected visitor to produce exactly one item")
-        }),
     }
 }
 
-pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T) {
+pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut Async, vis: &mut T) {
     match asyncness {
-        IsAsync::Async { closure_id, return_impl_trait_id } => {
+        Async::Yes { span: _, closure_id, return_impl_trait_id } => {
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
         }
-        IsAsync::NotAsync => {}
+        Async::No => {}
     }
 }
 
@@ -744,10 +731,10 @@ pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     noop_visit_fn_ret_ty(output, vis);
 }
 
-pub fn noop_visit_fn_ret_ty<T: MutVisitor>(fn_ret_ty: &mut FunctionRetTy, vis: &mut T) {
+pub fn noop_visit_fn_ret_ty<T: MutVisitor>(fn_ret_ty: &mut FnRetTy, vis: &mut T) {
     match fn_ret_ty {
-        FunctionRetTy::Default(span) => vis.visit_span(span),
-        FunctionRetTy::Ty(ty) => vis.visit_ty(ty),
+        FnRetTy::Default(span) => vis.visit_span(span),
+        FnRetTy::Ty(ty) => vis.visit_ty(ty),
     }
 }
 
@@ -890,15 +877,11 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _mut, expr) => {
+        ItemKind::Static(ty, _, expr) | ItemKind::Const(_, ty, expr) => {
             vis.visit_ty(ty);
-            vis.visit_expr(expr);
+            visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Const(ty, expr) => {
-            vis.visit_ty(ty);
-            vis.visit_expr(expr);
-        }
-        ItemKind::Fn(sig, generics, body) => {
+        ItemKind::Fn(_, sig, generics, body) => {
             visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
             visit_opt(body, |body| vis.visit_block(body));
@@ -906,9 +889,10 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::TyAlias(ty, generics) => {
-            vis.visit_ty(ty);
+        ItemKind::TyAlias(_, generics, bounds, ty) => {
             vis.visit_generics(generics);
+            visit_bounds(bounds, vis);
+            visit_opt(ty, |ty| vis.visit_ty(ty));
         }
         ItemKind::Enum(EnumDef { variants }, generics) => {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
@@ -951,36 +935,47 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let AssocItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
-        item.deref_mut();
+    let Item { id, ident, vis, attrs, kind, span, tokens: _ } = item.deref_mut();
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
+    smallvec![item]
+}
+
+pub fn walk_nested_item(
+    visitor: &mut impl MutVisitor,
+    id: &mut NodeId,
+    span: &mut Span,
+    ident: &mut Ident,
+    vis: &mut Visibility,
+    attrs: &mut Vec<Attribute>,
+    kind: &mut AssocItemKind,
+) {
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
-    visitor.visit_generics(generics);
     match kind {
-        AssocItemKind::Const(ty, expr) => {
+        AssocItemKind::Const(_, ty, expr) | AssocItemKind::Static(ty, _, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Fn(sig, body) => {
+        AssocItemKind::Fn(_, sig, generics, body) => {
+            visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(bounds, ty) => {
+        AssocItemKind::TyAlias(_, generics, bounds, ty) => {
+            visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
         AssocItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
-
-    smallvec![item]
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     let FnHeader { unsafety: _, asyncness, constness: _, ext: _ } = header;
-    vis.visit_asyncness(&mut asyncness.node);
+    vis.visit_asyncness(asyncness);
 }
 
 pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, vis: &mut T) {
@@ -989,7 +984,7 @@ pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, 
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    visit_clobber(krate, |Crate { module, attrs, span }| {
+    visit_clobber(krate, |Crate { module, attrs, span, proc_macros }| {
         let item = P(Item {
             ident: Ident::invalid(),
             attrs,
@@ -1004,11 +999,11 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
         let len = items.len();
         if len == 0 {
             let module = Mod { inner: span, items: vec![], inline: true };
-            Crate { module, attrs: vec![], span }
+            Crate { module, attrs: vec![], span, proc_macros }
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
             match kind {
-                ItemKind::Mod(module) => Crate { module, attrs, span },
+                ItemKind::Mod(module) => Crate { module, attrs, span, proc_macros },
                 _ => panic!("visitor converted a module to not a module"),
             }
         } else {
@@ -1040,23 +1035,8 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     mut item: P<ForeignItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
-    let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
-    visitor.visit_ident(ident);
-    visit_attrs(attrs, visitor);
-    match kind {
-        ForeignItemKind::Fn(sig, generics, body) => {
-            visit_fn_sig(sig, visitor);
-            visitor.visit_generics(generics);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        ForeignItemKind::Static(t, _m) => visitor.visit_ty(t),
-        ForeignItemKind::Ty => {}
-        ForeignItemKind::Macro(mac) => visitor.visit_mac(mac),
-    }
-    visitor.visit_id(id);
-    visitor.visit_span(span);
-    visitor.visit_vis(vis);
-
+    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
+    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
     smallvec![item]
 }
 

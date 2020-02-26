@@ -542,10 +542,10 @@ impl<'a> TraitDef<'a> {
                 span: self.span,
                 ident,
                 vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
-                generics: Generics::default(),
                 kind: ast::AssocItemKind::TyAlias(
+                    ast::Defaultness::Final,
+                    Generics::default(),
                     Vec::new(),
                     Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 ),
@@ -700,7 +700,7 @@ impl<'a> TraitDef<'a> {
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 
-        let unsafety = if self.is_unsafe { ast::Unsafety::Unsafe } else { ast::Unsafety::Normal };
+        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
 
         cx.item(
             self.span,
@@ -710,7 +710,7 @@ impl<'a> TraitDef<'a> {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
-                constness: ast::Constness::NotConst,
+                constness: ast::Const::No,
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,
@@ -825,7 +825,8 @@ fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'sta
                 attr::ReprPacked(_)
                 | attr::ReprSimd
                 | attr::ReprAlign(_)
-                | attr::ReprTransparent => continue,
+                | attr::ReprTransparent
+                | attr::ReprNoNiche => continue,
 
                 attr::ReprC => "i32",
 
@@ -956,10 +957,10 @@ impl<'a> MethodDef<'a> {
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
         let method_ident = cx.ident_of(self.name, trait_.span);
-        let fn_decl = cx.fn_decl(args, ast::FunctionRetTy::Ty(ret_type));
+        let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
-        let unsafety = if self.is_unsafe { ast::Unsafety::Unsafe } else { ast::Unsafety::Normal };
+        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(trait_.span) } else { ast::Unsafe::No };
 
         let trait_lo_sp = trait_.span.shrink_to_lo();
 
@@ -967,17 +968,16 @@ impl<'a> MethodDef<'a> {
             header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
             decl: fn_decl,
         };
+        let def = ast::Defaultness::Final;
 
         // Create the method.
         P(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
-            generics: fn_generics,
             span: trait_.span,
             vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
-            defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(sig, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
             tokens: None,
         })
     }

@@ -153,8 +153,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::interpret::PanicInfo;
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::AssertKind;
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }

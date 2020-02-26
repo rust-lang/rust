@@ -1,11 +1,3 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:45
-   |
-LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                                             ^^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
-
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:52
    |
@@ -24,14 +16,6 @@ LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (
    |                          |          let's call the lifetime of this reference `'1`
    |                          let's call the lifetime of this reference `'2`
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:58
-   |
-LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
-   |                                                          ^^^
-   |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
-
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:64
    |
@@ -41,6 +25,5 @@ LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                  |               let's call the lifetime of this reference `'1`
    |                  lifetime `'a` defined here
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0700`.
