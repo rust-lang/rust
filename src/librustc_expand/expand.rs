@@ -669,12 +669,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
+                    // `Annotatable` can be converted into tokens directly, but we are packing it
+                    // into a nonterminal as a piece of AST to make the produced token stream
+                    // look nicer in pretty-printed form. This may be no longer necessary.
                     let item_tok = TokenTree::token(
                         token::Interpolated(Lrc::new(match item {
                             Annotatable::Item(item) => token::NtItem(item),
-                            Annotatable::TraitItem(item) => token::NtTraitItem(item),
-                            Annotatable::ImplItem(item) => token::NtImplItem(item),
-                            Annotatable::ForeignItem(item) => token::NtForeignItem(item),
+                            Annotatable::TraitItem(item)
+                            | Annotatable::ImplItem(item)
+                            | Annotatable::ForeignItem(item) => {
+                                token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
+                            }
                             Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                             Annotatable::Expr(expr) => token::NtExpr(expr),
                             Annotatable::Arm(..)
