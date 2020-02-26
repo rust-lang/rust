@@ -237,7 +237,7 @@ impl<'a> Part<'a> {
 #[derive(Clone)]
 pub struct Formatted<'a> {
     /// A byte slice representing a sign, either `""`, `"-"` or `"+"`.
-    pub sign: &'static [u8],
+    pub sign: &'static str,
     /// Formatted parts to be rendered after a sign and optional zero padding.
     pub parts: &'a [Part<'a>],
 }
@@ -259,7 +259,7 @@ impl<'a> Formatted<'a> {
         if out.len() < self.sign.len() {
             return None;
         }
-        out[..self.sign.len()].copy_from_slice(self.sign);
+        out[..self.sign.len()].copy_from_slice(self.sign.as_bytes());
 
         let mut written = self.sign.len();
         for part in self.parts {
@@ -402,38 +402,38 @@ pub enum Sign {
 }
 
 /// Returns the static byte string corresponding to the sign to be formatted.
-/// It can be either `b""`, `b"+"` or `b"-"`.
-fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static [u8] {
+/// It can be either `""`, `"+"` or `"-"`.
+fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static str {
     match (*decoded, sign) {
-        (FullDecoded::Nan, _) => b"",
-        (FullDecoded::Zero, Sign::Minus) => b"",
+        (FullDecoded::Nan, _) => "",
+        (FullDecoded::Zero, Sign::Minus) => "",
         (FullDecoded::Zero, Sign::MinusRaw) => {
             if negative {
-                b"-"
+                "-"
             } else {
-                b""
+                ""
             }
         }
-        (FullDecoded::Zero, Sign::MinusPlus) => b"+",
+        (FullDecoded::Zero, Sign::MinusPlus) => "+",
         (FullDecoded::Zero, Sign::MinusPlusRaw) => {
             if negative {
-                b"-"
+                "-"
             } else {
-                b"+"
+                "+"
             }
         }
         (_, Sign::Minus) | (_, Sign::MinusRaw) => {
             if negative {
-                b"-"
+                "-"
             } else {
-                b""
+                ""
             }
         }
         (_, Sign::MinusPlus) | (_, Sign::MinusPlusRaw) => {
             if negative {
-                b"-"
+                "-"
             } else {
-                b"+"
+                "+"
             }
         }
     }
@@ -462,7 +462,6 @@ pub fn to_shortest_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    _upper: bool,
     buf: &'a mut [u8],
     parts: &'a mut [Part<'a>],
 ) -> Formatted<'a>
@@ -679,7 +678,6 @@ pub fn to_exact_fixed_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    _upper: bool,
     buf: &'a mut [u8],
     parts: &'a mut [Part<'a>],
 ) -> Formatted<'a>

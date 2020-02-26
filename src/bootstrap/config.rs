@@ -177,6 +177,15 @@ pub struct Target {
     pub no_std: bool,
 }
 
+impl Target {
+    pub fn from_triple(triple: &str) -> Self {
+        let mut target: Self = Default::default();
+        if triple.contains("-none-") || triple.contains("nvptx") {
+            target.no_std = true;
+        }
+        target
+    }
+}
 /// Structure of the `config.toml` file that configuration is read from.
 ///
 /// This structure uses `Decodable` to automatically decode a TOML configuration
@@ -353,6 +362,7 @@ struct TomlTarget {
     musl_root: Option<String>,
     wasi_root: Option<String>,
     qemu_rootfs: Option<String>,
+    no_std: Option<bool>,
 }
 
 impl Config {
@@ -595,7 +605,7 @@ impl Config {
 
         if let Some(ref t) = toml.target {
             for (triple, cfg) in t {
-                let mut target = Target::default();
+                let mut target = Target::from_triple(triple);
 
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
@@ -605,6 +615,9 @@ impl Config {
                 }
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(config.src.join(s));
+                }
+                if let Some(s) = cfg.no_std {
+                    target.no_std = s;
                 }
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
