@@ -147,7 +147,7 @@
 
 use core::fmt;
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
-use core::mem::{size_of, swap, ManuallyDrop};
+use core::mem::{self, size_of, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
@@ -1239,7 +1239,19 @@ pub struct DrainSorted<'a, T: Ord> {
 impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
-        while let Some(_) = self.inner.pop() {}
+        struct DropGuard<'r, 'a, T: Ord>(&'r mut DrainSorted<'a, T>);
+
+        impl<'r, 'a, T: Ord> Drop for DropGuard<'r, 'a, T> {
+            fn drop(&mut self) {
+                while let Some(_) = self.0.inner.pop() {}
+            }
+        }
+
+        while let Some(item) = self.inner.pop() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
     }
 }
 

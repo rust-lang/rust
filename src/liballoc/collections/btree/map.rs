@@ -1470,7 +1470,22 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
     fn drop(&mut self) {
-        self.for_each(drop);
+        struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
+
+        impl<'a, K, V> Drop for DropGuard<'a, K, V> {
+            fn drop(&mut self) {
+                // Continue the same loop we perform below. This only runs when unwinding, so we
+                // don't have to care about panics this time (they'll abort).
+                while let Some(_) = self.0.next() {}
+            }
+        }
+
+        while let Some(pair) = self.next() {
+            let guard = DropGuard(self);
+            drop(pair);
+            mem::forget(guard);
+        }
+
         unsafe {
             let leaf_node = ptr::read(&self.front).into_node();
             if leaf_node.is_shared_root() {

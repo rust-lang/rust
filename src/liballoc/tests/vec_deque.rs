@@ -2,7 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::{isize, usize};
 
 use crate::hash;
@@ -1572,4 +1572,76 @@ fn test_try_rfold_moves_iter() {
     let mut iter = v.into_iter();
     assert_eq!(iter.try_rfold(0_i8, |acc, &x| acc.checked_add(x)), None);
     assert_eq!(iter.next_back(), Some(&70));
+}
+
+#[test]
+fn truncate_leak() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = VecDeque::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(true));
+    q.push_front(D(false));
+    q.push_front(D(false));
+
+    catch_unwind(AssertUnwindSafe(|| q.truncate(1))).ok();
+
+    assert_eq!(unsafe { DROPS }, 7);
+}
+
+#[test]
+fn test_drain_leak() {
+    static mut DROPS: i32 = 0;
+
+    #[derive(Debug, PartialEq)]
+    struct D(u32, bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut v = VecDeque::new();
+    v.push_back(D(4, false));
+    v.push_back(D(5, false));
+    v.push_back(D(6, false));
+    v.push_front(D(3, false));
+    v.push_front(D(2, true));
+    v.push_front(D(1, false));
+    v.push_front(D(0, false));
+
+    catch_unwind(AssertUnwindSafe(|| {
+        v.drain(1..=4);
+    }))
+    .ok();
+
+    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(v.len(), 3);
+    drop(v);
+    assert_eq!(unsafe { DROPS }, 7);
 }

@@ -1611,7 +1611,24 @@ where
     F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        self.for_each(drop);
+        struct DropGuard<'r, 'a, T, F>(&'r mut DrainFilter<'a, T, F>)
+        where
+            F: FnMut(&mut T) -> bool;
+
+        impl<'r, 'a, T, F> Drop for DropGuard<'r, 'a, T, F>
+        where
+            F: FnMut(&mut T) -> bool,
+        {
+            fn drop(&mut self) {
+                self.0.for_each(drop);
+            }
+        }
+
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
     }
 }
 
