@@ -343,7 +343,7 @@ impl Conv for HighlightTag {
             }
 
             HighlightTag::LITERAL_STRING => SemanticTokenType::STRING,
-            HighlightTag::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
+            HighlightTag::LITERAL_ATTRIBUTE => "attribute".into(),
 
             HighlightTag::KEYWORD => SemanticTokenType::KEYWORD,
             HighlightTag::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
@@ -363,10 +363,11 @@ impl Conv for (SemanticTokenType, Vec<SemanticTokenModifier>) {
             semantic_tokens::supported_token_types().iter().position(|it| *it == self.0).unwrap();
         let mut token_modifier_bitset = 0;
         for modifier in self.1.iter() {
-            token_modifier_bitset |= semantic_tokens::supported_token_modifiers()
+            let modifier_index = semantic_tokens::supported_token_modifiers()
                 .iter()
                 .position(|it| it == modifier)
                 .unwrap();
+            token_modifier_bitset |= 1 << modifier_index;
         }
 
         (token_index as u32, token_modifier_bitset as u32)
