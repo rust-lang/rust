@@ -5,7 +5,7 @@ use std::iter::successors;
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    algo::{self, find_covering_element},
+    algo::{self, find_covering_element, skip_trivia_token},
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::{self, *},
@@ -118,14 +118,14 @@ fn extend_tokens_from_range(
         NodeOrToken::Token(it) => (it.clone(), it),
     };
 
-    let mut first_token = skip_whitespace(first_token, Direction::Next)?;
-    let mut last_token = skip_whitespace(last_token, Direction::Prev)?;
+    let mut first_token = skip_trivia_token(first_token, Direction::Next)?;
+    let mut last_token = skip_trivia_token(last_token, Direction::Prev)?;
 
     while !first_token.text_range().is_subrange(&original_range) {
-        first_token = skip_whitespace(first_token.next_token()?, Direction::Next)?;
+        first_token = skip_trivia_token(first_token.next_token()?, Direction::Next)?;
     }
     while !last_token.text_range().is_subrange(&original_range) {
-        last_token = skip_whitespace(last_token.prev_token()?, Direction::Prev)?;
+        last_token = skip_trivia_token(last_token.prev_token()?, Direction::Prev)?;
     }
 
     // compute original mapped token range
@@ -149,14 +149,14 @@ fn extend_tokens_from_range(
     // Find the first and last text range under expanded parent
     let first = successors(Some(first_token), |token| {
         let token = token.prev_token()?;
-        skip_whitespace(token, Direction::Prev)
+        skip_trivia_token(token, Direction::Prev)
     })
     .take_while(validate)
     .last()?;
 
     let last = successors(Some(last_token), |token| {
         let token = token.next_token()?;
-        skip_whitespace(token, Direction::Next)
+        skip_trivia_token(token, Direction::Next)
     })
     .take_while(validate)
     .last()?;
@@ -167,16 +167,6 @@ fn extend_tokens_from_range(
     } else {
         None
     }
-}
-
-fn skip_whitespace(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
-    while token.kind() == WHITESPACE {
-        token = match direction {
-            Direction::Next => token.next_token()?,
-            Direction::Prev => token.prev_token()?,
-        }
-    }
-    Some(token)
 }
 
 fn union_range(range: TextRange, r: TextRange) -> TextRange {

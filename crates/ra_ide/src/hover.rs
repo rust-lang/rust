@@ -174,6 +174,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
+    // FIXME: Currently `hover::typeof` do not work inside
+    // macro expansion such that if the hover range is pointing to
+    // a string literal, the following type_of will return None.
+    // See also `test_hover_through_literal_string_in_macro`
     let frange = sema.original_range(&node);
     res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
@@ -248,6 +252,11 @@ mod tests {
 
         let content = analysis.db.file_text(position.file_id);
         content[hover.range].to_string()
+    }
+
+    fn check_hover_no_result(fixture: &str) {
+        let (analysis, position) = analysis_and_position(fixture);
+        assert!(analysis.hover(position).unwrap().is_none());
     }
 
     #[test]
@@ -772,6 +781,24 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
 
         assert_eq!(hover_on, "bar")
+    }
+
+    #[test]
+    fn test_hover_through_literal_string_in_macro() {
+        // FIXME: Currently `hover::type_of` do not work inside
+        // macro expansion
+        check_hover_no_result(
+            r#"
+            //- /lib.rs
+            macro_rules! arr {
+                ($($tt:tt)*) => { [$($tt)*)] }
+            }
+            fn foo() {
+                let mastered_for_itunes = "";
+                let _ = arr!("Tr<|>acks", &mastered_for_itunes);
+            }
+            "#,
+        );
     }
 
     #[test]
