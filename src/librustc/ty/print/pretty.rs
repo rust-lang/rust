@@ -973,7 +973,7 @@ pub trait PrettyPrinter<'tcx>:
                 if data == max {
                     p!(write("std::{}::MAX", ui_str))
                 } else {
-                    p!(write("{}{}", data, ui_str))
+                    if print_ty { p!(write("{}{}", data, ui_str)) } else { p!(write("{}", data)) }
                 };
             }
             (Scalar::Raw { data, .. }, ty::Int(i)) => {
@@ -986,7 +986,14 @@ pub trait PrettyPrinter<'tcx>:
                 match data {
                     d if d == min => p!(write("std::{}::MIN", i_str)),
                     d if d == max => p!(write("std::{}::MAX", i_str)),
-                    _ => p!(write("{}{}", sign_extend(data, size) as i128, i_str)),
+                    _ => {
+                        let data = sign_extend(data, size) as i128;
+                        if print_ty {
+                            p!(write("{}{}", data, i_str))
+                        } else {
+                            p!(write("{}", data))
+                        }
+                    }
                 }
             }
             // Char
