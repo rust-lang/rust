@@ -54,7 +54,7 @@ pub struct RegionConstraintStorage<'tcx> {
     /// is iterating to a fixed point, because otherwise we sometimes
     /// would wind up with a fresh stream of region variables that
     /// have been equated but appear distinct.
-    pub(super) unification_table: ut::UnificationStorage<ty::RegionVid>,
+    pub(super) unification_table: ut::UnificationTableStorage<ty::RegionVid>,
 
     /// a flag set to true when we perform any unifications; this is used
     /// to micro-optimize `take_and_reset_data`

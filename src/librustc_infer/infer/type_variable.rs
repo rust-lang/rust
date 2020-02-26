@@ -54,12 +54,12 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
 }
 
 pub struct TypeVariableStorage<'tcx> {
-    values: Vec<TypeVariableData>,
+    values: sv::SnapshotVecStorage<Delegate>,
 
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
-    eq_relations: ut::UnificationStorage<TyVidEqKey<'tcx>>,
+    eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
 
     /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -78,15 +78,15 @@ pub struct TypeVariableStorage<'tcx> {
     /// This is reasonable because, in Rust, subtypes have the same
     /// "skeleton" and hence there is no possible type such that
     /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
-    sub_relations: ut::UnificationStorage<ty::TyVid>,
+    sub_relations: ut::UnificationTableStorage<ty::TyVid>,
 }
 
 pub struct TypeVariableTable<'tcx, 'a> {
-    values: &'a mut Vec<TypeVariableData>,
+    values: &'a mut sv::SnapshotVecStorage<Delegate>,
 
-    eq_relations: &'a mut ut::UnificationStorage<TyVidEqKey<'tcx>>,
+    eq_relations: &'a mut ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
 
-    sub_relations: &'a mut ut::UnificationStorage<ty::TyVid>,
+    sub_relations: &'a mut ut::UnificationTableStorage<ty::TyVid>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
@@ -159,9 +159,9 @@ pub(crate) struct Delegate;
 impl<'tcx> TypeVariableStorage<'tcx> {
     pub fn new() -> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
-            values: Vec::new(),
-            eq_relations: ut::UnificationStorage::new(),
-            sub_relations: ut::UnificationStorage::new(),
+            values: sv::SnapshotVecStorage::new(),
+            eq_relations: ut::UnificationTableStorage::new(),
+            sub_relations: ut::UnificationTableStorage::new(),
         }
     }
 
@@ -180,7 +180,7 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_diverges(&self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index as usize).unwrap().diverging
+        self.values.get(vid.index as usize).diverging
     }
 
     /// Returns the origin that was given when `vid` was created.
@@ -188,7 +188,7 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_origin(&self, vid: ty::TyVid) -> &TypeVariableOrigin {
-        &self.values.get(vid.index as usize).unwrap().origin
+        &self.values.get(vid.index as usize).origin
     }
 
     /// Records that `a == b`, depending on `dir`.
@@ -330,15 +330,15 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
     fn values(
         &mut self,
     ) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut InferCtxtUndoLogs<'tcx>> {
-        sv::SnapshotVec::with_log(self.values, self.undo_log)
+        self.values.with_log(self.undo_log)
     }
 
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
-        ut::UnificationTable::with_log(self.eq_relations, self.undo_log)
+        self.eq_relations.with_log(self.undo_log)
     }
 
     fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
-        ut::UnificationTable::with_log(self.sub_relations, self.undo_log)
+        self.sub_relations.with_log(self.undo_log)
     }
 
     /// Returns a range of the type variables created during the snapshot.
@@ -351,7 +351,7 @@ impl<'tcx> TypeVariableTable<'tcx, '_> {
         (
             range.start..range.end,
             (range.start.index..range.end.index)
-                .map(|index| self.values.get(index as usize).unwrap().origin)
+                .map(|index| self.values.get(index as usize).origin)
                 .collect(),
         )
     }

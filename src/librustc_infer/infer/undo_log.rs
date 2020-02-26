@@ -98,9 +98,9 @@ impl<'tcx> From<traits::UndoLog<'tcx>> for UndoLog<'tcx> {
 
 pub(super) struct RollbackView<'tcx, 'a> {
     pub(super) type_variables: &'a mut type_variable::TypeVariableStorage<'tcx>,
-    pub(super) const_unification_table: &'a mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
-    pub(super) int_unification_table: &'a mut ut::UnificationStorage<ty::IntVid>,
-    pub(super) float_unification_table: &'a mut ut::UnificationStorage<ty::FloatVid>,
+    pub(super) const_unification_table: &'a mut ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
+    pub(super) int_unification_table: &'a mut ut::UnificationTableStorage<ty::IntVid>,
+    pub(super) float_unification_table: &'a mut ut::UnificationTableStorage<ty::FloatVid>,
     pub(super) region_constraints: &'a mut RegionConstraintStorage<'tcx>,
     pub(super) projection_cache: &'a mut traits::ProjectionCacheStorage<'tcx>,
     pub(super) region_obligations: &'a mut Vec<(hir::HirId, RegionObligation<'tcx>)>,

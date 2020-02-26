@@ -155,13 +155,13 @@ pub struct InferCtxtInner<'tcx> {
     type_variables: type_variable::TypeVariableStorage<'tcx>,
 
     /// Map from const parameter variable to the kind of const it represents.
-    const_unification_table: ut::UnificationStorage<ty::ConstVid<'tcx>>,
+    const_unification_table: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_table: ut::UnificationStorage<ty::IntVid>,
+    int_unification_table: ut::UnificationTableStorage<ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_table: ut::UnificationStorage<ty::FloatVid>,
+    float_unification_table: ut::UnificationTableStorage<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     /// This is initially `Some(_)` but when
@@ -212,9 +212,9 @@ impl<'tcx> InferCtxtInner<'tcx> {
             projection_cache: Default::default(),
             type_variables: type_variable::TypeVariableStorage::new(),
             undo_log: InferCtxtUndoLogs::default(),
-            const_unification_table: ut::UnificationStorage::new(),
-            int_unification_table: ut::UnificationStorage::new(),
-            float_unification_table: ut::UnificationStorage::new(),
+            const_unification_table: ut::UnificationTableStorage::new(),
+            int_unification_table: ut::UnificationTableStorage::new(),
+            float_unification_table: ut::UnificationTableStorage::new(),
             region_constraints: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
