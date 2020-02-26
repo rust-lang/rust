@@ -166,8 +166,11 @@ impl<'a> AssistGroup<'a> {
     }
 
     pub(crate) fn finish(self) -> Option<Assist> {
-        assert!(!self.assists.is_empty());
-        Some(Assist(self.assists))
+        if self.assists.is_empty() {
+            None
+        } else {
+            Some(Assist(self.assists))
+        }
     }
 }
 
