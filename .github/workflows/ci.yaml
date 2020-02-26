@@ -8,6 +8,16 @@ on:
       - trying
 
 jobs:
+  rust-audit:
+    name: Audit Rust vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v1
+
+        - run: cargo install cargo-audit
+        - run: cargo audit
+
   rust:
     name: Rust
     runs-on: ${{ matrix.os }}
