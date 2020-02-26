@@ -51,9 +51,6 @@ enum QueryModifier {
     /// Don't hash the result, instead just mark a query red if it runs
     NoHash,
 
-    /// Don't force the query
-    NoForce,
-
     /// Generate a dep node based on the dependencies of the query
     Anon,
 
@@ -118,8 +115,6 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::CycleDelayBug)
         } else if modifier == "no_hash" {
             Ok(QueryModifier::NoHash)
-        } else if modifier == "no_force" {
-            Ok(QueryModifier::NoForce)
         } else if modifier == "anon" {
             Ok(QueryModifier::Anon)
         } else if modifier == "eval_always" {
@@ -222,9 +217,6 @@ struct QueryModifiers {
     /// Don't hash the result, instead just mark a query red if it runs
     no_hash: bool,
 
-    /// Don't force the query
-    no_force: bool,
-
     /// Generate a dep node based on the dependencies of the query
     anon: bool,
 
@@ -241,7 +233,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut fatal_cycle = false;
     let mut cycle_delay_bug = false;
     let mut no_hash = false;
-    let mut no_force = false;
     let mut anon = false;
     let mut eval_always = false;
     for modifier in query.modifiers.0.drain(..) {
@@ -288,12 +279,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 no_hash = true;
             }
-            QueryModifier::NoForce => {
-                if no_force {
-                    panic!("duplicate modifier `no_force` for query `{}`", query.name);
-                }
-                no_force = true;
-            }
             QueryModifier::Anon => {
                 if anon {
                     panic!("duplicate modifier `anon` for query `{}`", query.name);
@@ -316,7 +301,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         fatal_cycle,
         cycle_delay_bug,
         no_hash,
-        no_force,
         anon,
         eval_always,
     }
