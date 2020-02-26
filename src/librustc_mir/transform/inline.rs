@@ -20,8 +20,10 @@ use std::iter;
 use rustc_attr as attr;
 use rustc_target::spec::abi::Abi;
 
-const DEFAULT_THRESHOLD: usize = 50;
-const HINT_THRESHOLD: usize = 100;
+const DEFAULT_THRESHOLD: usize = 0; //disable default inlining
+const HINT_THRESHOLD: usize = 20;
+
+const MAX_BASIC_BLOCKS: usize = 20;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
@@ -42,7 +44,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level >= 1 {
             Inliner { tcx, source }.run_pass(body);
         }
     }
@@ -124,6 +126,12 @@ impl Inliner<'tcx> {
                     // and is already optimized.
                     self.tcx.optimized_mir(callsite.callee)
                 };
+
+                // If inlining this function would push us over the desired number of basic blocks,
+                // then skip inlining.
+                if caller_body.basic_blocks().len() + callee_body.basic_blocks().len() > MAX_BASIC_BLOCKS {
+                    continue;
+                }
 
                 let callee_body = if self.consider_optimizing(callsite, callee_body) {
                     self.tcx.subst_and_normalize_erasing_regions(
