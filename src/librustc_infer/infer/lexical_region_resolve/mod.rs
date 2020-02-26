@@ -848,7 +848,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         for upper_bound in &upper_bounds {
             if let ty::RePlaceholder(p) = upper_bound.region {
                 if node_universe.cannot_name(p.universe) {
-                    let origin = self.var_infos[node_idx].origin.clone();
+                    let origin = self.var_infos[node_idx].origin;
                     errors.push(RegionResolutionError::UpperBoundUniverseConflict(
                         node_idx,
                         origin,
