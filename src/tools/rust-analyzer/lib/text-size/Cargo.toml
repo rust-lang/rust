@@ -1,6 +1,6 @@
 [package]
 name = "text_unit"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 description = "Newtypes for text offsets"
 license = "MIT OR Apache-2.0"
