@@ -7,7 +7,8 @@ use ra_text_edit::TextEditBuilder;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextRange, TextUnit,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
@@ -35,6 +36,17 @@ pub fn ancestors_at_offset(
 /// then the shorter node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
+}
+
+/// Skip to next non `trivia` token
+pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
+    while token.kind().is_trivia() {
+        token = match direction {
+            Direction::Next => token.next_token()?,
+            Direction::Prev => token.prev_token()?,
+        }
+    }
+    Some(token)
 }
 
 /// Finds the first sibling in the given direction which is not `trivia`

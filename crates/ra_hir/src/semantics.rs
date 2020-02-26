@@ -8,8 +8,9 @@ use hir_def::{
 };
 use ra_db::{FileId, FileRange};
 use ra_syntax::{
-    algo::find_covering_element, ast, match_ast, AstNode, NodeOrToken, SyntaxElement, SyntaxNode,
-    SyntaxToken, TextRange, TextUnit,
+    algo::{find_covering_element, skip_trivia_token},
+    ast, match_ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+    TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -384,11 +385,12 @@ fn original_range_and_origin(
     };
 
     // the input node has only one token ?
-    let single = node.value.first_token()? == node.value.last_token()?;
+    let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
+        == skip_trivia_token(node.value.last_token()?, Direction::Prev)?;
 
     return Some(node.value.descendants().find_map(|it| {
-        let first = it.first_token()?;
-        let last = it.last_token()?;
+        let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
+        let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
 
         if !single && first == last {
             return None;
