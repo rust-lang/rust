@@ -130,6 +130,7 @@ fn main() {
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut validate = true;
+    let mut stacked_borrows = true;
     let mut communicate = false;
     let mut ignore_leaks = false;
     let mut seed: Option<u64> = None;
@@ -149,6 +150,9 @@ fn main() {
             match arg.as_str() {
                 "-Zmiri-disable-validation" => {
                     validate = false;
+                }
+                "-Zmiri-disable-stacked-borrows" => {
+                    stacked_borrows = false;
                 }
                 "-Zmiri-disable-isolation" => {
                     communicate = true;
@@ -229,6 +233,7 @@ fn main() {
     debug!("miri arguments: {:?}", miri_args);
     let miri_config = miri::MiriConfig {
         validate,
+        stacked_borrows,
         communicate,
         ignore_leaks,
         excluded_env_vars,

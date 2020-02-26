@@ -1,5 +1,5 @@
-// Validation changes why we fail
-// compile-flags: -Zmiri-disable-validation
+// Validation/SB changes why we fail
+// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
 // error-pattern: tried to deallocate `Stack` memory but gave `Machine(Rust)` as the kind
 

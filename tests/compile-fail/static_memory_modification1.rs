@@ -1,5 +1,5 @@
-// Validation detects that we are casting & to &mut and so it changes why we fail
-// compile-flags: -Zmiri-disable-validation
+// Stacked Borrows detects that we are casting & to &mut and so it changes why we fail
+// compile-flags: -Zmiri-disable-stacked-borrows
 
 static X: usize = 5;
 

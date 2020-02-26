@@ -14,7 +14,8 @@ for example:
 * Not sufficiently aligned memory accesses and references
 * Violation of *some* basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
-* **Experimental**: Violations of the rules governing aliasing for reference types
+* **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
+  for reference types
 
 Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
@@ -47,6 +48,7 @@ program, and cannot run all programs:
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
+[Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
 
 
 ## Using Miri
@@ -152,10 +154,13 @@ Several `-Z` flags are relevant for Miri:
   **NOTE**: This entropy is not good enough for cryptographic use!  Do not
   generate secret keys in Miri or perform other kinds of cryptographic
   operations that rely on proper random numbers.
-* `-Zmiri-disable-validation` disables enforcing validity invariants and
-  reference aliasing rules, which are enforced by default.  This is mostly
-  useful for debugging.  It means Miri will miss bugs in your program.  However,
-  this can also help to make Miri run faster.
+* `-Zmiri-disable-validation` disables enforcing validity invariants, which are
+  enforced by default.  This is mostly useful for debugging.  It means Miri will
+  miss bugs in your program.  However, this can also help to make Miri run
+  faster.
+* `-Zmiri-disable-stacked-borrows` disables checking the experimental
+  [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
+  means no aliasing violations will be detected.
 * `-Zmiri-disable-isolation` disables host host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
@@ -234,7 +239,7 @@ Definite bugs found:
 * [The Unix allocator calling `posix_memalign` in an invalid way](https://github.com/rust-lang/rust/issues/62251)
 * [`getrandom` calling the `getrandom` syscall in an invalid way](https://github.com/rust-random/getrandom/pull/73)
 
-Violations of Stacked Borrows found that are likely bugs (but Stacked Borrows is currently just an experiment):
+Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
 * [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
 * [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)

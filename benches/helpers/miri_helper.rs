@@ -31,6 +31,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
             self.bencher.iter(|| {
                 let config = miri::MiriConfig {
                     validate: true,
+                    stacked_borrows: true,
                     communicate: false,
                     ignore_leaks: false,
                     excluded_env_vars: vec![],
