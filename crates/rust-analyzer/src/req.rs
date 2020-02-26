@@ -112,7 +112,7 @@ pub struct PublishDecorationsParams {
 #[serde(rename_all = "camelCase")]
 pub struct Decoration {
     pub range: Range,
-    pub tag: &'static str,
+    pub tag: String,
     pub binding_hash: Option<String>,
 }
 
