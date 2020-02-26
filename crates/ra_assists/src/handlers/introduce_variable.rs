@@ -136,15 +136,13 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
 mod tests {
     use test_utils::covers;
 
-    use crate::helpers::{
-        check_assist_range, check_assist_range_not_applicable, check_assist_range_target,
-    };
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 
     #[test]
     fn test_introduce_var_simple() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -161,16 +159,13 @@ fn foo() {
     #[test]
     fn introduce_var_in_comment_is_not_applicable() {
         covers!(introduce_var_in_comment_is_not_applicable);
-        check_assist_range_not_applicable(
-            introduce_variable,
-            "fn main() { 1 + /* <|>comment<|> */ 1; }",
-        );
+        check_assist_not_applicable(introduce_variable, "fn main() { 1 + /* <|>comment<|> */ 1; }");
     }
 
     #[test]
     fn test_introduce_var_expr_stmt() {
         covers!(test_introduce_var_expr_stmt);
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -181,7 +176,7 @@ fn foo() {
     let <|>var_name = 1 + 1;
 }",
         );
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -198,7 +193,7 @@ fn foo() {
 
     #[test]
     fn test_introduce_var_part_of_expr_stmt() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -215,7 +210,7 @@ fn foo() {
     #[test]
     fn test_introduce_var_last_expr() {
         covers!(test_introduce_var_last_expr);
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -227,7 +222,7 @@ fn foo() {
     bar(var_name)
 }",
         );
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() {
@@ -243,7 +238,7 @@ fn foo() {
 
     #[test]
     fn test_introduce_var_in_match_arm_no_block() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -268,7 +263,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_in_match_arm_with_block() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -300,7 +295,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_in_closure_no_block() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -317,7 +312,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_in_closure_with_block() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -334,7 +329,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_path_simple() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -352,7 +347,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_path_method() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -370,7 +365,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_return() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() -> u32 {
@@ -388,7 +383,7 @@ fn foo() -> u32 {
 
     #[test]
     fn test_introduce_var_does_not_add_extra_whitespace() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() -> u32 {
@@ -407,7 +402,7 @@ fn foo() -> u32 {
 ",
         );
 
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() -> u32 {
@@ -424,7 +419,7 @@ fn foo() -> u32 {
 ",
         );
 
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn foo() -> u32 {
@@ -452,7 +447,7 @@ fn foo() -> u32 {
 
     #[test]
     fn test_introduce_var_break() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -474,7 +469,7 @@ fn main() {
 
     #[test]
     fn test_introduce_var_for_cast() {
-        check_assist_range(
+        check_assist(
             introduce_variable,
             "
 fn main() {
@@ -492,27 +487,20 @@ fn main() {
 
     #[test]
     fn test_introduce_var_for_return_not_applicable() {
-        check_assist_range_not_applicable(introduce_variable, "fn foo() { <|>return<|>; } ");
+        check_assist_not_applicable(introduce_variable, "fn foo() { <|>return<|>; } ");
     }
 
     #[test]
     fn test_introduce_var_for_break_not_applicable() {
-        check_assist_range_not_applicable(
-            introduce_variable,
-            "fn main() { loop { <|>break<|>; }; }",
-        );
+        check_assist_not_applicable(introduce_variable, "fn main() { loop { <|>break<|>; }; }");
     }
 
     // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
     #[test]
     fn introduce_var_target() {
-        check_assist_range_target(
-            introduce_variable,
-            "fn foo() -> u32 { <|>return 2 + 2<|>; }",
-            "2 + 2",
-        );
+        check_assist_target(introduce_variable, "fn foo() -> u32 { <|>return 2 + 2<|>; }", "2 + 2");
 
-        check_assist_range_target(
+        check_assist_target(
             introduce_variable,
             "
 fn main() {
