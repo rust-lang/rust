@@ -168,6 +168,11 @@
             "type": "object",
             "title": "Rust Analyzer",
             "properties": {
+                "rust-analyzer.highlighting.semanticTokens": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Use proposed semantic tokens API for syntax highlighting"
+                },
                 "rust-analyzer.highlightingOn": {
                     "type": "boolean",
                     "default": false,
