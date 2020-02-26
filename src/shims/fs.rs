@@ -881,6 +881,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("readdir64_r")?;
+        this.assert_platform("linux", "readdir64_r");
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
@@ -907,7 +908,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let file_name = dir_entry.file_name();
                 let (name_fits, _) = this.write_os_str_to_c_str(
-                    &file_name, name_place.ptr,
+                    &file_name,
+                    name_place.ptr,
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
@@ -966,9 +968,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("readdir_r")?;
+        this.assert_platform("macos", "readdir_r");
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
-
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
@@ -994,7 +996,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let file_name = dir_entry.file_name();
                 let (name_fits, file_name_len) = this.write_os_str_to_c_str(
-                    &file_name, name_place.ptr,
+                    &file_name,
+                    name_place.ptr,
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
