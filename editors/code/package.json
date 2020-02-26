@@ -379,6 +379,20 @@
                     "highContrast": "#BEBEBE"
                 }
             }
+        ],
+        "semanticTokenStyleDefaults": [
+            {
+                "selector": "*.mutable",
+                "light": {
+                    "fontStyle": "underline"
+                },
+                "dark": {
+                    "fontStyle": "underline"
+                },
+                "highContrast": {
+                    "fontStyle": "underline"
+                }
+            }
         ]
     }
 }
