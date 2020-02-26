@@ -341,7 +341,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     db.note("distinct uses of `impl Trait` result in different opaque types");
                     let e_str = values.expected.to_string();
                     let f_str = values.found.to_string();
-                    if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                    if e_str == f_str && &e_str == "impl std::future::Future" {
                         // FIXME: use non-string based check.
                         db.help(
                             "if both `Future`s have the same `Output` type, consider \
