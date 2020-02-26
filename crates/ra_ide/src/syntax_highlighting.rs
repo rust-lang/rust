@@ -365,19 +365,19 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
-.type\\.builtin     { color: #8CD0D3; }
-.type\\.param       { color: #20999D; }
+.type.builtin       { color: #8CD0D3; }
+.type.param         { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
-.literal\\.numeric  { color: #6A8759; }
+.literal.numeric    { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }
-.variable\\.mut     { color: #DCDCCC; text-decoration: underline; }
+.variable.mut       { color: #DCDCCC; text-decoration: underline; }
 
 .keyword            { color: #F0DFAF; }
-.keyword\\.unsafe   { color: #DFAF8F; }
-.keyword\\.control  { color: #F0DFAF; font-weight: bold; }
+.keyword.unsafe     { color: #DFAF8F; }
+.keyword.control    { color: #F0DFAF; font-weight: bold; }
 </style>
 ";
 
