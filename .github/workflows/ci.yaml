@@ -79,7 +79,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: Remove-Item ./target/debug/xtask.exe
 
-  type-script:
+  typescript:
     name: TypeScript
     runs-on: ubuntu-latest
     env:
@@ -96,7 +96,12 @@ jobs:
 
       - run: npm ci
         working-directory: ./editors/code
+
+      - run: npm audit
+        working-directory: ./editors/code
+
       - run: npm run fmt
         working-directory: ./editors/code
+
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
