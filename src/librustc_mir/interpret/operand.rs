@@ -98,7 +98,7 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, F: std::fmt::Write, Tag>(
-            mut cx: FmtPrinter<'a, 'tcx, F>,
+            cx: FmtPrinter<'a, 'tcx, F>,
             s: ScalarMaybeUndef<Tag>,
             ty: Ty<'tcx>,
         ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
@@ -106,12 +106,14 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
                 ScalarMaybeUndef::Scalar(s) => {
                     cx.pretty_print_const_scalar(s.erase_tag(), ty, true)
                 }
-                ScalarMaybeUndef::Undef => {
-                    cx.write_str("{undef ")?;
-                    cx = cx.print_type(ty)?;
-                    cx.write_str("}")?;
-                    Ok(cx)
-                }
+                ScalarMaybeUndef::Undef => cx.typed_value(
+                    |mut this| {
+                        this.write_str("{undef ")?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    " ",
+                ),
             }
         }
         ty::tls::with(|tcx| {

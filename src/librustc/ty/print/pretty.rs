@@ -216,15 +216,11 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        cast: bool,
+        conversion: &str,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        if cast {
-            self.write_str(" as ")?;
-        } else {
-            self.write_str(": ")?;
-        }
+        self.write_str(conversion)?;
         self = t(self)?;
         self.write_str("}")?;
         Ok(self)
@@ -1008,7 +1004,7 @@ pub trait PrettyPrinter<'tcx>:
                         Ok(this)
                     },
                     |this| this.print_type(ty),
-                    true,
+                    " as ",
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
@@ -1019,7 +1015,7 @@ pub trait PrettyPrinter<'tcx>:
                 self = self.typed_value(
                     |this| this.print_value_path(instance.def_id(), instance.substs),
                     |this| this.print_type(ty),
-                    true,
+                    " as ",
                 )?;
             }
             // For function type zsts just printing the type is enough
@@ -1048,7 +1044,7 @@ pub trait PrettyPrinter<'tcx>:
                     Ok(this)
                 };
                 self = if print_ty {
-                    self.typed_value(print, |this| this.print_type(ty), false)?
+                    self.typed_value(print, |this| this.print_type(ty), ": ")?
                 } else {
                     print(self)?
                 };
@@ -1076,7 +1072,7 @@ pub trait PrettyPrinter<'tcx>:
                     Ok(this)
                 },
                 |this| this.print_type(ty),
-                false,
+                ": ",
             )
         } else {
             self.write_str("&_")?;
@@ -1477,15 +1473,11 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        cast: bool,
+        conversion: &str,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        if cast {
-            self.write_str(" as ")?;
-        } else {
-            self.write_str(": ")?;
-        }
+        self.write_str(conversion)?;
         let was_in_value = std::mem::replace(&mut self.in_value, false);
         self = t(self)?;
         self.in_value = was_in_value;
@@ -1566,7 +1558,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
             Ok(this)
         };
         if print_ty {
-            self.typed_value(print, |this| this.print_type(ty), false)
+            self.typed_value(print, |this| this.print_type(ty), ": ")
         } else {
             print(self)
         }
