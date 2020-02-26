@@ -1054,25 +1054,40 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // an error when we confirm the candidate
                     // (which will ultimately lead to `normalize_to_error`
                     // being invoked).
-                    node_item.item.defaultness.has_value()
+                    false
                 } else {
+                    // If we're looking at a trait *impl*, the item is
+                    // specializable if the impl or the item are marked
+                    // `default`.
                     node_item.item.defaultness.is_default()
                         || super::util::impl_is_default(selcx.tcx(), node_item.node.def_id())
                 };
 
-                // Only reveal a specializable default if we're past type-checking
-                // and the obligations is monomorphic, otherwise passes such as
-                // transmute checking and polymorphic MIR optimizations could
-                // get a result which isn't correct for all monomorphizations.
-                if !is_default {
-                    true
-                } else if obligation.param_env.reveal == Reveal::All {
-                    // NOTE(eddyb) inference variables can resolve to parameters, so
-                    // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                    let poly_trait_ref = selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
-                    !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
-                } else {
-                    false
+                match is_default {
+                    // Non-specializable items are always projectable
+                    false => true,
+
+                    // Only reveal a specializable default if we're past type-checking
+                    // and the obligation is monomorphic, otherwise passes such as
+                    // transmute checking and polymorphic MIR optimizations could
+                    // get a result which isn't correct for all monomorphizations.
+                    true if obligation.param_env.reveal == Reveal::All => {
+                        // NOTE(eddyb) inference variables can resolve to parameters, so
+                        // assume `poly_trait_ref` isn't monomorphic, if it contains any.
+                        let poly_trait_ref =
+                            selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
+                        !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
+                    }
+
+                    true => {
+                        debug!(
+                            "assemble_candidates_from_impls: not eligible due to default: \
+                             assoc_ty={} predicate={}",
+                            selcx.tcx().def_path_str(node_item.item.def_id),
+                            obligation.predicate,
+                        );
+                        false
+                    }
                 }
             }
             super::VtableParam(..) => {

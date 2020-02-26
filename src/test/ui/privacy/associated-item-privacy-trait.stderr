@@ -42,18 +42,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trait `priv_trait::PrivTr` is private
-  --> $DIR/associated-item-privacy-trait.rs:25:13
-   |
-LL |         let _: <Pub as PrivTr>::AssocTy;
-   |             ^
-...
-LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: trait `priv_trait::PrivTr` is private
+error: associated type `PrivTr::AssocTy` is private
   --> $DIR/associated-item-privacy-trait.rs:25:16
    |
 LL |         let _: <Pub as PrivTr>::AssocTy;
@@ -65,7 +54,7 @@ LL |     priv_trait::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
-  --> $DIR/associated-item-privacy-trait.rs:28:34
+  --> $DIR/associated-item-privacy-trait.rs:27:34
    |
 LL |         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,7 +65,7 @@ LL |     priv_trait::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
-  --> $DIR/associated-item-privacy-trait.rs:30:34
+  --> $DIR/associated-item-privacy-trait.rs:29:34
    |
 LL |         pub trait InSignatureTr: PrivTr {}
    |                                  ^^^^^^
@@ -87,7 +76,7 @@ LL |     priv_trait::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `priv_trait::PrivTr` is private
-  --> $DIR/associated-item-privacy-trait.rs:32:14
+  --> $DIR/associated-item-privacy-trait.rs:31:14
    |
 LL |         impl PrivTr for u8 {}
    |              ^^^^^^
@@ -98,7 +87,7 @@ LL |     priv_trait::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:49:21
+  --> $DIR/associated-item-privacy-trait.rs:48:21
    |
 LL |         let value = <Pub as PubTr>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +98,7 @@ LL |     priv_signature::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:51:9
+  --> $DIR/associated-item-privacy-trait.rs:50:9
    |
 LL |         value;
    |         ^^^^^
@@ -120,7 +109,7 @@ LL |     priv_signature::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:53:13
+  --> $DIR/associated-item-privacy-trait.rs:52:13
    |
 LL |         Pub.method(loop {});
    |             ^^^^^^
@@ -131,7 +120,7 @@ LL |     priv_signature::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:70:21
+  --> $DIR/associated-item-privacy-trait.rs:69:21
    |
 LL |         let value = <Pub as PubTr>::method::<Priv>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,7 +131,7 @@ LL |     priv_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:72:9
+  --> $DIR/associated-item-privacy-trait.rs:71:9
    |
 LL |         value;
    |         ^^^^^
@@ -153,7 +142,7 @@ LL |     priv_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:74:9
+  --> $DIR/associated-item-privacy-trait.rs:73:9
    |
 LL |         Pub.method::<Priv>();
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -164,7 +153,7 @@ LL |     priv_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:94:21
+  --> $DIR/associated-item-privacy-trait.rs:93:21
    |
 LL |         let value = <Pub as PubTr>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^
@@ -175,7 +164,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:96:9
+  --> $DIR/associated-item-privacy-trait.rs:95:9
    |
 LL |         value;
    |         ^^^^^
@@ -186,7 +175,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:98:21
+  --> $DIR/associated-item-privacy-trait.rs:97:21
    |
 LL |         let value = <Pub as PubTr<_>>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -197,7 +186,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:100:9
+  --> $DIR/associated-item-privacy-trait.rs:99:9
    |
 LL |         value;
    |         ^^^^^
@@ -208,7 +197,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:102:9
+  --> $DIR/associated-item-privacy-trait.rs:101:9
    |
 LL |         Pub.method();
    |         ^^^^^^^^^^^^
@@ -219,7 +208,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:105:21
+  --> $DIR/associated-item-privacy-trait.rs:104:21
    |
 LL |         let value = <Priv as PubTr<_>>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -230,7 +219,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:107:9
+  --> $DIR/associated-item-privacy-trait.rs:106:9
    |
 LL |         value;
    |         ^^^^^
@@ -241,7 +230,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:109:9
+  --> $DIR/associated-item-privacy-trait.rs:108:9
    |
 LL |         Priv.method();
    |         ^^^^^^^^^^^^^
@@ -252,7 +241,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:112:9
+  --> $DIR/associated-item-privacy-trait.rs:111:9
    |
 LL |         <Pub as PubTr>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -263,7 +252,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:114:9
+  --> $DIR/associated-item-privacy-trait.rs:113:9
    |
 LL |         <Pub as PubTr<_>>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -274,7 +263,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:116:9
+  --> $DIR/associated-item-privacy-trait.rs:115:9
    |
 LL |         <Priv as PubTr<_>>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -285,32 +274,10 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:119:13
-   |
-LL |         let _: <Pub as PubTr>::AssocTy;
-   |             ^
-...
-LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:119:16
-   |
-LL |         let _: <Pub as PubTr>::AssocTy;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:122:13
+  --> $DIR/associated-item-privacy-trait.rs:119:30
    |
 LL |         let _: <Pub as PubTr<_>>::AssocTy;
-   |             ^
+   |                              ^
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
@@ -318,21 +285,10 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:122:16
-   |
-LL |         let _: <Pub as PubTr<_>>::AssocTy;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:125:13
+  --> $DIR/associated-item-privacy-trait.rs:121:17
    |
 LL |         let _: <Priv as PubTr<_>>::AssocTy;
-   |             ^
+   |                 ^^^^
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
@@ -340,18 +296,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:125:16
-   |
-LL |         let _: <Priv as PubTr<_>>::AssocTy;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:129:35
+  --> $DIR/associated-item-privacy-trait.rs:124:35
    |
 LL |         pub type InSignatureTy1 = <Pub as PubTr>::AssocTy;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -362,7 +307,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:131:35
+  --> $DIR/associated-item-privacy-trait.rs:126:35
    |
 LL |         pub type InSignatureTy2 = <Priv as PubTr<Pub>>::AssocTy;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -373,7 +318,7 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
-  --> $DIR/associated-item-privacy-trait.rs:133:14
+  --> $DIR/associated-item-privacy-trait.rs:128:14
    |
 LL |         impl PubTr for u8 {}
    |              ^^^^^
@@ -383,5 +328,5 @@ LL |     priv_parent_substs::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 35 previous errors
+error: aborting due to 30 previous errors
 

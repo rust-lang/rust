@@ -35,7 +35,7 @@ fn main() {
     <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
     let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
     let _: <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
-    <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found
+    <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found for type `u16`
     <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
 
     let _: <u8 as Tr::N>::NN; //~ ERROR cannot find associated type `NN` in `Tr::N`
@@ -52,5 +52,5 @@ fn main() {
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found method `Dr::Z`
-    <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found
+    <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found for type `u16`
 }
