@@ -180,6 +180,28 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_int_binop!(fx, bxor(x, y) -> ret);
         };
 
+        simd_fma, (c a, c b, c c) {
+            assert_eq!(a.layout(), b.layout());
+            assert_eq!(a.layout(), c.layout());
+            let layout = a.layout();
+
+            let (_lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
+            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
+            assert_eq!(lane_count, ret_lane_count);
+
+            for lane in 0..lane_count {
+                let lane = mir::Field::new(lane.try_into().unwrap());
+                let a_lane = a.value_field(fx, lane).load_scalar(fx);
+                let b_lane = b.value_field(fx, lane).load_scalar(fx);
+                let c_lane = c.value_field(fx, lane).load_scalar(fx);
+
+                let mul_lane = fx.bcx.ins().fmul(a_lane, b_lane);
+                let res_lane = CValue::by_val(fx.bcx.ins().fadd(mul_lane, c_lane), ret_lane_layout);
+
+                ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+            }
+        };
+
         simd_fmin, (c x, c y) {
             simd_flt_binop!(fx, fmin(x, y) -> ret);
         };
