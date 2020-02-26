@@ -754,6 +754,27 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
+    fn test_hover_through_expr_in_macro_recursive() {
+        let hover_on = check_hover_result(
+            "
+            //- /lib.rs
+            macro_rules! id_deep {
+                ($($tt:tt)*) => { $($tt)* }
+            }
+            macro_rules! id {
+                ($($tt:tt)*) => { id_deep!($($tt)*) }
+            }
+            fn foo(bar:u32) {
+                let a = id!(ba<|>r);
+            }
+            ",
+            &["u32"],
+        );
+
+        assert_eq!(hover_on, "bar")
+    }
+
+    #[test]
     fn test_hover_non_ascii_space_doc() {
         check_hover_result(
             "

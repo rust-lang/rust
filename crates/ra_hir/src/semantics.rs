@@ -7,7 +7,10 @@ use hir_def::{
     DefWithBodyId, TraitId,
 };
 use ra_db::{FileId, FileRange};
-use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextUnit};
+use ra_syntax::{
+    algo::find_covering_element, ast, match_ast, AstNode, NodeOrToken, SyntaxElement, SyntaxNode,
+    SyntaxToken, TextRange, TextUnit,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
@@ -333,10 +336,27 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 
 // FIXME: Change `HasSource` trait to work with `Semantics` and remove this?
 pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileRange {
-    if let Some((range, Origin::Call)) = original_range_and_origin(db, node) {
-        return range;
+    let mut elem: InFile<SyntaxElement> = node.map(|n| n.clone().into());
+
+    while let Some((range, Origin::Call)) = original_range_and_origin(db, elem.as_ref()) {
+        let original_file = range.file_id.original_file(db);
+
+        if range.file_id == original_file.into() {
+            return FileRange { file_id: original_file, range: range.value };
+        }
+
+        if range.file_id != elem.file_id {
+            if let Some(root) = db.parse_or_expand(range.file_id) {
+                elem = range.with_value(find_covering_element(&root, range.value));
+                continue;
+            }
+        }
+
+        log::error!("Fail to mapping up more for {:?}", range);
+        return FileRange { file_id: range.file_id.original_file(db), range: range.value };
     }
 
+    // Fall back to whole macro call
     if let Some(expansion) = node.file_id.expansion_info(db) {
         if let Some(call_node) = expansion.call_node() {
             return FileRange {
@@ -351,15 +371,22 @@ pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileR
 
 fn original_range_and_origin(
     db: &impl HirDatabase,
-    node: InFile<&SyntaxNode>,
-) -> Option<(FileRange, Origin)> {
-    let expansion = node.file_id.expansion_info(db)?;
+    elem: InFile<&SyntaxElement>,
+) -> Option<(InFile<TextRange>, Origin)> {
+    let expansion = elem.file_id.expansion_info(db)?;
+
+    let node = match elem.as_ref().value {
+        NodeOrToken::Node(it) => elem.with_value(it),
+        NodeOrToken::Token(it) => {
+            let (tt, origin) = expansion.map_token_up(elem.with_value(it))?;
+            return Some((tt.map(|it| it.text_range()), origin));
+        }
+    };
 
     // the input node has only one token ?
     let single = node.value.first_token()? == node.value.last_token()?;
 
-    // FIXME: We should handle recurside macro expansions
-    let (range, origin) = node.value.descendants().find_map(|it| {
+    return Some(node.value.descendants().find_map(|it| {
         let first = it.first_token()?;
         let last = it.last_token()?;
 
@@ -380,12 +407,7 @@ fn original_range_and_origin(
             first.with_value(union_range(first.value.text_range(), last.value.text_range())),
             first_origin,
         ))
-    })?;
-
-    return Some((
-        FileRange { file_id: range.file_id.original_file(db), range: range.value },
-        origin,
-    ));
+    })?);
 
     fn union_range(a: TextRange, b: TextRange) -> TextRange {
         let start = a.start().min(b.start());
