@@ -1,7 +1,7 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
-use std::fs::{File, remove_file, rename};
+use std::fs::{File, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename};
 use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
@@ -13,6 +13,7 @@ fn main() {
     test_symlink();
     test_errors();
     test_rename();
+    test_directory();
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -21,6 +22,15 @@ fn prepare(filename: &str) -> PathBuf {
     let path = tmp.join(filename);
     // Clean the paths for robustness.
     remove_file(&path).ok();
+    path
+}
+
+/// Prepare directory: compute directory name and make sure it does not exist.
+fn prepare_dir(dirname: &str) -> PathBuf {
+    let tmp = std::env::temp_dir();
+    let path = tmp.join(&dirname);
+    // Clean the directory for robustness.
+    remove_dir_all(&path).ok();
     path
 }
 
@@ -181,4 +191,33 @@ fn test_rename() {
     assert_eq!(ErrorKind::NotFound, rename(&path1, &path2).unwrap_err().kind());
 
     remove_file(&path2).unwrap();
+}
+
+fn test_directory() {
+    let dir_path = prepare_dir("miri_test_fs_dir");
+    // Creating a directory should succeed.
+    create_dir(&dir_path).unwrap();
+    // Test that the metadata of a directory is correct.
+    assert!(dir_path.metadata().unwrap().is_dir());
+    // Creating a directory when it already exists should fail.
+    assert_eq!(ErrorKind::AlreadyExists, create_dir(&dir_path).unwrap_err().kind());
+
+    // Create some files inside the directory
+    let path_1 = dir_path.join("test_file_1");
+    drop(File::create(&path_1).unwrap());
+    let path_2 = dir_path.join("test_file_2");
+    drop(File::create(&path_2).unwrap());
+    // Test that the files are present inside the directory
+    let dir_iter = read_dir(&dir_path).unwrap();
+    let mut file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
+    file_names.sort_unstable();
+    assert_eq!(file_names, vec!["test_file_1", "test_file_2"]);
+    // Clean up the files in the directory
+    remove_file(&path_1).unwrap();
+    remove_file(&path_2).unwrap();
+
+    // Deleting the directory should succeed.
+    remove_dir(&dir_path).unwrap();
+    // Reading the metadata of a non-existent file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
 }

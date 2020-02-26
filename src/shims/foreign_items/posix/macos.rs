@@ -42,6 +42,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            // The only reason this is not in the `posix` module is because the `linux` item has a
+            // different name.
+            "opendir$INODE64" => {
+                let result = this.opendir(args[0])?;
+                this.write_scalar(result, dest)?;
+            }
+
+            // The `linux` module has a parallel foreign item, `readdir64_r`, which uses a
+            // different struct layout.
+            "readdir_r$INODE64" => {
+                let result = this.macos_readdir_r(args[0], args[1], args[2])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             // Time related shims
             "gettimeofday" => {
                 let result = this.gettimeofday(args[0], args[1])?;

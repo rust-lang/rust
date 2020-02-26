@@ -36,7 +36,7 @@ pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
-pub use crate::shims::fs::{EvalContextExt as FileEvalContextExt, FileHandler};
+pub use crate::shims::fs::{DirHandler, EvalContextExt as FileEvalContextExt, FileHandler};
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
 pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;

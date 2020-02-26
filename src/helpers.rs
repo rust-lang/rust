@@ -474,15 +474,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
-    /// the Unix APIs usually handle. This function returns `Ok(false)` without trying to write if
-    /// `size` is not large enough to fit the contents of `os_string` plus a null terminator. It
-    /// returns `Ok(true)` if the writing process was successful.
+    /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
+    /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
+    /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
+    /// string length returned does not include the null terminator.
     fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
         scalar: Scalar<Tag>,
         size: u64,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(target_os = "unix")]
         fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
             std::os::unix::ffi::OsStringExt::into_bytes(os_str)
@@ -501,13 +502,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
-        if size <= bytes.len() as u64 {
-            return Ok(false);
+        let string_length = bytes.len() as u64;
+        if size <= string_length {
+            return Ok((false, string_length));
         }
         self.eval_context_mut()
             .memory
             .write_bytes(scalar, bytes.iter().copied().chain(iter::once(0u8)))?;
-        Ok(true)
+        Ok((true, string_length))
     }
 
     fn alloc_os_str_as_c_str(

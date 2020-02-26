@@ -120,6 +120,7 @@ pub struct Evaluator<'tcx> {
     pub(crate) validate: bool,
 
     pub(crate) file_handler: FileHandler,
+    pub(crate) dir_handler: DirHandler,
 
     /// The temporary used for storing the argument of
     /// the call to `miri_start_panic` (the panic payload) when unwinding.
@@ -140,6 +141,7 @@ impl<'tcx> Evaluator<'tcx> {
             communicate,
             validate,
             file_handler: Default::default(),
+            dir_handler: Default::default(),
             panic_payload: None,
         }
     }
