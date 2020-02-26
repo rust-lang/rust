@@ -67,11 +67,12 @@ pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
     GeneratorState(VariantIdx),
-    ClosureVar(Symbol),
+    CapturedVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
     Deref,
-    Tag,
+    EnumTag,
+    GeneratorTag,
     DynDowncast,
 }
 
@@ -109,9 +110,11 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
     for elem in path.iter() {
         match elem {
             Field(name) => write!(out, ".{}", name),
-            Variant(name) => write!(out, ".<downcast-variant({})>", name),
+            EnumTag => write!(out, ".<enum-tag>"),
+            Variant(name) => write!(out, ".<enum-variant({})>", name),
+            GeneratorTag => write!(out, ".<generator-tag>"),
             GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
-            ClosureVar(name) => write!(out, ".<closure-var({})>", name),
+            CapturedVar(name) => write!(out, ".<captured-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
             // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
@@ -119,7 +122,6 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             // even use the usual syntax because we are just showing the projections,
             // not the root.
             Deref => write!(out, ".<deref>"),
-            Tag => write!(out, ".<enum-tag>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
         .unwrap()
@@ -170,6 +172,21 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
     fn aggregate_field_path_elem(&mut self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
+        // First, check if we are projecting to a variant.
+        match layout.variants {
+            layout::Variants::Multiple { discr_index, .. } => {
+                if discr_index == field {
+                    return match layout.ty.kind {
+                        ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
+                        ty::Generator(..) => PathElem::GeneratorTag,
+                        _ => bug!("non-variant type {:?}", layout.ty),
+                    };
+                }
+            }
+            layout::Variants::Single { .. } => {}
+        }
+
+        // Now we know we are projecting to a field, so figure out which one.
         match layout.ty.kind {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
@@ -190,7 +207,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     }
                 }
 
-                PathElem::ClosureVar(name.unwrap_or_else(|| {
+                PathElem::CapturedVar(name.unwrap_or_else(|| {
                     // Fall back to showing the field index.
                     sym::integer(field)
                 }))
@@ -207,10 +224,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
-                    layout::Variants::Multiple { discr_index, .. } => {
-                        assert_eq!(discr_index, field);
-                        PathElem::Tag
-                    }
+                    layout::Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
 
@@ -441,11 +455,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     fn visit_scalar(
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
-        layout: &layout::Scalar,
+        scalar_layout: &layout::Scalar,
     ) -> InterpResult<'tcx> {
         let value = self.ecx.read_scalar(op)?;
+        let valid_range = &scalar_layout.valid_range;
+        let (lo, hi) = valid_range.clone().into_inner();
         // Determine the allowed range
-        let (lo, hi) = layout.valid_range.clone().into_inner();
         // `max_hi` is as big as the size fits
         let max_hi = u128::max_value() >> (128 - op.layout.size.bits());
         assert!(hi <= max_hi);
@@ -459,7 +474,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             value.not_undef(),
             value,
             self.path,
-            format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi),)
+            format_args!("something {}", wrapping_range_format(valid_range, max_hi),)
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
             Err(ptr) => {
@@ -471,7 +486,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                             self.path,
                             format_args!(
                                 "something that cannot possibly fail to be {}",
-                                wrapping_range_format(&layout.valid_range, max_hi)
+                                wrapping_range_format(valid_range, max_hi)
                             )
                         )
                     }
@@ -484,7 +499,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         self.path,
                         format_args!(
                             "something that cannot possibly fail to be {}",
-                            wrapping_range_format(&layout.valid_range, max_hi)
+                            wrapping_range_format(valid_range, max_hi)
                         )
                     )
                 }
@@ -492,13 +507,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             Ok(data) => data,
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.
-        if wrapping_range_contains(&layout.valid_range, bits) {
+        if wrapping_range_contains(&valid_range, bits) {
             Ok(())
         } else {
             throw_validation_failure!(
                 bits,
                 self.path,
-                format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
+                format_args!("something {}", wrapping_range_format(valid_range, max_hi))
             )
         }
     }
@@ -594,7 +609,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
         // *After* all of this, check the ABI.  We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
-        // the fields say. But in most cases, this will just propagate what the fields say,
+        // the fields say (`rustc_layout_scalar_valid_range_start`).
+        // But in most cases, this will just propagate what the fields say,
         // and then we want the error to point at the field -- so, first recurse,
         // then check ABI.
         //
@@ -603,11 +619,18 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
             layout::Abi::Uninhabited => unreachable!(), // checked above
-            layout::Abi::Scalar(ref layout) => {
-                self.visit_scalar(op, layout)?;
+            layout::Abi::Scalar(ref scalar_layout) => {
+                self.visit_scalar(op, scalar_layout)?;
             }
-            // FIXME: Should we do something for ScalarPair? Vector?
-            _ => {}
+            layout::Abi::ScalarPair { .. } | layout::Abi::Vector { .. } => {
+                // These have fields that we already visited above, so we already checked
+                // all their scalar-level restrictions.
+                // There is also no equivalent to `rustc_layout_scalar_valid_range_start`
+                // that would make skipping them here an issue.
+            }
+            layout::Abi::Aggregate { .. } => {
+                // Nothing to do.
+            }
         }
 
         Ok(())
