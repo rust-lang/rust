@@ -4,16 +4,16 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    TraitId,
+    DefWithBodyId, TraitId,
 };
 use ra_db::{FileId, FileRange};
-use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextUnit};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextUnit};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::HirDatabase,
     source_analyzer::{resolve_hir_path, ReferenceDescriptor, SourceAnalyzer},
-    source_binder::{ChildContainer, SourceBinder, ToDef},
+    source_binder::{ChildContainer, SourceBinder},
     Function, HirFileId, InFile, Local, MacroDef, Module, Name, Origin, Path, PathResolution,
     ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
@@ -129,9 +129,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
     pub fn to_def<T: ToDef + Clone>(&self, src: &T) -> Option<T::Def> {
-        let src = self.find_file(src.syntax().clone()).with_value(src.clone());
-        let mut sb = self.sb.borrow_mut();
-        T::to_def(self.db, &mut sb, src)
+        T::to_def(self, src)
     }
 
     pub fn to_module_def(&self, file: FileId) -> Option<Module> {
@@ -224,6 +222,68 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             )
         });
         InFile::new(file_id, node)
+    }
+}
+
+pub trait ToDef: Sized + AstNode + 'static {
+    type Def;
+    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self) -> Option<Self::Def>;
+}
+
+macro_rules! to_def_impls {
+    ($(($def:path, $ast:path)),* ,) => {$(
+        impl ToDef for $ast {
+            type Def = $def;
+            fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self)
+                -> Option<Self::Def>
+            {
+                let src = sema.find_file(src.syntax().clone()).with_value(src);
+                sema.sb.borrow_mut().to_id(sema.db, src.cloned()).map(Into::into)
+            }
+        }
+    )*}
+}
+
+to_def_impls![
+    (crate::Module, ast::Module),
+    (crate::Struct, ast::StructDef),
+    (crate::Enum, ast::EnumDef),
+    (crate::Union, ast::UnionDef),
+    (crate::Trait, ast::TraitDef),
+    (crate::ImplBlock, ast::ImplBlock),
+    (crate::TypeAlias, ast::TypeAliasDef),
+    (crate::Const, ast::ConstDef),
+    (crate::Static, ast::StaticDef),
+    (crate::Function, ast::FnDef),
+    (crate::StructField, ast::RecordFieldDef),
+    (crate::EnumVariant, ast::EnumVariant),
+    (crate::TypeParam, ast::TypeParam),
+    (crate::MacroDef, ast::MacroCall), // this one is dubious, not all calls are macros
+];
+
+impl ToDef for ast::BindPat {
+    type Def = Local;
+
+    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self) -> Option<Local> {
+        let src = sema.find_file(src.syntax().clone()).with_value(src);
+        let file_id = src.file_id;
+        let mut sb = sema.sb.borrow_mut();
+        let db = sema.db;
+        let parent: DefWithBodyId = src.value.syntax().ancestors().find_map(|it| {
+            let res = match_ast! {
+                match it {
+                    ast::ConstDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
+                    ast::StaticDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
+                    ast::FnDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })?;
+        let (_body, source_map) = db.body_with_source_map(parent);
+        let src = src.cloned().map(ast::Pat::from);
+        let pat_id = source_map.node_pat(src.as_ref())?;
+        Some(Local { parent: parent.into(), pat_id })
     }
 }
 
