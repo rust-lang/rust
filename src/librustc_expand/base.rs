@@ -921,6 +921,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
+    pub reduced_recursion_limit: Option<usize>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
@@ -936,6 +937,7 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
+            reduced_recursion_limit: None,
             root_path: PathBuf::new(),
             resolver,
             current_expansion: ExpansionData {
