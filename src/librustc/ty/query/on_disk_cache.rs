@@ -997,7 +997,7 @@ impl SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder {
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
         let start_pos = self.position();
         for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((x.0 >> i * 8) as u8).encode(self)?;
+            ((x.0 >> (i * 8)) as u8).encode(self)?;
         }
         let end_pos = self.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
