@@ -86,7 +86,7 @@ pub type NameDoc = (String, Option<String>);
 
 crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with("/") && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
+        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
     })
 }
 

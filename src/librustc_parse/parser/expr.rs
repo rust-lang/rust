@@ -758,7 +758,7 @@ impl<'a> Parser<'a> {
                 s.print_usize(float.trunc() as usize);
                 s.pclose();
                 s.s.word(".");
-                s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
+                s.s.word(fstr.splitn(2, '.').last().unwrap().to_string())
             });
             err.span_suggestion(
                 lo.to(self.prev_span),

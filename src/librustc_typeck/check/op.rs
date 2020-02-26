@@ -597,12 +597,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Ok(lstring) => {
                             err.span_suggestion(
                                 lhs_expr.span,
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     remove_borrow_msg
                                 } else {
                                     msg
                                 },
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
                                     format!("{}", &lstring[1..])
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        let to_string = if l.starts_with("&") {
+                        let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
                             format!("{}", &l[1..])

@@ -19,7 +19,7 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
     let mut count = 0;
 
     for line in s.lines() {
-        if line.starts_with("# ") || line.starts_with("%") {
+        if line.starts_with("# ") || line.starts_with('%') {
             // trim the whitespace after the symbol
             metadata.push(line[1..].trim_start());
             count += line.len() + 1;

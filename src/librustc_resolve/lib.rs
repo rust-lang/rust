@@ -2663,7 +2663,7 @@ impl<'a> Resolver<'a> {
                                 "{} as {}{}",
                                 &snippet[..pos],
                                 suggested_name,
-                                if snippet.ends_with(";") { ";" } else { "" }
+                                if snippet.ends_with(';') { ";" } else { "" }
                             ))
                         }
                     }
