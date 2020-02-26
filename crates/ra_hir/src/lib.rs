@@ -47,7 +47,7 @@ pub use crate::{
     },
     has_source::HasSource,
     semantics::{original_range, Semantics, SemanticsScope},
-    source_analyzer::{PathResolution, ScopeEntryWithSyntax},
+    source_analyzer::PathResolution,
 };
 
 pub use hir_def::{

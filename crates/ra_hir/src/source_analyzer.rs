@@ -25,8 +25,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, Name, Path, Static,
-    Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, Path, Static, Struct,
+    Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -51,22 +51,6 @@ pub enum PathResolution {
     SelfType(crate::ImplBlock),
     Macro(MacroDef),
     AssocItem(crate::AssocItem),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScopeEntryWithSyntax {
-    pub(crate) name: Name,
-    pub(crate) ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
-}
-
-impl ScopeEntryWithSyntax {
-    pub fn name(&self) -> &Name {
-        &self.name
-    }
-
-    pub fn ptr(&self) -> Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>> {
-        self.ptr
-    }
 }
 
 #[derive(Debug)]
@@ -235,16 +219,16 @@ impl SourceAnalyzer {
         resolve_hir_path(db, &self.resolver, &hir_path)
     }
 
-    fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+    fn resolve_local_name(
+        &self,
+        name_ref: &ast::NameRef,
+    ) -> Option<Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>> {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
         let scope = scope_for(scopes, source_map, InFile::new(self.file_id, name_ref.syntax()))?;
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
-        Some(ScopeEntryWithSyntax {
-            name: entry.name().clone(),
-            ptr: source_map.pat_syntax(entry.pat())?.value,
-        })
+        Some(source_map.pat_syntax(entry.pat())?.value)
     }
 
     // FIXME: we only use this in `inline_local_variable` assist, ideally, we
@@ -258,7 +242,7 @@ impl SourceAnalyzer {
             .filter_map(ast::NameRef::cast)
             .filter(|name_ref| match self.resolve_local_name(&name_ref) {
                 None => false,
-                Some(entry) => entry.ptr() == ptr,
+                Some(d_ptr) => d_ptr == ptr,
             })
             .map(|name_ref| ReferenceDescriptor {
                 name: name_ref.text().to_string(),
