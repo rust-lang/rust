@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
+use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
