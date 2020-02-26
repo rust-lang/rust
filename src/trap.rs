@@ -29,6 +29,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
             &(symbol_name.name.as_str().to_string() + msg),
             Linkage::Local,
             false,
+            false,
             None,
         )
         .unwrap();

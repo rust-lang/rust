@@ -22,6 +22,7 @@ pub fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBui
         "__cg_clif_global_atomic_mutex",
         Linkage::Export,
         true,
+        false,
         Some(16),
     ).unwrap();
     module.define_data(atomic_mutex, &data_ctx).unwrap();
@@ -50,6 +51,7 @@ pub fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
         "__cg_clif_global_atomic_mutex",
         Linkage::Import,
         true,
+        false,
         None,
     ).unwrap();
 
@@ -74,6 +76,7 @@ pub fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
         "__cg_clif_global_atomic_mutex",
         Linkage::Import,
         true,
+        false,
         None,
     ).unwrap();
 
