@@ -51,8 +51,8 @@ fn type_at(content: &str) -> String {
     type_at_pos(&db, file_pos)
 }
 
-fn infer(content: &str) -> String {
-    infer_with_mismatches(content, false)
+fn infer(ra_fixture: &str) -> String {
+    infer_with_mismatches(ra_fixture, false)
 }
 
 fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {

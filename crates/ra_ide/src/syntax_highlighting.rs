@@ -12,11 +12,12 @@ use ra_ide_db::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind::*, TextRange, WalkEvent, T,
+    ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind::*, SyntaxToken,
+    TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
-use crate::{references::classify_name_ref, FileId};
+use crate::{call_info::call_info_for_token, references::classify_name_ref, Analysis, FileId};
 
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
@@ -94,11 +95,12 @@ pub(crate) fn highlight(
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(_) => continue,
         };
+
         let range = element.text_range();
 
         let element_to_highlight = if current_macro_call.is_some() {
             // Inside a macro -- expand it first
-            let token = match element.into_token() {
+            let token = match element.clone().into_token() {
                 Some(it) if it.parent().kind() == TOKEN_TREE => it,
                 _ => continue,
             };
@@ -110,8 +112,16 @@ pub(crate) fn highlight(
                 _ => token.into(),
             }
         } else {
-            element
+            element.clone()
         };
+
+        if let Some(token) = element.as_token().cloned().and_then(ast::RawString::cast) {
+            let expanded = element_to_highlight.as_token().unwrap().clone();
+            if highlight_injection(&mut res, &sema, token, expanded).is_some() {
+                eprintln!("res = {:?}", res);
+                continue;
+            }
+        }
 
         if let Some((highlight, binding_hash)) =
             highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight)
@@ -280,4 +290,45 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         RECORD_FIELD_DEF => HighlightTag::Field.into(),
         _ => default,
     }
+}
+
+fn highlight_injection(
+    acc: &mut Vec<HighlightedRange>,
+    sema: &Semantics<RootDatabase>,
+    literal: ast::RawString,
+    expanded: SyntaxToken,
+) -> Option<()> {
+    let call_info = call_info_for_token(&sema, expanded)?;
+    let idx = call_info.active_parameter?;
+    let name = call_info.signature.parameter_names.get(idx)?;
+    if name != "ra_fixture" {
+        return None;
+    }
+    let value = literal.value()?;
+    let (analysis, tmp_file_id) = Analysis::from_single_file(value);
+
+    if let Some(range) = literal.open_quote_text_range() {
+        acc.push(HighlightedRange {
+            range,
+            highlight: HighlightTag::LiteralString.into(),
+            binding_hash: None,
+        })
+    }
+
+    for mut h in analysis.highlight(tmp_file_id).unwrap() {
+        if let Some(r) = literal.map_range_up(h.range) {
+            h.range = r;
+            acc.push(h)
+        }
+    }
+
+    if let Some(range) = literal.close_quote_text_range() {
+        acc.push(HighlightedRange {
+            range,
+            highlight: HighlightTag::LiteralString.into(),
+            binding_hash: None,
+        })
+    }
+
+    Some(())
 }

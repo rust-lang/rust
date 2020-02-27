@@ -124,28 +124,28 @@ impl MockAnalysis {
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
-pub fn analysis_and_position(fixture: &str) -> (Analysis, FilePosition) {
-    let (mock, position) = MockAnalysis::with_files_and_position(fixture);
+pub fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition) {
+    let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
     (mock.analysis(), position)
 }
 
 /// Creates analysis for a single file.
-pub fn single_file(code: &str) -> (Analysis, FileId) {
+pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
     let mut mock = MockAnalysis::new();
-    let file_id = mock.add_file("/main.rs", code);
+    let file_id = mock.add_file("/main.rs", ra_fixture);
     (mock.analysis(), file_id)
 }
 
 /// Creates analysis for a single file, returns position marked with <|>.
-pub fn single_file_with_position(code: &str) -> (Analysis, FilePosition) {
+pub fn single_file_with_position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let mut mock = MockAnalysis::new();
-    let pos = mock.add_file_with_position("/main.rs", code);
+    let pos = mock.add_file_with_position("/main.rs", ra_fixture);
     (mock.analysis(), pos)
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
-pub fn single_file_with_range(code: &str) -> (Analysis, FileRange) {
+pub fn single_file_with_range(ra_fixture: &str) -> (Analysis, FileRange) {
     let mut mock = MockAnalysis::new();
-    let pos = mock.add_file_with_range("/main.rs", code);
+    let pos = mock.add_file_with_range("/main.rs", ra_fixture);
     (mock.analysis(), pos)
 }

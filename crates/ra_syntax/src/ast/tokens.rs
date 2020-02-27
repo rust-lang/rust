@@ -171,6 +171,36 @@ impl RawString {
         let inside_str = &text[start_of_inside..end_of_inside];
         Some(inside_str.to_string())
     }
+
+    pub fn open_quote_text_range(&self) -> Option<TextRange> {
+        let text = self.text().as_str();
+        let usual_string_range = find_usual_string_range(text)?;
+
+        let start = self.syntax().text_range().start();
+        let len = usual_string_range.start() + TextUnit::of_char('"');
+        Some(TextRange::offset_len(start, len))
+    }
+
+    pub fn close_quote_text_range(&self) -> Option<TextRange> {
+        let text = self.text().as_str();
+        let usual_string_range = find_usual_string_range(text)?;
+
+        let end = self.syntax().text_range().end();
+        let len = TextUnit::of_str(text) - usual_string_range.end();
+        Some(TextRange::from_to(end - len, end))
+    }
+
+    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
+        // FIXME: handle escapes here properly
+        let text = self.text().as_str();
+        let usual_string_range = find_usual_string_range(text)?;
+        Some(
+            range
+                + self.syntax().text_range().start()
+                + TextUnit::of_char('"')
+                + usual_string_range.start(),
+        )
+    }
 }
 
 fn find_usual_string_range(s: &str) -> Option<TextRange> {
