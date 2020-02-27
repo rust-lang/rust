@@ -18,6 +18,7 @@ use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
 use std::mem;
+use std::path::PathBuf;
 
 const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -42,9 +43,7 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
 pub enum Error {
     FileNotFoundForModule {
         mod_name: String,
-        default_path: String,
-        secondary_path: String,
-        dir_path: String,
+        default_path: PathBuf,
     },
     DuplicatePaths {
         mod_name: String,
@@ -60,8 +59,6 @@ impl Error {
             Error::FileNotFoundForModule {
                 ref mod_name,
                 ref default_path,
-                ref secondary_path,
-                ref dir_path,
             } => {
                 let mut err = struct_span_err!(
                     handler,
@@ -71,8 +68,8 @@ impl Error {
                     mod_name,
                 );
                 err.help(&format!(
-                    "name the file either {} or {} inside the directory \"{}\"",
-                    default_path, secondary_path, dir_path,
+                    "to create the module `{}`, create file \"{}\"",
+                    mod_name, default_path.display(),
                 ));
                 err
             }
