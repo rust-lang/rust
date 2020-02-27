@@ -1340,7 +1340,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // there.
                 let mut mpis = vec![mpi];
                 let move_paths = &self.move_data.move_paths;
-                mpis.extend(move_paths[mpi].parents(move_paths));
+                mpis.extend(move_paths[mpi].parents(move_paths).map(|(mpi, _)| mpi));
 
                 for moi in &self.move_data.loc_map[location] {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);

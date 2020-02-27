@@ -3,7 +3,8 @@
 //! zero-sized structure.
 
 use rustc::mir::{self, Body, Location};
-use rustc::ty::TyCtxt;
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 
@@ -12,12 +13,13 @@ use super::MoveDataParamEnv;
 use crate::util::elaborate_drops::DropFlagState;
 
 use super::generic::{AnalysisDomain, GenKill, GenKillAnalysis};
-use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
+use super::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use super::{BottomValue, GenKillSet};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
+use crate::dataflow::drop_flag_effects;
 
 mod borrowed_locals;
 mod storage_liveness;
@@ -335,6 +337,37 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
                 trans.gen(mpi);
             },
         );
+    }
+
+    fn discriminant_switch_effect(
+        &self,
+        trans: &mut impl GenKill<Self::Idx>,
+        _block: mir::BasicBlock,
+        enum_place: &mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        variant: VariantIdx,
+    ) {
+        let enum_mpi = match self.move_data().rev_lookup.find(enum_place.as_ref()) {
+            LookupResult::Exact(mpi) => mpi,
+            LookupResult::Parent(_) => return,
+        };
+
+        // Kill all move paths that correspond to variants other than this one
+        let move_paths = &self.move_data().move_paths;
+        let enum_path = &move_paths[enum_mpi];
+        for (mpi, variant_path) in enum_path.children(move_paths) {
+            trans.kill(mpi);
+            match variant_path.place.projection.last().unwrap() {
+                mir::ProjectionElem::Downcast(_, idx) if *idx == variant => continue,
+                _ => drop_flag_effects::on_all_children_bits(
+                    self.tcx,
+                    self.body,
+                    self.move_data(),
+                    mpi,
+                    |mpi| trans.kill(mpi),
+                ),
+            }
+        }
     }
 }
 
