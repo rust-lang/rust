@@ -69,7 +69,7 @@ pub(crate) fn highlight(
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
     let mut res = Vec::new();
 
-    let mut in_macro_call = None;
+    let mut current_macro_call: Option<ast::MacroCall> = None;
 
     for event in root.preorder_with_tokens() {
         let event_range = match &event {
@@ -81,58 +81,57 @@ pub(crate) fn highlight(
             continue;
         }
 
-        match event {
-            WalkEvent::Enter(node) => match node.kind() {
-                MACRO_CALL => {
-                    in_macro_call = Some(node.clone());
-                    if let Some(range) = highlight_macro(node) {
-                        res.push(HighlightedRange {
-                            range,
-                            highlight: HighlightTag::Macro.into(),
-                            binding_hash: None,
-                        });
-                    }
+        match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
+            WalkEvent::Enter(Some(mc)) => {
+                current_macro_call = Some(mc.clone());
+                if let Some(range) = highlight_macro(&mc) {
+                    res.push(HighlightedRange {
+                        range,
+                        highlight: HighlightTag::Macro.into(),
+                        binding_hash: None,
+                    });
                 }
-                _ if in_macro_call.is_some() => {
-                    if let Some(token) = node.as_token() {
-                        if let Some((highlight, binding_hash)) =
-                            highlight_token_tree(&sema, &mut bindings_shadow_count, token.clone())
-                        {
-                            res.push(HighlightedRange {
-                                range: node.text_range(),
-                                highlight,
-                                binding_hash,
-                            });
-                        }
-                    }
-                }
-                _ => {
-                    if let Some((highlight, binding_hash)) =
-                        highlight_node(&sema, &mut bindings_shadow_count, node.clone())
-                    {
-                        res.push(HighlightedRange {
-                            range: node.text_range(),
-                            highlight,
-                            binding_hash,
-                        });
-                    }
-                }
-            },
-            WalkEvent::Leave(node) => {
-                if let Some(m) = in_macro_call.as_ref() {
-                    if *m == node {
-                        in_macro_call = None;
-                    }
+                continue;
+            }
+            WalkEvent::Leave(Some(mc)) => {
+                assert!(current_macro_call == Some(mc));
+                current_macro_call = None;
+                continue;
+            }
+            _ => (),
+        }
+
+        let node = match event {
+            WalkEvent::Enter(it) => it,
+            WalkEvent::Leave(_) => continue,
+        };
+
+        if current_macro_call.is_some() {
+            if let Some(token) = node.into_token() {
+                if let Some((highlight, binding_hash)) =
+                    highlight_token_tree(&sema, &mut bindings_shadow_count, token.clone())
+                {
+                    res.push(HighlightedRange {
+                        range: token.text_range(),
+                        highlight,
+                        binding_hash,
+                    });
                 }
             }
+            continue;
+        }
+
+        if let Some((highlight, binding_hash)) =
+            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+        {
+            res.push(HighlightedRange { range: node.text_range(), highlight, binding_hash });
         }
     }
 
     res
 }
 
-fn highlight_macro(node: SyntaxElement) -> Option<TextRange> {
-    let macro_call = ast::MacroCall::cast(node.as_node()?.clone())?;
+fn highlight_macro(macro_call: &ast::MacroCall) -> Option<TextRange> {
     let path = macro_call.path()?;
     let name_ref = path.segment()?.name_ref()?;
 
