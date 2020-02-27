@@ -462,7 +462,7 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         return Ok(p);
     }
 
-    let entities = match read_dir(path.join("does_not_exist")) {
+    let entities = match read_dir(path) {
         Ok(entities) => entities,
         Err(e) => return Err(CargoTomlSearchFileSystemError(path_as_buf, e.to_string()).into()),
     };
