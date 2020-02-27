@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 
 import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
-import { SemanticTokensFeature } from 'vscode-languageclient/lib/semanticTokens.proposed';
+import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
 export async function createClient(config: Config, serverPath: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
@@ -42,6 +42,14 @@ export async function createClient(config: Config, serverPath: string): Promise<
             rustfmtArgs: config.rustfmtArgs,
         },
         traceOutputChannel,
+        middleware: {
+            // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
+            async provideDocumentSemanticTokens(document: vscode.TextDocument, token: vscode.CancellationToken, next: DocumentSemanticsTokensSignature) {
+                let res = await next(document, token);
+                if (res === undefined) throw new Error('busy');
+                return res;
+            }
+        } as any
     };
 
     const res = new lc.LanguageClient(
