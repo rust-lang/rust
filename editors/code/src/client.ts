@@ -45,7 +45,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
         middleware: {
             // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
             async provideDocumentSemanticTokens(document: vscode.TextDocument, token: vscode.CancellationToken, next: DocumentSemanticsTokensSignature) {
-                let res = await next(document, token);
+                const res = await next(document, token);
                 if (res === undefined) throw new Error('busy');
                 return res;
             }
