@@ -32,6 +32,7 @@ use std::collections::BTreeSet;
 use std::mem::replace;
 
 mod diagnostics;
+crate mod lifetimes;
 
 type Res = def::Res<NodeId>;
 
