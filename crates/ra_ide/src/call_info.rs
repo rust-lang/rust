@@ -3,7 +3,7 @@ use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, ArgListOwner},
-    match_ast, AstNode, SyntaxNode,
+    match_ast, AstNode, SyntaxNode, SyntaxToken,
 };
 use test_utils::tested_by;
 
@@ -16,7 +16,13 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let file = file.syntax();
     let token = file.token_at_offset(position.offset).next()?;
     let token = sema.descend_into_macros(token);
+    call_info_for_token(&sema, token)
+}
 
+pub(crate) fn call_info_for_token(
+    sema: &Semantics<RootDatabase>,
+    token: SyntaxToken,
+) -> Option<CallInfo> {
     // Find the calling expression and it's NameRef
     let calling_node = FnCallNode::with_node(&token.parent())?;
 
@@ -27,21 +33,23 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
                     let fn_def = it.into();
-                    (CallInfo::with_fn(db, fn_def), fn_def.has_self_param(db))
+                    (CallInfo::with_fn(sema.db, fn_def), fn_def.has_self_param(sema.db))
                 }
-                hir::CallableDef::StructId(it) => (CallInfo::with_struct(db, it.into())?, false),
+                hir::CallableDef::StructId(it) => {
+                    (CallInfo::with_struct(sema.db, it.into())?, false)
+                }
                 hir::CallableDef::EnumVariantId(it) => {
-                    (CallInfo::with_enum_variant(db, it.into())?, false)
+                    (CallInfo::with_enum_variant(sema.db, it.into())?, false)
                 }
             }
         }
         FnCallNode::MethodCallExpr(method_call) => {
             let function = sema.resolve_method_call(&method_call)?;
-            (CallInfo::with_fn(db, function), function.has_self_param(db))
+            (CallInfo::with_fn(sema.db, function), function.has_self_param(sema.db))
         }
         FnCallNode::MacroCallExpr(macro_call) => {
             let macro_def = sema.resolve_macro_call(&macro_call)?;
-            (CallInfo::with_macro(db, macro_def)?, false)
+            (CallInfo::with_macro(sema.db, macro_def)?, false)
         }
     };
 
@@ -61,7 +69,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 let num_args_at_callsite = arg_list.args().count();
 
                 let arg_list_range = arg_list.syntax().text_range();
-                if !arg_list_range.contains_inclusive(position.offset) {
+                if !arg_list_range.contains_inclusive(token.text_range().start()) {
                     tested_by!(call_info_bad_offset);
                     return None;
                 }
@@ -70,7 +78,9 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                     num_args_at_callsite,
                     arg_list
                         .args()
-                        .take_while(|arg| arg.syntax().text_range().end() < position.offset)
+                        .take_while(|arg| {
+                            arg.syntax().text_range().end() < token.text_range().start()
+                        })
                         .count(),
                 );
 
@@ -100,7 +110,13 @@ impl FnCallNode {
             match_ast! {
                 match node {
                     ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
-                    ast::MethodCallExpr(it) => { Some(FnCallNode::MethodCallExpr(it)) },
+                    ast::MethodCallExpr(it) => {
+                        let arg_list = it.arg_list()?;
+                        if !syntax.text_range().is_subrange(&arg_list.syntax().text_range()) {
+                            return None;
+                        }
+                        Some(FnCallNode::MethodCallExpr(it))
+                    },
                     ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
                     _ => { None },
                 }
