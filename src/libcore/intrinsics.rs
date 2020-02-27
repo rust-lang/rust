@@ -1429,8 +1429,9 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
     let dst_usize = dst as usize;
     let size = mem::size_of::<T>().checked_mul(count).unwrap();
     let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
-    let overlaps = size > diff;
-    !overlaps
+    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+    // they do not overlap.
+    diff >= size
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
