@@ -1,7 +1,8 @@
 //! `LineIndex` maps flat `TextUnit` offsets into `(Line, Column)`
 //! representation.
+use std::iter;
 
-use ra_syntax::TextUnit;
+use ra_syntax::{TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use superslice::Ext;
 
@@ -85,6 +86,19 @@ impl LineIndex {
         //FIXME: return Result
         let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
         self.newlines[line_col.line as usize] + col
+    }
+
+    pub fn lines(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
+        let lo = self.newlines.lower_bound(&range.start());
+        let hi = self.newlines.upper_bound(&range.end());
+        let all = iter::once(range.start())
+            .chain(self.newlines[lo..hi].iter().copied())
+            .chain(iter::once(range.end()));
+
+        all.clone()
+            .zip(all.skip(1))
+            .map(|(lo, hi)| TextRange::from_to(lo, hi))
+            .filter(|it| !it.is_empty())
     }
 
     fn utf8_to_utf16_col(&self, line: u32, mut col: TextUnit) -> usize {
@@ -220,5 +234,33 @@ const C: char = \"メ メ\";
         assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextUnit::from_usize(23));
 
         assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextUnit::from_usize(15));
+    }
+
+    #[test]
+    fn test_splitlines() {
+        fn r(lo: u32, hi: u32) -> TextRange {
+            TextRange::from_to(lo.into(), hi.into())
+        }
+
+        let text = "a\nbb\nccc\n";
+        let line_index = LineIndex::new(text);
+
+        let actual = line_index.lines(r(0, 9)).collect::<Vec<_>>();
+        let expected = vec![r(0, 2), r(2, 5), r(5, 9)];
+        assert_eq!(actual, expected);
+
+        let text = "";
+        let line_index = LineIndex::new(text);
+
+        let actual = line_index.lines(r(0, 0)).collect::<Vec<_>>();
+        let expected = vec![];
+        assert_eq!(actual, expected);
+
+        let text = "\n";
+        let line_index = LineIndex::new(text);
+
+        let actual = line_index.lines(r(0, 1)).collect::<Vec<_>>();
+        let expected = vec![r(0, 1)];
+        assert_eq!(actual, expected)
     }
 }
