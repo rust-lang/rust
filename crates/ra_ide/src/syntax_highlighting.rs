@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Implements syntax highlighting.
 
 mod tags;
 mod html;
@@ -10,37 +10,20 @@ use ra_ide_db::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken,
-    TextRange, WalkEvent, T,
+    ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind::*, TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
 use crate::{references::classify_name_ref, FileId};
 
-pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
-
 pub(crate) use html::highlight_as_html;
+pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
 #[derive(Debug)]
 pub struct HighlightedRange {
     pub range: TextRange,
     pub highlight: Highlight,
     pub binding_hash: Option<u64>,
-}
-
-fn is_control_keyword(kind: SyntaxKind) -> bool {
-    match kind {
-        T![for]
-        | T![loop]
-        | T![while]
-        | T![continue]
-        | T![break]
-        | T![if]
-        | T![else]
-        | T![match]
-        | T![return] => true,
-        _ => false,
-    }
 }
 
 pub(crate) fn highlight(
@@ -71,20 +54,24 @@ pub(crate) fn highlight(
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
 
+    // Walk all nodes, keeping track of whether we are inside a macro or not.
+    // If in macro, expand it first and highlight the expanded code.
     for event in root.preorder_with_tokens() {
         let event_range = match &event {
             WalkEvent::Enter(it) => it.text_range(),
             WalkEvent::Leave(it) => it.text_range(),
         };
 
-        if event_range.intersection(&range_to_highlight).is_none() {
+        // Element outside of the viewport, no need to highlight
+        if range_to_highlight.intersection(&event_range).is_none() {
             continue;
         }
 
+        // Track "inside macro" state
         match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
             WalkEvent::Enter(Some(mc)) => {
                 current_macro_call = Some(mc.clone());
-                if let Some(range) = highlight_macro(&mc) {
+                if let Some(range) = macro_call_range(&mc) {
                     res.push(HighlightedRange {
                         range,
                         highlight: HighlightTag::Macro.into(),
@@ -101,37 +88,40 @@ pub(crate) fn highlight(
             _ => (),
         }
 
-        let node = match event {
+        let element = match event {
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(_) => continue,
         };
+        let range = element.text_range();
 
-        if current_macro_call.is_some() {
-            if let Some(token) = node.into_token() {
-                if let Some((highlight, binding_hash)) =
-                    highlight_token_tree(&sema, &mut bindings_shadow_count, token.clone())
-                {
-                    res.push(HighlightedRange {
-                        range: token.text_range(),
-                        highlight,
-                        binding_hash,
-                    });
-                }
+        let element_to_highlight = if current_macro_call.is_some() {
+            // Inside a macro -- expand it first
+            let token = match element.into_token() {
+                Some(it) if it.parent().kind() == TOKEN_TREE => it,
+                _ => continue,
+            };
+            let token = sema.descend_into_macros(token.clone());
+            let parent = token.parent();
+            // We only care Name and Name_ref
+            match (token.kind(), parent.kind()) {
+                (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
+                _ => token.into(),
             }
-            continue;
-        }
+        } else {
+            element
+        };
 
         if let Some((highlight, binding_hash)) =
-            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+            highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight)
         {
-            res.push(HighlightedRange { range: node.text_range(), highlight, binding_hash });
+            res.push(HighlightedRange { range, highlight, binding_hash });
         }
     }
 
     res
 }
 
-fn highlight_macro(macro_call: &ast::MacroCall) -> Option<TextRange> {
+fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
     let path = macro_call.path()?;
     let name_ref = path.segment()?.name_ref()?;
 
@@ -147,67 +137,22 @@ fn highlight_macro(macro_call: &ast::MacroCall) -> Option<TextRange> {
     Some(TextRange::from_to(range_start, range_end))
 }
 
-fn highlight_token_tree(
+fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
-    token: SyntaxToken,
-) -> Option<(Highlight, Option<u64>)> {
-    if token.parent().kind() != TOKEN_TREE {
-        return None;
-    }
-    let token = sema.descend_into_macros(token.clone());
-    let expanded = {
-        let parent = token.parent();
-        // We only care Name and Name_ref
-        match (token.kind(), parent.kind()) {
-            (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
-            _ => token.into(),
-        }
-    };
-
-    highlight_node(sema, bindings_shadow_count, expanded)
-}
-
-fn highlight_node(
-    sema: &Semantics<RootDatabase>,
-    bindings_shadow_count: &mut FxHashMap<Name, u32>,
-    node: SyntaxElement,
+    element: SyntaxElement,
 ) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
-    let highlight: Highlight = match node.kind() {
+    let highlight: Highlight = match element.kind() {
         FN_DEF => {
             bindings_shadow_count.clear();
             return None;
         }
-        COMMENT => HighlightTag::Comment.into(),
-        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LiteralString.into(),
-        ATTR => HighlightTag::Attribute.into(),
-        // Special-case field init shorthand
-        NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => {
-            HighlightTag::Field.into()
-        }
-        NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => return None,
-        NAME_REF => {
-            let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-            let name_kind = classify_name_ref(sema, &name_ref);
-            match name_kind {
-                Some(name_kind) => {
-                    if let NameDefinition::Local(local) = &name_kind {
-                        if let Some(name) = local.name(db) {
-                            let shadow_count =
-                                bindings_shadow_count.entry(name.clone()).or_default();
-                            binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                        }
-                    };
 
-                    highlight_name(db, name_kind)
-                }
-                _ => return None,
-            }
-        }
+        // Highlight definitions depending on the "type" of the definition.
         NAME => {
-            let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
+            let name = element.into_node().and_then(ast::Name::cast).unwrap();
             let name_kind = classify_name(sema, &name);
 
             if let Some(NameDefinition::Local(local)) = &name_kind {
@@ -220,25 +165,56 @@ fn highlight_node(
 
             match name_kind {
                 Some(name_kind) => highlight_name(db, name_kind),
-                None => name.syntax().parent().map_or(HighlightTag::Function.into(), |x| {
-                    match x.kind() {
-                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
-                            HighlightTag::Type.into()
-                        }
-                        TYPE_PARAM => HighlightTag::TypeParam.into(),
-                        RECORD_FIELD_DEF => HighlightTag::Field.into(),
-                        _ => HighlightTag::Function.into(),
-                    }
-                }),
+                None => highlight_name_by_syntax(name),
             }
         }
+
+        // Highlight references like the definitions they resolve to
+
+        // Special-case field init shorthand
+        NAME_REF if element.parent().and_then(ast::RecordField::cast).is_some() => {
+            HighlightTag::Field.into()
+        }
+        NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => return None,
+        NAME_REF => {
+            let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
+            let name_kind = classify_name_ref(sema, &name_ref)?;
+
+            if let NameDefinition::Local(local) = &name_kind {
+                if let Some(name) = local.name(db) {
+                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                }
+            };
+
+            highlight_name(db, name_kind)
+        }
+
+        // Simple token-based highlighting
+        COMMENT => HighlightTag::Comment.into(),
+        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LiteralString.into(),
+        ATTR => HighlightTag::Attribute.into(),
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::LiteralNumeric.into(),
         BYTE => HighlightTag::LiteralByte.into(),
         CHAR => HighlightTag::LiteralChar.into(),
         LIFETIME => HighlightTag::TypeLifetime.into(),
-        T![unsafe] => HighlightTag::Keyword | HighlightModifier::Unsafe,
-        k if is_control_keyword(k) => HighlightTag::Keyword | HighlightModifier::Control,
-        k if k.is_keyword() => HighlightTag::Keyword.into(),
+
+        k if k.is_keyword() => {
+            let h = Highlight::new(HighlightTag::Keyword);
+            match k {
+                T![break]
+                | T![continue]
+                | T![else]
+                | T![for]
+                | T![if]
+                | T![loop]
+                | T![match]
+                | T![return]
+                | T![while] => h | HighlightModifier::Control,
+                T![unsafe] => h | HighlightModifier::Unsafe,
+                _ => h,
+            }
+        }
 
         _ => return None,
     };
@@ -262,17 +238,19 @@ fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
     match def {
         NameDefinition::Macro(_) => HighlightTag::Macro,
         NameDefinition::StructField(_) => HighlightTag::Field,
-        NameDefinition::ModuleDef(hir::ModuleDef::Module(_)) => HighlightTag::Module,
-        NameDefinition::ModuleDef(hir::ModuleDef::Function(_)) => HighlightTag::Function,
-        NameDefinition::ModuleDef(hir::ModuleDef::Adt(_)) => HighlightTag::Type,
-        NameDefinition::ModuleDef(hir::ModuleDef::EnumVariant(_)) => HighlightTag::Constant,
-        NameDefinition::ModuleDef(hir::ModuleDef::Const(_)) => HighlightTag::Constant,
-        NameDefinition::ModuleDef(hir::ModuleDef::Static(_)) => HighlightTag::Constant,
-        NameDefinition::ModuleDef(hir::ModuleDef::Trait(_)) => HighlightTag::Type,
-        NameDefinition::ModuleDef(hir::ModuleDef::TypeAlias(_)) => HighlightTag::Type,
-        NameDefinition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
-            return HighlightTag::Type | HighlightModifier::Builtin
-        }
+        NameDefinition::ModuleDef(def) => match def {
+            hir::ModuleDef::Module(_) => HighlightTag::Module,
+            hir::ModuleDef::Function(_) => HighlightTag::Function,
+            hir::ModuleDef::Adt(_) => HighlightTag::Type,
+            hir::ModuleDef::EnumVariant(_) => HighlightTag::Constant,
+            hir::ModuleDef::Const(_) => HighlightTag::Constant,
+            hir::ModuleDef::Static(_) => HighlightTag::Constant,
+            hir::ModuleDef::Trait(_) => HighlightTag::Type,
+            hir::ModuleDef::TypeAlias(_) => HighlightTag::Type,
+            hir::ModuleDef::BuiltinType(_) => {
+                return HighlightTag::Type | HighlightModifier::Builtin
+            }
+        },
         NameDefinition::SelfType(_) => HighlightTag::TypeSelf,
         NameDefinition::TypeParam(_) => HighlightTag::TypeParam,
         NameDefinition::Local(local) => {
@@ -284,6 +262,22 @@ fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
         }
     }
     .into()
+}
+
+fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
+    let default = HighlightTag::Function.into();
+
+    let parent = match name.syntax().parent() {
+        Some(it) => it,
+        _ => return default,
+    };
+
+    match parent.kind() {
+        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => HighlightTag::Type.into(),
+        TYPE_PARAM => HighlightTag::TypeParam.into(),
+        RECORD_FIELD_DEF => HighlightTag::Field.into(),
+        _ => default,
+    }
 }
 
 #[cfg(test)]
