@@ -110,6 +110,64 @@ impl Whitespace {
     }
 }
 
+pub struct QuoteOffsets {
+    pub quotes: [TextRange; 2],
+    pub contents: TextRange,
+}
+
+impl QuoteOffsets {
+    fn new(literal: &str) -> Option<QuoteOffsets> {
+        let left_quote = literal.find('"')?;
+        let right_quote = literal.rfind('"')?;
+        if left_quote == right_quote {
+            // `literal` only contains one quote
+            return None;
+        }
+
+        let start = TextUnit::from(0);
+        let left_quote = TextUnit::from_usize(left_quote) + TextUnit::of_char('"');
+        let right_quote = TextUnit::from_usize(right_quote);
+        let end = TextUnit::of_str(literal);
+
+        let res = QuoteOffsets {
+            quotes: [TextRange::from_to(start, left_quote), TextRange::from_to(right_quote, end)],
+            contents: TextRange::from_to(left_quote, right_quote),
+        };
+        Some(res)
+    }
+}
+
+pub trait HasQuotes: AstToken {
+    fn quote_offsets(&self) -> Option<QuoteOffsets> {
+        let text = self.text().as_str();
+        let offsets = QuoteOffsets::new(text)?;
+        let o = self.syntax().text_range().start();
+        let offsets = QuoteOffsets {
+            quotes: [offsets.quotes[0] + o, offsets.quotes[1] + o],
+            contents: offsets.contents + o,
+        };
+        Some(offsets)
+    }
+    fn open_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes[0])
+    }
+
+    fn close_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes[1])
+    }
+
+    fn text_range_between_quotes(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.contents)
+    }
+}
+
+impl HasQuotes for String {}
+impl HasQuotes for RawString {}
+
+pub trait HasStringValue: HasQuotes {
+    fn value(&self) -> Option<std::string::String>;
+}
+
 pub struct String(SyntaxToken);
 
 impl AstToken for String {
@@ -124,21 +182,16 @@ impl AstToken for String {
     }
 }
 
-impl String {
-    pub fn value(&self) -> Option<std::string::String> {
+impl HasStringValue for String {
+    fn value(&self) -> Option<std::string::String> {
         let text = self.text().as_str();
-        let usual_string_range = find_usual_string_range(text)?;
-        let start_of_inside = usual_string_range.start().to_usize() + 1;
-        let end_of_inside = usual_string_range.end().to_usize();
-        let inside_str = &text[start_of_inside..end_of_inside];
+        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
-        let mut buf = std::string::String::with_capacity(inside_str.len());
+        let mut buf = std::string::String::with_capacity(text.len());
         let mut has_error = false;
-        rustc_lexer::unescape::unescape_str(inside_str, &mut |_, unescaped_char| {
-            match unescaped_char {
-                Ok(c) => buf.push(c),
-                Err(_) => has_error = true,
-            }
+        rustc_lexer::unescape::unescape_str(text, &mut |_, unescaped_char| match unescaped_char {
+            Ok(c) => buf.push(c),
+            Err(_) => has_error = true,
         });
 
         if has_error {
@@ -162,57 +215,18 @@ impl AstToken for RawString {
     }
 }
 
-impl RawString {
-    pub fn value(&self) -> Option<std::string::String> {
+impl HasStringValue for RawString {
+    fn value(&self) -> Option<std::string::String> {
         let text = self.text().as_str();
-        let usual_string_range = find_usual_string_range(text)?;
-        let start_of_inside = usual_string_range.start().to_usize() + 1;
-        let end_of_inside = usual_string_range.end().to_usize();
-        let inside_str = &text[start_of_inside..end_of_inside];
-        Some(inside_str.to_string())
-    }
-
-    pub fn open_quote_text_range(&self) -> Option<TextRange> {
-        let text = self.text().as_str();
-        let usual_string_range = find_usual_string_range(text)?;
-
-        let start = self.syntax().text_range().start();
-        let len = usual_string_range.start() + TextUnit::of_char('"');
-        Some(TextRange::offset_len(start, len))
-    }
-
-    pub fn close_quote_text_range(&self) -> Option<TextRange> {
-        let text = self.text().as_str();
-        let usual_string_range = find_usual_string_range(text)?;
-
-        let end = self.syntax().text_range().end();
-        let len = TextUnit::of_str(text) - usual_string_range.end();
-        Some(TextRange::from_to(end - len, end))
-    }
-
-    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
-        // FIXME: handle escapes here properly
-        let text = self.text().as_str();
-        let usual_string_range = find_usual_string_range(text)?;
-        Some(
-            range
-                + self.syntax().text_range().start()
-                + TextUnit::of_char('"')
-                + usual_string_range.start(),
-        )
+        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+        Some(text.to_string())
     }
 }
 
-fn find_usual_string_range(s: &str) -> Option<TextRange> {
-    let left_quote = s.find('"')?;
-    let right_quote = s.rfind('"')?;
-    if left_quote == right_quote {
-        // `s` only contains one quote
-        None
-    } else {
-        Some(TextRange::from_to(
-            TextUnit::from(left_quote as u32),
-            TextUnit::from(right_quote as u32),
-        ))
+impl RawString {
+    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
+        let contents_range = self.text_range_between_quotes()?;
+        assert!(range.is_subrange(&TextRange::offset_len(0.into(), contents_range.len())));
+        Some(range + contents_range.start())
     }
 }
