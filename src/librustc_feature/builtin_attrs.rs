@@ -234,7 +234,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(export_name, Whitelisted, template!(NameValueStr: "name")),
     ungated!(link_section, Whitelisted, template!(NameValueStr: "name")),
     ungated!(no_mangle, Whitelisted, template!(Word)),
-    ungated!(used, Normal, template!(Word)),
+    ungated!(used, Whitelisted, template!(Word)),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N")),
@@ -250,17 +250,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
     ungated!(no_implicit_prelude, Normal, template!(Word)),
-    ungated!(non_exhaustive, Normal, template!(Word)),
+    ungated!(non_exhaustive, Whitelisted, template!(Word)),
 
     // Runtime
     ungated!(windows_subsystem, Whitelisted, template!(NameValueStr: "windows|console")),
     ungated!(panic_handler, Normal, template!(Word)), // RFC 2070
 
     // Code generation:
-    ungated!(inline, Normal, template!(Word, List: "always|never")),
+    ungated!(inline, Whitelisted, template!(Word, List: "always|never")),
     ungated!(cold, Whitelisted, template!(Word)),
     ungated!(no_builtins, Whitelisted, template!(Word)),
-    ungated!(target_feature, Normal, template!(List: r#"enable = "name""#)),
+    ungated!(target_feature, Whitelisted, template!(List: r#"enable = "name""#)),
     gated!(
         no_sanitize, Whitelisted,
         template!(List: "address, memory, thread"),
@@ -275,7 +275,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     // Linking:
-    gated!(naked, Normal, template!(Word), naked_functions, experimental!(naked)),
+    gated!(naked, Whitelisted, template!(Word), naked_functions, experimental!(naked)),
     gated!(
         link_args, Normal, template!(NameValueStr: "args"),
         "the `link_args` attribute is experimental and not portable across platforms, \
@@ -332,7 +332,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
-    gated!(track_caller, Normal, template!(Word), experimental!(track_caller)),
+    gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
         experimental!(register_attr),
