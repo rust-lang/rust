@@ -46,93 +46,92 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
-    range: Option<TextRange>,
+    range_to_highlight: Option<TextRange>,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
-    let root = sema.parse(file_id).syntax().clone();
+
+    // Determine the root based on the given range.
+    let (root, range_to_highlight) = {
+        let source_file = sema.parse(file_id);
+        match range_to_highlight {
+            Some(range) => {
+                let node = match source_file.syntax().covering_element(range) {
+                    NodeOrToken::Node(it) => it,
+                    NodeOrToken::Token(it) => it.parent(),
+                };
+                (node, range)
+            }
+            None => (source_file.syntax().clone(), source_file.syntax().text_range()),
+        }
+    };
 
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
     let mut res = Vec::new();
 
-    let mut in_macro_call = None;
-
-    // Determine the root based on the given range.
-    let (root, highlight_range) = if let Some(range) = range {
-        let root = match root.covering_element(range) {
-            NodeOrToken::Node(node) => node,
-            NodeOrToken::Token(token) => token.parent(),
-        };
-        (root, range)
-    } else {
-        (root.clone(), root.text_range())
-    };
+    let mut current_macro_call: Option<ast::MacroCall> = None;
 
     for event in root.preorder_with_tokens() {
-        match event {
-            WalkEvent::Enter(node) => {
-                if node.text_range().intersection(&highlight_range).is_none() {
-                    continue;
-                }
+        let event_range = match &event {
+            WalkEvent::Enter(it) => it.text_range(),
+            WalkEvent::Leave(it) => it.text_range(),
+        };
 
-                match node.kind() {
-                    MACRO_CALL => {
-                        in_macro_call = Some(node.clone());
-                        if let Some(range) = highlight_macro(node) {
-                            res.push(HighlightedRange {
-                                range,
-                                highlight: HighlightTag::Macro.into(),
-                                binding_hash: None,
-                            });
-                        }
-                    }
-                    _ if in_macro_call.is_some() => {
-                        if let Some(token) = node.as_token() {
-                            if let Some((highlight, binding_hash)) = highlight_token_tree(
-                                &sema,
-                                &mut bindings_shadow_count,
-                                token.clone(),
-                            ) {
-                                res.push(HighlightedRange {
-                                    range: node.text_range(),
-                                    highlight,
-                                    binding_hash,
-                                });
-                            }
-                        }
-                    }
-                    _ => {
-                        if let Some((highlight, binding_hash)) =
-                            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
-                        {
-                            res.push(HighlightedRange {
-                                range: node.text_range(),
-                                highlight,
-                                binding_hash,
-                            });
-                        }
-                    }
+        if event_range.intersection(&range_to_highlight).is_none() {
+            continue;
+        }
+
+        match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
+            WalkEvent::Enter(Some(mc)) => {
+                current_macro_call = Some(mc.clone());
+                if let Some(range) = highlight_macro(&mc) {
+                    res.push(HighlightedRange {
+                        range,
+                        highlight: HighlightTag::Macro.into(),
+                        binding_hash: None,
+                    });
+                }
+                continue;
+            }
+            WalkEvent::Leave(Some(mc)) => {
+                assert!(current_macro_call == Some(mc));
+                current_macro_call = None;
+                continue;
+            }
+            _ => (),
+        }
+
+        let node = match event {
+            WalkEvent::Enter(it) => it,
+            WalkEvent::Leave(_) => continue,
+        };
+
+        if current_macro_call.is_some() {
+            if let Some(token) = node.into_token() {
+                if let Some((highlight, binding_hash)) =
+                    highlight_token_tree(&sema, &mut bindings_shadow_count, token.clone())
+                {
+                    res.push(HighlightedRange {
+                        range: token.text_range(),
+                        highlight,
+                        binding_hash,
+                    });
                 }
             }
-            WalkEvent::Leave(node) => {
-                if node.text_range().intersection(&highlight_range).is_none() {
-                    continue;
-                }
+            continue;
+        }
 
-                if let Some(m) = in_macro_call.as_ref() {
-                    if *m == node {
-                        in_macro_call = None;
-                    }
-                }
-            }
+        if let Some((highlight, binding_hash)) =
+            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+        {
+            res.push(HighlightedRange { range: node.text_range(), highlight, binding_hash });
         }
     }
 
     res
 }
 
-fn highlight_macro(node: SyntaxElement) -> Option<TextRange> {
-    let macro_call = ast::MacroCall::cast(node.as_node()?.clone())?;
+fn highlight_macro(macro_call: &ast::MacroCall) -> Option<TextRange> {
     let path = macro_call.path()?;
     let name_ref = path.segment()?.name_ref()?;
 
