@@ -59,23 +59,10 @@ impl<'a> Parser<'a> {
         } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
-        } else if self.token == token::Semi {
+        } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(&attrs);
-            self.bump();
-            let mut last_semi = lo;
-            while self.token == token::Semi {
-                last_semi = self.token.span;
-                self.bump();
-            }
-            // We are encoding a string of semicolons as an an empty tuple that spans
-            // the excess semicolons to preserve this info until the lint stage.
-            let kind = StmtKind::Semi(self.mk_expr(
-                lo.to(last_semi),
-                ExprKind::Tup(Vec::new()),
-                AttrVec::new(),
-            ));
-            self.mk_stmt(lo.to(last_semi), kind)
+            self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(token::Brace) {
             // Remainder are line-expr stmts.
             let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
@@ -144,12 +131,11 @@ impl<'a> Parser<'a> {
     /// Error on outer attributes in this context.
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: &[Attribute]) {
-        if !attrs.is_empty() {
-            if matches!(self.prev_token.kind, TokenKind::DocComment(..)) {
-                self.span_fatal_err(self.prev_token.span, Error::UselessDocComment).emit();
+        if let [.., last] = attrs {
+            if last.is_doc_comment() {
+                self.span_fatal_err(last.span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.struct_span_err(self.token.span, "expected statement after outer attribute")
-                    .emit();
+                self.struct_span_err(last.span, "expected statement after outer attribute").emit();
             }
         }
     }
@@ -401,6 +387,7 @@ impl<'a> Parser<'a> {
                 self.expect_semi()?;
                 eat_semi = false;
             }
+            StmtKind::Empty => eat_semi = false,
             _ => {}
         }
 

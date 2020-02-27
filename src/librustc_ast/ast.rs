@@ -913,6 +913,8 @@ pub enum StmtKind {
     Expr(P<Expr>),
     /// Expr with a trailing semi-colon.
     Semi(P<Expr>),
+    /// Just a trailing semi-colon.
+    Empty,
     /// Macro.
     Mac(P<(Mac, MacStmtStyle, AttrVec)>),
 }

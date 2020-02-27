@@ -113,7 +113,7 @@ macro_rules! early_lint_passes {
                 WhileTrue: WhileTrue,
                 NonAsciiIdents: NonAsciiIdents,
                 IncompleteFeatures: IncompleteFeatures,
-                RedundantSemicolon: RedundantSemicolon,
+                RedundantSemicolons: RedundantSemicolons,
                 UnusedDocComment: UnusedDocComment,
             ]
         );
@@ -274,7 +274,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_EXTERN_CRATES,
         UNUSED_FEATURES,
         UNUSED_LABELS,
-        UNUSED_PARENS
+        UNUSED_PARENS,
+        REDUNDANT_SEMICOLONS
     );
 
     add_lint_group!(
@@ -307,6 +308,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
     store.register_renamed("async_idents", "keyword_idents");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
+    store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");

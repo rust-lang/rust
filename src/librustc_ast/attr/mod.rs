@@ -674,8 +674,8 @@ impl HasAttrs for StmtKind {
     fn attrs(&self) -> &[Attribute] {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
-            StmtKind::Item(..) => &[],
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
+            StmtKind::Empty | StmtKind::Item(..) => &[],
             StmtKind::Mac(ref mac) => {
                 let (_, _, ref attrs) = **mac;
                 attrs.attrs()
@@ -686,9 +686,8 @@ impl HasAttrs for StmtKind {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         match self {
             StmtKind::Local(local) => local.visit_attrs(f),
-            StmtKind::Item(..) => {}
-            StmtKind::Expr(expr) => expr.visit_attrs(f),
-            StmtKind::Semi(expr) => expr.visit_attrs(f),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
+            StmtKind::Empty | StmtKind::Item(..) => {}
             StmtKind::Mac(mac) => {
                 let (_mac, _style, attrs) = mac.deref_mut();
                 attrs.visit_attrs(f);

@@ -1446,19 +1446,13 @@ impl<'a> State<'a> {
                 }
             }
             ast::StmtKind::Semi(ref expr) => {
-                match expr.kind {
-                    // Filter out empty `Tup` exprs created for the `redundant_semicolon`
-                    // lint, as they shouldn't be visible and interact poorly
-                    // with proc macros.
-                    ast::ExprKind::Tup(ref exprs) if exprs.is_empty() && expr.attrs.is_empty() => {
-                        ()
-                    }
-                    _ => {
-                        self.space_if_not_bol();
-                        self.print_expr_outer_attr_style(expr, false);
-                        self.s.word(";");
-                    }
-                }
+                self.space_if_not_bol();
+                self.print_expr_outer_attr_style(expr, false);
+                self.s.word(";");
+            }
+            ast::StmtKind::Empty => {
+                self.space_if_not_bol();
+                self.s.word(";");
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, style, ref attrs) = **mac;

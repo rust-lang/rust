@@ -669,9 +669,8 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
     match statement.kind {
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(ref item) => visitor.visit_item(item),
-        StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
-            visitor.visit_expr(expression)
-        }
+        StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => visitor.visit_expr(expr),
+        StmtKind::Empty => {}
         StmtKind::Mac(ref mac) => {
             let (ref mac, _, ref attrs) = **mac;
             visitor.visit_mac(mac);
