@@ -130,6 +130,7 @@ impl Env {
     }
 
     fn pushd(&mut self, dir: PathBuf) {
+        let dir = self.cwd().join(dir);
         self.pushd_stack.push(dir)
     }
     fn popd(&mut self) {
