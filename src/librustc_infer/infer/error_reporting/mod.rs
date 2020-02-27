@@ -745,7 +745,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .join(", ");
         if !lifetimes.is_empty() {
             if sub.regions().count() < len {
-                value.push_normal(lifetimes + &", ");
+                value.push_normal(lifetimes + ", ");
             } else {
                 value.push_normal(lifetimes);
             }

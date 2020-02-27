@@ -1050,7 +1050,7 @@ impl TwoWaySearcher {
         // &v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if &needle[..crit_pos] == &needle[period..period + crit_pos] {
+        if needle[..crit_pos] == needle[period..period + crit_pos] {
             // short period case -- the period is exact
             // compute a separate critical factorization for the reversed needle
             // x = u' v' where |v'| < period(x).

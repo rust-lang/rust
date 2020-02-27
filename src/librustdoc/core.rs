@@ -283,7 +283,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         .filter_map(|lint| {
             // We don't want to whitelist *all* lints so let's
             // ignore those ones.
-            if whitelisted_lints.iter().any(|l| &lint.name == l) {
+            if whitelisted_lints.iter().any(|l| lint.name == l) {
                 None
             } else {
                 Some((lint::LintId::of(lint), lint::Allow))
