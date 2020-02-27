@@ -46,7 +46,7 @@ pub trait D {
 }
 
 /// dox
-pub trait E {
+pub trait E: Sized {
     type AssociatedType;
     type AssociatedTypeDef = Self;
 
