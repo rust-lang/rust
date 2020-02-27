@@ -115,7 +115,7 @@ The `type_check_crate` query provider would look something like the following:
 
 ```rust,ignore
 fn type_check_crate_provider(tcx, _key: ()) {
-    let list_of_items = tcx.hir_map.list_of_items();
+    let list_of_hir_items = tcx.hir_map.list_of_items();
 
     for item_def_id in list_of_hir_items {
         tcx.type_check_item(item_def_id);
