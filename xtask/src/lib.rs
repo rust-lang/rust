@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Support library for `cargo xtask` command.
+//!
+//! See https://github.com/matklad/cargo-xtask/
 
 pub mod not_bash;
 pub mod install;

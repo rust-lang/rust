@@ -1,4 +1,5 @@
 //! A bad shell -- small cross platform module for writing glue code
+
 use std::{
     cell::RefCell,
     env,
