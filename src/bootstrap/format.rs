@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
 use crate::Build;
-use build_helper::t;
+use build_helper::{output, t};
 use ignore::WalkBuilder;
 use std::path::Path;
 use std::process::Command;
@@ -52,6 +52,17 @@ pub fn format(build: &Build, check: bool) {
     let mut ignore_fmt = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
         ignore_fmt.add(&format!("!{}", ignore)).expect(&ignore);
+    }
+    let untracked_paths_output = output(
+        Command::new("git").arg("status").arg("--porcelain").arg("--untracked-files=normal"),
+    );
+    let untracked_paths = untracked_paths_output
+        .lines()
+        .filter(|entry| entry.starts_with("??"))
+        .map(|entry| entry.split(" ").nth(1).expect("every git status entry should list a path"));
+    for untracked_path in untracked_paths {
+        eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);
+        ignore_fmt.add(&format!("!{}", untracked_path)).expect(&untracked_path);
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 
