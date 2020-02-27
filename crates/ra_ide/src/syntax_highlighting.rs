@@ -72,41 +72,31 @@ pub(crate) fn highlight(
     let mut in_macro_call = None;
 
     for event in root.preorder_with_tokens() {
-        match event {
-            WalkEvent::Enter(node) => {
-                if node.text_range().intersection(&range_to_highlight).is_none() {
-                    continue;
-                }
+        let event_range = match &event {
+            WalkEvent::Enter(it) => it.text_range(),
+            WalkEvent::Leave(it) => it.text_range(),
+        };
 
-                match node.kind() {
-                    MACRO_CALL => {
-                        in_macro_call = Some(node.clone());
-                        if let Some(range) = highlight_macro(node) {
-                            res.push(HighlightedRange {
-                                range,
-                                highlight: HighlightTag::Macro.into(),
-                                binding_hash: None,
-                            });
-                        }
+        if event_range.intersection(&range_to_highlight).is_none() {
+            continue;
+        }
+
+        match event {
+            WalkEvent::Enter(node) => match node.kind() {
+                MACRO_CALL => {
+                    in_macro_call = Some(node.clone());
+                    if let Some(range) = highlight_macro(node) {
+                        res.push(HighlightedRange {
+                            range,
+                            highlight: HighlightTag::Macro.into(),
+                            binding_hash: None,
+                        });
                     }
-                    _ if in_macro_call.is_some() => {
-                        if let Some(token) = node.as_token() {
-                            if let Some((highlight, binding_hash)) = highlight_token_tree(
-                                &sema,
-                                &mut bindings_shadow_count,
-                                token.clone(),
-                            ) {
-                                res.push(HighlightedRange {
-                                    range: node.text_range(),
-                                    highlight,
-                                    binding_hash,
-                                });
-                            }
-                        }
-                    }
-                    _ => {
+                }
+                _ if in_macro_call.is_some() => {
+                    if let Some(token) = node.as_token() {
                         if let Some((highlight, binding_hash)) =
-                            highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+                            highlight_token_tree(&sema, &mut bindings_shadow_count, token.clone())
                         {
                             res.push(HighlightedRange {
                                 range: node.text_range(),
@@ -116,12 +106,19 @@ pub(crate) fn highlight(
                         }
                     }
                 }
-            }
-            WalkEvent::Leave(node) => {
-                if node.text_range().intersection(&range_to_highlight).is_none() {
-                    continue;
+                _ => {
+                    if let Some((highlight, binding_hash)) =
+                        highlight_node(&sema, &mut bindings_shadow_count, node.clone())
+                    {
+                        res.push(HighlightedRange {
+                            range: node.text_range(),
+                            highlight,
+                            binding_hash,
+                        });
+                    }
                 }
-
+            },
+            WalkEvent::Leave(node) => {
                 if let Some(m) = in_macro_call.as_ref() {
                     if *m == node {
                         in_macro_call = None;
