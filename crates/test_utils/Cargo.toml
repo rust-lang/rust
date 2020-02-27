@@ -9,5 +9,5 @@ doctest = false
 
 [dependencies]
 difference = "2.0.0"
-text_unit = "0.1.9"
+text_unit = "0.1.10"
 serde_json = "1.0.48"

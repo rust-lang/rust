@@ -9,7 +9,7 @@ publish = false
 doctest = false
 
 [dependencies]
-text_unit = "0.1.9"
+text_unit = "0.1.10"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

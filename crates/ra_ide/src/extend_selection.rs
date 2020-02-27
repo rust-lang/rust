@@ -161,18 +161,12 @@ fn extend_tokens_from_range(
     .take_while(validate)
     .last()?;
 
-    let range = union_range(first.text_range(), last.text_range());
+    let range = first.text_range().extend_to(&last.text_range());
     if original_range.is_subrange(&range) && original_range != range {
         Some(range)
     } else {
         None
     }
-}
-
-fn union_range(range: TextRange, r: TextRange) -> TextRange {
-    let start = range.start().min(r.start());
-    let end = range.end().max(r.end());
-    TextRange::from_to(start, end)
 }
 
 /// Find the shallowest node with same range, which allows us to traverse siblings.
