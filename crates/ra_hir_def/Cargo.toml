@@ -14,7 +14,6 @@ rustc-hash = "1.1.0"
 either = "1.5.3"
 anymap = "0.12.1"
 drop_bomb = "0.1.4"
-itertools = "0.8.2"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
