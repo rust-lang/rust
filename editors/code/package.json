@@ -433,6 +433,12 @@
                 "scope": [
                     "keyword.other.unsafe"
                 ]
+            },
+            {
+                "selector": "type.builtin",
+                "scope": [
+                    "support.type.builtin"
+                ]
             }
         ]
     }
