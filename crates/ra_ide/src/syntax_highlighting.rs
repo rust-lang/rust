@@ -46,32 +46,35 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
-    range: Option<TextRange>,
+    range_to_highlight: Option<TextRange>,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
-    let root = sema.parse(file_id).syntax().clone();
+
+    // Determine the root based on the given range.
+    let (root, range_to_highlight) = {
+        let source_file = sema.parse(file_id);
+        match range_to_highlight {
+            Some(range) => {
+                let node = match source_file.syntax().covering_element(range) {
+                    NodeOrToken::Node(it) => it,
+                    NodeOrToken::Token(it) => it.parent(),
+                };
+                (node, range)
+            }
+            None => (source_file.syntax().clone(), source_file.syntax().text_range()),
+        }
+    };
 
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
     let mut res = Vec::new();
 
     let mut in_macro_call = None;
 
-    // Determine the root based on the given range.
-    let (root, highlight_range) = if let Some(range) = range {
-        let root = match root.covering_element(range) {
-            NodeOrToken::Node(node) => node,
-            NodeOrToken::Token(token) => token.parent(),
-        };
-        (root, range)
-    } else {
-        (root.clone(), root.text_range())
-    };
-
     for event in root.preorder_with_tokens() {
         match event {
             WalkEvent::Enter(node) => {
-                if node.text_range().intersection(&highlight_range).is_none() {
+                if node.text_range().intersection(&range_to_highlight).is_none() {
                     continue;
                 }
 
@@ -115,7 +118,7 @@ pub(crate) fn highlight(
                 }
             }
             WalkEvent::Leave(node) => {
-                if node.text_range().intersection(&highlight_range).is_none() {
+                if node.text_range().intersection(&range_to_highlight).is_none() {
                     continue;
                 }
 
