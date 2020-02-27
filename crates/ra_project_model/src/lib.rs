@@ -6,8 +6,7 @@ mod sysroot;
 
 use std::{
     error::Error,
-    fs::File,
-    fs::read_dir,
+    fs::{read_dir, File, ReadDir},
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
@@ -26,15 +25,35 @@ pub use crate::{
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlNotFoundError(pub PathBuf);
+pub struct CargoTomlNoneFoundError(pub PathBuf);
 
-impl std::fmt::Display for CargoTomlNotFoundError {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct CargoTomlMultipleValidFoundError(pub Vec<PathBuf>);
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct CargoTomlSearchFileSystemError(pub PathBuf, pub String);
+
+impl std::fmt::Display for CargoTomlNoneFoundError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "can't find Cargo.toml at {}", self.0.display())
     }
 }
 
-impl Error for CargoTomlNotFoundError {}
+impl std::fmt::Display for CargoTomlMultipleValidFoundError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "found multiple valid Cargo.toml files {:?}", self.0)
+    }
+}
+
+impl std::fmt::Display for CargoTomlSearchFileSystemError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "a filesystem error occurred while searching for Cargo.toml: {}", self.1)
+    }
+}
+
+impl Error for CargoTomlNoneFoundError {}
+impl Error for CargoTomlMultipleValidFoundError {}
+impl Error for CargoTomlSearchFileSystemError {}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -407,7 +426,7 @@ fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn find_cargo_toml_down_the_fs(path: &Path) -> Option<PathBuf> {
+fn find_cargo_toml_in_parent_dir(path: &Path) -> Option<PathBuf> {
     let mut curr = Some(path);
     while let Some(path) = curr {
         let candidate = path.join("Cargo.toml");
@@ -416,41 +435,48 @@ fn find_cargo_toml_down_the_fs(path: &Path) -> Option<PathBuf> {
         }
         curr = path.parent();
     }
-    
+
     None
 }
 
-fn find_cargo_toml_up_the_fs(path: &Path) -> Option<PathBuf> {
-    let entities = match read_dir(path) {
-        Ok(entities) => entities,
-        Err(_) => return None
-    };
-
-    // Only one level up to avoid cycles the easy way and stop a runaway scan with large projects
+fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
+    // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
+    let mut valid_canditates = vec![];
     for entity in entities.filter_map(Result::ok) {
         let candidate = entity.path().join("Cargo.toml");
         if candidate.exists() {
-            return Some(candidate);
+            valid_canditates.push(candidate)
         }
     }
-
-    None
+    valid_canditates
 }
 
 fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
+    let path_as_buf = path.to_path_buf();
+
     if path.ends_with("Cargo.toml") {
         return Ok(path.to_path_buf());
     }
 
-    if let Some(p) = find_cargo_toml_down_the_fs(path) {
-        return Ok(p)
+    if let Some(p) = find_cargo_toml_in_parent_dir(path) {
+        return Ok(p);
     }
 
-    if let Some(p) = find_cargo_toml_up_the_fs(path) {
-        return Ok(p)
-    }
+    let entities = match read_dir(path.join("does_not_exist")) {
+        Ok(entities) => {
+            entities
+        },
+        Err(e) => {
+            return Err(CargoTomlSearchFileSystemError(path_as_buf, e.to_string()).into())
+        },
+    };
 
-    Err(CargoTomlNotFoundError(path.to_path_buf()).into())
+    let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
+    match valid_canditates.len() {
+        1 => Ok(valid_canditates.remove(0)),
+        0 => Err(CargoTomlNoneFoundError(path_as_buf).into()),
+        _ => Err(CargoTomlMultipleValidFoundError(valid_canditates).into()),
+    }
 }
 
 pub fn get_rustc_cfg_options() -> CfgOptions {
