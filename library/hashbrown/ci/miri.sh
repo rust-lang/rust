@@ -12,4 +12,4 @@ rustup default "$MIRI_NIGHTLY"
 rustup component add miri
 cargo miri setup
 
-cargo miri test -- -- -Zunstable-options --exclude-should-panic
+cargo miri test

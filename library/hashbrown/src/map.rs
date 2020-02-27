@@ -10,7 +10,7 @@ use core::ops::Index;
 
 /// Default hasher for `HashMap`.
 #[cfg(feature = "ahash")]
-pub type DefaultHashBuilder = ahash::ABuildHasher;
+pub type DefaultHashBuilder = ahash::RandomState;
 
 /// Dummy default hasher for `HashMap`.
 #[cfg(not(feature = "ahash"))]
@@ -956,6 +956,35 @@ where
             }
         }
     }
+    /// Drains elements which are false under the given predicate,
+    /// and returns an iterator over the removed items.
+    ///
+    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
+    /// into another iterator.
+    ///
+    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// the predicate are dropped from the table.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
+    /// assert_eq!(drained.count(), 4);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        DrainFilter {
+            f,
+            iter: unsafe { self.table.iter() },
+            table: &mut self.table,
+        }
+    }
 }
 
 impl<K, V, S> HashMap<K, V, S> {
@@ -1233,6 +1262,66 @@ impl<K, V> Drain<'_, K, V> {
             inner: self.inner.iter(),
             marker: PhantomData,
         }
+    }
+}
+
+/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate `f`.
+///
+/// This `struct` is created by the [`drain_filter`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`drain_filter`]: struct.HashMap.html#method.drain_filter
+/// [`HashMap`]: struct.HashMap.html
+pub struct DrainFilter<'a, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    f: F,
+    iter: RawIter<(K, V)>,
+    table: &'a mut RawTable<(K, V)>,
+}
+
+impl<'a, K, V, F> Drop for DrainFilter<'a, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    fn drop(&mut self) {
+        struct DropGuard<'r, 'a, K, V, F>(&'r mut DrainFilter<'a, K, V, F>)
+        where
+            F: FnMut(&K, &mut V) -> bool;
+
+        impl<'r, 'a, K, V, F> Drop for DropGuard<'r, 'a, K, V, F>
+        where
+            F: FnMut(&K, &mut V) -> bool,
+        {
+            fn drop(&mut self) {
+                while let Some(_) = self.0.next() {}
+            }
+        }
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
+    }
+}
+
+impl<K, V, F> Iterator for DrainFilter<'_, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            while let Some(item) = self.iter.next() {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !(self.f)(key, value) {
+                    self.table.erase_no_drop(&item);
+                    return Some(item.read());
+                }
+            }
+        }
+        None
     }
 }
 
@@ -2625,7 +2714,6 @@ mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
     use super::{HashMap, RawEntryMut};
-    #[cfg(not(miri))]
     use crate::CollectionAllocErr::*;
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
@@ -2883,7 +2971,7 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/654
+    #[cfg_attr(miri, ignore)] // FIXME: takes too long
     fn test_lots_of_insertions() {
         let mut m = HashMap::new();
 
@@ -3377,7 +3465,6 @@ mod test_map {
 
         let mut m = HashMap::new();
 
-        // FIXME: https://github.com/rust-lang/miri/issues/653
         let mut rng = {
             let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
             SmallRng::from_seed(seed)
@@ -3491,7 +3578,24 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/655
+    fn test_drain_filter() {
+        {
+            let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
+            let drained = map.drain_filter(|&k, _| k % 2 == 0);
+            let mut out = drained.collect::<Vec<_>>();
+            out.sort_unstable();
+            assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
+            assert_eq!(map.len(), 4);
+        }
+        {
+            let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
+            drop(map.drain_filter(|&k, _| k % 2 == 0));
+            assert_eq!(map.len(), 4);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)] // FIXME: no OOM signalling (https://github.com/rust-lang/miri/issues/613)
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 

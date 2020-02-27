@@ -84,7 +84,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hashbrown = "0.6"
+hashbrown = "0.7"
 ```
 
 Then:
