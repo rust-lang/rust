@@ -1078,13 +1078,20 @@ pub fn handle_semantic_tokens(
     let _p = profile("handle_semantic_tokens");
 
     let file_id = params.text_document.try_conv_with(&world)?;
+    let text = world.analysis().file_text(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
     let mut builder = SemanticTokensBuilder::default();
 
     for highlight_range in world.analysis().highlight(file_id)?.into_iter() {
-        let (token_type, token_modifiers) = highlight_range.highlight.conv();
-        builder.push(highlight_range.range.conv_with(&line_index), token_type, token_modifiers);
+        let (token_index, modifier_bitset) = highlight_range.highlight.conv();
+        for mut range in line_index.lines(highlight_range.range) {
+            if text[range].ends_with('\n') {
+                range = TextRange::from_to(range.start(), range.end() - TextUnit::of_char('\n'));
+            }
+            let range = range.conv_with(&line_index);
+            builder.push(range, token_index, modifier_bitset);
+        }
     }
 
     let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
