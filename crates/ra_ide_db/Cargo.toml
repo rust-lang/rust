@@ -11,29 +11,17 @@ doctest = false
 wasm = []
 
 [dependencies]
-either = "1.5.3"
-format-buf = "1.0.0"
-indexmap = "1.3.2"
-itertools = "0.8.2"
-join_to_string = "0.1.3"
 log = "0.4.8"
 rayon = "1.3.0"
 fst = { version = "0.3.5", default-features = false }
 rustc-hash = "1.1.0"
 superslice = "1.0.0"
-once_cell = "1.3.1"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
-ra_cfg = { path = "../ra_cfg" }
-ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
-test_utils = { path = "../test_utils" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../ra_hir", package = "ra_hir" }
-
-[dev-dependencies]
-insta = "0.13.1"

@@ -15,7 +15,6 @@ path = "./src/bin/main.rs"
 [dependencies]
 anyhow = "1.0.26"
 crossbeam-channel = "0.4.0"
-either = "1.5.3"
 env_logger = { version = "0.7.1", default-features = false }
 globset = "0.4.4"
 itertools = "0.8.2"

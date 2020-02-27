@@ -17,10 +17,7 @@ indexmap = "1.3.2"
 itertools = "0.8.2"
 join_to_string = "0.1.3"
 log = "0.4.8"
-rayon = "1.3.0"
-fst = { version = "0.3.5", default-features = false }
 rustc-hash = "1.1.0"
-superslice = "1.0.0"
 rand = { version = "0.7.3", features = ["small_rng"] }
 once_cell = "1.3.1"
 

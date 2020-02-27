@@ -906,7 +906,6 @@ version = "0.1.0"
 name = "ra_assists"
 version = "0.1.0"
 dependencies = [
- "either",
  "format-buf",
  "join_to_string",
  "ra_db",
@@ -927,10 +926,8 @@ dependencies = [
  "cargo_metadata",
  "crossbeam-channel",
  "insta",
- "jod-thread",
  "log",
  "lsp-types",
- "parking_lot",
  "serde_json",
 ]
 
@@ -988,7 +985,6 @@ dependencies = [
  "drop_bomb",
  "either",
  "insta",
- "itertools",
  "log",
  "once_cell",
  "ra_arena",
@@ -1046,7 +1042,6 @@ version = "0.1.0"
 dependencies = [
  "either",
  "format-buf",
- "fst",
  "indexmap",
  "insta",
  "itertools",
@@ -1063,9 +1058,7 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "rand",
- "rayon",
  "rustc-hash",
- "superslice",
  "test_utils",
 ]
 
@@ -1073,18 +1066,9 @@ dependencies = [
 name = "ra_ide_db"
 version = "0.1.0"
 dependencies = [
- "either",
- "format-buf",
  "fst",
- "indexmap",
- "insta",
- "itertools",
- "join_to_string",
  "log",
- "once_cell",
- "ra_cfg",
  "ra_db",
- "ra_fmt",
  "ra_hir",
  "ra_prof",
  "ra_syntax",
@@ -1092,7 +1076,6 @@ dependencies = [
  "rayon",
  "rustc-hash",
  "superslice",
- "test_utils",
 ]
 
 [[package]]
@@ -1120,7 +1103,6 @@ name = "ra_prof"
 version = "0.1.0"
 dependencies = [
  "backtrace",
- "itertools",
  "jemalloc-ctl",
  "jemallocator",
  "once_cell",
@@ -1163,7 +1145,6 @@ dependencies = [
 name = "ra_text_edit"
 version = "0.1.0"
 dependencies = [
- "test_utils",
  "text_unit",
 ]
 
@@ -1322,7 +1303,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
- "either",
  "env_logger",
  "globset",
  "itertools",
