@@ -320,7 +320,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().sess.delay_span_bug(span, "bad placeholder type");
+        placeholder_type_error(self.tcx(), span, &[], vec![span], false);
         self.tcx().types.err
     }
 
