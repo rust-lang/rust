@@ -52,7 +52,7 @@ mod imp {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {
                     continue;
-                } else if err == libc::ENOSYS || err == libc::EPERM {
+                } else if err == libc::ENOSYS || err == libc::EPERM || err == libc::EINVAL {
                     // Fall back to reading /dev/urandom if `getrandom` is not
                     // supported on the current kernel.
                     //

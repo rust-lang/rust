@@ -695,6 +695,10 @@ class RustBuild(object):
         if self.get_toml("deny-warnings", "rust") != "false":
             env["RUSTFLAGS"] += " -Dwarnings"
 
+        # Fix hit the limit of 8K GOT entries per single object file
+        if self.build_triple().startswith('mips'):
+            env["RUSTFLAGS"] += " -Cllvm-args=-mxgot"
+
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
