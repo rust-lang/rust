@@ -1270,7 +1270,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
     let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id);
 
-    // Now create the real type parameters.
+    // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
     params.extend(ast_generics.params.iter().filter_map(|param| {

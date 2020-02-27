@@ -12,6 +12,6 @@ fn main() {
     //~^ ERROR wrong number of lifetime arguments: expected 1, found 2
     //~| ERROR wrong number of type arguments: expected 1, found 0
     let _: S<dyn 'static +, 'static>;
-    //~^ ERROR lifetime arguments must be declared prior to type arguments
+    //~^ ERROR type provided when a lifetime was expected
     //~| ERROR at least one trait is required for an object type
 }

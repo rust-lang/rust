@@ -1,9 +1,3 @@
-error: lifetime arguments must be declared prior to type arguments
-  --> $DIR/trait-object-vs-lifetime.rs:14:29
-   |
-LL |     let _: S<dyn 'static +, 'static>;
-   |                             ^^^^^^^
-
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-vs-lifetime.rs:9:23
    |
@@ -28,6 +22,15 @@ error[E0224]: at least one trait is required for an object type
 LL |     let _: S<dyn 'static +, 'static>;
    |              ^^^^^^^^^^^^^
 
+error[E0747]: type provided when a lifetime was expected
+  --> $DIR/trait-object-vs-lifetime.rs:14:14
+   |
+LL |     let _: S<dyn 'static +, 'static>;
+   |              ^^^^^^^^^^^^^
+   |
+   = note: lifetime arguments must be provided before type arguments
+
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0107`.
+Some errors have detailed explanations: E0107, E0747.
+For more information about an error, try `rustc --explain E0107`.
