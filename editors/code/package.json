@@ -24,7 +24,7 @@
         "package": "vsce package -o rust-analyzer.vsix",
         "watch": "tsc --watch",
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src",
-        "fix":  "tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
+        "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
