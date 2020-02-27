@@ -421,6 +421,12 @@
                 "scope": [
                     "entity.name.constant"
                 ]
+            },
+            {
+                "selector": "keyword.unsafe",
+                "scope": [
+                    "keyword.other.unsafe"
+                ]
             }
         ]
     }
