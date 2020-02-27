@@ -10,19 +10,19 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
-.type\.builtin     { color: #8CD0D3; }
-.type\.param       { color: #20999D; }
+.type.builtin       { color: #8CD0D3; }
+.type.param         { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
-.literal\.numeric  { color: #6A8759; }
+.literal.numeric    { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }
-.variable\.mut     { color: #DCDCCC; text-decoration: underline; }
+.variable.mut       { color: #DCDCCC; text-decoration: underline; }
 
 .keyword            { color: #F0DFAF; }
-.keyword\.unsafe   { color: #DFAF8F; }
-.keyword\.control  { color: #F0DFAF; font-weight: bold; }
+.keyword.unsafe     { color: #DFAF8F; }
+.keyword.control    { color: #F0DFAF; font-weight: bold; }
 </style>
 <pre><code><span class="keyword">fn</span> <span class="function">main</span>() {
     <span class="keyword">let</span> <span class="variable" data-binding-hash="8121853618659664005" style="color: hsl(261,57%,61%);">hello</span> = <span class="string">"hello"</span>;
@@ -34,5 +34,5 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 }
 
 <span class="keyword">fn</span> <span class="function">bar</span>() {
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable.mut" data-binding-hash="8121853618659664005" style="color: hsl(261,57%,61%);">hello</span> = <span class="string">"hello"</span>;
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable mutable" data-binding-hash="8121853618659664005" style="color: hsl(261,57%,61%);">hello</span> = <span class="string">"hello"</span>;
 }</code></pre>

@@ -10,29 +10,29 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
-.type\.builtin     { color: #8CD0D3; }
-.type\.param       { color: #20999D; }
+.type.builtin       { color: #8CD0D3; }
+.type.param         { color: #20999D; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
-.literal\.numeric  { color: #6A8759; }
+.literal.numeric    { color: #6A8759; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }
-.variable\.mut     { color: #DCDCCC; text-decoration: underline; }
+.variable.mut       { color: #DCDCCC; text-decoration: underline; }
 
 .keyword            { color: #F0DFAF; }
-.keyword\.unsafe   { color: #DFAF8F; }
-.keyword\.control  { color: #F0DFAF; font-weight: bold; }
+.keyword.unsafe     { color: #DFAF8F; }
+.keyword.control    { color: #F0DFAF; font-weight: bold; }
 </style>
 <pre><code><span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
 <span class="keyword">struct</span> <span class="type">Foo</span> {
-    <span class="keyword">pub</span> <span class="field">x</span>: <span class="type.builtin">i32</span>,
-    <span class="keyword">pub</span> <span class="field">y</span>: <span class="type.builtin">i32</span>,
+    <span class="keyword">pub</span> <span class="field">x</span>: <span class="type builtin">i32</span>,
+    <span class="keyword">pub</span> <span class="field">y</span>: <span class="type builtin">i32</span>,
 }
 
-<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type.param">T</span>&gt;() -&gt; <span class="type.param">T</span> {
+<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type param">T</span>&gt;() -&gt; <span class="type param">T</span> {
     <span class="macro">unimplemented</span><span class="macro">!</span>();
-    <span class="function">foo</span>::&lt;<span class="type.builtin">i32</span>&gt;();
+    <span class="function">foo</span>::&lt;<span class="type builtin">i32</span>&gt;();
 }
 
 <span class="macro">macro_rules</span><span class="macro">!</span> def_fn {
@@ -40,33 +40,33 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 }
 
 <span class="macro">def_fn</span><span class="macro">!</span>{
-    <span class="keyword">fn</span> <span class="function">bar</span>() -&gt; <span class="type.builtin">u32</span> {
-        <span class="literal.numeric">100</span>
+    <span class="keyword">fn</span> <span class="function">bar</span>() -&gt; <span class="type builtin">u32</span> {
+        <span class="literal numeric">100</span>
     }
 }
 
 <span class="comment">// comment</span>
 <span class="keyword">fn</span> <span class="function">main</span>() {
-    <span class="macro">println</span><span class="macro">!</span>(<span class="string">"Hello, {}!"</span>, <span class="literal.numeric">92</span>);
+    <span class="macro">println</span><span class="macro">!</span>(<span class="string">"Hello, {}!"</span>, <span class="literal numeric">92</span>);
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable.mut">vec</span> = Vec::new();
-    <span class="keyword.control">if</span> <span class="keyword">true</span> {
-        <span class="keyword">let</span> <span class="variable">x</span> = <span class="literal.numeric">92</span>;
-        <span class="variable.mut">vec</span>.push(<span class="type">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="literal.numeric">1</span> });
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable mutable">vec</span> = Vec::new();
+    <span class="keyword control">if</span> <span class="keyword">true</span> {
+        <span class="keyword">let</span> <span class="variable">x</span> = <span class="literal numeric">92</span>;
+        <span class="variable mutable">vec</span>.push(<span class="type">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="literal numeric">1</span> });
     }
-    <span class="keyword.unsafe">unsafe</span> { <span class="variable.mut">vec</span>.set_len(<span class="literal.numeric">0</span>); }
+    <span class="keyword unsafe">unsafe</span> { <span class="variable mutable">vec</span>.set_len(<span class="literal numeric">0</span>); }
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable.mut">x</span> = <span class="literal.numeric">42</span>;
-    <span class="keyword">let</span> <span class="variable.mut">y</span> = &<span class="keyword">mut</span> <span class="variable.mut">x</span>;
-    <span class="keyword">let</span> <span class="variable">z</span> = &<span class="variable.mut">y</span>;
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable mutable">x</span> = <span class="literal numeric">42</span>;
+    <span class="keyword">let</span> <span class="variable mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;
+    <span class="keyword">let</span> <span class="variable">z</span> = &<span class="variable mutable">y</span>;
 
-    <span class="variable.mut">y</span>;
+    <span class="variable mutable">y</span>;
 }
 
-<span class="keyword">enum</span> <span class="type">E</span>&lt;<span class="type.param">X</span>&gt; {
-    <span class="constant">V</span>(<span class="type.param">X</span>)
+<span class="keyword">enum</span> <span class="type">E</span>&lt;<span class="type param">X</span>&gt; {
+    <span class="constant">V</span>(<span class="type param">X</span>)
 }
 
-<span class="keyword">impl</span>&lt;<span class="type.param">X</span>&gt; <span class="type">E</span>&lt;<span class="type.param">X</span>&gt; {
-    <span class="keyword">fn</span> <span class="function">new</span>&lt;<span class="type.param">T</span>&gt;() -&gt; <span class="type">E</span>&lt;<span class="type.param">T</span>&gt; {}
+<span class="keyword">impl</span>&lt;<span class="type param">X</span>&gt; <span class="type">E</span>&lt;<span class="type param">X</span>&gt; {
+    <span class="keyword">fn</span> <span class="function">new</span>&lt;<span class="type param">T</span>&gt;() -&gt; <span class="type">E</span>&lt;<span class="type param">T</span>&gt; {}
 }</code></pre>

@@ -380,6 +380,28 @@
                 }
             }
         ],
+        "semanticTokenTypes": [
+            {
+                "id": "attribute"
+            },
+            {
+                "id": "constant"
+            }
+        ],
+        "semanticTokenModifiers": [
+            {
+                "id": "mutable"
+            },
+            {
+                "id": "unsafe"
+            },
+            {
+                "id": "control"
+            },
+            {
+                "id": "builtin"
+            }
+        ],
         "semanticTokenStyleDefaults": [
             {
                 "selector": "*.mutable",
@@ -392,6 +414,12 @@
                 "highContrast": {
                     "fontStyle": "underline"
                 }
+            },
+            {
+                "selector": "constant",
+                "scope": [
+                    "entity.name.constant"
+                ]
             }
         ]
     }

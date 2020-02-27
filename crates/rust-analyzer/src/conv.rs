@@ -10,14 +10,21 @@ use lsp_types::{
 };
 use ra_ide::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
-    FileRange, FileSystemEdit, Fold, FoldKind, HighlightTag, InsertTextFormat, LineCol, LineIndex,
-    NavigationTarget, RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
+    InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo, ReferenceAccess, Severity,
+    SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_vfs::LineEndings;
 
-use crate::{req, semantic_tokens, world::WorldSnapshot, Result};
+use crate::{
+    req,
+    semantic_tokens::{self, ModifierSet, BUILTIN, CONSTANT, CONTROL, MUTABLE, UNSAFE},
+    world::WorldSnapshot,
+    Result,
+};
+use semantic_tokens::ATTRIBUTE;
 
 pub trait Conv {
     type Output;
@@ -303,74 +310,52 @@ impl ConvWith<&FoldConvCtx<'_>> for Fold {
     }
 }
 
-impl Conv for HighlightTag {
-    type Output = (SemanticTokenType, Vec<SemanticTokenModifier>);
-
-    fn conv(self) -> (SemanticTokenType, Vec<SemanticTokenModifier>) {
-        let token_type: SemanticTokenType = match self {
-            HighlightTag::FIELD => SemanticTokenType::MEMBER,
-            HighlightTag::FUNCTION => SemanticTokenType::FUNCTION,
-            HighlightTag::MODULE => SemanticTokenType::NAMESPACE,
-            HighlightTag::CONSTANT => {
-                return (
-                    SemanticTokenType::VARIABLE,
-                    vec![SemanticTokenModifier::STATIC, SemanticTokenModifier::READONLY],
-                )
-            }
-            HighlightTag::MACRO => SemanticTokenType::MACRO,
-
-            HighlightTag::VARIABLE => {
-                return (SemanticTokenType::VARIABLE, vec![SemanticTokenModifier::READONLY])
-            }
-            HighlightTag::VARIABLE_MUT => SemanticTokenType::VARIABLE,
-
-            HighlightTag::TYPE => SemanticTokenType::TYPE,
-            HighlightTag::TYPE_BUILTIN => SemanticTokenType::TYPE,
-            HighlightTag::TYPE_SELF => {
-                return (SemanticTokenType::TYPE, vec![SemanticTokenModifier::REFERENCE])
-            }
-            HighlightTag::TYPE_PARAM => SemanticTokenType::TYPE_PARAMETER,
-            HighlightTag::TYPE_LIFETIME => {
-                return (SemanticTokenType::LABEL, vec![SemanticTokenModifier::REFERENCE])
-            }
-
-            HighlightTag::LITERAL_BYTE => SemanticTokenType::NUMBER,
-            HighlightTag::LITERAL_NUMERIC => SemanticTokenType::NUMBER,
-            HighlightTag::LITERAL_CHAR => SemanticTokenType::NUMBER,
-
-            HighlightTag::LITERAL_COMMENT => {
-                return (SemanticTokenType::COMMENT, vec![SemanticTokenModifier::DOCUMENTATION])
-            }
-
-            HighlightTag::LITERAL_STRING => SemanticTokenType::STRING,
-            HighlightTag::LITERAL_ATTRIBUTE => SemanticTokenType::KEYWORD,
-
-            HighlightTag::KEYWORD => SemanticTokenType::KEYWORD,
-            HighlightTag::KEYWORD_UNSAFE => SemanticTokenType::KEYWORD,
-            HighlightTag::KEYWORD_CONTROL => SemanticTokenType::KEYWORD,
-            unknown => panic!("Unknown semantic token: {}", unknown),
-        };
-
-        (token_type, vec![])
-    }
-}
-
-impl Conv for (SemanticTokenType, Vec<SemanticTokenModifier>) {
+impl Conv for Highlight {
     type Output = (u32, u32);
 
     fn conv(self) -> Self::Output {
-        let token_index =
-            semantic_tokens::supported_token_types().iter().position(|it| *it == self.0).unwrap();
-        let mut token_modifier_bitset = 0;
-        for modifier in self.1.iter() {
-            let modifier_index = semantic_tokens::supported_token_modifiers()
-                .iter()
-                .position(|it| it == modifier)
-                .unwrap();
-            token_modifier_bitset |= 1 << modifier_index;
+        let mut mods = ModifierSet::default();
+        let type_ = match self.tag {
+            HighlightTag::Field => SemanticTokenType::MEMBER,
+            HighlightTag::Function => SemanticTokenType::FUNCTION,
+            HighlightTag::Module => SemanticTokenType::NAMESPACE,
+            HighlightTag::Constant => {
+                mods |= SemanticTokenModifier::STATIC;
+                mods |= SemanticTokenModifier::READONLY;
+                CONSTANT
+            }
+            HighlightTag::Macro => SemanticTokenType::MACRO,
+            HighlightTag::Variable => SemanticTokenType::VARIABLE,
+            HighlightTag::Type => SemanticTokenType::TYPE,
+            HighlightTag::TypeSelf => {
+                mods |= SemanticTokenModifier::REFERENCE;
+                SemanticTokenType::TYPE
+            }
+            HighlightTag::TypeParam => SemanticTokenType::TYPE_PARAMETER,
+            HighlightTag::TypeLifetime => {
+                mods |= SemanticTokenModifier::REFERENCE;
+                SemanticTokenType::LABEL
+            }
+            HighlightTag::LiteralByte => SemanticTokenType::NUMBER,
+            HighlightTag::LiteralNumeric => SemanticTokenType::NUMBER,
+            HighlightTag::LiteralChar => SemanticTokenType::NUMBER,
+            HighlightTag::Comment => SemanticTokenType::COMMENT,
+            HighlightTag::LiteralString => SemanticTokenType::STRING,
+            HighlightTag::Attribute => ATTRIBUTE,
+            HighlightTag::Keyword => SemanticTokenType::KEYWORD,
+        };
+
+        for modifier in self.modifiers.iter() {
+            let modifier = match modifier {
+                HighlightModifier::Mutable => MUTABLE,
+                HighlightModifier::Unsafe => UNSAFE,
+                HighlightModifier::Control => CONTROL,
+                HighlightModifier::Builtin => BUILTIN,
+            };
+            mods |= modifier;
         }
 
-        (token_index as u32, token_modifier_bitset as u32)
+        (semantic_tokens::type_index(type_), mods.0)
     }
 }
 

@@ -16,9 +16,9 @@ use lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, CompletionItem,
     Diagnostic, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SemanticTokenModifier, SemanticTokenType,
-    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
+    PrepareRenameResponse, Range, RenameParams, SemanticTokens, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
@@ -954,7 +954,7 @@ fn highlight(world: &WorldSnapshot, file_id: FileId) -> Result<Vec<Decoration>> 
         .into_iter()
         .map(|h| Decoration {
             range: h.range.conv_with(&line_index),
-            tag: h.tag.to_string(),
+            tag: h.highlight.to_string(),
             binding_hash: h.binding_hash.map(|x| x.to_string()),
         })
         .collect();
@@ -1082,10 +1082,9 @@ pub fn handle_semantic_tokens(
 
     let mut builder = SemanticTokensBuilder::default();
 
-    for h in world.analysis().highlight(file_id)?.into_iter() {
-        let type_and_modifiers: (SemanticTokenType, Vec<SemanticTokenModifier>) = h.tag.conv();
-        let (token_type, token_modifiers) = type_and_modifiers.conv();
-        builder.push(h.range.conv_with(&line_index), token_type, token_modifiers);
+    for highlight_range in world.analysis().highlight(file_id)?.into_iter() {
+        let (token_type, token_modifiers) = highlight_range.highlight.conv();
+        builder.push(highlight_range.range.conv_with(&line_index), token_type, token_modifiers);
     }
 
     let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
@@ -1104,10 +1103,9 @@ pub fn handle_semantic_tokens_range(
 
     let mut builder = SemanticTokensBuilder::default();
 
-    for h in world.analysis().highlight_range(frange)?.into_iter() {
-        let type_and_modifiers: (SemanticTokenType, Vec<SemanticTokenModifier>) = h.tag.conv();
-        let (token_type, token_modifiers) = type_and_modifiers.conv();
-        builder.push(h.range.conv_with(&line_index), token_type, token_modifiers);
+    for highlight_range in world.analysis().highlight_range(frange)?.into_iter() {
+        let (token_type, token_modifiers) = highlight_range.highlight.conv();
+        builder.push(highlight_range.range.conv_with(&line_index), token_type, token_modifiers);
     }
 
     let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
