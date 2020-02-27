@@ -63,7 +63,22 @@ pub mod pipe;
 pub mod process;
 pub mod rand;
 pub mod rwlock;
-pub mod stack_overflow;
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "solaris",
+        all(target_os = "netbsd", not(target_vendor = "rumprun")),
+        target_os = "openbsd"
+    ))] {
+        pub mod stack_overflow;
+    } else {
+        pub mod stack_overflow_empty;
+        pub use self::stack_overflow_empty as stack_overflow;
+    }
+}
 pub mod stdio;
 pub mod thread;
 pub mod thread_local;
