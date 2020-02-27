@@ -110,7 +110,7 @@ jobs:
       - run: npm audit
         working-directory: ./editors/code
 
-      - run: npm run fmt
+      - run: npm run lint
         working-directory: ./editors/code
 
       - run: npm run package --scripts-prepend-node-path

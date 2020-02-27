@@ -23,7 +23,8 @@
         "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package -o rust-analyzer.vsix",
         "watch": "tsc --watch",
-        "fmt": "tsfmt -r && eslint -c .eslintrc.js --ext ts ./src/ --fix"
+        "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src",
+        "fix":  "tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
