@@ -388,7 +388,7 @@ fn original_range_and_origin(
     let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
         == skip_trivia_token(node.value.last_token()?, Direction::Prev)?;
 
-    return Some(node.value.descendants().find_map(|it| {
+    Some(node.value.descendants().find_map(|it| {
         let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
         let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
 
@@ -404,16 +404,9 @@ fn original_range_and_origin(
             return None;
         }
 
-        // FIXME: Add union method in TextRange
         Some((
-            first.with_value(union_range(first.value.text_range(), last.value.text_range())),
+            first.with_value(first.value.text_range().extend_to(&last.value.text_range())),
             first_origin,
         ))
-    })?);
-
-    fn union_range(a: TextRange, b: TextRange) -> TextRange {
-        let start = a.start().min(b.start());
-        let end = a.end().max(b.end());
-        TextRange::from_to(start, end)
-    }
+    })?)
 }
