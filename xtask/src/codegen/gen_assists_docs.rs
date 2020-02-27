@@ -1,3 +1,5 @@
+//! Generates `assists.md` documentation.
+
 use std::{fs, path::Path};
 
 use crate::{
