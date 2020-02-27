@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-mod highlight;
+mod tags;
 mod html;
 
 use hir::{Name, Semantics};
@@ -17,7 +17,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{references::classify_name_ref, FileId};
 
-pub use highlight::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
+pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
 pub(crate) use html::highlight_as_html;
 
