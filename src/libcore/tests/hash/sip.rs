@@ -298,7 +298,6 @@ fn test_hash_no_concat_alias() {
     let t = ("aabb", "");
     let u = ("a", "abb");
 
-    assert!(s != t && t != u);
     assert_ne!(s, t);
     assert_ne!(t, u);
     assert_ne!(hash(&s), hash(&t));
