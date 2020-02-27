@@ -581,6 +581,20 @@ impl<'tcx, N> Vtable<'tcx, N> {
         }
     }
 
+    pub fn borrow_nested_obligations(&self) -> &[N] {
+        match &self {
+            VtableImpl(i) => &i.nested[..],
+            VtableParam(n) => &n[..],
+            VtableBuiltin(i) => &i.nested[..],
+            VtableAutoImpl(d) => &d.nested[..],
+            VtableClosure(c) => &c.nested[..],
+            VtableGenerator(c) => &c.nested[..],
+            VtableObject(d) => &d.nested[..],
+            VtableFnPointer(d) => &d.nested[..],
+            VtableTraitAlias(d) => &d.nested[..],
+        }
+    }
+
     pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M>
     where
         F: FnMut(N) -> M,

@@ -126,8 +126,11 @@ LL |     1u64.method2();
    |          ^^^^^^^ method not found in `u64`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&u64>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:47:44
@@ -136,8 +139,11 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
    |                                            ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&u64>>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method2` found for struct `no_method_suggested_traits::Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:50:37
@@ -146,8 +152,11 @@ LL |     no_method_suggested_traits::Foo.method2();
    |                                     ^^^^^^^ method not found in `no_method_suggested_traits::Foo`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:52:71
@@ -156,8 +165,11 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).metho
    |                                                                       ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method2` found for enum `no_method_suggested_traits::Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:54:40
@@ -166,8 +178,11 @@ LL |     no_method_suggested_traits::Bar::X.method2();
    |                                        ^^^^^^^ method not found in `no_method_suggested_traits::Bar`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:56:74
@@ -176,8 +191,11 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).me
    |                                                                          ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
+  --> $DIR/no-method-suggested-traits.rs:8:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `method3` found for struct `Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:59:9
