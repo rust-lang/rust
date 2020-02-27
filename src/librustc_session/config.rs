@@ -1500,10 +1500,8 @@ fn parse_libs(
             {
                 early_error(
                     error_format,
-                    &format!(
-                        "the library kind 'static-nobundle' is only \
-                         accepted on the nightly compiler"
-                    ),
+                    "the library kind 'static-nobundle' is only \
+                     accepted on the nightly compiler",
                 );
             }
             let mut name_parts = name.splitn(2, ':');

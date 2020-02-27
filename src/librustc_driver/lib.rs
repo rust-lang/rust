@@ -601,7 +601,7 @@ impl RustcDefaultCalls {
             });
             compiler.codegen_backend().link(&sess, Box::new(codegen_results), &outputs)
         } else {
-            sess.fatal(&format!("rlink must be a file"))
+            sess.fatal("rlink must be a file")
         }
     }
 

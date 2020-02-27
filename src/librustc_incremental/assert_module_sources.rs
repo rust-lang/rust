@@ -81,10 +81,7 @@ impl AssertModuleSource<'tcx> {
         if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
             self.tcx.sess.span_fatal(
                 attr.span,
-                &format!(
-                    "found CGU-reuse attribute but `-Zquery-dep-graph` \
-                          was not specified"
-                ),
+                "found CGU-reuse attribute but `-Zquery-dep-graph` was not specified",
             );
         }
 

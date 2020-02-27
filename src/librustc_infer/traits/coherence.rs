@@ -39,10 +39,10 @@ pub struct OverlapResult<'tcx> {
 }
 
 pub fn add_placeholder_note(err: &mut rustc_errors::DiagnosticBuilder<'_>) {
-    err.note(&format!(
+    err.note(
         "this behavior recently changed as a result of a bug fix; \
-         see rust-lang/rust#56105 for details"
-    ));
+         see rust-lang/rust#56105 for details",
+    );
 }
 
 /// If there are types that satisfy both impls, invokes `on_overlap`
