@@ -1,5 +1,6 @@
 use ra_syntax::{
-    ast, AstToken,
+    ast::{self, HasStringValue},
+    AstToken,
     SyntaxKind::{RAW_STRING, STRING},
     TextUnit,
 };

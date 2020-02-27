@@ -12,8 +12,10 @@ use ra_ide_db::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind::*, SyntaxToken,
-    TextRange, WalkEvent, T,
+    ast::{self, HasQuotes, HasStringValue},
+    AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
+    SyntaxKind::*,
+    SyntaxToken, TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
