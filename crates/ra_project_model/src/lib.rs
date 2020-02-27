@@ -463,12 +463,8 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
     }
 
     let entities = match read_dir(path.join("does_not_exist")) {
-        Ok(entities) => {
-            entities
-        },
-        Err(e) => {
-            return Err(CargoTomlSearchFileSystemError(path_as_buf, e.to_string()).into())
-        },
+        Ok(entities) => entities,
+        Err(e) => return Err(CargoTomlSearchFileSystemError(path_as_buf, e.to_string()).into()),
     };
 
     let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
