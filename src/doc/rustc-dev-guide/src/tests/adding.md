@@ -150,7 +150,7 @@ source.
   compares against `.fixed` (they must match). Finally, the fixed
   source is compiled, and this compilation is required to succeed.
   The `.fixed` file can also be generated automatically with the
-  `--bless` option, discussed [below](#bless).
+  `--bless` option, discribed in [this section][bless].
 * `min-gdb-version` specifies the minimum gdb version required for
   this test; see also `ignore-gdb-version`
 * `min-lldb-version` specifies the minimum lldb version required for
@@ -185,6 +185,7 @@ source.
   have a gate test.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
+[bless]: ./running.md#editing-and-updating-the-reference-files
 
 <a name="error_annotations"></a>
 
@@ -283,22 +284,6 @@ you can even run the resulting program. Just add one of the following
   not run the resulting binary
 - `// run-pass` – compilation should succeed and we should run the
   resulting binary
-
-<a name="bless"></a>
-
-### Editing and updating the reference files
-
-If you have changed the compiler's output intentionally, or you are
-making a new test, you can pass `--bless` to the test subcommand. E.g.
-if some tests in `src/test/ui` are failing, you can run
-
-```text
-./x.py test --stage 1 src/test/ui --bless
-```
-
-to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
-all tests. Of course you can also target just specific tests with the
-`--test-args your_test_name` flag, just like when running the tests.
 
 ### Normalization
 

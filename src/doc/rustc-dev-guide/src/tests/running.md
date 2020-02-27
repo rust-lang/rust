@@ -108,6 +108,20 @@ Under the hood, the test runner invokes the standard rust test runner
 filtering for tests that include "issue-1234" in the name. (Thus
 `--test-args` is a good way to run a collection of related tests.)
 
+## Editing and updating the reference files
+
+If you have changed the compiler's output intentionally, or you are
+making a new test, you can pass `--bless` to the test subcommand. E.g.
+if some tests in `src/test/ui` are failing, you can run
+
+```text
+./x.py test --stage 1 src/test/ui --bless
+```
+
+to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
+all tests. Of course you can also target just specific tests with the
+`--test-args your_test_name` flag, just like when running the tests.
+
 ## Passing `--pass $mode`
 
 Pass UI tests now have three modes, `check-pass`, `build-pass` and
