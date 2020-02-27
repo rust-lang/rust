@@ -31,12 +31,10 @@ EOF
 fi
 
 # Prepare commands that will be loaded before any file on the command line has been loaded
-script_import="command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_rust_formatters.py\""
-category_definition="type summary add --no-value --python-function lldb_rust_formatters.print_val -x \".*\" --category Rust"
+script_import="command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_lookup.py\""
+synthetic_definition="type synthetic add -l lldb_lookup.synthetic_lookup -x \".*\" --category Rust"
+summary_definition="type summary add -F lldb_lookup.summary_lookup  -e -x -h \".*\" --category Rust"
 category_enable="type category enable Rust"
 
 # Call LLDB with the commands added to the argument list
-exec "$lldb" --one-line-before-file "$script_import" \
-    --one-line-before-file "$category_definition" \
-    --one-line-before-file "$category_enable" \
-    "$@"
+exec "$lldb" -O "$script_import" -O "$synthetic_definition" -O "$summary_definition" -O "$category_enable" "$@"
