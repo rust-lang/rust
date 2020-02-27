@@ -14,6 +14,13 @@ pub struct HighlightModifiers(u32);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HighlightTag {
+    Struct,
+    Enum,
+    Union,
+    Trait,
+    TypeAlias,
+    BuiltinType,
+
     Field,
     Function,
     Module,
@@ -21,7 +28,6 @@ pub enum HighlightTag {
     Macro,
     Variable,
 
-    Type,
     TypeSelf,
     TypeParam,
     TypeLifetime,
@@ -44,19 +50,24 @@ pub enum HighlightModifier {
     Unsafe,
     /// Used with keywords like `if` and `break`.
     Control,
-    Builtin,
 }
 
 impl HighlightTag {
     fn as_str(self) -> &'static str {
         match self {
+            HighlightTag::Struct => "struct",
+            HighlightTag::Enum => "enum",
+            HighlightTag::Union => "union",
+            HighlightTag::Trait => "trait",
+            HighlightTag::TypeAlias => "type_alias",
+            HighlightTag::BuiltinType => "builtin_type",
+
             HighlightTag::Field => "field",
             HighlightTag::Function => "function",
             HighlightTag::Module => "module",
             HighlightTag::Constant => "constant",
             HighlightTag::Macro => "macro",
             HighlightTag::Variable => "variable",
-            HighlightTag::Type => "type",
             HighlightTag::TypeSelf => "type.self",
             HighlightTag::TypeParam => "type.param",
             HighlightTag::TypeLifetime => "type.lifetime",
@@ -78,19 +89,14 @@ impl fmt::Display for HighlightTag {
 }
 
 impl HighlightModifier {
-    const ALL: &'static [HighlightModifier] = &[
-        HighlightModifier::Mutable,
-        HighlightModifier::Unsafe,
-        HighlightModifier::Control,
-        HighlightModifier::Builtin,
-    ];
+    const ALL: &'static [HighlightModifier] =
+        &[HighlightModifier::Mutable, HighlightModifier::Unsafe, HighlightModifier::Control];
 
     fn as_str(self) -> &'static str {
         match self {
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
             HighlightModifier::Control => "control",
-            HighlightModifier::Builtin => "builtin",
         }
     }
 

@@ -10,7 +10,6 @@ pub(crate) const CONSTANT: SemanticTokenType = SemanticTokenType::new("constant"
 pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
 pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
 pub(crate) const CONTROL: SemanticTokenModifier = SemanticTokenModifier::new("control");
-pub(crate) const BUILTIN: SemanticTokenModifier = SemanticTokenModifier::new("builtin");
 
 pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::COMMENT,
@@ -51,7 +50,6 @@ pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     MUTABLE,
     UNSAFE,
     CONTROL,
-    BUILTIN,
 ];
 
 #[derive(Default)]

@@ -255,15 +255,15 @@ fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
         NameDefinition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(_) => HighlightTag::Function,
-            hir::ModuleDef::Adt(_) => HighlightTag::Type,
+            hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
+            hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
+            hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
             hir::ModuleDef::EnumVariant(_) => HighlightTag::Constant,
             hir::ModuleDef::Const(_) => HighlightTag::Constant,
             hir::ModuleDef::Static(_) => HighlightTag::Constant,
-            hir::ModuleDef::Trait(_) => HighlightTag::Type,
-            hir::ModuleDef::TypeAlias(_) => HighlightTag::Type,
-            hir::ModuleDef::BuiltinType(_) => {
-                return HighlightTag::Type | HighlightModifier::Builtin
-            }
+            hir::ModuleDef::Trait(_) => HighlightTag::Trait,
+            hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
+            hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
         },
         NameDefinition::SelfType(_) => HighlightTag::TypeSelf,
         NameDefinition::TypeParam(_) => HighlightTag::TypeParam,
@@ -287,7 +287,10 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     match parent.kind() {
-        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => HighlightTag::Type.into(),
+        STRUCT_DEF => HighlightTag::Struct.into(),
+        ENUM_DEF => HighlightTag::Enum.into(),
+        TRAIT_DEF => HighlightTag::Trait.into(),
+        TYPE_ALIAS_DEF => HighlightTag::TypeAlias.into(),
         TYPE_PARAM => HighlightTag::TypeParam.into(),
         RECORD_FIELD_DEF => HighlightTag::Field.into(),
         _ => default,

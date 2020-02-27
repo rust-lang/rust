@@ -398,9 +398,6 @@
             },
             {
                 "id": "control"
-            },
-            {
-                "id": "builtin"
             }
         ],
         "semanticTokenStyleDefaults": [
@@ -432,12 +429,6 @@
                 "selector": "keyword.unsafe",
                 "scope": [
                     "keyword.other.unsafe"
-                ]
-            },
-            {
-                "selector": "type.builtin",
-                "scope": [
-                    "support.type.builtin"
                 ]
             }
         ]

@@ -316,6 +316,12 @@ impl Conv for Highlight {
     fn conv(self) -> Self::Output {
         let mut mods = ModifierSet::default();
         let type_ = match self.tag {
+            HighlightTag::Struct
+            | HighlightTag::Enum
+            | HighlightTag::Union
+            | HighlightTag::TypeAlias
+            | HighlightTag::Trait
+            | HighlightTag::BuiltinType => SemanticTokenType::TYPE,
             HighlightTag::Field => SemanticTokenType::MEMBER,
             HighlightTag::Function => SemanticTokenType::FUNCTION,
             HighlightTag::Module => SemanticTokenType::NAMESPACE,
@@ -326,7 +332,6 @@ impl Conv for Highlight {
             }
             HighlightTag::Macro => SemanticTokenType::MACRO,
             HighlightTag::Variable => SemanticTokenType::VARIABLE,
-            HighlightTag::Type => SemanticTokenType::TYPE,
             HighlightTag::TypeSelf => {
                 mods |= SemanticTokenModifier::REFERENCE;
                 SemanticTokenType::TYPE
@@ -350,7 +355,6 @@ impl Conv for Highlight {
                 HighlightModifier::Mutable => MUTABLE,
                 HighlightModifier::Unsafe => UNSAFE,
                 HighlightModifier::Control => CONTROL,
-                HighlightModifier::Builtin => BUILTIN,
             };
             mods |= modifier;
         }
