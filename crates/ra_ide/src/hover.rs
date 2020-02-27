@@ -174,6 +174,12 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
+    // if this node is a MACRO_CALL, it means that `descend_into_macros` is failed to resolve.
+    // (e.g expanding a builtin macro). So we give up here.
+    if node.kind() == MACRO_CALL {
+        return None;
+    }
+
     // FIXME: Currently `hover::typeof` do not work inside
     // macro expansion such that if the hover range is pointing to
     // a string literal, the following type_of will return None.
@@ -796,6 +802,25 @@ fn func(foo: i32) { if true { <|>foo; }; }
             fn foo() {
                 let mastered_for_itunes = "";
                 let _ = arr!("Tr<|>acks", &mastered_for_itunes);
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_hover_through_literal_string_in_builtin_macro() {
+        check_hover_no_result(
+            r#"
+            //- /lib.rs            
+            #[rustc_builtin_macro]
+            macro_rules! assert {
+                ($cond:expr) => {{ /* compiler built-in */ }};
+                ($cond:expr,) => {{ /* compiler built-in */ }};
+                ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
+            }        
+
+            fn foo() {
+                assert!("hel<|>lo");
             }
             "#,
         );
