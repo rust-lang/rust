@@ -405,6 +405,12 @@
         ],
         "semanticTokenStyleDefaults": [
             {
+                "selector": "attribute",
+                "scope": [
+                    "meta.attribute"
+                ]
+            },
+            {
                 "selector": "*.mutable",
                 "light": {
                     "fontStyle": "underline"
