@@ -2,11 +2,11 @@ use crate::consts::{
     constant, Constant,
     Constant::{F32, F64},
 };
-use crate::utils::{span_lint_and_sugg, sugg};
+use crate::utils::{higher, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Lit, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -14,7 +14,7 @@ use rustc_span::source_map::Spanned;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::{format_numeric_literal, Sugg};
-use syntax::ast;
+use syntax::ast::{self, FloatTy, LitFloatType, LitKind};
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
@@ -72,6 +72,16 @@ declare_clippy_lint! {
     /// let _ = a.log(E);
     /// let _ = a.powf(2.0);
     /// let _ = a * 2.0 + 4.0;
+    /// let _ = if a < 0.0 {
+    ///     -a
+    /// } else {
+    ///     a
+    /// }
+    /// let _ = if a < 0.0 {
+    ///     a
+    /// } else {
+    ///     -a
+    /// }
     /// ```
     ///
     /// is better expressed as
@@ -88,6 +98,8 @@ declare_clippy_lint! {
     /// let _ = a.ln();
     /// let _ = a.powi(2);
     /// let _ = a.mul_add(2.0, 4.0);
+    /// let _ = a.abs();
+    /// let _ = -a.abs();
     /// ```
     pub SUBOPTIMAL_FLOPS,
     nursery,
@@ -359,6 +371,62 @@ fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
+/// Returns true iff expr is an expression which tests whether or not
+/// test is positive or an expression which tests whether or not test
+/// is nonnegative.
+/// Used for check-custom-abs function below
+fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+    if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
+        match op {
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(right) && are_exprs_equal(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(left) && are_exprs_equal(cx, right, test),
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
+    SpanlessEq::new(cx).ignore_fn().eq_expr(expr1, expr2)
+}
+
+/// Returns true iff expr is some zero literal
+fn is_zero(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Lit(Lit { node: lit, .. }) = &expr.kind {
+        match lit {
+            LitKind::Int(0, _) => true,
+            LitKind::Float(symb, LitFloatType::Unsuffixed)
+            | LitKind::Float(symb, LitFloatType::Suffixed(FloatTy::F64)) => {
+                symb.as_str().parse::<f64>().unwrap() == 0.0
+            },
+            LitKind::Float(symb, LitFloatType::Suffixed(FloatTy::F32)) => symb.as_str().parse::<f32>().unwrap() == 0.0,
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+//    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
+        // Check for the positive-first variant
+//        if let ExprKind::Unary(UnOp::UnNeg, expr) = else_body.kind {
+//            if are_exprs_equal(cx, expr, body) && is_testing_positive(cx, cond, body) {
+                span_lint_and_sugg(
+                    cx,
+                    SUBOPTIMAL_FLOPS,
+                    expr.span,
+                    "This looks like you've implemented your own absolute value function",
+                    "try",
+                    "a.abs()".to_string(),//format!("{:?}.abs()", body),
+                    Applicability::MachineApplicable,
+                );
+//            }
+//        }
+//    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args) = &expr.kind {
@@ -375,6 +443,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
         } else {
             check_expm1(cx, expr);
             check_mul_add(cx, expr);
+            check_custom_abs(cx, expr);
         }
     }
 }
