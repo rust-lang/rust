@@ -176,7 +176,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let ty = match_ast! {
         match node {
             ast::MacroCall(_it) => {
-                // if this node is a MACRO_CALL, it means that `descend_into_macros` is failed to resolve.
+                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
                 // (e.g expanding a builtin macro). So we give up here.
                 return None;
             },
