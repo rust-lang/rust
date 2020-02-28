@@ -42,12 +42,14 @@ export function activateInlayHints(ctx: Ctx) {
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
         color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+        fontStyle: "normal",
     },
 });
 
 const parameterHintDecorationType = vscode.window.createTextEditorDecorationType({
     before: {
         color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+        fontStyle: "normal",
     },
 });
 
