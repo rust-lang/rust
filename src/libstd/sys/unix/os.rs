@@ -328,6 +328,23 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
+        Ok(path) => {
+            let path_str = path.to_str()
+                .ok_or(io::Error::new(
+                       io::ErrorKind::InvalidData,
+                       "path contains invalid UTF-8 data")
+                )?;
+            unsafe {
+                if libc::access(path_str.as_ptr() as *const i8, libc::F_OK) == 0 {
+                    Ok(path)
+                } else {
+                    Err(io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "executable file does not exist anymore",
+                    ))
+                }
+            }
+        }
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::Error::new(
             io::ErrorKind::Other,
             "no /proc/self/exe available. Is /proc mounted?",
