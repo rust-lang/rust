@@ -101,7 +101,7 @@ impl TargetDataLayout {
             match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
-                [p] if p.starts_with("P") => {
+                [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
                 ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
@@ -111,7 +111,7 @@ impl TargetDataLayout {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a @ ..] if s.starts_with("i") => {
+                [s, ref a @ ..] if s.starts_with('i') => {
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -135,7 +135,7 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a @ ..] if s.starts_with("v") => {
+                [s, ref a @ ..] if s.starts_with('v') => {
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {

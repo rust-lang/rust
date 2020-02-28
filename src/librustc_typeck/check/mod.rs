@@ -4996,7 +4996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let sugg = if receiver.ends_with(".clone()")
                                 && method_call_list.contains(&method_call.as_str())
                             {
-                                let max_len = receiver.rfind(".").unwrap();
+                                let max_len = receiver.rfind('.').unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
                                 if expr.precedence().order() < ExprPrecedence::MethodCall.order() {

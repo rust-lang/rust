@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if src.starts_with("\"") {
+                            if src.starts_with('"') {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -709,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Remove fractional part from literal, for example `42.0f32` into `42`
                     let src = src.trim_end_matches(&checked_ty.to_string());
-                    src.split(".").next().unwrap()
+                    src.split('.').next().unwrap()
                 } else {
                     src.trim_end_matches(&checked_ty.to_string())
                 },

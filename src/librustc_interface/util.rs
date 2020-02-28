@@ -244,7 +244,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
             .as_ref()
             .unwrap_or(&sess.target.target.options.codegen_backend);
         let backend = match &codegen_name[..] {
-            filename if filename.contains(".") => load_backend_from_dylib(filename.as_ref()),
+            filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             codegen_name => get_builtin_codegen_backend(codegen_name),
         };
 
