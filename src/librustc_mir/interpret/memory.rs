@@ -195,7 +195,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        debug_assert_ne!(
+        assert_ne!(
             Some(kind),
             M::STATIC_KIND.map(MemoryKind::Machine),
             "dynamically allocating static memory"

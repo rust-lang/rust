@@ -234,7 +234,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitXor => (Scalar::from_uint(l ^ r, size), left_layout.ty),
 
             Add | Sub | Mul | Rem | Div => {
-                debug_assert!(!left_layout.abi.is_signed());
+                assert!(!left_layout.abi.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
                     Add => u128::overflowing_add,
                     Sub => u128::overflowing_sub,
