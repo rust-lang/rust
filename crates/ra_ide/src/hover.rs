@@ -6,7 +6,6 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{
-    algo::find_covering_element,
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
     SyntaxKind::*,
@@ -16,7 +15,7 @@ use ra_syntax::{
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     references::classify_name_ref,
-    FilePosition, FileRange, RangeInfo,
+    FilePosition, RangeInfo,
 };
 
 /// Contains the results when hovering over an item
@@ -174,23 +173,25 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
-    // if this node is a MACRO_CALL, it means that `descend_into_macros` is failed to resolve.
-    // (e.g expanding a builtin macro). So we give up here.
-    if node.kind() == MACRO_CALL {
-        return None;
-    }
+    let ty = match_ast! {
+        match node {
+            ast::MacroCall(_it) => {
+                // if this node is a MACRO_CALL, it means that `descend_into_macros` is failed to resolve.
+                // (e.g expanding a builtin macro). So we give up here.
+                return None;
+            },
+            ast::Expr(it) => {
+                sema.type_of_expr(&it)
+            },
+            ast::Pat(it) => {
+                sema.type_of_pat(&it)
+            },
+            _ => None,
+        }
+    }?;
 
-    // FIXME: Currently `hover::typeof` do not work inside
-    // macro expansion such that if the hover range is pointing to
-    // a string literal, the following type_of will return None.
-    // See also `test_hover_through_literal_string_in_macro`
-    let frange = sema.original_range(&node);
-    res.extend(type_of(db, frange).map(rust_code_markup));
-    if res.is_empty() {
-        return None;
-    }
-    let range = node.text_range();
-
+    res.extend(Some(rust_code_markup(ty.display_truncated(db, None).to_string())));
+    let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
 
@@ -206,33 +207,12 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     }
 }
 
-pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
-    let sema = Semantics::new(db);
-    let source_file = sema.parse(frange.file_id);
-    let leaf_node = find_covering_element(source_file.syntax(), frange.range);
-    // if we picked identifier, expand to pattern/expression
-    let node = leaf_node
-        .ancestors()
-        .take_while(|it| it.text_range() == leaf_node.text_range())
-        .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
-    let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| sema.type_of_expr(&e)) {
-        ty
-    } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| sema.type_of_pat(&p)) {
-        ty
-    } else {
-        return None;
-    };
-    Some(ty.display_truncated(db, None).to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use ra_db::FileLoader;
     use ra_syntax::TextRange;
 
-    use crate::mock_analysis::{
-        analysis_and_position, single_file_with_position, single_file_with_range,
-    };
+    use crate::mock_analysis::{analysis_and_position, single_file_with_position};
 
     fn trim_markup(s: &str) -> &str {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")
@@ -525,37 +505,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_type_of_for_function() {
-        let (analysis, range) = single_file_with_range(
-            "
-            pub fn foo() -> u32 { 1 };
-
-            fn main() {
-                let foo_test = <|>foo()<|>;
-            }
-            ",
-        );
-
-        let type_name = analysis.type_of(range).unwrap().unwrap();
-        assert_eq!("u32", &type_name);
-    }
-
-    #[test]
-    fn test_type_of_for_expr() {
-        let (analysis, range) = single_file_with_range(
-            "
-            fn main() {
-                let foo: usize = 1;
-                let bar = <|>1 + foo<|>;
-            }
-            ",
-        );
-
-        let type_name = analysis.type_of(range).unwrap().unwrap();
-        assert_eq!("usize", &type_name);
-    }
-
-    #[test]
     fn test_hover_infer_associated_method_result() {
         let (analysis, position) = single_file_with_position(
             "
@@ -791,9 +740,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_literal_string_in_macro() {
-        // FIXME: Currently `hover::type_of` do not work inside
-        // macro expansion
-        check_hover_no_result(
+        let hover_on = check_hover_result(
             r#"
             //- /lib.rs
             macro_rules! arr {
@@ -804,7 +751,10 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let _ = arr!("Tr<|>acks", &mastered_for_itunes);
             }
             "#,
+            &["&str"],
         );
+
+        assert_eq!(hover_on, "\"Tracks\"");
     }
 
     #[test]

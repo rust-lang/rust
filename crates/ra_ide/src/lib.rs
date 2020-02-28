@@ -455,11 +455,6 @@ impl Analysis {
         self.with_db(|db| diagnostics::diagnostics(db, file_id))
     }
 
-    /// Computes the type of the expression at the given position.
-    pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        self.with_db(|db| hover::type_of(db, frange))
-    }
-
     /// Returns the edit required to rename reference at the position to the new
     /// name.
     pub fn rename(
