@@ -177,10 +177,11 @@ fn highlight_element(
                 }
             };
 
-            match name_kind {
+            let h = match name_kind {
                 Some(name_kind) => highlight_name(db, name_kind),
                 None => highlight_name_by_syntax(name),
-            }
+            };
+            h | HighlightModifier::Definition
         }
 
         // Highlight references like the definitions they resolve to
@@ -206,12 +207,13 @@ fn highlight_element(
 
         // Simple token-based highlighting
         COMMENT => HighlightTag::Comment.into(),
-        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::LiteralString.into(),
+        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::StringLiteral.into(),
         ATTR => HighlightTag::Attribute.into(),
-        INT_NUMBER | FLOAT_NUMBER => HighlightTag::LiteralNumeric.into(),
-        BYTE => HighlightTag::LiteralByte.into(),
-        CHAR => HighlightTag::LiteralChar.into(),
-        LIFETIME => HighlightTag::TypeLifetime.into(),
+        INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
+        BYTE => HighlightTag::ByteLiteral.into(),
+        CHAR => HighlightTag::CharLiteral.into(),
+        // FIXME: set Declaration for decls
+        LIFETIME => HighlightTag::Lifetime.into(),
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);
@@ -255,20 +257,21 @@ fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
         NameDefinition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(_) => HighlightTag::Function,
-            hir::ModuleDef::Adt(_) => HighlightTag::Type,
-            hir::ModuleDef::EnumVariant(_) => HighlightTag::Constant,
+            hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
+            hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
+            hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
+            hir::ModuleDef::EnumVariant(_) => HighlightTag::EnumVariant,
             hir::ModuleDef::Const(_) => HighlightTag::Constant,
-            hir::ModuleDef::Static(_) => HighlightTag::Constant,
-            hir::ModuleDef::Trait(_) => HighlightTag::Type,
-            hir::ModuleDef::TypeAlias(_) => HighlightTag::Type,
-            hir::ModuleDef::BuiltinType(_) => {
-                return HighlightTag::Type | HighlightModifier::Builtin
-            }
+            hir::ModuleDef::Static(_) => HighlightTag::Static,
+            hir::ModuleDef::Trait(_) => HighlightTag::Trait,
+            hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
+            hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
         },
-        NameDefinition::SelfType(_) => HighlightTag::TypeSelf,
+        NameDefinition::SelfType(_) => HighlightTag::SelfType,
         NameDefinition::TypeParam(_) => HighlightTag::TypeParam,
+        // FIXME: distinguish between locals and parameters
         NameDefinition::Local(local) => {
-            let mut h = Highlight::new(HighlightTag::Variable);
+            let mut h = Highlight::new(HighlightTag::Local);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;
             }
@@ -287,7 +290,11 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     match parent.kind() {
-        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => HighlightTag::Type.into(),
+        STRUCT_DEF => HighlightTag::Struct.into(),
+        ENUM_DEF => HighlightTag::Enum.into(),
+        UNION_KW => HighlightTag::Union.into(),
+        TRAIT_DEF => HighlightTag::Trait.into(),
+        TYPE_ALIAS_DEF => HighlightTag::TypeAlias.into(),
         TYPE_PARAM => HighlightTag::TypeParam.into(),
         RECORD_FIELD_DEF => HighlightTag::Field.into(),
         _ => default,
@@ -312,7 +319,7 @@ fn highlight_injection(
     if let Some(range) = literal.open_quote_text_range() {
         acc.push(HighlightedRange {
             range,
-            highlight: HighlightTag::LiteralString.into(),
+            highlight: HighlightTag::StringLiteral.into(),
             binding_hash: None,
         })
     }
@@ -327,7 +334,7 @@ fn highlight_injection(
     if let Some(range) = literal.close_quote_text_range() {
         acc.push(HighlightedRange {
             range,
-            highlight: HighlightTag::LiteralString.into(),
+            highlight: HighlightTag::StringLiteral.into(),
             binding_hash: None,
         })
     }

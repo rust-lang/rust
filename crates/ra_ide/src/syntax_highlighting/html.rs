@@ -80,25 +80,27 @@ const STYLE: &str = "
 body                { margin: 0; }
 pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
+
 .comment            { color: #7F9F7F; }
-.string             { color: #CC9393; }
+.struct, .enum      { color: #7CB8BB; }
+.enum_variant       { color: #BDE0F3; }
+.string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
-.type.builtin       { color: #8CD0D3; }
-.type.param         { color: #20999D; }
+.builtin_type       { color: #8CD0D3; }
+.type_param         { color: #DFAF8F; }
 .attribute          { color: #94BFF3; }
-.literal            { color: #BFEBBF; }
-.literal.numeric    { color: #6A8759; }
+.numeric_literal    { color: #BFEBBF; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }
-.variable.mut       { color: #DCDCCC; text-decoration: underline; }
+.mutable            { text-decoration: underline; }
 
-.keyword            { color: #F0DFAF; }
-.keyword.unsafe     { color: #DFAF8F; }
-.keyword.control    { color: #F0DFAF; font-weight: bold; }
+.keyword            { color: #F0DFAF; font-weight: bold; }
+.keyword.unsafe     { color: #BC8383; font-weight: bold; }
+.control            { font-style: italic; }
 </style>
 ";

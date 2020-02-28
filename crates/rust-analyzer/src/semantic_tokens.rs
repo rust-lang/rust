@@ -5,12 +5,16 @@ use std::ops;
 use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
 pub(crate) const ATTRIBUTE: SemanticTokenType = SemanticTokenType::new("attribute");
-pub(crate) const CONSTANT: SemanticTokenType = SemanticTokenType::new("constant");
+pub(crate) const BUILTIN_TYPE: SemanticTokenType = SemanticTokenType::new("builtinType");
+pub(crate) const ENUM_MEMBER: SemanticTokenType = SemanticTokenType::new("enumMember");
+pub(crate) const LIFETIME: SemanticTokenType = SemanticTokenType::new("lifetime");
+pub(crate) const TYPE_ALIAS: SemanticTokenType = SemanticTokenType::new("typeAlias");
+pub(crate) const UNION: SemanticTokenType = SemanticTokenType::new("union");
 
+pub(crate) const CONSTANT: SemanticTokenModifier = SemanticTokenModifier::new("constant");
+pub(crate) const CONTROL: SemanticTokenModifier = SemanticTokenModifier::new("control");
 pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
 pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
-pub(crate) const CONTROL: SemanticTokenModifier = SemanticTokenModifier::new("control");
-pub(crate) const BUILTIN: SemanticTokenModifier = SemanticTokenModifier::new("builtin");
 
 pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::COMMENT,
@@ -34,7 +38,11 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::PARAMETER,
     SemanticTokenType::LABEL,
     ATTRIBUTE,
-    CONSTANT,
+    BUILTIN_TYPE,
+    ENUM_MEMBER,
+    LIFETIME,
+    TYPE_ALIAS,
+    UNION,
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
@@ -48,10 +56,10 @@ pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     SemanticTokenModifier::ASYNC,
     SemanticTokenModifier::VOLATILE,
     SemanticTokenModifier::READONLY,
+    CONSTANT,
     MUTABLE,
     UNSAFE,
     CONTROL,
-    BUILTIN,
 ];
 
 #[derive(Default)]

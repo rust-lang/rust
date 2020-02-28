@@ -400,24 +400,42 @@
         ],
         "semanticTokenTypes": [
             {
-                "id": "attribute"
+                "id": "attribute",
+                "description": "Style for attributes"
             },
             {
-                "id": "constant"
+                "id": "builtinType",
+                "description": "Style for builtin types"
+            },
+            {
+                "id": "lifetime",
+                "description": "Style for lifetimes"
+            },
+            {
+                "id": "typeAlias",
+                "description": "Style for type aliases"
+            },
+            {
+                "id": "union",
+                "description": "Style for C-style untagged unions"
             }
         ],
         "semanticTokenModifiers": [
             {
-                "id": "mutable"
+                "id": "constant",
+                "description": "Style for compile-time constants"
             },
             {
-                "id": "unsafe"
+                "id": "control",
+                "description": "Style for control flow keywords"
             },
             {
-                "id": "control"
+                "id": "mutable",
+                "description": "Style for mutable bindings"
             },
             {
-                "id": "builtin"
+                "id": "unsafe",
+                "description": "Style for unsafe operations"
             }
         ],
         "semanticTokenStyleDefaults": [
@@ -425,6 +443,50 @@
                 "selector": "attribute",
                 "scope": [
                     "meta.attribute"
+                ]
+            },
+            {
+                "selector": "builtinType",
+                "scope": [
+                    "support.type.primitive"
+                ]
+            },
+            {
+                "selector": "lifetime",
+                "scope": [
+                    "entity.name.lifetime.rust"
+                ]
+            },
+            {
+                "selector": "typeAlias",
+                "scope": [
+                    "entity.name.type",
+                    "entity.name.typeAlias"
+                ]
+            },
+            {
+                "selector": "union",
+                "scope": [
+                    "entity.name.type",
+                    "entity.name.union"
+                ]
+            },
+            {
+                "selector": "keyword.unsafe",
+                "scope": [
+                    "keyword.other.unsafe"
+                ]
+            },
+            {
+                "selector": "keyword.control",
+                "scope": [
+                    "keyword.control"
+                ]
+            },
+            {
+                "selector": "variable.constant",
+                "scope": [
+                    "entity.name.constant"
                 ]
             },
             {
@@ -438,24 +500,6 @@
                 "highContrast": {
                     "fontStyle": "underline"
                 }
-            },
-            {
-                "selector": "constant",
-                "scope": [
-                    "entity.name.constant"
-                ]
-            },
-            {
-                "selector": "keyword.unsafe",
-                "scope": [
-                    "keyword.other.unsafe"
-                ]
-            },
-            {
-                "selector": "type.builtin",
-                "scope": [
-                    "support.type.builtin"
-                ]
             }
         ]
     }
