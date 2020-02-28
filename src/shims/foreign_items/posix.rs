@@ -205,18 +205,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "pthread_key_delete" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
                 let ptr = this.machine.tls.load_tls(key, tcx)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
 
