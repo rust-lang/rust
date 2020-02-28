@@ -64,7 +64,16 @@ pub mod process;
 pub mod rand;
 pub mod rwlock;
 cfg_if::cfg_if! {
+    // Prefer signal handlers provided by a sanitizer runtime.
     if #[cfg(any(
+            sanitize = "address",
+            sanitize = "leak",
+            sanitize = "memory",
+            sanitize = "thread"
+        ))] {
+        pub mod stack_overflow_empty;
+        pub use self::stack_overflow_empty as stack_overflow;
+    } else if #[cfg(any(
         target_os = "linux",
         target_os = "macos",
         target_os = "dragonfly",

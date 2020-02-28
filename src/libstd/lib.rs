@@ -241,6 +241,7 @@
 #![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
+#![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
