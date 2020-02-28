@@ -246,7 +246,7 @@ impl<K, V, A: AllocRef + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// is first inserted into.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
-        Self::with_hasher_in(Default::default(), alloc)
+        Self::with_hasher_in(DefaultHashBuilder::default(), alloc)
     }
 
     /// Creates an empty `HashMap` with the specified capacity using the given allocator.
