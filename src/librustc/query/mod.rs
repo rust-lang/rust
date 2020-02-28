@@ -513,7 +513,7 @@ rustc_queries! {
         /// returns a proper constant that is usable by the rest of the compiler.
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
-        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
         query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force

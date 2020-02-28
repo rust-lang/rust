@@ -15,6 +15,8 @@ use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToTy
 use rustc::middle::free_region::RegionRelations;
 use rustc::middle::lang_items;
 use rustc::middle::region;
+use rustc::mir;
+use rustc::mir::interpret::ConstEvalResult;
 use rustc::session::config::BorrowckMode;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
@@ -63,6 +65,7 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 
+use crate::infer::canonical::OriginalQueryValues;
 pub use rustc::infer::unify_key;
 
 #[must_use]
@@ -1562,6 +1565,35 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let u = self.universe.get().next_universe();
         self.universe.set(u);
         u
+    }
+
+    /// Resolves and evaluates a constant.
+    ///
+    /// The constant can be located on a trait like `<A as B>::C`, in which case the given
+    /// substitutions and environment are used to resolve the constant. Alternatively if the
+    /// constant has generic parameters in scope the substitutions are used to evaluate the value of
+    /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
+    /// constant `bar::<T>()` requires a substitution for `T`, if the substitution for `T` is still
+    /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
+    /// returned.
+    ///
+    /// This handles inferences variables within both `param_env` and `substs` by
+    /// performing the operation on their respective canonical forms.
+    pub fn const_eval_resolve(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        promoted: Option<mir::Promoted>,
+        span: Option<Span>,
+    ) -> ConstEvalResult<'tcx> {
+        let mut original_values = OriginalQueryValues::default();
+        let canonical = self.canonicalize_query(&(param_env, substs), &mut original_values);
+
+        let (param_env, substs) = canonical.value;
+        // The return value is the evaluated value which doesn't contain any reference to inference
+        // variables, thus we don't need to substitute back the original values.
+        self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, span)
     }
 }
 
