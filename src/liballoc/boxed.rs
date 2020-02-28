@@ -825,7 +825,7 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "none")]
+#[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
 where
     [T; N]: LengthAtMost32,
