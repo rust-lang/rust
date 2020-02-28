@@ -15,8 +15,6 @@ use ra_text_edit::TextEditBuilder;
 pub fn insert_use_statement(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,
-    // The statement to use as anchor (last resort)
-    anchor: &SyntaxNode,
     path_to_import: &ModPath,
     edit: &mut TextEditBuilder,
 ) {
@@ -29,7 +27,7 @@ pub fn insert_use_statement(
     });
 
     if let Some(container) = container {
-        let action = best_action_for_target(container, anchor.clone(), &target);
+        let action = best_action_for_target(container, position.clone(), &target);
         make_assist(&action, &target, edit);
     }
 }
@@ -379,10 +377,7 @@ fn best_action_for_target(
             // another item and we use it as anchor.
             // If there are no items above, we choose the target path itself as anchor.
             // todo: we should include even whitespace blocks as anchor candidates
-            let anchor = container
-                .children()
-                .find(|n| n.text_range().start() < anchor.text_range().start())
-                .or_else(|| Some(anchor));
+            let anchor = container.children().next().or_else(|| Some(anchor));
 
             let add_after_anchor = anchor
                 .clone()
