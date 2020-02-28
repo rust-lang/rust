@@ -18,7 +18,7 @@ assert.eq = <T>(bibba: unknown, bobba: T, explanation: string): asserts bibba is
         log.error(`Equality assertion failed:`, explanation);
         throw err;
     }
-}
+};
 
 
 export const log = {
