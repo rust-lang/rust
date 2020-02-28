@@ -41,6 +41,9 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
             super::CodeSubtypeError(ref a, ref b) => {
                 write!(f, "CodeSubtypeError({:?}, {:?})", a, b)
             }
+            super::CodeConstEquateError(ref a, ref b) => {
+                write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
+            }
             super::CodeAmbiguity => write!(f, "Ambiguity"),
         }
     }

@@ -240,6 +240,7 @@ impl fmt::Debug for ty::Predicate<'tcx> {
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
+            ty::Predicate::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
         }
     }
 }
@@ -491,6 +492,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
                 tcx.lift(&substs).map(|substs| ty::Predicate::ConstEvaluatable(def_id, substs))
+            }
+            ty::Predicate::ConstEquate(c1, c2) => {
+                tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::Predicate::ConstEquate(c1, c2))
             }
         }
     }

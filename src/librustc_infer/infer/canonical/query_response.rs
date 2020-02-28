@@ -25,7 +25,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Const, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -673,6 +673,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
 
     fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
         bug!("should never be invoked with eager normalization")
+    }
+
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {
+        unimplemented!()
     }
 
     fn normalization() -> NormalizationStrategy {

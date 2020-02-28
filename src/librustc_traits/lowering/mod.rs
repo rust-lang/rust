@@ -103,7 +103,8 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
             | Predicate::Subtype(..)
-            | Predicate::ConstEvaluatable(..) => bug!("unexpected predicate {}", self),
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => bug!("unexpected predicate {}", self),
         }
     }
 }

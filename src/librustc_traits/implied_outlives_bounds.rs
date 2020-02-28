@@ -100,7 +100,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::Predicate::Projection(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ConstEvaluatable(..) => vec![],
+                | ty::Predicate::ConstEvaluatable(..)
+                | ty::Predicate::ConstEquate(..) => vec![],
 
                 ty::Predicate::WellFormed(subty) => {
                     wf_types.push(subty);

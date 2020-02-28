@@ -28,7 +28,8 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                 | Predicate::TypeOutlives(_)
                 | Predicate::WellFormed(_)
                 | Predicate::Projection(_)
-                | Predicate::ConstEvaluatable(..) => continue,
+                | Predicate::ConstEvaluatable(..)
+                | Predicate::ConstEquate(..) => continue,
                 Predicate::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
                 }

@@ -2,7 +2,7 @@ use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRe
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_trait_selection::traits::query::Fallible;
 use rustc_trait_selection::traits::DomainGoal;
 
@@ -103,6 +103,8 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
         bug!("should never be invoked with eager normalization")
     }
+
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
         NormalizationStrategy::Eager

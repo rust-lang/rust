@@ -79,7 +79,17 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+        match (a.val, b.val) {
+            (ty::ConstKind::Unevaluated(..), _) => {
+                self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+                Ok(b)
+            }
+            (_, ty::ConstKind::Unevaluated(..)) => {
+                self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+                Ok(a)
+            }
+            _ => self.fields.infcx.super_combine_consts(self, a, b),
+        }
     }
 
     fn binders<T>(

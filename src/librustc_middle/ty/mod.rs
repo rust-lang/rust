@@ -1203,6 +1203,9 @@ pub enum Predicate<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(DefId, SubstsRef<'tcx>),
+
+    /// Constants must be equal. The first component is the const that is expected.
+    ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1320,6 +1323,9 @@ impl<'tcx> Predicate<'tcx> {
             }
             Predicate::ConstEvaluatable(def_id, const_substs) => {
                 Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
+            }
+            Predicate::ConstEquate(c1, c2) => {
+                Predicate::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
             }
         }
     }
@@ -1498,7 +1504,8 @@ impl<'tcx> Predicate<'tcx> {
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
             | Predicate::TypeOutlives(..)
-            | Predicate::ConstEvaluatable(..) => None,
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => None,
         }
     }
 
@@ -1512,7 +1519,8 @@ impl<'tcx> Predicate<'tcx> {
             | Predicate::WellFormed(..)
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..) => None,
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => None,
         }
     }
 }
