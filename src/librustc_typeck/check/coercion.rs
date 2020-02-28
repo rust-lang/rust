@@ -452,8 +452,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // &[T; n] or &mut [T; n] -> &[T]
     // or &mut [T; n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
-    fn coerce_unsized(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_unsized(source={:?}, target={:?})", source, target);
+
+        source = self.shallow_resolve(source);
+        target = self.shallow_resolve(target);
+        debug!("coerce_unsized: resolved source={:?} target={:?}", source, target);
 
         // These 'if' statements require some explanation.
         // The `CoerceUnsized` trait is special - it is only
@@ -476,11 +480,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // the compiler! Therefore, we can be sure that coercion will always fail
         // when either the source or target type is a type variable. This allows us
         // to skip performing any trait selection, and immediately bail out.
-        if self.shallow_resolve(source).is_ty_var() {
+        if source.is_ty_var() {
             debug!("coerce_unsized: source is a TyVar, bailing out");
             return Err(TypeError::Mismatch);
         }
-        if self.shallow_resolve(target).is_ty_var() {
+        if target.is_ty_var() {
             debug!("coerce_unsized: target is a TyVar, bailing out");
             return Err(TypeError::Mismatch);
         }
