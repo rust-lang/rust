@@ -26,7 +26,7 @@ use ra_prof::profile;
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {
     pub db: &'db DB,
-    pub(crate) sb: RefCell<SourceBinder>,
+    sb: RefCell<SourceBinder>,
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
 }
 

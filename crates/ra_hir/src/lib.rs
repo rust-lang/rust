@@ -28,8 +28,8 @@ macro_rules! impl_froms {
 
 mod semantics;
 pub mod db;
-pub mod source_analyzer;
-pub mod source_binder;
+mod source_analyzer;
+mod source_binder;
 
 pub mod diagnostics;
 
