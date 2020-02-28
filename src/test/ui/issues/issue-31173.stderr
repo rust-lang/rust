@@ -1,5 +1,5 @@
-error[E0271]: type mismatch resolving `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]> as std::iter::Iterator>::Item == &_`
-  --> $DIR/issue-31173.rs:10:10
+error[E0271]: type mismatch resolving `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]> as std::iter::Iterator>::Item == &_`
+  --> $DIR/issue-31173.rs:14:10
    |
 LL |         .cloned()
    |          ^^^^^^ expected `u8`, found reference
@@ -7,15 +7,25 @@ LL |         .cloned()
    = note:   expected type `u8`
            found reference `&_`
 
-error[E0599]: no method named `collect` found for struct `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>>` in the current scope
-  --> $DIR/issue-31173.rs:14:10
+error[E0599]: no method named `collect` found for struct `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>` in the current scope
+  --> $DIR/issue-31173.rs:18:10
    |
 LL |         .collect();
-   |          ^^^^^^^ method not found in `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>>`
+   |          ^^^^^^^ method not found in `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>`
+   | 
+  ::: $SRC_DIR/libcore/iter/adapters/mod.rs:LL:COL
+   |
+LL | pub struct Cloned<I> {
+   | -------------------- doesn't satisfy `_: std::iter::Iterator`
+...
+LL | pub struct TakeWhile<I, P> {
+   | -------------------------- doesn't satisfy `<_ as std::iter::Iterator>::Item = &_`
    |
    = note: the method `collect` exists but the following trait bounds were not satisfied:
-           `&mut std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>> : std::iter::Iterator`
-           `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>> : std::iter::Iterator`
+           `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]> as std::iter::Iterator>::Item = &_`
+           which is required by `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>: std::iter::Iterator`
+           `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>: std::iter::Iterator`
+           which is required by `&mut std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:10:39: 13:6 found_e:_]>>: std::iter::Iterator`
 
 error: aborting due to 2 previous errors
 
