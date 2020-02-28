@@ -8,8 +8,7 @@ use hir_def::{
 };
 use ra_db::{FileId, FileRange};
 use ra_syntax::{
-    algo::{find_covering_element, skip_trivia_token},
-    ast, match_ast, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+    algo::skip_trivia_token, ast, match_ast, AstNode, Direction, SyntaxNode, SyntaxToken,
     TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -21,6 +20,7 @@ use crate::{
     Function, HirFileId, InFile, Local, MacroDef, Module, Name, Origin, Path, PathResolution,
     ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
+use hir_expand::ExpansionInfo;
 use ra_prof::profile;
 
 /// Primary API to get semantic information, like types, from syntax trees.
@@ -337,20 +337,10 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 
 // FIXME: Change `HasSource` trait to work with `Semantics` and remove this?
 pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileRange {
-    let mut elem: InFile<SyntaxElement> = node.map(|n| n.clone().into());
-
-    while let Some((range, Origin::Call)) = original_range_and_origin(db, elem.as_ref()) {
+    if let Some(range) = original_range_opt(db, node) {
         let original_file = range.file_id.original_file(db);
-
         if range.file_id == original_file.into() {
             return FileRange { file_id: original_file, range: range.value };
-        }
-
-        if range.file_id != elem.file_id {
-            if let Some(root) = db.parse_or_expand(range.file_id) {
-                elem = range.with_value(find_covering_element(&root, range.value));
-                continue;
-            }
         }
 
         log::error!("Fail to mapping up more for {:?}", range);
@@ -370,19 +360,11 @@ pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileR
     FileRange { file_id: node.file_id.original_file(db), range: node.value.text_range() }
 }
 
-fn original_range_and_origin(
+fn original_range_opt(
     db: &impl HirDatabase,
-    elem: InFile<&SyntaxElement>,
-) -> Option<(InFile<TextRange>, Origin)> {
-    let expansion = elem.file_id.expansion_info(db)?;
-
-    let node = match elem.as_ref().value {
-        NodeOrToken::Node(it) => elem.with_value(it),
-        NodeOrToken::Token(it) => {
-            let (tt, origin) = expansion.map_token_up(elem.with_value(it))?;
-            return Some((tt.map(|it| it.text_range()), origin));
-        }
-    };
+    node: InFile<&SyntaxNode>,
+) -> Option<InFile<TextRange>> {
+    let expansion = node.file_id.expansion_info(db)?;
 
     // the input node has only one token ?
     let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
@@ -390,23 +372,30 @@ fn original_range_and_origin(
 
     Some(node.value.descendants().find_map(|it| {
         let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
+        let first = ascend_call_token(db, &expansion, node.with_value(first))?;
+
         let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
+        let last = ascend_call_token(db, &expansion, node.with_value(last))?;
 
-        if !single && first == last {
+        if (!single && first == last) || (first.file_id != last.file_id) {
             return None;
         }
 
-        // Try to map first and last tokens of node, and, if success, return the union range of mapped tokens
-        let (first, first_origin) = expansion.map_token_up(node.with_value(&first))?;
-        let (last, last_origin) = expansion.map_token_up(node.with_value(&last))?;
-
-        if first.file_id != last.file_id || first_origin != last_origin {
-            return None;
-        }
-
-        Some((
-            first.with_value(first.value.text_range().extend_to(&last.value.text_range())),
-            first_origin,
-        ))
+        Some(first.with_value(first.value.text_range().extend_to(&last.value.text_range())))
     })?)
+}
+
+fn ascend_call_token(
+    db: &impl HirDatabase,
+    expansion: &ExpansionInfo,
+    token: InFile<SyntaxToken>,
+) -> Option<InFile<SyntaxToken>> {
+    let (mapped, origin) = expansion.map_token_up(token.as_ref())?;
+    if origin != Origin::Call {
+        return None;
+    }
+    if let Some(info) = mapped.file_id.expansion_info(db) {
+        return ascend_call_token(db, &info, mapped);
+    }
+    Some(mapped)
 }

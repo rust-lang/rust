@@ -739,6 +739,30 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
+    fn test_hover_through_func_in_macro_recursive() {
+        let hover_on = check_hover_result(
+            "
+            //- /lib.rs
+            macro_rules! id_deep {
+                ($($tt:tt)*) => { $($tt)* }
+            }
+            macro_rules! id {
+                ($($tt:tt)*) => { id_deep!($($tt)*) }
+            }
+            fn bar() -> u32 {
+                0
+            }
+            fn foo() {
+                let a = id!([0u32, bar(<|>)] );
+            }
+            ",
+            &["u32"],
+        );
+
+        assert_eq!(hover_on, "bar()")
+    }
+
+    #[test]
     fn test_hover_through_literal_string_in_macro() {
         let hover_on = check_hover_result(
             r#"
