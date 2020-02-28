@@ -406,20 +406,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
     }
 
-    /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
-    /// This method is intentionally private, do not make it public.
     #[inline]
-    fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        match self {
-            Scalar::Raw { data: 0, .. } => throw_unsup!(InvalidNullPointerUsage),
-            Scalar::Raw { .. } => throw_unsup!(ReadBytesAsPointer),
-            Scalar::Ptr(p) => Ok(p),
-        }
-    }
-
-    #[inline(always)]
     pub fn assert_ptr(self) -> Pointer<Tag> {
-        self.to_ptr().expect("expected a Pointer but got Raw bits")
+        match self {
+            Scalar::Ptr(p) => p,
+            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits")
+        }
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
