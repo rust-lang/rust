@@ -11,6 +11,16 @@ export function assert(condition: unknown, explanation: string): asserts conditi
     }
 }
 
+assert.eq = <T>(bibba: unknown, bobba: T, explanation: string): asserts bibba is T => {
+    try {
+        nativeAssert.strictEqual(bibba, bobba, explanation);
+    } catch (err) {
+        log.error(`Equality assertion failed:`, explanation);
+        throw err;
+    }
+}
+
+
 export const log = {
     enabled: true,
     debug(message?: any, ...optionalParams: any[]): void {
