@@ -843,6 +843,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     PatKind::Wild
                 }
                 Err(LitToConstError::Reported) => PatKind::Wild,
+                Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
             }
         }
     }
