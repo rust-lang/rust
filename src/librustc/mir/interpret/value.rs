@@ -170,6 +170,10 @@ impl<Tag> From<Double> for Scalar<Tag> {
 }
 
 impl Scalar<()> {
+    /// Make sure the `data` fits in `size`.
+    /// This is guaranteed by all constructors here, but since the enum variants are public,
+    /// it could still be violated (even though no code outside this file should
+    /// construct `Scalar`s).
     #[inline(always)]
     fn check_data(data: u128, size: u8) {
         debug_assert_eq!(
