@@ -158,7 +158,7 @@ fn parse_args<'a>(
         } // accept trailing commas
         if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             named = true;
-            let name = if let token::Ident(name, _) = p.token.kind {
+            let name = if let token::Ident(name, _) = p.normalized_token.kind {
                 p.bump();
                 name
             } else {

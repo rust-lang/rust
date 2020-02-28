@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
             path
         });
 
-        let lo = self.unnormalized_token.span;
+        let lo = self.token.span;
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat(&token::ModSep) {
@@ -238,11 +238,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
-        match self.token.kind {
+        match self.normalized_token.kind {
             token::Ident(name, _) if name.is_path_segment_keyword() => {
-                let span = self.token.span;
                 self.bump();
-                Ok(Ident::new(name, span))
+                Ok(Ident::new(name, self.normalized_prev_token.span))
             }
             _ => self.parse_ident(),
         }

@@ -197,10 +197,17 @@ impl Lit {
             }
             token::Literal(lit) => lit,
             token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
-                    if let ast::ExprKind::Lit(lit) = &expr.kind {
-                        return Ok(lit.clone());
+                match &**nt {
+                    token::NtIdent(ident, false) if ident.name.is_bool_lit() => {
+                        let lit = token::Lit::new(token::Bool, ident.name, None);
+                        return Lit::from_lit_token(lit, ident.span);
                     }
+                    token::NtExpr(expr) | token::NtLiteral(expr) => {
+                        if let ast::ExprKind::Lit(lit) = &expr.kind {
+                            return Ok(lit.clone());
+                        }
+                    }
+                    _ => {}
                 }
                 return Err(LitError::NotLiteral);
             }
