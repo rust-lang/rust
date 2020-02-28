@@ -214,8 +214,13 @@ fn highlight_element(
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
         BYTE => HighlightTag::ByteLiteral.into(),
         CHAR => HighlightTag::CharLiteral.into(),
-        // FIXME: set Declaration for decls
-        LIFETIME => HighlightTag::Lifetime.into(),
+        LIFETIME => {
+            let h = Highlight::new(HighlightTag::Lifetime);
+            dbg!(match element.parent().map(|it| it.kind()) {
+                Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
+                _ => h,
+            })
+        }
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);

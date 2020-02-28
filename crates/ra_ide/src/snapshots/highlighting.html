@@ -3,7 +3,7 @@
 body                { margin: 0; }
 pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
-
+.lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }
@@ -27,14 +27,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 </style>
 <pre><code><span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
-<span class="keyword">struct</span> <span class="struct">Foo</span> {
-    <span class="keyword">pub</span> <span class="field">x</span>: <span class="builtin_type">i32</span>,
-    <span class="keyword">pub</span> <span class="field">y</span>: <span class="builtin_type">i32</span>,
+<span class="keyword">struct</span> <span class="struct declaration">Foo</span> {
+    <span class="keyword">pub</span> <span class="field declaration">x</span>: <span class="builtin_type">i32</span>,
+    <span class="keyword">pub</span> <span class="field declaration">y</span>: <span class="builtin_type">i32</span>,
 }
 
-<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type_param">T</span>&gt;() -&gt; <span class="type_param">T</span> {
-    <span class="macro">unimplemented</span><span class="macro">!</span>();
-    <span class="function">foo</span>::&lt;<span class="builtin_type">i32</span>&gt;();
+<span class="keyword">fn</span> <span class="function declaration">foo</span>&lt;<span class="lifetime declaration">'a</span>, <span class="type_param declaration">T</span>&gt;() -&gt; <span class="type_param">T</span> {
+    <span class="function">foo</span>::&lt;<span class="lifetime">'a</span>, <span class="builtin_type">i32</span>&gt;()
 }
 
 <span class="macro">macro_rules</span><span class="macro">!</span> def_fn {
@@ -42,40 +41,40 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 }
 
 <span class="macro">def_fn</span><span class="macro">!</span> {
-    <span class="keyword">fn</span> <span class="function">bar</span>() -&gt; <span class="builtin_type">u32</span> {
+    <span class="keyword">fn</span> <span class="function declaration">bar</span>() -&gt; <span class="builtin_type">u32</span> {
         <span class="numeric_literal">100</span>
     }
 }
 
 <span class="comment">// comment</span>
-<span class="keyword">fn</span> <span class="function">main</span>() {
+<span class="keyword">fn</span> <span class="function declaration">main</span>() {
     <span class="macro">println</span><span class="macro">!</span>(<span class="string_literal">"Hello, {}!"</span>, <span class="numeric_literal">92</span>);
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable mutable">vec</span> = Vec::new();
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">vec</span> = Vec::new();
     <span class="keyword control">if</span> <span class="keyword">true</span> {
-        <span class="keyword">let</span> <span class="variable">x</span> = <span class="numeric_literal">92</span>;
+        <span class="keyword">let</span> <span class="variable declaration">x</span> = <span class="numeric_literal">92</span>;
         <span class="variable mutable">vec</span>.push(<span class="struct">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="numeric_literal">1</span> });
     }
     <span class="keyword unsafe">unsafe</span> { <span class="variable mutable">vec</span>.set_len(<span class="numeric_literal">0</span>); }
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable mutable">x</span> = <span class="numeric_literal">42</span>;
-    <span class="keyword">let</span> <span class="variable mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;
-    <span class="keyword">let</span> <span class="variable">z</span> = &<span class="variable mutable">y</span>;
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> = <span class="numeric_literal">42</span>;
+    <span class="keyword">let</span> <span class="variable declaration mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;
+    <span class="keyword">let</span> <span class="variable declaration">z</span> = &<span class="variable mutable">y</span>;
 
     <span class="variable mutable">y</span>;
 }
 
-<span class="keyword">enum</span> <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
-    <span class="enum_variant">Some</span>(<span class="type_param">T</span>),
-    <span class="enum_variant">None</span>,
+<span class="keyword">enum</span> <span class="enum declaration">Option</span>&lt;<span class="type_param declaration">T</span>&gt; {
+    <span class="enum_variant declaration">Some</span>(<span class="type_param">T</span>),
+    <span class="enum_variant declaration">None</span>,
 }
 <span class="keyword">use</span> <span class="enum">Option</span>::*;
 
-<span class="keyword">impl</span>&lt;<span class="type_param">T</span>&gt; <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
-    <span class="keyword">fn</span> <span class="function">and</span>&lt;<span class="type_param">U</span>&gt;(<span class="keyword">self</span>, <span class="variable">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
+<span class="keyword">impl</span>&lt;<span class="type_param declaration">T</span>&gt; <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
+    <span class="keyword">fn</span> <span class="function declaration">and</span>&lt;<span class="type_param declaration">U</span>&gt;(<span class="keyword">self</span>, <span class="variable declaration">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
         <span class="keyword control">match</span> <span class="variable">other</span> {
-            <span class="enum_variant">None</span> =&gt; <span class="macro">todo</span><span class="macro">!</span>(),
-            <span class="variable">Nope</span> =&gt; <span class="variable">Nope</span>,
+            <span class="enum_variant">None</span> =&gt; <span class="macro">unimplemented</span><span class="macro">!</span>(),
+            <span class="variable declaration">Nope</span> =&gt; <span class="variable">Nope</span>,
         }
     }
 }</code></pre>

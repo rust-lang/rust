@@ -17,9 +17,8 @@ struct Foo {
     pub y: i32,
 }
 
-fn foo<T>() -> T {
-    unimplemented!();
-    foo::<i32>();
+fn foo<'a, T>() -> T {
+    foo::<'a, i32>()
 }
 
 macro_rules! def_fn {
@@ -59,7 +58,7 @@ use Option::*;
 impl<T> Option<T> {
     fn and<U>(self, other: Option<U>) -> Option<(T, U)> {
         match other {
-            None => todo!(),
+            None => unimplemented!(),
             Nope => Nope,
         }
     }
@@ -130,5 +129,5 @@ fn test_ranges() {
         .highlight_range(FileRange { file_id, range: TextRange::offset_len(82.into(), 1.into()) })
         .unwrap();
 
-    assert_eq!(&highlights[0].highlight.to_string(), "field");
+    assert_eq!(&highlights[0].highlight.to_string(), "field.declaration");
 }
