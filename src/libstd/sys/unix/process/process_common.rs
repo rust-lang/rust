@@ -287,9 +287,7 @@ impl CStringArray {
 
 fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
-    for (k, v) in env {
-        let mut k: OsString = k.into();
-
+    for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator
         k.reserve_exact(v.len() + 2);
         k.push("=");

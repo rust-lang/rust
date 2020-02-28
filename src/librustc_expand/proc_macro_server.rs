@@ -60,7 +60,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
-                return TokenTree::Group(Group { delimiter, stream: tts.into(), span });
+                return TokenTree::Group(Group { delimiter, stream: tts, span });
             }
             tokenstream::TokenTree::Token(token) => token,
         };
@@ -196,12 +196,8 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
             TokenTree::Group(Group { delimiter, stream, span }) => {
-                return tokenstream::TokenTree::Delimited(
-                    span,
-                    delimiter.to_internal(),
-                    stream.into(),
-                )
-                .into();
+                return tokenstream::TokenTree::Delimited(span, delimiter.to_internal(), stream)
+                    .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();

@@ -831,8 +831,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .last()
                 .cloned()
                 .map(|id| Ok(self.lower_node_id(id)))
-                .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                .into(),
+                .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)),
         };
         hir::Destination { label: destination.map(|(_, label)| label), target_id }
     }
@@ -841,7 +840,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if self.is_in_loop_condition && opt_label.is_none() {
             hir::Destination {
                 label: None,
-                target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition),
             }
         } else {
             self.lower_loop_destination(opt_label.map(|label| (id, label)))
@@ -912,7 +911,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .collect(),
             asm: asm.asm,
             asm_str_style: asm.asm_str_style,
-            clobbers: asm.clobbers.clone().into(),
+            clobbers: asm.clobbers.clone(),
             volatile: asm.volatile,
             alignstack: asm.alignstack,
             dialect: asm.dialect,

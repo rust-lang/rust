@@ -155,8 +155,7 @@ pub(super) fn transcribe(
                     }
 
                     // Step back into the parent Delimited.
-                    let tree =
-                        TokenTree::Delimited(span, forest.delim, TokenStream::new(result).into());
+                    let tree = TokenTree::Delimited(span, forest.delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }

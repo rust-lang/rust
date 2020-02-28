@@ -882,7 +882,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: tcx_hir.span(var_id),
                         },
                         place: Place {
-                            local: closure_env_arg.into(),
+                            local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
                         },
                     });
@@ -927,7 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
                         } else {
-                            let binding_mode = ty::BindingMode::BindByValue(mutability.into());
+                            let binding_mode = ty::BindingMode::BindByValue(mutability);
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,

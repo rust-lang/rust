@@ -209,7 +209,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 
     // We return the qualifs in the return place for every MIR body, even though it is only used
     // when deciding to promote a reference to a `const` for now.
-    validator.qualifs_in_return_place().into()
+    validator.qualifs_in_return_place()
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {

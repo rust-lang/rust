@@ -67,7 +67,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             };
             ConstValue::from_machine_usize(n, &tcx)
         }
-        sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty).into()),
+        sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty)),
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }

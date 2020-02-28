@@ -327,8 +327,7 @@ impl<'a> StringReader<'a> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal".into())
-                        .raise()
+                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
                 }
                 let content_start = start + BytePos(1);
                 let content_end = suffix_start - BytePos(1);
@@ -338,12 +337,8 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(
-                        start + BytePos(1),
-                        suffix_start,
-                        "unterminated byte constant".into(),
-                    )
-                    .raise()
+                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
+                        .raise()
                 }
                 let content_start = start + BytePos(2);
                 let content_end = suffix_start - BytePos(1);
@@ -353,7 +348,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string".into())
+                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
                         .raise()
                 }
                 let content_start = start + BytePos(1);
@@ -367,7 +362,7 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(
                         start + BytePos(1),
                         suffix_start,
-                        "unterminated double quote byte string".into(),
+                        "unterminated double quote byte string",
                     )
                     .raise()
                 }

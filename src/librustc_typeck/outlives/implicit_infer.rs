@@ -312,6 +312,6 @@ pub fn check_explicit_predicates<'tcx>(
 
         let predicate = outlives_predicate.subst(tcx, substs);
         debug!("predicate = {:?}", &predicate);
-        insert_outlives_predicate(tcx, predicate.0.into(), predicate.1, span, required_predicates);
+        insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }
 }

@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
-        let local = self.parse_local(attrs.into())?;
+        let local = self.parse_local(attrs)?;
         Ok(self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local)))
     }
 
