@@ -72,6 +72,9 @@ RUN ./install-mips-musl.sh
 COPY dist-various-1/install-mipsel-musl.sh /build
 RUN ./install-mipsel-musl.sh
 
+COPY dist-various-1/install-aarch64-none-elf.sh /build
+RUN ./install-aarch64-none-elf.sh
+
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -140,6 +143,8 @@ ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
+ENV TARGETS=$TARGETS,aarch64-unknown-none
+ENV TARGETS=$TARGETS,aarch64-unknown-none-softfloat
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,x86_64-unknown-redox
 ENV TARGETS=$TARGETS,thumbv6m-none-eabi
@@ -178,6 +183,10 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_armv7a_none_eabihf=arm-none-eabi-gcc \
     CFLAGS_armv7a_none_eabi=-march=armv7-a \
     CFLAGS_armv7a_none_eabihf=-march=armv7-a+vfpv3 \
+    CC_aarch64_unknown_none_softfloat=aarch64-none-elf-gcc \
+    CFLAGS_aarch64_unknown_none_softfloat=-mstrict-align -march=armv8-a+nofp+nosimd \
+    CC_aarch64_unknown_none=aarch64-none-elf-gcc \
+    CFLAGS_aarch64_unknown_none=-mstrict-align -march=armv8-a+fp+simd \
     CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
     AR_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
     CXX_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++ \
