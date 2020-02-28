@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
-        format!("top-level module")
+        "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id))
     }

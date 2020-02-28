@@ -98,7 +98,7 @@ impl<'a> Resolver<'a> {
                     E0401,
                     "can't use generic parameters from outer function",
                 );
-                err.span_label(span, format!("use of generic parameter from outer function"));
+                err.span_label(span, "use of generic parameter from outer function".to_string());
 
                 let sm = self.session.source_map();
                 match outer_res {
@@ -155,7 +155,8 @@ impl<'a> Resolver<'a> {
                     } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
-                            format!("try adding a local generic parameter in this method instead"),
+                            "try adding a local generic parameter in this method instead"
+                                .to_string(),
                         );
                     } else {
                         err.help("try using a local generic parameter instead");

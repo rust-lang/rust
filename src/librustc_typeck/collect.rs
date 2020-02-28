@@ -160,7 +160,7 @@ crate fn placeholder_type_error(
     }) {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-        sugg.push((arg.span, format!("{}", type_name)));
+        sugg.push((arg.span, type_name.to_string()));
     } else {
         sugg.push((
             generics.iter().last().unwrap().span.shrink_to_hi(),
@@ -475,7 +475,7 @@ fn get_new_lifetime_name<'tcx>(
 
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
-            let mut s = format!("'");
+            let mut s = '\''.to_string();
             s.extend(std::iter::repeat(char::from(c)).take(n));
             s
         })
