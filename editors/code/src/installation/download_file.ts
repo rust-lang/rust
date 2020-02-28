@@ -2,8 +2,7 @@ import fetch from "node-fetch";
 import * as fs from "fs";
 import * as stream from "stream";
 import * as util from "util";
-import { strict as assert } from "assert";
-import { log } from "../util";
+import { log, assert } from "../util";
 
 const pipeline = util.promisify(stream.pipeline);
 

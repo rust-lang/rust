@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { promises as fs } from "fs";
-import { strict as assert } from "assert";
 
 import { ArtifactReleaseInfo } from "./interfaces";
 import { downloadFile } from "./download_file";
+import { assert } from "../util";
 
 /**
  * Downloads artifact from given `downloadUrl`.
@@ -19,11 +19,10 @@ export async function downloadArtifact(
     installationDir: string,
     displayName: string,
 ) {
-    await fs.mkdir(installationDir).catch(err => assert.strictEqual(
-        err?.code,
-        "EEXIST",
+    await fs.mkdir(installationDir).catch(err => assert(
+        err?.code === "EEXIST",
         `Couldn't create directory "${installationDir}" to download ` +
-        `${artifactFileName} artifact: ${err.message}`
+        `${artifactFileName} artifact: ${err?.message}`
     ));
 
     const installationPath = path.join(installationDir, artifactFileName);

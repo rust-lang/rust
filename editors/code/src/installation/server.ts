@@ -1,13 +1,12 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { strict as assert } from "assert";
 import { promises as dns } from "dns";
 import { spawnSync } from "child_process";
 
 import { BinarySource } from "./interfaces";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 import { downloadArtifact } from "./download_artifact";
-import { log } from "../util";
+import { log, assert } from "../util";
 
 export async function ensureServerBinary(source: null | BinarySource): Promise<null | string> {
     if (!source) {

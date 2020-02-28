@@ -1,22 +1,31 @@
 import * as lc from "vscode-languageclient";
 import * as vscode from "vscode";
+import { strict as nativeAssert } from "assert";
 
-let enabled: boolean = false;
+export function assert(condition: boolean, explanation: string): asserts condition {
+    try {
+        nativeAssert(condition, explanation);
+    } catch (err) {
+        log.error(`Assertion failed:`, explanation);
+        throw err;
+    }
+}
 
 export const log = {
+    enabled: true,
     debug(message?: any, ...optionalParams: any[]): void {
-        if (!enabled) return;
+        if (!log.enabled) return;
         // eslint-disable-next-line no-console
         console.log(message, ...optionalParams);
     },
     error(message?: any, ...optionalParams: any[]): void {
-        if (!enabled) return;
+        if (!log.enabled) return;
         debugger;
         // eslint-disable-next-line no-console
         console.error(message, ...optionalParams);
     },
     setEnabled(yes: boolean): void {
-        enabled = yes;
+        log.enabled = yes;
     }
 };
 
