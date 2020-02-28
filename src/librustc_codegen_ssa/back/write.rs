@@ -1244,11 +1244,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         while !codegen_done
             || running > 0
             || (!codegen_aborted
-                && (!work_items.is_empty()
-                    || !needs_fat_lto.is_empty()
-                    || !needs_thin_lto.is_empty()
-                    || !lto_import_only_modules.is_empty()
-                    || main_thread_worker_state != MainThreadWorkerState::Idle))
+                && !(work_items.is_empty()
+                    && needs_fat_lto.is_empty()
+                    && needs_thin_lto.is_empty()
+                    && lto_import_only_modules.is_empty()
+                    && main_thread_worker_state == MainThreadWorkerState::Idle))
         {
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
