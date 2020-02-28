@@ -33,26 +33,12 @@ pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> 
         return None;
     }
 
-    let module = path.syntax().ancestors().find_map(ast::Module::cast);
-    let position = match module.and_then(|it| it.item_list()) {
-        Some(item_list) => item_list.syntax().clone(),
-        None => {
-            let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
-            current_file.syntax().clone()
-        }
-    };
-
     ctx.add_assist(
         AssistId("replace_qualified_name_with_use"),
         "Replace qualified path with use",
         |edit| {
             let path_to_import = hir_path.mod_path().clone();
-            insert_use_statement(
-                &position,
-                &path.syntax(),
-                &path_to_import,
-                edit.text_edit_builder(),
-            );
+            insert_use_statement(path.syntax(), &path_to_import, edit.text_edit_builder());
 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement

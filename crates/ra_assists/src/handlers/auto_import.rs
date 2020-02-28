@@ -53,7 +53,6 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
             edit.target(auto_import_assets.syntax_under_caret.text_range());
             insert_use_statement(
                 &auto_import_assets.syntax_under_caret,
-                &auto_import_assets.syntax_under_caret,
                 &import,
                 edit.text_edit_builder(),
             );
