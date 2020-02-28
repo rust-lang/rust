@@ -1199,8 +1199,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
             loop {
                 let mut split_edge = match search::search_node(left_node, key) {
                     // key is going to the right tree
-                    Found(handle) => handle.left_edge(),
-                    GoDown(handle) => handle,
+                    Found(kv) => kv.left_edge(),
+                    GoDown(edge) => edge,
                 };
 
                 split_edge.move_suffix(&mut right_node);
@@ -1354,7 +1354,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_unchecked()) }
+            Some(unsafe { self.range.next_unchecked() })
         }
     }
 
@@ -1377,7 +1377,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_back_unchecked()) }
+            Some(unsafe { self.range.next_back_unchecked() })
         }
     }
 }
@@ -1626,7 +1626,7 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { unsafe { Some(self.next_unchecked()) } }
+        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a V)> {
