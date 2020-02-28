@@ -289,9 +289,6 @@ declare_features! (
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (active, unwind_attributes, "1.4.0", Some(58760), None),
 
-    /// Allows `#[no_debug]`.
-    (active, no_debug, "1.5.0", Some(29721), None),
-
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 

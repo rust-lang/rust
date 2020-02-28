@@ -503,16 +503,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             cfg_fn!(rustc_attrs),
         ),
     ),
-    (
-        sym::no_debug, Whitelisted, template!(Word),
-        Gated(
-            Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721", None),
-            sym::no_debug,
-            "the `#[no_debug]` attribute was an experimental feature that has been \
-            deprecated due to lack of demand",
-            cfg_fn!(no_debug)
-        )
-    ),
     gated!(
         // Used in resolve:
         prelude_import, Whitelisted, template!(Word),

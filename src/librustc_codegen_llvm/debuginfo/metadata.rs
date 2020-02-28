@@ -2269,10 +2269,6 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let tcx = cx.tcx;
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-        return;
-    }
-
     let no_mangle = attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
