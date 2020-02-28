@@ -26,7 +26,11 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `Opts`
 LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |                                ^ expected `&isize`, found `isize`
+   |               -----            ^ expected `&isize`, found `isize`
+   |               |
+   |               first introduced with type `&isize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
@@ -34,7 +38,11 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `Opts`
 LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |                                ^ expected `&isize`, found `isize`
+   |               -----            ^ expected `&isize`, found `isize`
+   |               |
+   |               first introduced with type `&isize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:25:36
@@ -42,10 +50,13 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `Opts`
 LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
-   |                                    ^^^^^ types differ in mutability
+   |               ---------            ^^^^^ types differ in mutability
+   |               |
+   |               first introduced with type `&mut isize` here
    |
    = note: expected type `&mut isize`
               found type `&isize`
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 6 previous errors
 

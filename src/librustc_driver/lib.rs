@@ -521,7 +521,7 @@ fn stdout_isatty() -> bool {
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
-        if code.starts_with("E") { code.to_string() } else { format!("E{0:0>4}", code) };
+        if code.starts_with('E') { code.to_string() } else { format!("E{0:0>4}", code) };
     match registry.find_description(&normalised) {
         Some(ref description) => {
             let mut is_in_code_block = false;
@@ -601,7 +601,7 @@ impl RustcDefaultCalls {
             });
             compiler.codegen_backend().link(&sess, Box::new(codegen_results), &outputs)
         } else {
-            sess.fatal(&format!("rlink must be a file"))
+            sess.fatal("rlink must be a file")
         }
     }
 

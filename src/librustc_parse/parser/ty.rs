@@ -5,7 +5,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{self, BareFnTy, FnRetTy, GenericParam, Ident, Lifetime, MutTy, Ty, TyKind};
+use syntax::ast::{self, BareFnTy, FnRetTy, GenericParam, Lifetime, MutTy, Ty, TyKind};
 use syntax::ast::{
     GenericBound, GenericBounds, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax,
 };
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(kw::Dyn)
-            && (self.token.span.rust_2018()
+            && (self.normalized_token.span.rust_2018()
                 || self.look_ahead(1, |t| {
                     t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
                 }))
@@ -604,9 +604,8 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
-            let span = self.token.span;
             self.bump();
-            Lifetime { ident: Ident::new(ident.name, span), id: ast::DUMMY_NODE_ID }
+            Lifetime { ident, id: ast::DUMMY_NODE_ID }
         } else {
             self.span_bug(self.token.span, "not a lifetime")
         }

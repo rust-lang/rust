@@ -456,8 +456,9 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, _: NodeId) {
         let rib_kind = match fn_kind {
-            FnKind::Fn(FnCtxt::Foreign, ..) => return visit::walk_fn(self, fn_kind, sp),
-            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
+            // Bail if there's no body.
+            FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
+            FnKind::Fn(FnCtxt::Free, ..) | FnKind::Fn(FnCtxt::Foreign, ..) => FnItemRibKind,
             FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
         };
         let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));

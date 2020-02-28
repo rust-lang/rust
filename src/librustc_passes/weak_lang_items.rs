@@ -64,9 +64,9 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
     for (name, &item) in WEAK_ITEMS_REFS.iter() {
         if missing.contains(&item) && !whitelisted(tcx, item) && items.require(item).is_err() {
             if item == lang_items::PanicImplLangItem {
-                tcx.sess.err(&format!("`#[panic_handler]` function required, but not found"));
+                tcx.sess.err("`#[panic_handler]` function required, but not found");
             } else if item == lang_items::OomLangItem {
-                tcx.sess.err(&format!("`#[alloc_error_handler]` function required, but not found"));
+                tcx.sess.err("`#[alloc_error_handler]` function required, but not found");
             } else {
                 tcx.sess.err(&format!("language item required, but not found: `{}`", name));
             }

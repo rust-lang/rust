@@ -158,7 +158,7 @@ fn parse_args<'a>(
         } // accept trailing commas
         if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             named = true;
-            let name = if let token::Ident(name, _) = p.token.kind {
+            let name = if let token::Ident(name, _) = p.normalized_token.kind {
                 p.bump();
                 name
             } else {
@@ -894,7 +894,7 @@ pub fn expand_preparsed_format_args(
     };
 
     let (is_literal, fmt_snippet) = match ecx.source_map().span_to_snippet(fmt_sp) {
-        Ok(s) => (s.starts_with("\"") || s.starts_with("r#"), Some(s)),
+        Ok(s) => (s.starts_with('"') || s.starts_with("r#"), Some(s)),
         _ => (false, None),
     };
 

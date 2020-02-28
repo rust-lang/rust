@@ -741,11 +741,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
-        match self.token.kind {
+        match self.normalized_token.kind {
             token::Ident(name @ kw::Underscore, false) => {
-                let span = self.token.span;
                 self.bump();
-                Ok(Ident::new(name, span))
+                Ok(Ident::new(name, self.normalized_prev_token.span))
             }
             _ => self.parse_ident(),
         }
@@ -1537,7 +1536,7 @@ impl<'a> Parser<'a> {
 
         let is_name_required = match self.token.kind {
             token::DotDotDot => false,
-            _ => req_name(&self.token),
+            _ => req_name(&self.normalized_token),
         };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
@@ -1603,12 +1602,11 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| {
-            match this.token.kind {
+            match this.normalized_token.kind {
                 // Preserve hygienic context.
                 token::Ident(name, _) => {
-                    let span = this.token.span;
                     this.bump();
-                    Ident::new(name, span)
+                    Ident::new(name, this.normalized_prev_token.span)
                 }
                 _ => unreachable!(),
             }
@@ -1645,7 +1643,7 @@ impl<'a> Parser<'a> {
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.token.kind {
+        let (eself, eself_ident, eself_hi) = match self.normalized_token.kind {
             token::BinOp(token::And) => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`

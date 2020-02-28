@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/const.rs:14:9
    |
+LL |     match &f {
+   |           -- this expression has type `&Foo`
 LL |         FOO => {},
    |         ^^^ expected `&Foo`, found struct `Foo`
 

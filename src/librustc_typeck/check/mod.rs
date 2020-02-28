@@ -4996,7 +4996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let sugg = if receiver.ends_with(".clone()")
                                 && method_call_list.contains(&method_call.as_str())
                             {
-                                let max_len = receiver.rfind(".").unwrap();
+                                let max_len = receiver.rfind('.').unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
                                 if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
@@ -5447,9 +5447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.impl_self_ty(span, impl_def_id).ty;
-            let adt_def = ty.ty_adt_def();
-
+            let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
             match ty.kind {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
@@ -5464,7 +5462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
-                    if let Some(adt_def) = adt_def {
+                    if let Some(adt_def) = ty.ty_adt_def() {
                         match adt_def.adt_kind() {
                             AdtKind::Enum => {
                                 err.help("did you mean to use one of the enum's variants?");

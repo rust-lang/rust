@@ -81,10 +81,7 @@ impl AssertModuleSource<'tcx> {
         if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
             self.tcx.sess.span_fatal(
                 attr.span,
-                &format!(
-                    "found CGU-reuse attribute but `-Zquery-dep-graph` \
-                          was not specified"
-                ),
+                "found CGU-reuse attribute but `-Zquery-dep-graph` was not specified",
             );
         }
 
@@ -107,7 +104,7 @@ impl AssertModuleSource<'tcx> {
         }
 
         // Split of the "special suffix" if there is one.
-        let (user_path, cgu_special_suffix) = if let Some(index) = user_path.rfind(".") {
+        let (user_path, cgu_special_suffix) = if let Some(index) = user_path.rfind('.') {
             (&user_path[..index], Some(&user_path[index + 1..]))
         } else {
             (&user_path[..], None)

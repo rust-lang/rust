@@ -121,15 +121,12 @@ impl<'a> Parser<'a> {
                         .span_label(attrs[0].span, "attributes must go before parameters")
                         .emit();
                     } else {
-                        self.struct_span_err(
-                            attrs[0].span,
-                            &format!("attribute without generic parameters"),
-                        )
-                        .span_label(
-                            attrs[0].span,
-                            "attributes are only permitted when preceding parameters",
-                        )
-                        .emit();
+                        self.struct_span_err(attrs[0].span, "attribute without generic parameters")
+                            .span_label(
+                                attrs[0].span,
+                                "attributes are only permitted when preceding parameters",
+                            )
+                            .emit();
                     }
                 }
                 break;

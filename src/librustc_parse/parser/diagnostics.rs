@@ -13,7 +13,7 @@ use syntax::ast::{
 };
 use syntax::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use syntax::ptr::P;
-use syntax::token::{self, token_can_begin_expr, TokenKind};
+use syntax::token::{self, TokenKind};
 use syntax::util::parser::AssocOp;
 
 use log::{debug, trace};
@@ -192,12 +192,12 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(token::DelimToken::Brace),
             TokenKind::CloseDelim(token::DelimToken::Paren),
         ];
-        if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.token.span).is_raw_guess()
+        if let token::Ident(name, false) = self.normalized_token.kind {
+            if Ident::new(name, self.normalized_token.span).is_raw_guess()
                 && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
             {
                 err.span_suggestion(
-                    self.token.span,
+                    self.normalized_token.span,
                     "you can escape reserved keywords to use them as identifiers",
                     format!("r#{}", name),
                     Applicability::MaybeIncorrect,
@@ -900,8 +900,7 @@ impl<'a> Parser<'a> {
         } else if !sm.is_multiline(self.prev_span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.
         } else if self.look_ahead(1, |t| {
-            t == &token::CloseDelim(token::Brace)
-                || token_can_begin_expr(t) && t.kind != token::Colon
+            t == &token::CloseDelim(token::Brace) || t.can_begin_expr() && t.kind != token::Colon
         }) && [token::Comma, token::Colon].contains(&self.token.kind)
         {
             // Likely typo: `,` → `;` or `:` → `;`. This is triggered if the current token is
@@ -919,7 +918,7 @@ impl<'a> Parser<'a> {
         } else if self.look_ahead(0, |t| {
             t == &token::CloseDelim(token::Brace)
                 || (
-                    token_can_begin_expr(t) && t != &token::Semi && t != &token::Pound
+                    t.can_begin_expr() && t != &token::Semi && t != &token::Pound
                     // Avoid triggering with too many trailing `#` in raw string.
                 )
         }) {

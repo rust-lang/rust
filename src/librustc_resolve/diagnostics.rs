@@ -143,7 +143,7 @@ impl<'a> Resolver<'a> {
                 if has_generic_params == HasGenericParams::Yes {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
-                    let sugg_msg = &format!("try using a local generic parameter instead");
+                    let sugg_msg = "try using a local generic parameter instead";
                     if let Some((sugg_span, snippet)) = sm.generate_local_type_param_snippet(span) {
                         // Suggest the modification to the user
                         err.span_suggestion(
@@ -158,7 +158,7 @@ impl<'a> Resolver<'a> {
                             format!("try adding a local generic parameter in this method instead"),
                         );
                     } else {
-                        err.help(&format!("try using a local generic parameter instead"));
+                        err.help("try using a local generic parameter instead");
                     }
                 }
 

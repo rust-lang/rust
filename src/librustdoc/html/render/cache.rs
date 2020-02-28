@@ -534,7 +534,7 @@ fn extern_location(
 
     if let Some(url) = extern_url {
         let mut url = url.to_string();
-        if !url.ends_with("/") {
+        if !url.ends_with('/') {
             url.push('/');
         }
         return Remote(url);
@@ -548,7 +548,7 @@ fn extern_location(
         .filter_map(|a| a.value_str())
         .map(|url| {
             let mut url = url.to_string();
-            if !url.ends_with("/") {
+            if !url.ends_with('/') {
                 url.push('/')
             }
             Remote(url)

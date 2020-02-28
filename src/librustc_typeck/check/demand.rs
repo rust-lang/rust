@@ -43,7 +43,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = &self.misc(sp);
+        self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
+    }
+
+    pub fn demand_suptype_with_origin(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -404,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if src.starts_with("\"") {
+                            if src.starts_with('"') {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -701,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Remove fractional part from literal, for example `42.0f32` into `42`
                     let src = src.trim_end_matches(&checked_ty.to_string());
-                    src.split(".").next().unwrap()
+                    src.split('.').next().unwrap()
                 } else {
                     src.trim_end_matches(&checked_ty.to_string())
                 },

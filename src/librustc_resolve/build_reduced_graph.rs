@@ -1103,7 +1103,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
     fn insert_unused_macro(&mut self, ident: Ident, node_id: NodeId, span: Span) {
-        if !ident.as_str().starts_with("_") {
+        if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(node_id, span);
         }
     }

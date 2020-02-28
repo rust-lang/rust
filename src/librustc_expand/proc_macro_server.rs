@@ -205,7 +205,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
                 span,
-            }) if symbol.as_str().starts_with("-") => {
+            }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
@@ -216,7 +216,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Float, symbol, suffix },
                 span,
-            }) if symbol.as_str().starts_with("-") => {
+            }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);

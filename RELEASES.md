@@ -1,3 +1,100 @@
+Version 1.42.0 (2020-03-12)
+==========================
+
+Language
+--------
+- [You can now use the slice pattern syntax with subslices.][67712] e.g.
+  ```rust
+  fn foo(words: &[&str]) {
+      match words {
+          ["Hello", "World", "!", ..] => println!("Hello World!"),
+          ["Foo", "Bar", ..] => println!("Baz"),
+          rest => println!("{:?}", rest),
+      }
+  }
+  ```
+- [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
+  that you can create an enum that has the exact layout and ABI of the type
+  it contains.
+- [There are some *syntax-only* changes:][67131]
+   - `default` is syntactically allowed before items in `trait` definitions.
+   - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
+     leave out their bodies in favor of `;`.
+   - Bounds on associated types in `impl`s are now syntactically allowed
+     (e.g. `type Foo: Ord;`).
+   - `...` (the C-variadic type) may occur syntactically directly as the type of
+      any function parameter.
+  
+  These are still rejected *semantically*, so you will likely receive an error
+  but these changes can be seen and parsed by procedural macros and
+  conditional compilation.
+
+Compiler
+--------
+- [Added tier 2\* support for `armv7a-none-eabi`.][68253]
+- [Added tier 2 support for `riscv64gc-unknown-linux-gnu`.][68339]
+- [`Option::{expect,unwrap}` and
+   `Result::{expect, expect_err, unwrap, unwrap_err}` now produce panic messages
+   pointing to the location where they were called, rather than
+   `core`'s internals. ][67887]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`iter::Empty<T>` now implements `Send` and `Sync` for any `T`.][68348]
+- [`Pin::{map_unchecked, map_unchecked_mut}` no longer require the return type
+   to implement `Sized`.][67935]
+- [`io::Cursor` now derives `PartialEq` and `Eq`.][67233]
+- [`Layout::new` is now `const`.][66254]
+- [Added Standard Library support for `riscv64gc-unknown-linux-gnu`.][66899]
+
+
+Stabilized APIs
+---------------
+- [`CondVar::wait_while`]
+- [`CondVar::wait_timeout_while`]
+- [`DebugMap::key`]
+- [`DebugMap::value`]
+- [`ManuallyDrop::take`]
+- [`matches!`]
+- [`ptr::slice_from_raw_parts_mut`]
+- [`ptr::slice_from_raw_parts`]
+
+Cargo
+-----
+- [You no longer need to include `extern crate proc_macro;` to be able to
+  `use proc_macro;` in the `2018` edition.][cargo/7700]
+
+Compatibility Notes
+-------------------
+- [`Error::description` has been deprecated, and its use will now produce a
+  warning.][66919] It's recommended to use `Display`/`to_string` instead.
+
+[68253]: https://github.com/rust-lang/rust/pull/68253/
+[68348]: https://github.com/rust-lang/rust/pull/68348/
+[67935]: https://github.com/rust-lang/rust/pull/67935/
+[68339]: https://github.com/rust-lang/rust/pull/68339/
+[68122]: https://github.com/rust-lang/rust/pull/68122/
+[67712]: https://github.com/rust-lang/rust/pull/67712/
+[67887]: https://github.com/rust-lang/rust/pull/67887/
+[67131]: https://github.com/rust-lang/rust/pull/67131/
+[67233]: https://github.com/rust-lang/rust/pull/67233/
+[66899]: https://github.com/rust-lang/rust/pull/66899/
+[66919]: https://github.com/rust-lang/rust/pull/66919/
+[66254]: https://github.com/rust-lang/rust/pull/66254/
+[cargo/7700]: https://github.com/rust-lang/cargo/pull/7700
+[`DebugMap::key`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.key
+[`DebugMap::value`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.value
+[`ManuallyDrop::take`]: https://doc.rust-lang.org/stable/std/mem/struct.ManuallyDrop.html#method.take
+[`matches!`]: https://doc.rust-lang.org/stable/std/macro.matches.html
+[`ptr::slice_from_raw_parts_mut`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts_mut.html
+[`ptr::slice_from_raw_parts`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts.html
+[`CondVar::wait_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_while
+[`CondVar::wait_timeout_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_timeout_while
+
+
 Version 1.41.1 (2020-02-27)
 ===========================
 
@@ -7,6 +104,7 @@ Version 1.41.1 (2020-02-27)
 
 [69225]: https://github.com/rust-lang/rust/issues/69225
 [69145]: https://github.com/rust-lang/rust/pull/69145
+
 
 Version 1.41.0 (2020-01-30)
 ===========================

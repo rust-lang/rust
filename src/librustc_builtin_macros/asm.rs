@@ -182,7 +182,7 @@ fn parse_inline_asm<'a>(
                     };
 
                     let is_rw = output.is_some();
-                    let is_indirect = constraint_str.contains("*");
+                    let is_indirect = constraint_str.contains('*');
                     outputs.push(ast::InlineAsmOutput {
                         constraint: output.unwrap_or(constraint),
                         expr,
@@ -199,7 +199,7 @@ fn parse_inline_asm<'a>(
 
                     let constraint = parse_asm_str(&mut p)?;
 
-                    if constraint.as_str().starts_with("=") {
+                    if constraint.as_str().starts_with('=') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,
@@ -207,7 +207,7 @@ fn parse_inline_asm<'a>(
                             "input operand constraint contains '='"
                         )
                         .emit();
-                    } else if constraint.as_str().starts_with("+") {
+                    } else if constraint.as_str().starts_with('+') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,
@@ -234,7 +234,7 @@ fn parse_inline_asm<'a>(
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
-                    } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
+                    } else if s.as_str().starts_with('{') || s.as_str().ends_with('}') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,

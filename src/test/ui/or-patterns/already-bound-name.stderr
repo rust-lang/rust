@@ -86,12 +86,14 @@ error[E0308]: mismatched types
   --> $DIR/already-bound-name.rs:32:31
    |
 LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
-   |                               ^                    ------- this expression has type `E<E<{integer}>>`
-   |                               |
-   |                               expected integer, found enum `E`
+   |             -                 ^                    ------- this expression has type `E<E<{integer}>>`
+   |             |                 |
+   |             |                 expected integer, found enum `E`
+   |             first introduced with type `{integer}` here
    |
    = note: expected type `{integer}`
               found type `E<{integer}>`
+   = note: a binding must have the same type in all alternatives
 
 error: aborting due to 15 previous errors
 

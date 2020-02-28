@@ -89,7 +89,11 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `(E, E)`
 LL |         (A, B) | (ref B, c) | (c, A) => ()
-   |                   ^^^^^ expected enum `E`, found `&E`
+   |             -     ^^^^^ expected enum `E`, found `&E`
+   |             |
+   |             first introduced with type `E` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 9 previous errors
 

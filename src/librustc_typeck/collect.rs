@@ -1301,10 +1301,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                             param.hir_id,
                             param.span,
                             |lint| {
-                                lint.build(&format!(
+                                lint.build(
                                     "defaults for type parameters are only allowed in \
-                                        `struct`, `enum`, `type`, or `trait` definitions."
-                                ))
+                                            `struct`, `enum`, `type`, or `trait` definitions.",
+                                )
                                 .emit();
                             },
                         );
@@ -2224,7 +2224,7 @@ fn from_target_feature(
                         item.span(),
                         format!("`{}` is not valid for this target", feature),
                     );
-                    if feature.starts_with("+") {
+                    if feature.starts_with('+') {
                         let valid = whitelist.contains_key(&feature[1..]);
                         if valid {
                             err.help("consider removing the leading `+` in the feature name");
@@ -2355,7 +2355,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
         } else if attr.check_name(sym::export_name) {
             if let Some(s) = attr.value_str() {
-                if s.as_str().contains("\0") {
+                if s.as_str().contains('\0') {
                     // `#[export_name = ...]` will be converted to a null-terminated string,
                     // so it may not contain any null characters.
                     struct_span_err!(

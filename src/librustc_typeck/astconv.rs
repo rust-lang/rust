@@ -982,10 +982,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ),
             );
         }
-        err.note(&format!(
+        err.note(
             "because of the default `Self` reference, type parameters must be \
-                            specified on object types"
-        ));
+                  specified on object types",
+        );
         err.emit();
     }
 
@@ -1876,7 +1876,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             {
                 let types: Vec<_> =
                     assoc_items.iter().map(|item| format!("{} = Type", item.ident)).collect();
-                let code = if snippet.ends_with(">") {
+                let code = if snippet.ends_with('>') {
                     // The user wrote `Trait<'a>` or similar and we don't have a type we can
                     // suggest, but at least we can clue them to the correct syntax
                     // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the

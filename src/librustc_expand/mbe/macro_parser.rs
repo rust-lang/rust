@@ -753,6 +753,12 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
     match token.kind {
         token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
+        token::Interpolated(ref nt) => match **nt {
+            token::NtIdent(ident, is_raw) if ident.name != kw::Underscore => {
+                Some((ident.name, is_raw))
+            }
+            _ => None,
+        },
         _ => None,
     }
 }
@@ -883,9 +889,8 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         // this could be handled like a token, since it is one
         sym::ident => {
             if let Some((name, is_raw)) = get_macro_name(&p.token) {
-                let span = p.token.span;
                 p.bump();
-                token::NtIdent(Ident::new(name, span), is_raw)
+                token::NtIdent(Ident::new(name, p.normalized_prev_token.span), is_raw)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
                 let msg = &format!("expected ident, found {}", &token_str);

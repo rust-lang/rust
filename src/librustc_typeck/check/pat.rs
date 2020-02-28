@@ -9,9 +9,9 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::Pattern;
+use rustc_infer::traits::{ObligationCause, Pattern};
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::Span;
+use rustc_span::source_map::{Span, Spanned};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -66,6 +66,11 @@ struct TopInfo<'tcx> {
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
+    fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
+        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
+        self.cause(cause_span, code)
+    }
+
     fn demand_eqtype_pat_diag(
         &self,
         cause_span: Span,
@@ -73,9 +78,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
-        let cause = self.cause(cause_span, code);
-        self.demand_eqtype_with_origin(&cause, expected, actual)
+        self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
     }
 
     fn demand_eqtype_pat(
@@ -152,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
             PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, path_res.unwrap(), qpath, expected)
+                self.check_pat_path(pat, path_res.unwrap(), qpath, expected, ti)
             }
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
@@ -361,16 +364,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
-        if let hir::ExprKind::Lit(ref lt) = lt.kind {
-            if let ast::LitKind::ByteStr(_) = lt.node {
-                let expected_ty = self.structurally_resolved_type(span, expected);
-                if let ty::Ref(_, r_ty, _) = expected_ty.kind {
-                    if let ty::Slice(_) = r_ty.kind {
-                        let tcx = self.tcx;
-                        pat_ty =
-                            tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
-                    }
-                }
+        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(_), .. }) = lt.kind {
+            let expected = self.structurally_resolved_type(span, expected);
+            if let ty::Ref(_, ty::TyS { kind: ty::Slice(_), .. }, _) = expected.kind {
+                let tcx = self.tcx;
+                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
             }
         }
 
@@ -384,7 +382,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //     &'static str <: expected
         //
         // then that's equivalent to there existing a LUB.
-        if let Some(mut err) = self.demand_suptype_diag(span, expected, pat_ty) {
+        let cause = self.pattern_cause(ti, span);
+        if let Some(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             err.emit_unless(
                 ti.span
                     .filter(|&s| {
@@ -543,8 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
         if var_id != pat.hir_id {
-            let vt = self.local_ty(pat.span, var_id).decl_ty;
-            self.demand_eqtype_pat(pat.span, vt, local_ty, ti);
+            self.check_binding_alt_eq_ty(pat.span, var_id, local_ty, ti);
         }
 
         if let Some(p) = sub {
@@ -552,6 +550,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         local_ty
+    }
+
+    fn check_binding_alt_eq_ty(&self, span: Span, var_id: HirId, ty: Ty<'tcx>, ti: TopInfo<'tcx>) {
+        let var_ty = self.local_ty(span, var_id).decl_ty;
+        if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
+            let hir = self.tcx.hir();
+            let var_ty = self.resolve_vars_with_obligations(var_ty);
+            let msg = format!("first introduced with type `{}` here", var_ty);
+            err.span_label(hir.span(var_id), msg);
+            let in_arm = hir.parent_iter(var_id).any(|(_, n)| matches!(n, hir::Node::Arm(..)));
+            let pre = if in_arm { "in the same arm, " } else { "" };
+            err.note(&format!("{}a binding must have the same type in all alternatives", pre));
+            err.emit();
+        }
     }
 
     fn borrow_pat_suggestion(
@@ -659,6 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
         qpath: &hir::QPath<'_>,
         expected: Ty<'tcx>,
+        ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
@@ -684,7 +697,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id).0;
-        self.demand_suptype(pat.span, expected, pat_ty);
+        if let Some(mut err) =
+            self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
+        {
+            err.emit();
+        }
         pat_ty
     }
 
@@ -901,7 +918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let element_tys = tcx.mk_substs(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
-        if let Some(mut err) = self.demand_eqtype_diag(span, expected, pat_ty) {
+        if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
@@ -1205,7 +1222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     let rptr_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
                     debug!("check_pat_ref: demanding {:?} = {:?}", expected, rptr_ty);
-                    let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
+                    let err = self.demand_eqtype_pat_diag(pat.span, expected, rptr_ty, ti);
 
                     // Look for a case like `fn foo(&foo: u32)` and suggest
                     // `fn foo(foo: &u32)`
