@@ -232,10 +232,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         //                 found type `()`
                         if let Some(hir::ItemKind::Impl { items, .. }) = item.map(|i| &i.kind) {
                             let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
-                            if let Some(impl_item) = items
-                                .iter()
-                                .filter(|item| item.ident == trait_assoc_item.ident)
-                                .next()
+                            if let Some(impl_item) =
+                                items.iter().find(|item| item.ident == trait_assoc_item.ident)
                             {
                                 cause.span = impl_item.span;
                                 cause.code = traits::AssocTypeBound(Box::new(AssocTypeBoundData {
@@ -285,13 +283,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         {
                             if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
                                 .iter()
-                                .filter(|i| i.def_id == *item_def_id)
-                                .next()
+                                .find(|i| i.def_id == *item_def_id)
                                 .and_then(|trait_assoc_item| {
                                     items
                                         .iter()
-                                        .filter(|i| i.ident == trait_assoc_item.ident)
-                                        .next()
+                                        .find(|i| i.ident == trait_assoc_item.ident)
                                         .map(|impl_item| (impl_item, trait_assoc_item))
                                 })
                             {

@@ -689,11 +689,7 @@ pub trait BottomValue {
     /// 3. Override `join` to do the opposite from what it's doing now.
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        if Self::BOTTOM_VALUE == false {
-            inout_set.union(in_set)
-        } else {
-            inout_set.intersect(in_set)
-        }
+        if !Self::BOTTOM_VALUE { inout_set.union(in_set) } else { inout_set.intersect(in_set) }
     }
 }
 
