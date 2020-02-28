@@ -368,10 +368,10 @@ impl<'tcx, Tag> Scalar<Tag> {
         target_size: Size,
         cx: &impl HasDataLayout,
     ) -> Result<u128, Pointer<Tag>> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -386,10 +386,10 @@ impl<'tcx, Tag> Scalar<Tag> {
     /// It is just a helper for other methods in this file.
     #[inline]
     fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
                 Scalar::check_data(data, size);
                 Ok(data)
             }
