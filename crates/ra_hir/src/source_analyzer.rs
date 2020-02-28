@@ -11,9 +11,9 @@ use either::Either;
 use hir_def::{
     body::{
         scope::{ExprScopes, ScopeId},
-        BodySourceMap,
+        Body, BodySourceMap,
     },
-    expr::{ExprId, PatId},
+    expr::{ExprId, Pat, PatId},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     AsMacroCall, DefWithBodyId,
 };
@@ -25,8 +25,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, Path, Static, Struct,
-    Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, ModuleDef, Path, Static,
+    Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -35,6 +35,7 @@ use crate::{
 pub(crate) struct SourceAnalyzer {
     file_id: HirFileId,
     pub(crate) resolver: Resolver,
+    body: Option<Arc<Body>>,
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<InferenceResult>>,
     scopes: Option<Arc<ExprScopes>>,
@@ -66,7 +67,7 @@ impl SourceAnalyzer {
         node: InFile<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let (_body, source_map) = db.body_with_source_map(def);
+        let (body, source_map) = db.body_with_source_map(def);
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
@@ -75,6 +76,7 @@ impl SourceAnalyzer {
         let resolver = resolver_for_scope(db, def, scope);
         SourceAnalyzer {
             resolver,
+            body: Some(body),
             body_source_map: Some(source_map),
             infer: Some(db.infer(def)),
             scopes: Some(scopes),
@@ -88,6 +90,7 @@ impl SourceAnalyzer {
     ) -> SourceAnalyzer {
         SourceAnalyzer {
             resolver,
+            body: None,
             body_source_map: None,
             infer: None,
             scopes: None,
@@ -195,6 +198,24 @@ impl SourceAnalyzer {
         let hygiene = Hygiene::new(db, macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &hygiene))?;
         self.resolver.resolve_path_as_macro(db, path.mod_path()).map(|it| it.into())
+    }
+
+    pub(crate) fn resolve_bind_pat_to_const(
+        &self,
+        db: &impl HirDatabase,
+        pat: &ast::BindPat,
+    ) -> Option<ModuleDef> {
+        let pat_id = self.pat_id(&pat.clone().into())?;
+        let body = self.body.as_ref()?;
+        let path = match &body[pat_id] {
+            Pat::Path(path) => path,
+            _ => return None,
+        };
+        let res = resolve_hir_path(db, &self.resolver, &path)?;
+        match res {
+            PathResolution::Def(def) => Some(def),
+            _ => None,
+        }
     }
 
     pub(crate) fn resolve_path(

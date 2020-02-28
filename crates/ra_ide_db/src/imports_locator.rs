@@ -59,6 +59,7 @@ impl<'a> ImportsLocator<'a> {
         } else {
             candidate_node
         };
-        classify_name(&self.sema, &ast::Name::cast(candidate_name_node)?)
+        let name = ast::Name::cast(candidate_name_node)?;
+        classify_name(&self.sema, &name)?.into_definition()
     }
 }

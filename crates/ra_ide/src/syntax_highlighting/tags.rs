@@ -90,8 +90,12 @@ impl fmt::Display for HighlightTag {
 }
 
 impl HighlightModifier {
-    const ALL: &'static [HighlightModifier] =
-        &[HighlightModifier::Mutable, HighlightModifier::Unsafe, HighlightModifier::Control];
+    const ALL: &'static [HighlightModifier] = &[
+        HighlightModifier::Control,
+        HighlightModifier::Definition,
+        HighlightModifier::Mutable,
+        HighlightModifier::Unsafe,
+    ];
 
     fn as_str(self) -> &'static str {
         match self {

@@ -80,7 +80,7 @@ const STYLE: &str = "
 body                { margin: 0; }
 pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
-
+.lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }

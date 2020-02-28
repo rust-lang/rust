@@ -7,7 +7,7 @@ mod tests;
 
 use hir::{Name, Semantics};
 use ra_ide_db::{
-    defs::{classify_name, NameDefinition},
+    defs::{classify_name, NameClass, NameDefinition},
     RootDatabase,
 };
 use ra_prof::profile;
@@ -169,7 +169,7 @@ fn highlight_element(
             let name = element.into_node().and_then(ast::Name::cast).unwrap();
             let name_kind = classify_name(sema, &name);
 
-            if let Some(NameDefinition::Local(local)) = &name_kind {
+            if let Some(NameClass::NameDefinition(NameDefinition::Local(local))) = &name_kind {
                 if let Some(name) = local.name(db) {
                     let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
                     *shadow_count += 1;
@@ -177,11 +177,13 @@ fn highlight_element(
                 }
             };
 
-            let h = match name_kind {
-                Some(name_kind) => highlight_name(db, name_kind),
-                None => highlight_name_by_syntax(name),
-            };
-            h | HighlightModifier::Definition
+            match name_kind {
+                Some(NameClass::NameDefinition(def)) => {
+                    highlight_name(db, def) | HighlightModifier::Definition
+                }
+                Some(NameClass::ConstReference(def)) => highlight_name(db, def),
+                None => highlight_name_by_syntax(name) | HighlightModifier::Definition,
+            }
         }
 
         // Highlight references like the definitions they resolve to
@@ -212,8 +214,13 @@ fn highlight_element(
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
         BYTE => HighlightTag::ByteLiteral.into(),
         CHAR => HighlightTag::CharLiteral.into(),
-        // FIXME: set Declaration for decls
-        LIFETIME => HighlightTag::Lifetime.into(),
+        LIFETIME => {
+            let h = Highlight::new(HighlightTag::Lifetime);
+            dbg!(match element.parent().map(|it| it.kind()) {
+                Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
+                _ => h,
+            })
+        }
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);

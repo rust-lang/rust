@@ -17,8 +17,8 @@ use crate::{
     db::HirDatabase,
     source_analyzer::{resolve_hir_path, ReferenceDescriptor, SourceAnalyzer},
     source_binder::{ChildContainer, SourceBinder},
-    Function, HirFileId, InFile, Local, MacroDef, Module, Name, Origin, Path, PathResolution,
-    ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
+    Function, HirFileId, InFile, Local, MacroDef, Module, ModuleDef, Name, Origin, Path,
+    PathResolution, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
 use hir_expand::ExpansionInfo;
 use ra_prof::profile;
@@ -127,6 +127,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+        self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
     // FIXME: use this instead?
