@@ -729,6 +729,8 @@ pub enum ExpnKind {
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind),
+    /// AST fragements produced by parser recovery.
+    ParserRecovery,
 }
 
 impl ExpnKind {
@@ -742,6 +744,7 @@ impl ExpnKind {
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
+            ExpnKind::ParserRecovery => "parser recovery".to_string(),
         }
     }
 }

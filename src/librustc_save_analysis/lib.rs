@@ -789,7 +789,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
 
             // These are not macros.
             // FIXME(eddyb) maybe there is a way to handle them usefully?
-            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
+            ExpnKind::Root
+            | ExpnKind::AstPass(_)
+            | ExpnKind::Desugaring(_)
+            | ExpnKind::ParserRecovery => return None,
         };
 
         // If the callee is an imported macro from an external crate, need to get

@@ -2,7 +2,7 @@ use crate::{Applicability, Handler, Level, StashKey};
 use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString};
 
 use log::debug;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::{ExpnData, ExpnKind, MultiSpan, Span};
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
@@ -133,7 +133,8 @@ impl<'a> DiagnosticBuilder<'a> {
             // suite! { len; is_empty; }
             // ```
             // ...would result in overwriting due to using the same `def_site` span for `A`.
-            let span = span.fresh_expansion(span.ctxt().outer_expn_data());
+            let data = ExpnData::default(ExpnKind::ParserRecovery, span, span.edition());
+            let span = span.fresh_expansion(data);
             handler.stash_diagnostic(span, key, diag);
             span
         })

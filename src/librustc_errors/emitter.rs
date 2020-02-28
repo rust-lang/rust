@@ -293,7 +293,9 @@ pub trait Emitter {
 
                         // Skip past non-macro entries, just in case there
                         // are some which do actually involve macros.
-                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                        ExpnKind::Desugaring(..)
+                        | ExpnKind::AstPass(..)
+                        | ExpnKind::ParserRecovery => None,
 
                         ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
                     }
