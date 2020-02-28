@@ -239,14 +239,24 @@ where
             }
 
             SwitchInt { ref targets, ref values, ref discr, .. } => {
-                self.propagate_bits_into_switch_int_successors(
-                    in_out,
-                    (bb, bb_data),
-                    dirty_list,
-                    discr,
-                    &*values,
-                    &*targets,
-                );
+                // If this is a switch on an enum discriminant, a custom effect may be applied
+                // along each outgoing edge.
+                if let Some(place) = discr.place() {
+                    let enum_def = switch_on_enum_discriminant(self.tcx, self.body, bb_data, place);
+                    if let Some(enum_def) = enum_def {
+                        self.propagate_bits_into_enum_discriminant_switch_successors(
+                            in_out, bb, enum_def, place, dirty_list, &*values, &*targets,
+                        );
+
+                        return;
+                    }
+                }
+
+                // Otherwise, it's just a normal `SwitchInt`, and every successor sees the same
+                // exit state.
+                for target in targets.iter().copied() {
+                    self.propagate_bits_into_entry_set_for(&in_out, target, dirty_list);
+                }
             }
 
             Call { cleanup, ref destination, ref func, ref args, .. } => {
@@ -293,64 +303,72 @@ where
         }
     }
 
-    fn propagate_bits_into_switch_int_successors(
+    fn propagate_bits_into_enum_discriminant_switch_successors(
         &mut self,
         in_out: &mut BitSet<A::Idx>,
-        (bb, bb_data): (BasicBlock, &mir::BasicBlockData<'tcx>),
+        bb: BasicBlock,
+        enum_def: &'tcx ty::AdtDef,
+        enum_place: &mir::Place<'tcx>,
         dirty_list: &mut WorkQueue<BasicBlock>,
-        switch_on: &mir::Operand<'tcx>,
         values: &[u128],
         targets: &[BasicBlock],
     ) {
-        match bb_data.statements.last().map(|stmt| &stmt.kind) {
-            // Look at the last statement to see if it is an assignment of an enum discriminant to
-            // the local that determines the target of a `SwitchInt` like so:
-            //   _42 = discriminant(..)
-            //   SwitchInt(_42, ..)
-            Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(enum_))))
-                if Some(lhs) == switch_on.place() =>
-            {
-                let adt = match enum_.ty(self.body, self.tcx).ty.kind {
-                    ty::Adt(def, _) => def,
-                    _ => bug!("Switch on discriminant of non-ADT"),
-                };
+        // MIR building adds discriminants to the `values` array in the same order as they
+        // are yielded by `AdtDef::discriminants`. We rely on this to match each
+        // discriminant in `values` to its corresponding variant in linear time.
+        let mut tmp = BitSet::new_empty(in_out.domain_size());
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        for (value, target) in values.iter().zip(targets.iter().copied()) {
+            let (variant_idx, _) = discriminants.find(|&(_, discr)| discr.val == *value).expect(
+                "Order of `AdtDef::discriminants` differed from that of `SwitchInt::values`",
+            );
 
-                // MIR building adds discriminants to the `values` array in the same order as they
-                // are yielded by `AdtDef::discriminants`. We rely on this to match each
-                // discriminant in `values` to its corresponding variant in linear time.
-                let mut tmp = BitSet::new_empty(in_out.domain_size());
-                let mut discriminants = adt.discriminants(self.tcx);
-                for (value, target) in values.iter().zip(targets.iter().copied()) {
-                    let (variant_idx, _) =
-                        discriminants.find(|&(_, discr)| discr.val == *value).expect(
-                            "Order of `AdtDef::discriminants` differed \
-                                 from that of `SwitchInt::values`",
-                        );
+            tmp.overwrite(in_out);
+            self.analysis.apply_discriminant_switch_effect(
+                &mut tmp,
+                bb,
+                enum_place,
+                enum_def,
+                variant_idx,
+            );
+            self.propagate_bits_into_entry_set_for(&tmp, target, dirty_list);
+        }
 
-                    tmp.overwrite(in_out);
-                    self.analysis.apply_discriminant_switch_effect(
-                        &mut tmp,
-                        bb,
-                        enum_,
-                        adt,
-                        variant_idx,
-                    );
-                    self.propagate_bits_into_entry_set_for(&tmp, target, dirty_list);
-                }
+        std::mem::drop(tmp);
 
-                std::mem::drop(tmp);
+        // Propagate dataflow state along the "otherwise" edge.
+        let otherwise = targets.last().copied().unwrap();
+        self.propagate_bits_into_entry_set_for(&in_out, otherwise, dirty_list);
+    }
+}
 
-                // Propagate dataflow state along the "otherwise" edge.
-                let otherwise = targets.last().copied().unwrap();
-                self.propagate_bits_into_entry_set_for(&in_out, otherwise, dirty_list);
-            }
+/// Look at the last statement of a block that ends with  to see if it is an assignment of an enum
+/// discriminant to the local that determines the target of a `SwitchInt` like so:
+///   _42 = discriminant(..)
+///   SwitchInt(_42, ..)
+fn switch_on_enum_discriminant(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    block: &mir::BasicBlockData<'tcx>,
+    switch_on: &mir::Place<'tcx>,
+) -> Option<&'tcx ty::AdtDef> {
+    match block.statements.last().map(|stmt| &stmt.kind) {
+        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
+            if lhs == switch_on =>
+        {
+            match &discriminated.ty(body, tcx).ty.kind {
+                ty::Adt(def, _) => Some(def),
 
-            _ => {
-                for target in targets.iter().copied() {
-                    self.propagate_bits_into_entry_set_for(&in_out, target, dirty_list);
-                }
+                // `Rvalue::Discriminant` is also used to get the active yield point for a
+                // generator, but we do not need edge-specific effects in that case. This may
+                // change in the future.
+                ty::Generator(..) => None,
+
+                t => bug!("`discriminant` called on unexpected type {:?}", t),
             }
         }
+
+        _ => None,
     }
 }
 
