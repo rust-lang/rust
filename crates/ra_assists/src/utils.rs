@@ -1,4 +1,5 @@
 //! Assorted functions shared by several assists.
+pub(crate) mod insert_use;
 
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
@@ -7,6 +8,8 @@ use ra_syntax::{
     AstNode, T,
 };
 use rustc_hash::FxHashSet;
+
+pub use insert_use::insert_use_statement;
 
 pub fn get_missing_impl_items(
     sema: &Semantics<RootDatabase>,

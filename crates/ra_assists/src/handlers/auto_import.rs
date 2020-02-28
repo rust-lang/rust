@@ -1,6 +1,7 @@
 use crate::{
     assist_ctx::{Assist, AssistCtx},
-    insert_use_statement, AssistId,
+    utils::insert_use_statement,
+    AssistId,
 };
 use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
