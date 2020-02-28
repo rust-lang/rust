@@ -32,7 +32,7 @@ cfg_if! {
 }
 
 mod alloc;
-pub use self::alloc::{Alloc, Global};
+pub use self::alloc::{AllocRef, Global};
 
 mod bitmask;
 
@@ -331,7 +331,7 @@ impl<T> Bucket<T> {
 }
 
 /// A raw hash table with an unsafe API.
-pub struct RawTable<T, A: Alloc + Clone> {
+pub struct RawTable<T, A: AllocRef + Clone> {
     // Mask to get an index from a hash value. The value is one less than the
     // number of buckets in the table.
     bucket_mask: usize,
@@ -354,7 +354,7 @@ pub struct RawTable<T, A: Alloc + Clone> {
     alloc: A,
 }
 
-impl<T, A: Alloc + Clone> RawTable<T, A> {
+impl<T, A: AllocRef + Clone> RawTable<T, A> {
     /// Creates a new empty hash table without allocating any memory.
     ///
     /// In effect this returns a table with exactly 1 bucket. However we can
@@ -986,10 +986,10 @@ impl<T, A: Alloc + Clone> RawTable<T, A> {
     }
 }
 
-unsafe impl<T, A: Alloc + Clone> Send for RawTable<T, A> where T: Send {}
-unsafe impl<T, A: Alloc + Clone> Sync for RawTable<T, A> where T: Sync {}
+unsafe impl<T, A: AllocRef + Clone> Send for RawTable<T, A> where T: Send {}
+unsafe impl<T, A: AllocRef + Clone> Sync for RawTable<T, A> where T: Sync {}
 
-impl<T: Clone, A: Alloc + Clone> Clone for RawTable<T, A> {
+impl<T: Clone, A: AllocRef + Clone> Clone for RawTable<T, A> {
     fn clone(&self) -> Self {
         if self.is_empty_singleton() {
             Self::new(self.alloc.clone())
@@ -1046,7 +1046,7 @@ impl<T: Clone, A: Alloc + Clone> Clone for RawTable<T, A> {
 }
 
 #[cfg(feature = "nightly")]
-unsafe impl<#[may_dangle] T, A: Alloc + Clone> Drop for RawTable<T, A> {
+unsafe impl<#[may_dangle] T, A: AllocRef + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         if !self.is_empty_singleton() {
@@ -1062,7 +1062,7 @@ unsafe impl<#[may_dangle] T, A: Alloc + Clone> Drop for RawTable<T, A> {
     }
 }
 #[cfg(not(feature = "nightly"))]
-impl<T, A: Alloc + Clone> Drop for RawTable<T, A> {
+impl<T, A: AllocRef + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         if !self.is_empty_singleton() {
@@ -1078,7 +1078,7 @@ impl<T, A: Alloc + Clone> Drop for RawTable<T, A> {
     }
 }
 
-impl<T, A: Alloc + Clone> IntoIterator for RawTable<T, A> {
+impl<T, A: AllocRef + Clone> IntoIterator for RawTable<T, A> {
     type Item = T;
     type IntoIter = RawIntoIter<T, A>;
 
@@ -1280,25 +1280,25 @@ impl<T> ExactSizeIterator for RawIter<T> {}
 impl<T> FusedIterator for RawIter<T> {}
 
 /// Iterator which consumes a table and returns elements.
-pub struct RawIntoIter<T, A: Alloc + Clone> {
+pub struct RawIntoIter<T, A: AllocRef + Clone> {
     iter: RawIter<T>,
     alloc: Option<(NonNull<u8>, Layout)>,
     marker: PhantomData<T>,
     allocator: A,
 }
 
-impl<T, A: Alloc + Clone> RawIntoIter<T, A> {
+impl<T, A: AllocRef + Clone> RawIntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter(&self) -> RawIter<T> {
         self.iter.clone()
     }
 }
 
-unsafe impl<T, A: Alloc + Clone> Send for RawIntoIter<T, A> where T: Send {}
-unsafe impl<T, A: Alloc + Clone> Sync for RawIntoIter<T, A> where T: Sync {}
+unsafe impl<T, A: AllocRef + Clone> Send for RawIntoIter<T, A> where T: Send {}
+unsafe impl<T, A: AllocRef + Clone> Sync for RawIntoIter<T, A> where T: Sync {}
 
 #[cfg(feature = "nightly")]
-unsafe impl<#[may_dangle] T, A: Alloc + Clone> Drop for RawIntoIter<T, A> {
+unsafe impl<#[may_dangle] T, A: AllocRef + Clone> Drop for RawIntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1317,7 +1317,7 @@ unsafe impl<#[may_dangle] T, A: Alloc + Clone> Drop for RawIntoIter<T, A> {
     }
 }
 #[cfg(not(feature = "nightly"))]
-impl<T, A: Alloc + Clone> Drop for RawIntoIter<T, A> {
+impl<T, A: AllocRef + Clone> Drop for RawIntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1337,7 +1337,7 @@ impl<T, A: Alloc + Clone> Drop for RawIntoIter<T, A> {
     }
 }
 
-impl<T, A: Alloc + Clone> Iterator for RawIntoIter<T, A> {
+impl<T, A: AllocRef + Clone> Iterator for RawIntoIter<T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1351,11 +1351,11 @@ impl<T, A: Alloc + Clone> Iterator for RawIntoIter<T, A> {
     }
 }
 
-impl<T, A: Alloc + Clone> ExactSizeIterator for RawIntoIter<T, A> {}
-impl<T, A: Alloc + Clone> FusedIterator for RawIntoIter<T, A> {}
+impl<T, A: AllocRef + Clone> ExactSizeIterator for RawIntoIter<T, A> {}
+impl<T, A: AllocRef + Clone> FusedIterator for RawIntoIter<T, A> {}
 
 /// Iterator which consumes elements without freeing the table storage.
-pub struct RawDrain<'a, T, A: Alloc + Clone> {
+pub struct RawDrain<'a, T, A: AllocRef + Clone> {
     iter: RawIter<T>,
 
     // The table is moved into the iterator for the duration of the drain. This
@@ -1369,17 +1369,17 @@ pub struct RawDrain<'a, T, A: Alloc + Clone> {
     marker: PhantomData<&'a RawTable<T, A>>,
 }
 
-impl<T, A: Alloc + Clone> RawDrain<'_, T, A> {
+impl<T, A: AllocRef + Clone> RawDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter(&self) -> RawIter<T> {
         self.iter.clone()
     }
 }
 
-unsafe impl<T, A: Alloc + Copy> Send for RawDrain<'_, T, A> where T: Send {}
-unsafe impl<T, A: Alloc + Copy> Sync for RawDrain<'_, T, A> where T: Sync {}
+unsafe impl<T, A: AllocRef + Copy> Send for RawDrain<'_, T, A> where T: Send {}
+unsafe impl<T, A: AllocRef + Copy> Sync for RawDrain<'_, T, A> where T: Sync {}
 
-impl<T, A: Alloc + Clone> Drop for RawDrain<'_, T, A> {
+impl<T, A: AllocRef + Clone> Drop for RawDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1402,7 +1402,7 @@ impl<T, A: Alloc + Clone> Drop for RawDrain<'_, T, A> {
     }
 }
 
-impl<T, A: Alloc + Clone> Iterator for RawDrain<'_, T, A> {
+impl<T, A: AllocRef + Clone> Iterator for RawDrain<'_, T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1419,5 +1419,5 @@ impl<T, A: Alloc + Clone> Iterator for RawDrain<'_, T, A> {
     }
 }
 
-impl<T, A: Alloc + Clone> ExactSizeIterator for RawDrain<'_, T, A> {}
-impl<T, A: Alloc + Clone> FusedIterator for RawDrain<'_, T, A> {}
+impl<T, A: AllocRef + Clone> ExactSizeIterator for RawDrain<'_, T, A> {}
+impl<T, A: AllocRef + Clone> FusedIterator for RawDrain<'_, T, A> {}
