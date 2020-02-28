@@ -1,10 +1,10 @@
 import * as lc from "vscode-languageclient";
 import * as vscode from "vscode";
-import { strict as nodeAssert } from "assert";
+import { strict as nativeAssert } from "assert";
 
 export function assert(condition: unknown, explanation: string): asserts condition {
     try {
-        nodeAssert(condition, explanation);
+        nativeAssert(condition, explanation);
     } catch (err) {
         log.error(`Assertion failed:`, explanation);
         throw err;
