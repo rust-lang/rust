@@ -26,7 +26,7 @@ macro_rules! def_fn {
     ($($tt:tt)*) => {$($tt)*}
 }
 
-def_fn!{
+def_fn! {
     fn bar() -> u32 {
         100
     }

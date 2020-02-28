@@ -72,7 +72,7 @@ impl HighlightTag {
             HighlightTag::NumericLiteral => "numeric_literal",
             HighlightTag::SelfType => "self_type",
             HighlightTag::Static => "static",
-            HighlightTag::StringLiteral => "string",
+            HighlightTag::StringLiteral => "string_literal",
             HighlightTag::Struct => "struct",
             HighlightTag::Trait => "trait",
             HighlightTag::TypeAlias => "type_alias",
