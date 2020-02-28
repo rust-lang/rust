@@ -292,7 +292,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     match parent.kind() {
         STRUCT_DEF => HighlightTag::Struct.into(),
         ENUM_DEF => HighlightTag::Enum.into(),
-        UNION_KW => HighlightTag::Union.into(),
+        UNION_DEF => HighlightTag::Union.into(),
         TRAIT_DEF => HighlightTag::Trait.into(),
         TYPE_ALIAS_DEF => HighlightTag::TypeAlias.into(),
         TYPE_PARAM => HighlightTag::TypeParam.into(),
