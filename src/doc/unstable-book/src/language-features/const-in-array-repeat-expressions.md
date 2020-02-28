@@ -2,7 +2,7 @@
 
 The tracking issue for this feature is: [#49147]
 
-[#44109]: https://github.com/rust-lang/rust/issues/49147
+[#49147]: https://github.com/rust-lang/rust/issues/49147
 
 ------------------------
 
