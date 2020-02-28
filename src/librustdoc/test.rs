@@ -398,7 +398,7 @@ pub fn make_test(
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(s);
-            let source = crates + &everything_else;
+            let source = crates + everything_else;
 
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
             // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.

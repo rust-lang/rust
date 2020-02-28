@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt_item(&mut self, attrs: Vec<Attribute>) -> PResult<'a, Option<ast::Item>> {
         let old = mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-        let item = self.parse_item_common(attrs.clone(), false, true, |_| true)?;
+        let item = self.parse_item_common(attrs, false, true, |_| true)?;
         self.directory.ownership = old;
         Ok(item)
     }
