@@ -354,7 +354,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let mut has_self_arg = None;
         if let PathSource::Expr(parent) = source {
             match &parent?.kind {
-                ExprKind::Call(_, args) if args.len() > 0 => {
+                ExprKind::Call(_, args) if !args.is_empty() => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
@@ -968,18 +968,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
-                    let (span, sugg) = if let Some(param) = generics
-                        .params
-                        .iter()
-                        .filter(|p| match p.kind {
+                    let (span, sugg) = if let Some(param) =
+                        generics.params.iter().find(|p| match p.kind {
                             hir::GenericParamKind::Type {
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 ..
                             } => false,
                             _ => true,
-                        })
-                        .next()
-                    {
+                        }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
                         (generics.span, format!("<{}>", lifetime_ref))

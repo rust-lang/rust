@@ -3823,7 +3823,7 @@ where
         // The last index of self.v is already checked and found to match
         // by the last iteration, so we start searching a new match
         // one index to the left.
-        let remainder = if self.v.len() == 0 { &[] } else { &self.v[..(self.v.len() - 1)] };
+        let remainder = if self.v.is_empty() { &[] } else { &self.v[..(self.v.len() - 1)] };
         let idx = remainder.iter().rposition(|x| (self.pred)(x)).map(|idx| idx + 1).unwrap_or(0);
         if idx == 0 {
             self.finished = true;
@@ -4033,7 +4033,7 @@ where
             return None;
         }
 
-        let idx_opt = if self.v.len() == 0 {
+        let idx_opt = if self.v.is_empty() {
             None
         } else {
             // work around borrowck limitations

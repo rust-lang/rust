@@ -1096,7 +1096,7 @@ pub fn expand_preparsed_format_args(
         cx.str_pieces.push(s);
     }
 
-    if cx.invalid_refs.len() >= 1 {
+    if !cx.invalid_refs.is_empty() {
         cx.report_invalid_references(numbered_position_args);
     }
 

@@ -171,7 +171,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             // Skip the last, which is just the environment of the constant.  The stacktrace
             // is sometimes empty because we create "fake" eval contexts in CTFE to do work
             // on constant values.
-            if self.stacktrace.len() > 0 {
+            if !self.stacktrace.is_empty() {
                 for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
                     err.span_label(frame_info.call_site, frame_info.to_string());
                 }

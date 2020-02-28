@@ -425,7 +425,7 @@ impl SelfProfiler {
             }
 
             // Warn about any unknown event names
-            if unknown_events.len() > 0 {
+            if !unknown_events.is_empty() {
                 unknown_events.sort();
                 unknown_events.dedup();
 

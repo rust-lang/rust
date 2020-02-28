@@ -2219,7 +2219,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
-                    if region.len() > 0 {
+                    if !region.is_empty() {
                         region.push(' ');
                     }
                     region

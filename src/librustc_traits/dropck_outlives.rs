@@ -92,7 +92,7 @@ fn dropck_outlives<'tcx>(
                 // information and will just decrease the speed at which we can emit these errors
                 // (since we'll be printing for just that much longer for the often enormous types
                 // that result here).
-                if result.overflows.len() >= 1 {
+                if !result.overflows.is_empty() {
                     break;
                 }
 

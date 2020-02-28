@@ -371,7 +371,7 @@ fn prepend_attrs(
     span: rustc_span::Span,
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?;
-    if attrs.len() == 0 {
+    if attrs.is_empty() {
         return Some(tokens.clone());
     }
     let mut builder = tokenstream::TokenStreamBuilder::new();

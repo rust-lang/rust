@@ -49,7 +49,7 @@ pub fn expand_concat(
             }
         }
     }
-    if missing_literal.len() > 0 {
+    if !missing_literal.is_empty() {
         let mut err = cx.struct_span_err(missing_literal, "expected a literal");
         err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
         err.emit();

@@ -798,7 +798,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // (Typechecking will reject discriminant-sizing attrs.)
 
                     let v = present_first.unwrap();
-                    let kind = if def.is_enum() || variants[v].len() == 0 {
+                    let kind = if def.is_enum() || variants[v].is_empty() {
                         StructKind::AlwaysSized
                     } else {
                         let param_env = tcx.param_env(def.did);

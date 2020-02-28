@@ -375,7 +375,7 @@ impl<'s> LintLevelsBuilder<'s> {
         }
 
         let prev = self.cur;
-        if specs.len() > 0 {
+        if !specs.is_empty() {
             self.cur = self.sets.list.len() as u32;
             self.sets.list.push(LintSet::Node { specs: specs, parent: prev });
         }

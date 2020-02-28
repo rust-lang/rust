@@ -201,7 +201,7 @@ impl Item {
                 classes.push("deprecated");
             }
 
-            if classes.len() != 0 { Some(classes.join(" ")) } else { None }
+            if !classes.is_empty() { Some(classes.join(" ")) } else { None }
         })
     }
 

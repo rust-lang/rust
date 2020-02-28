@@ -440,7 +440,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// going to help).
     pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
         let cycle = self.resolve_vars_if_possible(&cycle.to_owned());
-        assert!(cycle.len() > 0);
+        assert!(!cycle.is_empty());
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 

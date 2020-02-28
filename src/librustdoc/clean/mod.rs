@@ -398,7 +398,7 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
     fn clean(&self, _: &DocContext<'_>) -> Lifetime {
         match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                if self.bounds.len() > 0 {
+                if !self.bounds.is_empty() {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
@@ -607,7 +607,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                let name = if self.bounds.len() > 0 {
+                let name = if !self.bounds.is_empty() {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
