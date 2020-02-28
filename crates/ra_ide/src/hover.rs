@@ -156,7 +156,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d))
             },
             ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d))
+                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
             },
             _ => None,
         }
@@ -761,13 +761,13 @@ fn func(foo: i32) { if true { <|>foo; }; }
     fn test_hover_through_literal_string_in_builtin_macro() {
         check_hover_no_result(
             r#"
-            //- /lib.rs            
+            //- /lib.rs
             #[rustc_builtin_macro]
             macro_rules! assert {
                 ($cond:expr) => {{ /* compiler built-in */ }};
                 ($cond:expr,) => {{ /* compiler built-in */ }};
                 ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
-            }        
+            }
 
             fn foo() {
                 assert!("hel<|>lo");

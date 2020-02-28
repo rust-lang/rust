@@ -30,7 +30,9 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                name_definition(&sema, &name)?
+                let def = classify_name(&sema, &name)?.definition();
+                let nav = def.try_to_nav(sema.db)?;
+                vec![nav]
             },
             _ => return None,
         }
@@ -86,15 +88,6 @@ pub(crate) fn reference_definition(
         .map(|s| s.to_nav(sema.db))
         .collect();
     Approximate(navs)
-}
-
-fn name_definition(
-    sema: &Semantics<RootDatabase>,
-    name: &ast::Name,
-) -> Option<Vec<NavigationTarget>> {
-    let def = classify_name(sema, name)?;
-    let nav = def.try_to_nav(sema.db)?;
-    Some(vec![nav])
 }
 
 #[cfg(test)]

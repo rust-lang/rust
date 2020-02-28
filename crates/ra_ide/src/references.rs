@@ -155,7 +155,7 @@ fn find_name(
     opt_name: Option<ast::Name>,
 ) -> Option<RangeInfo<(String, NameDefinition)>> {
     if let Some(name) = opt_name {
-        let def = classify_name(sema, &name)?;
+        let def = classify_name(sema, &name)?.definition();
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }

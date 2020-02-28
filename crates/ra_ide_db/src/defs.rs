@@ -68,7 +68,32 @@ impl NameDefinition {
     }
 }
 
-pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameDefinition> {
+pub enum NameClass {
+    NameDefinition(NameDefinition),
+    /// `None` in `if let None = Some(82) {}`
+    ConstReference(NameDefinition),
+}
+
+impl NameClass {
+    pub fn into_definition(self) -> Option<NameDefinition> {
+        match self {
+            NameClass::NameDefinition(it) => Some(it),
+            NameClass::ConstReference(_) => None,
+        }
+    }
+
+    pub fn definition(self) -> NameDefinition {
+        match self {
+            NameClass::NameDefinition(it) | NameClass::ConstReference(it) => it,
+        }
+    }
+}
+
+pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    classify_name_inner(sema, name).map(NameClass::NameDefinition)
+}
+
+fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameDefinition> {
     let _p = profile("classify_name");
     let parent = name.syntax().parent()?;
 
