@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/match-tag-nullary.rs:4:40
    |
 LL | fn main() { let x: A = A::A; match x { B::B => { } } }
-   |                                        ^^^^ expected enum `A`, found enum `B`
+   |                                    -   ^^^^ expected enum `A`, found enum `B`
+   |                                    |
+   |                                    this expression has type `A`
 
 error: aborting due to previous error
 

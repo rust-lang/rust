@@ -43,7 +43,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = &self.misc(sp);
+        self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
+    }
+
+    pub fn demand_suptype_with_origin(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
