@@ -18,7 +18,6 @@ use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
-pub use crate::handlers::replace_qualified_name_with_use::insert_use_statement;
 use hir::Semantics;
 
 /// Unique identifier of the assist, should not be shown to the user
