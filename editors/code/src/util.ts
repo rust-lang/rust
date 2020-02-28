@@ -3,7 +3,12 @@ import * as vscode from "vscode";
 import { strict as nodeAssert } from "assert";
 
 export function assert(condition: unknown, explanation: string): asserts condition {
-    nodeAssert(condition, explanation);
+    try {
+        nodeAssert(condition, explanation);
+    } catch (err) {
+        log.error(`Assertion failed:`, explanation);
+        throw err;
+    }
 }
 
 export const log = {
