@@ -169,6 +169,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     //     let d: i32 = 92;
     //     let e: !;
     //     let _: ! = {};
+    //     let f = #[attr]||{};
     // }
     fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
         assert!(p.at(T![let]));
@@ -178,7 +179,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
             types::ascription(p);
         }
         if p.eat(T![=]) {
-            expressions::expr(p);
+            expressions::expr_with_attrs(p);
         }
 
         match with_semi {
