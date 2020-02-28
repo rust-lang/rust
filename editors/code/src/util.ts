@@ -2,7 +2,7 @@ import * as lc from "vscode-languageclient";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 
-export function assert(condition: unknown, explanation: string): asserts condition {
+export function assert(condition: boolean, explanation: string): asserts condition {
     try {
         nativeAssert(condition, explanation);
     } catch (err) {
@@ -10,16 +10,6 @@ export function assert(condition: unknown, explanation: string): asserts conditi
         throw err;
     }
 }
-
-assert.eq = <T>(bibba: unknown, bobba: T, explanation: string): asserts bibba is T => {
-    try {
-        nativeAssert.strictEqual(bibba, bobba, explanation);
-    } catch (err) {
-        log.error(`Equality assertion failed:`, explanation);
-        throw err;
-    }
-};
-
 
 export const log = {
     enabled: true,
