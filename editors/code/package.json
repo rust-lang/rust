@@ -187,7 +187,29 @@
                 "rust-analyzer.featureFlags": {
                     "type": "object",
                     "default": {},
-                    "description": "Fine grained feature flags to disable annoying features"
+                    "description": "Fine grained feature flags to disable annoying features",
+                    "properties": {
+                        "lsp.diagnostics": {
+                            "type": "boolean",
+                            "description": "Whether to show diagnostics from `cargo check`"
+                        },
+                        "completion.insertion.add-call-parenthesis": {
+                            "type": "boolean",
+                            "description": "Whether to add parenthesis when completing functions"
+                        },
+                        "completion.enable-postfix": {
+                            "type": "boolean",
+                            "description": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
+                        },
+                        "notifications.workspace-loaded": {
+                            "type": "boolean",
+                            "description": "Whether to show `workspace loaded` message"
+                        },
+                        "notifications.cargo-toml-not-found": {
+                            "type": "boolean",
+                            "description": "Whether to show `can't find Cargo.toml` error message"
+                        }
+                    }
                 },
                 "rust-analyzer.serverPath": {
                     "type": [
