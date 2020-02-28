@@ -1487,16 +1487,13 @@ impl<K, V> Drop for IntoIter<K, V> {
         }
 
         unsafe {
-            let leaf_node = ptr::read(&self.front).into_node();
-            if leaf_node.is_shared_root() {
+            let mut node = ptr::read(&self.front).into_node().forget_type();
+            if node.is_shared_root() {
                 return;
             }
 
-            if let Some(first_parent) = leaf_node.deallocate_and_ascend() {
-                let mut cur_internal_node = first_parent.into_node();
-                while let Some(parent) = cur_internal_node.deallocate_and_ascend() {
-                    cur_internal_node = parent.into_node()
-                }
+            while let Some(parent) = node.deallocate_and_ascend() {
+                node = parent.into_node().forget_type();
             }
         }
     }
