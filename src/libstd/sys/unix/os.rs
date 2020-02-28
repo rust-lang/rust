@@ -329,11 +329,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
         Ok(path) => {
-            let path_str = path.to_str()
-                .ok_or(io::Error::new(
-                       io::ErrorKind::InvalidData,
-                       "path contains invalid UTF-8 data")
-                )?;
+            let path_str = path.to_str().ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "path contains invalid UTF-8 data",
+            ))?;
             unsafe {
                 if libc::access(path_str.as_ptr() as *const i8, libc::F_OK) == 0 {
                     Ok(path)
