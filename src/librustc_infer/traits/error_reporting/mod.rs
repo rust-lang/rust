@@ -1442,7 +1442,7 @@ pub fn suggest_constraining_type_param(
     const MSG_RESTRICT_TYPE: &str = "consider restricting this type parameter with";
     const MSG_RESTRICT_TYPE_FURTHER: &str = "consider further restricting this type parameter with";
 
-    let param = generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next();
+    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     let param = if let Some(param) = param {
         param
