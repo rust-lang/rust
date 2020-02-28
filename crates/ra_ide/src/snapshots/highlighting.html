@@ -65,10 +65,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="variable mutable">y</span>;
 }
 
-<span class="keyword">enum</span> <span class="enum">E</span>&lt;<span class="type_param">X</span>&gt; {
-    <span class="enum_variant">V</span>(<span class="type_param">X</span>)
+<span class="keyword">enum</span> <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
+    <span class="enum_variant">Some</span>(<span class="type_param">T</span>),
+    <span class="enum_variant">None</span>,
 }
+<span class="keyword">use</span> <span class="enum">Option</span>::*;
 
-<span class="keyword">impl</span>&lt;<span class="type_param">X</span>&gt; <span class="enum">E</span>&lt;<span class="type_param">X</span>&gt; {
-    <span class="keyword">fn</span> <span class="function">new</span>&lt;<span class="type_param">T</span>&gt;() -&gt; <span class="enum">E</span>&lt;<span class="type_param">T</span>&gt; {}
+<span class="keyword">impl</span>&lt;<span class="type_param">T</span>&gt; <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
+    <span class="keyword">fn</span> <span class="function">and</span>&lt;<span class="type_param">U</span>&gt;(<span class="keyword">self</span>, <span class="variable">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
+        <span class="keyword control">match</span> <span class="variable">other</span> {
+            <span class="enum_variant">None</span> =&gt; <span class="macro">todo</span><span class="macro">!</span>(),
+            <span class="variable">Nope</span> =&gt; <span class="variable">Nope</span>,
+        }
+    }
 }</code></pre>

@@ -90,6 +90,12 @@ impl NameClass {
 }
 
 pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    if let Some(bind_pat) = name.syntax().parent().and_then(ast::BindPat::cast) {
+        if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
+            return Some(NameClass::ConstReference(NameDefinition::ModuleDef(def)));
+        }
+    }
+
     classify_name_inner(sema, name).map(NameClass::NameDefinition)
 }
 

@@ -50,12 +50,19 @@ fn main() {
     y;
 }
 
-enum E<X> {
-    V(X)
+enum Option<T> {
+    Some(T),
+    None,
 }
+use Option::*;
 
-impl<X> E<X> {
-    fn new<T>() -> E<T> {}
+impl<T> Option<T> {
+    fn and<U>(self, other: Option<U>) -> Option<(T, U)> {
+        match other {
+            None => todo!(),
+            Nope => Nope,
+        }
+    }
 }
 "#
         .trim(),
