@@ -6,7 +6,7 @@ use crate::utils::{higher, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, Lit, UnOp};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Lit, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -409,22 +409,46 @@ fn is_zero(expr: &Expr<'_>) -> bool {
 }
 
 fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-//    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
-        // Check for the positive-first variant
-//        if let ExprKind::Unary(UnOp::UnNeg, expr) = else_body.kind {
-//            if are_exprs_equal(cx, expr, body) && is_testing_positive(cx, cond, body) {
-                span_lint_and_sugg(
-                    cx,
-                    SUBOPTIMAL_FLOPS,
-                    expr.span,
-                    "This looks like you've implemented your own absolute value function",
-                    "try",
-                    "a.abs()".to_string(),//format!("{:?}.abs()", body),
-                    Applicability::MachineApplicable,
-                );
-//            }
-//        }
-//    }
+    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
+        if let ExprKind::Block(
+            Block {
+                stmts: [],
+                expr:
+                    Some(Expr {
+                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
+                        ..
+                    }),
+                ..
+            },
+            _,
+        ) = else_body.kind
+        {
+            if let ExprKind::Block(
+                Block {
+                    stmts: [],
+                    expr: Some(body),
+                    ..
+                },
+                _,
+            ) = &body.kind
+            {
+                if are_exprs_equal(cx, else_expr, body) {
+                    dbg!("if (cond) body else -body\nbody: {:?}", &body.kind);
+                    if is_testing_positive(cx, cond, body) {
+                        span_lint_and_sugg(
+                            cx,
+                            SUBOPTIMAL_FLOPS,
+                            expr.span,
+                            "This looks like you've implemented your own absolute value function",
+                            "try",
+                            format!("{}.abs()", Sugg::hir(cx, body, "..")),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
