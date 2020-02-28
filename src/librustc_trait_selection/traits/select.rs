@@ -43,6 +43,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
@@ -503,7 +504,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     None,
                 ) {
                     Ok(_) => Ok(EvaluatedToOk),
+                    Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
                     Err(_) => Ok(EvaluatedToErr),
+                }
+            }
+
+            ty::Predicate::ConstEquate(c1, c2) => {
+                debug!("evaluate_predicate_recursively: equating consts c1={:?} c2={:?}", c1, c2);
+
+                let evaluate = |c: &'tcx ty::Const<'tcx>| {
+                    if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
+                        match self.infcx.const_eval_resolve(
+                            obligation.param_env,
+                            def_id,
+                            substs,
+                            promoted,
+                            Some(obligation.cause.span),
+                        ) {
+                            Ok(val) => Ok(ty::Const::from_value(self.tcx(), val, c.ty)),
+                            Err(ErrorHandled::TooGeneric) => Err(EvaluatedToAmbig),
+                            Err(_) => Err(EvaluatedToErr),
+                        }
+                    } else {
+                        Ok(c)
+                    }
+                };
+
+                match (evaluate(c1), evaluate(c2)) {
+                    (Ok(c1), Ok(c2)) => {
+                        match self.infcx().at(&obligation.cause, obligation.param_env).eq(c1, c2) {
+                            Ok(_) => Ok(EvaluatedToOk),
+                            Err(_) => Ok(EvaluatedToErr),
+                        }
+                    }
+                    (Err(EvaluatedToErr), _) | (_, Err(EvaluatedToErr)) => Ok(EvaluatedToErr),
+                    _ => Ok(EvaluatedToAmbig),
                 }
             }
         }

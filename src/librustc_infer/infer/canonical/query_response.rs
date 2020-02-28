@@ -25,7 +25,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Const, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -669,6 +669,13 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
             ))),
             recursion_depth: 0,
         });
+    }
+
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {
+        span_bug!(
+            self.cause.span(self.infcx.tcx),
+            "lazy_normalization_consts: unreachable `const_equate`"
+        );
     }
 
     fn normalization() -> NormalizationStrategy {

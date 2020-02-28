@@ -77,6 +77,8 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
 
+    fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
+
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
 
@@ -592,8 +594,16 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+        match (a.val, b.val) {
+            (ty::ConstKind::Unevaluated(..), _) => {
+                self.delegate.const_equate(a, b);
+                Ok(b)
+            }
+            (_, ty::ConstKind::Unevaluated(..)) => {
+                self.delegate.const_equate(a, b);
+                Ok(a)
+            }
+            (_, ty::ConstKind::Infer(InferConst::Var(_))) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
             }
@@ -976,6 +986,7 @@ where
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(..) => Ok(a),
             _ => relate::super_relate_consts(self, a, a),
         }
     }

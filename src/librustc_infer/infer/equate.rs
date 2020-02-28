@@ -4,7 +4,7 @@ use super::Subtype;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ConstKind, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 
@@ -119,7 +119,17 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        self.fields.infcx.super_combine_consts(self, a, b)
+        match (a.val, b.val) {
+            (ConstKind::Unevaluated(..), _) => {
+                self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+                Ok(b)
+            }
+            (_, ConstKind::Unevaluated(..)) => {
+                self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+                Ok(a)
+            }
+            _ => self.fields.infcx.super_combine_consts(self, a, b),
+        }
     }
 
     fn binders<T>(

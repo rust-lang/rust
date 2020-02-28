@@ -164,7 +164,6 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
-
             _ => {}
         }
 
@@ -374,6 +373,20 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         let needs_wf = generalize.needs_wf;
         debug!("generalize: success {{ {:?}, {:?} }}", ty, needs_wf);
         Ok(Generalization { ty, needs_wf })
+    }
+
+    pub fn add_const_equate_obligation(
+        &mut self,
+        a_is_expected: bool,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) {
+        let predicate = if a_is_expected {
+            ty::Predicate::ConstEquate(a, b)
+        } else {
+            ty::Predicate::ConstEquate(b, a)
+        };
+        self.obligations.push(Obligation::new(self.trace.cause.clone(), self.param_env, predicate));
     }
 }
 
@@ -637,6 +650,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(..) => Ok(c),
             _ => relate::super_relate_consts(self, c, c),
         }
     }
