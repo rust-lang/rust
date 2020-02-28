@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 110)
-  FN_DEF@[0; 109)
+SOURCE_FILE@[0; 135)
+  FN_DEF@[0; 134)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,8 +8,8 @@ SOURCE_FILE@[0; 110)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK_EXPR@[9; 109)
-      BLOCK@[9; 109)
+    BLOCK_EXPR@[9; 134)
+      BLOCK@[9; 134)
         L_CURLY@[9; 10) "{"
         WHITESPACE@[10; 15) "\n    "
         LET_STMT@[15; 21)
@@ -97,6 +97,33 @@ SOURCE_FILE@[0; 110)
               L_CURLY@[104; 105) "{"
               R_CURLY@[105; 106) "}"
           SEMI@[106; 107) ";"
-        WHITESPACE@[107; 108) "\n"
-        R_CURLY@[108; 109) "}"
-  WHITESPACE@[109; 110) "\n"
+        WHITESPACE@[107; 112) "\n    "
+        LET_STMT@[112; 132)
+          LET_KW@[112; 115) "let"
+          WHITESPACE@[115; 116) " "
+          BIND_PAT@[116; 117)
+            NAME@[116; 117)
+              IDENT@[116; 117) "f"
+          WHITESPACE@[117; 118) " "
+          EQ@[118; 119) "="
+          WHITESPACE@[119; 120) " "
+          LAMBDA_EXPR@[120; 131)
+            ATTR@[120; 127)
+              POUND@[120; 121) "#"
+              L_BRACK@[121; 122) "["
+              PATH@[122; 126)
+                PATH_SEGMENT@[122; 126)
+                  NAME_REF@[122; 126)
+                    IDENT@[122; 126) "attr"
+              R_BRACK@[126; 127) "]"
+            PARAM_LIST@[127; 129)
+              PIPE@[127; 128) "|"
+              PIPE@[128; 129) "|"
+            BLOCK_EXPR@[129; 131)
+              BLOCK@[129; 131)
+                L_CURLY@[129; 130) "{"
+                R_CURLY@[130; 131) "}"
+          SEMI@[131; 132) ";"
+        WHITESPACE@[132; 133) "\n"
+        R_CURLY@[133; 134) "}"
+  WHITESPACE@[134; 135) "\n"

@@ -5,4 +5,5 @@ fn foo() {
     let d: i32 = 92;
     let e: !;
     let _: ! = {};
+    let f = #[attr]||{};
 }
