@@ -936,11 +936,11 @@ impl<'a> Parser<'a> {
             format!("{}: <type>", id),
             Applicability::HasPlaceholders,
         );
-        err.stash(id.span, StashKey::ItemNoType);
+        let span = err.stash(id.span, StashKey::ItemNoType);
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID })
+        P(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID })
     }
 
     /// Parses an enum declaration.

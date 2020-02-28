@@ -115,13 +115,28 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through `.steal_diagnostic` on `Handler`.
+    /// the *returned* `span` and `key` through `.steal_diagnostic` on `Handler`.
+    /// Do not use the `span` passed into this function when calling `.steal_diagnostic`.
     ///
     /// As with `buffer`, this is unless the handler has disabled such buffering.
-    pub fn stash(self, span: Span, key: StashKey) {
-        if let Some((diag, handler)) = self.into_diagnostic() {
+    #[must_use = "`Span` returned by `.stash(...)` must be later used in `.steal_diagnostic(..)`"]
+    pub fn stash(self, span: Span, key: StashKey) -> Span {
+        self.into_diagnostic().map_or(span, |(diag, handler)| {
+            // Before stashing the diagnostic, make sure the `span` is unique so that
+            // we do not attempt overwriting the key's slot later when dealing with macros.
+            // If we don't do this, then something like the following...:
+            // ```
+            // macro_rules! suite {
+            //     ( $( $fn:ident; )* ) => { $(const A = "A".$fn();)* }
+            // }
+            //
+            // suite! { len; is_empty; }
+            // ```
+            // ...would result in overwriting due to using the same `def_site` span for `A`.
+            let span = span.fresh_expansion(span.ctxt().outer_expn_data());
             handler.stash_diagnostic(span, key, diag);
-        }
+            span
+        })
     }
 
     /// Converts the builder to a `Diagnostic` for later emission,
