@@ -320,7 +320,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        placeholder_type_error(self.tcx(), span, &[], vec![span], false);
+        self.tcx().sess.delay_span_bug(span, "bad placeholder type");
         self.tcx().types.err
     }
 
@@ -715,13 +715,21 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
     tcx.generics_of(def_id);
 
     match trait_item.kind {
-        hir::TraitItemKind::Const(..)
-        | hir::TraitItemKind::Type(_, Some(_))
-        | hir::TraitItemKind::Method(..) => {
+        hir::TraitItemKind::Method(..) => {
             tcx.type_of(def_id);
-            if let hir::TraitItemKind::Method(..) = trait_item.kind {
-                tcx.fn_sig(def_id);
-            }
+            tcx.fn_sig(def_id);
+        }
+
+        hir::TraitItemKind::Const(.., Some(_)) => {
+            tcx.type_of(def_id);
+        }
+
+        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(_, Some(_)) => {
+            tcx.type_of(def_id);
+            // Account for `const C: _;` and `type T = _;`.
+            let mut visitor = PlaceholderHirTyCollector::default();
+            visitor.visit_trait_item(trait_item);
+            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
         }
 
         hir::TraitItemKind::Type(_, None) => {}
@@ -735,8 +743,18 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
-    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).kind {
-        tcx.fn_sig(def_id);
+    let impl_item = tcx.hir().expect_impl_item(impl_item_id);
+    match impl_item.kind {
+        hir::ImplItemKind::Method(..) => {
+            tcx.fn_sig(def_id);
+        }
+        hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => {
+            // Account for `type T = _;`
+            let mut visitor = PlaceholderHirTyCollector::default();
+            visitor.visit_impl_item(impl_item);
+            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
+        }
+        hir::ImplItemKind::Const(..) => {}
     }
 }
 

@@ -29,25 +29,25 @@ LL | type E = _::AssocTy;
    |          ^^^^^^^^^^ help: try: `<_>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:22:19
+  --> $DIR/bad-assoc-ty.rs:21:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^^^^^^^^^^ help: try: `<(u8)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:28:10
+  --> $DIR/bad-assoc-ty.rs:27:10
    |
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<dyn 'static + (Send)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:45:10
+  --> $DIR/bad-assoc-ty.rs:44:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: try: `<ty!()>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:38:19
+  --> $DIR/bad-assoc-ty.rs:37:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^^^^^^^^^^ help: try: `<$ty>::AssocTy`
@@ -87,32 +87,26 @@ error[E0121]: the type placeholder `_` is not allowed within types on item signa
 LL | type E = _::AssocTy;
    |          ^ not allowed in type signatures
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/bad-assoc-ty.rs:17:10
-   |
-LL | type E = _::AssocTy;
-   |          ^ not allowed in type signatures
-
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:22:19
+  --> $DIR/bad-assoc-ty.rs:21:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:28:10
+  --> $DIR/bad-assoc-ty.rs:27:10
    |
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::marker::Send + 'static) as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:34:10
+  --> $DIR/bad-assoc-ty.rs:33:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::ops::Fn(u8) -> u8 + 'static) as Trait>::Output`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:38:19
+  --> $DIR/bad-assoc-ty.rs:37:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
@@ -123,10 +117,18 @@ LL | type J = ty!(u8);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:45:10
+  --> $DIR/bad-assoc-ty.rs:44:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:49:13
+   |
+LL | fn foo<X: K<_, _>>(x: X) {}
+   |             ^  ^ not allowed in type signatures
+   |             |
+   |             not allowed in type signatures
 
 error: aborting due to 20 previous errors
 
