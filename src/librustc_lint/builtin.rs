@@ -1183,15 +1183,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         trace!("UnusedBrokenConst: check_item(_, _, {:?}", it);
         match it.kind {
-            hir::ItemKind::Const(_, body_id) => {
-                trace!("UnusedBrokenConst: checking {:?}", body_id);
-                check_const(cx, body_id);
-            }
-            hir::ItemKind::Static(_, _, body_id) => {
+            hir::ItemKind::Const(_, body_id) | hir::ItemKind::Static(_, _, body_id) => {
                 trace!("UnusedBrokenConst: checking {:?}", body_id);
                 check_const(cx, body_id);
             }
             _ => {}
+        }
+    }
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ImplItem<'_>) {
+        trace!("UnusedBrokenConst: check_impl_item(_, _, it = {:?})", it);
+        if let hir::ImplItemKind::Const(_, body_id) = it.kind {
+            trace!("UnusedBrokenConst: checking {:?}", body_id);
+            check_const(cx, body_id);
         }
     }
 }
