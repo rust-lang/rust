@@ -30,7 +30,10 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
-use rustc_errors::{registry::Registry, PResult};
+use rustc_errors::{
+    registry::{InvalidErrorCode, Registry},
+    PResult,
+};
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{collect_crate_types, get_builtin_codegen_backend};
@@ -522,11 +525,10 @@ fn stdout_isatty() -> bool {
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
         if code.starts_with('E') { code.to_string() } else { format!("E{0:0>4}", code) };
-    match registry.find_description(&normalised) {
-        Some(ref description) => {
+    match registry.try_find_description(&normalised) {
+        Ok(Some(description)) => {
             let mut is_in_code_block = false;
             let mut text = String::new();
-
             // Slice off the leading newline and print.
             for line in description.lines() {
                 let indent_level =
@@ -542,15 +544,17 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 }
                 text.push('\n');
             }
-
             if stdout_isatty() {
                 show_content_with_pager(&text);
             } else {
                 print!("{}", text);
             }
         }
-        None => {
+        Ok(None) => {
             early_error(output, &format!("no extended information for {}", code));
+        }
+        Err(InvalidErrorCode) => {
+            early_error(output, &format!("{} is not a valid error code", code));
         }
     }
 }
