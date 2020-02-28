@@ -460,14 +460,12 @@
             {
                 "selector": "typeAlias",
                 "scope": [
-                    "entity.name.type",
                     "entity.name.typeAlias"
                 ]
             },
             {
                 "selector": "union",
                 "scope": [
-                    "entity.name.type",
                     "entity.name.union"
                 ]
             },

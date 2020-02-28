@@ -90,6 +90,10 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def: hir::Struct = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
             },
+            ast::UnionDef(it) => {
+                let def: hir::Union = sema.to_def(&it)?;
+                Some(from_module_def(def.into()))
+            },
             ast::EnumDef(it) => {
                 let def: hir::Enum = sema.to_def(&it)?;
                 Some(from_module_def(def.into()))
