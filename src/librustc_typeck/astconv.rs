@@ -964,10 +964,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ),
             );
         }
-        err.note(&format!(
+        err.note(
             "because of the default `Self` reference, type parameters must be \
-                            specified on object types"
-        ));
+                  specified on object types",
+        );
         err.emit();
     }
 

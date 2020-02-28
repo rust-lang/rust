@@ -680,10 +680,7 @@ impl<'a> CrateLoader<'a> {
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
             if !data.is_profiler_runtime() {
-                self.sess.err(&format!(
-                    "the crate `profiler_builtins` is not \
-                                        a profiler runtime"
-                ));
+                self.sess.err("the crate `profiler_builtins` is not a profiler runtime");
             }
         }
     }

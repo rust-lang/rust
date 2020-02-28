@@ -1668,10 +1668,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         }
                     }
                 } else {
-                    let mut err = self.cx.struct_span_err(
-                        it.span(),
-                        &format!("expected path to external documentation"),
-                    );
+                    let mut err = self
+                        .cx
+                        .struct_span_err(it.span(), "expected path to external documentation");
 
                     // Check if the user erroneously used `doc(include(...))` syntax.
                     let literal = it.meta_item_list().and_then(|list| {

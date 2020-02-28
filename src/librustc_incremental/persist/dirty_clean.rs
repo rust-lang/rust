@@ -537,10 +537,7 @@ impl FindAllAttrs<'tcx> {
             if !checked_attrs.contains(&attr.id) {
                 self.tcx.sess.span_err(
                     attr.span,
-                    &format!(
-                        "found unchecked \
-                    `#[rustc_dirty]` / `#[rustc_clean]` attribute"
-                    ),
+                    "found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute",
                 );
             }
         }

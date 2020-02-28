@@ -283,10 +283,10 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "no base type found for inherent implementation"
                 )
                 .span_label(ty.span, "impl requires a base type")
-                .note(&format!(
+                .note(
                     "either implement a trait on it or create a newtype \
-                                    to wrap it instead"
-                ))
+                       to wrap it instead",
+                )
                 .emit();
                 return;
             }

@@ -1283,10 +1283,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                             param.hir_id,
                             param.span,
                             |lint| {
-                                lint.build(&format!(
+                                lint.build(
                                     "defaults for type parameters are only allowed in \
-                                        `struct`, `enum`, `type`, or `trait` definitions."
-                                ))
+                                            `struct`, `enum`, `type`, or `trait` definitions.",
+                                )
                                 .emit();
                             },
                         );
