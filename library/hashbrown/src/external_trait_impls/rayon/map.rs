@@ -20,7 +20,9 @@ pub struct ParIter<'a, K, V, S, A: AllocRef + Clone = Global> {
     map: &'a HashMap<K, V, S, A>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator for ParIter<'a, K, V, S, A> {
+impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
+    for ParIter<'a, K, V, S, A>
+{
     type Item = (&'a K, &'a V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -46,7 +48,9 @@ impl<K, V, S, A: AllocRef + Clone> Clone for ParIter<'_, K, V, S, A> {
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug for ParIter<'_, K, V, S, A> {
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug
+    for ParIter<'_, K, V, S, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.map.iter().fmt(f)
     }
@@ -63,7 +67,9 @@ pub struct ParKeys<'a, K, V, S, A: AllocRef + Clone> {
     map: &'a HashMap<K, V, S, A>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator for ParKeys<'a, K, V, S, A> {
+impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
+    for ParKeys<'a, K, V, S, A>
+{
     type Item = &'a K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -86,7 +92,9 @@ impl<K, V, S, A: AllocRef + Clone> Clone for ParKeys<'_, K, V, S, A> {
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V, S: BuildHasher, A: AllocRef + Clone> fmt::Debug for ParKeys<'_, K, V, S, A> {
+impl<K: fmt::Debug + Eq + Hash, V, S: BuildHasher, A: AllocRef + Clone> fmt::Debug
+    for ParKeys<'_, K, V, S, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.map.keys().fmt(f)
     }
@@ -103,7 +111,9 @@ pub struct ParValues<'a, K, V, S, A: AllocRef + Clone = Global> {
     map: &'a HashMap<K, V, S, A>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator for ParValues<'a, K, V, S, A> {
+impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
+    for ParValues<'a, K, V, S, A>
+{
     type Item = &'a V;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -126,7 +136,9 @@ impl<K, V, S, A: AllocRef + Clone> Clone for ParValues<'_, K, V, S, A> {
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug for ParValues<'_, K, V, S, A> {
+impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug
+    for ParValues<'_, K, V, S, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.map.values().fmt(f)
     }
@@ -145,7 +157,9 @@ pub struct ParIterMut<'a, K, V, S, A: AllocRef + Clone> {
     map: &'a mut HashMap<K, V, S, A>,
 }
 
-impl<'a, K: Send + Sync, V: Send, S: Send, A: AllocRef + Clone + Sync> ParallelIterator for ParIterMut<'a, K, V, S, A> {
+impl<'a, K: Send + Sync, V: Send, S: Send, A: AllocRef + Clone + Sync> ParallelIterator
+    for ParIterMut<'a, K, V, S, A>
+{
     type Item = (&'a K, &'a mut V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -183,7 +197,9 @@ pub struct ParValuesMut<'a, K, V, S, A: AllocRef + Clone = Global> {
     map: &'a mut HashMap<K, V, S, A>,
 }
 
-impl<'a, K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator for ParValuesMut<'a, K, V, S, A> {
+impl<'a, K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator
+    for ParValuesMut<'a, K, V, S, A>
+{
     type Item = &'a mut V;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -199,7 +215,9 @@ impl<'a, K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug for ParValuesMut<'_, K, V, S, A> {
+impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug
+    for ParValuesMut<'_, K, V, S, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.map.values().fmt(f)
     }
@@ -218,7 +236,9 @@ pub struct IntoParIter<K, V, S, A: AllocRef + Clone = Global> {
     map: HashMap<K, V, S, A>,
 }
 
-impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator for IntoParIter<K, V, S, A> {
+impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator
+    for IntoParIter<K, V, S, A>
+{
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -230,7 +250,9 @@ impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator for
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug for IntoParIter<K, V, S, A> {
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: AllocRef + Clone> fmt::Debug
+    for IntoParIter<K, V, S, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.map.iter().fmt(f)
     }
@@ -247,7 +269,9 @@ pub struct ParDrain<'a, K, V, S, A: AllocRef + Clone = Global> {
     map: &'a mut HashMap<K, V, S, A>,
 }
 
-impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Sync> ParallelIterator for ParDrain<'_, K, V, S, A> {
+impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Sync> ParallelIterator
+    for ParDrain<'_, K, V, S, A>
+{
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -315,7 +339,9 @@ where
     }
 }
 
-impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator for HashMap<K, V, S, A> {
+impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator
+    for HashMap<K, V, S, A>
+{
     type Item = (K, V);
     type Iter = IntoParIter<K, V, S, A>;
 
@@ -325,7 +351,9 @@ impl<K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator
     }
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIterator for &'a HashMap<K, V, S, A> {
+impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIterator
+    for &'a HashMap<K, V, S, A>
+{
     type Item = (&'a K, &'a V);
     type Iter = ParIter<'a, K, V, S, A>;
 
@@ -335,7 +363,9 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIter
     }
 }
 
-impl<'a, K: Send + Sync, V: Send, S: Send, A: AllocRef + Clone + Sync> IntoParallelIterator for &'a mut HashMap<K, V, S, A> {
+impl<'a, K: Send + Sync, V: Send, S: Send, A: AllocRef + Clone + Sync> IntoParallelIterator
+    for &'a mut HashMap<K, V, S, A>
+{
     type Item = (&'a K, &'a mut V);
     type Iter = ParIterMut<'a, K, V, S, A>;
 

@@ -5,8 +5,8 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use crate::raw::{AllocRef, Global};
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
+use crate::raw::{AllocRef, Global};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -1606,7 +1606,9 @@ fn assert_covariance() {
     fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
         v
     }
-    fn into_iter<'new, A: AllocRef + Clone>(v: IntoIter<&'static str, A>) -> IntoIter<&'new str, A> {
+    fn into_iter<'new, A: AllocRef + Clone>(
+        v: IntoIter<&'static str, A>,
+    ) -> IntoIter<&'new str, A> {
         v
     }
     fn difference<'a, 'new, A: AllocRef + Clone>(
@@ -1629,7 +1631,9 @@ fn assert_covariance() {
     ) -> Union<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn drain<'new, A: AllocRef + Clone>(d: Drain<'static, &'static str, A>) -> Drain<'new, &'new str, A> {
+    fn drain<'new, A: AllocRef + Clone>(
+        d: Drain<'static, &'static str, A>,
+    ) -> Drain<'new, &'new str, A> {
         d
     }
 }

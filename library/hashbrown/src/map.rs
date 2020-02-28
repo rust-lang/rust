@@ -1,4 +1,4 @@
-use crate::raw::{Bucket, AllocRef, Global, RawDrain, RawIntoIter, RawIter, RawTable};
+use crate::raw::{AllocRef, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
@@ -1932,7 +1932,10 @@ impl<K, V, S, A: AllocRef + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S, A> where A: AllocRef + Clone {
+pub enum Entry<'a, K, V, S, A>
+where
+    A: AllocRef + Clone,
+{
     /// An occupied entry.
     Occupied(OccupiedEntry<'a, K, V, S, A>),
 
@@ -2721,7 +2724,8 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let iter = iter.into_iter();
-        let mut map = Self::with_capacity_and_hasher_in(iter.size_hint().0, S::default(), A::default());
+        let mut map =
+            Self::with_capacity_and_hasher_in(iter.size_hint().0, S::default(), A::default());
         iter.for_each(|(k, v)| {
             map.insert(k, v);
         });
@@ -2781,10 +2785,14 @@ fn assert_covariance() {
     fn iter_val<'a, 'new>(v: Iter<'a, u8, &'static str>) -> Iter<'a, u8, &'new str> {
         v
     }
-    fn into_iter_key<'new, A: AllocRef + Clone>(v: IntoIter<&'static str, u8, A>) -> IntoIter<&'new str, u8, A> {
+    fn into_iter_key<'new, A: AllocRef + Clone>(
+        v: IntoIter<&'static str, u8, A>,
+    ) -> IntoIter<&'new str, u8, A> {
         v
     }
-    fn into_iter_val<'new, A: AllocRef + Clone>(v: IntoIter<u8, &'static str, A>) -> IntoIter<u8, &'new str, A> {
+    fn into_iter_val<'new, A: AllocRef + Clone>(
+        v: IntoIter<u8, &'static str, A>,
+    ) -> IntoIter<u8, &'new str, A> {
         v
     }
     fn keys_key<'a, 'new>(v: Keys<'a, &'static str, u8>) -> Keys<'a, &'new str, u8> {

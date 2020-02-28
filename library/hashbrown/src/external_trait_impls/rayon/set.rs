@@ -45,7 +45,9 @@ pub struct ParDrain<'a, T, S, A: AllocRef + Clone = Global> {
     set: &'a mut HashSet<T, S, A>,
 }
 
-impl<T: Send, S: Send, A: AllocRef + Clone + Send + Sync> ParallelIterator for ParDrain<'_, T, S, A> {
+impl<T: Send, S: Send, A: AllocRef + Clone + Send + Sync> ParallelIterator
+    for ParDrain<'_, T, S, A>
+{
     type Item = T;
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
@@ -216,14 +218,12 @@ where
     T: Eq + Hash + Sync,
     S: BuildHasher + Sync,
 {
-
     /// Visits (potentially in parallel) the values representing the union,
     /// i.e. all the values in `self` or `other`, without duplicates.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_union<'a>(&'a self, other: &'a Self) -> ParUnion<'a, T, S> {
         ParUnion { a: self, b: other }
     }
-
 }
 
 impl<T, S, A> HashSet<T, S, A>
@@ -317,7 +317,9 @@ impl<T: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator for Hash
     }
 }
 
-impl<'a, T: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIterator for &'a HashSet<T, S, A> {
+impl<'a, T: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIterator
+    for &'a HashSet<T, S, A>
+{
     type Item = &'a T;
     type Iter = ParIter<'a, T, S, A>;
 
