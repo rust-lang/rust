@@ -20,11 +20,11 @@ use ra_vfs::LineEndings;
 
 use crate::{
     req,
-    semantic_tokens::{self, ModifierSet, BUILTIN, CONSTANT, CONTROL, MUTABLE, UNSAFE},
+    semantic_tokens::{self, ModifierSet, CONSTANT, CONTROL, MUTABLE, UNSAFE},
     world::WorldSnapshot,
     Result,
 };
-use semantic_tokens::ATTRIBUTE;
+use semantic_tokens::{ATTRIBUTE, BUILTIN_TYPE, ENUM_MEMBER, LIFETIME, TYPE_ALIAS, UNION};
 
 pub trait Conv {
     type Output;
@@ -316,45 +316,43 @@ impl Conv for Highlight {
     fn conv(self) -> Self::Output {
         let mut mods = ModifierSet::default();
         let type_ = match self.tag {
-            HighlightTag::Struct
-            | HighlightTag::Enum
-            | HighlightTag::Union
-            | HighlightTag::TypeAlias
-            | HighlightTag::Trait
-            | HighlightTag::BuiltinType => SemanticTokenType::TYPE,
+            HighlightTag::Struct => SemanticTokenType::STRUCT,
+            HighlightTag::Enum => SemanticTokenType::ENUM,
+            HighlightTag::Union => UNION,
+            HighlightTag::TypeAlias => TYPE_ALIAS,
+            HighlightTag::Trait => SemanticTokenType::INTERFACE,
+            HighlightTag::BuiltinType => BUILTIN_TYPE,
+            HighlightTag::SelfType => SemanticTokenType::TYPE,
             HighlightTag::Field => SemanticTokenType::MEMBER,
             HighlightTag::Function => SemanticTokenType::FUNCTION,
             HighlightTag::Module => SemanticTokenType::NAMESPACE,
             HighlightTag::Constant => {
+                mods |= CONSTANT;
                 mods |= SemanticTokenModifier::STATIC;
-                mods |= SemanticTokenModifier::READONLY;
-                CONSTANT
+                SemanticTokenType::VARIABLE
             }
+            HighlightTag::Static => {
+                mods |= SemanticTokenModifier::STATIC;
+                SemanticTokenType::VARIABLE
+            }
+            HighlightTag::EnumVariant => ENUM_MEMBER,
             HighlightTag::Macro => SemanticTokenType::MACRO,
-            HighlightTag::Variable => SemanticTokenType::VARIABLE,
-            HighlightTag::TypeSelf => {
-                mods |= SemanticTokenModifier::REFERENCE;
-                SemanticTokenType::TYPE
-            }
+            HighlightTag::Local => SemanticTokenType::VARIABLE,
             HighlightTag::TypeParam => SemanticTokenType::TYPE_PARAMETER,
-            HighlightTag::TypeLifetime => {
-                mods |= SemanticTokenModifier::REFERENCE;
-                SemanticTokenType::LABEL
-            }
-            HighlightTag::LiteralByte => SemanticTokenType::NUMBER,
-            HighlightTag::LiteralNumeric => SemanticTokenType::NUMBER,
-            HighlightTag::LiteralChar => SemanticTokenType::NUMBER,
+            HighlightTag::Lifetime => LIFETIME,
+            HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => SemanticTokenType::NUMBER,
+            HighlightTag::CharLiteral | HighlightTag::StringLiteral => SemanticTokenType::STRING,
             HighlightTag::Comment => SemanticTokenType::COMMENT,
-            HighlightTag::LiteralString => SemanticTokenType::STRING,
             HighlightTag::Attribute => ATTRIBUTE,
             HighlightTag::Keyword => SemanticTokenType::KEYWORD,
         };
 
         for modifier in self.modifiers.iter() {
             let modifier = match modifier {
+                HighlightModifier::Definition => SemanticTokenModifier::DECLARATION,
+                HighlightModifier::Control => CONTROL,
                 HighlightModifier::Mutable => MUTABLE,
                 HighlightModifier::Unsafe => UNSAFE,
-                HighlightModifier::Control => CONTROL,
             };
             mods |= modifier;
         }

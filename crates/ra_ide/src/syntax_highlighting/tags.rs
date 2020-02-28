@@ -14,70 +14,71 @@ pub struct HighlightModifiers(u32);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HighlightTag {
-    Struct,
-    Enum,
-    Union,
-    Trait,
-    TypeAlias,
+    Attribute,
     BuiltinType,
-
+    ByteLiteral,
+    CharLiteral,
+    Comment,
+    Constant,
+    Enum,
+    EnumVariant,
     Field,
     Function,
-    Module,
-    Constant,
-    Macro,
-    Variable,
-
-    TypeSelf,
-    TypeParam,
-    TypeLifetime,
-
-    LiteralByte,
-    LiteralNumeric,
-    LiteralChar,
-
-    Comment,
-    LiteralString,
-    Attribute,
-
     Keyword,
+    Lifetime,
+    Macro,
+    Module,
+    NumericLiteral,
+    SelfType,
+    Static,
+    StringLiteral,
+    Struct,
+    Trait,
+    TypeAlias,
+    TypeParam,
+    Union,
+    Local,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum HighlightModifier {
-    Mutable = 0,
-    Unsafe,
     /// Used with keywords like `if` and `break`.
-    Control,
+    Control = 0,
+    /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
+    /// not.
+    Definition,
+    Mutable,
+    Unsafe,
 }
 
 impl HighlightTag {
     fn as_str(self) -> &'static str {
         match self {
-            HighlightTag::Struct => "struct",
-            HighlightTag::Enum => "enum",
-            HighlightTag::Union => "union",
-            HighlightTag::Trait => "trait",
-            HighlightTag::TypeAlias => "type_alias",
+            HighlightTag::Attribute => "attribute",
             HighlightTag::BuiltinType => "builtin_type",
-
+            HighlightTag::ByteLiteral => "byte_literal",
+            HighlightTag::CharLiteral => "char_literal",
+            HighlightTag::Comment => "comment",
+            HighlightTag::Constant => "constant",
+            HighlightTag::Enum => "enum",
+            HighlightTag::EnumVariant => "enum_variant",
             HighlightTag::Field => "field",
             HighlightTag::Function => "function",
-            HighlightTag::Module => "module",
-            HighlightTag::Constant => "constant",
-            HighlightTag::Macro => "macro",
-            HighlightTag::Variable => "variable",
-            HighlightTag::TypeSelf => "type.self",
-            HighlightTag::TypeParam => "type.param",
-            HighlightTag::TypeLifetime => "type.lifetime",
-            HighlightTag::LiteralByte => "literal.byte",
-            HighlightTag::LiteralNumeric => "literal.numeric",
-            HighlightTag::LiteralChar => "literal.char",
-            HighlightTag::Comment => "comment",
-            HighlightTag::LiteralString => "string",
-            HighlightTag::Attribute => "attribute",
             HighlightTag::Keyword => "keyword",
+            HighlightTag::Lifetime => "lifetime",
+            HighlightTag::Macro => "macro",
+            HighlightTag::Module => "module",
+            HighlightTag::NumericLiteral => "numeric_literal",
+            HighlightTag::SelfType => "self_type",
+            HighlightTag::Static => "static",
+            HighlightTag::StringLiteral => "string",
+            HighlightTag::Struct => "struct",
+            HighlightTag::Trait => "trait",
+            HighlightTag::TypeAlias => "type_alias",
+            HighlightTag::TypeParam => "type_param",
+            HighlightTag::Union => "union",
+            HighlightTag::Local => "variable",
         }
     }
 }
@@ -94,9 +95,10 @@ impl HighlightModifier {
 
     fn as_str(self) -> &'static str {
         match self {
+            HighlightModifier::Control => "control",
+            HighlightModifier::Definition => "declaration",
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
-            HighlightModifier::Control => "control",
         }
     }
 
