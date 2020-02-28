@@ -2,8 +2,8 @@ use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
     SyntaxKind::{
-        ATTR, COMMENT, ENUM_DEF, FN_DEF, IDENT, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
-        WHITESPACE,
+        ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, IDENT, MODULE, STRUCT_DEF, TRAIT_DEF,
+        VISIBILITY, WHITESPACE,
     },
     SyntaxNode, TextUnit, T,
 };
@@ -30,13 +30,13 @@ pub(crate) fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
 
 fn add_vis(ctx: AssistCtx) -> Option<Assist> {
     let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
-        T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
+        T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
         _ => false,
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent();
-        let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
+        let def_kws = vec![CONST_DEF, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
         // Parent is not a definition, can't add visibility
         if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
             return None;
@@ -133,6 +133,11 @@ mod tests {
     #[test]
     fn change_visibility_pub_crate_to_pub() {
         check_assist(change_visibility, "<|>pub(crate) fn foo() {}", "<|>pub fn foo() {}")
+    }
+
+    #[test]
+    fn change_visibility_const() {
+        check_assist(change_visibility, "<|>const FOO = 3u8;", "<|>pub(crate) const FOO = 3u8;");
     }
 
     #[test]
