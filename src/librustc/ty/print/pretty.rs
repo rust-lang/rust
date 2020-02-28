@@ -136,7 +136,7 @@ impl RegionHighlightMode {
     pub fn highlighting_region(&mut self, region: ty::Region<'_>, number: usize) {
         let num_slots = self.highlight_regions.len();
         let first_avail_slot =
-            self.highlight_regions.iter_mut().filter(|s| s.is_none()).next().unwrap_or_else(|| {
+            self.highlight_regions.iter_mut().find(|s| s.is_none()).unwrap_or_else(|| {
                 bug!("can only highlight {} placeholders at a time", num_slots,)
             });
         *first_avail_slot = Some((*region, number));

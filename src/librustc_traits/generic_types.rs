@@ -24,7 +24,6 @@ crate fn fn_ptr(
 ) -> Ty<'tcx> {
     let inputs_and_output = tcx.mk_type_list(
         (0..arity_and_output)
-            .into_iter()
             .map(|i| ty::BoundVar::from(i))
             // DebruijnIndex(1) because we are going to inject these in a `PolyFnSig`
             .map(|var| tcx.mk_ty(ty::Bound(ty::DebruijnIndex::from(1usize), var.into()))),
@@ -37,7 +36,6 @@ crate fn fn_ptr(
 crate fn type_list(tcx: TyCtxt<'tcx>, arity: usize) -> SubstsRef<'tcx> {
     tcx.mk_substs(
         (0..arity)
-            .into_iter()
             .map(|i| ty::BoundVar::from(i))
             .map(|var| tcx.mk_ty(ty::Bound(ty::INNERMOST, var.into())))
             .map(|ty| GenericArg::from(ty)),

@@ -399,8 +399,7 @@ fn orphan_check_trait_ref<'tcx>(
             let local_type = trait_ref
                 .input_types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .filter(|ty| ty_is_non_local_constructor(ty, in_crate).is_none())
-                .next();
+                .find(|ty| ty_is_non_local_constructor(ty, in_crate).is_none());
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
 

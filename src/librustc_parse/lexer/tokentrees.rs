@@ -93,10 +93,8 @@ impl<'a> TokenTreesReader<'a> {
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
-                    if let Some((_, open_sp, close_sp)) = self
-                        .matching_delim_spans
-                        .iter()
-                        .filter(|(d, open_sp, close_sp)| {
+                    if let Some((_, open_sp, close_sp)) =
+                        self.matching_delim_spans.iter().find(|(d, open_sp, close_sp)| {
                             if let Some(close_padding) = sm.span_to_margin(*close_sp) {
                                 if let Some(open_padding) = sm.span_to_margin(*open_sp) {
                                     return delim == d && close_padding != open_padding;
@@ -104,7 +102,6 @@ impl<'a> TokenTreesReader<'a> {
                             }
                             false
                         })
-                        .next()
                     // these are in reverse order as they get inserted on close, but
                     {
                         // we want the last open/first close
@@ -212,7 +209,7 @@ impl<'a> TokenTreesReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(delim_span, delim, tts.into()).into())
+                Ok(TokenTree::Delimited(delim_span, delim, tts).into())
             }
             token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no

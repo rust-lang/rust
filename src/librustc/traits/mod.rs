@@ -820,8 +820,7 @@ impl ObjectSafetyViolation {
                 MethodViolationCode::UndispatchableReceiver,
                 span,
             ) => (
-                format!("consider changing method `{}`'s `self` parameter to be `&self`", name)
-                    .into(),
+                format!("consider changing method `{}`'s `self` parameter to be `&self`", name),
                 Some(("&Self".to_string(), span)),
             ),
             ObjectSafetyViolation::AssocConst(name, _)

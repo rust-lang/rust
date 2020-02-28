@@ -293,7 +293,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 let (&untuple_arg, args) = args.split_last().unwrap();
                                 trace!("eval_fn_call: Will pass last argument by untupling");
                                 Cow::from(args.iter().map(|&a| Ok(a))
-                                .chain((0..untuple_arg.layout.fields.count()).into_iter()
+                                .chain((0..untuple_arg.layout.fields.count())
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
                                 )
                                 .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)

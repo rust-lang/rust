@@ -225,12 +225,8 @@ impl<'a> Parser<'a> {
 
             // Make sure that the span of the parent node is larger than the span of lhs and rhs,
             // including the attributes.
-            let lhs_span = lhs
-                .attrs
-                .iter()
-                .filter(|a| a.style == AttrStyle::Outer)
-                .next()
-                .map_or(lhs_span, |a| a.span);
+            let lhs_span =
+                lhs.attrs.iter().find(|a| a.style == AttrStyle::Outer).map_or(lhs_span, |a| a.span);
             let span = lhs_span.to(rhs.span);
             lhs = match op {
                 AssocOp::Add

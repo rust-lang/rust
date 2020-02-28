@@ -420,7 +420,7 @@ fn prepend_attrs(
         builder.push(tokenstream::TokenTree::Delimited(
             delim_span,
             token::DelimToken::Bracket,
-            brackets.build().into(),
+            brackets.build(),
         ));
     }
     builder.push(tokens.clone());

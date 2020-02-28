@@ -2439,10 +2439,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     break;
                 }
             }
-            for binding in segment.generic_args().bindings {
+
+            // Only emit the first error to avoid overloading the user with error messages.
+            if let [binding, ..] = segment.generic_args().bindings {
                 has_err = true;
                 Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
-                break;
             }
         }
         has_err

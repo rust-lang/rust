@@ -1519,7 +1519,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 values
                     .iter()
                     .map(|&u| {
-                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size).into(), switch_ty)
+                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)
                             .to_string()
                             .into()
                     })

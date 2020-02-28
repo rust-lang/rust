@@ -1942,8 +1942,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.hir.tcx();
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
         let binding_mode = match mode {
-            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
-            BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
+            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability),
+            BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
         };
         debug!("declare_binding: user_ty={:?}", user_ty);
         let local = LocalDecl::<'tcx> {

@@ -565,8 +565,7 @@ impl Attributes {
 
         let inner_docs = attrs
             .iter()
-            .filter(|a| a.doc_str().is_some())
-            .next()
+            .find(|a| a.doc_str().is_some())
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {

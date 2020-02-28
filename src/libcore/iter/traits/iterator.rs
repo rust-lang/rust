@@ -719,6 +719,8 @@ pub trait Iterator {
     /// ```
     ///
     /// of these layers.
+    ///
+    /// Note that `iter.filter(f).next()` is equivalent to `iter.find(f)`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter<P>(self, predicate: P) -> Filter<Self, P>
@@ -2152,6 +2154,8 @@ pub trait Iterator {
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&3));
     /// ```
+    ///
+    /// Note that `iter.find(f)` is equivalent to `iter.filter(f).next()`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>

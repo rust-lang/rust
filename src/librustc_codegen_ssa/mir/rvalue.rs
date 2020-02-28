@@ -387,7 +387,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::AddressOf(mutability, ref place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability.into() })
+                    tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
