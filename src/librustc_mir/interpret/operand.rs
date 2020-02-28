@@ -96,40 +96,40 @@ pub struct ImmTy<'tcx, Tag = ()> {
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.imm {
-            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => match s.to_bits(self.layout.size) {
-                Ok(s) => {
-                    match self.layout.ty.kind {
-                        ty::Int(_) => {
-                            return write!(
-                                fmt,
-                                "{}",
-                                super::sign_extend(s, self.layout.size) as i128,
-                            );
-                        }
-                        ty::Uint(_) => return write!(fmt, "{}", s),
-                        ty::Bool if s == 0 => return fmt.write_str("false"),
-                        ty::Bool if s == 1 => return fmt.write_str("true"),
-                        ty::Char => {
-                            if let Some(c) = u32::try_from(s).ok().and_then(std::char::from_u32) {
-                                return write!(fmt, "{}", c);
-                            }
-                        }
-                        ty::Float(ast::FloatTy::F32) => {
-                            if let Ok(u) = u32::try_from(s) {
-                                return write!(fmt, "{}", f32::from_bits(u));
-                            }
-                        }
-                        ty::Float(ast::FloatTy::F64) => {
-                            if let Ok(u) = u64::try_from(s) {
-                                return write!(fmt, "{}", f64::from_bits(u));
-                            }
-                        }
-                        _ => {}
+            // We cannot use `to_bits_or_ptr` as we do not have a `tcx`.
+            // So we use `is_bits` and circumvent a bunch of sanity checking -- but
+            // this is anyway only for printing.
+            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) if s.is_ptr() => {
+                fmt.write_str("{pointer}")
+            }
+            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => {
+                let s = s.assert_bits(self.layout.size);
+                match self.layout.ty.kind {
+                    ty::Int(_) => {
+                        return write!(fmt, "{}", super::sign_extend(s, self.layout.size) as i128,);
                     }
-                    write!(fmt, "{:x}", s)
+                    ty::Uint(_) => return write!(fmt, "{}", s),
+                    ty::Bool if s == 0 => return fmt.write_str("false"),
+                    ty::Bool if s == 1 => return fmt.write_str("true"),
+                    ty::Char => {
+                        if let Some(c) = u32::try_from(s).ok().and_then(std::char::from_u32) {
+                            return write!(fmt, "{}", c);
+                        }
+                    }
+                    ty::Float(ast::FloatTy::F32) => {
+                        if let Ok(u) = u32::try_from(s) {
+                            return write!(fmt, "{}", f32::from_bits(u));
+                        }
+                    }
+                    ty::Float(ast::FloatTy::F64) => {
+                        if let Ok(u) = u64::try_from(s) {
+                            return write!(fmt, "{}", f64::from_bits(u));
+                        }
+                    }
+                    _ => {}
                 }
-                Err(_) => fmt.write_str("{pointer}"),
-            },
+                write!(fmt, "{:x}", s)
+            }
             Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
             Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
         }
@@ -204,11 +204,6 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
-    }
-
-    #[inline]
-    pub fn to_bits(self) -> InterpResult<'tcx, u128> {
-        self.to_scalar()?.to_bits(self.layout.size)
     }
 }
 

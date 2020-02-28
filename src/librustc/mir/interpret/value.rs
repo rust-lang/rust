@@ -382,9 +382,10 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
+    /// This method is intentionally private!
+    /// It is just a helper for other methods in this file.
     #[inline]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+    fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
@@ -405,7 +406,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn assert_ptr(self) -> Pointer<Tag> {
         match self {
             Scalar::Ptr(p) => p,
-            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits")
+            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits"),
         }
     }
 
@@ -584,12 +585,6 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
         }
-    }
-
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
-    #[inline(always)]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
-        self.not_undef()?.to_bits(target_size)
     }
 
     #[inline(always)]
