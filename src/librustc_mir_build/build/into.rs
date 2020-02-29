@@ -20,7 +20,7 @@ pub(in crate::build) trait EvalInto<'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn into<E>(
+    crate fn into<E>(
         &mut self,
         destination: &Place<'tcx>,
         scope: Option<region::Scope>,

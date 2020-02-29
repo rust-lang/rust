@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn ast_block(
+    crate fn ast_block(
         &mut self,
         destination: &Place<'tcx>,
         scope: Option<region::Scope>,
