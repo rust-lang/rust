@@ -619,8 +619,9 @@ fn compute_storage_conflicts(
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
     };
 
-    // FIXME: Do we need to do this in RPO?
-    requires_storage.visit_in_rpo_with(body, &mut visitor);
+    // Visit only reachable basic blocks. The exact order is not important.
+    let reachable_blocks = traversal::preorder(body).map(|(bb, _)| bb);
+    requires_storage.visit_with(body, reachable_blocks, &mut visitor);
 
     let local_conflicts = visitor.local_conflicts;
 
