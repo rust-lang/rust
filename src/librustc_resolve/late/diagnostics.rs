@@ -354,7 +354,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let mut has_self_arg = None;
         if let PathSource::Expr(parent) = source {
             match &parent?.kind {
-                ExprKind::Call(_, args) if args.len() > 0 => {
+                ExprKind::Call(_, args) if !args.is_empty() => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {

@@ -587,7 +587,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         // skip no-op cases known to be satisfied
         if let VerifyBound::AllBounds(ref bs) = verify.bound {
-            if bs.len() == 0 {
+            if bs.is_empty() {
                 return;
             }
         }

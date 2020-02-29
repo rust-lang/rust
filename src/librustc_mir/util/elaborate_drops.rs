@@ -369,7 +369,7 @@ where
 
     fn open_drop_for_adt(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
-        if adt.variants.len() == 0 {
+        if adt.variants.is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
                 statements: vec![],
                 terminator: Some(Terminator {

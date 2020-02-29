@@ -229,7 +229,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
                             // Do not suggest going from `Trait()` to `Trait<>`
-                            if data.inputs.len() > 0 {
+                            if !data.inputs.is_empty() {
                                 if let Some(split) = snippet.find('(') {
                                     let trait_name = &snippet[0..split];
                                     let args = &snippet[split + 1..snippet.len() - 1];

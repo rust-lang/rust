@@ -1478,7 +1478,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
         });
 
-        if reexports.len() > 0 {
+        if !reexports.is_empty() {
             if let Some(def_id) = module.def_id() {
                 self.r.export_map.insert(def_id, reexports);
             }

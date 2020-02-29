@@ -1524,12 +1524,12 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     for &(cnum, _) in deps.iter().rev() {
         if let Some(missing) = info.missing_lang_items.get(&cnum) {
             end_with.extend(missing.iter().cloned());
-            if end_with.len() > 0 && group_end.is_none() {
+            if !end_with.is_empty() && group_end.is_none() {
                 group_end = Some(cnum);
             }
         }
         end_with.retain(|item| info.lang_item_to_crate.get(item) != Some(&cnum));
-        if end_with.len() == 0 && group_end.is_some() {
+        if end_with.is_empty() && group_end.is_some() {
             group_start = Some(cnum);
             break;
         }

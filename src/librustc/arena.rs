@@ -250,7 +250,7 @@ impl<'tcx> Arena<'tcx> {
 
     #[inline]
     pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
-        if value.len() == 0 {
+        if value.is_empty() {
             return &mut [];
         }
         self.dropless.alloc_slice(value)

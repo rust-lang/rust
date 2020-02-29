@@ -1205,7 +1205,7 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        if self.lines.len() == 0 {
+        if self.lines.is_empty() {
             return None;
         }
 

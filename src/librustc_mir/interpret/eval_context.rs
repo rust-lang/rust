@@ -264,7 +264,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_frame(&self) -> usize {
-        assert!(self.stack.len() > 0);
+        assert!(!self.stack.is_empty());
         self.stack.len() - 1
     }
 
@@ -505,7 +505,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
@@ -698,7 +698,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!(
                 "CONTINUING({}) {} (unwinding = {})",
                 self.cur_frame(),

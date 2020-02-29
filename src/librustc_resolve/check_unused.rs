@@ -158,7 +158,7 @@ fn calc_unused_spans(
             }
         }
         ast::UseTreeKind::Nested(ref nested) => {
-            if nested.len() == 0 {
+            if nested.is_empty() {
                 return UnusedSpanResult::FlatUnused(use_tree.span, full_span);
             }
 

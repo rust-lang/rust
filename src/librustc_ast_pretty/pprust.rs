@@ -791,7 +791,7 @@ impl<'a> PrintState<'a> for State<'a> {
                     s.print_generic_arg(generic_arg)
                 });
 
-                let mut comma = data.args.len() != 0;
+                let mut comma = !data.args.is_empty();
 
                 for constraint in data.constraints.iter() {
                     if comma {

@@ -14,7 +14,7 @@ impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        if self.len() == 0 {
+        if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
             return;
         }

@@ -304,7 +304,7 @@ impl Backtrace {
         // If no frames came out assume that this is an unsupported platform
         // since `backtrace` doesn't provide a way of learning this right now,
         // and this should be a good enough approximation.
-        let inner = if frames.len() == 0 {
+        let inner = if frames.is_empty() {
             Inner::Unsupported
         } else {
             Inner::Captured(Mutex::new(Capture {
