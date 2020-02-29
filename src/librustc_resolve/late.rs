@@ -444,7 +444,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Const(..) | ForeignItemKind::Static(..) => {
+            ForeignItemKind::Static(..) => {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -838,8 +838,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         for item in trait_items {
                             this.with_trait_items(trait_items, |this| {
                                 match &item.kind {
-                                    AssocItemKind::Static(ty, _, default)
-                                    | AssocItemKind::Const(_, ty, default) => {
+                                    AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
                                         // Only impose the restrictions of `ConstRibKind` for an
                                         // actual constant expression in a provided default.
@@ -1114,7 +1113,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
                                     match &item.kind {
-                                        AssocItemKind::Static(..) | AssocItemKind::Const(..) => {
+                                        AssocItemKind::Const(..) => {
                                             debug!("resolve_implementation AssocItemKind::Const",);
                                             // If this is a trait impl, ensure the const
                                             // exists in trait

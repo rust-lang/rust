@@ -675,11 +675,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ty = self.lower_ty(t, ImplTraitContext::disallowed());
                     hir::ForeignItemKind::Static(ty, m)
                 }
-                ForeignItemKind::Const(_, ref t, _) => {
-                    // For recovery purposes.
-                    let ty = self.lower_ty(t, ImplTraitContext::disallowed());
-                    hir::ForeignItemKind::Static(ty, Mutability::Not)
-                }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
             },
@@ -757,8 +752,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            AssocItemKind::Static(ref ty, _, ref default) // Let's pretend this is a `const`.
-            | AssocItemKind::Const(_, ref ty, ref default) => {
+            AssocItemKind::Const(_, ref ty, ref default) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body))
@@ -800,11 +794,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
         let (kind, has_default) = match &i.kind {
-            AssocItemKind::Static(_, _, default) // Let's pretend this is a `const` for recovery.
-            | AssocItemKind::Const(_, _, default) => {
-                (hir::AssocItemKind::Const, default.is_some())
+            AssocItemKind::Const(_, _, default) => (hir::AssocItemKind::Const, default.is_some()),
+            AssocItemKind::TyAlias(_, _, _, default) => {
+                (hir::AssocItemKind::Type, default.is_some())
             }
-            AssocItemKind::TyAlias(_, _, _, default) => (hir::AssocItemKind::Type, default.is_some()),
             AssocItemKind::Fn(_, sig, _, default) => {
                 (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
             }
@@ -824,7 +817,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match &i.kind {
-            AssocItemKind::Static(ty, _, expr) | AssocItemKind::Const(_, ty, expr) => {
+            AssocItemKind::Const(_, ty, expr) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 (
                     hir::Generics::empty(),
@@ -892,8 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.kind.defaultness(), true /* [1] */),
             kind: match &i.kind {
-                AssocItemKind::Static(..) // Let's pretend this is a `const` for recovery.
-                | AssocItemKind::Const(..) => hir::AssocItemKind::Const,
+                AssocItemKind::Const(..) => hir::AssocItemKind::Const,
                 AssocItemKind::TyAlias(.., ty) => {
                     match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                         None => hir::AssocItemKind::Type,

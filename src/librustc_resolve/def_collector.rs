@@ -228,9 +228,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     body.as_deref(),
                 );
             }
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) | AssocItemKind::Static(..) => {
-                DefPathData::ValueNs(i.ident.name)
-            }
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
         };

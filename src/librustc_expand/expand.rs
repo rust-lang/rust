@@ -674,10 +674,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let item_tok = TokenTree::token(
                         token::Interpolated(Lrc::new(match item {
                             Annotatable::Item(item) => token::NtItem(item),
-                            Annotatable::TraitItem(item)
-                            | Annotatable::ImplItem(item)
-                            | Annotatable::ForeignItem(item) => {
+                            Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
                                 token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
+                            }
+                            Annotatable::ForeignItem(item) => {
+                                token::NtItem(P(item.and_then(ast::ForeignItem::into_item)))
                             }
                             Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                             Annotatable::Expr(expr) => token::NtExpr(expr),

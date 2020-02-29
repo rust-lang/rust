@@ -1004,8 +1004,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
-            ast::AssocItemKind::Static(ref ty, _, ref expr)
-            | ast::AssocItemKind::Const(_, ref ty, ref expr) => {
+            ast::AssocItemKind::Const(_, ref ty, ref expr) => {
                 self.process_assoc_const(
                     trait_item.id,
                     trait_item.ident,
@@ -1075,8 +1074,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_impl_item(&mut self, impl_item: &'l ast::AssocItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
         match impl_item.kind {
-            ast::AssocItemKind::Static(ref ty, _, ref expr)
-            | ast::AssocItemKind::Const(_, ref ty, ref expr) => {
+            ast::AssocItemKind::Const(_, ref ty, ref expr) => {
                 self.process_assoc_const(
                     impl_item.id,
                     impl_item.ident,
@@ -1537,8 +1535,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     self.visit_ty(&ret_ty);
                 }
             }
-            ast::ForeignItemKind::Const(_, ref ty, _)
-            | ast::ForeignItemKind::Static(ref ty, _, _) => {
+            ast::ForeignItemKind::Static(ref ty, _, _) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);

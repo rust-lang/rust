@@ -526,8 +526,29 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
 }
 
 pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignItem) {
-    let Item { id, span, ident, vis, attrs, kind, tokens: _ } = item;
-    walk_nested_item(visitor, *id, *span, *ident, vis, attrs, kind, FnCtxt::Foreign);
+    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
+    visitor.visit_vis(vis);
+    visitor.visit_ident(ident);
+    walk_list!(visitor, visit_attribute, attrs);
+    match kind {
+        ForeignItemKind::Static(ty, _, expr) => {
+            visitor.visit_ty(ty);
+            walk_list!(visitor, visit_expr, expr);
+        }
+        ForeignItemKind::Fn(_, sig, generics, body) => {
+            visitor.visit_generics(generics);
+            let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, body.as_deref());
+            visitor.visit_fn(kind, span, id);
+        }
+        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_param_bound, bounds);
+            walk_list!(visitor, visit_ty, ty);
+        }
+        ForeignItemKind::Macro(mac) => {
+            visitor.visit_mac(mac);
+        }
+    }
 }
 
 pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
@@ -610,31 +631,18 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Spa
 }
 
 pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem, ctxt: AssocCtxt) {
-    let Item { id, span, ident, vis, attrs, kind, tokens: _ } = item;
-    walk_nested_item(visitor, *id, *span, *ident, vis, attrs, kind, FnCtxt::Assoc(ctxt));
-}
-
-fn walk_nested_item<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    id: NodeId,
-    span: Span,
-    ident: Ident,
-    vis: &'a Visibility,
-    attrs: &'a [Attribute],
-    kind: &'a AssocItemKind,
-    ctxt: FnCtxt,
-) {
+    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
     match kind {
-        AssocItemKind::Const(_, ty, expr) | AssocItemKind::Static(ty, _, expr) => {
+        AssocItemKind::Const(_, ty, expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
         AssocItemKind::Fn(_, sig, generics, body) => {
             visitor.visit_generics(generics);
-            let kind = FnKind::Fn(ctxt, ident, sig, vis, body.as_deref());
+            let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
         AssocItemKind::TyAlias(_, generics, bounds, ty) => {
