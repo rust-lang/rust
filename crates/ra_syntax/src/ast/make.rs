@@ -12,11 +12,14 @@ pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
 
-pub fn path_from_name_ref(name_ref: ast::NameRef) -> ast::Path {
-    path_from_text(&name_ref.syntax().to_string())
+pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
+    ast_from_text(&format!("use {};", name_ref.syntax()))
 }
-pub fn path_qualified(qual: ast::Path, name_ref: ast::NameRef) -> ast::Path {
-    path_from_text(&format!("{}::{}", qual.syntax(), name_ref.syntax()))
+pub fn path_unqalified(segment: ast::PathSegment) -> ast::Path {
+    path_from_text(&format!("use {}", segment.syntax()))
+}
+pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
+    path_from_text(&format!("{}::{}", qual.syntax(), segment.syntax()))
 }
 fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
