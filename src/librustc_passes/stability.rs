@@ -551,7 +551,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     .emit();
                 } else {
                     let param_env = self.tcx.param_env(def_id);
-                    if !can_type_implement_copy(self.tcx, param_env, ty).is_ok() {
+                    if can_type_implement_copy(self.tcx, param_env, ty).is_err() {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::untagged_unions,

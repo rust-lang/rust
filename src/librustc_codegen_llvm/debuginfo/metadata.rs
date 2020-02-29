@@ -2135,7 +2135,7 @@ fn set_members_of_composite_type(
 /// Computes the type parameters for a type, if any, for the given metadata.
 fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
     if let ty::Adt(def, substs) = ty.kind {
-        if !substs.types().next().is_none() {
+        if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
             let template_params: Vec<_> = substs
