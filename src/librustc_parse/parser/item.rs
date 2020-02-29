@@ -568,7 +568,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
-            Defaultness::Default(self.prev_span)
+            Defaultness::Default(self.normalized_prev_token.span)
         } else {
             Defaultness::Final
         }

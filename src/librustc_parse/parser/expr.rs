@@ -1348,7 +1348,7 @@ impl<'a> Parser<'a> {
             if self.normalized_token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
         if asyncness.is_async() {
             // Feature-gate `async ||` closures.
-            self.sess.gated_spans.gate(sym::async_closure, self.prev_span);
+            self.sess.gated_spans.gate(sym::async_closure, self.normalized_prev_token.span);
         }
 
         let capture_clause = self.parse_capture_clause();

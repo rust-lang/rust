@@ -101,8 +101,6 @@ pub struct Parser<'a> {
     /// Use this if you need to check for `token::Ident` or `token::Lifetime` specifically,
     /// this also includes edition checks for edition-specific keyword identifiers.
     pub normalized_prev_token: Token,
-    /// FIXME: Remove in favor of the equivalent `prev_token.span`.
-    pub prev_span: Span,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
     pub(super) directory: Directory,
@@ -377,7 +375,6 @@ impl<'a> Parser<'a> {
             normalized_token: Token::dummy(),
             prev_token: Token::dummy(),
             normalized_prev_token: Token::dummy(),
-            prev_span: DUMMY_SP,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
@@ -848,9 +845,6 @@ impl<'a> Parser<'a> {
         self.normalized_prev_token = self.normalized_token.take();
         self.set_token(next_token);
 
-        // Update fields derived from the previous token.
-        self.prev_span = self.prev_token.span;
-
         // Diagnostics.
         self.expected_tokens.clear();
     }
@@ -897,12 +891,20 @@ impl<'a> Parser<'a> {
 
     /// Parses unsafety: `unsafe` or nothing.
     fn parse_unsafety(&mut self) -> Unsafe {
-        if self.eat_keyword(kw::Unsafe) { Unsafe::Yes(self.prev_span) } else { Unsafe::No }
+        if self.eat_keyword(kw::Unsafe) {
+            Unsafe::Yes(self.normalized_prev_token.span)
+        } else {
+            Unsafe::No
+        }
     }
 
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self) -> Const {
-        if self.eat_keyword(kw::Const) { Const::Yes(self.prev_span) } else { Const::No }
+        if self.eat_keyword(kw::Const) {
+            Const::Yes(self.normalized_prev_token.span)
+        } else {
+            Const::No
+        }
     }
 
     /// Parses mutability (`mut` or nothing).
