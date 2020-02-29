@@ -447,6 +447,25 @@ fn iterate_inherent_methods<T>(
     None
 }
 
+/// Returns the self type for the index trait call.
+pub fn resolve_indexing_op(
+    db: &impl HirDatabase,
+    ty: &Canonical<Ty>,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    index_trait: TraitId,
+) -> Option<Canonical<Ty>> {
+    let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
+    let deref_chain = autoderef_method_receiver(db, krate, ty);
+    for ty in deref_chain {
+        let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
+        if db.trait_solve(krate, goal).is_some() {
+            return Some(ty);
+        }
+    }
+    None
+}
+
 fn is_valid_candidate(
     db: &impl HirDatabase,
     name: Option<&Name>,

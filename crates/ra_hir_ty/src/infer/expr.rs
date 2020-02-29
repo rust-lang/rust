@@ -429,11 +429,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
-                self.resolve_associated_type_with_params(
-                    base_ty,
-                    self.resolve_ops_index_output(),
-                    &[index_ty],
-                )
+                if let (Some(index_trait), Some(krate)) =
+                    (self.resolve_ops_index(), self.resolver.krate())
+                {
+                    let canonicalized = self.canonicalizer().canonicalize_ty(base_ty);
+                    let self_ty = method_resolution::resolve_indexing_op(
+                        self.db,
+                        &canonicalized.value,
+                        self.trait_env.clone(),
+                        krate,
+                        index_trait,
+                    );
+                    let self_ty =
+                        self_ty.map_or(Ty::Unknown, |t| canonicalized.decanonicalize_ty(t.value));
+                    self.resolve_associated_type_with_params(
+                        self_ty,
+                        self.resolve_ops_index_output(),
+                        &[index_ty],
+                    )
+                } else {
+                    Ty::Unknown
+                }
             }
             Expr::Tuple { exprs } => {
                 let mut tys = match &expected.ty {

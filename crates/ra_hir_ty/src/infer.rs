@@ -28,7 +28,7 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
@@ -540,8 +540,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         Some(struct_.into())
     }
 
+    fn resolve_ops_index(&self) -> Option<TraitId> {
+        self.resolve_lang_item("index")?.as_trait()
+    }
+
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item("index")?.as_trait()?;
+        let trait_ = self.resolve_ops_index()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 }
