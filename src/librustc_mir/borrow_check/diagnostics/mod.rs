@@ -619,14 +619,14 @@ pub(super) enum BorrowedContentSource<'tcx> {
 impl BorrowedContentSource<'tcx> {
     pub(super) fn describe_for_unnamed_place(&self) -> String {
         match *self {
-            BorrowedContentSource::DerefRawPointer => format!("a raw pointer"),
-            BorrowedContentSource::DerefSharedRef => format!("a shared reference"),
-            BorrowedContentSource::DerefMutableRef => format!("a mutable reference"),
+            BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
+            BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
+            BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
             BorrowedContentSource::OverloadedDeref(ty) => {
                 if ty.is_rc() {
-                    format!("an `Rc`")
+                    "an `Rc`".to_string()
                 } else if ty.is_arc() {
-                    format!("an `Arc`")
+                    "an `Arc`".to_string()
                 } else {
                     format!("dereference of `{}`", ty)
                 }
@@ -649,16 +649,16 @@ impl BorrowedContentSource<'tcx> {
 
     pub(super) fn describe_for_immutable_place(&self) -> String {
         match *self {
-            BorrowedContentSource::DerefRawPointer => format!("a `*const` pointer"),
-            BorrowedContentSource::DerefSharedRef => format!("a `&` reference"),
+            BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),
+            BorrowedContentSource::DerefSharedRef => "a `&` reference".to_string(),
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
             BorrowedContentSource::OverloadedDeref(ty) => {
                 if ty.is_rc() {
-                    format!("an `Rc`")
+                    "an `Rc`".to_string()
                 } else if ty.is_arc() {
-                    format!("an `Arc`")
+                    "an `Arc`".to_string()
                 } else {
                     format!("a dereference of `{}`", ty)
                 }

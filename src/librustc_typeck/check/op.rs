@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if lstring.starts_with('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
-                                    format!("{}", &lstring[1..])
+                                    lstring[1..].to_string()
                                 } else {
                                     format!("{}.to_owned()", lstring)
                                 },
@@ -633,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
-                            format!("{}", &l[1..])
+                            l[1..].to_string()
                         } else {
                             format!("{}.to_owned()", l)
                         };

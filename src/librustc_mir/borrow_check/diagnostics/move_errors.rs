@@ -443,7 +443,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let place_ty = move_from.ty(*self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
-                        None => format!("value"),
+                        None => "value".to_string(),
                     };
 
                     self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span));
@@ -466,7 +466,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let place_ty = original_path.ty(*self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
-                    None => format!("value"),
+                    None => "value".to_string(),
                 };
                 self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span));
 
