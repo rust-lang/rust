@@ -124,11 +124,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "DeleteCriticalSection"
             => {
                 // Nothing to do, not even a return value.
+                // (Windows locks are reentrant, and we have only 1 thread,
+                // so not doing any futher checks here is at least not incorrect.)
             }
 
             | "GetModuleHandleW"
             | "GetProcAddress"
-            | "TryEnterCriticalSection"
             | "GetConsoleScreenBufferInfo"
             | "SetConsoleTextAttribute"
             => {
