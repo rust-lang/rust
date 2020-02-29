@@ -26,6 +26,11 @@ pub(crate) mod indexes {
     };
 }
 
+pub struct MoveDataParamEnv<'tcx> {
+    pub(crate) move_data: MoveData<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+}
+
 pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Option<MetaItem> {
     for attr in attrs {
         if attr.check_name(sym::rustc_mir) {
@@ -39,11 +44,6 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Opti
         }
     }
     None
-}
-
-pub struct MoveDataParamEnv<'tcx> {
-    pub(crate) move_data: MoveData<'tcx>,
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
 /// Parameterization for the precise form of data flow that is used.
