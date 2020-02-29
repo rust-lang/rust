@@ -161,7 +161,9 @@ fn main() {
         let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
 
-        // We don't panic for these just to be conservative. They are UB as of now (2019-11-09).
+        // These are UB because they have not been officially blessed, but we await the resolution
+        // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
+        // anything about that.
         let _val = mem::uninitialized::<i32>();
         let _val = mem::uninitialized::<*const ()>();
     }
