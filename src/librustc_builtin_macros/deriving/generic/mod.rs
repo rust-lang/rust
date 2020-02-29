@@ -588,14 +588,14 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_generic_params: wb.bound_generic_params.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: wb.bounds.iter().cloned().collect(),
+                        bounds: wb.bounds.to_vec(),
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                         span: self.span,
                         lifetime: rb.lifetime,
-                        bounds: rb.bounds.iter().cloned().collect(),
+                        bounds: rb.bounds.to_vec(),
                     })
                 }
                 ast::WherePredicate::EqPredicate(ref we) => {
