@@ -341,7 +341,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         self.in_root = prev_in_root;
     }
 
-    fn visit_mac(&mut self, mac: &'a ast::Mac) {
+    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
         visit::walk_mac(self, mac)
     }
 }

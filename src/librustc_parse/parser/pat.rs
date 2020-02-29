@@ -1,9 +1,7 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_ast::ast::{
-    self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax,
-};
-use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
+use rustc_ast::ast::{self, AttrVec, Attribute, FieldPat, MacCall, Pat, PatKind, RangeEnd};
+use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf, RangeSyntax};
 use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -540,7 +538,7 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
-            fn visit_mac(&mut self, mac: &mut Mac) {
+            fn visit_mac(&mut self, mac: &mut MacCall) {
                 noop_visit_mac(mac, self);
             }
 
@@ -597,8 +595,8 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_mac_args()?;
-        let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
-        Ok(PatKind::Mac(mac))
+        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        Ok(PatKind::MacCall(mac))
     }
 
     fn fatal_unexpected_non_pat(
