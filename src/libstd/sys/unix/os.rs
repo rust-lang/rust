@@ -147,9 +147,10 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let p = CString::new(p.as_bytes())?;
     unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
+        if libc::chdir(p.as_ptr()) == (0 as c_int) {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
         }
     }
 }

@@ -757,10 +757,7 @@ mod strcursor {
         }
 
         pub fn at_next_cp(mut self) -> Option<StrCursor<'a>> {
-            match self.try_seek_right_cp() {
-                true => Some(self),
-                false => None,
-            }
+            if self.try_seek_right_cp() { Some(self) } else { None }
         }
 
         pub fn next_cp(mut self) -> Option<(char, StrCursor<'a>)> {

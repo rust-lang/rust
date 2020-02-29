@@ -83,10 +83,7 @@ pub enum ErrorCodes {
 
 impl ErrorCodes {
     pub fn from(b: bool) -> Self {
-        match b {
-            true => ErrorCodes::Yes,
-            false => ErrorCodes::No,
-        }
+        if b { ErrorCodes::Yes } else { ErrorCodes::No }
     }
 
     pub fn as_bool(self) -> bool {

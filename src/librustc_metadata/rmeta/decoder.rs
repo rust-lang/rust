@@ -827,9 +827,10 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
-        match self.is_proc_macro(id) {
-            true => self.root.proc_macro_stability,
-            false => self.root.per_def.stability.get(self, id).map(|stab| stab.decode(self)),
+        if self.is_proc_macro(id) {
+            self.root.proc_macro_stability
+        } else {
+            self.root.per_def.stability.get(self, id).map(|stab| stab.decode(self))
         }
     }
 
@@ -847,9 +848,10 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
-        match self.is_proc_macro(id) {
-            true => ty::Visibility::Public,
-            false => self.root.per_def.visibility.get(self, id).unwrap().decode(self),
+        if self.is_proc_macro(id) {
+            ty::Visibility::Public
+        } else {
+            self.root.per_def.visibility.get(self, id).unwrap().decode(self)
         }
     }
 

@@ -2507,15 +2507,9 @@ impl<'a> Resolver<'a> {
             _ => "enum",
         };
 
-        let old_noun = match old_binding.is_import() {
-            true => "import",
-            false => "definition",
-        };
+        let old_noun = if old_binding.is_import() { "import" } else { "definition" };
 
-        let new_participle = match new_binding.is_import() {
-            true => "imported",
-            false => "defined",
-        };
+        let new_participle = if new_binding.is_import() { "imported" } else { "defined" };
 
         let (name, span) = (ident.name, self.session.source_map().def_span(new_binding.span));
 

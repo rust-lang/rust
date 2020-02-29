@@ -156,10 +156,7 @@ where
     T: flt2dec::DecodableFloat,
 {
     let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
+    let sign = if force_sign { flt2dec::Sign::MinusPlus } else { flt2dec::Sign::Minus };
 
     if let Some(precision) = fmt.precision {
         // 1 integral digit + `precision` fractional digits = `precision + 1` total digits

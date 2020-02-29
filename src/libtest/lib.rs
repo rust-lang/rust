@@ -354,10 +354,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     let matches_filter = |test: &TestDescAndFn, filter: &str| {
         let test_name = test.desc.name.as_slice();
 
-        match opts.filter_exact {
-            true => test_name == filter,
-            false => test_name.contains(filter),
-        }
+        if opts.filter_exact { test_name == filter } else { test_name.contains(filter) }
     };
 
     // Remove tests that don't match the test filter

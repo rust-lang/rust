@@ -646,9 +646,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         while self.r.indeterminate_imports.len() < prev_num_indeterminates {
             prev_num_indeterminates = self.r.indeterminate_imports.len();
             for import in mem::take(&mut self.r.indeterminate_imports) {
-                match self.resolve_import(&import) {
-                    true => self.r.determined_imports.push(import),
-                    false => self.r.indeterminate_imports.push(import),
+                if self.resolve_import(&import) {
+                    self.r.determined_imports.push(import)
+                } else {
+                    self.r.indeterminate_imports.push(import)
                 }
             }
         }

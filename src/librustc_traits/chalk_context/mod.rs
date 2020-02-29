@@ -123,26 +123,28 @@ impl context::AggregateOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
 
         let ambiguous = simplified_answers.peek_answer().is_some() || ambiguous;
 
-        let solution = constrained_subst.unchecked_map(|cs| match ambiguous {
-            true => QueryResponse {
-                var_values: cs.subst.make_identity(self.tcx),
-                region_constraints: QueryRegionConstraints::default(),
-                certainty: Certainty::Ambiguous,
-                value: (),
-            },
+        let solution = constrained_subst.unchecked_map(|cs| {
+            if ambiguous {
+                QueryResponse {
+                    var_values: cs.subst.make_identity(self.tcx),
+                    region_constraints: QueryRegionConstraints::default(),
+                    certainty: Certainty::Ambiguous,
+                    value: (),
+                }
+            } else {
+                QueryResponse {
+                    var_values: cs.subst,
+                    region_constraints: QueryRegionConstraints::default(),
 
-            false => QueryResponse {
-                var_values: cs.subst,
-                region_constraints: QueryRegionConstraints::default(),
-
-                // FIXME: restore this later once we get better at handling regions
-                // region_constraints: cs.constraints
-                //     .into_iter()
-                //     .map(|c| ty::Binder::bind(c))
-                //     .collect(),
-                certainty: Certainty::Proven,
-                value: (),
-            },
+                    // FIXME: restore this later once we get better at handling regions
+                    // region_constraints: cs.constraints
+                    //     .into_iter()
+                    //     .map(|c| ty::Binder::bind(c))
+                    //     .collect(),
+                    certainty: Certainty::Proven,
+                    value: (),
+                }
+            }
         });
 
         debug!("make_solution: solution = {:?}", solution);
