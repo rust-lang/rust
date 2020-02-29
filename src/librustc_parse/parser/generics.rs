@@ -1,7 +1,6 @@
 use super::Parser;
 
 use rustc_errors::PResult;
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym};
 use syntax::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
 use syntax::token;
@@ -157,7 +156,10 @@ impl<'a> Parser<'a> {
         };
         Ok(ast::Generics {
             params,
-            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
+            where_clause: WhereClause {
+                predicates: Vec::new(),
+                span: self.prev_span.shrink_to_hi(),
+            },
             span,
         })
     }
