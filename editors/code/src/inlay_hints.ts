@@ -101,7 +101,7 @@ class HintsUpdater {
     clearHints() {
         for (const file of this.sourceFiles) {
             file.inlaysRequest?.cancel();
-            file.renderHints([], this.client.protocol2CodeConverter)
+            file.renderHints([], this.client.protocol2CodeConverter);
         }
     }
 
