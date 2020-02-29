@@ -104,7 +104,7 @@ impl<'a> Parser<'a> {
         let expr = if self.check(&token::OpenDelim(token::Brace)) {
             self.parse_struct_expr(lo, path, AttrVec::new())?
         } else {
-            let hi = self.prev_span;
+            let hi = self.prev_token.span;
             self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
         };
 
@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
             this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
         })?;
-        Ok(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr)))
+        Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
     }
 
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
     fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
         let args = self.parse_mac_args()?;
         let delim = args.delim();
-        let hi = self.prev_span;
+        let hi = self.prev_token.span;
 
         let style =
             if delim == token::Brace { MacStmtStyle::Braces } else { MacStmtStyle::NoBraces };
@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
     fn error_outer_attrs(&self, attrs: &[Attribute]) {
         if !attrs.is_empty() {
             if matches!(self.prev_token.kind, TokenKind::DocComment(..)) {
-                self.span_fatal_err(self.prev_span, Error::UselessDocComment).emit();
+                self.span_fatal_err(self.prev_token.span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
                 self.struct_span_err(self.token.span, "expected statement after outer attribute")
                     .emit();
@@ -170,19 +170,19 @@ impl<'a> Parser<'a> {
 
     fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
         let local = self.parse_local(attrs)?;
-        Ok(self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local)))
+        Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Local(local)))
     }
 
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
-        let lo = self.prev_span;
+        let lo = self.prev_token.span;
         let pat = self.parse_top_pat(GateOr::Yes)?;
 
         let (err, ty) = if self.eat(&token::Colon) {
             // Save the state of the parser before parsing type normally, in case there is a `:`
             // instead of an `=` typo.
             let parser_snapshot_before_type = self.clone();
-            let colon_sp = self.prev_span;
+            let colon_sp = self.prev_token.span;
             match self.parse_ty() {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
-        let hi = if self.token == token::Semi { self.token.span } else { self.prev_span };
+        let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs }))
     }
 
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
                 }
                 let stmt_span = if self.eat(&token::Semi) {
                     // Expand the span to include the semicolon.
-                    stmt.span.with_hi(self.prev_span.hi())
+                    stmt.span.with_hi(self.prev_token.span.hi())
                 } else {
                     stmt.span
                 };
@@ -350,7 +350,7 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-        Ok(self.mk_block(stmts, s, lo.to(self.prev_span)))
+        Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
     /// Parses a statement, including the trailing semicolon.
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
                     e.emit();
                     self.recover_stmt();
                     // Don't complain about type errors in body tail after parse error (#57383).
-                    let sp = expr.span.to(self.prev_span);
+                    let sp = expr.span.to(self.prev_token.span);
                     stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
                 }
             }
@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
         if eat_semi && self.eat(&token::Semi) {
             stmt = stmt.add_trailing_semicolon();
         }
-        stmt.span = stmt.span.to(self.prev_span);
+        stmt.span = stmt.span.to(self.prev_token.span);
         Ok(Some(stmt))
     }
 

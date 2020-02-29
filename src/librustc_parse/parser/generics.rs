@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(Some(self.prev_span))?
+            self.parse_generic_bounds(Some(self.prev_token.span))?
         } else {
             Vec::new()
         };
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.sess.gated_spans.gate(sym::const_generics, lo.to(self.prev_span));
+        self.sess.gated_spans.gate(sym::const_generics, lo.to(self.prev_token.span));
 
         Ok(GenericParam {
             ident,
@@ -150,15 +150,15 @@ impl<'a> Parser<'a> {
         let (params, span) = if self.eat_lt() {
             let params = self.parse_generic_params()?;
             self.expect_gt()?;
-            (params, span_lo.to(self.prev_span))
+            (params, span_lo.to(self.prev_token.span))
         } else {
-            (vec![], self.prev_span.shrink_to_hi())
+            (vec![], self.prev_token.span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
                 predicates: Vec::new(),
-                span: self.prev_span.shrink_to_hi(),
+                span: self.prev_token.span.shrink_to_hi(),
             },
             span,
         })
@@ -171,12 +171,12 @@ impl<'a> Parser<'a> {
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         let mut where_clause =
-            WhereClause { predicates: Vec::new(), span: self.prev_span.shrink_to_hi() };
+            WhereClause { predicates: Vec::new(), span: self.prev_token.span.shrink_to_hi() };
 
         if !self.eat_keyword(kw::Where) {
             return Ok(where_clause);
         }
-        let lo = self.prev_span;
+        let lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
@@ -199,7 +199,11 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Colon)?;
                 let bounds = self.parse_lt_param_bounds();
                 where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
-                    ast::WhereRegionPredicate { span: lo.to(self.prev_span), lifetime, bounds },
+                    ast::WhereRegionPredicate {
+                        span: lo.to(self.prev_token.span),
+                        lifetime,
+                        bounds,
+                    },
                 ));
             } else if self.check_type() {
                 where_clause.predicates.push(self.parse_ty_where_predicate()?);
@@ -212,7 +216,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        where_clause.span = lo.to(self.prev_span);
+        where_clause.span = lo.to(self.prev_token.span);
         Ok(where_clause)
     }
 
@@ -231,9 +235,9 @@ impl<'a> Parser<'a> {
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty()?;
         if self.eat(&token::Colon) {
-            let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
+            let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
             Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                span: lo.to(self.prev_span),
+                span: lo.to(self.prev_token.span),
                 bound_generic_params: lifetime_defs,
                 bounded_ty: ty,
                 bounds,
@@ -243,7 +247,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
             let rhs_ty = self.parse_ty()?;
             Ok(ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                span: lo.to(self.prev_span),
+                span: lo.to(self.prev_token.span),
                 lhs_ty: ty,
                 rhs_ty,
                 id: ast::DUMMY_NODE_ID,

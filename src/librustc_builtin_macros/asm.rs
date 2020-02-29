@@ -151,7 +151,7 @@ fn parse_inline_asm<'a>(
 
                     let constraint = parse_asm_str(&mut p)?;
 
-                    let span = p.prev_span;
+                    let span = p.prev_token.span;
 
                     p.expect(&token::OpenDelim(token::Paren))?;
                     let expr = p.parse_expr()?;
@@ -202,7 +202,7 @@ fn parse_inline_asm<'a>(
                     if constraint.as_str().starts_with('=') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
-                            p.prev_span,
+                            p.prev_token.span,
                             E0662,
                             "input operand constraint contains '='"
                         )
@@ -210,7 +210,7 @@ fn parse_inline_asm<'a>(
                     } else if constraint.as_str().starts_with('+') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
-                            p.prev_span,
+                            p.prev_token.span,
                             E0663,
                             "input operand constraint contains '+'"
                         )
@@ -233,11 +233,11 @@ fn parse_inline_asm<'a>(
                     let s = parse_asm_str(&mut p)?;
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
-                        cx.span_warn(p.prev_span, "expected a clobber, found an option");
+                        cx.span_warn(p.prev_token.span, "expected a clobber, found an option");
                     } else if s.as_str().starts_with('{') || s.as_str().ends_with('}') {
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
-                            p.prev_span,
+                            p.prev_token.span,
                             E0664,
                             "clobber should not be surrounded by braces"
                         )
@@ -259,7 +259,7 @@ fn parse_inline_asm<'a>(
                 } else if option == sym::intel {
                     dialect = AsmDialect::Intel;
                 } else {
-                    cx.span_warn(p.prev_span, "unrecognized option");
+                    cx.span_warn(p.prev_token.span, "unrecognized option");
                 }
 
                 if p.token == token::Comma {
