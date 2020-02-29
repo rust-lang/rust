@@ -94,12 +94,17 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
     ) -> Option<TypeAliasId> {
         self.to_def(src, keys::TYPE_ALIAS)
     }
-    //TODO: tuple field
     pub(super) fn record_field_to_def(
         &mut self,
         src: InFile<ast::RecordFieldDef>,
     ) -> Option<StructFieldId> {
         self.to_def(src, keys::RECORD_FIELD)
+    }
+    pub(super) fn tuple_field_to_def(
+        &mut self,
+        src: InFile<ast::TupleFieldDef>,
+    ) -> Option<StructFieldId> {
+        self.to_def(src, keys::TUPLE_FIELD)
     }
     pub(super) fn enum_variant_to_def(
         &mut self,

@@ -268,6 +268,7 @@ to_def_impls![
     (crate::Static, ast::StaticDef, static_to_def),
     (crate::Function, ast::FnDef, fn_to_def),
     (crate::StructField, ast::RecordFieldDef, record_field_to_def),
+    (crate::StructField, ast::TupleFieldDef, tuple_field_to_def),
     (crate::EnumVariant, ast::EnumVariant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
