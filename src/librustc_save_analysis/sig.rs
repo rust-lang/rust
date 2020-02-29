@@ -430,7 +430,7 @@ impl Sig for ast::Item {
                 sig.text.push_str(" = ");
                 let ty = match ty {
                     Some(ty) => ty.make(offset + sig.text.len(), id, scx)?,
-                    None => Err("Ty")?,
+                    None => return Err("Ty"),
                 };
                 sig.text.push_str(&ty.text);
                 sig.text.push(';');
