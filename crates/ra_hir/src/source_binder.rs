@@ -101,15 +101,7 @@ impl SourceBinder {
     }
 
     fn child_by_source(&mut self, db: &impl HirDatabase, container: ChildContainer) -> &DynMap {
-        self.child_by_source_cache.entry(container).or_insert_with(|| match container {
-            ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
-            ChildContainer::ModuleId(it) => it.child_by_source(db),
-            ChildContainer::TraitId(it) => it.child_by_source(db),
-            ChildContainer::ImplId(it) => it.child_by_source(db),
-            ChildContainer::EnumId(it) => it.child_by_source(db),
-            ChildContainer::VariantId(it) => it.child_by_source(db),
-            ChildContainer::GenericDefId(it) => it.child_by_source(db),
-        })
+        self.child_by_source_cache.entry(container).or_insert_with(|| container.child_by_source(db))
     }
 }
 
@@ -143,6 +135,20 @@ impl_froms! {
     EnumId,
     VariantId,
     GenericDefId
+}
+
+impl ChildContainer {
+    fn child_by_source(self, db: &impl HirDatabase) -> DynMap {
+        match self {
+            ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
+            ChildContainer::ModuleId(it) => it.child_by_source(db),
+            ChildContainer::TraitId(it) => it.child_by_source(db),
+            ChildContainer::ImplId(it) => it.child_by_source(db),
+            ChildContainer::EnumId(it) => it.child_by_source(db),
+            ChildContainer::VariantId(it) => it.child_by_source(db),
+            ChildContainer::GenericDefId(it) => it.child_by_source(db),
+        }
+    }
 }
 
 pub(crate) trait ToIdByKey: Sized + AstNode + 'static {
