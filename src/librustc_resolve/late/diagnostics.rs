@@ -6,6 +6,8 @@ use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
 use rustc::session::config::nightly_options;
+use rustc_ast::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -16,8 +18,6 @@ use rustc_hir::PrimTy;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
-use syntax::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use log::debug;
 

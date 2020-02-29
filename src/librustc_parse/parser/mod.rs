@@ -16,19 +16,21 @@ use crate::lexer::UnmatchedBrace;
 use crate::{Directory, DirectoryOwnership};
 
 use log::debug;
+use rustc_ast::ast::DUMMY_NODE_ID;
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use rustc_ast::ast::{
+    Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind,
+};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
-use syntax::ast::DUMMY_NODE_ID;
-use syntax::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
-use syntax::ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
-use syntax::ptr::P;
-use syntax::token::{self, DelimToken, Token, TokenKind};
-use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
-use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use std::path::PathBuf;
 use std::{cmp, mem, slice};

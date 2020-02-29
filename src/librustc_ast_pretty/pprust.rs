@@ -1,19 +1,19 @@
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
+use rustc_ast::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{Attribute, GenericArg, MacArgs};
+use rustc_ast::ast::{GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::attr;
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::util::parser::{self, AssocOp, Fixity};
+use rustc_ast::util::{classify, comments};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, IdentPrinter};
 use rustc_span::{BytePos, FileName, Span};
-use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use syntax::ast::{Attribute, GenericArg, MacArgs};
-use syntax::ast::{GenericBound, SelfKind, TraitBoundModifier};
-use syntax::attr;
-use syntax::ptr::P;
-use syntax::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use syntax::tokenstream::{self, TokenStream, TokenTree};
-use syntax::util::parser::{self, AssocOp, Fixity};
-use syntax::util::{classify, comments};
 
 use std::borrow::Cow;
 

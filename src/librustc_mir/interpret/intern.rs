@@ -9,7 +9,7 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 
-use syntax::ast::Mutability;
+use rustc_ast::ast::Mutability;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
 

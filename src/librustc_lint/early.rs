@@ -16,11 +16,11 @@
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
+use rustc_ast::ast;
+use rustc_ast::visit as ast_visit;
 use rustc_session::lint::{LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::visit as ast_visit;
 
 use log::debug;
 use std::slice;

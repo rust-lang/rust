@@ -2,8 +2,8 @@
 #![deny(warnings)]
 
 extern crate env_logger;
+extern crate rustc_ast;
 extern crate rustc_span;
-extern crate syntax;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -285,7 +285,7 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 fn main() {
     env_logger::init();
     let (format, dst) = parse_args();
-    let result = syntax::with_default_globals(move || main_with_result(format, &dst));
+    let result = rustc_ast::with_default_globals(move || main_with_result(format, &dst));
     if let Err(e) = result {
         panic!("{}", e.to_string());
     }

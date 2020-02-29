@@ -16,6 +16,8 @@ use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
@@ -35,8 +37,6 @@ use std::cmp::max;
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use syntax::ast;
-use syntax::util::lev_distance::{find_best_match_for_name, lev_distance};
 
 use smallvec::{smallvec, SmallVec};
 

@@ -16,6 +16,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{GenericArg, SubstsRef};
 use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
+use rustc_ast::ast;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -23,7 +24,6 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast;
 
 use std::cmp::Ordering;
 use std::fmt;

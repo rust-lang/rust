@@ -3,14 +3,14 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 
+use rustc_ast::ast;
+use rustc_ast::token::{self, Nonterminal, Token};
+use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
-use syntax::ast;
-use syntax::token::{self, Nonterminal, Token};
-use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use std::path::{Path, PathBuf};
 use std::str;

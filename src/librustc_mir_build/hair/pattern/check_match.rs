@@ -6,6 +6,7 @@ use super::{PatCtxt, PatKind, PatternError};
 
 use rustc::hir::map::Map;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -17,7 +18,6 @@ use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERN
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::{sym, Span};
-use syntax::ast::Mutability;
 
 use std::slice;
 

@@ -1,11 +1,11 @@
 //! Attributes injected into the crate root from command line using `-Z crate-attr`.
 
+use rustc_ast::ast::{self, AttrItem, AttrStyle};
+use rustc_ast::attr::mk_attr;
+use rustc_ast::token;
 use rustc_expand::panictry;
 use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
-use syntax::ast::{self, AttrItem, AttrStyle};
-use syntax::attr::mk_attr;
-use syntax::token;
 
 pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {
     for raw_attr in attrs {

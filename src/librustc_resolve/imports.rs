@@ -15,6 +15,9 @@ use rustc::hir::exports::Export;
 use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc::ty;
 use rustc::{bug, span_bug};
+use rustc_ast::ast::{Ident, Name, NodeId};
+use rustc_ast::unwrap_or;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
@@ -25,9 +28,6 @@ use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span};
-use syntax::ast::{Ident, Name, NodeId};
-use syntax::unwrap_or;
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use log::*;
 

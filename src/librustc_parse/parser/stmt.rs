@@ -6,15 +6,15 @@ use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
+use rustc_ast::ast;
+use rustc_ast::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
+use rustc_ast::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, TokenKind};
+use rustc_ast::util::classify;
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
-use syntax::ast;
-use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
-use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
-use syntax::ptr::P;
-use syntax::token::{self, TokenKind};
-use syntax::util::classify;
 
 use std::mem;
 

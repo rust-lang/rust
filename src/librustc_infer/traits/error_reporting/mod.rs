@@ -21,6 +21,7 @@ use rustc::ty::SubtypePredicate;
 use rustc::ty::{
     self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -29,7 +30,6 @@ use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
-use syntax::ast;
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(

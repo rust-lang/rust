@@ -4,13 +4,13 @@ use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::ast;
 
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;

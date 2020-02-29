@@ -8,6 +8,9 @@ use crate::mbe::macro_parser::{Error, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_ast::ast;
+use rustc_ast::token::{self, NtTT, Token, TokenKind::*};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
@@ -21,9 +24,6 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::token::{self, NtTT, Token, TokenKind::*};
-use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use log::debug;
 use std::borrow::Cow;

@@ -1,3 +1,5 @@
+use rustc_ast::ast;
+use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
@@ -5,8 +7,6 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
-use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind, Node};

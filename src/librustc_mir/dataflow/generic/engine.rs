@@ -6,12 +6,12 @@ use std::path::PathBuf;
 
 use rustc::mir::{self, traversal, BasicBlock, Location};
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 use super::graphviz;
 use super::{Analysis, GenKillAnalysis, GenKillSet, Results};

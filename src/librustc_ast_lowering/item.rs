@@ -3,6 +3,10 @@ use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 
 use rustc::arena::Arena;
 use rustc::bug;
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -11,10 +15,6 @@ use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::node_id::NodeMap;
-use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};

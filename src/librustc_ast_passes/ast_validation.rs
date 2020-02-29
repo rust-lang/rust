@@ -6,6 +6,11 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::expand::is_proc_macro_attr;
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, struct_span_err, Applicability};
@@ -16,11 +21,6 @@ use rustc_session::Session;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::mem;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::expand::is_proc_macro_attr;
-use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use syntax::walk_list;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";

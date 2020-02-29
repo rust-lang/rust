@@ -12,6 +12,11 @@ use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResul
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc::{bug, lint, span_bug};
+use rustc_ast::ast::*;
+use rustc_ast::ptr::P;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::{unwrap_or, walk_list};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
@@ -21,11 +26,6 @@ use rustc_hir::TraitCandidate;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use syntax::ast::*;
-use syntax::ptr::P;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use syntax::{unwrap_or, walk_list};
 
 use log::debug;
 use std::collections::BTreeSet;

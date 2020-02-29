@@ -2,15 +2,15 @@
 //
 use State::*;
 
+use rustc_ast::ast::{self, AsmDialect};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Token};
+use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_errors::{struct_span_err, DiagnosticBuilder, PResult};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::{self, AsmDialect};
-use syntax::ptr::P;
-use syntax::token::{self, Token};
-use syntax::tokenstream::{self, TokenStream};
 
 enum State {
     Asm,

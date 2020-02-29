@@ -1,6 +1,11 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use log::debug;
+use rustc_ast::ast::{self, Ident};
+use rustc_ast::attr;
+use rustc_ast::entry::{self, EntryPointType};
+use rustc_ast::mut_visit::{ExpectOne, *};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
@@ -11,11 +16,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
-use syntax::ast::{self, Ident};
-use syntax::attr;
-use syntax::entry::{self, EntryPointType};
-use syntax::mut_visit::{ExpectOne, *};
-use syntax::ptr::P;
 
 use std::{iter, mem};
 

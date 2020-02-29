@@ -15,6 +15,7 @@ use rustc::ty::subst::Subst;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_ast::ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -23,7 +24,6 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_infer::traits;
 use rustc_span::Span;
-use syntax::ast;
 
 use self::probe::{IsSuggestion, ProbeScope};
 

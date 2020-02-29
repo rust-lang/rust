@@ -1,5 +1,9 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast::ast;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
@@ -8,10 +12,6 @@ use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
-use syntax::ast;
-use syntax::token;
-use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
-use syntax::util::comments;
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
@@ -54,7 +54,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
     fn from_internal(
         ((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>),
     ) -> Self {
-        use syntax::token::*;
+        use rustc_ast::token::*;
 
         let joint = is_joint == Joint;
         let Token { kind, span } = match tree {
@@ -191,7 +191,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 
 impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
-        use syntax::token::*;
+        use rustc_ast::token::*;
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),

@@ -20,6 +20,7 @@ use rustc::ty::layout::{
 };
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -27,7 +28,6 @@ use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::traits;
 use rustc_span::Span;
-use syntax::ast::Mutability;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{

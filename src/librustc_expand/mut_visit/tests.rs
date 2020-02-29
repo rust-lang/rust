@@ -1,9 +1,9 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
+use rustc_ast::ast::{self, Ident};
+use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::with_default_globals;
 use rustc_ast_pretty::pprust;
-use syntax::ast::{self, Ident};
-use syntax::mut_visit::{self, MutVisitor};
-use syntax::with_default_globals;
 
 // This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {

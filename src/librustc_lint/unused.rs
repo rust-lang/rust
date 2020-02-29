@@ -1,6 +1,9 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty::adjustment;
 use rustc::ty::{self, Ty};
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::util::parser;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Applicability};
@@ -12,9 +15,6 @@ use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
-use syntax::ast;
-use syntax::attr;
-use syntax::util::parser;
 
 use log::debug;
 
@@ -469,7 +469,7 @@ impl UnusedParens {
 
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        use syntax::ast::ExprKind::*;
+        use rustc_ast::ast::ExprKind::*;
         let (value, msg, followed_by_block, left_pos, right_pos) = match e.kind {
             Let(ref pat, ..) => {
                 self.check_unused_parens_pat(cx, pat, false, false);

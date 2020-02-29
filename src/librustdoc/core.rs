@@ -14,13 +14,13 @@ use rustc_interface::interface;
 use rustc_resolve as resolve;
 use rustc_session::lint;
 
+use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
-use syntax::ast::CRATE_NODE_ID;
 
 use rustc_data_structures::sync::{self, Lrc};
 use std::cell::RefCell;

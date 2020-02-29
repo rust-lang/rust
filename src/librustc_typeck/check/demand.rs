@@ -4,12 +4,12 @@ use rustc_infer::traits::{self, ObligationCause};
 
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, print, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::util::parser::PREC_POSTFIX;
 
 use super::method::probe;
 

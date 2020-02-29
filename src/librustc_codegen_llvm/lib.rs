@@ -19,6 +19,7 @@ use rustc_span::symbol::Symbol;
 
 pub use llvm_util::target_features;
 use rustc::dep_graph::WorkProduct;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
@@ -28,7 +29,6 @@ use std::any::Any;
 use std::ffi::CStr;
 use std::fs;
 use std::sync::Arc;
-use syntax::expand::allocator::AllocatorKind;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};

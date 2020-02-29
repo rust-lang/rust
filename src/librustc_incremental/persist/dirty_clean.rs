@@ -16,6 +16,7 @@
 use rustc::dep_graph::{label_strs, DepNode};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -28,7 +29,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
 use std::vec::Vec;
-use syntax::ast::{self, Attribute, NestedMetaItem};
 
 const EXCEPT: Symbol = sym::except;
 const LABEL: Symbol = sym::label;
@@ -168,7 +168,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
-        // all codegen-specific attributes are `Whitelisted` in syntax::feature_gate.
+        // all codegen-specific attributes are `Whitelisted` in rustc_ast::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     })
 }

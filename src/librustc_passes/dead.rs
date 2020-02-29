@@ -15,8 +15,8 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_session::lint;
 
+use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
-use syntax::{ast, attr};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a

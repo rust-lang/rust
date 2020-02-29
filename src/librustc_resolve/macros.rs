@@ -10,6 +10,7 @@ use rustc::middle::stability;
 use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::{lint, span_bug, ty};
+use rustc_ast::ast::{self, Ident, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
@@ -24,7 +25,6 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnId, ExpnKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, Ident, NodeId};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::{AstPass, MacroKind};

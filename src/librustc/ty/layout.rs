@@ -1,9 +1,9 @@
 use crate::session::{self, DataTypeKind};
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
+use rustc_ast::ast::{self, Ident, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_span::DUMMY_SP;
-use syntax::ast::{self, Ident, IntTy, UintTy};
 
 use std::cmp;
 use std::fmt;

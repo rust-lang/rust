@@ -4,7 +4,7 @@
 
 #![feature(rustc_private)]
 
-extern crate syntax;
+extern crate rustc_ast;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -18,7 +18,7 @@ use std::path::Path;
 mod gravy;
 
 pub fn main() {
-    syntax::with_default_globals(|| parse());
+    rustc_ast::with_default_globals(|| parse());
 
     assert_eq!(gravy::foo(), 10);
 }

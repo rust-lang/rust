@@ -100,6 +100,7 @@ use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -109,7 +110,6 @@ use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use std::collections::VecDeque;
 use std::io;

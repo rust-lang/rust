@@ -25,6 +25,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
 use log::{debug, trace};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, SourceFile, Span};
@@ -32,8 +34,6 @@ use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::u32;
-use syntax::ast;
-use syntax::attr;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};

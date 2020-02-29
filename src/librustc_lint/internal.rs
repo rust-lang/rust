@@ -2,13 +2,13 @@
 //! Clippy.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_ast::ast::{Ident, Item, ItemKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast::{Ident, Item, ItemKind};
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,

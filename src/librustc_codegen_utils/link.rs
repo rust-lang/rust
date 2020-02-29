@@ -1,9 +1,9 @@
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::Session;
+use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::path::{Path, PathBuf};
-use syntax::{ast, attr};
 
 pub fn out_filename(
     sess: &Session,

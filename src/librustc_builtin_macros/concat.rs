@@ -1,7 +1,7 @@
+use rustc_ast::ast;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{self, DummyResult};
 use rustc_span::symbol::Symbol;
-use syntax::ast;
-use syntax::tokenstream::TokenStream;
 
 use std::string::String;
 

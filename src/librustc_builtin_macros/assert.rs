@@ -1,14 +1,14 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
 
+use rustc_ast::ast::{self, *};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, TokenKind};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, *};
-use syntax::ptr::P;
-use syntax::token::{self, TokenKind};
-use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

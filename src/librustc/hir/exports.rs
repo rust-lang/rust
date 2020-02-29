@@ -1,10 +1,10 @@
 use crate::ty;
 
+use rustc_ast::ast;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdMap;
 use rustc_macros::HashStable;
 use rustc_span::Span;
-use syntax::ast;
 
 use std::fmt::Debug;
 

@@ -1,9 +1,9 @@
 use super::Parser;
 
+use rustc_ast::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
+use rustc_ast::token;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
-use syntax::token;
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.

@@ -1,6 +1,8 @@
 use rustc::hir::map::Map;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
+use rustc_ast::ast;
+use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -17,8 +19,6 @@ use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use syntax::ast;
-use syntax::with_globals;
 use tempfile::Builder as TempFileBuilder;
 
 use crate::clean::Attributes;

@@ -25,6 +25,10 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc::hir::map::Map;
 use rustc::lint::LintDiagnosticBuilder;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
+use rustc_ast::ast::{self, Expr};
+use rustc_ast::attr::{self, HasAttrs};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -41,10 +45,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-use syntax::ast::{self, Expr};
-use syntax::attr::{self, HasAttrs};
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::{FnCtxt, FnKind};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -1847,7 +1847,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         /// Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
             use hir::ExprKind::*;
-            use syntax::ast::LitKind::*;
+            use rustc_ast::ast::LitKind::*;
             match &expr.kind {
                 Lit(lit) => {
                     if let Int(i, _) = lit.node {

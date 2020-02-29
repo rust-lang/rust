@@ -3,9 +3,9 @@
 use crate::def_id::DefId;
 use crate::{lang_items, LangItem, LanguageItems};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 use lazy_static::lazy_static;
 

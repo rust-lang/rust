@@ -4,19 +4,19 @@ use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
+use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, Mac, Param, Ty, TyKind, UnOp};
+use rustc_ast::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::util::classify;
+use rustc_ast::util::literal::LitError;
+use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
-use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
-use syntax::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, Mac, Param, Ty, TyKind, UnOp};
-use syntax::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
-use syntax::ptr::P;
-use syntax::token::{self, Token, TokenKind};
-use syntax::util::classify;
-use syntax::util::literal::LitError;
-use syntax::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of

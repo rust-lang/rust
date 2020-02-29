@@ -12,12 +12,12 @@ pub use self::LangItem::*;
 use crate::def_id::DefId;
 use crate::Target;
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
 
 use lazy_static::lazy_static;
 

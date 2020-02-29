@@ -19,6 +19,7 @@ use rustc::session::config::{
 };
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
@@ -37,7 +38,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::MergeFunctions;
-use syntax::attr;
 
 use std::any::Any;
 use std::fs;

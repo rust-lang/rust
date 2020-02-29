@@ -42,7 +42,7 @@ that warns about any item named `lintme`.
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate syntax;
+extern crate rustc_ast;
 
 // Load rustc as a plugin to get macros
 #[macro_use]
@@ -52,7 +52,7 @@ extern crate rustc_driver;
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
                   EarlyLintPassObject, LintArray};
 use rustc_driver::plugin::Registry;
-use syntax::ast;
+use rustc_ast::ast;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
