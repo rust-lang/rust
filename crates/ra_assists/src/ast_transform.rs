@@ -157,7 +157,7 @@ impl<'a> QualifyPaths<'a> {
 
 pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
     let syntax = node.syntax();
-    let result = ra_syntax::algo::replace_descendants(syntax, &|element| match element {
+    let result = ra_syntax::algo::replace_descendants(syntax, |element| match element {
         ra_syntax::SyntaxElement::Node(n) => {
             let replacement = transformer.get_substitution(&n)?;
             Some(replacement.into())

@@ -120,7 +120,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
                         let expr = {
                             let name_ref = make::name_ref("it");
                             let segment = make::path_segment(name_ref);
-                            let path = make::path_unqalified(segment);
+                            let path = make::path_unqualified(segment);
                             make::expr_path(path)
                         };
                         make::match_arm(once(pat.into()), expr)
