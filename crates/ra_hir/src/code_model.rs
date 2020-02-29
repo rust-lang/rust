@@ -778,6 +778,7 @@ impl GenericDef {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
+    // TODO: ID,
     pub(crate) parent: DefWithBody,
     pub(crate) pat_id: PatId,
 }

@@ -4,12 +4,12 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, GenericDefId, ModuleDefId,
-    StructFieldId, VariantId,
+    expr::PatId, AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, GenericDefId,
+    ModuleDefId, StructFieldId, VariantId,
 };
 
 use crate::{
-    Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, ModuleDef, StructField,
+    Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, Local, ModuleDef, StructField,
     VariantDef,
 };
 
@@ -220,5 +220,11 @@ impl From<AssocItem> for GenericDefId {
             AssocItem::Const(c) => c.id.into(),
             AssocItem::TypeAlias(t) => t.id.into(),
         }
+    }
+}
+
+impl From<(DefWithBodyId, PatId)> for Local {
+    fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
+        Local { parent: parent.into(), pat_id }
     }
 }

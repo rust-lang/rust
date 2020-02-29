@@ -1,32 +1,33 @@
 //! See `Semantics`.
 
+mod source_to_def;
+
 use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    DefWithBodyId, TraitId,
+    TraitId,
 };
+use hir_expand::ExpansionInfo;
 use ra_db::{FileId, FileRange};
+use ra_prof::profile;
 use ra_syntax::{
-    algo::skip_trivia_token, ast, match_ast, AstNode, Direction, SyntaxNode, SyntaxToken,
-    TextRange, TextUnit,
+    algo::skip_trivia_token, ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::HirDatabase,
+    semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, ReferenceDescriptor, SourceAnalyzer},
-    source_binder::{ChildContainer, SourceBinder},
     Function, HirFileId, InFile, Local, MacroDef, Module, ModuleDef, Name, Origin, Path,
     PathResolution, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
-use hir_expand::ExpansionInfo;
-use ra_prof::profile;
 
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {
     pub db: &'db DB,
-    sb: RefCell<SourceBinder>,
+    s2d_cache: RefCell<SourceToDefCache>,
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
 }
 
@@ -38,8 +39,7 @@ impl<DB> fmt::Debug for Semantics<'_, DB> {
 
 impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn new(db: &DB) -> Semantics<DB> {
-        let sb = RefCell::new(SourceBinder::new());
-        Semantics { db, sb, cache: RefCell::default() }
+        Semantics { db, s2d_cache: Default::default(), cache: Default::default() }
     }
 
     pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
@@ -136,13 +136,19 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
-    pub fn to_def<T: ToDef + Clone>(&self, src: &T) -> Option<T::Def> {
+    pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
+        let src = self.find_file(src.syntax().clone()).with_value(src).cloned();
         T::to_def(self, src)
     }
 
+    fn with_ctx<F: FnOnce(&mut SourceToDefCtx<&DB>) -> T, T>(&self, f: F) -> T {
+        let mut cache = self.s2d_cache.borrow_mut();
+        let mut ctx = SourceToDefCtx { db: self.db, cache: &mut *cache };
+        f(&mut ctx)
+    }
+
     pub fn to_module_def(&self, file: FileId) -> Option<Module> {
-        let mut sb = self.sb.borrow_mut();
-        sb.to_module_def(self.db, file)
+        self.with_ctx(|ctx| ctx.file_to_def(file)).map(Module::from)
     }
 
     pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db, DB> {
@@ -176,7 +182,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     fn analyze2(&self, src: InFile<&SyntaxNode>, offset: Option<TextUnit>) -> SourceAnalyzer {
         let _p = profile("Semantics::analyze2");
 
-        let container = match self.sb.borrow_mut().find_container(self.db, src) {
+        let container = match self.with_ctx(|ctx| ctx.find_container(src)) {
             Some(it) => it,
             None => return SourceAnalyzer::new_for_resolver(Resolver::default(), src),
         };
@@ -233,67 +239,40 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 }
 
-pub trait ToDef: Sized + AstNode + 'static {
+pub trait ToDef: AstNode + Clone {
     type Def;
-    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self) -> Option<Self::Def>;
+
+    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: InFile<Self>) -> Option<Self::Def>;
 }
 
 macro_rules! to_def_impls {
-    ($(($def:path, $ast:path)),* ,) => {$(
+    ($(($def:path, $ast:path, $meth:ident)),* ,) => {$(
         impl ToDef for $ast {
             type Def = $def;
-            fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self)
-                -> Option<Self::Def>
-            {
-                let src = sema.find_file(src.syntax().clone()).with_value(src);
-                sema.sb.borrow_mut().to_id(sema.db, src.cloned()).map(Into::into)
+            fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: InFile<Self>) -> Option<Self::Def> {
+                sema.with_ctx(|ctx| ctx.$meth(src)).map(<$def>::from)
             }
         }
     )*}
 }
 
 to_def_impls![
-    (crate::Module, ast::Module),
-    (crate::Struct, ast::StructDef),
-    (crate::Enum, ast::EnumDef),
-    (crate::Union, ast::UnionDef),
-    (crate::Trait, ast::TraitDef),
-    (crate::ImplBlock, ast::ImplBlock),
-    (crate::TypeAlias, ast::TypeAliasDef),
-    (crate::Const, ast::ConstDef),
-    (crate::Static, ast::StaticDef),
-    (crate::Function, ast::FnDef),
-    (crate::StructField, ast::RecordFieldDef),
-    (crate::EnumVariant, ast::EnumVariant),
-    (crate::TypeParam, ast::TypeParam),
-    (crate::MacroDef, ast::MacroCall), // this one is dubious, not all calls are macros
+    (crate::Module, ast::Module, module_to_def),
+    (crate::Struct, ast::StructDef, struct_to_def),
+    (crate::Enum, ast::EnumDef, enum_to_def),
+    (crate::Union, ast::UnionDef, union_to_def),
+    (crate::Trait, ast::TraitDef, trait_to_def),
+    (crate::ImplBlock, ast::ImplBlock, impl_to_def),
+    (crate::TypeAlias, ast::TypeAliasDef, type_alias_to_def),
+    (crate::Const, ast::ConstDef, const_to_def),
+    (crate::Static, ast::StaticDef, static_to_def),
+    (crate::Function, ast::FnDef, fn_to_def),
+    (crate::StructField, ast::RecordFieldDef, record_field_to_def),
+    (crate::EnumVariant, ast::EnumVariant, enum_variant_to_def),
+    (crate::TypeParam, ast::TypeParam, type_param_to_def),
+    (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
+    (crate::Local, ast::BindPat, bind_pat_to_def),
 ];
-
-impl ToDef for ast::BindPat {
-    type Def = Local;
-
-    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: &Self) -> Option<Local> {
-        let src = sema.find_file(src.syntax().clone()).with_value(src);
-        let file_id = src.file_id;
-        let mut sb = sema.sb.borrow_mut();
-        let db = sema.db;
-        let parent: DefWithBodyId = src.value.syntax().ancestors().find_map(|it| {
-            let res = match_ast! {
-                match it {
-                    ast::ConstDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    ast::StaticDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    ast::FnDef(value) => { sb.to_id(db, InFile { value, file_id})?.into() },
-                    _ => return None,
-                }
-            };
-            Some(res)
-        })?;
-        let (_body, source_map) = db.body_with_source_map(parent);
-        let src = src.cloned().map(ast::Pat::from);
-        let pat_id = source_map.node_pat(src.as_ref())?;
-        Some(Local { parent: parent.into(), pat_id })
-    }
-}
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {
     node.ancestors().last().unwrap()
