@@ -434,7 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     literal: method,
                 }),
                 args: vec![val, expect],
-                destination: Some((eq_result.clone(), eq_block)),
+                destination: Some((eq_result, eq_block)),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: source_info.span,
