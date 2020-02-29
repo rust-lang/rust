@@ -6,7 +6,7 @@ mod sysroot;
 
 use std::{
     error::Error,
-    fs::File,
+    fs::{read_dir, File, ReadDir},
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
@@ -25,11 +25,19 @@ pub use crate::{
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlNotFoundError(pub PathBuf);
+pub struct CargoTomlNotFoundError {
+    pub searched_at: PathBuf,
+    pub reason: String,
+}
 
 impl std::fmt::Display for CargoTomlNotFoundError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "can't find Cargo.toml at {}", self.0.display())
+        write!(
+            fmt,
+            "can't find Cargo.toml at {}, due to {}",
+            self.searched_at.display(),
+            self.reason
+        )
     }
 }
 
@@ -406,19 +414,68 @@ fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
-    if path.ends_with("Cargo.toml") {
-        return Ok(path.to_path_buf());
-    }
+fn find_cargo_toml_in_parent_dir(path: &Path) -> Option<PathBuf> {
     let mut curr = Some(path);
     while let Some(path) = curr {
         let candidate = path.join("Cargo.toml");
         if candidate.exists() {
-            return Ok(candidate);
+            return Some(candidate);
         }
         curr = path.parent();
     }
-    Err(CargoTomlNotFoundError(path.to_path_buf()).into())
+
+    None
+}
+
+fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
+    // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
+    let mut valid_canditates = vec![];
+    for entity in entities.filter_map(Result::ok) {
+        let candidate = entity.path().join("Cargo.toml");
+        if candidate.exists() {
+            valid_canditates.push(candidate)
+        }
+    }
+    valid_canditates
+}
+
+fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
+    if path.ends_with("Cargo.toml") {
+        return Ok(path.to_path_buf());
+    }
+
+    if let Some(p) = find_cargo_toml_in_parent_dir(path) {
+        return Ok(p);
+    }
+
+    let entities = match read_dir(path) {
+        Ok(entities) => entities,
+        Err(e) => {
+            return Err(CargoTomlNotFoundError {
+                searched_at: path.to_path_buf(),
+                reason: format!("file system error: {}", e),
+            }
+            .into());
+        }
+    };
+
+    let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
+    match valid_canditates.len() {
+        1 => Ok(valid_canditates.remove(0)),
+        0 => Err(CargoTomlNotFoundError {
+            searched_at: path.to_path_buf(),
+            reason: "no Cargo.toml file found".to_string(),
+        }
+        .into()),
+        _ => Err(CargoTomlNotFoundError {
+            searched_at: path.to_path_buf(),
+            reason: format!(
+                "multiple equally valid Cargo.toml files found: {:?}",
+                valid_canditates
+            ),
+        }
+        .into()),
+    }
 }
 
 pub fn get_rustc_cfg_options() -> CfgOptions {

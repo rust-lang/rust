@@ -115,12 +115,15 @@ pub fn main_loop(
                     Ok(workspace) => loaded_workspaces.push(workspace),
                     Err(e) => {
                         log::error!("loading workspace failed: {:?}", e);
-                        if let Some(ra_project_model::CargoTomlNotFoundError(_)) = e.downcast_ref()
+
+                        if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
+                            e.downcast_ref()
                         {
                             if !feature_flags.get("notifications.cargo-toml-not-found") {
                                 continue;
                             }
                         }
+
                         show_message(
                             req::MessageType::Error,
                             format!("rust-analyzer failed to load workspace: {:?}", e),
