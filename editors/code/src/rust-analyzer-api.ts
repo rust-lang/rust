@@ -86,14 +86,20 @@ export interface Runnable {
 export const runnables = request<RunnablesParams, Vec<Runnable>>("runnables");
 
 
-export const enum InlayKind {
-    TypeHint = "TypeHint",
-    ParameterHint = "ParameterHint",
-}
-export interface InlayHint {
-    range: lc.Range;
-    kind: InlayKind;
-    label: string;
+
+export type InlayHint = InlayHint.TypeHint | InlayHint.ParamHint;
+
+export namespace InlayHint {
+    export const enum Kind {
+        TypeHint = "TypeHint",
+        ParamHint = "ParameterHint",
+    }
+    interface Common {
+        range: lc.Range;
+        label: string;
+    }
+    export type TypeHint = Common & { kind: Kind.TypeHint; }
+    export type ParamHint = Common & { kind: Kind.ParamHint; }
 }
 export interface InlayHintsParams {
     textDocument: lc.TextDocumentIdentifier;
