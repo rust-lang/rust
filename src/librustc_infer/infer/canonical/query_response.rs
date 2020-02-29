@@ -12,14 +12,15 @@ use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
+use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::InferCtxtBuilder;
-use crate::infer::{InferCtxt, InferOk, InferResult};
+use crate::infer::{InferCtxt, InferCtxtBuilder, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::TraitEngine;
+use crate::traits::{DomainGoal, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc::arena::ArenaAllocatable;
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
@@ -304,13 +305,31 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                    let ok = self.at(cause, param_env).eq(v1, v2)?;
-                    obligations.extend(ok.into_obligations());
+                    TypeRelating::new(
+                        self,
+                        QueryTypeRelatingDelegate {
+                            infcx: self,
+                            param_env,
+                            cause,
+                            obligations: &mut obligations,
+                        },
+                        ty::Variance::Invariant,
+                    )
+                    .relate(&v1, &v2)?;
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    let ok = self.at(cause, param_env).eq(v1, v2)?;
-                    obligations.extend(ok.into_obligations());
+                    TypeRelating::new(
+                        self,
+                        QueryTypeRelatingDelegate {
+                            infcx: self,
+                            param_env,
+                            cause,
+                            obligations: &mut obligations,
+                        },
+                        ty::Variance::Invariant,
+                    )
+                    .relate(&v1, &v2)?;
                 }
 
                 _ => {
@@ -655,4 +674,56 @@ pub fn make_query_region_constraints<'tcx>(
         .collect();
 
     QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
+}
+
+struct QueryTypeRelatingDelegate<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: &'a ObligationCause<'tcx>,
+}
+
+impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn create_next_universe(&mut self) -> ty::UniverseIndex {
+        self.infcx.create_next_universe()
+    }
+
+    fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
+        let origin = NLLRegionVariableOrigin::Existential { from_forall };
+        self.infcx.next_nll_region_var(origin)
+    }
+
+    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
+        self.infcx.tcx.mk_region(ty::RePlaceholder(placeholder))
+    }
+
+    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+        self.infcx.next_nll_region_var_in_universe(
+            NLLRegionVariableOrigin::Existential { from_forall: false },
+            universe,
+        )
+    }
+
+    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
+        self.obligations.push(Obligation {
+            cause: self.cause.clone(),
+            param_env: self.param_env,
+            predicate: ty::Predicate::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+                sup, sub,
+            ))),
+            recursion_depth: 0,
+        });
+    }
+
+    fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
+        bug!("should never be invoked with eager normalization")
+    }
+
+    fn normalization() -> NormalizationStrategy {
+        NormalizationStrategy::Eager
+    }
+
+    fn forbid_inference_vars() -> bool {
+        true
+    }
 }
