@@ -7,7 +7,6 @@ use crate::proc_macro::collect_derives;
 
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::configure;
@@ -25,7 +24,7 @@ use syntax::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
 use syntax::mut_visit::*;
 use syntax::ptr::P;
 use syntax::token;
-use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::tokenstream::TokenStream;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::visit::{self, AssocCtxt, Visitor};
 
@@ -668,36 +667,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
-                    // `Annotatable` can be converted into tokens directly, but we are packing it
-                    // into a nonterminal as a piece of AST to make the produced token stream
-                    // look nicer in pretty-printed form. This may be no longer necessary.
-                    let item_tok = TokenTree::token(
-                        token::Interpolated(Lrc::new(match item {
-                            Annotatable::Item(item) => token::NtItem(item),
-                            Annotatable::TraitItem(item)
-                            | Annotatable::ImplItem(item)
-                            | Annotatable::ForeignItem(item) => {
-                                token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
-                            }
-                            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
-                            Annotatable::Expr(expr) => token::NtExpr(expr),
-                            Annotatable::Arm(..)
-                            | Annotatable::Field(..)
-                            | Annotatable::FieldPat(..)
-                            | Annotatable::GenericParam(..)
-                            | Annotatable::Param(..)
-                            | Annotatable::StructField(..)
-                            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-                        })),
-                        DUMMY_SP,
-                    )
-                    .into();
+                    let tokens = item.into_tokenstream(self.cx.parse_sess);
                     let item = attr.unwrap_normal_item();
                     if let MacArgs::Eq(..) = item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let tok_result =
-                        expander.expand(self.cx, span, item.args.inner_tokens(), item_tok);
+                        expander.expand(self.cx, span, item.args.inner_tokens(), tokens);
                     self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {

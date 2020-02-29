@@ -4,7 +4,7 @@ use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
-use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
+use rustc_parse::{self, nt_to_tokenstream, parser, DirectoryOwnership, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
@@ -116,6 +116,28 @@ impl Annotatable {
             Annotatable::StructField(sf) => visitor.visit_struct_field(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
         }
+    }
+
+    crate fn into_tokenstream(self, sess: &ParseSess) -> TokenStream {
+        let span = self.span();
+        let nt = match self {
+            Annotatable::Item(item) => token::NtItem(item),
+            Annotatable::TraitItem(item)
+            | Annotatable::ImplItem(item)
+            | Annotatable::ForeignItem(item) => {
+                token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
+            }
+            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+            Annotatable::Expr(expr) => token::NtExpr(expr),
+            Annotatable::Arm(..)
+            | Annotatable::Field(..)
+            | Annotatable::FieldPat(..)
+            | Annotatable::GenericParam(..)
+            | Annotatable::Param(..)
+            | Annotatable::StructField(..)
+            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
+        };
+        nt_to_tokenstream(&nt, sess, span)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
