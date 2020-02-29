@@ -568,6 +568,34 @@ mod ops {
 }
 
 #[test]
+fn infer_ops_index_autoderef() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    let a = &[1u32, 2, 3];
+    let b = a[1];
+    b<|>;
+}
+
+//- /std.rs crate:std
+impl<T> ops::Index<u32> for [T] {
+    type Output = T;
+}
+
+#[prelude_import] use ops::*;
+mod ops {
+    #[lang = "index"]
+    pub trait Index<Idx> {
+        type Output;
+    }
+}
+"#,
+    );
+    assert_eq!("u32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn deref_trait() {
     let t = type_at(
         r#"
