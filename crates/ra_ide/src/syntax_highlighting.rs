@@ -120,7 +120,6 @@ pub(crate) fn highlight(
         if let Some(token) = element.as_token().cloned().and_then(ast::RawString::cast) {
             let expanded = element_to_highlight.as_token().unwrap().clone();
             if highlight_injection(&mut res, &sema, token, expanded).is_some() {
-                eprintln!("res = {:?}", res);
                 continue;
             }
         }
