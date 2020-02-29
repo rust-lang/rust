@@ -98,8 +98,8 @@ export namespace InlayHint {
         range: lc.Range;
         label: string;
     }
-    export type TypeHint = Common & { kind: Kind.TypeHint; }
-    export type ParamHint = Common & { kind: Kind.ParamHint; }
+    export type TypeHint = Common & { kind: Kind.TypeHint };
+    export type ParamHint = Common & { kind: Kind.ParamHint };
 }
 export interface InlayHintsParams {
     textDocument: lc.TextDocumentIdentifier;
