@@ -237,10 +237,8 @@ impl<'tcx> OnUnimplementedDirective {
             }
         }
 
-        let options: FxHashMap<Symbol, String> = options
-            .into_iter()
-            .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned())))
-            .collect();
+        let options: FxHashMap<Symbol, String> =
+            options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref, &options)),
             message: message.map(|m| m.format(tcx, trait_ref, &options)),

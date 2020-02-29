@@ -2388,9 +2388,9 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
             hir::TypeBindingKind::Equality { ref ty } => {
                 TypeBindingKind::Equality { ty: ty.clean(cx) }
             }
-            hir::TypeBindingKind::Constraint { ref bounds } => TypeBindingKind::Constraint {
-                bounds: bounds.into_iter().map(|b| b.clean(cx)).collect(),
-            },
+            hir::TypeBindingKind::Constraint { ref bounds } => {
+                TypeBindingKind::Constraint { bounds: bounds.iter().map(|b| b.clean(cx)).collect() }
+            }
         }
     }
 }

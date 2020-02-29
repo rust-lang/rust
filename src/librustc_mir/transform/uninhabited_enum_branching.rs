@@ -100,7 +100,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
                 let vals = &*values;
-                let zipped = vals.iter().zip(targets.into_iter());
+                let zipped = vals.iter().zip(targets.iter());
 
                 let mut matched_values = Vec::with_capacity(allowed_variants.len());
                 let mut matched_targets = Vec::with_capacity(allowed_variants.len() + 1);
