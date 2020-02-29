@@ -9,9 +9,7 @@ export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx.client);
 
     vscode.window.onDidChangeVisibleTextEditors(
-        visibleEditors => hintsUpdater.refreshVisibleRustEditors(
-            visibleEditors.filter(isRustTextEditor)
-        ),
+        () => hintsUpdater.refreshVisibleRustEditors(),
         null,
         ctx.subscriptions
     );
@@ -21,7 +19,7 @@ export function activateInlayHints(ctx: Ctx) {
             if (contentChanges.length === 0) return;
             if (!isRustTextDocument(document)) return;
 
-            hintsUpdater.refreshRustDocument(document);
+            hintsUpdater.forceRefreshVisibleRustEditors();
         },
         null,
         ctx.subscriptions
@@ -92,7 +90,7 @@ class HintsUpdater {
         this.enabled = enabled;
 
         if (this.enabled) {
-            this.refreshVisibleRustEditors(vscode.window.visibleTextEditors.filter(isRustTextEditor));
+            this.refreshVisibleRustEditors();
         } else {
             this.clearHints();
         }
@@ -105,20 +103,20 @@ class HintsUpdater {
         }
     }
 
-    refreshRustDocument(document: RustTextDocument) {
+    forceRefreshVisibleRustEditors() {
         if (!this.enabled) return;
 
-        const file = this.sourceFiles.getSourceFile(document.uri.toString());
-
-        assert(!!file, "Document must be opened in some text editor!");
-
-        void file.fetchAndRenderHints(this.client);
+        for (const file of this.sourceFiles) {
+            void file.fetchAndRenderHints(this.client);
+        }
     }
 
-    refreshVisibleRustEditors(visibleEditors: RustTextEditor[]) {
+    refreshVisibleRustEditors() {
         if (!this.enabled) return;
 
-        const visibleSourceFiles = this.sourceFiles.drainEditors(visibleEditors);
+        const visibleSourceFiles = this.sourceFiles.drainEditors(
+            vscode.window.visibleTextEditors.filter(isRustTextEditor)
+        );
 
         // Cancel requests for source files whose editors were disposed (leftovers after drain).
         for (const { inlaysRequest } of this.sourceFiles) inlaysRequest?.cancel();
