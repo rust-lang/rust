@@ -739,7 +739,7 @@ impl EarlyLintPass for DeprecatedAttr {
 }
 
 fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &[ast::Attribute]) {
-    let mut attrs = attrs.into_iter().peekable();
+    let mut attrs = attrs.iter().peekable();
 
     // Accumulate a single span for sugared doc comments.
     let mut sugared_span: Option<Span> = None;

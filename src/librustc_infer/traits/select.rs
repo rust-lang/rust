@@ -2411,7 +2411,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         types
             .skip_binder()
-            .into_iter()
+            .iter()
             .flat_map(|ty| {
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/

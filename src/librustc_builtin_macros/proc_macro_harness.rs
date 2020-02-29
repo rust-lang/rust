@@ -149,7 +149,7 @@ impl<'a> CollectProcMacros<'a> {
                         .span_err(attr.span(), "attribute must be of form: `attributes(foo, bar)`");
                     &[]
                 })
-                .into_iter()
+                .iter()
                 .filter_map(|attr| {
                     let attr = match attr.meta_item() {
                         Some(meta_item) => meta_item,
