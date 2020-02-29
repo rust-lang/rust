@@ -14,7 +14,7 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`Mac`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimeter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
 
@@ -512,7 +512,7 @@ impl Pat {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
-            PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
+            PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
             PatKind::Ref(pat, mutbl) => {
                 pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?
@@ -566,7 +566,7 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::Mac(_) => {}
+            | PatKind::MacCall(_) => {}
         }
     }
 
@@ -681,7 +681,7 @@ pub enum PatKind {
     Paren(P<Pat>),
 
     /// A macro pattern; pre-expansion.
-    Mac(Mac),
+    MacCall(MacCall),
 }
 
 #[derive(
@@ -880,9 +880,9 @@ impl Stmt {
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
-            StmtKind::Mac(mac) => {
-                StmtKind::Mac(mac.map(|(mac, _style, attrs)| (mac, MacStmtStyle::Semicolon, attrs)))
-            }
+            StmtKind::MacCall(mac) => StmtKind::MacCall(
+                mac.map(|(mac, _style, attrs)| (mac, MacStmtStyle::Semicolon, attrs)),
+            ),
             kind => kind,
         };
         self
@@ -916,7 +916,7 @@ pub enum StmtKind {
     /// Just a trailing semi-colon.
     Empty,
     /// Macro.
-    Mac(P<(Mac, MacStmtStyle, AttrVec)>),
+    MacCall(P<(MacCall, MacStmtStyle, AttrVec)>),
 }
 
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -1056,7 +1056,7 @@ impl Expr {
         let kind = match &self.kind {
             // Trivial conversions.
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
-            ExprKind::Mac(mac) => TyKind::Mac(mac.clone()),
+            ExprKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
 
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
 
@@ -1126,7 +1126,7 @@ impl Expr {
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
             ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprKind::Mac(..) => ExprPrecedence::Mac,
+            ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Paren(..) => ExprPrecedence::Paren,
@@ -1258,7 +1258,7 @@ pub enum ExprKind {
     InlineAsm(P<InlineAsm>),
 
     /// A macro invocation; pre-expansion.
-    Mac(Mac),
+    MacCall(MacCall),
 
     /// A struct literal expression.
     ///
@@ -1344,13 +1344,13 @@ pub enum Movability {
 /// Represents a macro invocation. The `path` indicates which macro
 /// is being invoked, and the `args` are arguments passed to it.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Mac {
+pub struct MacCall {
     pub path: Path,
     pub args: P<MacArgs>,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
-impl Mac {
+impl MacCall {
     pub fn span(&self) -> Span {
         self.path.span.to(self.args.span().unwrap_or(self.path.span))
     }
@@ -1880,7 +1880,7 @@ pub enum TyKind {
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
     /// A macro in the type position.
-    Mac(Mac),
+    MacCall(MacCall),
     /// Placeholder for a kind that has failed to be defined.
     Err,
     /// Placeholder for a `va_list`.
@@ -2573,7 +2573,7 @@ pub enum ItemKind {
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
-    Mac(Mac),
+    MacCall(MacCall),
 
     /// A macro definition.
     MacroDef(MacroDef),
@@ -2585,7 +2585,7 @@ impl ItemKind {
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
             | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
-            ExternCrate(..) | ForeignMod(..) | Mac(..) | Enum(..) | Impl { .. } => "an",
+            ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
 
@@ -2605,7 +2605,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) => "item macro invocation",
+            ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
         }
@@ -2658,14 +2658,14 @@ pub enum AssocItemKind {
     /// A type.
     TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// A macro expanding to items.
-    Macro(Mac),
+    MacCall(MacCall),
 }
 
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
             Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
-            Self::Macro(..) | Self::Static(..) => Defaultness::Final,
+            Self::MacCall(..) | Self::Static(..) => Defaultness::Final,
         }
     }
 }
@@ -2677,7 +2677,7 @@ impl IntoItemKind for AssocItemKind {
             AssocItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
             AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
             AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
-            AssocItemKind::Macro(a) => ItemKind::Mac(a),
+            AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
 }

@@ -426,7 +426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
+            ItemKind::MacroDef(..) | ItemKind::MacCall(..) => {
                 bug!("`TyMac` should have been expanded by now")
             }
         }
@@ -681,7 +681,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ForeignItemKind::Static(ty, Mutability::Not)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
-                ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
+                ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
             span: i.span,
@@ -785,7 +785,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, kind)
             }
-            AssocItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
+            AssocItemKind::MacCall(..) => bug!("macro item shouldn't exist at this point"),
         };
 
         hir::TraitItem {
@@ -808,7 +808,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(_, sig, _, default) => {
                 (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
             }
-            AssocItemKind::Macro(..) => unimplemented!(),
+            AssocItemKind::MacCall(..) => unimplemented!(),
         };
         let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
@@ -867,7 +867,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 (generics, kind)
             }
-            AssocItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
+            AssocItemKind::MacCall(..) => bug!("`TyMac` should have been expanded by now"),
         };
 
         hir::ImplItem {
@@ -903,7 +903,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 AssocItemKind::Fn(_, sig, ..) => {
                     hir::AssocItemKind::Method { has_self: sig.decl.has_self() }
                 }
-                AssocItemKind::Macro(..) => unimplemented!(),
+                AssocItemKind::MacCall(..) => unimplemented!(),
             },
         }
 

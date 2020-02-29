@@ -960,7 +960,7 @@ impl<'a> State<'a> {
             ast::TyKind::ImplicitSelf => {
                 self.s.word("Self");
             }
-            ast::TyKind::Mac(ref m) => {
+            ast::TyKind::MacCall(ref m) => {
                 self.print_mac(m);
             }
             ast::TyKind::CVarArgs => {
@@ -1002,7 +1002,7 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::TyAlias(def, generics, bounds, ty) => {
                 self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
-            ast::ForeignItemKind::Macro(m) => {
+            ast::ForeignItemKind::MacCall(m) => {
                 self.print_mac(m);
                 if m.args.need_semicolon() {
                     self.s.word(";");
@@ -1246,7 +1246,7 @@ impl<'a> State<'a> {
                 self.print_where_clause(&generics.where_clause);
                 self.s.word(";");
             }
-            ast::ItemKind::Mac(ref mac) => {
+            ast::ItemKind::MacCall(ref mac) => {
                 self.print_mac(mac);
                 if mac.args.need_semicolon() {
                     self.s.word(";");
@@ -1454,7 +1454,7 @@ impl<'a> State<'a> {
                 self.space_if_not_bol();
                 self.s.word(";");
             }
-            ast::StmtKind::Mac(ref mac) => {
+            ast::StmtKind::MacCall(ref mac) => {
                 let (ref mac, style, ref attrs) = **mac;
                 self.space_if_not_bol();
                 self.print_outer_attributes(attrs);
@@ -1564,7 +1564,7 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    crate fn print_mac(&mut self, m: &ast::Mac) {
+    crate fn print_mac(&mut self, m: &ast::MacCall) {
         self.print_mac_common(
             Some(MacHeader::Path(&m.path)),
             true,
@@ -2064,7 +2064,7 @@ impl<'a> State<'a> {
 
                 self.pclose();
             }
-            ast::ExprKind::Mac(ref m) => self.print_mac(m),
+            ast::ExprKind::MacCall(ref m) => self.print_mac(m),
             ast::ExprKind::Paren(ref e) => {
                 self.popen();
                 self.print_inner_attributes_inline(attrs);
@@ -2248,7 +2248,7 @@ impl<'a> State<'a> {
                 self.print_pat(inner);
                 self.pclose();
             }
-            PatKind::Mac(ref m) => self.print_mac(m),
+            PatKind::MacCall(ref m) => self.print_mac(m),
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }

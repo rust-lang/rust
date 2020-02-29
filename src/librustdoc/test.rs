@@ -449,7 +449,7 @@ pub fn make_test(
                         }
 
                         if !found_macro {
-                            if let ast::ItemKind::Mac(..) = item.kind {
+                            if let ast::ItemKind::MacCall(..) = item.kind {
                                 found_macro = true;
                             }
                         }
