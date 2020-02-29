@@ -882,7 +882,7 @@ extern "rust-intrinsic" {
     /// let v_clone = v_orig.clone();
     ///
     /// // Using transmute: this relies on the unspecified data layout of `Vec`, which is a
-    /// // bad idea and could cause Undefined Behavior
+    /// // bad idea and could cause Undefined Behavior.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
     ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
