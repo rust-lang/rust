@@ -225,6 +225,6 @@ impl From<AssocItem> for GenericDefId {
 
 impl From<(DefWithBodyId, PatId)> for Local {
     fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
-        Local { parent: parent.into(), pat_id }
+        Local { parent, pat_id }
     }
 }
