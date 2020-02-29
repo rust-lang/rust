@@ -1,4 +1,6 @@
 //! Handle syntactic aspects of inserting a new `use`.
+// FIXME: rewrite according to the plan, outlined in
+// https://github.com/rust-analyzer/rust-analyzer/issues/3301#issuecomment-592931553
 
 use hir::{self, ModPath};
 use ra_syntax::{
