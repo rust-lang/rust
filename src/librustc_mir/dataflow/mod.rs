@@ -5,17 +5,20 @@ use rustc_index::vec::Idx;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
-pub use self::impls::borrows::Borrows;
-pub use self::impls::DefinitelyInitializedPlaces;
-pub use self::impls::EverInitializedPlaces;
-pub use self::impls::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
-pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-pub use self::impls::{MaybeRequiresStorage, MaybeStorageLive};
+pub use self::framework::{
+    visit_results, Analysis, AnalysisDomain, BorrowckFlowState, BorrowckResults, Engine, GenKill,
+    GenKillAnalysis, Results, ResultsCursor, ResultsRefCursor, ResultsVisitor,
+};
+pub use self::impls::{
+    borrows::Borrows, DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeBorrowedLocals,
+    MaybeInitializedPlaces, MaybeMutBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive,
+    MaybeUninitializedPlaces,
+};
 
 use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
-pub mod generic;
+pub mod framework;
 mod impls;
 pub mod move_paths;
 
