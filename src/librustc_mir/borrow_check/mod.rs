@@ -29,12 +29,12 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::dataflow;
-use crate::dataflow::generic::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::MirSource;
 
@@ -298,7 +298,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         mbcx.report_move_errors(errors);
     }
 
-    dataflow::generic::visit_results(
+    dataflow::visit_results(
         &*body,
         traversal::reverse_postorder(&*body).map(|(bb, _)| bb),
         &results,
@@ -509,7 +509,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
     type FlowState = Flows<'cx, 'tcx>;
 
     fn visit_statement(

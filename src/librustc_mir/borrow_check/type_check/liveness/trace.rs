@@ -8,10 +8,10 @@ use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::TypeOp;
 use std::rc::Rc;
 
-use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 use crate::dataflow::MaybeInitializedPlaces;
+use crate::dataflow::ResultsCursor;
 
 use crate::borrow_check::{
     region_infer::values::{self, PointIndex, RegionValueElements},

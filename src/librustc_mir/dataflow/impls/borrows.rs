@@ -8,8 +8,8 @@ use rustc_index::bit_set::BitSet;
 use crate::borrow_check::{
     places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
 };
-use crate::dataflow::generic::{self, GenKill};
 use crate::dataflow::BottomValue;
+use crate::dataflow::{self, GenKill};
 
 use std::rc::Rc;
 
@@ -226,7 +226,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-impl<'tcx> generic::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
+impl<'tcx> dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
     const NAME: &'static str = "borrows";
@@ -245,7 +245,7 @@ impl<'tcx> generic::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
-impl<'tcx> generic::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
+impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     fn before_statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
