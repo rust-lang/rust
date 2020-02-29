@@ -5,7 +5,7 @@ use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, SyntaxNode, TextRange,
+    match_ast, SmolStr, TextRange,
 };
 
 use crate::{FileId, FunctionSignature};
@@ -28,50 +28,76 @@ pub(crate) fn inlay_hints(
     file_id: FileId,
     max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
+    let _p = profile("inlay_hints");
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
+
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
-        get_inlay_hints(&mut res, &sema, &node, max_inlay_hint_length);
+        match_ast! {
+            match node {
+                ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, ast::Expr::from(it)); },
+                ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, ast::Expr::from(it)); },
+                ast::BindPat(it) => { get_bind_pat_hints(&mut res, &sema, max_inlay_hint_length, it); },
+                _ => (),
+            }
+        }
     }
     res
 }
 
-fn get_inlay_hints(
+fn get_param_name_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    node: &SyntaxNode,
-    max_inlay_hint_length: Option<usize>,
+    expr: ast::Expr,
 ) -> Option<()> {
-    let _p = profile("get_inlay_hints");
-    let db = sema.db;
-    match_ast! {
-        match node {
-            ast::CallExpr(it) => {
-                get_param_name_hints(acc, sema, ast::Expr::from(it));
-            },
-            ast::MethodCallExpr(it) => {
-                get_param_name_hints(acc, sema, ast::Expr::from(it));
-            },
-            ast::BindPat(it) => {
-                let pat = ast::Pat::from(it.clone());
-                let ty = sema.type_of_pat(&pat)?;
-
-                if should_not_display_type_hint(db, &it, &ty) {
-                    return None;
-                }
-
-                acc.push(
-                    InlayHint {
-                        range: pat.syntax().text_range(),
-                        kind: InlayKind::TypeHint,
-                        label: ty.display_truncated(db, max_inlay_hint_length).to_string().into(),
-                    }
-                );
-            },
-            _ => (),
-        }
+    let args = match &expr {
+        ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
+        ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
+        _ => return None,
     };
+    let args_count = args.clone().count();
+
+    let fn_signature = get_fn_signature(sema, &expr)?;
+    let n_params_to_skip =
+        if fn_signature.has_self_param && fn_signature.parameter_names.len() > args_count {
+            1
+        } else {
+            0
+        };
+    let hints = fn_signature
+        .parameter_names
+        .iter()
+        .skip(n_params_to_skip)
+        .zip(args)
+        .filter(|(param, arg)| should_show_param_hint(&fn_signature, param, &arg))
+        .map(|(param_name, arg)| InlayHint {
+            range: arg.syntax().text_range(),
+            kind: InlayKind::ParameterHint,
+            label: param_name.into(),
+        });
+
+    acc.extend(hints);
+    Some(())
+}
+
+fn get_bind_pat_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    max_inlay_hint_length: Option<usize>,
+    pat: ast::BindPat,
+) -> Option<()> {
+    let ty = sema.type_of_pat(&pat.clone().into())?;
+
+    if should_not_display_type_hint(sema.db, &pat, &ty) {
+        return None;
+    }
+
+    acc.push(InlayHint {
+        range: pat.syntax().text_range(),
+        kind: InlayKind::TypeHint,
+        label: ty.display_truncated(sema.db, max_inlay_hint_length).to_string().into(),
+    });
     Some(())
 }
 
@@ -118,43 +144,6 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
         }
     }
     false
-}
-
-fn get_param_name_hints(
-    acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
-    expr: ast::Expr,
-) -> Option<()> {
-    let args = match &expr {
-        ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
-        ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
-        _ => return None,
-    }
-    .into_iter()
-    // we need args len to determine whether to skip or not the &self parameter
-    .collect::<Vec<_>>();
-
-    let fn_signature = get_fn_signature(sema, &expr)?;
-    let n_params_to_skip =
-        if fn_signature.has_self_param && fn_signature.parameter_names.len() > args.len() {
-            1
-        } else {
-            0
-        };
-    let hints = fn_signature
-        .parameter_names
-        .iter()
-        .skip(n_params_to_skip)
-        .zip(args)
-        .filter(|(param, arg)| should_show_param_hint(&fn_signature, param, &arg))
-        .map(|(param_name, arg)| InlayHint {
-            range: arg.syntax().text_range(),
-            kind: InlayKind::ParameterHint,
-            label: param_name.into(),
-        });
-
-    acc.extend(hints);
-    Some(())
 }
 
 fn should_show_param_hint(
