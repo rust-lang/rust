@@ -239,7 +239,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             .segments
                             .iter()
                             .filter_map(|seg| seg.args.as_ref())
-                            .map(|generic_args| generic_args.args.as_ref())
+                            .map(|generic_args| generic_args.args)
                             .find_map(|args| {
                                 args.iter()
                                     .filter(|arg| arg.is_const())

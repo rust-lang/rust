@@ -657,7 +657,7 @@ impl EmbargoVisitor<'tcx> {
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {
                 if let hir::ItemKind::Mod(m) = &item.kind {
-                    for item_id in m.item_ids.as_ref() {
+                    for item_id in m.item_ids {
                         let item = self.tcx.hir().expect_item(item_id.id);
                         let def_id = self.tcx.hir().local_def_id(item_id.id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) {
