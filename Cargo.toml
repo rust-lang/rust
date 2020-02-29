@@ -9,10 +9,10 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/cranelift/" }
-cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/" }
-cranelift-module = { git = "https://github.com/bytecodealliance/cranelift/" }
-cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/" }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/" }
 target-lexicon = "0.10.0"
 
 ar = "0.8.0"
@@ -30,18 +30,18 @@ default-features = false
 features = ["write"] # We don't need read support
 
 # Uncomment to use local checkout of cranelift
-#[patch."https://github.com/bytecodealliance/cranelift/"]
-#cranelift-codegen = { path = "../cranelift/cranelift-codegen" }
-#cranelift-frontend = { path = "../cranelift/cranelift-frontend" }
-#cranelift-module = { path = "../cranelift/cranelift-module" }
-#cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
-#cranelift-object = { path = "../cranelift/cranelift-object" }
+#[patch."https://github.com/bytecodealliance/wasmtime/"]
+#cranelift-codegen = { path = "../wasmtime/cranelift/cranelift-codegen" }
+#cranelift-frontend = { path = "../wasmtime/cranelift/cranelift-frontend" }
+#cranelift-module = { path = "../wasmtime/cranelift/cranelift-module" }
+#cranelift-simplejit = { path = "../wasmtime/cranelift/cranelift-simplejit" }
+#cranelift-object = { path = "../wasmtime/cranelift/cranelift-object" }
 
 #[patch.crates-io]
 #gimli = { path = "../" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cranelift-simplejit = { git = "https://github.com/bytecodealliance/cranelift/" }
+cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/" }
 libloading = "0.5.1"
 
 [profile.dev]
