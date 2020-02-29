@@ -583,21 +583,52 @@ impl InferTy {
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct Expectation {
     ty: Ty,
-    // FIXME: In some cases, we need to be aware whether the expectation is that
-    // the type match exactly what we passed, or whether it just needs to be
-    // coercible to the expected type. See Expectation::rvalue_hint in rustc.
+    /// See the `rvalue_hint` method.
+    rvalue_hint: bool,
 }
 
 impl Expectation {
     /// The expectation that the type of the expression needs to equal the given
     /// type.
     fn has_type(ty: Ty) -> Self {
-        Expectation { ty }
+        Expectation { ty, rvalue_hint: false }
+    }
+
+    /// The following explanation is copied straight from rustc:
+    /// Provides an expectation for an rvalue expression given an *optional*
+    /// hint, which is not required for type safety (the resulting type might
+    /// be checked higher up, as is the case with `&expr` and `box expr`), but
+    /// is useful in determining the concrete type.
+    ///
+    /// The primary use case is where the expected type is a fat pointer,
+    /// like `&[isize]`. For example, consider the following statement:
+    ///
+    ///    let x: &[isize] = &[1, 2, 3];
+    ///
+    /// In this case, the expected type for the `&[1, 2, 3]` expression is
+    /// `&[isize]`. If however we were to say that `[1, 2, 3]` has the
+    /// expectation `ExpectHasType([isize])`, that would be too strong --
+    /// `[1, 2, 3]` does not have the type `[isize]` but rather `[isize; 3]`.
+    /// It is only the `&[1, 2, 3]` expression as a whole that can be coerced
+    /// to the type `&[isize]`. Therefore, we propagate this more limited hint,
+    /// which still is useful, because it informs integer literals and the like.
+    /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
+    /// for examples of where this comes up,.
+    fn rvalue_hint(ty: Ty) -> Self {
+        Expectation { ty, rvalue_hint: true }
     }
 
     /// This expresses no expectation on the type.
     fn none() -> Self {
-        Expectation { ty: Ty::Unknown }
+        Expectation { ty: Ty::Unknown, rvalue_hint: false }
+    }
+
+    fn coercion_target(&self) -> &Ty {
+        if self.rvalue_hint {
+            &Ty::Unknown
+        } else {
+            &self.ty
+        }
     }
 }
 

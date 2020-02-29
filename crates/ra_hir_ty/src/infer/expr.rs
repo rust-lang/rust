@@ -42,14 +42,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Return the type after possible coercion.
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
-        let ty = if !self.coerce(&ty, &expected.ty) {
+        let ty = if !self.coerce(&ty, &expected.coercion_target()) {
             self.result
                 .type_mismatches
                 .insert(expr, TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() });
             // Return actual type when type mismatch.
             // This is needed for diagnostic when return type mismatch.
             ty
-        } else if expected.ty == Ty::Unknown {
+        } else if expected.coercion_target() == &Ty::Unknown {
             ty
         } else {
             expected.ty.clone()
@@ -297,7 +297,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             // FIXME: throw type error - expected mut reference but found shared ref,
                             // which cannot be coerced
                         }
-                        Expectation::has_type(Ty::clone(exp_inner))
+                        Expectation::rvalue_hint(Ty::clone(exp_inner))
                     } else {
                         Expectation::none()
                     };
@@ -542,7 +542,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty = if let Some(expr) = tail {
             self.infer_expr_coerce(expr, expected)
         } else {
-            self.coerce(&Ty::unit(), &expected.ty);
+            self.coerce(&Ty::unit(), expected.coercion_target());
             Ty::unit()
         };
         if diverges {
