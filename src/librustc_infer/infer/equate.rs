@@ -1,4 +1,4 @@
-use super::combine::{CombineFields, RelationDir, ConstEquateRelation};
+use super::combine::{CombineFields, ConstEquateRelation, RelationDir};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};

@@ -387,7 +387,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if self.selcx.tcx().sess.opts.debugging_opts.lazy_normalization {
+        if self.selcx.tcx().features().lazy_normalization_consts {
             constant
         } else {
             constant.eval(self.selcx.tcx(), self.param_env)

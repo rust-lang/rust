@@ -1181,12 +1181,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             Some(tcx.hir().local_def_id(parent_id))
         }
         Node::AnonConst(_) => {
-            // HACK(skinny121) Provide correct generics if `feature(const_generics)` is enabled, in
-            // addition to when the '-Z lazy-normalization' flag is used, so that trait
-            // implementations that have const generic parameters within the standard library still
-            // work. The feature check won't be necessary when lazy normalization is enabled by
-            // default.
-            if tcx.sess.opts.debugging_opts.lazy_normalization || tcx.features().const_generics {
+            if tcx.features().lazy_normalization_consts {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 Some(tcx.hir().local_def_id(parent_id))
             } else {
