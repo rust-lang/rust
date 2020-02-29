@@ -411,7 +411,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
-        self.0.iter().map(|p| *p)
+        self.0.iter().copied()
     }
 
     // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.

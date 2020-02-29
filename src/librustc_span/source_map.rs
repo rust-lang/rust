@@ -206,7 +206,7 @@ impl SourceMap {
         &self,
         stable_id: StableSourceFileId,
     ) -> Option<Lrc<SourceFile>> {
-        self.files.borrow().stable_id_to_source_file.get(&stable_id).map(|sf| sf.clone())
+        self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
     fn allocate_address_space(&self, size: usize) -> Result<usize, OffsetOverflowError> {

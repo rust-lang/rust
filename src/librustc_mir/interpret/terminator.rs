@@ -305,7 +305,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let mut caller_iter = caller_args
                             .iter()
                             .filter(|op| !rust_abi || !op.layout.is_zst())
-                            .map(|op| *op);
+                            .copied();
 
                         // Now we have to spread them out across the callee's locals,
                         // taking into account the `spread_arg`.  If we could write

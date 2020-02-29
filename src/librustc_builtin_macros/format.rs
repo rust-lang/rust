@@ -359,7 +359,7 @@ impl<'a, 'b> Context<'a, 'b> {
             refs.sort();
             refs.dedup();
             let (arg_list, mut sp) = if refs.len() == 1 {
-                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.map(|sp| *sp)).collect();
+                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.copied()).collect();
                 (
                     format!("argument {}", refs[0]),
                     if spans.is_empty() {

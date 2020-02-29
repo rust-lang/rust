@@ -1315,7 +1315,7 @@ fn check_fn<'a, 'tcx>(
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
 
         // Resume type defaults to `()` if the generator has no argument.
-        let resume_ty = fn_sig.inputs().get(0).map(|ty| *ty).unwrap_or_else(|| tcx.mk_unit());
+        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
