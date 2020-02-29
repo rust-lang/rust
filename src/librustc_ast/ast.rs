@@ -38,6 +38,7 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::iter;
 
@@ -2668,6 +2669,20 @@ impl From<AssocItemKind> for ItemKind {
     }
 }
 
+impl TryFrom<ItemKind> for AssocItemKind {
+    type Error = ItemKind;
+
+    fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
+        Ok(match item_kind {
+            ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
+            ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
+            ItemKind::Mac(a) => AssocItemKind::Macro(a),
+            _ => return Err(item_kind),
+        })
+    }
+}
+
 /// An item in `extern` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
@@ -2689,6 +2704,20 @@ impl From<ForeignItemKind> for ItemKind {
             ForeignItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
             ForeignItemKind::Macro(a) => ItemKind::Mac(a),
         }
+    }
+}
+
+impl TryFrom<ItemKind> for ForeignItemKind {
+    type Error = ItemKind;
+
+    fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
+        Ok(match item_kind {
+            ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
+            ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
+            ItemKind::Mac(a) => ForeignItemKind::Macro(a),
+            _ => return Err(item_kind),
+        })
     }
 }
 
