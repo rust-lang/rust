@@ -778,7 +778,7 @@ impl GenericDef {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
-    pub(crate) parent: DefWithBody,
+    pub(crate) parent: DefWithBodyId,
     pub(crate) pat_id: PatId,
 }
 
@@ -807,11 +807,11 @@ impl Local {
     }
 
     pub fn parent(self, _db: &impl HirDatabase) -> DefWithBody {
-        self.parent
+        self.parent.into()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {
-        self.parent.module(db)
+        self.parent(db).module(db)
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
