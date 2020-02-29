@@ -679,7 +679,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
             StmtKind::Empty | StmtKind::Item(..) => &[],
-            StmtKind::Mac(ref mac) => {
+            StmtKind::MacCall(ref mac) => {
                 let (_, _, ref attrs) = **mac;
                 attrs.attrs()
             }
@@ -691,7 +691,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Empty | StmtKind::Item(..) => {}
-            StmtKind::Mac(mac) => {
+            StmtKind::MacCall(mac) => {
                 let (_mac, _style, attrs) = mac.deref_mut();
                 attrs.visit_attrs(f);
             }

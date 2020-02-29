@@ -4,8 +4,8 @@ use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
-use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, Mac, Param, Ty, TyKind, UnOp};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, UnOp, DUMMY_NODE_ID};
+use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token, TokenKind};
@@ -1065,12 +1065,12 @@ impl<'a> Parser<'a> {
         // `!`, as an operator, is prefix, so we know this isn't that.
         let (hi, kind) = if self.eat(&token::Not) {
             // MACRO INVOCATION expression
-            let mac = Mac {
+            let mac = MacCall {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
             };
-            (self.prev_token.span, ExprKind::Mac(mac))
+            (self.prev_token.span, ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(token::Brace)) {
             if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
                 return expr;

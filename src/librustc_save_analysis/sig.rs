@@ -308,7 +308,7 @@ impl Sig for ast::Ty {
             | ast::TyKind::Infer
             | ast::TyKind::Err
             | ast::TyKind::ImplicitSelf
-            | ast::TyKind::Mac(_) => Err("Ty"),
+            | ast::TyKind::MacCall(_) => Err("Ty"),
         }
     }
 }
@@ -544,7 +544,7 @@ impl Sig for ast::Item {
             ast::ItemKind::ExternCrate(_) => Err("extern crate"),
             // FIXME should implement this (e.g., pub use).
             ast::ItemKind::Use(_) => Err("import"),
-            ast::ItemKind::Mac(..) | ast::ItemKind::MacroDef(_) => Err("Macro"),
+            ast::ItemKind::MacCall(..) | ast::ItemKind::MacroDef(_) => Err("Macro"),
         }
     }
 }
@@ -795,7 +795,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            ast::ForeignItemKind::Macro(..) => Err("macro"),
+            ast::ForeignItemKind::MacCall(..) => Err("macro"),
         }
     }
 }
