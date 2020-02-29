@@ -4,8 +4,8 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use hir::{
-    db::{DefDatabase, HirDatabase},
-    AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
+    db::{AstDatabase, DefDatabase, HirDatabase},
+    original_range, AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
@@ -188,13 +188,19 @@ pub fn analysis_stats(
                     let src = sm.expr_syntax(expr_id);
                     if let Some(src) = src {
                         // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
-                        let original_file = src.file_id.original_file(db);
-                        let path = db.file_relative_path(original_file);
-                        let line_index = host.analysis().file_line_index(original_file).unwrap();
-                        let text_range = src.value.either(
-                            |it| it.syntax_node_ptr().range(),
-                            |it| it.syntax_node_ptr().range(),
-                        );
+                        // But also, we should just turn the type mismatches into diagnostics and provide these
+                        let root = db.parse_or_expand(src.file_id).unwrap();
+                        let node = src.map(|e| {
+                            e.either(
+                                |p| p.to_node(&root).syntax().clone(),
+                                |p| p.to_node(&root).syntax().clone(),
+                            )
+                        });
+                        let original_range = original_range(db, node.as_ref());
+                        let path = db.file_relative_path(original_range.file_id);
+                        let line_index =
+                            host.analysis().file_line_index(original_range.file_id).unwrap();
+                        let text_range = original_range.range;
                         let (start, end) = (
                             line_index.line_col(text_range.start()),
                             line_index.line_col(text_range.end()),

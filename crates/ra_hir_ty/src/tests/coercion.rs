@@ -458,6 +458,37 @@ fn test() {
 }
 
 #[test]
+fn coerce_autoderef_block() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct String {}
+#[lang = "deref"]
+trait Deref { type Target; }
+impl Deref for String { type Target = str; }
+fn takes_ref_str(x: &str) {}
+fn returns_string() -> String { loop {} }
+fn test() {
+    takes_ref_str(&{ returns_string() });
+}
+"#, true),
+        @r###"
+    [127; 128) 'x': &str
+    [136; 138) '{}': ()
+    [169; 180) '{ loop {} }': String
+    [171; 178) 'loop {}': !
+    [176; 178) '{}': ()
+    [191; 236) '{     ... }); }': ()
+    [197; 210) 'takes_ref_str': fn takes_ref_str(&str) -> ()
+    [197; 233) 'takes_...g() })': ()
+    [211; 232) '&{ ret...ng() }': &String
+    [212; 232) '{ retu...ng() }': String
+    [214; 228) 'returns_string': fn returns_string() -> String
+    [214; 230) 'return...ring()': String
+    "###
+    );
+}
+
+#[test]
 fn closure_return_coerce() {
     assert_snapshot!(
         infer_with_mismatches(r#"
