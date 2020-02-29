@@ -116,10 +116,8 @@ pub fn main_loop(
                     Err(e) => {
                         log::error!("loading workspace failed: {:?}", e);
 
-                        if let Some(ra_project_model::CargoTomlNotFoundError {
-                            searched_at: _,
-                            reason: _,
-                        }) = e.downcast_ref()
+                        if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
+                            e.downcast_ref()
                         {
                             if !feature_flags.get("notifications.cargo-toml-not-found") {
                                 continue;
