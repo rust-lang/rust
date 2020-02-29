@@ -20,7 +20,7 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, Uncertain},
     utils::all_super_traits,
-    Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    ApplicationTy, Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -214,7 +214,7 @@ pub fn iterate_method_candidates<T>(
             // the methods by autoderef order of *receiver types*, not *self
             // types*.
 
-            let deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
+            let deref_chain = autoderef_method_receiver(db, krate, ty);
             for i in 0..deref_chain.len() {
                 if let Some(result) = iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
@@ -547,4 +547,21 @@ fn generic_implements_goal(
     let trait_ref = TraitRef { trait_, substs };
     let obligation = super::Obligation::Trait(trait_ref);
     Canonical { num_vars, value: InEnvironment::new(env, obligation) }
+}
+
+fn autoderef_method_receiver(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    ty: InEnvironment<Canonical<Ty>>,
+) -> Vec<Canonical<Ty>> {
+    let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
+    // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
+    if let Some(Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, parameters })) =
+        deref_chain.last().map(|ty| &ty.value)
+    {
+        let num_vars = deref_chain.last().unwrap().num_vars;
+        let unsized_ty = Ty::apply(TypeCtor::Slice, parameters.clone());
+        deref_chain.push(Canonical { value: unsized_ty, num_vars })
+    }
+    deref_chain
 }

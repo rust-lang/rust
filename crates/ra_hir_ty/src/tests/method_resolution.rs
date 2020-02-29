@@ -839,6 +839,24 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_unsize_array() {
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "slice"]
+impl<T> [T] {
+    fn len(&self) -> usize { loop {} }
+}
+fn test() {
+    let a = [1, 2, 3];
+    a.len()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "usize");
+}
+
+#[test]
 fn method_resolution_trait_from_prelude() {
     let (db, pos) = TestDB::with_position(
         r#"
