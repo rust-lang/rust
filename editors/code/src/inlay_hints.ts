@@ -101,12 +101,8 @@ class HintsUpdater {
     clearHints() {
         for (const file of this.sourceFiles) {
             file.inlaysRequest?.cancel();
-            this.renderHints(file, []);
+            file.renderHints([], this.client.protocol2CodeConverter)
         }
-    }
-
-    private renderHints(file: RustSourceFile, hints: ra.InlayHint[]) {
-        file.renderHints(hints, this.client.protocol2CodeConverter);
     }
 
     refreshRustDocument(document: RustTextDocument) {
