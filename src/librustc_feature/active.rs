@@ -99,6 +99,9 @@ declare_features! (
 
     // no-tracking-issue-start
 
+    /// Allows using `rustc_*` attributes (RFC 572).
+    (active, rustc_attrs, "1.0.0", None, None),
+
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
 
@@ -127,9 +130,6 @@ declare_features! (
 
     /// Allows using `#[link_name="llvm.*"]`.
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
-
-    /// Allows using `rustc_*` attributes (RFC 572).
-    (active, rustc_attrs, "1.0.0", Some(29642), None),
 
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
