@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 38)
-  IMPL_BLOCK@[0; 14)
+  IMPL_DEF@[0; 14)
     IMPL_KW@[0; 4) "impl"
     TYPE_PARAM_LIST@[4; 14)
       L_ANGLE@[4; 5) "<"
@@ -17,7 +17,7 @@ SOURCE_FILE@[0; 38)
                     IDENT@[8; 13) "Clone"
       R_ANGLE@[13; 14) ">"
   WHITESPACE@[14; 15) "\n"
-  IMPL_BLOCK@[15; 37)
+  IMPL_DEF@[15; 37)
     IMPL_KW@[15; 19) "impl"
     TYPE_PARAM_LIST@[19; 22)
       L_ANGLE@[19; 20) "<"

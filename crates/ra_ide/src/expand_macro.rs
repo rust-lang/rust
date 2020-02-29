@@ -195,7 +195,7 @@ fn some_thing() -> u32 {
             mat<|>ch_ast! {
                 match container {
                     ast::TraitDef(it) => {},
-                    ast::ImplBlock(it) => {},
+                    ast::ImplDef(it) => {},
                     _ => { continue },
                 }
             }
@@ -207,7 +207,7 @@ fn some_thing() -> u32 {
         assert_snapshot!(res.expansion, @r###"
 {
   if let Some(it) = ast::TraitDef::cast(container.clone()){}
-  else if let Some(it) = ast::ImplBlock::cast(container.clone()){}
+  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
   else {
     {
       continue

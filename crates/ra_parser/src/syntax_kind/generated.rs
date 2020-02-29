@@ -133,7 +133,7 @@ pub enum SyntaxKind {
     STATIC_DEF,
     CONST_DEF,
     TRAIT_DEF,
-    IMPL_BLOCK,
+    IMPL_DEF,
     TYPE_ALIAS_DEF,
     MACRO_CALL,
     TOKEN_TREE,

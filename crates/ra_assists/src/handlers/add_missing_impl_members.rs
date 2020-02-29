@@ -101,7 +101,7 @@ fn add_missing_impl_members_inner(
     label: &'static str,
 ) -> Option<Assist> {
     let _p = ra_prof::profile("add_missing_impl_members_inner");
-    let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
+    let impl_node = ctx.find_node_at_offset::<ast::ImplDef>()?;
     let impl_item_list = impl_node.item_list()?;
 
     let trait_ = resolve_target_trait(&ctx.sema, &impl_node)?;
@@ -257,7 +257,7 @@ impl Foo for S {
     }
 
     #[test]
-    fn test_empty_impl_block() {
+    fn test_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
             "
@@ -308,7 +308,7 @@ impl<U> Foo<U> for S {
     }
 
     #[test]
-    fn test_cursor_after_empty_impl_block() {
+    fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
             "

@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 29)
-  IMPL_BLOCK@[0; 28)
+  IMPL_DEF@[0; 28)
     IMPL_KW@[0; 4) "impl"
     TYPE_PARAM_LIST@[4; 18)
       L_ANGLE@[4; 5) "<"

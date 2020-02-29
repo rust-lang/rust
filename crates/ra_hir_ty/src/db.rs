@@ -11,7 +11,7 @@ use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 
 use crate::{
-    method_resolution::CrateImplBlocks,
+    method_resolution::CrateImplDefs,
     traits::{chalk, AssocTyValue, Impl},
     Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
     TyDefId, TypeCtor, ValueTyDefId,
@@ -59,8 +59,8 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> Substs;
 
-    #[salsa::invoke(crate::method_resolution::CrateImplBlocks::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplBlocks>;
+    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_in_crate_query)]
+    fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
 
     #[salsa::invoke(crate::traits::impls_for_trait_query)]
     fn impls_for_trait(&self, krate: CrateId, trait_: TraitId) -> Arc<[ImplId]>;

@@ -552,13 +552,13 @@ impl TypeAliasDef {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplBlock {
+pub struct ImplDef {
     pub(crate) syntax: SyntaxNode,
 }
-impl AstNode for ImplBlock {
+impl AstNode for ImplDef {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            IMPL_BLOCK => true,
+            IMPL_DEF => true,
             _ => false,
         }
     }
@@ -573,9 +573,9 @@ impl AstNode for ImplBlock {
         &self.syntax
     }
 }
-impl ast::TypeParamsOwner for ImplBlock {}
-impl ast::AttrsOwner for ImplBlock {}
-impl ImplBlock {
+impl ast::TypeParamsOwner for ImplDef {}
+impl ast::AttrsOwner for ImplDef {}
+impl ImplDef {
     pub fn item_list(&self) -> Option<ItemList> {
         AstChildren::new(&self.syntax).next()
     }
@@ -3524,7 +3524,7 @@ pub enum ModuleItem {
     FnDef(FnDef),
     TraitDef(TraitDef),
     TypeAliasDef(TypeAliasDef),
-    ImplBlock(ImplBlock),
+    ImplDef(ImplDef),
     UseItem(UseItem),
     ExternCrateItem(ExternCrateItem),
     ConstDef(ConstDef),
@@ -3561,9 +3561,9 @@ impl From<TypeAliasDef> for ModuleItem {
         ModuleItem::TypeAliasDef(node)
     }
 }
-impl From<ImplBlock> for ModuleItem {
-    fn from(node: ImplBlock) -> ModuleItem {
-        ModuleItem::ImplBlock(node)
+impl From<ImplDef> for ModuleItem {
+    fn from(node: ImplDef) -> ModuleItem {
+        ModuleItem::ImplDef(node)
     }
 }
 impl From<UseItem> for ModuleItem {
@@ -3594,8 +3594,8 @@ impl From<Module> for ModuleItem {
 impl AstNode for ModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            STRUCT_DEF | UNION_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF
-            | IMPL_BLOCK | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE => true,
+            STRUCT_DEF | UNION_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_DEF
+            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE => true,
             _ => false,
         }
     }
@@ -3607,7 +3607,7 @@ impl AstNode for ModuleItem {
             FN_DEF => ModuleItem::FnDef(FnDef { syntax }),
             TRAIT_DEF => ModuleItem::TraitDef(TraitDef { syntax }),
             TYPE_ALIAS_DEF => ModuleItem::TypeAliasDef(TypeAliasDef { syntax }),
-            IMPL_BLOCK => ModuleItem::ImplBlock(ImplBlock { syntax }),
+            IMPL_DEF => ModuleItem::ImplDef(ImplDef { syntax }),
             USE_ITEM => ModuleItem::UseItem(UseItem { syntax }),
             EXTERN_CRATE_ITEM => ModuleItem::ExternCrateItem(ExternCrateItem { syntax }),
             CONST_DEF => ModuleItem::ConstDef(ConstDef { syntax }),
@@ -3625,7 +3625,7 @@ impl AstNode for ModuleItem {
             ModuleItem::FnDef(it) => &it.syntax,
             ModuleItem::TraitDef(it) => &it.syntax,
             ModuleItem::TypeAliasDef(it) => &it.syntax,
-            ModuleItem::ImplBlock(it) => &it.syntax,
+            ModuleItem::ImplDef(it) => &it.syntax,
             ModuleItem::UseItem(it) => &it.syntax,
             ModuleItem::ExternCrateItem(it) => &it.syntax,
             ModuleItem::ConstDef(it) => &it.syntax,

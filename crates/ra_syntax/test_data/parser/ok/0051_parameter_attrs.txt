@@ -253,7 +253,7 @@ SOURCE_FILE@[0; 519)
       WHITESPACE@[234; 235) "\n"
       R_CURLY@[235; 236) "}"
   WHITESPACE@[236; 238) "\n\n"
-  IMPL_BLOCK@[238; 519)
+  IMPL_DEF@[238; 519)
     IMPL_KW@[238; 242) "impl"
     WHITESPACE@[242; 243) " "
     PATH_TYPE@[243; 244)

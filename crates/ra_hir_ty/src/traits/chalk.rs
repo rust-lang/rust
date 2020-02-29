@@ -576,7 +576,7 @@ where
             .impls_for_trait(self.krate, trait_)
             .iter()
             .copied()
-            .map(Impl::ImplBlock)
+            .map(Impl::ImplDef)
             .map(|impl_| impl_.to_chalk(self.db))
             .collect();
 
@@ -712,12 +712,12 @@ pub(crate) fn impl_datum_query(
     debug!("impl_datum {:?}", impl_id);
     let impl_: Impl = from_chalk(db, impl_id);
     match impl_ {
-        Impl::ImplBlock(impl_block) => impl_block_datum(db, krate, impl_id, impl_block),
+        Impl::ImplDef(impl_def) => impl_def_datum(db, krate, impl_id, impl_def),
         _ => Arc::new(builtin::impl_datum(db, krate, impl_).to_chalk(db)),
     }
 }
 
-fn impl_block_datum(
+fn impl_def_datum(
     db: &impl HirDatabase,
     krate: CrateId,
     chalk_id: ImplId,
@@ -815,7 +815,7 @@ fn type_alias_associated_ty_value(
     let ty = db.ty(type_alias.into());
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
-        impl_id: Impl::ImplBlock(impl_id).to_chalk(db),
+        impl_id: Impl::ImplDef(impl_id).to_chalk(db),
         associated_ty_id: assoc_ty.to_chalk(db),
         value: make_binders(value_bound, ty.num_binders),
     };

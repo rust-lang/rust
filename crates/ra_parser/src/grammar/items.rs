@@ -202,8 +202,8 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // test unsafe_default_impl
         // unsafe default impl Foo {}
         T![impl] => {
-            traits::impl_block(p);
-            m.complete(p, IMPL_BLOCK);
+            traits::impl_def(p);
+            m.complete(p, IMPL_DEF);
         }
 
         // test existential_type

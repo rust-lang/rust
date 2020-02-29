@@ -9,7 +9,7 @@ use hir_def::{
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, MacroDef, Module,
+    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplDef, MacroDef, Module,
     Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
@@ -111,9 +111,9 @@ impl HasSource for MacroDef {
         }
     }
 }
-impl HasSource for ImplBlock {
-    type Ast = ast::ImplBlock;
-    fn source(self, db: &impl DefDatabase) -> InFile<ast::ImplBlock> {
+impl HasSource for ImplDef {
+    type Ast = ast::ImplDef;
+    fn source(self, db: &impl DefDatabase) -> InFile<ast::ImplDef> {
         self.id.lookup(db).source(db)
     }
 }

@@ -4,7 +4,7 @@ use insta::assert_snapshot;
 use ra_db::fixture::WithFixture;
 
 #[test]
-fn cfg_impl_block() {
+fn cfg_impl_def() {
     let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:foo cfg:test
@@ -347,17 +347,17 @@ mod m {
 m::foo!(foo);
 use foo as bar;
 fn f() -> bar { 0 }
-fn main() {  
+fn main() {
     let _a  = f();
 }
 "#),
         @r###"
         [159; 164) '{ 0 }': u64
         [161; 162) '0': u64
-        [175; 199) '{     ...f(); }': ()
-        [187; 189) '_a': u64
-        [193; 194) 'f': fn f() -> u64
-        [193; 196) 'f()': u64        
+        [175; 197) '{     ...f(); }': ()
+        [185; 187) '_a': u64
+        [191; 192) 'f': fn f() -> u64
+        [191; 194) 'f()': u64
     "###
     );
 }

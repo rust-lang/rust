@@ -41,14 +41,14 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
     };
 
     // Return early if we've found an existing new fn
-    let impl_block = find_struct_impl(&ctx, &strukt)?;
+    let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     ctx.add_assist(AssistId("add_new"), "Add default constructor", |edit| {
         edit.target(strukt.syntax().text_range());
 
         let mut buf = String::with_capacity(512);
 
-        if impl_block.is_some() {
+        if impl_def.is_some() {
             buf.push('\n');
         }
 
@@ -71,10 +71,10 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
 
         buf.push_str("} }");
 
-        let (start_offset, end_offset) = impl_block
-            .and_then(|impl_block| {
+        let (start_offset, end_offset) = impl_def
+            .and_then(|impl_def| {
                 buf.push('\n');
-                let start = impl_block
+                let start = impl_def
                     .syntax()
                     .descendants_with_tokens()
                     .find(|t| t.kind() == T!['{'])?
@@ -128,7 +128,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<ast::ImplBlock>> {
+fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
     let db = ctx.db;
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
@@ -136,7 +136,7 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
 
     let struct_def = ctx.sema.to_def(strukt)?;
 
-    let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
+    let block = module.descendants().filter_map(ast::ImplDef::cast).find_map(|impl_blk| {
         let blk = ctx.sema.to_def(&impl_blk)?;
 
         // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
@@ -164,7 +164,7 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
     Some(block)
 }
 
-fn has_new_fn(imp: &ast::ImplBlock) -> bool {
+fn has_new_fn(imp: &ast::ImplDef) -> bool {
     if let Some(il) = imp.item_list() {
         for item in il.impl_items() {
             if let ast::ImplItem::FnDef(f) = item {

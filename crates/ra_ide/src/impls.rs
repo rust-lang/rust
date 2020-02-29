@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Crate, ImplBlock, Semantics};
+use hir::{Crate, ImplDef, Semantics};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -42,12 +42,12 @@ fn impls_for_def(
         ast::NominalDef::UnionDef(def) => sema.to_def(def)?.ty(sema.db),
     };
 
-    let impls = ImplBlock::all_in_crate(sema.db, krate);
+    let impls = ImplDef::all_in_crate(sema.db, krate);
 
     Some(
         impls
             .into_iter()
-            .filter(|impl_block| ty.is_equal_for_find_impls(&impl_block.target_ty(sema.db)))
+            .filter(|impl_def| ty.is_equal_for_find_impls(&impl_def.target_ty(sema.db)))
             .map(|imp| imp.to_nav(sema.db))
             .collect(),
     )
@@ -60,7 +60,7 @@ fn impls_for_trait(
 ) -> Option<Vec<NavigationTarget>> {
     let tr = sema.to_def(node)?;
 
-    let impls = ImplBlock::for_trait(sema.db, krate, tr);
+    let impls = ImplDef::for_trait(sema.db, krate, tr);
 
     Some(impls.into_iter().map(|imp| imp.to_nav(sema.db)).collect())
 }
@@ -86,7 +86,7 @@ mod tests {
             struct Foo<|>;
             impl Foo {}
             ",
-            &["impl IMPL_BLOCK FileId(1) [12; 23)"],
+            &["impl IMPL_DEF FileId(1) [12; 23)"],
         );
     }
 
@@ -99,7 +99,7 @@ mod tests {
             impl Foo {}
             impl Foo {}
             ",
-            &["impl IMPL_BLOCK FileId(1) [12; 23)", "impl IMPL_BLOCK FileId(1) [24; 35)"],
+            &["impl IMPL_DEF FileId(1) [12; 23)", "impl IMPL_DEF FileId(1) [24; 35)"],
         );
     }
 
@@ -116,7 +116,7 @@ mod tests {
                 impl super::Foo {}
             }
             ",
-            &["impl IMPL_BLOCK FileId(1) [24; 42)", "impl IMPL_BLOCK FileId(1) [57; 75)"],
+            &["impl IMPL_DEF FileId(1) [24; 42)", "impl IMPL_DEF FileId(1) [57; 75)"],
         );
     }
 
@@ -133,7 +133,7 @@ mod tests {
             //- /b.rs
             impl crate::Foo {}
             ",
-            &["impl IMPL_BLOCK FileId(2) [0; 18)", "impl IMPL_BLOCK FileId(3) [0; 18)"],
+            &["impl IMPL_DEF FileId(2) [0; 18)", "impl IMPL_DEF FileId(3) [0; 18)"],
         );
     }
 
@@ -146,7 +146,7 @@ mod tests {
             struct Foo;
             impl T for Foo {}
             ",
-            &["impl IMPL_BLOCK FileId(1) [23; 40)"],
+            &["impl IMPL_DEF FileId(1) [23; 40)"],
         );
     }
 
@@ -164,7 +164,7 @@ mod tests {
             //- /b.rs
             impl crate::T for crate::Foo {}
             ",
-            &["impl IMPL_BLOCK FileId(2) [0; 31)", "impl IMPL_BLOCK FileId(3) [0; 31)"],
+            &["impl IMPL_DEF FileId(2) [0; 31)", "impl IMPL_DEF FileId(3) [0; 31)"],
         );
     }
 
@@ -180,9 +180,9 @@ mod tests {
             impl T for &Foo {}
             ",
             &[
-                "impl IMPL_BLOCK FileId(1) [23; 34)",
-                "impl IMPL_BLOCK FileId(1) [35; 52)",
-                "impl IMPL_BLOCK FileId(1) [53; 71)",
+                "impl IMPL_DEF FileId(1) [23; 34)",
+                "impl IMPL_DEF FileId(1) [35; 52)",
+                "impl IMPL_DEF FileId(1) [53; 71)",
             ],
         );
     }
@@ -195,7 +195,7 @@ mod tests {
             #[derive(Copy)]
             struct Foo<|>;
             ",
-            &["impl IMPL_BLOCK FileId(1) [0; 15)"],
+            &["impl IMPL_DEF FileId(1) [0; 15)"],
         );
     }
 }

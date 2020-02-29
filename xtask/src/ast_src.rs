@@ -104,7 +104,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "STATIC_DEF",
         "CONST_DEF",
         "TRAIT_DEF",
-        "IMPL_BLOCK",
+        "IMPL_DEF",
         "TYPE_ALIAS_DEF",
         "MACRO_CALL",
         "TOKEN_TREE",
@@ -357,7 +357,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             TypeRef,
         }
 
-        struct ImplBlock: TypeParamsOwner, AttrsOwner {
+        struct ImplDef: TypeParamsOwner, AttrsOwner {
             ItemList,
         }
 
@@ -560,7 +560,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             FnDef,
             TraitDef,
             TypeAliasDef,
-            ImplBlock,
+            ImplDef,
             UseItem,
             ExternCrateItem,
             ConstDef,

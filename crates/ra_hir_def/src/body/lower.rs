@@ -544,7 +544,7 @@ where
                     let ast_id = self.expander.ast_id(&def);
                     (TraitLoc { container, ast_id }.intern(self.db).into(), def.name())
                 }
-                ast::ModuleItem::ImplBlock(_)
+                ast::ModuleItem::ImplDef(_)
                 | ast::ModuleItem::UseItem(_)
                 | ast::ModuleItem::ExternCrateItem(_)
                 | ast::ModuleItem::Module(_) => continue,

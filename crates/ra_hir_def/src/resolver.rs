@@ -52,7 +52,7 @@ enum Scope {
     /// Brings the generic parameters of an item into scope
     GenericParams { def: GenericDefId, params: Arc<GenericParams> },
     /// Brings `Self` in `impl` block into scope
-    ImplBlockScope(ImplId),
+    ImplDefScope(ImplId),
     /// Brings `Self` in enum, struct and union definitions into scope
     AdtScope(AdtId),
     /// Local bindings
@@ -154,7 +154,7 @@ impl Resolver {
             match scope {
                 Scope::ExprScope(_) => continue,
                 Scope::GenericParams { .. }
-                | Scope::ImplBlockScope(_)
+                | Scope::ImplDefScope(_)
                 | Scope::LocalItemsScope(_)
                     if skip_to_mod =>
                 {
@@ -170,7 +170,7 @@ impl Resolver {
                         ));
                     }
                 }
-                Scope::ImplBlockScope(impl_) => {
+                Scope::ImplDefScope(impl_) => {
                     if first_name == &name![Self] {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
@@ -263,7 +263,7 @@ impl Resolver {
                 Scope::AdtScope(_)
                 | Scope::ExprScope(_)
                 | Scope::GenericParams { .. }
-                | Scope::ImplBlockScope(_)
+                | Scope::ImplDefScope(_)
                 | Scope::LocalItemsScope(_)
                     if skip_to_mod =>
                 {
@@ -291,7 +291,7 @@ impl Resolver {
                 }
                 Scope::GenericParams { .. } => continue,
 
-                Scope::ImplBlockScope(impl_) if n_segments > 1 => {
+                Scope::ImplDefScope(impl_) if n_segments > 1 => {
                     if first_name == &name![Self] {
                         let ty = TypeNs::SelfType(*impl_);
                         return Some(ResolveValueResult::Partial(ty, 1));
@@ -303,7 +303,7 @@ impl Resolver {
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
-                Scope::ImplBlockScope(_) | Scope::AdtScope(_) => continue,
+                Scope::ImplDefScope(_) | Scope::AdtScope(_) => continue,
 
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(
@@ -503,7 +503,7 @@ impl Scope {
                     }
                 }
             }
-            Scope::ImplBlockScope(i) => {
+            Scope::ImplDefScope(i) => {
                 f(name![Self], ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
@@ -550,8 +550,8 @@ impl Resolver {
         self.push_scope(Scope::GenericParams { def, params })
     }
 
-    fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
-        self.push_scope(Scope::ImplBlockScope(impl_block))
+    fn push_impl_def_scope(self, impl_def: ImplId) -> Resolver {
+        self.push_scope(Scope::ImplDefScope(impl_def))
     }
 
     fn push_module_scope(
@@ -634,7 +634,7 @@ impl HasResolver for ImplId {
             .container
             .resolver(db)
             .push_generic_params_scope(db, self.into())
-            .push_impl_block_scope(self)
+            .push_impl_def_scope(self)
     }
 }
 

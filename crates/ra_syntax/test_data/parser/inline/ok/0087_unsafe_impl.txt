@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 19)
-  IMPL_BLOCK@[0; 18)
+  IMPL_DEF@[0; 18)
     UNSAFE_KW@[0; 6) "unsafe"
     WHITESPACE@[6; 7) " "
     IMPL_KW@[7; 11) "impl"

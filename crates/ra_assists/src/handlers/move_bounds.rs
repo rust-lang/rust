@@ -37,7 +37,7 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
     let anchor: SyntaxElement = match parent.kind() {
         FN_DEF => ast::FnDef::cast(parent)?.body()?.syntax().clone().into(),
         TRAIT_DEF => ast::TraitDef::cast(parent)?.item_list()?.syntax().clone().into(),
-        IMPL_BLOCK => ast::ImplBlock::cast(parent)?.item_list()?.syntax().clone().into(),
+        IMPL_DEF => ast::ImplDef::cast(parent)?.item_list()?.syntax().clone().into(),
         ENUM_DEF => ast::EnumDef::cast(parent)?.variant_list()?.syntax().clone().into(),
         STRUCT_DEF => parent
             .children_with_tokens()
