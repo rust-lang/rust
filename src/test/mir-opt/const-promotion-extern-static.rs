@@ -19,10 +19,9 @@ fn main() {}
 //     _3 = [move _4];
 //     _2 = &_3;
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> bb1;
 // }
-// ...
-// bb2: {
+// bb1: {
 //     StorageDead(_5);
 //     StorageDead(_3);
 //     return;
@@ -36,10 +35,9 @@ fn main() {}
 //     _3 = [move _4];
 //     _2 = &_3;
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> bb1;
 // }
-// ...
-// bb2: {
+// bb1: {
 //     StorageDead(_5);
 //     StorageDead(_3);
 //     return;
@@ -51,10 +49,9 @@ fn main() {}
 //     _6 = const BAR::promoted[0];
 //     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> bb1;
 // }
-// ...
-// bb2: {
+// bb1: {
 //     return;
 // }
 // END rustc.BAR.PromoteTemps.after.mir
@@ -64,10 +61,9 @@ fn main() {}
 //     _6 = const FOO::promoted[0];
 //     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> bb1;
 // }
-// ...
-// bb2: {
+// bb1: {
 //     return;
 // }
 // END rustc.FOO.PromoteTemps.after.mir

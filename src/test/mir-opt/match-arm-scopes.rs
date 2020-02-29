@@ -61,28 +61,35 @@ fn main() {
 // }
 // bb0: {
 //     FakeRead(ForMatchedPlace, _2);
-//     switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb4];
+//     switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2];
 // }
 // bb1: {
-//     falseEdges -> [real: bb7, imaginary: bb2];
+//     falseEdges -> [real: bb8, imaginary: bb3];
 // }
 // bb2: {
-//     falseEdges -> [real: bb13, imaginary: bb3];
+//     switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb4];
 // }
 // bb3: {
-//     falseEdges -> [real: bb21, imaginary: bb22];
+//     falseEdges -> [real: bb14, imaginary: bb5];
 // }
 // bb4: {
-//     switchInt((_2.1: bool)) -> [false: bb2, otherwise: bb5];
+//     switchInt((_2.0: bool)) -> [false: bb6, otherwise: bb5];
 // }
 // bb5: {
-//     switchInt((_2.0: bool)) -> [false: bb22, otherwise: bb3];
+//     falseEdges -> [real: bb22, imaginary: bb6];
 // }
-// bb6: {                               // arm 1
+// bb6: {
+//     StorageLive(_15);
+//     _15 = (_2.1: bool);
+//     StorageLive(_16);
+//     _16 = move (_2.2: std::string::String);
+//     goto -> bb21;
+// }
+// bb7: {
 //     _0 = const 1i32;
-//     drop(_7) -> [return: bb19, unwind: bb27];
+//     drop(_7) -> [return: bb20, unwind: bb27];
 // }
-// bb7: {                               // guard - first time
+// bb8: {
 //     StorageLive(_6);
 //     _6 = &(_2.1: bool);
 //     StorageLive(_8);
@@ -93,23 +100,23 @@ fn main() {
 //     StorageLive(_10);
 //     _10 = _1;
 //     FakeRead(ForMatchedPlace, _10);
-//     switchInt(_10) -> [false: bb9, otherwise: bb8];
+//     switchInt(_10) -> [false: bb10, otherwise: bb9];
 // }
-// bb8: {
-//     falseEdges -> [real: bb10, imaginary: bb9];
+// bb9: {
+//     falseEdges -> [real: bb11, imaginary: bb10];
 // }
-// bb9: {                               // `else` block - first time
+// bb10: {
 //     _9 = (*_6);
 //     StorageDead(_10);
-//     switchInt(move _9) -> [false: bb12, otherwise: bb11];
+//     switchInt(move _9) -> [false: bb13, otherwise: bb12];
 // }
-// bb10: {                              // `return 3` - first time
+// bb11: {
 //     _0 = const 3i32;
 //     StorageDead(_10);
 //     StorageDead(_9);
 //     goto -> bb25;
 // }
-// bb11: {
+// bb12: {
 //     StorageDead(_9);
 //     FakeRead(ForMatchGuard, _3);
 //     FakeRead(ForMatchGuard, _4);
@@ -119,15 +126,15 @@ fn main() {
 //     _5 = (_2.1: bool);
 //     StorageLive(_7);
 //     _7 = move (_2.2: std::string::String);
-//     goto -> bb6;
+//     goto -> bb7;
 // }
-// bb12: {                              // guard otherwise case - first time
+// bb13: {
 //     StorageDead(_9);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     falseEdges -> [real: bb4, imaginary: bb2];
+//     falseEdges -> [real: bb2, imaginary: bb3];
 // }
-// bb13: {                              // guard - second time
+// bb14: {
 //     StorageLive(_6);
 //     _6 = &(_2.0: bool);
 //     StorageLive(_8);
@@ -138,23 +145,23 @@ fn main() {
 //     StorageLive(_13);
 //     _13 = _1;
 //     FakeRead(ForMatchedPlace, _13);
-//     switchInt(_13) -> [false: bb15, otherwise: bb14];
+//     switchInt(_13) -> [false: bb16, otherwise: bb15];
 // }
-// bb14: {
-//     falseEdges -> [real: bb16, imaginary: bb15];
+// bb15: {
+//     falseEdges -> [real: bb17, imaginary: bb16];
 // }
-// bb15: {                              // `else` block - second time
+// bb16: {
 //     _12 = (*_6);
 //     StorageDead(_13);
-//     switchInt(move _12) -> [false: bb18, otherwise: bb17];
+//     switchInt(move _12) -> [false: bb19, otherwise: bb18];
 // }
-// bb16: {                              // `return 3` - second time
+// bb17: {
 //     _0 = const 3i32;
 //     StorageDead(_13);
 //     StorageDead(_12);
 //     goto -> bb25;
 // }
-// bb17: {                              // bindings for arm 1
+// bb18: {
 //     StorageDead(_12);
 //     FakeRead(ForMatchGuard, _3);
 //     FakeRead(ForMatchGuard, _4);
@@ -164,40 +171,33 @@ fn main() {
 //     _5 = (_2.0: bool);
 //     StorageLive(_7);
 //     _7 = move (_2.2: std::string::String);
-//     goto -> bb6;
+//     goto -> bb7;
 // }
-// bb18: {                              // Guard otherwise case - second time
+// bb19: {
 //     StorageDead(_12);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     falseEdges -> [real: bb5, imaginary: bb3];
+//     falseEdges -> [real: bb4, imaginary: bb5];
 // }
-// bb19: {                              // rest of arm 1
+// bb20: {
 //     StorageDead(_7);
 //     StorageDead(_5);
 //     StorageDead(_8);
 //     StorageDead(_6);
 //     goto -> bb24;
 // }
-// bb20: {                              // arm 2
+// bb21: {
 //     _0 = const 2i32;
 //     drop(_16) -> [return: bb23, unwind: bb27];
 // }
-// bb21: {                              // bindings for arm 2 - first pattern
+// bb22: {
 //     StorageLive(_15);
 //     _15 = (_2.1: bool);
 //     StorageLive(_16);
 //     _16 = move (_2.2: std::string::String);
-//     goto -> bb20;
+//     goto -> bb21;
 // }
-// bb22: {                              // bindings for arm 2 - second pattern
-//     StorageLive(_15);
-//     _15 = (_2.1: bool);
-//     StorageLive(_16);
-//     _16 = move (_2.2: std::string::String);
-//     goto -> bb20;
-// }
-// bb23: {                              // rest of arm 2
+// bb23: {
 //     StorageDead(_16);
 //     StorageDead(_15);
 //     goto -> bb24;

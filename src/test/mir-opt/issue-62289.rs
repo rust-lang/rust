@@ -29,35 +29,35 @@ fn main() {
 //     bb1: {
 //         StorageDead(_4);
 //         _5 = discriminant(_3);
-//         switchInt(move _5) -> [0isize: bb6, 1isize: bb3, otherwise: bb2];
+//         switchInt(move _5) -> [0isize: bb2, 1isize: bb4, otherwise: bb3];
 //     }
 //     bb2: {
-//         unreachable;
-//     }
-//     bb3: {
-//         StorageLive(_6);
-//         _6 = ((_3 as Err).0: std::option::NoneError);
-//         StorageLive(_8);
-//         StorageLive(_9);
-//         _9 = _6;
-//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb4, unwind: bb13];
-//     }
-//     bb4: {
-//         StorageDead(_9);
-//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb5, unwind: bb13];
-//     }
-//     bb5: {
-//         StorageDead(_8);
-//         StorageDead(_6);
-//         drop(_2) -> [return: bb9, unwind: bb11];
-//     }
-//     bb6: {
 //         StorageLive(_10);
 //         _10 = ((_3 as Ok).0: u32);
 //         (*_2) = _10;
 //         StorageDead(_10);
 //         _1 = move _2;
 //         drop(_2) -> [return: bb7, unwind: bb12];
+//     }
+//     bb3: {
+//         unreachable;
+//     }
+//     bb4: {
+//         StorageLive(_6);
+//         _6 = ((_3 as Err).0: std::option::NoneError);
+//         StorageLive(_8);
+//         StorageLive(_9);
+//         _9 = _6;
+//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb5, unwind: bb13];
+//     }
+//     bb5: {
+//         StorageDead(_9);
+//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb6, unwind: bb13];
+//     }
+//     bb6: {
+//         StorageDead(_8);
+//         StorageDead(_6);
+//         drop(_2) -> [return: bb9, unwind: bb11];
 //     }
 //     bb7: {
 //         StorageDead(_2);

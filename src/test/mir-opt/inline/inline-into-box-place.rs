@@ -20,23 +20,23 @@ fn main() {
 //   StorageLive(_1);
 //   StorageLive(_2);
 //   _2 = Box(std::vec::Vec<u32>);
-//   (*_2) = const std::vec::Vec::<u32>::new() -> [return: bb2, unwind: bb4];
+//   (*_2) = const std::vec::Vec::<u32>::new() -> [return: bb1, unwind: bb4];
 // }
-// bb1 (cleanup): {
-//   resume;
-// }
-// bb2: {
+// bb1: {
 //   _1 = move _2;
 //   StorageDead(_2);
 //   _0 = ();
-//   drop(_1) -> [return: bb3, unwind: bb1];
+//   drop(_1) -> [return: bb2, unwind: bb3];
 // }
-// bb3: {
+// bb2: {
 //   StorageDead(_1);
 //   return;
 // }
+// bb3 (cleanup): {
+//     resume;
+// }
 // bb4 (cleanup): {
-//   _3 = const alloc::alloc::box_free::<std::vec::Vec<u32>>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>)) -> bb1;
+//   _3 = const alloc::alloc::box_free::<std::vec::Vec<u32>>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>)) -> bb3;
 // }
 // END rustc.main.Inline.before.mir
 // START rustc.main.Inline.after.mir
@@ -60,13 +60,13 @@ fn main() {
 //   _1 = move _2;
 //   StorageDead(_2);
 //   _0 = ();
-//   drop(_1) -> [return: bb2, unwind: bb1];
+//   drop(_1) -> [return: bb1, unwind: bb2];
 // }
-// bb1 (cleanup): {
-//   resume;
-// }
-// bb2: {
+// bb1: {
 //   StorageDead(_1);
 //   return;
+// }
+// bb2 (cleanup): {
+//   resume;
 // }
 // END rustc.main.Inline.after.mir
