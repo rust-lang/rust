@@ -1130,10 +1130,12 @@ where
         let layout = self.layout_of(ty)?;
 
         // More sanity checks
-        let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
-        assert_eq!(size, layout.size);
-        // only ABI alignment is preserved
-        assert_eq!(align, layout.align.abi);
+        if cfg!(debug_assertions) {
+            let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
+            assert_eq!(size, layout.size);
+            // only ABI alignment is preserved
+            assert_eq!(align, layout.align.abi);
+        }
 
         let mplace = MPlaceTy { mplace: MemPlace { meta: MemPlaceMeta::None, ..*mplace }, layout };
         Ok((instance, mplace))
