@@ -387,6 +387,18 @@ fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_
     }
 }
 
+fn is_testing_negative(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+    if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
+        match op {
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(left) && are_exprs_equal(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(right) && are_exprs_equal(cx, left, test),
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
 fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
     SpanlessEq::new(cx).ignore_fn().eq_expr(expr1, expr2)
 }
@@ -410,30 +422,9 @@ fn is_zero(expr: &Expr<'_>) -> bool {
 
 fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
-        if let ExprKind::Block(
-            Block {
-                stmts: [],
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
-                        ..
-                    }),
-                ..
-            },
-            _,
-        ) = else_body.kind
-        {
-            if let ExprKind::Block(
-                Block {
-                    stmts: [],
-                    expr: Some(body),
-                    ..
-                },
-                _,
-            ) = &body.kind
-            {
+        if let ExprKind::Block( Block { stmts: [], expr: Some(Expr { kind: ExprKind::Unary(UnOp::UnNeg, else_expr), ..  }), ..  }, _,) = else_body.kind {
+            if let ExprKind::Block( Block { stmts: [], expr: Some(body), ..  }, _,) = &body.kind {
                 if are_exprs_equal(cx, else_expr, body) {
-                    dbg!("if (cond) body else -body\nbody: {:?}", &body.kind);
                     if is_testing_positive(cx, cond, body) {
                         span_lint_and_sugg(
                             cx,
@@ -442,6 +433,44 @@ fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                             "This looks like you've implemented your own absolute value function",
                             "try",
                             format!("{}.abs()", Sugg::hir(cx, body, "..")),
+                            Applicability::MachineApplicable,
+                        );
+                    } else if is_testing_negative(cx, cond, body) {
+                        span_lint_and_sugg(
+                            cx,
+                            SUBOPTIMAL_FLOPS,
+                            expr.span,
+                            "This looks like you've implemented your own negative absolute value function",
+                            "try",
+                            format!("-{}.abs()", Sugg::hir(cx, body, "..")),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
+        if let ExprKind::Block( Block { stmts: [], expr: Some(Expr { kind: ExprKind::Unary(UnOp::UnNeg, else_expr), ..  }), ..  }, _,) = &body.kind
+        {
+            if let ExprKind::Block( Block { stmts: [], expr: Some(body), ..  }, _,) = &else_body.kind {
+                if are_exprs_equal(cx, else_expr, body) {
+                    if is_testing_negative(cx, cond, body) {
+                        span_lint_and_sugg(
+                            cx,
+                            SUBOPTIMAL_FLOPS,
+                            expr.span,
+                            "This looks like you've implemented your own absolute value function",
+                            "try",
+                            format!("{}.abs()", Sugg::hir(cx, body, "..")),
+                            Applicability::MachineApplicable,
+                        );
+                    } else if is_testing_positive(cx, cond, body) {
+                        span_lint_and_sugg(
+                            cx,
+                            SUBOPTIMAL_FLOPS,
+                            expr.span,
+                            "This looks like you've implemented your own negative absolute value function",
+                            "try",
+                            format!("-{}.abs()", Sugg::hir(cx, body, "..")),
                             Applicability::MachineApplicable,
                         );
                     }

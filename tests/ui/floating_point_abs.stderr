@@ -1,5 +1,5 @@
 error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:4:5
+  --> $DIR/floating_point_abs.rs:9:5
    |
 LL | /     if num >= 0.0 {
 LL | |         num
@@ -10,5 +10,76 @@ LL | |     }
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
-error: aborting due to previous error
+error: This looks like you've implemented your own absolute value function
+  --> $DIR/floating_point_abs.rs:17:5
+   |
+LL | /     if 0.0 < num {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `num.abs()`
+
+error: This looks like you've implemented your own absolute value function
+  --> $DIR/floating_point_abs.rs:25:5
+   |
+LL | /     if a.a > 0.0 {
+LL | |         a.a
+LL | |     } else {
+LL | |         -a.a
+LL | |     }
+   | |_____^ help: try: `a.a.abs()`
+
+error: This looks like you've implemented your own absolute value function
+  --> $DIR/floating_point_abs.rs:33:5
+   |
+LL | /     if 0.0 >= num {
+LL | |         -num
+LL | |     } else {
+LL | |         num
+LL | |     }
+   | |_____^ help: try: `num.abs()`
+
+error: This looks like you've implemented your own absolute value function
+  --> $DIR/floating_point_abs.rs:41:5
+   |
+LL | /     if a.a < 0.0 {
+LL | |         -a.a
+LL | |     } else {
+LL | |         a.a
+LL | |     }
+   | |_____^ help: try: `a.a.abs()`
+
+error: This looks like you've implemented your own negative absolute value function
+  --> $DIR/floating_point_abs.rs:49:5
+   |
+LL | /     if num < 0.0 {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `-num.abs()`
+
+error: This looks like you've implemented your own negative absolute value function
+  --> $DIR/floating_point_abs.rs:57:5
+   |
+LL | /     if 0.0 >= num {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `-num.abs()`
+
+error: This looks like you've implemented your own negative absolute value function
+  --> $DIR/floating_point_abs.rs:65:12
+   |
+LL |       A { a: if a.a >= 0.0 {
+   |  ____________^
+LL | |             -a.a
+LL | |         } else {
+LL | |             a.a
+LL | |         }, b: a.b }
+   | |_________^ help: try: `-a.a.abs()`
+
+error: aborting due to 8 previous errors
 
