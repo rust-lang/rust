@@ -342,7 +342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         }
 
-        if pat_adjustments.len() > 0 {
+        if !pat_adjustments.is_empty() {
             debug!("default binding mode is now {:?}", def_bm);
             self.inh.tables.borrow_mut().pat_adjustments_mut().insert(pat.hir_id, pat_adjustments);
         }
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|ident| !used_fields.contains_key(&ident))
             .collect::<Vec<_>>();
 
-        if inexistent_fields.len() > 0 && !variant.recovered {
+        if !inexistent_fields.is_empty() && !variant.recovered {
             self.error_inexistent_fields(
                 kind_name,
                 &inexistent_fields,
@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if etc {
                 tcx.sess.struct_span_err(span, "`..` cannot be used in union patterns").emit();
             }
-        } else if !etc && unmentioned_fields.len() > 0 {
+        } else if !etc && !unmentioned_fields.is_empty() {
             self.error_unmentioned_fields(span, &unmentioned_fields, variant);
         }
         no_field_errors

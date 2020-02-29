@@ -469,7 +469,7 @@ impl<'a> Parser<'a> {
         // FIXME: we would like to report this in ast_validation instead, but we currently do not
         // preserve ordering of generic parameters with respect to associated type binding, so we
         // lose that information after parsing.
-        if misplaced_assoc_ty_constraints.len() > 0 {
+        if !misplaced_assoc_ty_constraints.is_empty() {
             let mut err = self.struct_span_err(
                 args_lo.to(self.prev_span),
                 "associated type bindings must be declared after generic parameters",

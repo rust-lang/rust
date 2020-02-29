@@ -2473,7 +2473,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        if preds.len() == 0 {
+        if preds.is_empty() {
             // The macro-generated method below asserts we don't intern an empty slice.
             List::empty()
         } else {
@@ -2482,31 +2482,31 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
-        if ts.len() == 0 { List::empty() } else { self._intern_type_list(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_type_list(ts) }
     }
 
     pub fn intern_substs(self, ts: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
-        if ts.len() == 0 { List::empty() } else { self._intern_substs(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_substs(ts) }
     }
 
     pub fn intern_projs(self, ps: &[ProjectionKind]) -> &'tcx List<ProjectionKind> {
-        if ps.len() == 0 { List::empty() } else { self._intern_projs(ps) }
+        if ps.is_empty() { List::empty() } else { self._intern_projs(ps) }
     }
 
     pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
-        if ts.len() == 0 { List::empty() } else { self._intern_place_elems(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_place_elems(ts) }
     }
 
     pub fn intern_canonical_var_infos(self, ts: &[CanonicalVarInfo]) -> CanonicalVarInfos<'tcx> {
-        if ts.len() == 0 { List::empty() } else { self._intern_canonical_var_infos(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
     pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> Clauses<'tcx> {
-        if ts.len() == 0 { List::empty() } else { self._intern_clauses(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_clauses(ts) }
     }
 
     pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> Goals<'tcx> {
-        if ts.len() == 0 { List::empty() } else { self._intern_goals(ts) }
+        if ts.is_empty() { List::empty() } else { self._intern_goals(ts) }
     }
 
     pub fn mk_fn_sig<I>(

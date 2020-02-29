@@ -529,7 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                let (variable_snippet, applicability) = if fn_sig.inputs().len() > 0 {
+                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
                     (
                         format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
                         Applicability::HasPlaceholders,
@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if lstring.starts_with('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
-                                    format!("{}", &lstring[1..])
+                                    lstring[1..].to_string()
                                 } else {
                                     format!("{}.to_owned()", lstring)
                                 },
@@ -633,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
-                            format!("{}", &l[1..])
+                            l[1..].to_string()
                         } else {
                             format!("{}.to_owned()", l)
                         };

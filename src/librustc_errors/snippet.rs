@@ -152,7 +152,7 @@ impl Annotation {
             //       |
             //
             // Note that this would be the complete output users would see.
-            label.len() > 0
+            !label.is_empty()
         } else {
             false
         }

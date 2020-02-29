@@ -160,7 +160,7 @@ crate fn placeholder_type_error(
     }) {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-        sugg.push((arg.span, format!("{}", type_name)));
+        sugg.push((arg.span, type_name.to_string()));
     } else {
         sugg.push((
             generics.iter().last().unwrap().span.shrink_to_hi(),
@@ -475,7 +475,7 @@ fn get_new_lifetime_name<'tcx>(
 
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
-            let mut s = format!("'");
+            let mut s = '\''.to_string();
             s.extend(std::iter::repeat(char::from(c)).take(n));
             s
         })
@@ -2499,7 +2499,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if codegen_fn_attrs.target_features.len() > 0 {
+    if !codegen_fn_attrs.target_features.is_empty() {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
                 tcx.sess.span_err(

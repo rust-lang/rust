@@ -1129,7 +1129,7 @@ pub fn parse_error_format(
         // Conservatively require that the `--json` argument is coupled with
         // `--error-format=json`. This means that `--json` is specified we
         // should actually be emitting JSON blobs.
-        _ if matches.opt_strs("json").len() > 0 => {
+        _ if !matches.opt_strs("json").is_empty() => {
             early_error(
                 ErrorOutputType::default(),
                 "using `--json` requires also using `--error-format=json`",

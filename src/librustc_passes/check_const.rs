@@ -35,7 +35,7 @@ impl NonConstExpr {
         match self {
             Self::Loop(src) => format!("`{}`", src.name()),
             Self::Match(src) => format!("`{}`", src.name()),
-            Self::OrPattern => format!("or-pattern"),
+            Self::OrPattern => "or-pattern".to_string(),
         }
     }
 

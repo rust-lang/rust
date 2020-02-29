@@ -141,7 +141,7 @@ impl<'a> TokenTreesReader<'a> {
                             self.last_delim_empty_block_spans.insert(delim, empty_block_span);
                         }
 
-                        if self.open_braces.len() == 0 {
+                        if self.open_braces.is_empty() {
                             // Clear up these spans to avoid suggesting them as we've found
                             // properly matched delimiters so far for an entire block.
                             self.matching_delim_spans.clear();

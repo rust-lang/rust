@@ -2783,7 +2783,7 @@ fn assoc_type(
 
 fn render_stability_since_raw(w: &mut Buffer, ver: Option<&str>, containing_ver: Option<&str>) {
     if let Some(v) = ver {
-        if containing_ver != ver && v.len() > 0 {
+        if containing_ver != ver && !v.is_empty() {
             write!(w, "<span class='since' title='Stable since Rust version {0}'>{0}</span>", v)
         }
     }
@@ -3143,7 +3143,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
             .filter_map(|attr| attr.meta_item().and_then(|mi| render_attribute(mi)))
             .collect();
 
-        if display.len() > 0 { Some(format!("{}({})", path, display.join(", "))) } else { None }
+        if !display.is_empty() { Some(format!("{}({})", path, display.join(", "))) } else { None }
     } else {
         None
     }
@@ -3178,7 +3178,7 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }
-    if attrs.len() > 0 {
+    if !attrs.is_empty() {
         write!(
             w,
             "<span class=\"docblock attributes{}\">{}</span>",

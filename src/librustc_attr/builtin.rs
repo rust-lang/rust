@@ -53,7 +53,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                     err.span_suggestion(
                         span,
                         "consider removing the prefix",
-                        format!("{}", &lint_str[1..]),
+                        lint_str[1..].to_string(),
                         Applicability::MaybeIncorrect,
                     );
                 }

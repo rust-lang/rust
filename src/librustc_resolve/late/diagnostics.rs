@@ -177,7 +177,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             err.code(rustc_errors::error_code!(E0411));
             err.span_label(
                 span,
-                format!("`Self` is only available in impls, traits, and type definitions"),
+                "`Self` is only available in impls, traits, and type definitions".to_string(),
             );
             return (err, Vec::new());
         }
@@ -186,12 +186,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
             err.code(rustc_errors::error_code!(E0424));
             err.span_label(span, match source {
-                PathSource::Pat => format!(
-                    "`self` value is a keyword and may not be bound to variables or shadowed",
-                ),
-                _ => format!(
-                    "`self` value is a keyword only available in methods with a `self` parameter",
-                ),
+                PathSource::Pat => "`self` value is a keyword and may not be bound to variables or shadowed"
+                                   .to_string(),
+                _ => "`self` value is a keyword only available in methods with a `self` parameter"
+                     .to_string(),
             });
             if let Some(span) = &self.diagnostic_metadata.current_function {
                 err.span_label(*span, "this function doesn't have a `self` parameter");
@@ -354,7 +352,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let mut has_self_arg = None;
         if let PathSource::Expr(parent) = source {
             match &parent?.kind {
-                ExprKind::Call(_, args) if args.len() > 0 => {
+                ExprKind::Call(_, args) if !args.is_empty() => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
@@ -558,7 +556,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     if is_expected(ctor_def) && !accessible_ctor {
                         err.span_label(
                             span,
-                            format!("constructor is not visible here due to private fields"),
+                            "constructor is not visible here due to private fields".to_string(),
                         );
                     }
                 } else {

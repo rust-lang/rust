@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let target_blocks: Vec<_> = target_candidates
                 .into_iter()
                 .map(|mut candidates| {
-                    if candidates.len() != 0 {
+                    if !candidates.is_empty() {
                         let candidate_start = this.cfg.start_new_block();
                         this.match_candidates(
                             span,

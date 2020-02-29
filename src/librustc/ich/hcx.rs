@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
+    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
     ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
 }
 

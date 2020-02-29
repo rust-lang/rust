@@ -143,7 +143,7 @@ pub(super) fn note_and_explain_region(
         // uh oh, hope no user ever sees THIS
         ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
 
-        ty::RePlaceholder(_) => (format!("any other region"), None),
+        ty::RePlaceholder(_) => ("any other region".to_string(), None),
 
         // FIXME(#13998) RePlaceholder should probably print like
         // ReFree rather than dumping Debug output on the user.

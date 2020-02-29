@@ -2157,7 +2157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("builtin_bound: nested={:?}", nested);
                 candidates
                     .vec
-                    .push(BuiltinCandidate { has_nested: nested.skip_binder().len() > 0 });
+                    .push(BuiltinCandidate { has_nested: !nested.skip_binder().is_empty() });
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {

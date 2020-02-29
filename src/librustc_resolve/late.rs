@@ -1017,7 +1017,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             trait_items
                 .iter()
                 .filter_map(|item| match &item.kind {
-                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.len() == 0 => {
+                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.is_empty() => {
                         Some(item.ident)
                     }
                     _ => None,
