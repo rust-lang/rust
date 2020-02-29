@@ -189,7 +189,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 // The main handler runs for each Rayon worker thread and sets up
                 // the thread local rustc uses. syntax_globals and rustc_span_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
-                // thread local callbacks from libsyntax
+                // thread local callbacks from librustc_ast
                 let main_handler = move |thread: ThreadBuilder| {
                     syntax::GLOBALS.set(syntax_globals, || {
                         rustc_span::GLOBALS.set(rustc_span_globals, || {

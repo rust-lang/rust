@@ -1,5 +1,5 @@
 // run-pass
-// Testing that a libsyntax can parse modules with canonicalized base path
+// Testing that a librustc_ast can parse modules with canonicalized base path
 // ignore-cross-compile
 
 #![feature(rustc_private)]

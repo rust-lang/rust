@@ -1616,7 +1616,7 @@ impl<'a, 'tcx> CrateMetadata {
 }
 
 // Cannot be implemented on 'ProcMacro', as libproc_macro
-// does not depend on libsyntax
+// does not depend on librustc_ast
 fn macro_kind(raw: &ProcMacro) -> MacroKind {
     match raw {
         ProcMacro::CustomDerive { .. } => MacroKind::Derive,

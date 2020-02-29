@@ -13,7 +13,7 @@ use rustc::ty::tls;
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
 use std::fmt;
 
-/// This is a callback from libsyntax as it cannot access the implicit state
+/// This is a callback from librustc_ast as it cannot access the implicit state
 /// in librustc otherwise.
 fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     tls::with_opt(|tcx| {
@@ -25,7 +25,7 @@ fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
     })
 }
 
-/// This is a callback from libsyntax as it cannot access the implicit state
+/// This is a callback from librustc_ast as it cannot access the implicit state
 /// in librustc otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
 fn track_diagnostic(diagnostic: &Diagnostic) {

@@ -77,7 +77,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     configure_main(tcx, &ctxt)
 }
 
-// Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
+// Beware, this is duplicated in `librustc_ast/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {

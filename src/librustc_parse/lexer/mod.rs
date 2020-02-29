@@ -172,7 +172,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
-    /// `libsyntax::TokenKind`. This turns strings into interned
+    /// `librustc_ast::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
     fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {

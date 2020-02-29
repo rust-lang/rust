@@ -1720,7 +1720,7 @@ pub mod tls {
         set_tlv(context as *const _ as usize, || f(&context))
     }
 
-    /// Enters `GlobalCtxt` by setting up libsyntax callbacks and
+    /// Enters `GlobalCtxt` by setting up librustc_ast callbacks and
     /// creating a initial `TyCtxt` and `ImplicitCtxt`.
     /// This happens once per rustc session and `TyCtxt`s only exists
     /// inside the `f` function.

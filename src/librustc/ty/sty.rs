@@ -118,7 +118,7 @@ impl BoundRegion {
 }
 
 /// N.B., if you change this, you'll probably want to change the corresponding
-/// AST structure in `libsyntax/ast.rs` as well.
+/// AST structure in `librustc_ast/ast.rs` as well.
 #[derive(
     Clone,
     PartialEq,

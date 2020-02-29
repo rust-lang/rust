@@ -38,7 +38,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-    // Clean the crate, translating the entire libsyntax AST to one that is
+    // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
     let mut masked_crates = FxHashSet::default();

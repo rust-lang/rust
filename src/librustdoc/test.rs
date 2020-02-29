@@ -387,7 +387,7 @@ pub fn make_test(
     prog.push_str(&crate_attrs);
     prog.push_str(&crates);
 
-    // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
+    // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         with_globals(edition, || {
@@ -401,7 +401,7 @@ pub fn make_test(
             let source = crates + everything_else;
 
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
+            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let emitter =
                 EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
