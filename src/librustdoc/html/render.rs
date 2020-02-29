@@ -1313,7 +1313,8 @@ impl Context {
                          <p>Version {}</p>\
                      </div>\
                      <a id='all-types' href='index.html'><p>Back to index</p></a>",
-                crate_name, version
+                crate_name,
+                Escape(version),
             )
         } else {
             String::new()
@@ -3974,7 +3975,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
                 "<div class='block version'>\
                     <p>Version {}</p>\
                     </div>",
-                version
+                Escape(version)
             );
         }
     }
