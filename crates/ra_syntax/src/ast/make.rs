@@ -15,7 +15,7 @@ pub fn name_ref(text: &str) -> ast::NameRef {
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref.syntax()))
 }
-pub fn path_unqalified(segment: ast::PathSegment) -> ast::Path {
+pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
     path_from_text(&format!("use {}", segment.syntax()))
 }
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {

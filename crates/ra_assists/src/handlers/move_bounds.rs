@@ -75,7 +75,7 @@ fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
     let path = {
         let name_ref = make::name_ref(&param.name()?.syntax().to_string());
         let segment = make::path_segment(name_ref);
-        make::path_unqalified(segment)
+        make::path_unqualified(segment)
     };
     let predicate = make::where_pred(path, param.type_bound_list()?.bounds());
     Some(predicate)
