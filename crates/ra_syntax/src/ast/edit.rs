@@ -276,7 +276,7 @@ pub fn replace_descendants<N: AstNode, D: AstNode>(
         .into_iter()
         .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
         .collect::<FxHashMap<SyntaxElement, _>>();
-    let new_syntax = algo::replace_descendants(parent.syntax(), &|n| map.get(n).cloned());
+    let new_syntax = algo::replace_descendants(parent.syntax(), |n| map.get(n).cloned());
     N::cast(new_syntax).unwrap()
 }
 
@@ -331,7 +331,7 @@ impl IndentLevel {
                 )
             })
             .collect();
-        algo::replace_descendants(&node, &|n| replacements.get(n).cloned())
+        algo::replace_descendants(&node, |n| replacements.get(n).cloned())
     }
 
     pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
@@ -359,7 +359,7 @@ impl IndentLevel {
                 )
             })
             .collect();
-        algo::replace_descendants(&node, &|n| replacements.get(n).cloned())
+        algo::replace_descendants(&node, |n| replacements.get(n).cloned())
     }
 }
 
@@ -389,7 +389,7 @@ fn insert_children<N: AstNode>(
     position: InsertPosition<SyntaxElement>,
     to_insert: impl IntoIterator<Item = SyntaxElement>,
 ) -> N {
-    let new_syntax = algo::insert_children(parent.syntax(), position, &mut to_insert.into_iter());
+    let new_syntax = algo::insert_children(parent.syntax(), position, to_insert);
     N::cast(new_syntax).unwrap()
 }
 
@@ -404,8 +404,7 @@ fn replace_children<N: AstNode>(
     to_replace: RangeInclusive<SyntaxElement>,
     to_insert: impl IntoIterator<Item = SyntaxElement>,
 ) -> N {
-    let new_syntax =
-        algo::replace_children(parent.syntax(), to_replace, &mut to_insert.into_iter());
+    let new_syntax = algo::replace_children(parent.syntax(), to_replace, to_insert);
     N::cast(new_syntax).unwrap()
 }
 

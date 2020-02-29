@@ -52,7 +52,7 @@ fn expand_macro_recur(
         }
     }
 
-    Some(replace_descendants(&expanded, &|n| replaces.get(n).cloned()))
+    Some(replace_descendants(&expanded, |n| replaces.get(n).cloned()))
 }
 
 // FIXME: It would also be cool to share logic here and in the mbe tests,

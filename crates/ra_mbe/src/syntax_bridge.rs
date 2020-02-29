@@ -570,7 +570,7 @@ mod tests {
         let token_tree = insert_children(
             &rbrace.parent().unwrap(),
             InsertPosition::Last,
-            &mut std::iter::once(space),
+            std::iter::once(space),
         );
 
         // Token Tree now is :

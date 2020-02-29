@@ -144,6 +144,15 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
 pub fn insert_children(
     parent: &SyntaxNode,
     position: InsertPosition<SyntaxElement>,
+    to_insert: impl IntoIterator<Item = SyntaxElement>,
+) -> SyntaxNode {
+    let mut to_insert = to_insert.into_iter();
+    _insert_children(parent, position, &mut to_insert)
+}
+
+fn _insert_children(
+    parent: &SyntaxNode,
+    position: InsertPosition<SyntaxElement>,
     to_insert: &mut dyn Iterator<Item = SyntaxElement>,
 ) -> SyntaxNode {
     let mut delta = TextUnit::default();
@@ -178,6 +187,15 @@ pub fn insert_children(
 pub fn replace_children(
     parent: &SyntaxNode,
     to_delete: RangeInclusive<SyntaxElement>,
+    to_insert: impl IntoIterator<Item = SyntaxElement>,
+) -> SyntaxNode {
+    let mut to_insert = to_insert.into_iter();
+    _replace_children(parent, to_delete, &mut to_insert)
+}
+
+fn _replace_children(
+    parent: &SyntaxNode,
+    to_delete: RangeInclusive<SyntaxElement>,
     to_insert: &mut dyn Iterator<Item = SyntaxElement>,
 ) -> SyntaxNode {
     let start = position_of_child(parent, to_delete.start().clone());
@@ -202,14 +220,21 @@ pub fn replace_children(
 /// to create a type-safe abstraction on top of it instead.
 pub fn replace_descendants(
     parent: &SyntaxNode,
-    map: &impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
+    map: impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
+) -> SyntaxNode {
+    _replace_descendants(parent, &map)
+}
+
+fn _replace_descendants(
+    parent: &SyntaxNode,
+    map: &dyn Fn(&SyntaxElement) -> Option<SyntaxElement>,
 ) -> SyntaxNode {
     //  FIXME: this could be made much faster.
     let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Vec<_>>();
     return with_children(parent, new_children);
 
     fn go(
-        map: &impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
+        map: &dyn Fn(&SyntaxElement) -> Option<SyntaxElement>,
         element: SyntaxElement,
     ) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
         if let Some(replacement) = map(&element) {
@@ -221,7 +246,7 @@ pub fn replace_descendants(
         match element {
             NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
             NodeOrToken::Node(it) => {
-                NodeOrToken::Node(replace_descendants(&it, map).green().clone())
+                NodeOrToken::Node(_replace_descendants(&it, map).green().clone())
             }
         }
     }
