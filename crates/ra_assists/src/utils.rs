@@ -13,14 +13,14 @@ pub use insert_use::insert_use_statement;
 
 pub fn get_missing_impl_items(
     sema: &Semantics<RootDatabase>,
-    impl_block: &ast::ImplBlock,
+    impl_def: &ast::ImplDef,
 ) -> Vec<hir::AssocItem> {
     // Names must be unique between constants and functions. However, type aliases
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
 
-    if let Some(item_list) = impl_block.item_list() {
+    if let Some(item_list) = impl_def.item_list() {
         for item in item_list.impl_items() {
             match item {
                 ast::ImplItem::FnDef(f) => {
@@ -44,7 +44,7 @@ pub fn get_missing_impl_items(
         }
     }
 
-    resolve_target_trait(sema, impl_block).map_or(vec![], |target_trait| {
+    resolve_target_trait(sema, impl_def).map_or(vec![], |target_trait| {
         target_trait
             .items(sema.db)
             .iter()
@@ -65,9 +65,9 @@ pub fn get_missing_impl_items(
 
 pub(crate) fn resolve_target_trait(
     sema: &Semantics<RootDatabase>,
-    impl_block: &ast::ImplBlock,
+    impl_def: &ast::ImplDef,
 ) -> Option<hir::Trait> {
-    let ast_path = impl_block
+    let ast_path = impl_def
         .target_trait()
         .map(|it| it.syntax().clone())
         .and_then(ast::PathType::cast)?

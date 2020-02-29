@@ -67,7 +67,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
     pub(super) fn trait_to_def(&mut self, src: InFile<ast::TraitDef>) -> Option<TraitId> {
         self.to_def(src, keys::TRAIT)
     }
-    pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplBlock>) -> Option<ImplId> {
+    pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplDef>) -> Option<ImplId> {
         self.to_def(src, keys::IMPL)
     }
     pub(super) fn fn_to_def(&mut self, src: InFile<ast::FnDef>) -> Option<FunctionId> {
@@ -166,7 +166,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
                         let def = self.trait_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::ImplBlock(it) => {
+                    ast::ImplDef(it) => {
                         let def = self.impl_to_def(container.with_value(it))?;
                         def.into()
                     },
@@ -213,7 +213,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
                     ast::EnumDef(it) => { self.enum_to_def(container.with_value(it))?.into() },
                     ast::TraitDef(it) => { self.trait_to_def(container.with_value(it))?.into() },
                     ast::TypeAliasDef(it) => { self.type_alias_to_def(container.with_value(it))?.into() },
-                    ast::ImplBlock(it) => { self.impl_to_def(container.with_value(it))?.into() },
+                    ast::ImplDef(it) => { self.impl_to_def(container.with_value(it))?.into() },
                     _ => continue,
                 }
             };

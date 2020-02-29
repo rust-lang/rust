@@ -42,19 +42,19 @@ impl TyFingerprint {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct CrateImplBlocks {
+pub struct CrateImplDefs {
     impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
     impls_by_trait: FxHashMap<TraitId, Vec<ImplId>>,
 }
 
-impl CrateImplBlocks {
+impl CrateImplDefs {
     pub(crate) fn impls_in_crate_query(
         db: &impl HirDatabase,
         krate: CrateId,
-    ) -> Arc<CrateImplBlocks> {
+    ) -> Arc<CrateImplDefs> {
         let _p = profile("impls_in_crate_query");
         let mut res =
-            CrateImplBlocks { impls: FxHashMap::default(), impls_by_trait: FxHashMap::default() };
+            CrateImplDefs { impls: FxHashMap::default(), impls_by_trait: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
@@ -75,12 +75,12 @@ impl CrateImplBlocks {
 
         Arc::new(res)
     }
-    pub fn lookup_impl_blocks(&self, ty: &Ty) -> impl Iterator<Item = ImplId> + '_ {
+    pub fn lookup_impl_defs(&self, ty: &Ty) -> impl Iterator<Item = ImplId> + '_ {
         let fingerprint = TyFingerprint::for_impl(ty);
         fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
     }
 
-    pub fn lookup_impl_blocks_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
+    pub fn lookup_impl_defs_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
         self.impls_by_trait.get(&tr).into_iter().flatten().copied()
     }
 
@@ -131,7 +131,7 @@ impl Ty {
         let res = lang_item_targets
             .into_iter()
             .filter_map(|it| match it {
-                LangItemTarget::ImplBlockId(it) => Some(it),
+                LangItemTarget::ImplDefId(it) => Some(it),
                 _ => None,
             })
             .map(|it| it.lookup(db).container.module(db).krate)
@@ -177,7 +177,7 @@ pub enum LookupMode {
 }
 
 // This would be nicer if it just returned an iterator, but that runs into
-// lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+// lifetime problems, because we need to borrow temp `CrateImplDefs`.
 // FIXME add a context type here?
 pub fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
@@ -425,8 +425,8 @@ fn iterate_inherent_methods<T>(
     for krate in self_ty.value.def_crates(db, krate)? {
         let impls = db.impls_in_crate(krate);
 
-        for impl_block in impls.lookup_impl_blocks(&self_ty.value) {
-            for &item in db.impl_data(impl_block).items.iter() {
+        for impl_def in impls.lookup_impl_defs(&self_ty.value) {
+            for &item in db.impl_data(impl_def).items.iter() {
                 if !is_valid_candidate(db, name, receiver_ty, item, self_ty) {
                     continue;
                 }
@@ -434,8 +434,7 @@ fn iterate_inherent_methods<T>(
                 // that the impl is for. If we have a receiver type, this
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
-                if receiver_ty.is_none() && inherent_impl_substs(db, impl_block, self_ty).is_none()
-                {
+                if receiver_ty.is_none() && inherent_impl_substs(db, impl_def, self_ty).is_none() {
                     test_utils::tested_by!(impl_self_type_match_without_receiver);
                     continue;
                 }

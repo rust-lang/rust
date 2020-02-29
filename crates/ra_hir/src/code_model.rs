@@ -229,8 +229,8 @@ impl Module {
             }
         }
 
-        for impl_block in self.impl_blocks(db) {
-            for item in impl_block.items(db) {
+        for impl_def in self.impl_defs(db) {
+            for item in impl_def.items(db) {
                 if let AssocItem::Function(f) = item {
                     f.diagnostics(db, sink);
                 }
@@ -243,9 +243,9 @@ impl Module {
         def_map[self.id.local_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
-    pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
+    pub fn impl_defs(self, db: &impl DefDatabase) -> Vec<ImplDef> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.local_id].scope.impls().map(ImplBlock::from).collect()
+        def_map[self.id.local_id].scope.impls().map(ImplDef::from).collect()
     }
 
     pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
@@ -686,7 +686,7 @@ pub enum AssocItem {
 }
 pub enum AssocItemContainer {
     Trait(Trait),
-    ImplBlock(ImplBlock),
+    ImplDef(ImplDef),
 }
 pub trait AsAssocItem {
     fn as_assoc_item(self, db: &impl DefDatabase) -> Option<AssocItem>;
@@ -736,7 +736,7 @@ impl AssocItem {
         };
         match container {
             AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
-            AssocContainerId::ImplId(id) => AssocItemContainer::ImplBlock(id.into()),
+            AssocContainerId::ImplId(id) => AssocItemContainer::ImplDef(id.into()),
             AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
         }
     }
@@ -748,7 +748,7 @@ pub enum GenericDef {
     Adt(Adt),
     Trait(Trait),
     TypeAlias(TypeAlias),
-    ImplBlock(ImplBlock),
+    ImplDef(ImplDef),
     // enum variants cannot have generics themselves, but their parent enums
     // can, and this makes some code easier to write
     EnumVariant(EnumVariant),
@@ -760,7 +760,7 @@ impl_froms!(
     Adt(Struct, Enum, Union),
     Trait,
     TypeAlias,
-    ImplBlock,
+    ImplDef,
     EnumVariant,
     Const
 );
@@ -850,20 +850,20 @@ impl TypeParam {
     }
 }
 
-// FIXME: rename from `ImplBlock` to `Impl`
+// FIXME: rename from `ImplDef` to `Impl`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImplBlock {
+pub struct ImplDef {
     pub(crate) id: ImplId,
 }
 
-impl ImplBlock {
-    pub fn all_in_crate(db: &impl HirDatabase, krate: Crate) -> Vec<ImplBlock> {
+impl ImplDef {
+    pub fn all_in_crate(db: &impl HirDatabase, krate: Crate) -> Vec<ImplDef> {
         let impls = db.impls_in_crate(krate.id);
         impls.all_impls().map(Self::from).collect()
     }
-    pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplBlock> {
+    pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplDef> {
         let impls = db.impls_in_crate(krate.id);
-        impls.lookup_impl_blocks_for_trait(trait_.id).map(Self::from).collect()
+        impls.lookup_impl_defs_for_trait(trait_.id).map(Self::from).collect()
     }
 
     pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {
@@ -1077,7 +1077,7 @@ impl Type {
     }
 
     // This would be nicer if it just returned an iterator, but that runs into
-    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+    // lifetime problems, because we need to borrow temp `CrateImplDefs`.
     pub fn iterate_impl_items<T>(
         self,
         db: &impl HirDatabase,
@@ -1087,8 +1087,8 @@ impl Type {
         for krate in self.ty.value.def_crates(db, krate.id)? {
             let impls = db.impls_in_crate(krate);
 
-            for impl_block in impls.lookup_impl_blocks(&self.ty.value) {
-                for &item in db.impl_data(impl_block).items.iter() {
+            for impl_def in impls.lookup_impl_defs(&self.ty.value) {
+                for &item in db.impl_data(impl_def).items.iter() {
                     if let Some(result) = callback(item.into()) {
                         return Some(result);
                     }
@@ -1196,7 +1196,7 @@ pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
     GenericParam(TypeParam),
-    ImplSelfType(ImplBlock),
+    ImplSelfType(ImplDef),
     AdtSelfType(Adt),
     Local(Local),
     Unknown,

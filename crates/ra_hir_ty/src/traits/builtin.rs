@@ -96,7 +96,7 @@ fn get_builtin_unsize_impls(
 
 pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
     match impl_ {
-        Impl::ImplBlock(_) => unreachable!(),
+        Impl::ImplDef(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
         Impl::UnsizeArray => array_unsize_impl_datum(db, krate),
         Impl::UnsizeToTraitObject(trait_) => trait_object_unsize_impl_datum(db, krate, trait_),

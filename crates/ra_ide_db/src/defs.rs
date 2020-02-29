@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, FieldSource, HasSource, ImplBlock, Local, MacroDef, Module, ModuleDef, Semantics,
+    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Semantics,
     StructField, TypeParam,
 };
 use ra_prof::profile;
@@ -22,7 +22,7 @@ pub enum NameDefinition {
     Macro(MacroDef),
     StructField(StructField),
     ModuleDef(ModuleDef),
-    SelfType(ImplBlock),
+    SelfType(ImplDef),
     Local(Local),
     TypeParam(TypeParam),
 }

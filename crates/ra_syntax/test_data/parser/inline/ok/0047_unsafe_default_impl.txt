@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 27)
-  IMPL_BLOCK@[0; 26)
+  IMPL_DEF@[0; 26)
     UNSAFE_KW@[0; 6) "unsafe"
     WHITESPACE@[6; 7) " "
     DEFAULT_KW@[7; 14) "default"

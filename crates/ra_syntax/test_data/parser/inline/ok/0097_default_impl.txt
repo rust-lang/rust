@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 20)
-  IMPL_BLOCK@[0; 19)
+  IMPL_DEF@[0; 19)
     DEFAULT_KW@[0; 7) "default"
     WHITESPACE@[7; 8) " "
     IMPL_KW@[8; 12) "impl"

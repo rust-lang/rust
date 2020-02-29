@@ -169,7 +169,7 @@ impl ast::UseTreeList {
     }
 }
 
-impl ast::ImplBlock {
+impl ast::ImplDef {
     pub fn target_type(&self) -> Option<ast::TypeRef> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),

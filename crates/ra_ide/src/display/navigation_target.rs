@@ -269,7 +269,7 @@ impl ToNav for hir::Module {
     }
 }
 
-impl ToNav for hir::ImplBlock {
+impl ToNav for hir::ImplDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         let frange = if let Some(item) = self.is_builtin_derive(db) {

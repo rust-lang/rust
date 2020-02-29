@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 87)
-  IMPL_BLOCK@[0; 12)
+  IMPL_DEF@[0; 12)
     IMPL_KW@[0; 4) "impl"
     WHITESPACE@[4; 5) " "
     PATH_TYPE@[5; 9)
@@ -12,7 +12,7 @@ SOURCE_FILE@[0; 87)
       L_CURLY@[10; 11) "{"
       R_CURLY@[11; 12) "}"
   WHITESPACE@[12; 13) "\n"
-  IMPL_BLOCK@[13; 33)
+  IMPL_DEF@[13; 33)
     IMPL_KW@[13; 17) "impl"
     WHITESPACE@[17; 18) " "
     PATH_TYPE@[18; 24)
@@ -33,10 +33,10 @@ SOURCE_FILE@[0; 87)
       L_CURLY@[31; 32) "{"
       R_CURLY@[32; 33) "}"
   WHITESPACE@[33; 34) "\n"
-  IMPL_BLOCK@[34; 38)
+  IMPL_DEF@[34; 38)
     IMPL_KW@[34; 38) "impl"
   WHITESPACE@[38; 39) " "
-  IMPL_BLOCK@[39; 54)
+  IMPL_DEF@[39; 54)
     IMPL_KW@[39; 43) "impl"
     WHITESPACE@[43; 44) " "
     PATH_TYPE@[44; 51)
@@ -49,7 +49,7 @@ SOURCE_FILE@[0; 87)
       L_CURLY@[52; 53) "{"
       R_CURLY@[53; 54) "}"
   WHITESPACE@[54; 55) "\n"
-  IMPL_BLOCK@[55; 70)
+  IMPL_DEF@[55; 70)
     IMPL_KW@[55; 59) "impl"
     WHITESPACE@[59; 60) " "
     PATH_TYPE@[60; 66)
@@ -60,7 +60,7 @@ SOURCE_FILE@[0; 87)
     WHITESPACE@[66; 67) " "
     FOR_KW@[67; 70) "for"
   WHITESPACE@[70; 71) " "
-  IMPL_BLOCK@[71; 86)
+  IMPL_DEF@[71; 86)
     IMPL_KW@[71; 75) "impl"
     WHITESPACE@[75; 76) " "
     PATH_TYPE@[76; 83)

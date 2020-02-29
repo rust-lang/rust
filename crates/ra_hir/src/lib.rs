@@ -41,7 +41,7 @@ pub use crate::{
     code_model::{
         Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrDef, Const, Crate, CrateDependency,
         DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, HasAttrs,
-        HasVisibility, ImplBlock, Local, MacroDef, Module, ModuleDef, ScopeDef, Static, Struct,
+        HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef, Static, Struct,
         StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     has_source::HasSource,

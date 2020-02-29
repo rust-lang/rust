@@ -92,7 +92,7 @@ SOURCE_FILE@[0; 686)
   WHITESPACE@[461; 463) "\n\n"
   COMMENT@[463; 523) "// https://github.com ..."
   WHITESPACE@[523; 524) "\n"
-  IMPL_BLOCK@[524; 685)
+  IMPL_DEF@[524; 685)
     IMPL_KW@[524; 528) "impl"
     WHITESPACE@[528; 529) " "
     PATH_TYPE@[529; 537)

@@ -213,7 +213,7 @@ impl_arena_id!(Impl);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImplData {
-    pub(super) ast_id: FileAstId<ast::ImplBlock>,
+    pub(super) ast_id: FileAstId<ast::ImplDef>,
 }
 
 struct RawItemsCollector {
@@ -249,7 +249,7 @@ impl RawItemsCollector {
                 self.add_extern_crate_item(current_module, extern_crate);
                 return;
             }
-            ast::ModuleItem::ImplBlock(it) => {
+            ast::ModuleItem::ImplDef(it) => {
                 self.add_impl(current_module, it);
                 return;
             }
@@ -395,7 +395,7 @@ impl RawItemsCollector {
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
     }
 
-    fn add_impl(&mut self, current_module: Option<Module>, imp: ast::ImplBlock) {
+    fn add_impl(&mut self, current_module: Option<Module>, imp: ast::ImplDef) {
         let attrs = self.parse_attrs(&imp);
         let ast_id = self.source_ast_id_map.ast_id(&imp);
         let imp = self.raw_items.impls.alloc(ImplData { ast_id });

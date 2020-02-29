@@ -57,7 +57,7 @@ impl Conv for SyntaxKind {
             SyntaxKind::RECORD_FIELD_DEF => SymbolKind::Field,
             SyntaxKind::STATIC_DEF => SymbolKind::Constant,
             SyntaxKind::CONST_DEF => SymbolKind::Constant,
-            SyntaxKind::IMPL_BLOCK => SymbolKind::Object,
+            SyntaxKind::IMPL_DEF => SymbolKind::Object,
             _ => SymbolKind::Variable,
         }
     }

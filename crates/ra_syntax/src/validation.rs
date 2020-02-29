@@ -203,12 +203,11 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         _ => return,
     }
 
-    let impl_block = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplBlock::cast)
-    {
+    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplDef::cast) {
         Some(it) => it,
         None => return,
     };
-    if impl_block.target_trait().is_some() {
+    if impl_def.target_trait().is_some() {
         errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
     }
 }

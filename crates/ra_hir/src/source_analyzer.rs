@@ -49,7 +49,7 @@ pub enum PathResolution {
     Local(Local),
     /// A generic parameter
     TypeParam(TypeParam),
-    SelfType(crate::ImplBlock),
+    SelfType(crate::ImplDef),
     Macro(MacroDef),
     AssocItem(crate::AssocItem),
 }

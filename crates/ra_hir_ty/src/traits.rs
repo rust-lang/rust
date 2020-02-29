@@ -131,8 +131,8 @@ pub(crate) fn impls_for_trait_query(
     for dep in db.crate_graph().dependencies(krate) {
         impls.extend(db.impls_for_trait(dep.crate_id, trait_).iter());
     }
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
+    let crate_impl_defs = db.impls_in_crate(krate);
+    impls.extend(crate_impl_defs.lookup_impl_defs_for_trait(trait_));
     impls.into_iter().collect()
 }
 
@@ -346,7 +346,7 @@ pub struct UnsizeToSuperTraitObjectData {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Impl {
     /// A normal impl from an impl block.
-    ImplBlock(ImplId),
+    ImplDef(ImplId),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
     /// [T; n]: Unsize<[T]>

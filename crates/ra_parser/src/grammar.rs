@@ -152,7 +152,7 @@ pub(crate) fn reparser(
         EXTERN_ITEM_LIST => items::extern_item_list,
         TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
         ITEM_LIST => match parent? {
-            IMPL_BLOCK => items::impl_item_list,
+            IMPL_DEF => items::impl_item_list,
             TRAIT_DEF => items::trait_item_list,
             MODULE => items::mod_item_list,
             _ => return None,

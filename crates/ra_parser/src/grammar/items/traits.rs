@@ -53,9 +53,9 @@ pub(crate) fn trait_item_list(p: &mut Parser) {
     m.complete(p, ITEM_LIST);
 }
 
-// test impl_block
+// test impl_def
 // impl Foo {}
-pub(super) fn impl_block(p: &mut Parser) {
+pub(super) fn impl_def(p: &mut Parser) {
     assert!(p.at(T![impl]));
     p.bump(T![impl]);
     if choose_type_params_over_qpath(p) {
@@ -65,7 +65,7 @@ pub(super) fn impl_block(p: &mut Parser) {
     // FIXME: never type
     // impl ! {}
 
-    // test impl_block_neg
+    // test impl_def_neg
     // impl !Send for X {}
     p.eat(T![!]);
     impl_type(p);

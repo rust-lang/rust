@@ -477,7 +477,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [12; 73)",
+            "impl IMPL_DEF FileId(1) [12; 73)",
             "impl Foo {...}",
         );
 
@@ -491,7 +491,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [12; 73)",
+            "impl IMPL_DEF FileId(1) [12; 73)",
             "impl Foo {...}",
         );
 
@@ -505,7 +505,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [15; 75)",
+            "impl IMPL_DEF FileId(1) [15; 75)",
             "impl Foo {...}",
         );
 
@@ -518,7 +518,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [15; 62)",
+            "impl IMPL_DEF FileId(1) [15; 62)",
             "impl Foo {...}",
         );
     }
@@ -538,7 +538,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [49; 115)",
+            "impl IMPL_DEF FileId(1) [49; 115)",
             "impl Make for Foo {...}",
         );
 
@@ -555,7 +555,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_BLOCK FileId(1) [49; 115)",
+            "impl IMPL_DEF FileId(1) [49; 115)",
             "impl Make for Foo {...}",
         );
     }

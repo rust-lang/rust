@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 94)
       L_CURLY@[6; 7) "{"
       R_CURLY@[7; 8) "}"
   WHITESPACE@[8; 9) "\n"
-  IMPL_BLOCK@[9; 93)
+  IMPL_DEF@[9; 93)
     IMPL_KW@[9; 13) "impl"
     WHITESPACE@[13; 14) " "
     PATH_TYPE@[14; 15)

@@ -61,7 +61,7 @@ pub(crate) fn classify_name_ref(
         PathResolution::Local(local) => NameDefinition::Local(local),
         PathResolution::TypeParam(par) => NameDefinition::TypeParam(par),
         PathResolution::Macro(def) => NameDefinition::Macro(def),
-        PathResolution::SelfType(impl_block) => NameDefinition::SelfType(impl_block),
+        PathResolution::SelfType(impl_def) => NameDefinition::SelfType(impl_def),
     };
     Some(res)
 }

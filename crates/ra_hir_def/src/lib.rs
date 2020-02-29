@@ -164,7 +164,7 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplId(salsa::InternId);
-type ImplLoc = ItemLoc<ast::ImplBlock>;
+type ImplLoc = ItemLoc<ast::ImplDef>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

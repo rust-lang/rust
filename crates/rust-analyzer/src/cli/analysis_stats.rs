@@ -76,8 +76,8 @@ pub fn analysis_stats(
                 }
             }
 
-            for impl_block in module.impl_blocks(db) {
-                for item in impl_block.items(db) {
+            for impl_def in module.impl_defs(db) {
+                for item in impl_def.items(db) {
                     num_decls += 1;
                     if let AssocItem::Function(f) = item {
                         funcs.push(f);

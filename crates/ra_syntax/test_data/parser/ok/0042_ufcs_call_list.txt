@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 199)
       IDENT@[69; 72) "Foo"
     SEMI@[72; 73) ";"
   WHITESPACE@[73; 75) "\n\n"
-  IMPL_BLOCK@[75; 141)
+  IMPL_DEF@[75; 141)
     IMPL_KW@[75; 79) "impl"
     WHITESPACE@[79; 80) " "
     PATH_TYPE@[80; 83)

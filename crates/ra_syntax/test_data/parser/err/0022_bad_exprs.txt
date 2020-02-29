@@ -77,7 +77,7 @@ SOURCE_FILE@[0; 112)
           ERROR@[54; 55)
             COMMA@[54; 55) ","
         WHITESPACE@[55; 56) " "
-        IMPL_BLOCK@[56; 60)
+        IMPL_DEF@[56; 60)
           IMPL_KW@[56; 60) "impl"
         EXPR_STMT@[60; 61)
           ERROR@[60; 61)

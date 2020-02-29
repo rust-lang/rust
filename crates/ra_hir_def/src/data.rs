@@ -238,16 +238,16 @@ impl ConstData {
 fn collect_impl_items_in_macros(
     db: &impl DefDatabase,
     module_id: ModuleId,
-    impl_block: &InFile<ast::ItemList>,
+    impl_def: &InFile<ast::ItemList>,
     id: ImplId,
 ) -> Vec<AssocItemId> {
-    let mut expander = Expander::new(db, impl_block.file_id, module_id);
+    let mut expander = Expander::new(db, impl_def.file_id, module_id);
     let mut res = Vec::new();
 
     // We set a limit to protect against infinite recursion
     let limit = 100;
 
-    for m in impl_block.value.syntax().children().filter_map(ast::MacroCall::cast) {
+    for m in impl_def.value.syntax().children().filter_map(ast::MacroCall::cast) {
         res.extend(collect_impl_items_in_macro(db, &mut expander, m, id, limit))
     }
 

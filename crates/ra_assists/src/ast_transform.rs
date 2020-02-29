@@ -40,9 +40,9 @@ impl<'a> SubstituteTypeParams<'a> {
         db: &'a RootDatabase,
         // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
-        impl_block: ast::ImplBlock,
+        impl_def: ast::ImplDef,
     ) -> SubstituteTypeParams<'a> {
-        let substs = get_syntactic_substs(impl_block).unwrap_or_default();
+        let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
         let substs_by_param: FxHashMap<_, _> = generic_def
             .params(db)
@@ -59,8 +59,8 @@ impl<'a> SubstituteTypeParams<'a> {
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
         // trait ref, and then go from the types in the substs back to the syntax)
-        fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>> {
-            let target_trait = impl_block.target_trait()?;
+        fn get_syntactic_substs(impl_def: ast::ImplDef) -> Option<Vec<ast::TypeRef>> {
+            let target_trait = impl_def.target_trait()?;
             let path_type = match target_trait {
                 ast::TypeRef::PathType(path) => path,
                 _ => return None,

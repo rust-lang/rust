@@ -262,7 +262,7 @@ to_def_impls![
     (crate::Enum, ast::EnumDef, enum_to_def),
     (crate::Union, ast::UnionDef, union_to_def),
     (crate::Trait, ast::TraitDef, trait_to_def),
-    (crate::ImplBlock, ast::ImplBlock, impl_to_def),
+    (crate::ImplDef, ast::ImplDef, impl_to_def),
     (crate::TypeAlias, ast::TypeAliasDef, type_alias_to_def),
     (crate::Const, ast::ConstDef, const_to_def),
     (crate::Static, ast::StaticDef, static_to_def),
