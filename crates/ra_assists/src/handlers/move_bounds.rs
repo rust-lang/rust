@@ -72,7 +72,11 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
 }
 
 fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
-    let path = make::path_from_name_ref(make::name_ref(&param.name()?.syntax().to_string()));
+    let path = {
+        let name_ref = make::name_ref(&param.name()?.syntax().to_string());
+        let segment = make::path_segment(name_ref);
+        make::path_unqalified(segment)
+    };
     let predicate = make::where_pred(path, param.type_bound_list()?.bounds());
     Some(predicate)
 }

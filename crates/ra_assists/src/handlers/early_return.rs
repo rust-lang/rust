@@ -112,16 +112,19 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
             Some((path, bound_ident)) => {
                 // If-let.
                 let match_expr = {
-                    let happy_arm = make::match_arm(
-                        once(
-                            make::tuple_struct_pat(
-                                path,
-                                once(make::bind_pat(make::name("it")).into()),
-                            )
-                            .into(),
-                        ),
-                        make::expr_path(make::path_from_name_ref(make::name_ref("it"))),
-                    );
+                    let happy_arm = {
+                        let pat = make::tuple_struct_pat(
+                            path,
+                            once(make::bind_pat(make::name("it")).into()),
+                        );
+                        let expr = {
+                            let name_ref = make::name_ref("it");
+                            let segment = make::path_segment(name_ref);
+                            let path = make::path_unqalified(segment);
+                            make::expr_path(path)
+                        };
+                        make::match_arm(once(pat.into()), expr)
+                    };
 
                     let sad_arm = make::match_arm(
                         // FIXME: would be cool to use `None` or `Err(_)` if appropriate
