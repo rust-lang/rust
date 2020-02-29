@@ -25,35 +25,23 @@ pub use crate::{
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlNoneFoundError(pub PathBuf);
+pub struct CargoTomlNotFoundError {
+    pub searched_at: PathBuf,
+    pub reason: String,
+}
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlMultipleValidFoundError(pub Vec<PathBuf>);
-
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlSearchFileSystemError(pub PathBuf, pub String);
-
-impl std::fmt::Display for CargoTomlNoneFoundError {
+impl std::fmt::Display for CargoTomlNotFoundError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "can't find Cargo.toml at {}", self.0.display())
+        write!(
+            fmt,
+            "can't find Cargo.toml at {}, due to {}",
+            self.searched_at.display(),
+            self.reason
+        )
     }
 }
 
-impl std::fmt::Display for CargoTomlMultipleValidFoundError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "found multiple valid Cargo.toml files {:?}", self.0)
-    }
-}
-
-impl std::fmt::Display for CargoTomlSearchFileSystemError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "a filesystem error occurred while searching for Cargo.toml: {}", self.1)
-    }
-}
-
-impl Error for CargoTomlNoneFoundError {}
-impl Error for CargoTomlMultipleValidFoundError {}
-impl Error for CargoTomlSearchFileSystemError {}
+impl Error for CargoTomlNotFoundError {}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -452,8 +440,6 @@ fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
 }
 
 fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
-    let path_as_buf = path.to_path_buf();
-
     if path.ends_with("Cargo.toml") {
         return Ok(path.to_path_buf());
     }
@@ -464,14 +450,31 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
 
     let entities = match read_dir(path) {
         Ok(entities) => entities,
-        Err(e) => return Err(CargoTomlSearchFileSystemError(path_as_buf, e.to_string()).into()),
+        Err(e) => {
+            return Err(CargoTomlNotFoundError {
+                searched_at: path.to_path_buf(),
+                reason: format!("file system error: {}", e),
+            }
+            .into());
+        }
     };
 
     let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
     match valid_canditates.len() {
         1 => Ok(valid_canditates.remove(0)),
-        0 => Err(CargoTomlNoneFoundError(path_as_buf).into()),
-        _ => Err(CargoTomlMultipleValidFoundError(valid_canditates).into()),
+        0 => Err(CargoTomlNotFoundError {
+            searched_at: path.to_path_buf(),
+            reason: "no Cargo.toml file found".to_string(),
+        }
+        .into()),
+        _ => Err(CargoTomlNotFoundError {
+            searched_at: path.to_path_buf(),
+            reason: format!(
+                "multiple equally valid Cargo.toml files found: {:?}",
+                valid_canditates
+            ),
+        }
+        .into()),
     }
 }
 
