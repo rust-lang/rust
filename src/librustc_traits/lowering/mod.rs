@@ -256,7 +256,7 @@ fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
 
     // `WellFormed(WC)`
     let wf_conditions = where_clauses
-        .into_iter()
+        .iter()
         .map(|wc| wc.subst(tcx, bound_vars))
         .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()));
 

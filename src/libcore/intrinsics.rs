@@ -881,7 +881,8 @@ extern "rust-intrinsic" {
     /// // clone the vector as we will reuse them later
     /// let v_clone = v_orig.clone();
     ///
-    /// // Using transmute: this is Undefined Behavior, and a bad idea.
+    /// // Using transmute: this relies on the unspecified data layout of `Vec`, which is a
+    /// // bad idea and could cause Undefined Behavior.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
     ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
@@ -897,13 +898,14 @@ extern "rust-intrinsic" {
     ///
     /// let v_clone = v_orig.clone();
     ///
-    /// // The no-copy, unsafe way, still using transmute, but not UB.
-    /// // This is equivalent to the original, but safer, and reuses the
-    /// // same `Vec` internals. Therefore, the new inner type must have the
-    /// // exact same size, and the same alignment, as the old type.
+    /// // The no-copy, unsafe way, still using transmute, but not relying on the data layout.
+    /// // Like the first approach, this reuses the `Vec` internals.
+    /// // Therefore, the new inner type must have the
+    /// // exact same size, *and the same alignment*, as the old type.
     /// // The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
-    /// // (`Option<&i32>`), so read the nomicon pages linked above.
+    /// // (`Option<&i32>`), so read the nomicon pages linked above and also
+    /// // consult the [`from_raw_parts`] documentation.
     /// let v_from_raw = unsafe {
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Ensure the original vector is not dropped.
@@ -913,6 +915,8 @@ extern "rust-intrinsic" {
     ///                         v_clone.capacity())
     /// };
     /// ```
+    ///
+    /// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
     ///
     /// Implementing `split_at_mut`:
     ///

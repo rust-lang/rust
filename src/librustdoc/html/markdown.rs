@@ -738,7 +738,7 @@ impl Markdown<'_> {
             return String::new();
         }
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
             } else {
                 None
@@ -816,7 +816,7 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
             } else {
                 None

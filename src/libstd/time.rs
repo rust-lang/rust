@@ -284,7 +284,7 @@ impl Instant {
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
-    /// or zero duration if that instant is earlier than this one.
+    /// or zero duration if that instant is later than this one.
     ///
     /// # Examples
     ///

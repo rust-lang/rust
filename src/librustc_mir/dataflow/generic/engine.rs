@@ -419,7 +419,7 @@ impl RustcMirAttrs {
         let mut ret = RustcMirAttrs::default();
 
         let rustc_mir_attrs = attrs
-            .into_iter()
+            .iter()
             .filter(|attr| attr.check_name(sym::rustc_mir))
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 

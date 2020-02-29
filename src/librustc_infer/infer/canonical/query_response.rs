@@ -630,7 +630,7 @@ pub fn make_query_region_constraints<'tcx>(
     assert!(givens.is_empty());
 
     let outlives: Vec<_> = constraints
-        .into_iter()
+        .iter()
         .map(|(k, _)| match *k {
             // Swap regions because we are going from sub (<=) to outlives
             // (>=).

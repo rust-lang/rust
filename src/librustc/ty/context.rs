@@ -2291,13 +2291,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        let kinds: Vec<_> = ts.into_iter().map(|&t| GenericArg::from(t)).collect();
+        let kinds: Vec<_> = ts.iter().map(|&t| GenericArg::from(t)).collect();
         self.mk_ty(Tuple(self.intern_substs(&kinds)))
     }
 
     pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| {
-            let kinds: Vec<_> = ts.into_iter().map(|&t| GenericArg::from(t)).collect();
+            let kinds: Vec<_> = ts.iter().map(|&t| GenericArg::from(t)).collect();
             self.mk_ty(Tuple(self.intern_substs(&kinds)))
         })
     }

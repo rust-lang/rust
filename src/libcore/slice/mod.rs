@@ -2571,11 +2571,13 @@ impl<T> [T] {
             let (left, rest) = self.split_at_mut(offset);
             // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
+            // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
             (
                 left,
                 from_raw_parts_mut(mut_ptr as *mut U, us_len),
-                from_raw_parts_mut(mut_ptr.add(rest.len() - ts_len), ts_len),
+                from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
             )
         }
     }

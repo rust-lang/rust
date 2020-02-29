@@ -395,7 +395,7 @@ impl SourceMap {
                         .unwrap_or_else(|x| x);
                     let special_chars = end_width_idx - start_width_idx;
                     let non_narrow: usize = f.non_narrow_chars[start_width_idx..end_width_idx]
-                        .into_iter()
+                        .iter()
                         .map(|x| x.width())
                         .sum();
                     col.0 - special_chars + non_narrow
@@ -413,7 +413,7 @@ impl SourceMap {
                         .binary_search_by_key(&pos, |x| x.pos())
                         .unwrap_or_else(|x| x);
                     let non_narrow: usize =
-                        f.non_narrow_chars[0..end_width_idx].into_iter().map(|x| x.width()).sum();
+                        f.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
                     chpos.0 - end_width_idx + non_narrow
                 };
                 Loc { file: f, line: 0, col: chpos, col_display }
