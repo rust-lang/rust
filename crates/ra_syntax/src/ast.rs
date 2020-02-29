@@ -59,7 +59,7 @@ pub trait AstToken {
 }
 
 /// An iterator over `SyntaxNode` children of a particular AST type.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstChildren<N> {
     inner: SyntaxNodeChildren,
     ph: PhantomData<N>,
