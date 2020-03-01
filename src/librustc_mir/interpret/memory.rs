@@ -150,7 +150,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// through a pointer that was created by the program.
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
+        let id = M::canonical_alloc_id(self, ptr.alloc_id);
+        ptr.with_tag(M::tag_static_base_pointer(&self.extra, id))
     }
 
     pub fn create_fn_alloc(
@@ -421,6 +422,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// The `GlobalAlloc::Memory` branch here is still reachable though; when a static
     /// contains a reference to memory that was created during its evaluation (i.e., not to
     /// another static), those inner references only exist in "resolved" form.
+    ///
+    /// Assumes `id` is already canonical.
     fn get_static_alloc(
         memory_extra: &M::MemoryExtra,
         tcx: TyCtxtAt<'tcx>,
@@ -434,31 +437,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Static(def_id)) => {
                 // We got a "lazy" static that has not been computed yet.
                 if tcx.is_foreign_item(def_id) {
-                    trace!("static_alloc: foreign item {:?}", def_id);
-                    M::find_foreign_static(tcx.tcx, def_id)?
-                } else {
-                    trace!("static_alloc: Need to compute {:?}", def_id);
-                    let instance = Instance::mono(tcx.tcx, def_id);
-                    let gid = GlobalId { instance, promoted: None };
-                    // use the raw query here to break validation cycles. Later uses of the static
-                    // will call the full query anyway
-                    let raw_const =
-                        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-                            // no need to report anything, the const_eval call takes care of that
-                            // for statics
-                            assert!(tcx.is_static(def_id));
-                            match err {
-                                ErrorHandled::Reported => err_inval!(ReferencedConstant),
-                                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-                            }
-                        })?;
-                    // Make sure we use the ID of the resolved memory, not the lazy one!
-                    let id = raw_const.alloc_id;
-                    let allocation = tcx.alloc_map.lock().unwrap_memory(id);
-
-                    M::before_access_static(memory_extra, allocation)?;
-                    Cow::Borrowed(allocation)
+                    trace!("get_static_alloc: foreign item {:?}", def_id);
+                    throw_unsup!(ReadForeignStatic)
                 }
+                trace!("get_static_alloc: Need to compute {:?}", def_id);
+                let instance = Instance::mono(tcx.tcx, def_id);
+                let gid = GlobalId { instance, promoted: None };
+                // use the raw query here to break validation cycles. Later uses of the static
+                // will call the full query anyway
+                let raw_const =
+                    tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
+                        // no need to report anything, the const_eval call takes care of that
+                        // for statics
+                        assert!(tcx.is_static(def_id));
+                        match err {
+                            ErrorHandled::Reported => err_inval!(ReferencedConstant),
+                            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+                        }
+                    })?;
+                // Make sure we use the ID of the resolved memory, not the lazy one!
+                let id = raw_const.alloc_id;
+                let allocation = tcx.alloc_map.lock().unwrap_memory(id);
+
+                M::before_access_static(memory_extra, allocation)?;
+                Cow::Borrowed(allocation)
             }
         };
         // We got tcx memory. Let the machine initialize its "extra" stuff.
@@ -478,6 +480,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
+        let id = M::canonical_alloc_id(self, id);
         // The error type of the inner closure here is somewhat funny.  We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
@@ -513,6 +516,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &mut self,
         id: AllocId,
     ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
+        let id = M::canonical_alloc_id(self, id);
         let tcx = self.tcx;
         let memory_extra = &self.extra;
         let a = self.alloc_map.get_mut_or(id, || {
@@ -550,6 +554,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
+        let id = M::canonical_alloc_id(self, id);
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
@@ -602,6 +607,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
+    /// Assumes `id` is already canonical.
     fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
         trace!("reading fn ptr: {}", id);
         if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
@@ -622,7 +628,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if ptr.offset.bytes() != 0 {
             throw_unsup!(InvalidFunctionPointer)
         }
-        self.get_fn_alloc(ptr.alloc_id).ok_or_else(|| err_unsup!(ExecuteMemory).into())
+        let id = M::canonical_alloc_id(self, ptr.alloc_id);
+        self.get_fn_alloc(id).ok_or_else(|| err_unsup!(ExecuteMemory).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {

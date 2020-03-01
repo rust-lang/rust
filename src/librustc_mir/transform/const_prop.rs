@@ -23,7 +23,6 @@ use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::traits;
@@ -222,13 +221,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         ));
     }
 
-    fn find_foreign_static(
-        _tcx: TyCtxt<'tcx>,
-        _def_id: DefId,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        throw_unsup!(ReadForeignStatic)
-    }
-
     #[inline(always)]
     fn init_allocation_extra<'b>(
         _memory_extra: &(),
@@ -276,10 +268,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
             throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
         }
 
-        Ok(())
-    }
-
-    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
