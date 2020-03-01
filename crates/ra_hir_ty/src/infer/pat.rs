@@ -12,7 +12,7 @@ use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
-use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor, ApplicationTy};
+use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_tuple_struct_pat(
@@ -186,17 +186,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 return inner_ty;
             }
             Pat::Slice { prefix, slice: _slice, suffix } => {
-                let ty = if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Slice, parameters }) = expected {
-                    for pat_id in prefix.iter().chain(suffix) {
-                        self.infer_pat(*pat_id, parameters.as_single(), default_bm);
-                    }
-
-                    parameters.as_single().clone()
-                } else {
-                    Ty::Unknown
+                let (container_ty, elem_ty) = match &expected {
+                    ty_app!(TypeCtor::Array, st) => {
+                        (TypeCtor::Array, st.as_single().clone())
+                    },
+                    ty_app!(TypeCtor::Slice, st) => {
+                        (TypeCtor::Slice, st.as_single().clone())
+                    },
+                    _ => (TypeCtor::Slice, Ty::Unknown),
                 };
 
-                Ty::apply_one(TypeCtor::Slice, ty)
+                for pat_id in prefix.iter().chain(suffix) {
+                    self.infer_pat(*pat_id, &elem_ty, default_bm);
+                }
+
+                Ty::apply_one(container_ty, elem_ty)
             }
             _ => Ty::Unknown,
         };
