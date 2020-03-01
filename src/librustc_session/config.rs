@@ -391,6 +391,7 @@ impl ExternEntry {
 pub enum PrintRequest {
     FileNames,
     Sysroot,
+    TargetLibdir,
     CrateName,
     Cfg,
     TargetList,
@@ -1344,6 +1345,7 @@ fn collect_print_requests(
         "crate-name" => PrintRequest::CrateName,
         "file-names" => PrintRequest::FileNames,
         "sysroot" => PrintRequest::Sysroot,
+        "target-libdir" => PrintRequest::TargetLibdir,
         "cfg" => PrintRequest::Cfg,
         "target-list" => PrintRequest::TargetList,
         "target-cpus" => PrintRequest::TargetCPUs,
