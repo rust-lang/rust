@@ -1894,9 +1894,7 @@ where
             let to_skip = self.n;
             self.n = 0;
             // nth(n) skips n+1
-            if self.iter.nth(to_skip - 1).is_none() {
-                return None;
-            }
+            self.iter.nth(to_skip - 1)?;
         }
         self.iter.nth(n)
     }
@@ -1916,9 +1914,7 @@ where
     fn last(mut self) -> Option<I::Item> {
         if self.n > 0 {
             // nth(n) skips n+1
-            if self.iter.nth(self.n - 1).is_none() {
-                return None;
-            }
+            self.iter.nth(self.n - 1)?;
         }
         self.iter.last()
     }
