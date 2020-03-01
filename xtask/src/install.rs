@@ -121,8 +121,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
     if !installed_extensions.contains("rust-analyzer") {
         bail!(
-            "Could not install the Visual Studio Code extension. \
-             Please make sure you have at least NodeJS 12.x together with the latest version of VS Code installed and try again."
+            "Could not install the Visual Studio Code extension. Please make sure you have at least NodeJS 12.x together with the latest version of VS Code installed and try again. Note that installing via xtask install does not work for VS Code Remote, instead you’ll need to install the .vsix manually."
         );
     }
 
