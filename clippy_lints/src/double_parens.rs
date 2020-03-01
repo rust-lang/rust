@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
+use rustc_ast::ast::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::{Expr, ExprKind};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unnecessary double parentheses.

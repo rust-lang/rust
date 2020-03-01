@@ -1,10 +1,10 @@
 use crate::utils::{snippet_opt, span_lint_and_help, span_lint_and_sugg};
+use rustc_ast::ast;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use syntax::ast;
-use syntax::tokenstream::TokenStream;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of dbg!() macro.

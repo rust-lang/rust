@@ -1,10 +1,10 @@
 use if_chain::if_chain;
+use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
-use syntax::ast::RangeLimits;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{higher, SpanlessEq};

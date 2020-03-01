@@ -1,7 +1,7 @@
 use rustc::session::Session;
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use std::str::FromStr;
-use syntax::ast;
 
 /// Deprecation status of attributes known by Clippy.
 #[allow(dead_code)]

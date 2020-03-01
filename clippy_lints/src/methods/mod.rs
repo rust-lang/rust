@@ -12,6 +12,7 @@ use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Predicate, Ty};
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -19,7 +20,6 @@ use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol, SymbolStr};
-use syntax::ast;
 
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;

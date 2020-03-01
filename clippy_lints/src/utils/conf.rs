@@ -3,12 +3,12 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use lazy_static::lazy_static;
+use rustc_ast::ast::{LitKind, MetaItemKind, NestedMetaItem};
 use rustc_span::source_map;
 use source_map::Span;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{env, fmt, fs, io};
-use syntax::ast::{LitKind, MetaItemKind, NestedMetaItem};
 
 /// Gets the configuration file from arguments.
 pub fn file_from_args(args: &[NestedMetaItem]) -> Result<Option<PathBuf>, (&'static str, Span)> {

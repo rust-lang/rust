@@ -1,10 +1,10 @@
 use crate::utils::{is_allowed, snippet, span_lint_and_sugg};
+use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use syntax::ast::LitKind;
 use unicode_normalization::UnicodeNormalization;
 
 declare_clippy_lint! {

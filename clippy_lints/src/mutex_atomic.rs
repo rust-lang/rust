@@ -4,10 +4,10 @@
 
 use crate::utils::{match_type, paths, span_lint};
 use rustc::ty::{self, Ty};
+use rustc_ast::ast;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.

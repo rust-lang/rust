@@ -5,6 +5,7 @@ use if_chain::if_chain;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
@@ -13,7 +14,6 @@ use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use syntax::ast::{FloatTy, LitFloatType, LitKind};
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]

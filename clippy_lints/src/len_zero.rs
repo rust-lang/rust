@@ -1,5 +1,6 @@
 use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 use rustc::ty;
+use rustc_ast::ast::{LitKind, Name};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -7,7 +8,6 @@ use rustc_hir::{AssocItemKind, BinOpKind, Expr, ExprKind, ImplItemRef, Item, Ite
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{Span, Spanned};
-use syntax::ast::{LitKind, Name};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for getting the length of something via `.len()`

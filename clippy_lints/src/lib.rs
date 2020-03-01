@@ -19,6 +19,8 @@ extern crate fmt_macros;
 #[allow(unused_extern_crates)]
 extern crate rustc;
 #[allow(unused_extern_crates)]
+extern crate rustc_ast;
+#[allow(unused_extern_crates)]
 extern crate rustc_ast_pretty;
 #[allow(unused_extern_crates)]
 extern crate rustc_attr;
@@ -50,8 +52,6 @@ extern crate rustc_span;
 extern crate rustc_target;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
-#[allow(unused_extern_crates)]
-extern crate syntax;
 
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
@@ -318,7 +318,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use syntax::ast::Name;
+    crate use rustc_ast::ast::Name;
 }
 
 /// Register all pre expansion lints
@@ -341,7 +341,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Co
 }
 
 #[doc(hidden)]
-pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
+pub fn read_conf(args: &[rustc_ast::ast::NestedMetaItem], sess: &Session) -> Conf {
     use std::path::Path;
     match utils::conf::file_from_args(args) {
         Ok(file_name) => {
