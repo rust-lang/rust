@@ -11,11 +11,10 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
-use rustc_ast::ast;
+use rustc_ast::ast::{self, FloatTy, LitFloatType, LitKind};
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::{format_numeric_literal, Sugg};
-use syntax::ast::{self, FloatTy, LitFloatType, LitKind};
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
