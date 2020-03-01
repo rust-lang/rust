@@ -508,10 +508,17 @@ pub(crate) fn inherent_impl_substs(
     impl_id: ImplId,
     self_ty: &Canonical<Ty>,
 ) -> Option<Substs> {
-    let vars = Substs::build_for_def(db, impl_id).fill_with_bound_vars(0).build();
+    // we create a var for each type parameter of the impl; we need to keep in
+    // mind here that `self_ty` might have vars of its own
+    let vars =
+        Substs::build_for_def(db, impl_id).fill_with_bound_vars(self_ty.num_vars as u32).build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
-    let self_ty_with_vars = Canonical { num_vars: vars.len(), value: self_ty_with_vars };
-    super::infer::unify(&self_ty_with_vars, self_ty)
+    let self_ty_with_vars =
+        Canonical { num_vars: vars.len() + self_ty.num_vars, value: self_ty_with_vars };
+    let substs = super::infer::unify(&self_ty_with_vars, self_ty);
+    // we only want the substs for the vars we added, not the ones from self_ty
+    let result = substs.map(|s| s.suffix(vars.len()));
+    result
 }
 
 fn transform_receiver_ty(

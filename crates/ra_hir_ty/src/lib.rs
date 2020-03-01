@@ -355,6 +355,10 @@ impl Substs {
         Substs(self.0[..std::cmp::min(self.0.len(), n)].into())
     }
 
+    pub fn suffix(&self, n: usize) -> Substs {
+        Substs(self.0[self.0.len() - std::cmp::min(self.0.len(), n)..].into())
+    }
+
     pub fn as_single(&self) -> &Ty {
         if self.0.len() != 1 {
             panic!("expected substs of len 1, got {:?}", self);
