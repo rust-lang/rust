@@ -11,12 +11,12 @@
 
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 struct DiagnosticItemCollector<'tcx> {
     // items from this crate

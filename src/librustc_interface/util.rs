@@ -1,6 +1,11 @@
 use log::info;
 use rustc::lint;
 use rustc::ty;
+use rustc_ast::ast::{AttrVec, BlockCheckMode};
+use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
+use rustc_ast::ptr::P;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{self, ast};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -29,11 +34,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
 #[cfg(not(parallel_compiler))]
 use std::{panic, thread};
-use syntax::ast::{AttrVec, BlockCheckMode};
-use syntax::mut_visit::{visit_clobber, MutVisitor, *};
-use syntax::ptr::P;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::{self, ast};
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -147,7 +147,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     crate::callbacks::setup_callbacks();
 
     scoped_thread(cfg, || {
-        syntax::with_globals(edition, || {
+        rustc_ast::with_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
                     io::set_panic(Some(box Sink(stderr.clone())));
@@ -183,15 +183,15 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let with_pool = move |pool: &ThreadPool| pool.install(move || f());
 
-    syntax::with_globals(edition, || {
-        syntax::GLOBALS.with(|syntax_globals| {
+    rustc_ast::with_globals(edition, || {
+        rustc_ast::GLOBALS.with(|syntax_globals| {
             rustc_span::GLOBALS.with(|rustc_span_globals| {
                 // The main handler runs for each Rayon worker thread and sets up
                 // the thread local rustc uses. syntax_globals and rustc_span_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
-                // thread local callbacks from libsyntax
+                // thread local callbacks from librustc_ast
                 let main_handler = move |thread: ThreadBuilder| {
-                    syntax::GLOBALS.set(syntax_globals, || {
+                    rustc_ast::GLOBALS.set(syntax_globals, || {
                         rustc_span::GLOBALS.set(rustc_span_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));

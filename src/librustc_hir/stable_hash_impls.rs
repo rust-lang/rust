@@ -6,7 +6,9 @@ use crate::hir_id::HirId;
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait HashStableContext: syntax::HashStableContext + rustc_target::HashStableContext {
+pub trait HashStableContext:
+    rustc_ast::HashStableContext + rustc_target::HashStableContext
+{
     fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
     fn hash_reference_to_item(&mut self, _: HirId, hasher: &mut StableHasher);

@@ -28,7 +28,7 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_index = { path = "../librustc_index" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 backtrace = "0.3.40"
 parking_lot = "0.9"

@@ -23,6 +23,13 @@ use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::span_bug;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
+use rustc_ast::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
+use rustc_ast::ast::{Crate, CRATE_NODE_ID};
+use rustc_ast::ast::{ItemKind, Path};
+use rustc_ast::attr;
+use rustc_ast::node_id::{NodeMap, NodeSet};
+use rustc_ast::unwrap_or;
+use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
@@ -41,13 +48,6 @@ use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparen
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
-use syntax::ast::{Crate, CRATE_NODE_ID};
-use syntax::ast::{ItemKind, Path};
-use syntax::attr;
-use syntax::node_id::{NodeMap, NodeSet};
-use syntax::unwrap_or;
-use syntax::visit::{self, Visitor};
 
 use log::debug;
 use std::cell::{Cell, RefCell};

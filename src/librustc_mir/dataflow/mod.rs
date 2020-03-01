@@ -1,6 +1,6 @@
+use rustc_ast::ast::{self, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast::{self, MetaItem};
 
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{BitSet, HybridBitSet};

@@ -25,15 +25,15 @@ use smallvec::SmallVec;
 use std::any::Any;
 use std::sync::Arc;
 
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::ptr::P;
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_span::source_map;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{FileName, Span};
-use syntax::ast;
-use syntax::attr;
-use syntax::expand::allocator::AllocatorKind;
-use syntax::ptr::P;
-use syntax::tokenstream::DelimSpan;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,

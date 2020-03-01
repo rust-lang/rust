@@ -4,7 +4,7 @@ use crate::attributes;
 use libc::c_uint;
 use rustc::bug;
 use rustc::ty::TyCtxt;
-use syntax::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 use crate::llvm::{self, False, True};
 use crate::ModuleLlvm;

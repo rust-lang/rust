@@ -26,6 +26,8 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
+use rustc_ast::ast::{self, Ident, Name};
+use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -44,8 +46,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
-use syntax::ast::{self, Ident, Name};
-use syntax::node_id::{NodeId, NodeMap, NodeSet};
 
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};

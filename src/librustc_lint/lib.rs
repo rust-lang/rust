@@ -55,6 +55,7 @@ mod unused;
 
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::{
@@ -62,7 +63,6 @@ use rustc_session::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
 };
 use rustc_span::Span;
-use syntax::ast;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;

@@ -44,6 +44,7 @@ use std::sync::Arc;
 
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
+use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -57,7 +58,6 @@ use rustc_span::source_map::FileName;
 use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
-use syntax::ast;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
 use crate::config::RenderOptions;

@@ -1,5 +1,6 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty;
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -9,7 +10,6 @@ use rustc_hir::{GenericParamKind, PatKind};
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, BytePos, Span};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {

@@ -5,6 +5,7 @@ use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lrc;
@@ -13,7 +14,6 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
-use syntax::ast;
 
 use smallvec::SmallVec;
 use std::cmp::Ord;

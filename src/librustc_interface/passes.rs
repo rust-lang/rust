@@ -16,6 +16,8 @@ use rustc::session::Session;
 use rustc::ty::steal::Steal;
 use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
@@ -36,8 +38,6 @@ use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_typeck as typeck;
-use syntax::mut_visit::MutVisitor;
-use syntax::{self, ast, visit};
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;

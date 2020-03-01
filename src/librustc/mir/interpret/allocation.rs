@@ -6,12 +6,12 @@ use super::{
 
 use crate::ty::layout::{Align, Size};
 
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
 use std::iter;
 use std::ops::{Deref, DerefMut, Range};
-use syntax::ast::Mutability;
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.

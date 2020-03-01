@@ -1,10 +1,10 @@
+use rustc_ast::ast;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::with_default_globals;
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{BytePos, MultiSpan, Span};
-use syntax::ast;
-use syntax::tokenstream::TokenStream;
-use syntax::with_default_globals;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;

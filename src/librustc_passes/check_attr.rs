@@ -8,6 +8,8 @@ use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 
+use rustc_ast::ast::{Attribute, NestedMetaItem};
+use rustc_ast::attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -19,8 +21,6 @@ use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast::{Attribute, NestedMetaItem};
-use syntax::attr;
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {

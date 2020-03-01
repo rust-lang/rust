@@ -18,4 +18,4 @@ rustc_feature = { path = "../librustc_feature" }
 rustc_parse = { path = "../librustc_parse" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }

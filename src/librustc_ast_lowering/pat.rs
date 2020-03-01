@@ -1,10 +1,10 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
+use rustc_ast::ast::*;
+use rustc_ast::ptr::P;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::{source_map::Spanned, Span};
-use syntax::ast::*;
-use syntax::ptr::P;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     crate fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {

@@ -21,7 +21,7 @@
 
 extern crate rustc_ast_pretty;
 extern crate rustc_data_structures;
-extern crate syntax;
+extern crate rustc_ast;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -32,9 +32,9 @@ use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Spanned, DUMMY_SP, FileName};
 use rustc_span::source_map::FilePathMapping;
-use syntax::ast::*;
-use syntax::mut_visit::{self, MutVisitor, visit_clobber};
-use syntax::ptr::P;
+use rustc_ast::ast::*;
+use rustc_ast::mut_visit::{self, MutVisitor, visit_clobber};
+use rustc_ast::ptr::P;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
@@ -205,7 +205,7 @@ impl MutVisitor for AddParens {
 }
 
 fn main() {
-    syntax::with_default_globals(|| run());
+    rustc_ast::with_default_globals(|| run());
 }
 
 fn run() {

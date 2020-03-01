@@ -303,8 +303,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
         use rustc::ty::{Int, Uint};
-        use syntax::ast::IntTy::*;
-        use syntax::ast::UintTy::*;
+        use rustc_ast::ast::IntTy::*;
+        use rustc_ast::ast::UintTy::*;
 
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),

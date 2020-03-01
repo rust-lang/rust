@@ -2,16 +2,16 @@ use super::{Parser, PathStyle, TokenType};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
+use rustc_ast::ast::{self, BareFnTy, FnRetTy, GenericParam, Lifetime, MutTy, Ty, TyKind};
+use rustc_ast::ast::{
+    GenericBound, GenericBounds, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax,
+};
+use rustc_ast::ast::{Mac, Mutability};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Token, TokenKind};
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{self, BareFnTy, FnRetTy, GenericParam, Lifetime, MutTy, Ty, TyKind};
-use syntax::ast::{
-    GenericBound, GenericBounds, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax,
-};
-use syntax::ast::{Mac, Mutability};
-use syntax::ptr::P;
-use syntax::token::{self, Token, TokenKind};
 
 /// Any `?` or `?const` modifiers that appear at the start of a bound.
 struct BoundModifiers {

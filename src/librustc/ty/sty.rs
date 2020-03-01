@@ -17,6 +17,7 @@ use crate::ty::{
 };
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
+use rustc_ast::ast::{self, Ident};
 use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,7 +30,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
-use syntax::ast::{self, Ident};
 
 #[derive(
     Clone,
@@ -118,7 +118,7 @@ impl BoundRegion {
 }
 
 /// N.B., if you change this, you'll probably want to change the corresponding
-/// AST structure in `libsyntax/ast.rs` as well.
+/// AST structure in `librustc_ast/ast.rs` as well.
 #[derive(
     Clone,
     PartialEq,

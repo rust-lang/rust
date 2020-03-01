@@ -25,6 +25,8 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
@@ -34,8 +36,6 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
-use syntax::ast;
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::slice;
 

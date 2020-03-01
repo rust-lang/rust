@@ -7,6 +7,8 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::Map;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -18,8 +20,6 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::traits::Obligation;
 use rustc_span::symbol::kw;
 use rustc_span::{source_map, FileName, Span};
-use syntax::ast;
-use syntax::util::lev_distance;
 
 use std::cmp::Ordering;
 

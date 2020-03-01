@@ -10,6 +10,7 @@ use rustc::mir;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -22,7 +23,6 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use syntax::ast;
 
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;

@@ -15,6 +15,7 @@ use rustc::middle::stability;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
+use rustc_ast::ast::{self, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -27,7 +28,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
-use syntax::ast::{self, Ident};
 
 use std::collections::hash_map::Entry;
 use std::default::Default;

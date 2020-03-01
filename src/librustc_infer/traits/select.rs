@@ -40,13 +40,13 @@ use rustc::ty::fast_reject;
 use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;

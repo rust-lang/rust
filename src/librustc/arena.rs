@@ -131,7 +131,7 @@ macro_rules! arena_types {
             // HIR types
             [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
-            [] attribute: syntax::ast::Attribute,
+            [] attribute: rustc_ast::ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,
             [] bare_fn_ty: rustc_hir::BareFnTy<$tcx>,
             [few] global_asm: rustc_hir::GlobalAsm,

@@ -19,4 +19,4 @@ rustc_feature = { path = "../librustc_feature" }
 rustc_macros = { path = "../librustc_macros" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_session = { path = "../librustc_session" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }

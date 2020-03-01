@@ -1,10 +1,10 @@
+use rustc_ast::token;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_parse::lexer::StringReader as Lexer;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan};
-use syntax::token;
 
 use crate::clean;
 use crate::core::DocContext;

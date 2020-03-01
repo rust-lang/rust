@@ -1,7 +1,7 @@
 // run-pass
 // This is a regression test for something that only came up while
-// attempting to bootstrap libsyntax; it is adapted from
-// `syntax::ext::tt::generic_extension`.
+// attempting to bootstrap librustc_ast; it is adapted from
+// `rustc_ast::ext::tt::generic_extension`.
 
 
 pub struct E<'a> {

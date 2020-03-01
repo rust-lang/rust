@@ -31,6 +31,8 @@ use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_ast::ast;
+use rustc_ast::ast::{Ident, MetaItemKind};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -43,8 +45,6 @@ use rustc_hir::{GenericParamKind, Node, Unsafety};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use syntax::ast;
-use syntax::ast::{Ident, MetaItemKind};
 
 mod type_of;
 
@@ -2554,7 +2554,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
-    use syntax::ast::{Lit, LitIntType, LitKind};
+    use rustc_ast::ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
     let sole_meta_list = match meta_item_list {

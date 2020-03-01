@@ -1,6 +1,6 @@
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base;
-use syntax::tokenstream::TokenStream;
 
 pub fn expand_log_syntax<'cx>(
     _cx: &'cx mut base::ExtCtxt<'_>,

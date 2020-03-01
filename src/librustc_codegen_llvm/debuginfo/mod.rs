@@ -35,11 +35,11 @@ use std::cell::RefCell;
 use std::ffi::CString;
 
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
+use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, BytePos, Span};
 use smallvec::SmallVec;
-use syntax::ast;
 
 mod create_scope_map;
 pub mod gdb;

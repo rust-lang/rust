@@ -7,6 +7,7 @@ use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
@@ -15,7 +16,6 @@ use rustc_infer::infer::opaque_types::may_define_opaque_type;
 use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;

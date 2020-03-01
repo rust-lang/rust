@@ -42,6 +42,9 @@ use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
 use rustc::lint::LintDiagnosticBuilder;
+use rustc_ast::ast;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -65,9 +68,6 @@ use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use syntax::ast;
-use syntax::expand::allocator::AllocatorKind;
-use syntax::node_id::NodeMap;
 
 use smallvec::SmallVec;
 use std::any::Any;
@@ -1720,7 +1720,7 @@ pub mod tls {
         set_tlv(context as *const _ as usize, || f(&context))
     }
 
-    /// Enters `GlobalCtxt` by setting up libsyntax callbacks and
+    /// Enters `GlobalCtxt` by setting up librustc_ast callbacks and
     /// creating a initial `TyCtxt` and `ImplicitCtxt`.
     /// This happens once per rustc session and `TyCtxt`s only exists
     /// inside the `f` function.

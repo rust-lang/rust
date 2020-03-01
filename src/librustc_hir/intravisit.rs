@@ -34,9 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::walk_list;
 use rustc_span::Span;
-use syntax::ast::{Attribute, Ident, Label, Name};
-use syntax::walk_list;
 
 pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,

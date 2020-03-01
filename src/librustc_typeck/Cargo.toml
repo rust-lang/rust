@@ -20,7 +20,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_index = { path = "../librustc_index" }
 rustc_infer = { path = "../librustc_infer" }

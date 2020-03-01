@@ -13,8 +13,8 @@ pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
     sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
 };
+use rustc_ast::ast;
 use rustc_macros::HashStable;
-use syntax::ast;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///

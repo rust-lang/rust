@@ -11,6 +11,9 @@ use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -24,9 +27,6 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::{replace, take};
-use syntax::ast;
-use syntax::attr;
-use syntax::walk_list;
 
 use log::debug;
 
@@ -2719,7 +2719,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             span_bug!(
                 lifetime_ref.span,
                 "lifetime reference not renumbered, \
-                 probably a bug in syntax::fold"
+                 probably a bug in rustc_ast::fold"
             );
         }
 

@@ -8,6 +8,13 @@ crate use BlockCheckMode::*;
 crate use FnRetTy::*;
 crate use UnsafeSource::*;
 
+use rustc_ast::ast::{self, AsmDialect, CrateSugar, Ident, Name};
+use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
+pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
+pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_errors::FatalError;
@@ -16,13 +23,6 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name};
-use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
-pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
-pub use syntax::ast::{CaptureBy, Movability, Mutability};
-use syntax::node_id::NodeMap;
-use syntax::tokenstream::TokenStream;
-use syntax::util::parser::ExprPrecedence;
 
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};

@@ -1,14 +1,16 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use rustc_ast::ast::{
+    self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax,
+};
+use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
+use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
+use rustc_ast::ptr::P;
+use rustc_ast::token;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax};
-use syntax::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
-use syntax::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
-use syntax::ptr::P;
-use syntax::token;
 
 type Expected = Option<&'static str>;
 

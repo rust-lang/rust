@@ -21,5 +21,5 @@ rustc_errors = { path = "../librustc_errors" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 unicode-normalization = "0.1.11"

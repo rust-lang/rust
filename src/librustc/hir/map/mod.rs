@@ -6,6 +6,7 @@ pub use self::definitions::{
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
+use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
@@ -20,7 +21,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, Name, NodeId};
 
 pub mod blocks;
 mod collector;

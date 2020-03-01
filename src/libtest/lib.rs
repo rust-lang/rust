@@ -13,7 +13,7 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-// N.B., this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// N.B., this is also specified in this crate's Cargo.toml, but librustc_ast contains logic specific to
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
 

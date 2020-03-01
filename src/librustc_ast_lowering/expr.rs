@@ -1,15 +1,15 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc::bug;
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::ptr::P as AstP;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast::*;
-use syntax::attr;
-use syntax::ptr::P as AstP;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -783,7 +783,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         e2: Option<&Expr>,
         lims: RangeLimits,
     ) -> hir::ExprKind<'hir> {
-        use syntax::ast::RangeLimits::*;
+        use rustc_ast::ast::RangeLimits::*;
 
         let path = match (e1, e2, lims) {
             (None, None, HalfOpen) => sym::RangeFull,

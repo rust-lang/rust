@@ -9,12 +9,12 @@ extern crate rustc_span;
 extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
-extern crate syntax;
+extern crate rustc_ast;
 
 use rustc_driver::plugin::Registry;
 use rustc_lint::{LateContext, LateLintPass, LintContext, LintPass};
 use rustc_span::symbol::Symbol;
-use syntax::attr;
+use rustc_ast::attr;
 
 macro_rules! fake_lint_pass {
     ($struct:ident, $($attr:expr),*) => {

@@ -25,6 +25,7 @@ use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
@@ -36,7 +37,6 @@ use rustc_span::Span;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
-use syntax::ast;
 
 use self::combine::CombineFields;
 use self::lexical_region_resolve::LexicalRegionResolutions;

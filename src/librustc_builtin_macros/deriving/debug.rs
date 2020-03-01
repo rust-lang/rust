@@ -2,12 +2,12 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast::{Expr, MetaItem};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, Ident};
-use syntax::ast::{Expr, MetaItem};
-use syntax::ptr::P;
 
 pub fn expand_deriving_debug(
     cx: &mut ExtCtxt<'_>,

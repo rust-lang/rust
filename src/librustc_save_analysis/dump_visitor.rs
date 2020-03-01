@@ -16,17 +16,17 @@
 use rustc::session::config::Input;
 use rustc::span_bug;
 use rustc::ty::{self, DefIdTree, TyCtxt};
+use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::visit::{self, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::*;
-use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::ptr::P;
-use syntax::token;
-use syntax::visit::{self, Visitor};
-use syntax::walk_list;
 
 use std::env;
 use std::path::Path;
@@ -1260,7 +1260,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'l ast::Item) {
-        use syntax::ast::ItemKind::*;
+        use rustc_ast::ast::ItemKind::*;
         self.process_macro_use(item.span);
         match item.kind {
             Use(ref use_tree) => {

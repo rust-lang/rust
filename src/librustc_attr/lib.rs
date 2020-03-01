@@ -1,6 +1,6 @@
 //! Functions and types dealing with attributes and meta items.
 //!
-//! FIXME(Centril): For now being, much of the logic is still in `syntax::attr`.
+//! FIXME(Centril): For now being, much of the logic is still in `rustc_ast::attr`.
 //! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
 //! to this crate.
 
@@ -11,6 +11,6 @@ pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
 
-pub use syntax::attr::*;
+pub use rustc_ast::attr::*;
 
-pub(crate) use syntax::HashStableContext;
+pub(crate) use rustc_ast::HashStableContext;

@@ -11,10 +11,10 @@ use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 
 use std::cell::Cell;
 use std::collections::BTreeMap;

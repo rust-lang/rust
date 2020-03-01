@@ -1,5 +1,10 @@
 use std::mem;
 
+use rustc_ast::ast::{self, Ident, NodeId};
+use rustc_ast::attr;
+use rustc_ast::expand::is_proc_macro_attr;
+use rustc_ast::ptr::P;
+use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
@@ -9,11 +14,6 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
 use std::cell::RefCell;
-use syntax::ast::{self, Ident, NodeId};
-use syntax::attr;
-use syntax::expand::is_proc_macro_attr;
-use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
 
 struct ProcMacroDerive {
     id: NodeId,

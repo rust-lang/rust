@@ -17,11 +17,11 @@ use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_ast::ast::Ident;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
-use syntax::ast::Ident;
 
 pub use rustc::traits::Reveal;
 

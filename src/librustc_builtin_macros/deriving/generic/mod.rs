@@ -181,16 +181,16 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use rustc_ast::ast::{GenericArg, GenericParamKind, VariantData};
+use rustc_ast::ptr::P;
+use rustc_ast::util::map_in_place::MapInPlace;
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
-use syntax::ast::{GenericArg, GenericParamKind, VariantData};
-use syntax::ptr::P;
-use syntax::util::map_in_place::MapInPlace;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -339,7 +339,7 @@ fn find_type_parameters(
     ty_param_names: &[ast::Name],
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
-    use syntax::visit;
+    use rustc_ast::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
@@ -689,11 +689,11 @@ impl<'a> TraitDef<'a> {
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
-            let word = syntax::attr::mk_nested_word_item(Ident::new(
+            let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
                 Symbol::intern("unused_qualifications"),
                 self.span,
             ));
-            let list = syntax::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
+            let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
             cx.attribute(list)
         };
 
