@@ -53,8 +53,8 @@ fn test(x: &i32) {
     [140; 141) 'g': {unknown}
     [144; 145) 'e': {unknown}
     [158; 205) 'if let...     }': ()
-    [165; 170) '[val]': {unknown}
-    [173; 176) 'opt': {unknown}
+    [165; 170) '[val]': [{unknown}]
+    [173; 176) 'opt': [{unknown}]
     [177; 205) '{     ...     }': ()
     [191; 192) 'h': {unknown}
     [195; 198) 'val': {unknown}

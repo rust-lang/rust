@@ -185,21 +185,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
             }
-            Pat::Slice { prefix, slice, suffix } => {
-                if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Slice, parameters }) = expected {
-                    match (prefix.as_slice(), slice, suffix.as_slice()) {
-                        (prefix_pat_ids, None, []) => {
-                            for pat_id in prefix_pat_ids {
-                                self.infer_pat(*pat_id, parameters.as_single(), default_bm);
-                            }
-
-                            Ty::apply_one(TypeCtor::Slice, parameters.as_single().clone())
-                        },
-                        _ => Ty::Unknown,
+            Pat::Slice { prefix, slice: _slice, suffix } => {
+                let ty = if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Slice, parameters }) = expected {
+                    for pat_id in prefix.iter().chain(suffix) {
+                        self.infer_pat(*pat_id, parameters.as_single(), default_bm);
                     }
+
+                    parameters.as_single().clone()
                 } else {
                     Ty::Unknown
-                }
+                };
+
+                Ty::apply_one(TypeCtor::Slice, ty)
             }
             _ => Ty::Unknown,
         };
