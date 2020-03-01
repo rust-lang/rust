@@ -41,25 +41,15 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
 }
 
 pub enum Error {
-    FileNotFoundForModule {
-        mod_name: String,
-        default_path: PathBuf,
-    },
-    DuplicatePaths {
-        mod_name: String,
-        default_path: String,
-        secondary_path: String,
-    },
+    FileNotFoundForModule { mod_name: String, default_path: PathBuf },
+    DuplicatePaths { mod_name: String, default_path: String, secondary_path: String },
     UselessDocComment,
 }
 
 impl Error {
     fn span_err(self, sp: impl Into<MultiSpan>, handler: &Handler) -> DiagnosticBuilder<'_> {
         match self {
-            Error::FileNotFoundForModule {
-                ref mod_name,
-                ref default_path,
-            } => {
+            Error::FileNotFoundForModule { ref mod_name, ref default_path } => {
                 let mut err = struct_span_err!(
                     handler,
                     sp,
@@ -69,7 +59,8 @@ impl Error {
                 );
                 err.help(&format!(
                     "to create the module `{}`, create file \"{}\"",
-                    mod_name, default_path.display(),
+                    mod_name,
+                    default_path.display(),
                 ));
                 err
             }
