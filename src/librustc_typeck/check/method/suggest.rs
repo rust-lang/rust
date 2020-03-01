@@ -427,7 +427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         });
 
                     if let Some((field, field_ty)) = field_receiver {
-                        let scope = self.tcx.hir().get_module_parent(self.body_id);
+                        let scope = self.tcx.parent_module(self.body_id);
                         let is_accessible = field.vis.is_accessible_from(scope, self.tcx);
 
                         if is_accessible {
@@ -824,7 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut msg: String,
         candidates: Vec<DefId>,
     ) {
-        let module_did = self.tcx.hir().get_module_parent(self.body_id);
+        let module_did = self.tcx.parent_module(self.body_id);
         let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);

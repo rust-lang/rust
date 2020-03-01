@@ -385,9 +385,7 @@ impl Visibility {
                 Res::Err => Visibility::Public,
                 def => Visibility::Restricted(def.def_id()),
             },
-            hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.hir().get_module_parent(id))
-            }
+            hir::VisibilityKind::Inherited => Visibility::Restricted(tcx.parent_module(id)),
         }
     }
 
@@ -3087,7 +3085,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(actual_expansion) => {
                 self.hir().definitions().parent_module_of_macro_def(actual_expansion)
             }
-            None => self.hir().get_module_parent(block),
+            None => self.parent_module(block),
         };
         (ident, scope)
     }
