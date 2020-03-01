@@ -25,7 +25,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);
 
-                let predicates = crate_map.predicates.get(&item_def_id).map(|p| *p).unwrap_or(&[]);
+                let predicates = crate_map.predicates.get(&item_def_id).copied().unwrap_or(&[]);
 
                 if tcx.has_attr(item_def_id, sym::rustc_outlives) {
                     let mut pred: Vec<String> = predicates

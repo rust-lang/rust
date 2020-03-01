@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .skip_binder()
                                     .get(0)
                                     .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
-                                    .map(|ty| *ty)
+                                    .copied()
                                     .unwrap_or(rcvr_ty),
                             };
                             print_disambiguation_help(
