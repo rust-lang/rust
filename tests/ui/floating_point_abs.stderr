@@ -71,15 +71,10 @@ LL | |     }
    | |_____^ help: try: `-num.abs()`
 
 error: This looks like you've implemented your own negative absolute value function
-  --> $DIR/floating_point_abs.rs:65:12
+  --> $DIR/floating_point_abs.rs:66:12
    |
-LL |       A { a: if a.a >= 0.0 {
-   |  ____________^
-LL | |             -a.a
-LL | |         } else {
-LL | |             a.a
-LL | |         }, b: a.b }
-   | |_________^ help: try: `-a.a.abs()`
+LL |         a: if a.a >= 0.0 { -a.a } else { a.a },
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-a.a.abs()`
 
 error: aborting due to 8 previous errors
 
