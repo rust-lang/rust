@@ -4,6 +4,8 @@ import * as ra from './rust-analyzer-api';
 import { Ctx } from './ctx';
 import { log, sendRequestWithRetry } from './util';
 
+const noInlayUriSchemes = ['git', 'svn'];
+
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
     vscode.window.onDidChangeVisibleTextEditors(
@@ -90,7 +92,14 @@ class HintsUpdater {
 
     private get allEditors(): vscode.TextEditor[] {
         return vscode.window.visibleTextEditors.filter(
-            editor => editor.document.languageId === 'rust',
+            editor => {
+                if (editor.document.languageId !== 'rust') {
+                    return false;
+                }
+                const scheme = editor.document.uri.scheme;
+                const hasBlacklistedScheme = noInlayUriSchemes.some(s => s === scheme);
+                return !hasBlacklistedScheme;
+            },
         );
     }
 
