@@ -143,9 +143,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer()
-            && !t.has_erasable_regions()
-            && !(t.has_closure_types() && self.infcx.in_progress_tables.is_some())
+        if !(t.needs_infer()
+            || t.has_erasable_regions()
+            || (t.has_closure_types() && self.infcx.in_progress_tables.is_some()))
         {
             return t;
         }
