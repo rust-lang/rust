@@ -69,8 +69,26 @@ pub use crate::intrinsics::transmute;
 /// ```
 ///
 /// The practical use cases for `forget` are rather specialized and mainly come
-/// up in unsafe or FFI code. However, [`ManuallyDrop`] is usually preferred
-/// for such cases, e.g.:
+/// up in unsafe or FFI code. For example:
+///
+/// ```
+/// use std::mem;
+///
+/// let mut v = vec![65, 122];
+/// // Build a `String` using the contents of `v`
+/// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), 2, v.capacity()) };
+/// // immediately leak `v` because its memory is now managed by `s`
+/// mem::forget(v);
+/// assert_eq!(s, "Az");
+/// // `s` is implicitly dropped and its memory deallocated.
+/// ```
+///
+/// The above is correct, but brittle. If code gets added between the construction of
+/// `String` and the invocation of `mem::forget()`, a panic within it will cause a double
+/// free because the same memory is handled by both `v` and `s`. This can be fixed by
+/// storing the result of `v.as_mut_ptr()` in a local variable and calling `mem::forget()`
+/// before `String::from_raw_parts`. This kind of issue can be more robustly prevented by
+/// using [`ManuallyDrop`], which is usually preferred for such cases:
 ///
 /// ```
 /// use std::mem::ManuallyDrop;
@@ -88,16 +106,14 @@ pub use crate::intrinsics::transmute;
 /// // `s` is implicitly dropped and its memory deallocated.
 /// ```
 ///
-/// Using `ManuallyDrop` here has two advantages:
+/// `ManuallyDrop` robustly prevents double-free because we disable `v`'s destructor
+/// before doing anything else. `mem::forget()` doesn't allow this because it consumes its
+/// argument, forcing us to call it only after extracting anything we need from `v`.
 ///
-/// * We do not "touch" `v` after disassembling it. For some types, operations
-///   such as passing ownership (to a function like `mem::forget`) requires them to actually
-///   be fully owned right now; that is a promise we do not want to make here as we are
-///   in the process of transferring ownership to the new `String` we are building.
-/// * In case of an unexpected panic, `ManuallyDrop` is not dropped, but if the panic
-///   occurs before `mem::forget` was called we might end up dropping invalid data,
-///   or double-dropping. In other words, `ManuallyDrop` errs on the side of leaking
-///   instead of erring on the side of dropping.
+/// Note that the above code cannot panic between construction of `ManuallyDrop` and
+/// building the string. But even if it could (after a modification), a panic there would
+/// result in a leak and not a double free. In other words, `ManuallyDrop` errs on the
+/// side of leaking instead of erring on the side of dropping.
 ///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
