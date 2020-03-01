@@ -2,7 +2,7 @@
 
 struct A {
     a: f64,
-    b: f64
+    b: f64,
 }
 
 fn fake_abs1(num: f64) -> f64 {
@@ -62,11 +62,10 @@ fn fake_nabs2(num: f64) -> f64 {
 }
 
 fn fake_nabs3(a: A) -> A {
-    A { a: if a.a >= 0.0 {
-            -a.a
-        } else {
-            a.a
-        }, b: a.b }
+    A {
+        a: if a.a >= 0.0 { -a.a } else { a.a },
+        b: a.b,
+    }
 }
 
 fn not_fake_abs1(num: f64) -> f64 {

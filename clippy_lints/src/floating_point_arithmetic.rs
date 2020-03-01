@@ -422,8 +422,28 @@ fn is_zero(expr: &Expr<'_>) -> bool {
 
 fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
-        if let ExprKind::Block( Block { stmts: [], expr: Some(Expr { kind: ExprKind::Unary(UnOp::UnNeg, else_expr), ..  }), ..  }, _,) = else_body.kind {
-            if let ExprKind::Block( Block { stmts: [], expr: Some(body), ..  }, _,) = &body.kind {
+        if let ExprKind::Block(
+            Block {
+                stmts: [],
+                expr:
+                    Some(Expr {
+                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
+                        ..
+                    }),
+                ..
+            },
+            _,
+        ) = else_body.kind
+        {
+            if let ExprKind::Block(
+                Block {
+                    stmts: [],
+                    expr: Some(body),
+                    ..
+                },
+                _,
+            ) = &body.kind
+            {
                 if are_exprs_equal(cx, else_expr, body) {
                     if is_testing_positive(cx, cond, body) {
                         span_lint_and_sugg(
@@ -449,9 +469,28 @@ fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                 }
             }
         }
-        if let ExprKind::Block( Block { stmts: [], expr: Some(Expr { kind: ExprKind::Unary(UnOp::UnNeg, else_expr), ..  }), ..  }, _,) = &body.kind
+        if let ExprKind::Block(
+            Block {
+                stmts: [],
+                expr:
+                    Some(Expr {
+                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
+                        ..
+                    }),
+                ..
+            },
+            _,
+        ) = &body.kind
         {
-            if let ExprKind::Block( Block { stmts: [], expr: Some(body), ..  }, _,) = &else_body.kind {
+            if let ExprKind::Block(
+                Block {
+                    stmts: [],
+                    expr: Some(body),
+                    ..
+                },
+                _,
+            ) = &else_body.kind
+            {
                 if are_exprs_equal(cx, else_expr, body) {
                     if is_testing_negative(cx, cond, body) {
                         span_lint_and_sugg(
