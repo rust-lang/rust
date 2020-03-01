@@ -444,22 +444,12 @@ impl Handler {
     }
 
     /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
-    /// If the diagnostic with this `(span, key)` already exists, this will result in an ICE.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
-        if let Some(mut old_diag) = inner.stashed_diagnostics.insert((span, key), diag) {
-            // We are removing a previously stashed diagnostic which should not happen.
-            old_diag.level = Bug;
-            old_diag.note(&format!(
-                "{}:{}: already existing stashed diagnostic with (span = {:?}, key = {:?})",
-                file!(),
-                line!(),
-                span,
-                key
-            ));
-            inner.emit_diag_at_span(old_diag, span);
-            panic!(ExplicitBug);
-        }
+        // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
+        // if/when we have a more robust macro-friendly replacement for `(span, key)` as a key.
+        // See the PR for a discussion.
+        inner.stashed_diagnostics.insert((span, key), diag);
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
