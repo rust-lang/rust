@@ -607,6 +607,7 @@ symbols! {
         Result,
         Return,
         rhs,
+        riscv_target_feature,
         rlib,
         rotate_left,
         rotate_right,

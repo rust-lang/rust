@@ -236,6 +236,15 @@ const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
 const MIPS_WHITELIST: &[(&str, Option<Symbol>)] =
     &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
 
+const RISCV_WHITELIST: &[(&str, Option<Symbol>)] = &[
+    ("m", Some(sym::riscv_target_feature)),
+    ("a", Some(sym::riscv_target_feature)),
+    ("c", Some(sym::riscv_target_feature)),
+    ("f", Some(sym::riscv_target_feature)),
+    ("d", Some(sym::riscv_target_feature)),
+    ("e", Some(sym::riscv_target_feature)),
+];
+
 const WASM_WHITELIST: &[(&str, Option<Symbol>)] =
     &[("simd128", Some(sym::wasm_target_feature)), ("atomics", Some(sym::wasm_target_feature))];
 
@@ -253,6 +262,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(HEXAGON_WHITELIST.iter().cloned())
         .chain(POWERPC_WHITELIST.iter().cloned())
         .chain(MIPS_WHITELIST.iter().cloned())
+        .chain(RISCV_WHITELIST.iter().cloned())
         .chain(WASM_WHITELIST.iter().cloned())
 }
 
@@ -297,6 +307,7 @@ pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Opti
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
+        "riscv32" | "riscv64" => RISCV_WHITELIST,
         "wasm32" => WASM_WHITELIST,
         _ => &[],
     }
