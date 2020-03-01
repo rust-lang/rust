@@ -12,7 +12,7 @@ use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
-use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor};
+use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor, ApplicationTy};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_tuple_struct_pat(
@@ -184,6 +184,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let bound_ty = self.resolve_ty_as_possible(bound_ty);
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
+            }
+            Pat::Slice { prefix, slice, suffix } => {
+                if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Slice, parameters }) = expected {
+                    match (prefix.as_slice(), slice, suffix.as_slice()) {
+                        ([prefix_pat_id], None, []) => {
+                            let ty = self.infer_pat(*prefix_pat_id, &parameters.0[0], default_bm);
+
+                            Ty::apply_one(TypeCtor::Slice, ty)
+                        },
+                        _ => Ty::Unknown,
+                    }
+                } else {
+                    Ty::Unknown
+                }
             }
             _ => Ty::Unknown,
         };
