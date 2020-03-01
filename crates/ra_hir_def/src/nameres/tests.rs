@@ -66,6 +66,42 @@ fn crate_def_map_smoke_test() {
 }
 
 #[test]
+fn crate_def_map_super_super() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod a {
+            const A: usize = 0;
+
+            mod b {
+                const B: usize = 0;
+
+                mod c {
+                    use super::super::*;
+                }
+            }
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮a: t
+        ⋮
+        ⋮crate::a
+        ⋮A: v
+        ⋮b: t
+        ⋮
+        ⋮crate::a::b
+        ⋮B: v
+        ⋮c: t
+        ⋮
+        ⋮crate::a::b::c
+        ⋮A: v
+        ⋮b: t
+    "###)
+}
+
+#[test]
 fn bogus_paths() {
     covers!(bogus_paths);
     let map = def_map(
