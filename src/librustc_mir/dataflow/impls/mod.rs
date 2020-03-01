@@ -14,7 +14,7 @@ use crate::util::elaborate_drops::DropFlagState;
 
 use super::generic::{AnalysisDomain, GenKill, GenKillAnalysis};
 use super::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
-use super::{BottomValue, GenKillSet};
+use super::BottomValue;
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;

@@ -25,7 +25,7 @@ pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-pub use self::impls::{MaybeStorageLive, RequiresStorage};
+pub use self::impls::{MaybeRequiresStorage, MaybeStorageLive};
 
 use self::move_paths::MoveData;
 

@@ -49,10 +49,8 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
-use crate::dataflow::generic::{Analysis, ResultsCursor};
-use crate::dataflow::{do_dataflow, DataflowResultsCursor, DebugFormatted};
-use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{MaybeBorrowedLocals, MaybeStorageLive, RequiresStorage};
+use crate::dataflow::generic::{self as dataflow, Analysis};
+use crate::dataflow::{MaybeBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
@@ -467,18 +465,15 @@ fn locals_live_across_suspend_points(
     source: MirSource<'tcx>,
     movable: bool,
 ) -> LivenessInfo {
-    let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let def_id = source.def_id();
     let body_ref: &Body<'_> = &body;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let storage_live_analysis = MaybeStorageLive::new(body_ref);
-    let storage_live_results =
-        do_dataflow(tcx, body_ref, def_id, &[], &dead_unwinds, storage_live_analysis, |bd, p| {
-            DebugFormatted::new(&bd.body().local_decls[p])
-        });
-    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body_ref);
+    let mut storage_live = MaybeStorageLive
+        .into_engine(tcx, body_ref, def_id)
+        .iterate_to_fixpoint()
+        .into_results_cursor(body_ref);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -490,22 +485,16 @@ fn locals_live_across_suspend_points(
     let borrowed_locals_results =
         MaybeBorrowedLocals::all_borrows().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
 
-    let mut borrowed_locals_cursor = ResultsCursor::new(body_ref, &borrowed_locals_results);
+    let mut borrowed_locals_cursor =
+        dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_results);
-    let requires_storage_results = do_dataflow(
-        tcx,
-        body_ref,
-        def_id,
-        &[],
-        &dead_unwinds,
-        requires_storage_analysis,
-        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]),
-    );
+    let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
+        .into_engine(tcx, body_ref, def_id)
+        .iterate_to_fixpoint();
     let mut requires_storage_cursor =
-        DataflowResultsCursor::new(&requires_storage_results, body_ref);
+        dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -534,14 +523,14 @@ fn locals_live_across_suspend_points(
                 liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            storage_live_cursor.seek(loc);
-            let storage_liveness = storage_live_cursor.get();
+            storage_live.seek_before(loc);
+            let storage_liveness = storage_live.get();
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            requires_storage_cursor.seek(loc);
+            requires_storage_cursor.seek_before(loc);
             let storage_required = requires_storage_cursor.get().clone();
 
             // Locals live are live at this point only if they are used across
@@ -611,7 +600,7 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
-    requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx>>,
+    requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -629,8 +618,11 @@ fn compute_storage_conflicts(
         stored_locals: &stored_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
     };
-    let mut state = FlowAtLocation::new(requires_storage);
-    visitor.analyze_results(&mut state);
+
+    // Visit only reachable basic blocks. The exact order is not important.
+    let reachable_blocks = traversal::preorder(body).map(|(bb, _)| bb);
+    requires_storage.visit_with(body, reachable_blocks, &mut visitor);
+
     let local_conflicts = visitor.local_conflicts;
 
     // Compress the matrix using only stored locals (Local -> GeneratorSavedLocal).
@@ -659,60 +651,45 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'body, 'tcx, 's> {
-    body: &'body Body<'tcx>,
+struct StorageConflictVisitor<'mir, 'tcx, 's> {
+    body: &'mir Body<'tcx>,
     stored_locals: &'s liveness::LiveVarSet,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for generators.
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
-    for StorageConflictVisitor<'body, 'tcx, 's>
-{
-    type FlowState = FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>;
+impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
+    type FlowState = BitSet<Local>;
 
-    fn body(&self) -> &'body Body<'tcx> {
-        self.body
-    }
-
-    fn visit_block_entry(&mut self, block: BasicBlock, flow_state: &Self::FlowState) {
-        // statement_index is only used for logging, so this is fine.
-        self.apply_state(flow_state, Location { block, statement_index: 0 });
-    }
-
-    fn visit_statement_entry(
+    fn visit_statement(
         &mut self,
+        state: &Self::FlowState,
+        _statement: &'mir Statement<'tcx>,
         loc: Location,
-        _stmt: &Statement<'tcx>,
-        flow_state: &Self::FlowState,
     ) {
-        self.apply_state(flow_state, loc);
+        self.apply_state(state, loc);
     }
 
-    fn visit_terminator_entry(
+    fn visit_terminator(
         &mut self,
+        state: &Self::FlowState,
+        _terminator: &'mir Terminator<'tcx>,
         loc: Location,
-        _term: &Terminator<'tcx>,
-        flow_state: &Self::FlowState,
     ) {
-        self.apply_state(flow_state, loc);
+        self.apply_state(state, loc);
     }
 }
 
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
-    fn apply_state(
-        &mut self,
-        flow_state: &FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>,
-        loc: Location,
-    ) {
+    fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {
             TerminatorKind::Unreachable => return,
             _ => (),
         };
 
-        let mut eligible_storage_live = flow_state.as_dense().clone();
+        let mut eligible_storage_live = flow_state.clone();
         eligible_storage_live.intersect(&self.stored_locals);
 
         for local in eligible_storage_live.iter() {

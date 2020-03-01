@@ -75,6 +75,24 @@ where
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
         &self.entry_sets[block]
     }
+
+    pub fn visit_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        blocks: impl IntoIterator<Item = BasicBlock>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        visit_results(body, blocks, self, vis)
+    }
+
+    pub fn visit_in_rpo_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        let blocks = mir::traversal::reverse_postorder(body);
+        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+    }
 }
 
 /// Define the domain of a dataflow problem.
@@ -430,17 +448,6 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
 
     fn kill(&mut self, elem: T) {
         self.remove(elem);
-    }
-}
-
-// For compatibility with old framework
-impl<T: Idx> GenKill<T> for crate::dataflow::GenKillSet<T> {
-    fn gen(&mut self, elem: T) {
-        self.gen(elem);
-    }
-
-    fn kill(&mut self, elem: T) {
-        self.kill(elem);
     }
 }
 
