@@ -1,8 +1,8 @@
 use crate::utils::span_lint;
+use rustc_ast::ast::Crate;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
-use syntax::ast::Crate;
 
 use if_chain::if_chain;
 

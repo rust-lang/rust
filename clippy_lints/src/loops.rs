@@ -15,6 +15,7 @@ use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -31,7 +32,6 @@ use rustc_span::{BytePos, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 use std::iter::{once, Iterator};
 use std::mem;
-use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for for-loops that manually copy items between

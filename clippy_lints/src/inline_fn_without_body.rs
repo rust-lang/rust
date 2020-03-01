@@ -2,11 +2,11 @@
 
 use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
+use rustc_ast::ast::{Attribute, Name};
 use rustc_errors::Applicability;
 use rustc_hir::{TraitItem, TraitItemKind, TraitMethod};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::{Attribute, Name};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `#[inline]` on trait methods without bodies

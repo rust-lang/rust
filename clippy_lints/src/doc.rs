@@ -3,6 +3,7 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
 use rustc::ty;
+use rustc_ast::ast::{AttrKind, Attribute};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -10,7 +11,6 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, MultiSpan, Span};
 use rustc_span::Pos;
 use std::ops::Range;
-use syntax::ast::{AttrKind, Attribute};
 use url::Url;
 
 declare_clippy_lint! {
@@ -251,8 +251,8 @@ fn lint_for_missing_headers<'a, 'tcx>(
 
 /// Cleanup documentation decoration (`///` and such).
 ///
-/// We can't use `syntax::attr::AttributeMethods::with_desugared_doc` or
-/// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we
+/// We can't use `rustc_ast::attr::AttributeMethods::with_desugared_doc` or
+/// `rustc_ast::parse::lexer::comments::strip_doc_comment_decoration` because we
 /// need to keep track of
 /// the spans but this function is inspired from the later.
 #[allow(clippy::cast_possible_truncation)]

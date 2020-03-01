@@ -2,11 +2,11 @@
 
 use crate::utils::{camel_case, is_present_in_source};
 use crate::utils::{span_lint, span_lint_and_help};
+use rustc_ast::ast::{EnumDef, Item, ItemKind, VisibilityKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use syntax::ast::{EnumDef, Item, ItemKind, VisibilityKind};
 
 declare_clippy_lint! {
     /// **What it does:** Detects enumeration variants that are prefixed or suffixed

@@ -10,6 +10,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
+use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
@@ -21,7 +22,6 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 use std::collections::Bound;
-use syntax::ast::LitKind;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`

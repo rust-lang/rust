@@ -13,7 +13,7 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
     match open_files(lint_name) {
         Ok((mut test_file, mut lint_file)) => {
             let (pass_type, pass_lifetimes, pass_import, context_import) = match pass {
-                "early" => ("EarlyLintPass", "", "use syntax::ast::*;", "EarlyContext"),
+                "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
                 "late" => ("LateLintPass", "<'_, '_>", "use rustc_hir::*;", "LateContext"),
                 _ => {
                     unreachable!("`pass_type` should only ever be `early` or `late`!");

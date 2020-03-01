@@ -1,13 +1,13 @@
 use crate::consts::{constant, Constant};
 use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_lint_and_help};
 use if_chain::if_chain;
+use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Block, BorrowKind, Crate, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
-use syntax::ast::{LitKind, StrStyle};
 
 declare_clippy_lint! {
     /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation

@@ -2,6 +2,9 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
+use rustc_ast::ast::{Expr, ExprKind, Mac, StrLit, StrStyle};
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -9,9 +12,6 @@ use rustc_parse::parser;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
-use syntax::ast::{Expr, ExprKind, Mac, StrLit, StrStyle};
-use syntax::token;
-use syntax::tokenstream::TokenStream;
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -349,7 +349,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
         if let Piece::NextArgument(arg) = piece {
             if arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
-                span_lint(cx, USE_DEBUG, parser.prev_span, "use of `Debug`-based formatting");
+                span_lint(cx, USE_DEBUG, parser.prev_token.span, "use of `Debug`-based formatting");
             }
             args.push(arg);
         }

@@ -6,6 +6,7 @@ use crate::utils::{
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
+use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -15,7 +16,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::Attribute;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions with too many parameters.

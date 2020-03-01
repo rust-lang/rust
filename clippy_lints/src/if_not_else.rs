@@ -2,9 +2,9 @@
 //! on the condition
 
 use rustc::lint::in_external_macro;
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::{BinOpKind, Expr, ExprKind, UnOp};
 
 use crate::utils::span_lint_and_help;
 

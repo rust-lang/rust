@@ -8,6 +8,8 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
 use rustc::ty;
+use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitItem, TraitItemKind, TraitMethod,
@@ -17,8 +19,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use semver::Version;
-use syntax::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
-use syntax::util::lev_distance::find_best_match_for_name;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items annotated with `#[inline(always)]`,

@@ -1,10 +1,10 @@
 use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, paths, span_lint};
 use if_chain::if_chain;
+use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
-use syntax::ast::LitKind;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for missing parameters in `panic!`.

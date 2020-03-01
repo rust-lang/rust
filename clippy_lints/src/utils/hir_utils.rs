@@ -2,6 +2,7 @@ use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
 use rustc::ich::StableHashingContextProvider;
 use rustc::ty::TypeckTables;
+use rustc_ast::ast::Name;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
     BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FnRetTy, GenericArg,
@@ -10,7 +11,6 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use std::hash::Hash;
-use syntax::ast::Name;
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator

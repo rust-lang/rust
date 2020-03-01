@@ -1,9 +1,9 @@
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, Lit, LitKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use syntax::ast::{BinOpKind, Expr, ExprKind, Lit, LitKind};
 
 use crate::utils::{snippet_opt, span_lint_and_then};
 
