@@ -234,7 +234,14 @@ fn make_win_dist(
         }
     }
 
-    let target_tools = ["gcc.exe", "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    let compiler = if target_triple == "i686-pc-windows-gnu" {
+        "i686-w64-mingw32-gcc.exe"
+    } else if target_triple == "x86_64-pc-windows-gnu" {
+        "x86_64-w64-mingw32-gcc.exe"
+    } else {
+        "gcc.exe"
+    };
+    let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
     let mut rustc_dlls = vec!["libwinpthread-1.dll"];
     if target_triple.starts_with("i686-") {
         rustc_dlls.push("libgcc_s_dw2-1.dll");

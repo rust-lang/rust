@@ -20,7 +20,7 @@ use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
+    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains

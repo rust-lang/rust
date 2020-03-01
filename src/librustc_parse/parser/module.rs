@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_span };
+        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
 
         Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
     }

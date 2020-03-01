@@ -816,7 +816,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
-            def => Some(def.def_id()),
+            def => def.opt_def_id(),
         }
     }
 

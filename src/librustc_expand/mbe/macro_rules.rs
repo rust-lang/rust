@@ -970,7 +970,7 @@ fn check_matcher_core(
                                         msg,
                                         ts[..ts.len() - 1]
                                             .iter()
-                                            .map(|s| *s)
+                                            .copied()
                                             .collect::<Vec<_>>()
                                             .join(", "),
                                         ts[ts.len() - 1],

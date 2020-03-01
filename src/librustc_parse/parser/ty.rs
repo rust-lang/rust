@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        let span = lo.to(self.prev_span);
+        let span = lo.to(self.prev_token.span);
         let ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
@@ -236,11 +236,11 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         assert_ne!(self.token, token::Question);
 
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
+        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds(Some(self.prev_span))?);
+            bounds.append(&mut self.parse_generic_bounds(Some(self.prev_token.span))?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
     /// Parses a raw pointer type: `*[const | mut] $type`.
     fn parse_ty_ptr(&mut self) -> PResult<'a, TyKind> {
         let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
-            let span = self.prev_span;
+            let span = self.prev_token.span;
             let msg = "expected mut or const in raw pointer type";
             self.struct_span_err(span, msg)
                 .span_label(span, msg)
@@ -368,7 +368,7 @@ impl<'a> Parser<'a> {
     fn error_illegal_c_varadic_ty(&self, lo: Span) {
         struct_span_err!(
             self.sess.span_diagnostic,
-            lo.to(self.prev_span),
+            lo.to(self.prev_token.span),
             E0743,
             "C-variadic type `...` may not be nested inside another type",
         )
@@ -431,7 +431,7 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(negative_bounds, "negative bounds are not supported");
         err.span_label(last_span, "negative bounds are not supported");
         if let Some(bound_list) = colon_span {
-            let bound_list = bound_list.to(self.prev_span);
+            let bound_list = bound_list.to(self.prev_token.span);
             let mut new_bound_list = String::new();
             if !bounds.is_empty() {
                 let mut snippets = bounds.iter().map(|bound| self.span_to_snippet(bound.span()));
@@ -456,7 +456,7 @@ impl<'a> Parser<'a> {
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, Result<GenericBound, Span>> {
-        let anchor_lo = self.prev_span;
+        let anchor_lo = self.prev_token.span;
         let lo = self.token.span;
         let has_parens = self.eat(&token::OpenDelim(token::Paren));
         let inner_lo = self.token.span;
@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
             self.parse_generic_ty_bound(lo, has_parens, modifiers)?
         };
 
-        Ok(if is_negative { Err(anchor_lo.to(self.prev_span)) } else { Ok(bound) })
+        Ok(if is_negative { Err(anchor_lo.to(self.prev_token.span)) } else { Ok(bound) })
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
@@ -510,15 +510,15 @@ impl<'a> Parser<'a> {
 
     /// Recover on `('lifetime)` with `(` already eaten.
     fn recover_paren_lifetime(&mut self, lo: Span, inner_lo: Span) -> PResult<'a, ()> {
-        let inner_span = inner_lo.to(self.prev_span);
+        let inner_span = inner_lo.to(self.prev_token.span);
         self.expect(&token::CloseDelim(token::Paren))?;
         let mut err = self.struct_span_err(
-            lo.to(self.prev_span),
+            lo.to(self.prev_token.span),
             "parenthesized lifetime bounds are not supported",
         );
         if let Ok(snippet) = self.span_to_snippet(inner_span) {
             err.span_suggestion_short(
-                lo.to(self.prev_span),
+                lo.to(self.prev_token.span),
                 "remove the parentheses",
                 snippet,
                 Applicability::MachineApplicable,
@@ -541,20 +541,20 @@ impl<'a> Parser<'a> {
         }
 
         // `? ...`
-        let first_question = self.prev_span;
+        let first_question = self.prev_token.span;
         if !self.eat_keyword(kw::Const) {
             return BoundModifiers { maybe: Some(first_question), maybe_const: None };
         }
 
         // `?const ...`
-        let maybe_const = first_question.to(self.prev_span);
+        let maybe_const = first_question.to(self.prev_token.span);
         self.sess.gated_spans.gate(sym::const_trait_bound_opt_out, maybe_const);
         if !self.eat(&token::Question) {
             return BoundModifiers { maybe: None, maybe_const: Some(maybe_const) };
         }
 
         // `?const ? ...`
-        let second_question = self.prev_span;
+        let second_question = self.prev_token.span;
         BoundModifiers { maybe: Some(second_question), maybe_const: Some(maybe_const) }
     }
 
@@ -578,7 +578,7 @@ impl<'a> Parser<'a> {
         }
 
         let modifier = modifiers.to_trait_bound_modifier();
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
+        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
         Ok(GenericBound::Trait(poly_trait, modifier))
     }
 

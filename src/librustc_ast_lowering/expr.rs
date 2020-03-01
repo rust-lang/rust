@@ -1179,7 +1179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let from_err_expr =
                 self.wrap_in_try_constructor(sym::from_error, unstable_span, from_expr, try_span);
             let thin_attrs = ThinVec::from(attrs);
-            let catch_scope = self.catch_scopes.last().map(|x| *x);
+            let catch_scope = self.catch_scopes.last().copied();
             let ret_expr = if let Some(catch_node) = catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
                 self.arena.alloc(self.expr(
