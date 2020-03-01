@@ -1,13 +1,13 @@
 use std::ffi::OsStr;
 use std::{iter, mem};
 
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
     layout::{self, LayoutOf, Size, TyLayout},
     List, TyCtxt,
 };
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::source_map::DUMMY_SP;
 
 use rand::RngCore;
@@ -515,7 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn alloc_os_str_as_c_str(
         &mut self,
         os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>
+        memkind: MemoryKind<MiriMemoryKind>,
     ) -> Pointer<Tag> {
         let size = os_str.len() as u64 + 1; // Make space for `0` terminator.
         let this = self.eval_context_mut();
@@ -532,9 +532,9 @@ pub fn immty_from_int_checked<'tcx>(
     layout: TyLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
-    Ok(ImmTy::try_from_int(int, layout).ok_or_else(||
+    Ok(ImmTy::try_from_int(int, layout).ok_or_else(|| {
         err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
-    )?)
+    })?)
 }
 
 pub fn immty_from_uint_checked<'tcx>(
@@ -542,7 +542,7 @@ pub fn immty_from_uint_checked<'tcx>(
     layout: TyLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
-    Ok(ImmTy::try_from_uint(int, layout).ok_or_else(||
+    Ok(ImmTy::try_from_uint(int, layout).ok_or_else(|| {
         err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
-    )?)
+    })?)
 }
