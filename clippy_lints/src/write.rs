@@ -349,7 +349,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
         if let Piece::NextArgument(arg) = piece {
             if arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
-                span_lint(cx, USE_DEBUG, parser.prev_span, "use of `Debug`-based formatting");
+                span_lint(cx, USE_DEBUG, parser.prev_token.span, "use of `Debug`-based formatting");
             }
             args.push(arg);
         }
