@@ -185,6 +185,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
             }
+            Pat::Slice { prefix, slice: _slice, suffix } => {
+                let (container_ty, elem_ty) = match &expected {
+                    ty_app!(TypeCtor::Array, st) => {
+                        (TypeCtor::Array, st.as_single().clone())
+                    },
+                    ty_app!(TypeCtor::Slice, st) => {
+                        (TypeCtor::Slice, st.as_single().clone())
+                    },
+                    _ => (TypeCtor::Slice, Ty::Unknown),
+                };
+
+                for pat_id in prefix.iter().chain(suffix) {
+                    self.infer_pat(*pat_id, &elem_ty, default_bm);
+                }
+
+                Ty::apply_one(container_ty, elem_ty)
+            }
             _ => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
