@@ -3,10 +3,10 @@
 use std::path::PathBuf;
 
 use crate::utils::span_lint;
+use rustc_ast::ast::Crate;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
-use syntax::ast::Crate;
 
 declare_clippy_lint! {
     /// **What it does:** Checks to see if all common metadata is defined in

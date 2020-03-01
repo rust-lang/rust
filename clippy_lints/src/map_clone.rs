@@ -4,12 +4,12 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::ty;
+use rustc_ast::ast::Ident;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use syntax::ast::Ident;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests

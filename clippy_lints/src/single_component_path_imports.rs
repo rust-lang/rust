@@ -1,10 +1,10 @@
 use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc_ast::ast::{Item, ItemKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::edition::Edition;
-use syntax::ast::{Item, ItemKind, UseTreeKind};
 
 declare_clippy_lint! {
     /// **What it does:** Checking for imports with single component use path.

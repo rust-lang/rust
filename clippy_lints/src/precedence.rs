@@ -1,9 +1,9 @@
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
-use syntax::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for operations where precedence may be unclear
@@ -123,7 +123,7 @@ fn is_arith_expr(expr: &Expr) -> bool {
 
 #[must_use]
 fn is_bit_op(op: BinOpKind) -> bool {
-    use syntax::ast::BinOpKind::{BitAnd, BitOr, BitXor, Shl, Shr};
+    use rustc_ast::ast::BinOpKind::{BitAnd, BitOr, BitXor, Shl, Shr};
     match op {
         BitXor | BitAnd | BitOr | Shl | Shr => true,
         _ => false,
@@ -132,7 +132,7 @@ fn is_bit_op(op: BinOpKind) -> bool {
 
 #[must_use]
 fn is_arith_op(op: BinOpKind) -> bool {
-    use syntax::ast::BinOpKind::{Add, Div, Mul, Rem, Sub};
+    use rustc_ast::ast::BinOpKind::{Add, Div, Mul, Rem, Sub};
     match op {
         Add | Sub | Mul | Div | Rem => true,
         _ => false,

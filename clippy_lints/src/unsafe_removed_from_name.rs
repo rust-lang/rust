@@ -1,9 +1,9 @@
 use crate::utils::span_lint;
+use rustc_ast::ast::{Ident, Item, ItemKind, UseTree, UseTreeKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;
-use syntax::ast::{Ident, Item, ItemKind, UseTree, UseTreeKind};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for imports that remove "unsafe" from an item's

@@ -2,13 +2,13 @@
 
 use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 use if_chain::if_chain;
+use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use syntax::ast::LitKind;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for using `x.get(x.len() - 1)` instead of

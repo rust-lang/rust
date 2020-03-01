@@ -1,8 +1,8 @@
 use crate::utils::{attr_by_name, in_macro, match_path_ast, span_lint_and_help};
+use rustc_ast::ast::{AssocItemKind, Extern, FnSig, Item, ItemKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use syntax::ast::{AssocItemKind, Extern, FnSig, Item, ItemKind, Ty, TyKind};
 
 use std::convert::TryInto;
 

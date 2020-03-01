@@ -5,11 +5,11 @@ use crate::consts::{miri_to_const, Constant};
 use crate::utils::span_lint;
 use rustc::ty;
 use rustc::ty::util::IntTypeExt;
+use rustc_ast::ast::{IntTy, UintTy};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::convert::TryFrom;
-use syntax::ast::{IntTy, UintTy};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for C-like enumerations that are

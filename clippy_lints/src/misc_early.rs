@@ -4,16 +4,16 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
+use rustc_ast::ast::{
+    Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind,
+    StmtKind, UnOp,
+};
+use rustc_ast::visit::{walk_expr, FnKind, Visitor};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use syntax::ast::{
-    Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind,
-    StmtKind, UnOp,
-};
-use syntax::visit::{walk_expr, FnKind, Visitor};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for structure field patterns bound to wildcards.
