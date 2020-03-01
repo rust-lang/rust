@@ -78,7 +78,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
                 if let token::NtTy(ty) = &**nt {
                     let ty = ty.clone();
                     $self.bump();
-                    return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_span, ty);
+                    return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
             }
         }
@@ -103,8 +103,6 @@ pub struct Parser<'a> {
     /// Use this if you need to check for `token::Ident` or `token::Lifetime` specifically,
     /// this also includes edition checks for edition-specific keyword identifiers.
     pub normalized_prev_token: Token,
-    /// FIXME: Remove in favor of the equivalent `prev_token.span`.
-    pub prev_span: Span,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
     pub(super) directory: Directory,
@@ -379,7 +377,6 @@ impl<'a> Parser<'a> {
             normalized_token: Token::dummy(),
             prev_token: Token::dummy(),
             normalized_prev_token: Token::dummy(),
-            prev_span: DUMMY_SP,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
@@ -498,7 +495,7 @@ impl<'a> Parser<'a> {
             }
             _ => Err(match self.prev_token.kind {
                 TokenKind::DocComment(..) => {
-                    self.span_fatal_err(self.prev_span, Error::UselessDocComment)
+                    self.span_fatal_err(self.prev_token.span, Error::UselessDocComment)
                 }
                 _ => self.expected_ident_found(),
             }),
@@ -706,7 +703,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut expect_err) => {
-                            let sp = self.prev_span.shrink_to_hi();
+                            let sp = self.prev_token.span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
                             // Attempt to keep parsing if it was a similar separator.
@@ -850,9 +847,6 @@ impl<'a> Parser<'a> {
         self.normalized_prev_token = self.normalized_token.take();
         self.set_token(next_token);
 
-        // Update fields derived from the previous token.
-        self.prev_span = self.prev_token.span;
-
         // Diagnostics.
         self.expected_tokens.clear();
     }
@@ -899,12 +893,20 @@ impl<'a> Parser<'a> {
 
     /// Parses unsafety: `unsafe` or nothing.
     fn parse_unsafety(&mut self) -> Unsafe {
-        if self.eat_keyword(kw::Unsafe) { Unsafe::Yes(self.prev_span) } else { Unsafe::No }
+        if self.eat_keyword(kw::Unsafe) {
+            Unsafe::Yes(self.normalized_prev_token.span)
+        } else {
+            Unsafe::No
+        }
     }
 
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self) -> Const {
-        if self.eat_keyword(kw::Const) { Const::Yes(self.prev_span) } else { Const::No }
+        if self.eat_keyword(kw::Const) {
+            Const::Yes(self.normalized_prev_token.span)
+        } else {
+            Const::No
+        }
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -928,7 +930,7 @@ impl<'a> Parser<'a> {
         {
             self.expect_no_suffix(self.token.span, "a tuple index", suffix);
             self.bump();
-            Ok(Ident::new(symbol, self.prev_span))
+            Ok(Ident::new(symbol, self.prev_token.span))
         } else {
             self.parse_ident_common(false)
         }
@@ -958,7 +960,7 @@ impl<'a> Parser<'a> {
                 }
             } else if !delimited_only {
                 if self.eat(&token::Eq) {
-                    let eq_span = self.prev_span;
+                    let eq_span = self.prev_token.span;
                     let mut is_interpolated_expr = false;
                     if let token::Interpolated(nt) = &self.token.kind {
                         if let token::NtExpr(..) = **nt {
@@ -1061,8 +1063,8 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
         if self.is_crate_vis() {
             self.bump(); // `crate`
-            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_span);
-            return Ok(respan(self.prev_span, VisibilityKind::Crate(CrateSugar::JustCrate)));
+            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_token.span);
+            return Ok(respan(self.prev_token.span, VisibilityKind::Crate(CrateSugar::JustCrate)));
         }
 
         if !self.eat_keyword(kw::Pub) {
@@ -1071,7 +1073,7 @@ impl<'a> Parser<'a> {
             // beginning of the current token would seem to be the "Schelling span".
             return Ok(respan(self.token.span.shrink_to_lo(), VisibilityKind::Inherited));
         }
-        let lo = self.prev_span;
+        let lo = self.prev_token.span;
 
         if self.check(&token::OpenDelim(token::Paren)) {
             // We don't `self.bump()` the `(` yet because this might be a struct definition where
@@ -1086,7 +1088,7 @@ impl<'a> Parser<'a> {
                 self.bump(); // `crate`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
@@ -1094,7 +1096,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
                 && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
@@ -1103,7 +1105,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.

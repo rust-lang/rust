@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
         let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
-        let leading_vert_span = self.prev_span;
+        let leading_vert_span = self.prev_token.span;
 
         // Parse the possibly-or-pattern.
         let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
             self.maybe_recover_unexpected_comma(pat.span, rc)?;
             pats.push(pat);
         }
-        let or_pattern_span = lo.to(self.prev_span);
+        let or_pattern_span = lo.to(self.prev_token.span);
 
         // Feature gate the or-pattern if instructed:
         if gate_or == GateOr::Yes {
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
             // end of the comma-sequence so we know the span to suggest parenthesizing.
             err.cancel();
         }
-        let seq_span = lo.to(self.prev_span);
+        let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
             err.span_suggestion(
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Box) {
             // Parse `box pat`
             let pat = self.parse_pat_with_range_pat(false, None)?;
-            self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
+            self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_token.span));
             PatKind::Box(pat)
         } else if self.can_be_ident_pat() {
             // Parse `ident @ pat`
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
                 // Parse an unqualified path
                 (None, self.parse_path(PathStyle::Expr)?)
             };
-            let span = lo.to(self.prev_span);
+            let span = lo.to(self.prev_token.span);
 
             if qself.is_none() && self.check(&token::Not) {
                 self.parse_pat_mac_invoc(path)?
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        let pat = self.mk_pat(lo.to(self.prev_span), pat);
+        let pat = self.mk_pat(lo.to(self.prev_token.span), pat);
         let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
         let pat = self.recover_intersection_pat(pat)?;
 
@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
         if let token::Lifetime(name) = self.token.kind {
             self.bump(); // `'a`
 
-            let span = self.prev_span;
+            let span = self.prev_token.span;
             self.struct_span_err(span, &format!("unexpected lifetime `{}` in pattern", name))
                 .span_suggestion(
                     span,
@@ -487,7 +487,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a mutable binding with the `mut` token already eaten.
     fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
-        let mut_span = self.prev_span;
+        let mut_span = self.prev_token.span;
 
         if self.eat_keyword(kw::Ref) {
             return self.recover_mut_ref_ident(mut_span);
@@ -522,7 +522,7 @@ impl<'a> Parser<'a> {
     /// Recover on `mut ref? ident @ pat` and suggest
     /// that the order of `mut` and `ref` is incorrect.
     fn recover_mut_ref_ident(&mut self, lo: Span) -> PResult<'a, PatKind> {
-        let mutref_span = lo.to(self.prev_span);
+        let mutref_span = lo.to(self.prev_token.span);
         self.struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
             .span_suggestion(
                 mutref_span,
@@ -582,7 +582,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        let span = lo.to(self.prev_span);
+        let span = lo.to(self.prev_token.span);
         self.struct_span_err(span, "`mut` on a binding may not be repeated")
             .span_suggestion(
                 span,
@@ -629,12 +629,12 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::DotDotEq) {
             RangeEnd::Included(RangeSyntax::DotDotEq)
         } else if self.eat(&token::DotDot) {
-            self.sess.gated_spans.gate(sym::exclusive_range_pattern, self.prev_span);
+            self.sess.gated_spans.gate(sym::exclusive_range_pattern, self.prev_token.span);
             RangeEnd::Excluded
         } else {
             return None;
         };
-        Some(respan(self.prev_span, re))
+        Some(respan(self.prev_token.span, re))
     }
 
     /// Parse a range pattern `$begin $form $end?` where `$form = ".." | "..." | "..=" ;`.
@@ -678,7 +678,7 @@ impl<'a> Parser<'a> {
     /// expression syntax `...expr` for splatting in expressions.
     fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
-        self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_span));
+        self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_token.span));
         if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
             self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")
@@ -714,7 +714,7 @@ impl<'a> Parser<'a> {
                 // Parse an unqualified path
                 (None, self.parse_path(PathStyle::Expr)?)
             };
-            let hi = self.prev_span;
+            let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), AttrVec::new()))
         } else {
             self.parse_literal_maybe_minus()
@@ -762,9 +762,8 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(token::Paren) {
-            return Err(
-                self.struct_span_err(self.prev_span, "expected identifier, found enum pattern")
-            );
+            return Err(self
+                .struct_span_err(self.prev_token.span, "expected identifier, found enum pattern"));
         }
 
         Ok(PatKind::Ident(binding_mode, ident, sub))
@@ -826,7 +825,7 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let err = self.struct_span_err(self.prev_span, "expected `,`");
+                let err = self.struct_span_err(self.prev_token.span, "expected `,`");
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
@@ -958,7 +957,7 @@ impl<'a> Parser<'a> {
             let is_ref = self.eat_keyword(kw::Ref);
             let is_mut = self.eat_keyword(kw::Mut);
             let fieldname = self.parse_ident()?;
-            hi = self.prev_span;
+            hi = self.prev_token.span;
 
             let bind_type = match (is_ref, is_mut) {
                 (true, true) => BindingMode::ByRef(Mutability::Mut),
