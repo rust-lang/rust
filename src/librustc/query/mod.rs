@@ -650,7 +650,7 @@ rustc_queries! {
     Codegen {
         query codegen_fulfill_obligation(
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Vtable<'tcx, ()> {
+        ) -> Option<Vtable<'tcx, ()>> {
             no_force
             cache_on_disk_if { true }
             desc { |tcx|
