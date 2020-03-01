@@ -103,10 +103,13 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
             ModPath::from_segments(PathKind::Super(0), iter::empty())
         }
         ast::PathSegmentKind::SuperKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            ModPath::from_segments(PathKind::Super(1), iter::empty())
+            let nested_super_count = match prefix.map(|p| p.kind) {
+                Some(PathKind::Super(n)) => n,
+                Some(_) => return None,
+                None => 0,
+            };
+
+            ModPath::from_segments(PathKind::Super(nested_super_count + 1), iter::empty())
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
