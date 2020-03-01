@@ -7,9 +7,9 @@ use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
-use rustc_hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
+use rustc_hir::Mutability;
 
 use crate::*;
 
@@ -293,9 +293,12 @@ impl<'tcx> Stack {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| err_ub!(UbExperimental(
-            format!("no item granting {} to tag {:?} found in borrow stack.", access, tag),
-        )))?;
+        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
+            err_ub!(UbExperimental(format!(
+                "no item granting {} to tag {:?} found in borrow stack.",
+                access, tag
+            ),))
+        })?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -334,10 +337,12 @@ impl<'tcx> Stack {
     /// active protectors at all because we will remove all items.
     fn dealloc(&mut self, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag).ok_or_else(|| err_ub!(UbExperimental(format!(
-            "no item granting write access for deallocation to tag {:?} found in borrow stack",
-            tag,
-        ))))?;
+        self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
+            err_ub!(UbExperimental(format!(
+                "no item granting write access for deallocation to tag {:?} found in borrow stack",
+                tag,
+            )))
+        })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
@@ -575,7 +580,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // breaking `Rc::from_raw`.
             RefKind::Raw { .. } => Tag::Untagged,
             // All other pointesr are properly tracked.
-            _ => Tag::Tagged(this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut().new_ptr()),
+            _ => Tag::Tagged(
+                this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut().new_ptr(),
+            ),
         };
 
         // Reborrow.

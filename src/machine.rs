@@ -3,20 +3,20 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::num::NonZeroU64;
+use std::rc::Rc;
 
 use rand::rngs::StdRng;
 
-use rustc_hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{
     self,
     layout::{LayoutOf, Size},
     Ty, TyCtxt,
 };
+use rustc_ast::attr;
+use rustc_hir::def_id::DefId;
 use rustc_span::{source_map::Span, symbol::sym};
-use syntax::attr;
 
 use crate::*;
 
@@ -85,11 +85,7 @@ impl MemoryExtra {
         } else {
             None
         };
-        MemoryExtra {
-            stacked_borrows,
-            intptrcast: Default::default(),
-            rng: RefCell::new(rng),
-        }
+        MemoryExtra { stacked_borrows, intptrcast: Default::default(), rng: RefCell::new(rng) }
     }
 }
 
@@ -307,18 +303,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
-            let (stacks, base_tag) = Stacks::new_allocation(
-                id,
-                alloc.size,
-                Rc::clone(stacked_borrows),
-                kind,
-            );
-            (Some(stacks), base_tag)
-        } else {
-            // No stacks, no tag.
-            (None, Tag::Untagged)
-        };
+        let (stacks, base_tag) =
+            if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
+                let (stacks, base_tag) =
+                    Stacks::new_allocation(id, alloc.size, Rc::clone(stacked_borrows), kind);
+                (Some(stacks), base_tag)
+            } else {
+                // No stacks, no tag.
+                (None, Tag::Untagged)
+            };
         let mut stacked_borrows = memory_extra.stacked_borrows.as_ref().map(|sb| sb.borrow_mut());
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| {
@@ -360,14 +353,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, FrameData<'tcx>> {
-        let call_id = ecx.memory.extra.stacked_borrows.as_ref().map_or(
-            NonZeroU64::new(1).unwrap(),
-            |stacked_borrows| stacked_borrows.borrow_mut().new_call(),
-        );
-        Ok(FrameData {
-            call_id,
-            catch_panic: None,
-        })
+        let stacked_borrows = ecx.memory.extra.stacked_borrows.as_ref();
+        let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
+            stacked_borrows.borrow_mut().new_call()
+        });
+        Ok(FrameData { call_id, catch_panic: None })
     }
 
     #[inline(always)]
