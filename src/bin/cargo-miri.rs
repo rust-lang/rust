@@ -563,7 +563,8 @@ fn inside_cargo_rustc() {
     // other args for target crates - that is, crates which are ultimately
     // going to get interpreted by Miri.
     if target_crate {
-        let sysroot = std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
+        let sysroot =
+            std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
         args.push("--sysroot".to_owned());
         args.push(sysroot);
         args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
@@ -571,20 +572,20 @@ fn inside_cargo_rustc() {
 
     // Figure out the binary we need to call. If this is a runnable target crate, we want to call
     // Miri to start interpretation; otherwise we want to call rustc to build the crate as usual.
-    let mut command =
-        if target_crate && is_runnable_crate() {
-            // This is the 'target crate' - the binary or test crate that
-            // we want to interpret under Miri. We deserialize the user-provided arguments
-            // from the special environment variable "MIRI_ARGS", and feed them
-            // to the 'miri' binary.
-            let magic = std::env::var("MIRI_ARGS").expect("missing MIRI_ARGS");
-            let mut user_args: Vec<String> = serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
-            args.append(&mut user_args);
-            // Run this in Miri.
-            Command::new(find_miri())
-        } else {
-            Command::new("rustc")
-        };
+    let mut command = if target_crate && is_runnable_crate() {
+        // This is the 'target crate' - the binary or test crate that
+        // we want to interpret under Miri. We deserialize the user-provided arguments
+        // from the special environment variable "MIRI_ARGS", and feed them
+        // to the 'miri' binary.
+        let magic = std::env::var("MIRI_ARGS").expect("missing MIRI_ARGS");
+        let mut user_args: Vec<String> =
+            serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
+        args.append(&mut user_args);
+        // Run this in Miri.
+        Command::new(find_miri())
+    } else {
+        Command::new("rustc")
+    };
 
     // Run it.
     command.args(&args);

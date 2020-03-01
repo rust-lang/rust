@@ -21,8 +21,8 @@ use std::str::FromStr;
 
 use hex::FromHexError;
 
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
 
 struct MiriCompilerCalls {
