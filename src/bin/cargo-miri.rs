@@ -353,7 +353,7 @@ default_features = false
 features = ["panic_unwind"]
 
 [dependencies.test]
-        "#,
+"#,
         )
         .unwrap();
     // The boring bits: a dummy project for xargo.
@@ -369,7 +369,7 @@ version = "0.0.0"
 
 [lib]
 path = "lib.rs"
-        "#,
+"#,
         )
         .unwrap();
     File::create(dir.join("lib.rs")).unwrap();
