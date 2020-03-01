@@ -1476,8 +1476,9 @@ impl<T: Clone> Vec<T> {
     /// difference, with each additional slot filled with `value`.
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method requires [`Clone`] to be able clone the passed value. If
-    /// you need more flexibility (or want to rely on [`Default`] instead of
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    /// If you need more flexibility (or want to rely on [`Default`] instead of
     /// [`Clone`]), use [`resize_with`].
     ///
     /// # Examples
