@@ -545,4 +545,43 @@ mod tests {
         "###
         )
     }
+
+    #[test]
+    fn test_super_super_completion() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                mod a {
+                    const A: usize = 0;
+
+                    mod b {
+                        const B: usize = 0;
+
+                        mod c {
+                            use super::super::<|>
+                        }
+                    }
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "A",
+                source_range: [217; 217),
+                delete: [217; 217),
+                insert: "A",
+                kind: Const,
+            },
+            CompletionItem {
+                label: "b",
+                source_range: [217; 217),
+                delete: [217; 217),
+                insert: "b",
+                kind: Module,
+            },
+        ]
+        "###
+        );
+    }
 }
