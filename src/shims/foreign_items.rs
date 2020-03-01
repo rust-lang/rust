@@ -9,7 +9,7 @@ use rustc::ty;
 use rustc::ty::layout::{Align, Size};
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
-use syntax::attr;
+use rustc_ast::attr;
 
 use crate::*;
 

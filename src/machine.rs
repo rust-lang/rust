@@ -16,7 +16,7 @@ use rustc::ty::{
     Ty, TyCtxt,
 };
 use rustc_span::{source_map::Span, symbol::sym};
-use syntax::attr;
+use rustc_ast::attr;
 
 use crate::*;
 

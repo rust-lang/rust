@@ -8,7 +8,7 @@
 extern crate log;
 // From rustc.
 extern crate rustc_apfloat;
-extern crate syntax;
+extern crate rustc_ast;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_hir;
