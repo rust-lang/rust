@@ -188,7 +188,7 @@ fn parse_args<'a>(
                 let mut err = ecx
                     .struct_span_err(e.span, "positional arguments cannot follow named arguments");
                 err.span_label(e.span, "positional arguments must be before named arguments");
-                for (_, pos) in &names {
+                for pos in names.values() {
                     err.span_label(args[*pos].span, "named argument");
                 }
                 err.emit();
