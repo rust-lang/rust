@@ -923,7 +923,7 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let mem = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let (mem, _) = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
         let inner = mem_to_rcbox(mem.as_ptr());

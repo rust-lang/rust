@@ -37,7 +37,7 @@ fn main() {
     unsafe {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
-        let ptr = Global.alloc(layout.clone()).unwrap();
+        let (ptr, _) = Global.alloc(layout.clone()).unwrap();
         helper::work_with(&ptr);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 1);
         Global.dealloc(ptr, layout.clone());
@@ -49,7 +49,7 @@ fn main() {
         drop(s);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
 
-        let ptr = System.alloc(layout.clone()).unwrap();
+        let (ptr, _) = System.alloc(layout.clone()).unwrap();
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
         helper::work_with(&ptr);
         System.dealloc(ptr, layout);

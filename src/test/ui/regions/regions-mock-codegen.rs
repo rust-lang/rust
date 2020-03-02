@@ -24,29 +24,29 @@ struct Ccx {
     x: isize
 }
 
-fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
+fn alloc(_bcx: &arena) -> &Bcx<'_> {
     unsafe {
         let layout = Layout::new::<Bcx>();
-        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let (ptr, _) = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
         &*(ptr.as_ptr() as *const _)
     }
 }
 
-fn h<'a>(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
+fn h<'a>(bcx: &'a Bcx<'a>) -> &'a Bcx<'a> {
     return alloc(bcx.fcx.arena);
 }
 
-fn g(fcx : &Fcx) {
-    let bcx = Bcx { fcx: fcx };
+fn g(fcx: &Fcx) {
+    let bcx = Bcx { fcx };
     let bcx2 = h(&bcx);
     unsafe {
         Global.dealloc(NonNull::new_unchecked(bcx2 as *const _ as *mut _), Layout::new::<Bcx>());
     }
 }
 
-fn f(ccx : &Ccx) {
+fn f(ccx: &Ccx) {
     let a = arena(());
-    let fcx = Fcx { arena: &a, ccx: ccx };
+    let fcx = Fcx { arena: &a, ccx };
     return g(&fcx);
 }
 
