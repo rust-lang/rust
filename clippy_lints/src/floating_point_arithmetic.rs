@@ -76,12 +76,12 @@ declare_clippy_lint! {
     ///     -a
     /// } else {
     ///     a
-    /// }
+    /// };
     /// let _ = if a < 0.0 {
     ///     a
     /// } else {
     ///     -a
-    /// }
+    /// };
     /// ```
     ///
     /// is better expressed as
