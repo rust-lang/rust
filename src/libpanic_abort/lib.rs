@@ -20,11 +20,8 @@
 
 use core::any::Any;
 
-// We need the definition of TryPayload for __rust_panic_cleanup.
-include!("../libpanic_unwind/payload.rs");
-
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_panic_cleanup(_: TryPayload) -> *mut (dyn Any + Send + 'static) {
+pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unreachable!()
 }
 
