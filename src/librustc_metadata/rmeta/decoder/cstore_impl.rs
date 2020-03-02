@@ -7,7 +7,7 @@ use crate::rmeta::{self, encoder};
 use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
-use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
+use rustc::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::session::{CrateDisambiguator, Session};
@@ -393,14 +393,6 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 impl CStore {
-    pub fn export_macros_untracked(&self, cnum: CrateNum) {
-        let data = self.get_crate_data(cnum);
-        let mut dep_kind = data.dep_kind.lock();
-        if *dep_kind == DepKind::UnexportedMacrosOnly {
-            *dep_kind = DepKind::MacrosOnly;
-        }
-    }
-
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
