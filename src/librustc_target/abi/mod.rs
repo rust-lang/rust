@@ -872,7 +872,7 @@ impl Niche {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
     /// Says where the fields are located within the layout.
-    /// Primitives and fieldless enums appear as unions without fields.
+    /// Primitives and uninhabited enums appear as unions without fields.
     pub fields: FieldPlacement,
 
     /// Encodes information about multi-variant layouts.

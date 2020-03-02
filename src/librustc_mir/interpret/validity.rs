@@ -579,13 +579,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         }
 
         // Check primitive types.  We do this after checking for uninhabited types,
-        // to exclude fieldless enums (that also appear as fieldless unions here).
+        // to exclude uninhabited enums (that also appear as fieldless unions here).
         // Primitives can have varying layout, so we check them separately and before aggregate
         // handling.
         // It is CRITICAL that we get this check right, or we might be validating the wrong thing!
         let primitive = match op.layout.fields {
             // Primitives appear as Union with 0 fields - except for Boxes and fat pointers.
-            // (Fieldless enums also appear here, but they are uninhabited and thus handled above.)
             layout::FieldPlacement::Union(0) => true,
             _ => op.layout.ty.builtin_deref(true).is_some(),
         };
