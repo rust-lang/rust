@@ -662,9 +662,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.71.0"
+version = "0.72.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efa6b75633b0c3412ee36fc416e6d9c1e4ff576b536217f4ac3f34ac83d9e564"
+checksum = "face91691e558746745dc9dc6c67a4e2a24e044926e274d8378e6f19659329f0"
 dependencies = [
  "base64",
  "bitflags",

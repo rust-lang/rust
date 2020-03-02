@@ -20,7 +20,7 @@ globset = "0.4.4"
 itertools = "0.8.2"
 jod-thread = "0.1.0"
 log = "0.4.8"
-lsp-types = { version = "0.71.0", features = ["proposed"] }
+lsp-types = { version = "0.72.0", features = ["proposed"] }
 parking_lot = "0.10.0"
 pico-args = "0.3.1"
 rand = { version = "0.7.3", features = ["small_rng"] }
