@@ -100,7 +100,7 @@ fn cargo() -> Command {
     }
 }
 
-fn xargo() -> Command {
+fn xargo_check() -> Command {
     if let Ok(val) = std::env::var("XARGO_CHECK") {
         // Bootstrap tells us where to find xargo
         Command::new(val)
@@ -202,7 +202,7 @@ fn test_sysroot_consistency() {
 }
 
 fn xargo_version() -> Option<(u32, u32, u32)> {
-    let out = xargo().arg("--version").output().ok()?;
+    let out = xargo_check().arg("--version").output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -376,7 +376,7 @@ path = "lib.rs"
     // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
     let print_sysroot = !ask_user && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
-    let mut command = xargo();
+    let mut command = xargo_check();
     command.arg("build").arg("-q");
     command.current_dir(&dir);
     command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
