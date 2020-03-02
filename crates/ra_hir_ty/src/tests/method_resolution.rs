@@ -1049,6 +1049,25 @@ where
 }
 
 #[test]
+fn method_resolution_3373() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct A<T>(T);
+
+impl A<i32> {
+    fn from(v: i32) -> A<i32> { A(v) }
+}
+
+fn main() {
+    A::from(3)<|>;
+}
+"#,
+    );
+    assert_eq!(t, "A<i32>");
+}
+
+#[test]
 fn method_resolution_slow() {
     // this can get quite slow if we set the solver size limit too high
     let t = type_at(
