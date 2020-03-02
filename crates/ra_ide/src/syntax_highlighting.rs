@@ -19,7 +19,11 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{call_info::call_info_for_token, references::classify_name_ref, Analysis, FileId};
+use crate::{
+    call_info::call_info_for_token,
+    references::{classify_name_ref, NameRefClass},
+    Analysis, FileId,
+};
 
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
@@ -186,24 +190,24 @@ fn highlight_element(
         }
 
         // Highlight references like the definitions they resolve to
-
-        // Special-case field init shorthand
-        NAME_REF if element.parent().and_then(ast::RecordField::cast).is_some() => {
-            HighlightTag::Field.into()
-        }
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => return None,
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             let name_kind = classify_name_ref(sema, &name_ref)?;
 
-            if let NameDefinition::Local(local) = &name_kind {
-                if let Some(name) = local.name(db) {
-                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+            match name_kind {
+                NameRefClass::NameDefinition(def) => {
+                    if let NameDefinition::Local(local) = &def {
+                        if let Some(name) = local.name(db) {
+                            let shadow_count =
+                                bindings_shadow_count.entry(name.clone()).or_default();
+                            binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                        }
+                    };
+                    highlight_name(db, def)
                 }
-            };
-
-            highlight_name(db, name_kind)
+                NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
+            }
         }
 
         // Simple token-based highlighting

@@ -153,7 +153,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     if let Some((node, name_kind)) = match_ast! {
         match (token.parent()) {
             ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d))
+                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
             },
             ast::Name(name) => {
                 classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
