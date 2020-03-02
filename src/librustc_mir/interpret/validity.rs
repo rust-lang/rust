@@ -406,7 +406,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
     /// Check if this is a value of primitive type, and if yes check the validity of the value
     /// at that type.  Return `true` if the type is indeed primitive.
-    fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, bool> {
+    fn try_visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.kind {
@@ -477,7 +477,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 // Nothing to check.
                 Ok(true)
             }
-            // This should be all the (inhabited) primitive types. The rest is compound, we
+            // The above should be all the (inhabited) primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             // (`Str` UTF-8 check happens in `visit_aggregate`, too.)
             ty::Adt(..)
@@ -489,7 +489,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..) => Ok(false),
-            // Some types only occur during inference, we should not see them here.
+            // Some types only occur during typechecking, they have no layout.
+            // We should not see them here and we could not check them anyway.
             ty::Error
             | ty::Infer(..)
             | ty::Placeholder(..)
@@ -618,7 +619,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
 
         // Check primitive types -- the leafs of our recursive descend.
-        if self.visit_primitive(op)? {
+        if self.try_visit_primitive(op)? {
             return Ok(());
         }
         // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
