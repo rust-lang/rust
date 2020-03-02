@@ -1,4 +1,23 @@
 //! Eager expansion related utils
+//!
+//! Here is a dump of a discussion from Vadim Petrochenkov about Eager Expansion and
+//! Its name resolution :
+//!
+//! > Eagerly expanded macros (and also macros eagerly expanded by eagerly expanded macros,
+//! > which actually happens in practice too!) are resolved at the location of the "root" macro
+//! > that performs the eager expansion on its arguments.
+//! > If some name cannot be resolved at the eager expansion time it's considered unresolved,
+//! > even if becomes available later (e.g. from a glob import or other macro).
+//!
+//! > Eagerly expanded macros don't add anything to the module structure of the crate and
+//! > don't build any speculative module structures, i.e. they are expanded in a "flat"
+//! > way even if tokens in them look like modules.
+//!
+//! > In other words, it kinda works for simple cases for which it was originally intended,
+//! > and we need to live with it because it's available on stable and widely relied upon.
+//!
+//!
+//! See the full discussion : https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros
 
 use crate::{
     ast::{self, AstNode},
