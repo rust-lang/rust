@@ -1191,7 +1191,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let right_len = right_node.len();
 
         // necessary for correctness, but in a private module
-        assert!(left_len + right_len + 1 <= CAPACITY);
+        assert!(left_len + right_len < CAPACITY);
 
         unsafe {
             ptr::write(
