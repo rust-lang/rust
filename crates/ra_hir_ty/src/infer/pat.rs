@@ -187,12 +187,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Pat::Slice { prefix, slice: _slice, suffix } => {
                 let (container_ty, elem_ty) = match &expected {
-                    ty_app!(TypeCtor::Array, st) => {
-                        (TypeCtor::Array, st.as_single().clone())
-                    },
-                    ty_app!(TypeCtor::Slice, st) => {
-                        (TypeCtor::Slice, st.as_single().clone())
-                    },
+                    ty_app!(TypeCtor::Array, st) => (TypeCtor::Array, st.as_single().clone()),
+                    ty_app!(TypeCtor::Slice, st) => (TypeCtor::Slice, st.as_single().clone()),
                     _ => (TypeCtor::Slice, Ty::Unknown),
                 };
 

@@ -101,11 +101,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 break;
             }
             ast::PathSegmentKind::SuperKw => {
-                let nested_super_count = if let PathKind::Super(n) = kind {
-                    n
-                } else {
-                    0
-                };
+                let nested_super_count = if let PathKind::Super(n) = kind { n } else { 0 };
                 kind = PathKind::Super(nested_super_count + 1);
             }
         }
