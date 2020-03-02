@@ -60,6 +60,12 @@ const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
 // bad slice: length not an int
 const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
+// bad slice box: length too big
+const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
+//~^ ERROR it is undefined behavior to use this value
+// bad slice box: length not an int
+const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
+//~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];

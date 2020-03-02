@@ -307,7 +307,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     }
 
     /// Check a reference or `Box`.
-    fn check_safe_pointer(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+    fn check_safe_pointer(
+        &mut self,
+        value: OpTy<'tcx, M::PointerTag>,
+        kind: &str,
+    ) -> InterpResult<'tcx> {
         let value = self.ecx.read_immediate(value)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
@@ -337,13 +341,14 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 );
                 match err.kind {
                     err_unsup!(InvalidNullPointerUsage) => {
-                        throw_validation_failure!("a NULL reference", self.path)
+                        throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
                     }
                     err_unsup!(AlignmentCheckFailed { required, has }) => {
                         throw_validation_failure!(
                             format_args!(
-                                "an unaligned reference \
+                                "an unaligned {} \
                                     (required {} byte alignment but found {})",
+                                kind,
                                 required.bytes(),
                                 has.bytes()
                             ),
@@ -351,11 +356,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         )
                     }
                     err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
-                        "a dangling reference (created from integer)",
+                        format_args!("a dangling {} (created from integer)", kind),
                         self.path
                     ),
                     _ => throw_validation_failure!(
-                        "a dangling reference (not entirely in bounds)",
+                        format_args!("a dangling {} (not entirely in bounds)", kind),
                         self.path
                     ),
                 }
@@ -449,11 +454,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 Ok(true)
             }
             ty::Ref(..) => {
-                self.check_safe_pointer(value)?;
+                self.check_safe_pointer(value, "reference")?;
                 Ok(true)
             }
             ty::Adt(def, ..) if def.is_box() => {
-                self.check_safe_pointer(value)?;
+                self.check_safe_pointer(value, "box")?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
