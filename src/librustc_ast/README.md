@@ -1,4 +1,4 @@
-The `syntax` crate contains those things concerned purely with syntax
+The `rustc_ast` crate contains those things concerned purely with syntax
 – that is, the AST ("abstract syntax tree"), parser, pretty-printer,
 lexer, macro expander, and utilities for traversing ASTs.
 
