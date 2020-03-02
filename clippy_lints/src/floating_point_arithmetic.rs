@@ -420,101 +420,82 @@ fn is_zero(expr: &Expr<'_>) -> bool {
     }
 }
 
-fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
+/// If the expressions are not opposites, return None
+/// Otherwise, return true if expr2 = -expr1, false if expr1 = -expr2 and return the positive
+/// expression
+fn are_opposites<'a>(
+    cx: &LateContext<'_, '_>,
+    expr1: &'a Expr<'a>,
+    expr2: &'a Expr<'a>,
+) -> Option<(bool, &'a Expr<'a>)> {
+    if let ExprKind::Block(
+        Block {
+            stmts: [],
+            expr: Some(expr1_inner),
+            ..
+        },
+        _,
+    ) = &expr1.kind
+    {
         if let ExprKind::Block(
             Block {
                 stmts: [],
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
-                        ..
-                    }),
+                expr: Some(expr2_inner),
                 ..
             },
             _,
-        ) = else_body.kind
+        ) = &expr2.kind
         {
-            if let ExprKind::Block(
-                Block {
-                    stmts: [],
-                    expr: Some(body),
-                    ..
-                },
-                _,
-            ) = &body.kind
-            {
-                if are_exprs_equal(cx, else_expr, body) {
-                    if is_testing_positive(cx, cond, body) {
-                        span_lint_and_sugg(
-                            cx,
-                            SUBOPTIMAL_FLOPS,
-                            expr.span,
-                            "This looks like you've implemented your own absolute value function",
-                            "try",
-                            format!("{}.abs()", Sugg::hir(cx, body, "..")),
-                            Applicability::MachineApplicable,
-                        );
-                    } else if is_testing_negative(cx, cond, body) {
-                        span_lint_and_sugg(
-                            cx,
-                            SUBOPTIMAL_FLOPS,
-                            expr.span,
-                            "This looks like you've implemented your own negative absolute value function",
-                            "try",
-                            format!("-{}.abs()", Sugg::hir(cx, body, "..")),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+            if let ExprKind::Unary(UnOp::UnNeg, expr1_neg) = &expr1_inner.kind {
+                if are_exprs_equal(cx, expr1_neg, expr2_inner) {
+                    return Some((false, expr2_inner));
+                }
+            }
+            if let ExprKind::Unary(UnOp::UnNeg, expr2_neg) = &expr2_inner.kind {
+                if are_exprs_equal(cx, expr1_inner, expr2_neg) {
+                    return Some((true, expr1_inner));
                 }
             }
         }
-        if let ExprKind::Block(
-            Block {
-                stmts: [],
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::Unary(UnOp::UnNeg, else_expr),
-                        ..
-                    }),
-                ..
-            },
-            _,
-        ) = &body.kind
-        {
-            if let ExprKind::Block(
-                Block {
-                    stmts: [],
-                    expr: Some(body),
-                    ..
-                },
-                _,
-            ) = &else_body.kind
-            {
-                if are_exprs_equal(cx, else_expr, body) {
-                    if is_testing_negative(cx, cond, body) {
-                        span_lint_and_sugg(
-                            cx,
-                            SUBOPTIMAL_FLOPS,
-                            expr.span,
-                            "This looks like you've implemented your own absolute value function",
-                            "try",
-                            format!("{}.abs()", Sugg::hir(cx, body, "..")),
-                            Applicability::MachineApplicable,
-                        );
-                    } else if is_testing_positive(cx, cond, body) {
-                        span_lint_and_sugg(
-                            cx,
-                            SUBOPTIMAL_FLOPS,
-                            expr.span,
-                            "This looks like you've implemented your own negative absolute value function",
-                            "try",
-                            format!("-{}.abs()", Sugg::hir(cx, body, "..")),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+    }
+    None
+}
+
+fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
+        if let Some((expr1_pos, body)) = are_opposites(cx, body, else_body) {
+            let pos_abs_sugg = (
+                "This looks like you've implemented your own absolute value function",
+                format!("{}.abs()", Sugg::hir(cx, body, "..")),
+            );
+            let neg_abs_sugg = (
+                "This looks like you've implemented your own negative absolute value function",
+                format!("-{}.abs()", Sugg::hir(cx, body, "..")),
+            );
+            let sugg = if is_testing_positive(cx, cond, body) {
+                if expr1_pos {
+                    pos_abs_sugg
+                } else {
+                    neg_abs_sugg
                 }
-            }
+            } else if is_testing_negative(cx, cond, body) {
+                if expr1_pos {
+                    neg_abs_sugg
+                } else {
+                    pos_abs_sugg
+                }
+            } else {
+                return;
+            };
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                sugg.0,
+                "try",
+                sugg.1,
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
