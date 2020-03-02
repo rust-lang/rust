@@ -9,8 +9,9 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
-    LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
+    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
+    HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind,
+    MacroFile,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -24,7 +25,7 @@ impl TokenExpander {
     pub fn expand(
         &self,
         db: &dyn AstDatabase,
-        id: MacroCallId,
+        id: LazyMacroId,
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
@@ -66,6 +67,9 @@ pub trait AstDatabase: SourceDatabase {
     fn parse_macro(&self, macro_file: MacroFile)
         -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
     fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
+
+    #[salsa::interned]
+    fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 }
 
 pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
@@ -101,6 +105,7 @@ pub(crate) fn macro_def(
         MacroDefKind::BuiltInDerive(expander) => {
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
+        MacroDefKind::BuiltInEager(_expander) => None,
     }
 }
 
@@ -110,6 +115,10 @@ pub(crate) fn macro_arg(
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let id = match id {
         MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_id) => {
+            // FIXME: support macro_arg for eager macro
+            return None;
+        }
     };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
@@ -123,13 +132,16 @@ pub(crate) fn macro_expand(
 ) -> Result<Arc<tt::Subtree>, String> {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(id) => {
+            return Ok(db.lookup_intern_eager_expansion(id).subtree);
+        }
     };
 
     let loc = db.lookup_intern_macro(lazy_id);
     let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
-    let tt = macro_rules.0.expand(db, id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
+    let tt = macro_rules.0.expand(db, lazy_id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 65536 {
@@ -177,6 +189,9 @@ pub(crate) fn parse_macro(
 fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(id) => {
+            return db.lookup_intern_eager_expansion(id).fragment;
+        }
     };
     let syn = db.lookup_intern_macro(lazy_id).kind.node(db).value;
 

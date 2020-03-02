@@ -173,6 +173,7 @@ pub mod known {
         compile_error,
         line,
         stringify,
+        concat,
         format_args,
         format_args_nl,
         env,

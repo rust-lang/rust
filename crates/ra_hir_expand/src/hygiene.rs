@@ -9,7 +9,7 @@ use ra_syntax::ast;
 use crate::{
     db::AstDatabase,
     name::{AsName, Name},
-    HirFileId, HirFileIdRepr, MacroDefKind,
+    HirFileId, HirFileIdRepr, MacroCallId, MacroDefKind,
 };
 
 #[derive(Debug)]
@@ -22,17 +22,18 @@ impl Hygiene {
     pub fn new(db: &impl AstDatabase, file_id: HirFileId) -> Hygiene {
         let def_crate = match file_id.0 {
             HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let lazy_id = match macro_file.macro_call_id {
-                    crate::MacroCallId::LazyMacro(id) => id,
-                };
-                let loc = db.lookup_intern_macro(lazy_id);
-                match loc.def.kind {
-                    MacroDefKind::Declarative => loc.def.krate,
-                    MacroDefKind::BuiltIn(_) => None,
-                    MacroDefKind::BuiltInDerive(_) => None,
+            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
+                MacroCallId::LazyMacro(id) => {
+                    let loc = db.lookup_intern_macro(id);
+                    match loc.def.kind {
+                        MacroDefKind::Declarative => loc.def.krate,
+                        MacroDefKind::BuiltIn(_) => None,
+                        MacroDefKind::BuiltInDerive(_) => None,
+                        MacroDefKind::BuiltInEager(_) => None,
+                    }
                 }
-            }
+                MacroCallId::EagerMacro(_id) => None,
+            },
         };
         Hygiene { def_crate }
     }
