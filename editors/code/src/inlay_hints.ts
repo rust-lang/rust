@@ -2,9 +2,7 @@ import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
 import { Ctx } from './ctx';
-import { log, sendRequestWithRetry } from './util';
-
-const noInlayUriSchemes = ['git', 'svn'];
+import { log, sendRequestWithRetry, isRustDocument } from './util';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
@@ -17,7 +15,7 @@ export function activateInlayHints(ctx: Ctx) {
     vscode.workspace.onDidChangeTextDocument(
         async event => {
             if (event.contentChanges.length === 0) return;
-            if (event.document.languageId !== 'rust') return;
+            if (!isRustDocument(event.document)) return;
             await hintsUpdater.refresh();
         },
         null,
@@ -79,7 +77,7 @@ class HintsUpdater {
     }
 
     clear() {
-        this.allEditors.forEach(it => {
+        this.ctx.visibleRustEditors.forEach(it => {
             this.setTypeDecorations(it, []);
             this.setParameterDecorations(it, []);
         });
@@ -87,20 +85,7 @@ class HintsUpdater {
 
     async refresh() {
         if (!this.enabled) return;
-        await Promise.all(this.allEditors.map(it => this.refreshEditor(it)));
-    }
-
-    private get allEditors(): vscode.TextEditor[] {
-        return vscode.window.visibleTextEditors.filter(
-            editor => {
-                if (editor.document.languageId !== 'rust') {
-                    return false;
-                }
-                const scheme = editor.document.uri.scheme;
-                const hasBlacklistedScheme = noInlayUriSchemes.some(s => s === scheme);
-                return !hasBlacklistedScheme;
-            },
-        );
+        await Promise.all(this.ctx.visibleRustEditors.map(it => this.refreshEditor(it)));
     }
 
     private async refreshEditor(editor: vscode.TextEditor): Promise<void> {
