@@ -159,7 +159,9 @@ function initDecorations(): Map<string, vscode.TextEditorDecorationType> {
     const theme = ColorTheme.load();
     const res = new Map();
     TAG_TO_SCOPES.forEach((scopes, tag) => {
-        if (!scopes) throw `unmapped tag: ${tag}`;
+        // We are going to axe this soon, so don't try to detect unknown tags.
+        // Users should switch to the new semantic tokens implementation.
+        if (!scopes) return;
         const rule = theme.lookup(scopes);
         const decor = createDecorationFromTextmate(rule);
         res.set(tag, decor);
@@ -211,7 +213,7 @@ const TAG_TO_SCOPES = new Map<string, string[]>([
     ["macro", ["entity.name.macro"]],
 
     ["variable", ["variable"]],
-    ["variable.mut", ["variable", "meta.mutable"]],
+    ["variable.mutable", ["variable", "meta.mutable"]],
 
     ["type", ["entity.name.type"]],
     ["type.builtin", ["entity.name.type", "support.type.primitive"]],
@@ -221,10 +223,10 @@ const TAG_TO_SCOPES = new Map<string, string[]>([
 
     ["literal.byte", ["constant.character.byte"]],
     ["literal.char", ["constant.character.rust"]],
-    ["literal.numeric", ["constant.numeric"]],
+    ["numeric_literal", ["constant.numeric"]],
 
     ["comment", ["comment"]],
-    ["string", ["string.quoted"]],
+    ["string_literal", ["string.quoted"]],
     ["attribute", ["meta.attribute.rust"]],
 
     ["keyword", ["keyword"]],
