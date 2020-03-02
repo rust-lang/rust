@@ -1,26 +1,25 @@
 //! A framework that can express both [gen-kill] and generic dataflow problems.
 //!
-//! There is another interface for dataflow in the compiler in `librustc_mir/dataflow/mod.rs`. The
-//! interface in this module will eventually [replace that one][design-meeting].
+//! To actually use this framework, you must implement either the `Analysis` or the
+//! `GenKillAnalysis` trait. If your transfer function can be expressed with only gen/kill
+//! operations, prefer `GenKillAnalysis` since it will run faster while iterating to fixpoint. The
+//! `impls` module contains several examples of gen/kill dataflow analyses.
 //!
-//! To actually use this framework, you must implement either the `Analysis` or the `GenKillAnalysis`
-//! trait. If your transfer function can be expressed with only gen/kill operations, prefer
-//! `GenKillAnalysis` since it will run faster while iterating to fixpoint. Create an `Engine` using
-//! the appropriate constructor and call `iterate_to_fixpoint`. You can use a `ResultsCursor` to
-//! inspect the fixpoint solution to your dataflow problem.
+//! Create an `Engine` for your analysis using the `into_engine` method on the `Analysis` trait,
+//! then call `iterate_to_fixpoint`. From there, you can use a `ResultsCursor` to inspect the
+//! fixpoint solution to your dataflow problem, or implement the `ResultsVisitor` interface and use
+//! `visit_results`. The following example uses the `ResultsCursor` approach.
 //!
 //! ```ignore(cross-crate-imports)
+//! use rustc_mir::dataflow::Analysis; // Makes `into_engine` available.
+//!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>, did: DefId) {
-//!     let analysis = MyAnalysis::new();
+//!     let analysis = MyAnalysis::new()
+//!         .into_engine(tcx, body, did)
+//!         .iterate_to_fixpoint()
+//!         .into_results_cursor(body);
 //!
-//!     // If `MyAnalysis` implements `GenKillAnalysis`.
-//!     let results = Engine::new_gen_kill(tcx, body, did, analysis).iterate_to_fixpoint();
-//!
-//!     // If `MyAnalysis` implements `Analysis`.
-//!     // let results = Engine::new_generic(tcx, body, did, analysis).iterate_to_fixpoint();
-//!
-//!     let mut cursor = ResultsCursor::new(body, results);
-//!
+//!     // Print the dataflow state *after* each statement in the start block.
 //!     for (_, statement_index) in body.block_data[START_BLOCK].statements.iter_enumerated() {
 //!         cursor.seek_after(Location { block: START_BLOCK, statement_index });
 //!         let state = cursor.get();
@@ -30,7 +29,6 @@
 //! ```
 //!
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
-//! [design-meeting]https://github.com/rust-lang/compiler-team/issues/202
 
 use std::io;
 
