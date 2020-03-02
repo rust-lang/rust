@@ -563,6 +563,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 polarity,
                 defaultness,
                 constness,
+                defaultness_span: _,
                 ref generics,
                 ref of_trait,
                 self_ty,

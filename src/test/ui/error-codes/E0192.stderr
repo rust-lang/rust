@@ -1,8 +1,10 @@
-error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
-  --> $DIR/E0192.rs:9:1
+error[E0192]: invalid negative impl
+  --> $DIR/E0192.rs:9:6
    |
 LL | impl !Trait for Foo { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^
+   |
+   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
 
 error: aborting due to previous error
 

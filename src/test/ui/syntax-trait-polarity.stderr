@@ -32,17 +32,21 @@ LL | unsafe impl<T> !Send for TestType2<T> {}
    | |              negative because of this
    | unsafe because of this
 
-error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
-  --> $DIR/syntax-trait-polarity.rs:14:1
+error[E0192]: invalid negative impl
+  --> $DIR/syntax-trait-polarity.rs:14:6
    |
 LL | impl !TestTrait for TestType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^
+   |
+   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
 
-error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
-  --> $DIR/syntax-trait-polarity.rs:24:1
+error[E0192]: invalid negative impl
+  --> $DIR/syntax-trait-polarity.rs:24:9
    |
 LL | impl<T> !TestTrait for TestType2<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^
+   |
+   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
 
 error: aborting due to 6 previous errors
 
