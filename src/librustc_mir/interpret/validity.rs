@@ -406,7 +406,10 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
     /// Check if this is a value of primitive type, and if yes check the validity of the value
     /// at that type.  Return `true` if the type is indeed primitive.
-    fn try_visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, bool> {
+    fn try_visit_primitive(
+        &mut self,
+        value: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.kind {
@@ -487,8 +490,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..) => Ok(false),
+            | ty::Generator(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error
@@ -498,7 +500,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             | ty::Param(..)
             | ty::Opaque(..)
             | ty::UnnormalizedProjection(..)
-            | ty::Projection(..) => bug!("Encountered invalid type {:?}", ty),
+            | ty::Projection(..)
+            | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }
 
