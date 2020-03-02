@@ -112,9 +112,7 @@ impl context::AggregateOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
 
         debug!("make_solution(root_goal = {:?})", root_goal);
 
-        if simplified_answers.peek_answer().is_none() {
-            return None;
-        }
+        simplified_answers.peek_answer()?;
 
         let SimplifiedAnswer { subst: constrained_subst, ambiguous } =
             simplified_answers.next_answer().unwrap();
