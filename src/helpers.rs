@@ -300,17 +300,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // We have to do *something* for unions.
-            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>, fields: usize) -> InterpResult<'tcx> {
+                assert!(fields > 0); // we should never reach "pseudo-unions" with 0 fields, like primitives
+
                 // With unions, we fall back to whatever the type says, to hopefully be consistent
                 // with LLVM IR.
                 // FIXME: are we consistent, and is this really the behavior we want?
                 let frozen = self.ecx.type_is_freeze(v.layout.ty);
                 if frozen { Ok(()) } else { (self.unsafe_cell_action)(v) }
-            }
-
-            // We should never get to a primitive, but always short-circuit somewhere above.
-            fn visit_primitive(&mut self, _v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-                bug!("we should always short-circuit before coming to a primitive")
             }
         }
     }

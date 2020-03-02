@@ -7,5 +7,5 @@ fn main() {
     let g: fn() -> &'static i32 = unsafe { std::mem::transmute(f as fn() -> *const i32) };
 
     let _x = g();
-    //~^ ERROR encountered 0, but expected something greater or equal to 1
+    //~^ ERROR encountered a NULL reference
 }
