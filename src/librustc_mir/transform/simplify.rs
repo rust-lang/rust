@@ -128,12 +128,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     changed |= inner_changed;
                 }
 
-                let merged_block_count =
+                let statements_to_merge =
                     merged_blocks.iter().map(|&i| self.basic_blocks[i].statements.len()).sum();
 
-                if merged_block_count > 0 {
+                if statements_to_merge > 0 {
                     let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
-                    statements.reserve(merged_block_count);
+                    statements.reserve(statements_to_merge);
                     for &from in &merged_blocks {
                         statements.append(&mut self.basic_blocks[from].statements);
                     }
