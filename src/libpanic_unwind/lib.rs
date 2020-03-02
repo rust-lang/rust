@@ -72,7 +72,7 @@ extern "C" {
 
 mod dwarf;
 
-#[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_panic_cleanup(
     payload: TryPayload,
 ) -> *mut (dyn Any + Send + 'static) {
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(
 
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
-#[no_mangle]
+#[rustc_std_internal_symbol]
 #[unwind(allowed)]
 pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     let payload = payload as *mut &mut dyn BoxMeUp;

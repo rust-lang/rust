@@ -89,7 +89,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     #[cfg(not(any(
         all(target_arch = "wasm32", not(target_os = "emscripten"),),
         all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
@@ -98,7 +98,7 @@ pub mod personalities {
 
     // On x86_64-pc-windows-gnu we use our own personality function that needs
     // to return `ExceptionContinueSearch` as we're passing on all our frames.
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"))]
     pub extern "C" fn rust_eh_personality(
         _record: usize,
@@ -114,16 +114,16 @@ pub mod personalities {
     //
     // Note that we don't execute landing pads, so this is never called, so it's
     // body is empty.
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     #[cfg(all(bootstrap, target_os = "windows", target_env = "gnu"))]
     pub extern "C" fn rust_eh_unwind_resume() {}
 
     // These two are called by our startup objects on i686-pc-windows-gnu, but
     // they don't need to do anything so the bodies are nops.
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
     pub extern "C" fn rust_eh_register_frames() {}
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
     pub extern "C" fn rust_eh_unregister_frames() {}
 }

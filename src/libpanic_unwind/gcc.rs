@@ -130,7 +130,6 @@ cfg_if::cfg_if! {
         //
         // iOS uses the default routine instead since it uses SjLj unwinding.
         #[lang = "eh_personality"]
-        #[no_mangle]
         unsafe extern "C" fn rust_eh_personality(state: uw::_Unwind_State,
                                                  exception_object: *mut uw::_Unwind_Exception,
                                                  context: *mut uw::_Unwind_Context)
@@ -264,7 +263,6 @@ cfg_if::cfg_if! {
                 // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
                 // handler data (aka LSDA) uses GCC-compatible encoding.
                 #[lang = "eh_personality"]
-                #[no_mangle]
                 #[allow(nonstandard_style)]
                 unsafe extern "C" fn rust_eh_personality(exceptionRecord: *mut uw::EXCEPTION_RECORD,
                         establisherFrame: uw::LPVOID,
@@ -280,7 +278,6 @@ cfg_if::cfg_if! {
             } else {
                 // The personality routine for most of our targets.
                 #[lang = "eh_personality"]
-                #[no_mangle]
                 unsafe extern "C" fn rust_eh_personality(version: c_int,
                         actions: uw::_Unwind_Action,
                         exception_class: uw::_Unwind_Exception_Class,
@@ -351,12 +348,12 @@ pub mod eh_frame_registry {
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
     }
 
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern "C" fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __register_frame_info(eh_frame_begin, object);
     }
 
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __deregister_frame_info(eh_frame_begin, object);
     }

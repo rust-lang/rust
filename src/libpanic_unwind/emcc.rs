@@ -94,7 +94,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> DestructorRet {
 }
 
 #[lang = "eh_personality"]
-#[no_mangle]
 unsafe extern "C" fn rust_eh_personality(
     version: c_int,
     actions: uw::_Unwind_Action,
