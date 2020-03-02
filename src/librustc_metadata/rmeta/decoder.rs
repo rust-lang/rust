@@ -1,5 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
+use crate::creader::CrateMetadataRef;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
@@ -125,7 +126,7 @@ struct ImportedSourceFile {
 
 pub(super) struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
-    cdata: Option<&'a CrateMetadata>,
+    cdata: Option<CrateMetadataRef<'a>>,
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
 
@@ -141,7 +142,7 @@ pub(super) struct DecodeContext<'a, 'tcx> {
 /// Abstract over the various ways one can create metadata decoders.
 pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
-    fn cdata(self) -> Option<&'a CrateMetadata> {
+    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         None
     }
     fn sess(self) -> Option<&'tcx Session> {
@@ -162,7 +163,7 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
             lazy_state: LazyState::NoNode,
             alloc_decoding_session: self
                 .cdata()
-                .map(|cdata| cdata.alloc_decoding_state.new_decoding_session()),
+                .map(|cdata| cdata.cdata.alloc_decoding_state.new_decoding_session()),
         }
     }
 }
@@ -185,33 +186,33 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadata {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadataRef<'a> {
     fn raw_bytes(self) -> &'a [u8] {
         self.blob.raw_bytes()
     }
-    fn cdata(self) -> Option<&'a CrateMetadata> {
-        Some(self)
+    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
+        Some(*self)
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, &'tcx Session) {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, &'tcx Session) {
     fn raw_bytes(self) -> &'a [u8] {
         self.0.raw_bytes()
     }
-    fn cdata(self) -> Option<&'a CrateMetadata> {
-        Some(self.0)
+    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
+        Some(*self.0)
     }
     fn sess(self) -> Option<&'tcx Session> {
         Some(&self.1)
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     fn raw_bytes(self) -> &'a [u8] {
         self.0.raw_bytes()
     }
-    fn cdata(self) -> Option<&'a CrateMetadata> {
-        Some(self.0)
+    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
+        Some(*self.0)
     }
     fn tcx(self) -> Option<TyCtxt<'tcx>> {
         Some(self.1)
@@ -242,7 +243,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
-    fn cdata(&self) -> &'a CrateMetadata {
+    fn cdata(&self) -> CrateMetadataRef<'a> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
@@ -558,7 +559,7 @@ impl CrateRoot<'_> {
     }
 }
 
-impl<'a, 'tcx> CrateMetadata {
+impl CrateMetadata {
     crate fn new(
         sess: &Session,
         blob: MetadataBlob,
@@ -601,7 +602,9 @@ impl<'a, 'tcx> CrateMetadata {
             extern_crate: Lock::new(None),
         }
     }
+}
 
+impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
     }
@@ -1440,10 +1443,10 @@ impl<'a, 'tcx> CrateMetadata {
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
     fn imported_source_files(
-        &'a self,
+        &self,
         local_source_map: &source_map::SourceMap,
-    ) -> &[ImportedSourceFile] {
-        self.source_map_import_info.init_locking(|| {
+    ) -> &'a [ImportedSourceFile] {
+        self.cdata.source_map_import_info.init_locking(|| {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
@@ -1540,7 +1543,9 @@ impl<'a, 'tcx> CrateMetadata {
 
         dep_node_index
     }
+}
 
+impl CrateMetadata {
     crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
         self.dependencies.borrow()
     }
