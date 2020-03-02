@@ -100,7 +100,7 @@ sorts of identifiers in active use:
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
 [`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.BodyId.html
-[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/node_id/struct.NodeId.html
+[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
 
 We also have an internal map to go from `DefId` to what’s called "Def path". "Def path" is like a
 module path but a bit more rich. For example, it may be `crate::foo::MyStruct` that identifies

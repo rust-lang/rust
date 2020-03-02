@@ -20,7 +20,7 @@ namespaces and therefore can co-exist.
 The name resolution in Rust is a two-phase process. In the first phase, which runs
 during macro expansion, we build a tree of modules and resolve imports. Macro
 expansion and name resolution communicate with each other via the `Resolver`
-trait, defined in `libsyntax`.
+trait, defined in `librustc_ast`.
 
 The input to the second phase is the syntax tree, produced by parsing input
 files and expanding macros. This phase produces links from all the names in the

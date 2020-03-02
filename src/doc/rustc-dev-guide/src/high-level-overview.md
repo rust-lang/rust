@@ -7,7 +7,7 @@ there live many crates. These crates contain the sources for the
 standard library and the compiler.  This document, of course, focuses
 on the latter.
 
-Rustc consists of a number of crates, including `syntax`,
+Rustc consists of a number of crates, including `rustc_ast`,
 `rustc`, `rustc_target`, `rustc_codegen`, `rustc_driver`, and
 many more. The source for each crate can be found in a directory
 like `src/libXXX`, where `XXX` is the crate name.
@@ -33,7 +33,7 @@ rustc_codegen  rustc_borrowck   ...  rustc_metadata
                     rustc
                        |
                        v
-                    syntax
+                   rustc_ast
                     /    \
                   /       \
            rustc_span  rustc_builtin_macros
@@ -92,7 +92,7 @@ take:
 1. **Parsing input**
     - this processes the `.rs` files and produces the AST
       ("abstract syntax tree")
-    - the AST is defined in `src/libsyntax/ast.rs`. It is intended to match the lexical
+    - the AST is defined in `src/librustc_ast/ast.rs`. It is intended to match the lexical
       syntax of the Rust language quite closely.
 2. **Name resolution, macro expansion, and configuration**
     - once parsing is complete, we process the AST recursively, resolving

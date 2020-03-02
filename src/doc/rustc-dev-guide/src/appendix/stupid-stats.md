@@ -61,7 +61,7 @@ Macros and syntax extensions are expanded, and `cfg` attributes will cause some
 code to disappear. The resulting AST won't have any macros or macro uses left
 in.
 
-The code for these first two phases is in [libsyntax](https://github.com/rust-lang/rust/tree/master/src/libsyntax).
+The code for these first two phases is in [librustc_ast](https://github.com/rust-lang/rust/tree/master/src/librustc_ast).
 
 After this phase, the compiler allocates ids to each node in the AST
 (technically not every node, but most of them). If we are writing out
@@ -356,7 +356,7 @@ struct StupidVisitor {
 
 The `StupidVisitor` struct just keeps track of the number of `println!`s it has
 seen and the count for each number of arguments. It implements
-`syntax::visit::Visitor` to walk the AST. Mostly we just use the default
+`rustc_ast::visit::Visitor` to walk the AST. Mostly we just use the default
 methods, these walk the AST taking no action. We override `visit_item` and
 `visit_mac` to implement custom behaviour when we walk into items (items include
 functions, modules, traits, structs, and so forth, we're only interested in

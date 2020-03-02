@@ -7,7 +7,7 @@ them better.
 Term                    | Meaning
 ------------------------|--------
 arena/arena allocation  |  an _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _area allocation_. See [this chapter](../memory.md) for more info.
-AST                     |  the abstract syntax tree produced by the syntax crate; reflects user syntax very closely.
+AST                     |  the abstract syntax tree produced by the `rustc_ast` crate; reflects user syntax very closely.
 binder                  |  a "binder" is a place where a variable or type is declared; for example, the `<T>` is a binder for the generic type parameter `T` in `fn foo<T>(..)`, and \|`a`\|` ...` is a binder for the parameter `a`. See [the background chapter for more](./background.html#free-vs-bound)
 bound variable          |  a "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expression \|`a`\|` a * 2`. See [the background chapter for more](./background.html#free-vs-bound)
 codegen                 |  the code to translate MIR into LLVM IR.

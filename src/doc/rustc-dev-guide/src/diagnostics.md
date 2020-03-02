@@ -322,12 +322,12 @@ like normal but invokes the lint with `buffer_lint`.
 
 #### Linting even earlier in the compiler
 
-The parser (`libsyntax`) is interesting in that it cannot have dependencies on
+The parser (`librustc_ast`) is interesting in that it cannot have dependencies on
 any of the other `librustc*` crates. In particular, it cannot depend on
 `librustc::lint` or `librustc_lint`, where all of the compiler linting
 infrastructure is defined. That's troublesome!
 
-To solve this, `libsyntax` defines its own buffered lint type, which
+To solve this, `librustc_ast` defines its own buffered lint type, which
 `ParseSess::buffer_lint` uses. After macro expansion, these buffered lints are
 then dumped into the `Session::buffered_lints` used by the rest of the compiler.
 
@@ -358,7 +358,7 @@ the structured JSON and see the "human" output (well, _sans_ colors)
 without having to compile everything twice.
 
 The "human" readable and the json format emitter can be found under
-librustc_errors, both were moved from the libsyntax crate to the
+librustc_errors, both were moved from the `librustc_ast` crate to the
 [librustc_errors crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html).
 
 The JSON emitter defines [its own `Diagnostic`

@@ -18,7 +18,7 @@ form which is easier for the compiler to work with, usually called an [*Abstract
 Syntax Tree*][ast] (AST). An AST mirrors the structure of a Rust program in memory,
 using a `Span` to link a particular AST node back to its source text.
 
-The AST is defined in [`libsyntax`][libsyntax], along with some definitions for
+The AST is defined in [`librustc_ast`][librustc_ast], along with some definitions for
 tokens and token streams, data structures/traits for mutating ASTs, and shared
 definitions for other AST-related parts of the compiler (like the lexer and
 macro-expansion).
@@ -46,18 +46,18 @@ Code for lexical analysis is split between two crates:
   constituting tokens. Although it is popular to implement lexers as generated
   finite state machines, the lexer in `rustc_lexer` is hand-written.
 
-- [`StringReader`] from [libsyntax] integrates `rustc_lexer` with `rustc`
+- [`StringReader`] from [`librustc_ast`][librustc_ast] integrates `rustc_lexer` with `rustc`
   specific data structures. Specifically, it adds `Span` information to tokens
   returned by `rustc_lexer` and interns identifiers.
 
-[libsyntax]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/index.html
+[librustc_ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
 [rustc_errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
-[ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
+[ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [librustc_parse]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/index.html
-[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/parser/struct.Parser.html
+[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
-[visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/index.html
+[visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/index.html
 [sourcefile]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.SourceFile.html

@@ -65,7 +65,7 @@ described in more detail below):
 1. Once the change has been in the wild for at least one cycle, we can
    **stabilize the change**, converting those warnings into errors.
 
-Finally, for changes to libsyntax that will affect plugins, the general policy
+Finally, for changes to `librustc_ast` that will affect plugins, the general policy
 is to batch these changes. That is discussed below in more detail.
 
 ### Tracking issue

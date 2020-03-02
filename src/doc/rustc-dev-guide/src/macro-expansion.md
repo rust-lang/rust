@@ -1,6 +1,6 @@
 # Macro expansion
 
-> `libsyntax`, `librustc_expand`, and `librustc_builtin_macros` are all undergoing
+> `librustc_ast`, `librustc_expand`, and `librustc_builtin_macros` are all undergoing
 > refactoring, so some of the links in this chapter may be broken.
 
 Macro expansion happens during parsing. `rustc` has two parsers, in fact: the
@@ -361,24 +361,24 @@ be accessed from any Ident without any context) librustc_span/lib.rs - some
 secondary methods like macro backtrace using primary methods from hygiene.rs
 librustc_builtin_macros - implementations of built-in macros (including macro attributes
 and derives) and some other early code generation facilities like injection of
-standard library imports or generation of test harness.  libsyntax/config.rs -
+standard library imports or generation of test harness.  librustc_ast/config.rs -
 implementation of cfg/cfg_attr (they treated specially from other macros),
-should probably be moved into libsyntax/ext.  libsyntax/tokenstream.rs +
-libsyntax/parse/token.rs - structures for compiler-side tokens, token trees,
-and token streams.  libsyntax/ext - various expansion-related stuff
-libsyntax/ext/base.rs - basic structures used by expansion
-libsyntax/ext/expand.rs - some expansion structures and the bulk of expansion
+should probably be moved into librustc_ast/ext.  librustc_ast/tokenstream.rs +
+librustc_ast/parse/token.rs - structures for compiler-side tokens, token trees,
+and token streams.  librustc_ast/ext - various expansion-related stuff
+librustc_ast/ext/base.rs - basic structures used by expansion
+librustc_ast/ext/expand.rs - some expansion structures and the bulk of expansion
 infrastructure code - collecting macro invocations, calling into resolve for
 them, calling their expanding functions, and integrating the results back into
-AST libsyntax/ext/placeholder.rs - the part of expand.rs responsible for
+AST librustc_ast/ext/placeholder.rs - the part of expand.rs responsible for
 "integrating the results back into AST" basicallly, "placeholder" is a
 temporary AST node replaced with macro expansion result nodes
-libsyntax/ext/builer.rs - helper functions for building AST for built-in macros
+librustc_ast/ext/builer.rs - helper functions for building AST for built-in macros
 in librustc_builtin_macros (and user-defined syntactic plugins previously), can probably
-be moved into librustc_builtin_macros these days libsyntax/ext/proc_macro.rs +
-libsyntax/ext/proc_macro_server.rs - interfaces between the compiler and the
+be moved into librustc_builtin_macros these days librustc_ast/ext/proc_macro.rs +
+librustc_ast/ext/proc_macro_server.rs - interfaces between the compiler and the
 stable proc_macro library, converting tokens and token streams between the two
-representations and sending them through C ABI libsyntax/ext/tt -
+representations and sending them through C ABI librustc_ast/ext/tt -
 implementation of macro_rules, turns macro_rules DSL into something with
 signature Fn(TokenStream) -> TokenStream that can eat and produce tokens,
 @mark-i-m knows more about this librustc_resolve/macros.rs - resolving macro
@@ -408,8 +408,8 @@ piece of AST, etc), this is an enum that lists them
 ProcMacro/TTMacroExpander/AttrProcMacro/MultiItemModifier - traits representing
 the expander signatures (TODO: change and rename the signatures into something
 more consistent) trait Resolver - a trait used to break crate dependencies (so
-resolver services can be used in libsyntax, despite librustc_resolve and pretty
-much everything else depending on libsyntax) ExtCtxt/ExpansionData - various
+resolver services can be used in librustc_ast, despite librustc_resolve and pretty
+much everything else depending on librustc_ast) ExtCtxt/ExpansionData - various
 intermediate data kept and used by expansion infra in the process of its work
 AstFragment - a piece of AST that can be produced by a macro (may include
 multiple homogeneous AST nodes, like e.g. a list of items) Annotatable - a
