@@ -111,47 +111,47 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
             },
             ast::RecordFieldDef(it) => {
                 let field: hir::StructField = sema.to_def(&it)?;
-                Some(from_struct_field(field))
+                Some(NameDefinition::StructField(field))
             },
             ast::Module(it) => {
                 let def = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::StructDef(it) => {
                 let def: hir::Struct = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::UnionDef(it) => {
                 let def: hir::Union = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::EnumDef(it) => {
                 let def: hir::Enum = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::TraitDef(it) => {
                 let def: hir::Trait = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::StaticDef(it) => {
                 let def: hir::Static = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::EnumVariant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::FnDef(it) => {
                 let def: hir::Function = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::ConstDef(it) => {
                 let def: hir::Const = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::TypeAliasDef(it) => {
                 let def: hir::TypeAlias = sema.to_def(&it)?;
-                Some(from_module_def(def.into()))
+                Some(NameDefinition::ModuleDef(def.into()))
             },
             ast::MacroCall(it) => {
                 let def = sema.to_def(&it)?;
@@ -164,12 +164,4 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
             _ => None,
         }
     }
-}
-
-pub fn from_struct_field(field: StructField) -> NameDefinition {
-    NameDefinition::StructField(field)
-}
-
-pub fn from_module_def(def: ModuleDef) -> NameDefinition {
-    NameDefinition::ModuleDef(def)
 }

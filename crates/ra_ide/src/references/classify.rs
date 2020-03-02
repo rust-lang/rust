@@ -7,8 +7,6 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode};
 use test_utils::tested_by;
 
-pub use ra_ide_db::defs::{from_module_def, from_struct_field};
-
 pub enum NameRefClass {
     NameDefinition(NameDefinition),
     FieldShorthand { local: Local, field: NameDefinition },
@@ -68,14 +66,14 @@ pub(crate) fn classify_name_ref(
     let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = sema.resolve_path(&path)?;
     let res = match resolved {
-        PathResolution::Def(def) => from_module_def(def),
+        PathResolution::Def(def) => NameDefinition::ModuleDef(def),
         PathResolution::AssocItem(item) => {
             let def = match item {
                 hir::AssocItem::Function(it) => it.into(),
                 hir::AssocItem::Const(it) => it.into(),
                 hir::AssocItem::TypeAlias(it) => it.into(),
             };
-            from_module_def(def)
+            NameDefinition::ModuleDef(def)
         }
         PathResolution::Local(local) => NameDefinition::Local(local),
         PathResolution::TypeParam(par) => NameDefinition::TypeParam(par),
