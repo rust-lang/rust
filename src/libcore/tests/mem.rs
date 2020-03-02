@@ -132,18 +132,18 @@ fn test_discriminant_send_sync() {
 
 #[test]
 fn test_const_forget() {
-    const fn test_const_forget<T>(x: T) {
-        forget(x);
-    }
+    const _: () = forget(0i32);
+    const _: () = forget(Vec::<Vec<Box<i32>>>::new());
 
     // Writing this function signature without const-forget
     // triggers compiler errors:
     // 1) That we use a non-const fn inside a const fn
     // 2) without the forget, it complains about the destructor of Box
-    const fn const_forget_box<T>(mut x: Box<T>) {
+    const fn const_forget_box<T>(x: Box<T>) {
         forget(x);
     }
 
-    const _: () = test_const_forget(0i32);
-    const _: () = test_const_forget(Vec::<Vec<Box<i32>>>::new());
+    // Call the forget_box at runtime,
+    // as we can't const-construct a box yet.
+    const_forget_box(Box::new(0i32));
 }
