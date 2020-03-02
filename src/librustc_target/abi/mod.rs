@@ -871,8 +871,26 @@ impl Niche {
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
-    pub variants: Variants,
+    /// Says where the fields are located within the layout.
+    /// Primitives and fieldless enums appear as unions without fields.
     pub fields: FieldPlacement,
+
+    /// Encodes information about multi-variant layouts.
+    /// Even with `Multiple` variants, a layout still has its own fields! Those are then
+    /// shared between all variants. One of them will be the discriminant,
+    /// but e.g. generators can have more.
+    ///
+    /// To access all fields of this layout, both `fields` and the fields of the active variant
+    /// must be taken into account.
+    pub variants: Variants,
+
+    /// The `abi` defines how this data is passed between functions, and it defines
+    /// value restrictions via `valid_range`.
+    ///
+    /// Note that this is entirely orthogonal to the recursive structure defined by
+    /// `variants` and `fields`; for example, `ManuallyDrop<Result<isize, isize>>` has
+    /// `Abi::ScalarPair`! So, even with non-`Aggregate` `abi`, `fields` and `variants`
+    /// have to be taken into account to find all fields of this layout.
     pub abi: Abi,
 
     /// The leaf scalar with the largest number of invalid values

@@ -67,11 +67,12 @@ pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
     GeneratorState(VariantIdx),
-    ClosureVar(Symbol),
+    CapturedVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
     Deref,
-    Tag,
+    EnumTag,
+    GeneratorTag,
     DynDowncast,
 }
 
@@ -109,9 +110,11 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
     for elem in path.iter() {
         match elem {
             Field(name) => write!(out, ".{}", name),
-            Variant(name) => write!(out, ".<downcast-variant({})>", name),
+            EnumTag => write!(out, ".<enum-tag>"),
+            Variant(name) => write!(out, ".<enum-variant({})>", name),
+            GeneratorTag => write!(out, ".<generator-tag>"),
             GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
-            ClosureVar(name) => write!(out, ".<closure-var({})>", name),
+            CapturedVar(name) => write!(out, ".<captured-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
             // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
@@ -119,7 +122,6 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             // even use the usual syntax because we are just showing the projections,
             // not the root.
             Deref => write!(out, ".<deref>"),
-            Tag => write!(out, ".<enum-tag>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
         .unwrap()
@@ -170,6 +172,21 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
     fn aggregate_field_path_elem(&mut self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
+        // First, check if we are projecting to a variant.
+        match layout.variants {
+            layout::Variants::Multiple { discr_index, .. } => {
+                if discr_index == field {
+                    return match layout.ty.kind {
+                        ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
+                        ty::Generator(..) => PathElem::GeneratorTag,
+                        _ => bug!("non-variant type {:?}", layout.ty),
+                    };
+                }
+            }
+            layout::Variants::Single { .. } => {}
+        }
+
+        // Now we know we are projecting to a field, so figure out which one.
         match layout.ty.kind {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
@@ -190,7 +207,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     }
                 }
 
-                PathElem::ClosureVar(name.unwrap_or_else(|| {
+                PathElem::CapturedVar(name.unwrap_or_else(|| {
                     // Fall back to showing the field index.
                     sym::integer(field)
                 }))
@@ -201,13 +218,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
             // enums
             ty::Adt(def, ..) if def.is_enum() => {
-                // we might be projecting *to* a variant, or to a field *in*a variant.
+                // we might be projecting *to* a variant, or to a field *in* a variant.
                 match layout.variants {
                     layout::Variants::Single { index } => {
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
-                    _ => bug!(),
+                    layout::Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
 
@@ -288,62 +305,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
         Ok(())
     }
-}
-
-impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
-    for ValidityVisitor<'rt, 'mir, 'tcx, M>
-{
-    type V = OpTy<'tcx, M::PointerTag>;
-
-    #[inline(always)]
-    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
-        &self.ecx
-    }
-
-    #[inline]
-    fn visit_field(
-        &mut self,
-        old_op: OpTy<'tcx, M::PointerTag>,
-        field: usize,
-        new_op: OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        let elem = self.aggregate_field_path_elem(old_op.layout, field);
-        self.visit_elem(new_op, elem)
-    }
-
-    #[inline]
-    fn visit_variant(
-        &mut self,
-        old_op: OpTy<'tcx, M::PointerTag>,
-        variant_id: VariantIdx,
-        new_op: OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.kind {
-            ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
-            // Generators also have variants
-            ty::Generator(..) => PathElem::GeneratorState(variant_id),
-            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
-        };
-        self.visit_elem(new_op, name)
-    }
-
-    #[inline]
-    fn visit_value(&mut self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
-        trace!("visit_value: {:?}, {:?}", *op, op.layout);
-        // Translate some possible errors to something nicer.
-        match self.walk_value(op) {
-            Ok(()) => Ok(()),
-            Err(err) => match err.kind {
-                err_ub!(InvalidDiscriminant(val)) => {
-                    throw_validation_failure!(val, self.path, "a valid enum discriminant")
-                }
-                err_unsup!(ReadPointerAsBytes) => {
-                    throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
-                }
-                _ => Err(err),
-            },
-        }
-    }
 
     fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
         let value = self.ecx.read_immediate(value)?;
@@ -415,13 +376,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         );
                         match err.kind {
                             err_unsup!(InvalidNullPointerUsage) => {
-                                throw_validation_failure!("NULL reference", self.path)
+                                throw_validation_failure!("a NULL reference", self.path)
                             }
                             err_unsup!(AlignmentCheckFailed { required, has }) => {
                                 throw_validation_failure!(
                                     format_args!(
-                                        "unaligned reference \
-                                    (required {} byte alignment but found {})",
+                                        "an unaligned reference \
+                                         (required {} byte alignment but found {})",
                                         required.bytes(),
                                         has.bytes()
                                     ),
@@ -429,11 +390,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 )
                             }
                             err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
-                                "dangling reference (created from integer)",
+                                "a dangling reference (created from integer)",
                                 self.path
                             ),
                             _ => throw_validation_failure!(
-                                "dangling reference (not entirely in bounds)",
+                                "a dangling reference (not entirely in bounds)",
                                 self.path
                             ),
                         }
@@ -485,24 +446,21 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
                 // FIXME: Check if the signature matches
             }
-            // This should be all the primitive types
+            // This should be all the (inhabited) primitive types
             _ => bug!("Unexpected primitive type {}", value.layout.ty),
         }
         Ok(())
     }
 
-    fn visit_uninhabited(&mut self) -> InterpResult<'tcx> {
-        throw_validation_failure!("a value of an uninhabited type", self.path)
-    }
-
     fn visit_scalar(
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
-        layout: &layout::Scalar,
+        scalar_layout: &layout::Scalar,
     ) -> InterpResult<'tcx> {
         let value = self.ecx.read_scalar(op)?;
+        let valid_range = &scalar_layout.valid_range;
+        let (lo, hi) = valid_range.clone().into_inner();
         // Determine the allowed range
-        let (lo, hi) = layout.valid_range.clone().into_inner();
         // `max_hi` is as big as the size fits
         let max_hi = u128::max_value() >> (128 - op.layout.size.bits());
         assert!(hi <= max_hi);
@@ -516,7 +474,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             value.not_undef(),
             value,
             self.path,
-            format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi),)
+            format_args!("something {}", wrapping_range_format(valid_range, max_hi),)
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
             Err(ptr) => {
@@ -528,7 +486,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             self.path,
                             format_args!(
                                 "something that cannot possibly fail to be {}",
-                                wrapping_range_format(&layout.valid_range, max_hi)
+                                wrapping_range_format(valid_range, max_hi)
                             )
                         )
                     }
@@ -541,7 +499,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         self.path,
                         format_args!(
                             "something that cannot possibly fail to be {}",
-                            wrapping_range_format(&layout.valid_range, max_hi)
+                            wrapping_range_format(valid_range, max_hi)
                         )
                     )
                 }
@@ -549,15 +507,133 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(data) => data,
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.
-        if wrapping_range_contains(&layout.valid_range, bits) {
+        if wrapping_range_contains(&valid_range, bits) {
             Ok(())
         } else {
             throw_validation_failure!(
                 bits,
                 self.path,
-                format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
+                format_args!("something {}", wrapping_range_format(valid_range, max_hi))
             )
         }
+    }
+}
+
+impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
+    for ValidityVisitor<'rt, 'mir, 'tcx, M>
+{
+    type V = OpTy<'tcx, M::PointerTag>;
+
+    #[inline(always)]
+    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
+        &self.ecx
+    }
+
+    #[inline]
+    fn visit_field(
+        &mut self,
+        old_op: OpTy<'tcx, M::PointerTag>,
+        field: usize,
+        new_op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        let elem = self.aggregate_field_path_elem(old_op.layout, field);
+        self.visit_elem(new_op, elem)
+    }
+
+    #[inline]
+    fn visit_variant(
+        &mut self,
+        old_op: OpTy<'tcx, M::PointerTag>,
+        variant_id: VariantIdx,
+        new_op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        let name = match old_op.layout.ty.kind {
+            ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
+            // Generators also have variants
+            ty::Generator(..) => PathElem::GeneratorState(variant_id),
+            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
+        };
+        self.visit_elem(new_op, name)
+    }
+
+    #[inline(always)]
+    fn visit_union(&mut self, _v: Self::V, fields: usize) -> InterpResult<'tcx> {
+        // Empty unions are not accepted by rustc. That's great, it means we can
+        // use that as a signal for detecting primitives.  Make sure
+        // we did not miss any primitive.
+        assert!(fields > 0);
+        Ok(())
+    }
+
+    #[inline]
+    fn visit_value(&mut self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        trace!("visit_value: {:?}, {:?}", *op, op.layout);
+
+        if op.layout.abi.is_uninhabited() {
+            // Uninhabited types do not have sensible layout, stop right here.
+            throw_validation_failure!(
+                format_args!("a value of uninhabited type {:?}", op.layout.ty),
+                self.path
+            )
+        }
+
+        // Check primitive types.  We do this after checking for uninhabited types,
+        // to exclude fieldless enums (that also appear as fieldless unions here).
+        // Primitives can have varying layout, so we check them separately and before aggregate
+        // handling.
+        // It is CRITICAL that we get this check right, or we might be validating the wrong thing!
+        let primitive = match op.layout.fields {
+            // Primitives appear as Union with 0 fields - except for Boxes and fat pointers.
+            // (Fieldless enums also appear here, but they are uninhabited and thus handled above.)
+            layout::FieldPlacement::Union(0) => true,
+            _ => op.layout.ty.builtin_deref(true).is_some(),
+        };
+        if primitive {
+            // No need to recurse further or check scalar layout, this is a leaf type.
+            return self.visit_primitive(op);
+        }
+
+        // Recursively walk the type. Translate some possible errors to something nicer.
+        match self.walk_value(op) {
+            Ok(()) => {}
+            Err(err) => match err.kind {
+                err_ub!(InvalidDiscriminant(val)) => {
+                    throw_validation_failure!(val, self.path, "a valid enum discriminant")
+                }
+                err_unsup!(ReadPointerAsBytes) => {
+                    throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
+                }
+                _ => return Err(err),
+            },
+        }
+
+        // *After* all of this, check the ABI.  We need to check the ABI to handle
+        // types like `NonNull` where the `Scalar` info is more restrictive than what
+        // the fields say (`rustc_layout_scalar_valid_range_start`).
+        // But in most cases, this will just propagate what the fields say,
+        // and then we want the error to point at the field -- so, first recurse,
+        // then check ABI.
+        //
+        // FIXME: We could avoid some redundant checks here. For newtypes wrapping
+        // scalars, we do the same check on every "level" (e.g., first we check
+        // MyNewtype and then the scalar in there).
+        match op.layout.abi {
+            layout::Abi::Uninhabited => unreachable!(), // checked above
+            layout::Abi::Scalar(ref scalar_layout) => {
+                self.visit_scalar(op, scalar_layout)?;
+            }
+            layout::Abi::ScalarPair { .. } | layout::Abi::Vector { .. } => {
+                // These have fields that we already visited above, so we already checked
+                // all their scalar-level restrictions.
+                // There is also no equivalent to `rustc_layout_scalar_valid_range_start`
+                // that would make skipping them here an issue.
+            }
+            layout::Abi::Aggregate { .. } => {
+                // Nothing to do.
+            }
+        }
+
+        Ok(())
     }
 
     fn visit_aggregate(
