@@ -391,7 +391,7 @@ impl Step for Miri {
             // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
             cargo.env("RUSTC_DEBUG_ASSERTIONS", "true");
             // Let cargo-miri know where xargo ended up.
-            cargo.env("XARGO", builder.out.join("bin").join("xargo"));
+            cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
 
             let mut cargo = Command::from(cargo);
             if !try_run(builder, &mut cargo) {
