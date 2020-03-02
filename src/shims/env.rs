@@ -40,7 +40,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into())
+    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this);
             if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
                 this.memory
-                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
+                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
             Ok(0)
         } else {
@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(old) = success {
             if let Some(var) = old {
                 this.memory
-                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
+                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
             Ok(0)
         } else {
