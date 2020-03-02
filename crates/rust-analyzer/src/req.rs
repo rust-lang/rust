@@ -42,14 +42,14 @@ impl Request for SyntaxTree {
     const METHOD: &'static str = "rust-analyzer/syntaxTree";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SyntaxTreeParams {
     pub text_document: TextDocumentIdentifier,
     pub range: Option<Range>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExpandedMacro {
     pub name: String,
@@ -64,7 +64,7 @@ impl Request for ExpandMacro {
     const METHOD: &'static str = "rust-analyzer/expandMacro";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExpandMacroParams {
     pub text_document: TextDocumentIdentifier,
@@ -79,7 +79,7 @@ impl Request for FindMatchingBrace {
     const METHOD: &'static str = "rust-analyzer/findMatchingBrace";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FindMatchingBraceParams {
     pub text_document: TextDocumentIdentifier,
@@ -101,14 +101,14 @@ impl Notification for PublishDecorations {
     const METHOD: &'static str = "rust-analyzer/publishDecorations";
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishDecorationsParams {
     pub uri: Url,
     pub decorations: Vec<Decoration>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Decoration {
     pub range: Range,
@@ -132,7 +132,7 @@ impl Request for JoinLines {
     const METHOD: &'static str = "rust-analyzer/joinLines";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct JoinLinesParams {
     pub text_document: TextDocumentIdentifier,
@@ -162,7 +162,7 @@ pub struct RunnablesParams {
     pub position: Option<Position>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
     pub range: Range,
@@ -173,7 +173,7 @@ pub struct Runnable {
     pub cwd: Option<String>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceChange {
     pub label: String,
