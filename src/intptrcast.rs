@@ -1,9 +1,10 @@
 use std::cell::RefCell;
 use std::cmp::max;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::hash_map::Entry;
 
 use rand::Rng;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::layout::HasDataLayout;
 use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Machine, Pointer, PointerArithmetic};
 use rustc_target::abi::Size;
@@ -21,7 +22,7 @@ pub struct GlobalState {
     /// `AllocExtra` because function pointers also have a base address, and
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
-    pub base_addr: HashMap<AllocId, u64>,
+    pub base_addr: FxHashMap<AllocId, u64>,
     /// This is used as a memory address when a new pointer is casted to an integer. It
     /// is always larger than any address that was previously made part of a block.
     pub next_base_addr: u64,
@@ -31,7 +32,7 @@ impl Default for GlobalState {
     fn default() -> Self {
         GlobalState {
             int_to_ptr_map: Vec::default(),
-            base_addr: HashMap::default(),
+            base_addr: FxHashMap::default(),
             next_base_addr: STACK_ADDR,
         }
     }

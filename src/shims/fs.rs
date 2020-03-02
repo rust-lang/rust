@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::layout::{Align, LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
@@ -212,10 +212,10 @@ pub struct DirHandler {
     /// When opendir is called, a directory iterator is created on the host for the target
     /// directory, and an entry is stored in this hash map, indexed by an ID which represents
     /// the directory stream. When readdir is called, the directory stream ID is used to look up
-    /// the corresponding ReadDir iterator from this HashMap, and information from the next
+    /// the corresponding ReadDir iterator from this map, and information from the next
     /// directory entry is returned. When closedir is called, the ReadDir iterator is removed from
-    /// this HashMap.
-    streams: HashMap<u64, ReadDir>,
+    /// the map.
+    streams: FxHashMap<u64, ReadDir>,
     /// ID number to be used by the next call to opendir
     next_id: u64,
 }
@@ -232,7 +232,7 @@ impl DirHandler {
 impl Default for DirHandler {
     fn default() -> DirHandler {
         DirHandler {
-            streams: HashMap::new(),
+            streams: FxHashMap::default(),
             // Skip 0 as an ID, because it looks like a null pointer to libc
             next_id: 1,
         }

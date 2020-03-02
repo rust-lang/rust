@@ -3,12 +3,12 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
 use rand::rngs::StdRng;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc::mir;
 use rustc::ty::{
     self,
@@ -75,7 +75,7 @@ pub struct MemoryExtra {
     pub intptrcast: intptrcast::MemoryExtra,
 
     /// Mapping extern static names to their canonical allocation.
-    pub(crate) extern_statics: HashMap<Symbol, AllocId>,
+    pub(crate) extern_statics: FxHashMap<Symbol, AllocId>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -92,7 +92,7 @@ impl MemoryExtra {
         MemoryExtra {
             stacked_borrows,
             intptrcast: Default::default(),
-            extern_statics: HashMap::default(),
+            extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
         }
     }

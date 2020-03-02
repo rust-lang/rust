@@ -1,6 +1,6 @@
-//! This is a "monotonic `HashMap`": A `HashMap` that, when shared, can be pushed to but not
+//! This is a "monotonic `FxHashMap`": A `FxHashMap` that, when shared, can be pushed to but not
 //! otherwise mutated. We also box items in the map. This means we can safely provide
-//! shared references into existing items in the `HashMap`, because they will not be dropped
+//! shared references into existing items in the `FxHashMap`, because they will not be dropped
 //! (from being removed) or moved (because they are boxed).
 //! The API is is completely tailored to what `memory.rs` needs. It is still in
 //! a separate file to minimize the amount of code that has to care about the unsafety.
@@ -21,8 +21,8 @@ impl<K: Hash + Eq, V> MonoHashMap<K, V> {
     /// This function exists for priroda to be able to iterate over all evaluator memory.
     ///
     /// The function is somewhat roundabout with the closure argument because internally the
-    /// `MonoHashMap` uses a `RefCell`. When iterating over the `HashMap` inside the `RefCell`,
-    /// we need to keep a borrow to the `HashMap` inside the iterator. The borrow is only alive
+    /// `MonoHashMap` uses a `RefCell`. When iterating over the `FxHashMap` inside the `RefCell`,
+    /// we need to keep a borrow to the `FxHashMap` inside the iterator. The borrow is only alive
     /// as long as the `Ref` returned by `RefCell::borrow()` is alive. So we can't return the
     /// iterator, as that would drop the `Ref`. We can't return both, as it's not possible in Rust
     /// to have a struct/tuple with a field that refers to another field.
