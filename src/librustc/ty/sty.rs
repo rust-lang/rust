@@ -1768,7 +1768,7 @@ impl RegionKind {
             }
             ty::ReEarlyBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_EARLY_BOUND;
+                flags = flags | TypeFlags::HAS_RE_PARAM;
             }
             ty::ReEmpty(_) | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
@@ -1779,11 +1779,6 @@ impl RegionKind {
             ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
-        }
-
-        match *self {
-            ty::ReStatic | ty::ReEmpty(_) | ty::ReErased | ty::ReLateBound(..) => (),
-            _ => flags = flags | TypeFlags::HAS_FREE_LOCAL_NAMES,
         }
 
         debug!("type_flags({:?}) = {:?}", self, flags);

@@ -471,7 +471,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 return;
             }
             let trait_ref = self.resolve_vars_if_possible(trait_ref);
-            if trait_ref.has_infer_types() {
+            if trait_ref.has_infer_types_or_consts() {
                 // Do not ICE while trying to find if a reborrow would succeed on a trait with
                 // unresolved bindings.
                 return;

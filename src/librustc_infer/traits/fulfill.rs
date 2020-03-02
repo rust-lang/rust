@@ -299,7 +299,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
-        if obligation.predicate.has_infer_types() {
+        if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
                 self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
         }
@@ -346,16 +346,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         // This is a bit subtle: for the most part, the
                         // only reason we can fail to make progress on
                         // trait selection is because we don't have enough
-                        // information about the types in the trait. One
-                        // exception is that we sometimes haven't decided
-                        // what kind of closure a closure is. *But*, in
-                        // that case, it turns out, the type of the
-                        // closure will also change, because the closure
-                        // also includes references to its upvars as part
-                        // of its type, and those types are resolved at
-                        // the same time.
-                        //
-                        // FIXME(#32286) logic seems false if no upvars
+                        // information about the types in the trait.
                         pending_obligation.stalled_on =
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
 

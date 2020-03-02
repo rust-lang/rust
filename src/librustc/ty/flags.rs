@@ -80,13 +80,10 @@ impl FlagComputation {
             &ty::Error => self.add_flags(TypeFlags::HAS_TY_ERR),
 
             &ty::Param(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_flags(TypeFlags::HAS_PARAMS);
+                self.add_flags(TypeFlags::HAS_TY_PARAM);
             }
 
             &ty::Generator(_, ref substs, _) => {
-                self.add_flags(TypeFlags::HAS_TY_CLOSURE);
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(substs);
             }
 
@@ -97,8 +94,6 @@ impl FlagComputation {
             }
 
             &ty::Closure(_, ref substs) => {
-                self.add_flags(TypeFlags::HAS_TY_CLOSURE);
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(substs);
             }
 
@@ -107,12 +102,10 @@ impl FlagComputation {
             }
 
             &ty::Placeholder(..) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
             }
 
             &ty::Infer(infer) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
                     ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
@@ -128,17 +121,17 @@ impl FlagComputation {
             }
 
             &ty::Projection(ref data) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
                 self.add_projection_ty(data);
             }
 
             &ty::UnnormalizedProjection(ref data) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
                 self.add_projection_ty(data);
             }
 
             &ty::Opaque(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION | TypeFlags::HAS_TY_OPAQUE);
+                self.add_flags(TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
             }
 
@@ -221,10 +214,10 @@ impl FlagComputation {
         match c.val {
             ty::ConstKind::Unevaluated(_, substs, _) => {
                 self.add_substs(substs);
-                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
             ty::ConstKind::Infer(infer) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
+                self.add_flags(TypeFlags::HAS_CT_INFER);
                 match infer {
                     InferConst::Fresh(_) => {}
                     InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
@@ -232,11 +225,9 @@ impl FlagComputation {
             }
             ty::ConstKind::Bound(debruijn, _) => self.add_binder(debruijn),
             ty::ConstKind::Param(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_flags(TypeFlags::HAS_PARAMS);
+                self.add_flags(TypeFlags::HAS_CT_PARAM);
             }
             ty::ConstKind::Placeholder(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
             }
             ty::ConstKind::Value(_) => {}

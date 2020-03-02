@@ -213,7 +213,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         result
     );
 
-    if result && (ty.has_infer_types() || ty.has_closure_types()) {
+    if result && ty.has_infer_types_or_consts() {
         // Because of inference "guessing", selection can sometimes claim
         // to succeed while the success requires a guess. To ensure
         // this function's result remains infallible, we must confirm

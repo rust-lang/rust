@@ -85,10 +85,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_TY_ERR)
     }
     fn has_param_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PARAMS)
+        self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
     }
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
+    }
+    fn has_infer_types_or_consts(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_CT_INFER)
     }
     fn has_infer_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_CT_INFER)
@@ -97,9 +100,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
     }
     fn needs_infer(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER | TypeFlags::HAS_CT_INFER,
-        )
+        self.has_type_flags(TypeFlags::NEEDS_INFER)
     }
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(
@@ -113,9 +114,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn has_re_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
-    }
-    fn has_closure_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
