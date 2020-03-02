@@ -178,5 +178,10 @@ impl<'a> AstTransform<'a> for QualifyPaths<'a> {
 
 pub(crate) fn path_to_ast(path: hir::ModPath) -> ast::Path {
     let parse = ast::SourceFile::parse(&path.to_string());
-    parse.tree().syntax().descendants().find_map(ast::Path::cast).unwrap()
+    parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Path::cast)
+        .unwrap_or_else(|| panic!("failed to parse path {:?}, `{}`", path, path))
 }
