@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Interner {}
+pub struct Interner;
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Box<chalk_ir::TyData<Self>>;
@@ -27,6 +27,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
+    type Identifier = lalrpop_intern::InternedString;
     type DefId = InternId;
 
     // FIXME: implement these
@@ -58,7 +59,7 @@ impl chalk_ir::interner::Interner for Interner {
         None
     }
 
-    fn intern_ty(ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {
+    fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {
         Box::new(ty)
     }
 
@@ -121,7 +122,7 @@ pub type StructId = chalk_ir::StructId<Interner>;
 pub type StructDatum = chalk_rust_ir::StructDatum<Interner>;
 pub type ImplId = chalk_ir::ImplId<Interner>;
 pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
-pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId;
+pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId<Interner>;
 pub type AssociatedTyValue = chalk_rust_ir::AssociatedTyValue<Interner>;
 
 pub(super) trait ToChalk {
@@ -144,12 +145,12 @@ impl ToChalk for Ty {
             Ty::Apply(apply_ty) => {
                 let name = apply_ty.ctor.to_chalk(db);
                 let substitution = apply_ty.parameters.to_chalk(db);
-                chalk_ir::ApplicationTy { name, substitution }.cast().intern()
+                chalk_ir::ApplicationTy { name, substitution }.cast().intern(&Interner)
             }
             Ty::Projection(proj_ty) => {
                 let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
-                chalk_ir::AliasTy { associated_ty_id, substitution }.cast().intern()
+                chalk_ir::AliasTy { associated_ty_id, substitution }.cast().intern(&Interner)
             }
             Ty::Placeholder(id) => {
                 let interned_id = db.intern_type_param_id(id);
@@ -157,9 +158,9 @@ impl ToChalk for Ty {
                     ui: UniverseIndex::ROOT,
                     idx: interned_id.as_intern_id().as_usize(),
                 }
-                .to_ty::<Interner>()
+                .to_ty::<Interner>(&Interner)
             }
-            Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
+            Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
                 let where_clauses = predicates
@@ -169,12 +170,12 @@ impl ToChalk for Ty {
                     .map(|p| p.to_chalk(db))
                     .collect();
                 let bounded_ty = chalk_ir::DynTy { bounds: make_binders(where_clauses, 1) };
-                chalk_ir::TyData::Dyn(bounded_ty).intern()
+                chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
             Ty::Opaque(_) | Ty::Unknown => {
                 let substitution = chalk_ir::Substitution::empty();
                 let name = TypeName::Error;
-                chalk_ir::ApplicationTy { name, substitution }.cast().intern()
+                chalk_ir::ApplicationTy { name, substitution }.cast().intern(&Interner)
             }
         }
     }
@@ -611,6 +612,9 @@ where
             _ => None,
         }
     }
+    fn interner(&self) -> &Interner {
+        &Interner
+    }
 }
 
 pub(crate) fn associated_ty_data_query(
@@ -822,13 +826,6 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
-fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {
-    T::from_intern_id(InternId::from(chalk_id.index))
-}
-fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
-    chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
-}
-
 impl From<StructId> for crate::TypeCtorId {
     fn from(struct_id: StructId) -> Self {
         InternKey::from_intern_id(struct_id.0)
@@ -853,14 +850,14 @@ impl From<crate::traits::GlobalImplId> for ImplId {
     }
 }
 
-impl From<chalk_rust_ir::AssociatedTyValueId> for crate::traits::AssocTyValueId {
-    fn from(id: chalk_rust_ir::AssociatedTyValueId) -> Self {
-        id_from_chalk(id.0)
+impl From<chalk_rust_ir::AssociatedTyValueId<Interner>> for crate::traits::AssocTyValueId {
+    fn from(id: chalk_rust_ir::AssociatedTyValueId<Interner>) -> Self {
+        Self::from_intern_id(id.0)
     }
 }
 
-impl From<crate::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
+impl From<crate::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId<Interner> {
     fn from(assoc_ty_value_id: crate::traits::AssocTyValueId) -> Self {
-        chalk_rust_ir::AssociatedTyValueId(id_to_chalk(assoc_ty_value_id))
+        chalk_rust_ir::AssociatedTyValueId(assoc_ty_value_id.as_intern_id())
     }
 }
