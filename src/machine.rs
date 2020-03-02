@@ -16,7 +16,6 @@ use rustc::ty::{
     Ty,
 };
 use rustc_ast::attr;
-use rustc_hir::def_id::DefId;
 use rustc_span::{source_map::Span, symbol::sym};
 
 use crate::*;
