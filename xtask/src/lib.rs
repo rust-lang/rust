@@ -192,5 +192,14 @@ Release: release:{}[]
 
     fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
 
+    let tags = run!("git tag --list"; echo = false)?;
+    let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();
+
+    println!("\n    git log {}..HEAD --merges --reverse", prev_tag);
+
     Ok(())
+}
+
+fn is_release_tag(tag: &str) -> bool {
+    tag.len() == "2020-02-24".len() && tag.starts_with(|c: char| c.is_ascii_digit())
 }
