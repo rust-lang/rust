@@ -184,6 +184,10 @@ pub fn handle_on_type_formatting(
     // `text.char_at(position) == typed_char`.
     position.offset -= TextUnit::of_char('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
+    assert!({
+        let text = world.analysis().file_text(position.file_id)?;
+        text[position.offset.to_usize()..].starts_with(char_typed)
+    });
 
     // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
     // but it requires precise cursor positioning to work, and one can't
