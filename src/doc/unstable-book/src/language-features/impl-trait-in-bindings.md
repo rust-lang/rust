@@ -1,8 +1,8 @@
 # `impl_trait_in_bindings`
 
-The tracking issue for this feature is: [#34511]
+The tracking issue for this feature is: [#63065]
 
-[#34511]: https://github.com/rust-lang/rust/issues/34511
+[#63065]: https://github.com/rust-lang/rust/issues/63065
 
 ------------------------
 
