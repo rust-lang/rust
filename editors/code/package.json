@@ -12,8 +12,13 @@
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
         "type": "git"
     },
+    "homepage": "https://rust-analyzer.github.io/",
+    "license": "MIT OR Apache-2.0",
+    "keywords": [
+        "rust"
+    ],
     "categories": [
-        "Other"
+        "Programming Languages"
     ],
     "engines": {
         "vscode": "^1.42.0"
