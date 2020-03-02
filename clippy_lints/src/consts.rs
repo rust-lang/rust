@@ -231,7 +231,13 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).kind {
-                    ty::Array(_, n) => n.eval_usize(self.lcx.tcx, self.lcx.param_env),
+                    ty::Array(_, n) => {
+                        if let Some(n) = n.try_eval_usize(self.lcx.tcx, self.lcx.param_env) {
+                            n
+                        } else {
+                            return None;
+                        }
+                    },
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
