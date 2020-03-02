@@ -119,9 +119,9 @@ pub(super) fn transcribe(
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
             // If it still has a TokenTree we have not looked at yet, use that tree.
             tree
-        }
-        // The else-case never produces a value for `tree` (it `continue`s or `return`s).
-        else {
+        } else {
+            // This else-case never produces a value for `tree` (it `continue`s or `return`s).
+
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
             // go back to the beginning of the sequence.
             if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
