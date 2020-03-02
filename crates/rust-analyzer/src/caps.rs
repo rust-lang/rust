@@ -63,8 +63,8 @@ pub fn server_capabilities() -> ServerCapabilities {
         semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
-                    token_types: semantic_tokens::SUPPORTED_TYPES.iter().cloned().collect(),
-                    token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.iter().cloned().collect(),
+                    token_types: semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
                 },
 
                 document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
