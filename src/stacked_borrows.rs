@@ -2,11 +2,11 @@
 //! for further information.
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
 use rustc_hir::Mutability;
@@ -96,11 +96,11 @@ pub struct GlobalState {
     /// Table storing the "base" tag for each allocation.
     /// The base tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    base_ptr_ids: HashMap<AllocId, Tag>,
+    base_ptr_ids: FxHashMap<AllocId, Tag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// Those call IDs corresponding to functions that are still running.
-    active_calls: HashSet<CallId>,
+    active_calls: FxHashSet<CallId>,
     /// The id to trace in this execution run
     tracked_pointer_tag: Option<PtrId>,
 }
@@ -153,9 +153,9 @@ impl GlobalState {
     pub fn new(tracked_pointer_tag: Option<PtrId>) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
-            base_ptr_ids: HashMap::default(),
+            base_ptr_ids: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
-            active_calls: HashSet::default(),
+            active_calls: FxHashSet::default(),
             tracked_pointer_tag,
         }
     }

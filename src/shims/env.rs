@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
 use std::env;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
 
@@ -12,7 +12,7 @@ use rustc_mir::interpret::Pointer;
 pub struct EnvVars {
     /// Stores pointers to the environment variables. These variables must be stored as
     /// null-terminated C strings with the `"{name}={value}"` format.
-    map: HashMap<OsString, Pointer<Tag>>,
+    map: FxHashMap<OsString, Pointer<Tag>>,
 }
 
 impl EnvVars {

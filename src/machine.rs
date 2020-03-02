@@ -3,12 +3,12 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
 use rand::rngs::StdRng;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc::mir;
 use rustc::ty::{
     self,
@@ -16,7 +16,7 @@ use rustc::ty::{
     Ty,
 };
 use rustc_ast::attr;
-use rustc_span::{source_map::Span, symbol::sym};
+use rustc_span::{source_map::Span, symbol::{sym, Symbol}};
 
 use crate::*;
 
@@ -75,7 +75,7 @@ pub struct MemoryExtra {
     pub intptrcast: intptrcast::MemoryExtra,
 
     /// Mapping extern static names to their canonical allocation.
-    pub(crate) extern_statics: HashMap<&'static str, AllocId>,
+    pub(crate) extern_statics: FxHashMap<Symbol, AllocId>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -92,7 +92,7 @@ impl MemoryExtra {
         MemoryExtra {
             stacked_borrows,
             intptrcast: Default::default(),
-            extern_statics: HashMap::default(),
+            extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
         }
     }
@@ -111,7 +111,7 @@ impl MemoryExtra {
                 this.memory
                     .extra
                     .extern_statics
-                    .insert("__cxa_thread_atexit_impl", place.ptr.assert_ptr().alloc_id)
+                    .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
                     .unwrap_none();
             }
             _ => {} // No "extern statics" supported on this platform
@@ -310,11 +310,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         };
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
-            Some(name) => name.as_str(),
-            None => tcx.item_name(def_id).as_str(),
+            Some(name) => name,
+            None => tcx.item_name(def_id),
         };
         // Check if we know this one.
-        if let Some(canonical_id) = mem.extra.extern_statics.get(&*link_name) {
+        if let Some(canonical_id) = mem.extra.extern_statics.get(&link_name) {
             trace!("canonical_alloc_id: {:?} ({}) -> {:?}", id, link_name, canonical_id);
             *canonical_id
         } else {
