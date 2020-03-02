@@ -128,7 +128,7 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
                 db.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
             },
             Source::Assoc { ty: ty_span, .. } => {
-                if ty.flags.contains(TypeFlags::HAS_FREE_LOCAL_NAMES) {
+                if ty.flags.intersects(TypeFlags::HAS_FREE_LOCAL_NAMES) {
                     db.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
                 }
             },
