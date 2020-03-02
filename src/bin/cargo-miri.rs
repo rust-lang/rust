@@ -101,7 +101,7 @@ fn cargo() -> Command {
 }
 
 fn xargo() -> Command {
-    if let Ok(val) = std::env::var("XARGO") {
+    if let Ok(val) = std::env::var("XARGO_CHECK") {
         // Bootstrap tells us where to find xargo
         Command::new(val)
     } else {
@@ -280,7 +280,7 @@ fn setup(ask_user: bool) {
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
-        if std::env::var("XARGO").is_ok() {
+        if std::env::var("XARGO_CHECK").is_ok() {
             // The user manually gave us a xargo binary; don't do anything automatically.
             show_error(format!("Your xargo is too old; please upgrade to the latest version"))
         }
