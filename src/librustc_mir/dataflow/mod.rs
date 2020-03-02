@@ -16,7 +16,7 @@ pub use self::impls::{
 use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
-pub mod framework;
+mod framework;
 mod impls;
 pub mod move_paths;
 
