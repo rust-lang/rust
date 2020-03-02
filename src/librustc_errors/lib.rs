@@ -786,8 +786,12 @@ impl HandlerInner {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|x| match &x {
-                    DiagnosticId::Error(s) if registry.find_description(s).is_some() => {
-                        Some(s.clone())
+                    DiagnosticId::Error(s) => {
+                        if let Ok(Some(_explanation)) = registry.try_find_description(s) {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
                     }
                     _ => None,
                 })

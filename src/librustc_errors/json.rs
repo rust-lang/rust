@@ -419,10 +419,10 @@ impl DiagnosticCode {
                 DiagnosticId::Error(s) => s,
                 DiagnosticId::Lint(s) => s,
             };
-            let explanation =
-                je.registry.as_ref().and_then(|registry| registry.find_description(&s));
+            let je_result =
+                je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
 
-            DiagnosticCode { code: s, explanation }
+            DiagnosticCode { code: s, explanation: je_result.unwrap_or(None) }
         })
     }
 }
