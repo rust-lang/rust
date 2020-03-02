@@ -82,4 +82,4 @@ git commit -m "Update rustc-guide"
 
 12. Wait for PR to merge
 
-Voila!
+Voilà!
