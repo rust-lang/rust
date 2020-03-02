@@ -453,7 +453,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 Ok(true)
             }
             ty::Adt(def, ..) if def.is_box() => {
-                // FIXME make sure we have a test for `Box`!
                 self.check_safe_pointer(value)?;
                 Ok(true)
             }
