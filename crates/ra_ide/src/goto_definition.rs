@@ -76,6 +76,8 @@ pub(crate) fn reference_definition(
 
     let name_kind = classify_name_ref(sema, name_ref);
     if let Some(def) = name_kind {
+        let def = def.definition();
+
         return match def.try_to_nav(sema.db) {
             Some(nav) => ReferenceResult::Exact(nav),
             None => ReferenceResult::Approximate(Vec::new()),
@@ -795,8 +797,8 @@ mod tests {
                 Foo { x<|> };
             }
             ",
-            "x RECORD_FIELD_DEF FileId(1) [13; 19) [13; 14)",
-            "x: i32|x",
+            "x BIND_PAT FileId(1) [42; 43)",
+            "x",
         )
     }
 }

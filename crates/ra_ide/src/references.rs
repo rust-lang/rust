@@ -27,7 +27,10 @@ use test_utils::tested_by;
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
-pub(crate) use self::{classify::classify_name_ref, rename::rename};
+pub(crate) use self::{
+    classify::{classify_name_ref, NameRefClass},
+    rename::rename,
+};
 pub(crate) use ra_ide_db::defs::{classify_name, NameDefinition};
 
 pub use self::search_scope::SearchScope;
@@ -160,7 +163,7 @@ fn find_name(
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }
     let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(sema, &name_ref)?;
+    let def = classify_name_ref(sema, &name_ref)?.definition();
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
@@ -212,6 +215,7 @@ fn process_definition(
             // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
             if let Some(d) = classify_name_ref(&sema, &name_ref) {
+                let d = d.definition();
                 if d == def {
                     let kind =
                         if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {

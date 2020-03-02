@@ -5,7 +5,7 @@
 //!
 //! So, this modules should not be used during hir construction, it exists
 //! purely for "IDE needs".
-use std::sync::Arc;
+use std::{iter::once, sync::Arc};
 
 use either::Either;
 use hir_def::{
@@ -25,8 +25,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, ModuleDef, Path, Static,
-    Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, ModPath, ModuleDef, Path,
+    PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -162,16 +162,27 @@ impl SourceAnalyzer {
 
     pub(crate) fn resolve_record_field(
         &self,
+        db: &impl HirDatabase,
         field: &ast::RecordField,
-    ) -> Option<crate::StructField> {
-        let expr_id = match field.expr() {
-            Some(it) => self.expr_id(&it)?,
+    ) -> Option<(crate::StructField, Option<Local>)> {
+        let (expr_id, local) = match field.expr() {
+            Some(it) => (self.expr_id(&it)?, None),
             None => {
                 let src = InFile { file_id: self.file_id, value: field };
-                self.body_source_map.as_ref()?.field_init_shorthand_expr(src)?
+                let expr_id = self.body_source_map.as_ref()?.field_init_shorthand_expr(src)?;
+                let local_name = field.name_ref()?.as_name();
+                let path = ModPath::from_segments(PathKind::Plain, once(local_name));
+                let local = match self.resolver.resolve_path_in_value_ns_fully(db, &path) {
+                    Some(ValueNs::LocalBinding(pat_id)) => {
+                        Some(Local { pat_id, parent: self.resolver.body_owner()? })
+                    }
+                    _ => None,
+                };
+                (expr_id, local)
             }
         };
-        self.infer.as_ref()?.record_field_resolution(expr_id).map(|it| it.into())
+        let struct_field = self.infer.as_ref()?.record_field_resolution(expr_id)?;
+        Some((struct_field.into(), local))
     }
 
     pub(crate) fn resolve_record_literal(

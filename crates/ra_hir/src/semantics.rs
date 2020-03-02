@@ -107,8 +107,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze(field.syntax()).resolve_field(field)
     }
 
-    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<StructField> {
-        self.analyze(field.syntax()).resolve_record_field(field)
+    pub fn resolve_record_field(
+        &self,
+        field: &ast::RecordField,
+    ) -> Option<(StructField, Option<Local>)> {
+        self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<VariantDef> {
