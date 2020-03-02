@@ -27,6 +27,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
+    type Identifier = lalrpop_intern::InternedString;
     type DefId = InternId;
 
     // FIXME: implement these
@@ -121,7 +122,7 @@ pub type StructId = chalk_ir::StructId<Interner>;
 pub type StructDatum = chalk_rust_ir::StructDatum<Interner>;
 pub type ImplId = chalk_ir::ImplId<Interner>;
 pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
-pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId;
+pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId<Interner>;
 pub type AssociatedTyValue = chalk_rust_ir::AssociatedTyValue<Interner>;
 
 pub(super) trait ToChalk {
@@ -822,13 +823,6 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
-fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {
-    T::from_intern_id(InternId::from(chalk_id.index))
-}
-fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
-    chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
-}
-
 impl From<StructId> for crate::TypeCtorId {
     fn from(struct_id: StructId) -> Self {
         InternKey::from_intern_id(struct_id.0)
@@ -853,14 +847,14 @@ impl From<crate::traits::GlobalImplId> for ImplId {
     }
 }
 
-impl From<chalk_rust_ir::AssociatedTyValueId> for crate::traits::AssocTyValueId {
-    fn from(id: chalk_rust_ir::AssociatedTyValueId) -> Self {
-        id_from_chalk(id.0)
+impl From<chalk_rust_ir::AssociatedTyValueId<Interner>> for crate::traits::AssocTyValueId {
+    fn from(id: chalk_rust_ir::AssociatedTyValueId<Interner>) -> Self {
+        Self::from_intern_id(id.0)
     }
 }
 
-impl From<crate::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
+impl From<crate::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId<Interner> {
     fn from(assoc_ty_value_id: crate::traits::AssocTyValueId) -> Self {
-        chalk_rust_ir::AssociatedTyValueId(id_to_chalk(assoc_ty_value_id))
+        chalk_rust_ir::AssociatedTyValueId(assoc_ty_value_id.as_intern_id())
     }
 }
