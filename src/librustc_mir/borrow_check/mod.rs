@@ -841,9 +841,9 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
-struct RootPlace<'d, 'tcx> {
+struct RootPlace<'tcx> {
     place_local: Local,
-    place_projection: &'d [PlaceElem<'tcx>],
+    place_projection: &'tcx [PlaceElem<'tcx>],
     is_local_mutation_allowed: LocalMutationIsAllowed,
 }
 
@@ -2029,7 +2029,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Adds the place into the used mutable variables set
-    fn add_used_mut<'d>(&mut self, root_place: RootPlace<'d, 'tcx>, flow_state: &Flows<'cx, 'tcx>) {
+    fn add_used_mut(&mut self, root_place: RootPlace<'tcx>, flow_state: &Flows<'cx, 'tcx>) {
         match root_place {
             RootPlace { place_local: local, place_projection: [], is_local_mutation_allowed } => {
                 // If the local may have been initialized, and it is now currently being
@@ -2063,11 +2063,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Whether this value can be written or borrowed mutably.
     /// Returns the root place if the place passed in is a projection.
-    fn is_mutable<'d>(
+    fn is_mutable(
         &self,
-        place: PlaceRef<'d, 'tcx>,
+        place: PlaceRef<'tcx, 'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<RootPlace<'d, 'tcx>, PlaceRef<'d, 'tcx>> {
+    ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx, 'tcx>> {
         match place {
             PlaceRef { local, projection: [] } => {
                 let local = &self.body.local_decls[local];
