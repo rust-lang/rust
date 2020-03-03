@@ -540,25 +540,50 @@ impl Session {
             .unwrap_or(self.opts.debug_assertions)
     }
 
-    pub fn crt_static(&self) -> bool {
+    /// Check whether this compile session and crate type use static crt.
+    pub fn crt_static(&self, crate_type: Option<config::CrateType>) -> bool {
         // If the target does not opt in to crt-static support, use its default.
         if self.target.target.options.crt_static_respected {
-            self.crt_static_feature()
+            self.crt_static_feature(crate_type)
         } else {
             self.target.target.options.crt_static_default
         }
     }
 
-    pub fn crt_static_feature(&self) -> bool {
+    /// Check whether this compile session and crate type use `crt-static` feature.
+    pub fn crt_static_feature(&self, crate_type: Option<config::CrateType>) -> bool {
         let requested_features = self.opts.cg.target_feature.split(',');
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
-        // If the target we're compiling for requests a static crt by default,
-        // then see if the `-crt-static` feature was passed to disable that.
-        // Otherwise if we don't have a static crt by default then see if the
-        // `+crt-static` feature was passed.
-        if self.target.target.options.crt_static_default { !found_negative } else { found_positive }
+        if self.target.target.options.crt_static_default {
+            // `proc-macro` always required to be compiled to dylibs.
+            // We don't use a static crt unless the `+crt-static` feature was passed.
+            if !self.target.target.options.crt_static_allows_dylibs {
+                match crate_type {
+                    Some(config::CrateType::ProcMacro) => found_positive,
+                    Some(_) => !found_negative,
+                    None => {
+                        // FIXME: When crate_type is not available, 
+                        // we use compiler options to determine the crate_type.
+                        // We can't check `#![crate_type = "proc-macro"]` here.
+                        if self.opts.crate_types.contains(&config::CrateType::ProcMacro) {
+                            found_positive
+                        } else {
+                            !found_negative
+                        }
+                    }
+                }
+            } else {
+                // If the target we're compiling for requests a static crt by default,
+                // then see if the `-crt-static` feature was passed to disable that.
+                !found_negative
+            }
+        } else {
+            // If the target we're compiling for don't have a static crt by default then see if the
+            // `+crt-static` feature was passed.
+            found_positive
+        }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
