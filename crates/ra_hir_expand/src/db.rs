@@ -9,8 +9,9 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
-    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
+    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
+    HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind,
+    MacroFile,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -24,7 +25,7 @@ impl TokenExpander {
     pub fn expand(
         &self,
         db: &dyn AstDatabase,
-        id: MacroCallId,
+        id: LazyMacroId,
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
@@ -60,12 +61,15 @@ pub trait AstDatabase: SourceDatabase {
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
 
     #[salsa::interned]
-    fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
+    fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
     fn parse_macro(&self, macro_file: MacroFile)
         -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
     fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
+
+    #[salsa::interned]
+    fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 }
 
 pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
@@ -101,6 +105,7 @@ pub(crate) fn macro_def(
         MacroDefKind::BuiltInDerive(expander) => {
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
+        MacroDefKind::BuiltInEager(_expander) => None,
     }
 }
 
@@ -108,6 +113,13 @@ pub(crate) fn macro_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+    let id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_id) => {
+            // FIXME: support macro_arg for eager macro
+            return None;
+        }
+    };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
     let (tt, tmap) = mbe::syntax_node_to_token_tree(&arg)?;
@@ -118,11 +130,18 @@ pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
-    let loc = db.lookup_intern_macro(id);
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(id) => {
+            return Ok(db.lookup_intern_eager_expansion(id).subtree);
+        }
+    };
+
+    let loc = db.lookup_intern_macro(lazy_id);
     let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
-    let tt = macro_rules.0.expand(db, id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
+    let tt = macro_rules.0.expand(db, lazy_id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 65536 {
@@ -153,9 +172,20 @@ pub(crate) fn parse_macro(
             // Note:
             // The final goal we would like to make all parse_macro success,
             // such that the following log will not call anyway.
-            let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
-            let node = loc.kind.node(db);
-            log::warn!("fail on macro_parse: (reason: {} macro_call: {:#})", err, node.value);
+            match macro_call_id {
+                MacroCallId::LazyMacro(id) => {
+                    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+                    let node = loc.kind.node(db);
+                    log::warn!(
+                        "fail on macro_parse: (reason: {} macro_call: {:#})",
+                        err,
+                        node.value
+                    );
+                }
+                _ => {
+                    log::warn!("fail on macro_parse: (reason: {})", err);
+                }
+            }
         })
         .ok()?;
 
@@ -167,8 +197,14 @@ pub(crate) fn parse_macro(
 
 /// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
 /// FIXME: Not completed
-fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> FragmentKind {
-    let syn = db.lookup_intern_macro(macro_call_id).kind.node(db).value;
+fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(id) => {
+            return db.lookup_intern_eager_expansion(id).fragment;
+        }
+    };
+    let syn = db.lookup_intern_macro(lazy_id).kind.node(db).value;
 
     let parent = match syn.parent() {
         Some(it) => it,

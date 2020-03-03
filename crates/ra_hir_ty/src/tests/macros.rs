@@ -420,6 +420,25 @@ fn main() {
 }
 
 #[test]
+fn infer_builtin_macros_concat() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! concat {() => {}}
+
+fn main() {
+    let x = concat!("hello", concat!("world", "!"));
+}
+"#),
+        @r###"
+    ![0; 13) '"helloworld!"': &str
+    [66; 122) '{     ...")); }': ()
+    [76; 77) 'x': &str
+    "###
+    );
+}
+
+#[test]
 fn infer_derive_clone_simple() {
     let (db, pos) = TestDB::with_position(
         r#"

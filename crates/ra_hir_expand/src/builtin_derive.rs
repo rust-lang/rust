@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 
 use crate::db::AstDatabase;
-use crate::{name, quote, MacroCallId, MacroDefId, MacroDefKind};
+use crate::{name, quote, LazyMacroId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -22,7 +22,7 @@ macro_rules! register_builtin {
             pub fn expand(
                 &self,
                 db: &dyn AstDatabase,
-                id: MacroCallId,
+                id: LazyMacroId,
                 tt: &tt::Subtree,
             ) -> Result<tt::Subtree, mbe::ExpandError> {
                 let expander = match *self {
@@ -155,7 +155,7 @@ fn expand_simple_derive(
 
 fn copy_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::marker::Copy })
@@ -163,7 +163,7 @@ fn copy_expand(
 
 fn clone_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::clone::Clone })
@@ -171,7 +171,7 @@ fn clone_expand(
 
 fn default_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::default::Default })
@@ -179,7 +179,7 @@ fn default_expand(
 
 fn debug_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::fmt::Debug })
@@ -187,7 +187,7 @@ fn debug_expand(
 
 fn hash_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::hash::Hash })
@@ -195,7 +195,7 @@ fn hash_expand(
 
 fn eq_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::cmp::Eq })
@@ -203,7 +203,7 @@ fn eq_expand(
 
 fn partial_eq_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::cmp::PartialEq })
@@ -211,7 +211,7 @@ fn partial_eq_expand(
 
 fn ord_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::cmp::Ord })
@@ -219,7 +219,7 @@ fn ord_expand(
 
 fn partial_ord_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     expand_simple_derive(tt, quote! { std::cmp::PartialOrd })
@@ -228,7 +228,7 @@ fn partial_ord_expand(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_db::TestDB, AstId, MacroCallKind, MacroCallLoc};
+    use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
     fn expand_builtin_derive(s: &str, expander: BuiltinDeriveExpander) -> String {
@@ -248,7 +248,7 @@ mod tests {
             kind: MacroCallKind::Attr(AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]))),
         };
 
-        let id = db.intern_macro(loc);
+        let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         // FIXME text() for syntax nodes parsed from token tree looks weird

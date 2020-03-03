@@ -47,8 +47,8 @@ mod marks;
 use std::hash::Hash;
 
 use hir_expand::{
-    ast_id_map::FileAstId, db::AstDatabase, hygiene::Hygiene, AstId, HirFileId, InFile,
-    MacroCallId, MacroCallKind, MacroDefId,
+    ast_id_map::FileAstId, db::AstDatabase, eager::expand_eager_macro, hygiene::Hygiene, AstId,
+    HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -459,8 +459,21 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
         db: &impl AstDatabase,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
-        let def = resolver(self.path.clone())?;
-        Some(def.as_call_id(db, MacroCallKind::FnLike(self.ast_id)))
+        let def: MacroDefId = resolver(self.path.clone())?;
+
+        if let MacroDefKind::BuiltInEager(_) = def.kind {
+            let macro_call = InFile::new(self.ast_id.file_id, self.ast_id.to_node(db));
+            let hygiene = Hygiene::new(db, self.ast_id.file_id);
+
+            Some(
+                expand_eager_macro(db, macro_call, def, &|path: ast::Path| {
+                    resolver(path::ModPath::from_src(path, &hygiene)?)
+                })?
+                .into(),
+            )
+        } else {
+            Some(def.as_lazy_macro(db, MacroCallKind::FnLike(self.ast_id)).into())
+        }
     }
 }
 
@@ -471,6 +484,6 @@ impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
-        Some(def.as_call_id(db, MacroCallKind::Attr(self.ast_id)))
+        Some(def.as_lazy_macro(db, MacroCallKind::Attr(self.ast_id)).into())
     }
 }

@@ -219,7 +219,7 @@ fn unroot(n: SyntaxNode) -> SyntaxNode {
 }
 
 pub mod tokens {
-    use crate::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
+    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
     use once_cell::sync::Lazy;
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
@@ -249,6 +249,12 @@ pub mod tokens {
         assert!(text.trim().is_empty());
         let sf = SourceFile::parse(text).ok().unwrap();
         sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
+    }
+
+    pub fn literal(text: &str) -> SyntaxToken {
+        assert_eq!(text.trim(), text);
+        let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {}; }}", text));
+        lit.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
     pub fn single_newline() -> SyntaxToken {

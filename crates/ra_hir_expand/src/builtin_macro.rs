@@ -1,24 +1,31 @@
 //! Builtin macro
 use crate::db::AstDatabase;
 use crate::{
-    ast::{self},
-    name, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind, TextUnit,
+    ast::{self, AstToken, HasStringValue},
+    name, AstId, CrateId, MacroDefId, MacroDefKind, TextUnit,
 };
 
-use crate::quote;
+use crate::{quote, LazyMacroId};
+use either::Either;
+use ra_parser::FragmentKind;
 
 macro_rules! register_builtin {
-    ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
+    ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinFnLikeExpander {
             $($kind),*
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum EagerExpander {
+            $($e_kind),*
         }
 
         impl BuiltinFnLikeExpander {
             pub fn expand(
                 &self,
                 db: &dyn AstDatabase,
-                id: MacroCallId,
+                id: LazyMacroId,
                 tt: &tt::Subtree,
             ) -> Result<tt::Subtree, mbe::ExpandError> {
                 let expander = match *self {
@@ -26,28 +33,54 @@ macro_rules! register_builtin {
                 };
                 expander(db, id, tt)
             }
+        }
 
-            fn by_name(ident: &name::Name) -> Option<BuiltinFnLikeExpander> {
-                match ident {
-                    $( id if id == &name::name![$name] => Some(BuiltinFnLikeExpander::$kind), )*
-                    _ => return None,
-                }
+        impl EagerExpander {
+            pub fn expand(
+                &self,
+                tt: &tt::Subtree,
+            ) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+                let expander = match *self {
+                    $( EagerExpander::$e_kind => $e_expand, )*
+                };
+                expander(tt)
             }
         }
 
-        pub fn find_builtin_macro(
-            ident: &name::Name,
-            krate: CrateId,
-            ast_id: AstId<ast::MacroCall>,
-        ) -> Option<MacroDefId> {
-            let kind = BuiltinFnLikeExpander::by_name(ident)?;
-
-            Some(MacroDefId { krate: Some(krate), ast_id: Some(ast_id), kind: MacroDefKind::BuiltIn(kind) })
+        fn find_by_name(ident: &name::Name) -> Option<Either<BuiltinFnLikeExpander, EagerExpander>> {
+            match ident {
+                $( id if id == &name::name![$name] => Some(Either::Left(BuiltinFnLikeExpander::$kind)), )*
+                $( id if id == &name::name![$e_name] => Some(Either::Right(EagerExpander::$e_kind)), )*
+                _ => return None,
+            }
         }
     };
 }
 
+pub fn find_builtin_macro(
+    ident: &name::Name,
+    krate: CrateId,
+    ast_id: AstId<ast::MacroCall>,
+) -> Option<MacroDefId> {
+    let kind = find_by_name(ident)?;
+
+    match kind {
+        Either::Left(kind) => Some(MacroDefId {
+            krate: Some(krate),
+            ast_id: Some(ast_id),
+            kind: MacroDefKind::BuiltIn(kind),
+        }),
+        Either::Right(kind) => Some(MacroDefId {
+            krate: Some(krate),
+            ast_id: Some(ast_id),
+            kind: MacroDefKind::BuiltInEager(kind),
+        }),
+    }
+}
+
 register_builtin! {
+    LAZY:
+
     (column, Column) => column_expand,
     (compile_error, CompileError) => compile_error_expand,
     (file, File) => file_expand,
@@ -58,12 +91,16 @@ register_builtin! {
     (option_env, OptionEnv) => option_env_expand,
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
-    (format_args_nl, FormatArgsNl) => format_args_expand
+    (format_args_nl, FormatArgsNl) => format_args_expand,
+
+    EAGER:
+    // eagers
+    (concat, Concat) => concat_expand
 }
 
 fn line_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
@@ -77,7 +114,7 @@ fn line_expand(
 
 fn stringify_expand(
     db: &dyn AstDatabase,
-    id: MacroCallId,
+    id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let loc = db.lookup_intern_macro(id);
@@ -99,7 +136,7 @@ fn stringify_expand(
 
 fn env_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
@@ -110,7 +147,7 @@ fn env_expand(
 
 fn option_env_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
@@ -121,7 +158,7 @@ fn option_env_expand(
 
 fn column_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
@@ -135,7 +172,7 @@ fn column_expand(
 
 fn file_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // FIXME: RA purposefully lacks knowledge of absolute file names
@@ -151,7 +188,7 @@ fn file_expand(
 
 fn compile_error_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     if tt.count() == 1 {
@@ -168,7 +205,7 @@ fn compile_error_expand(
 
 fn format_args_expand(
     _db: &dyn AstDatabase,
-    _id: MacroCallId,
+    _id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // We expand `format_args!("", a1, a2)` to
@@ -208,23 +245,44 @@ fn format_args_expand(
     Ok(expanded)
 }
 
+fn unquote_str(lit: &tt::Literal) -> Option<String> {
+    let lit = ast::make::tokens::literal(&lit.to_string());
+    let token = ast::String::cast(lit)?;
+    token.value()
+}
+
+fn concat_expand(tt: &tt::Subtree) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let mut text = String::new();
+    for (i, t) in tt.token_trees.iter().enumerate() {
+        match t {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
+                text += &unquote_str(&it).ok_or_else(|| mbe::ExpandError::ConversionError)?;
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
+            _ => return Err(mbe::ExpandError::UnexpectedToken),
+        }
+    }
+
+    Ok((quote!(#text), FragmentKind::Expr))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{name::AsName, test_db::TestDB, AstNode, MacroCallKind, MacroCallLoc};
+    use crate::{name::AsName, test_db::TestDB, AstNode, MacroCallId, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
     use ra_syntax::ast::NameOwner;
 
-    fn expand_builtin_macro(s: &str) -> String {
-        let (db, file_id) = TestDB::with_single_file(&s);
+    fn expand_builtin_macro(ra_fixture: &str) -> String {
+        let (db, file_id) = TestDB::with_single_file(&ra_fixture);
         let parsed = db.parse(file_id);
         let macro_calls: Vec<_> =
             parsed.syntax_node().descendants().filter_map(ast::MacroCall::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 
-        let expander =
-            BuiltinFnLikeExpander::by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
+        let expander = find_by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
+        let expander = expander.left().unwrap();
 
         // the first one should be a macro_rules
         let def = MacroDefId {
@@ -241,7 +299,7 @@ mod tests {
             )),
         };
 
-        let id = db.intern_macro(loc);
+        let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         parsed.text().to_string()
