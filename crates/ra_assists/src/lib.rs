@@ -178,8 +178,12 @@ mod helpers {
         (db, file_id)
     }
 
-    pub(crate) fn check_assist(assist: AssistHandler, ra_fixture: &str, after: &str) {
-        check(assist, ra_fixture, ExpectedResult::After(after));
+    pub(crate) fn check_assist(
+        assist: AssistHandler,
+        ra_fixture_before: &str,
+        ra_fixture_after: &str,
+    ) {
+        check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
     }
 
     // FIXME: instead of having a separate function here, maybe use

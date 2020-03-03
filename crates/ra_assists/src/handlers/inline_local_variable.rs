@@ -126,7 +126,7 @@ mod tests {
     fn test_inline_let_bind_literal_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     let a<|> = 1;
@@ -140,7 +140,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     <|>1 + 1;
@@ -160,7 +160,7 @@ fn foo() {
     fn test_inline_let_bind_bin_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     let a<|> = 1 + 1;
@@ -174,7 +174,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     <|>(1 + 1) + 1;
@@ -194,7 +194,7 @@ fn foo() {
     fn test_inline_let_bind_function_call_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     let a<|> = bar(1);
@@ -208,7 +208,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn bar(a: usize) {}
 fn foo() {
     <|>bar(1) + 1;
@@ -228,7 +228,7 @@ fn foo() {
     fn test_inline_let_bind_cast_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn bar(a: usize): usize { a }
 fn foo() {
     let a<|> = bar(1) as u64;
@@ -242,7 +242,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn bar(a: usize): usize { a }
 fn foo() {
     <|>(bar(1) as u64) + 1;
@@ -262,7 +262,7 @@ fn foo() {
     fn test_inline_let_bind_block_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = { 10 + 1 };
     a + 1;
@@ -275,7 +275,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn foo() {
     <|>{ 10 + 1 } + 1;
     if { 10 + 1 } > 10 {
@@ -294,7 +294,7 @@ fn foo() {
     fn test_inline_let_bind_paren_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = ( 10 + 1 );
     a + 1;
@@ -307,7 +307,7 @@ fn foo() {
     let b = a * 10;
     bar(a);
 }",
-            "
+            r"
 fn foo() {
     <|>( 10 + 1 ) + 1;
     if ( 10 + 1 ) > 10 {
@@ -339,13 +339,13 @@ fn foo() {
     fn test_call_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = bar(10 + 1);
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     <|>let b = bar(10 + 1) * 10;
     let c = bar(10 + 1) as usize;
@@ -357,14 +357,14 @@ fn foo() {
     fn test_index_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let x = vec![1, 2, 3];
     let a<|> = x[0];
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     let x = vec![1, 2, 3];
     <|>let b = x[0] * 10;
@@ -377,14 +377,14 @@ fn foo() {
     fn test_method_call_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let bar = vec![1];
     let a<|> = bar.len();
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     let bar = vec![1];
     <|>let b = bar.len() * 10;
@@ -397,7 +397,7 @@ fn foo() {
     fn test_field_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 struct Bar {
     foo: usize
 }
@@ -408,7 +408,7 @@ fn foo() {
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 struct Bar {
     foo: usize
 }
@@ -425,7 +425,7 @@ fn foo() {
     fn test_try_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() -> Option<usize> {
     let bar = Some(1);
     let a<|> = bar?;
@@ -433,7 +433,7 @@ fn foo() -> Option<usize> {
     let c = a as usize;
     None
 }",
-            "
+            r"
 fn foo() -> Option<usize> {
     let bar = Some(1);
     <|>let b = bar? * 10;
@@ -447,13 +447,13 @@ fn foo() -> Option<usize> {
     fn test_ref_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let bar = 10;
     let a<|> = &bar;
     let b = a * 10;
 }",
-            "
+            r"
 fn foo() {
     let bar = 10;
     <|>let b = &bar * 10;
@@ -465,12 +465,12 @@ fn foo() {
     fn test_tuple_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = (10, 20);
     let b = a[0];
 }",
-            "
+            r"
 fn foo() {
     <|>let b = (10, 20)[0];
 }",
@@ -481,12 +481,12 @@ fn foo() {
     fn test_array_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = [1, 2, 3];
     let b = a.len();
 }",
-            "
+            r"
 fn foo() {
     <|>let b = [1, 2, 3].len();
 }",
@@ -497,13 +497,13 @@ fn foo() {
     fn test_paren() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = (10 + 20);
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     <|>let b = (10 + 20) * 10;
     let c = (10 + 20) as usize;
@@ -515,14 +515,14 @@ fn foo() {
     fn test_path_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let d = 10;
     let a<|> = d;
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     let d = 10;
     <|>let b = d * 10;
@@ -535,13 +535,13 @@ fn foo() {
     fn test_block_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = { 10 };
     let b = a * 10;
     let c = a as usize;
 }",
-            "
+            r"
 fn foo() {
     <|>let b = { 10 } * 10;
     let c = { 10 } as usize;
@@ -553,7 +553,7 @@ fn foo() {
     fn test_used_in_different_expr1() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = 10 + 20;
     let b = a * 10;
@@ -561,7 +561,7 @@ fn foo() {
     let d = [a, 10];
     let e = (a);
 }",
-            "
+            r"
 fn foo() {
     <|>let b = (10 + 20) * 10;
     let c = (10 + 20, 20);
@@ -575,12 +575,12 @@ fn foo() {
     fn test_used_in_for_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = vec![10, 20];
     for i in a {}
 }",
-            "
+            r"
 fn foo() {
     <|>for i in vec![10, 20] {}
 }",
@@ -591,12 +591,12 @@ fn foo() {
     fn test_used_in_while_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = 1 > 0;
     while a {}
 }",
-            "
+            r"
 fn foo() {
     <|>while 1 > 0 {}
 }",
@@ -607,14 +607,14 @@ fn foo() {
     fn test_used_in_break_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = 1 + 1;
     loop {
         break a;
     }
 }",
-            "
+            r"
 fn foo() {
     <|>loop {
         break 1 + 1;
@@ -627,12 +627,12 @@ fn foo() {
     fn test_used_in_return_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = 1 > 0;
     return a;
 }",
-            "
+            r"
 fn foo() {
     <|>return 1 > 0;
 }",
@@ -643,12 +643,12 @@ fn foo() {
     fn test_used_in_match_expr() {
         check_assist(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let a<|> = 1 > 0;
     match a {}
 }",
-            "
+            r"
 fn foo() {
     <|>match 1 > 0 {}
 }",

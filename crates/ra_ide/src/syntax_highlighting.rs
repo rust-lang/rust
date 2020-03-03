@@ -320,7 +320,7 @@ fn highlight_injection(
     let call_info = call_info_for_token(&sema, expanded)?;
     let idx = call_info.active_parameter?;
     let name = call_info.signature.parameter_names.get(idx)?;
-    if name != "ra_fixture" {
+    if !name.starts_with("ra_fixture") {
         return None;
     }
     let value = literal.value()?;
