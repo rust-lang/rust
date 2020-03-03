@@ -150,7 +150,7 @@ source.
   compares against `.fixed` (they must match). Finally, the fixed
   source is compiled, and this compilation is required to succeed.
   The `.fixed` file can also be generated automatically with the
-  `--bless` option, discribed in [this section][bless].
+  `--bless` option, described in [this section][bless].
 * `min-gdb-version` specifies the minimum gdb version required for
   this test; see also `ignore-gdb-version`
 * `min-lldb-version` specifies the minimum lldb version required for
