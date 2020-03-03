@@ -97,7 +97,9 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
-        config::CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) => {
+        config::CrateType::Executable
+            if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) =>
+        {
             Linkage::Static
         }
         config::CrateType::Executable => Linkage::Dynamic,

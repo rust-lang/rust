@@ -1288,7 +1288,8 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
             let more_args = &sess.opts.cg.link_arg;
             let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
-            if is_pic(sess) && !sess.crt_static(Some(crate_type)) && !args.any(|x| *x == "-static") {
+            if is_pic(sess) && !sess.crt_static(Some(crate_type)) && !args.any(|x| *x == "-static")
+            {
                 position_independent_executable = true;
             }
         }

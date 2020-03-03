@@ -564,7 +564,7 @@ impl Session {
                     Some(config::CrateType::ProcMacro) => found_positive,
                     Some(_) => !found_negative,
                     None => {
-                        // FIXME: When crate_type is not available, 
+                        // FIXME: When crate_type is not available,
                         // we use compiler options to determine the crate_type.
                         // We can't check `#![crate_type = "proc-macro"]` here.
                         if self.opts.crate_types.contains(&config::CrateType::ProcMacro) {
