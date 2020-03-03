@@ -172,9 +172,20 @@ pub(crate) fn parse_macro(
             // Note:
             // The final goal we would like to make all parse_macro success,
             // such that the following log will not call anyway.
-            let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
-            let node = loc.kind.node(db);
-            log::warn!("fail on macro_parse: (reason: {} macro_call: {:#})", err, node.value);
+            match macro_call_id {
+                MacroCallId::LazyMacro(id) => {
+                    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+                    let node = loc.kind.node(db);
+                    log::warn!(
+                        "fail on macro_parse: (reason: {} macro_call: {:#})",
+                        err,
+                        node.value
+                    );
+                }
+                _ => {
+                    log::warn!("fail on macro_parse: (reason: {})", err);
+                }
+            }
         })
         .ok()?;
 
