@@ -4,7 +4,6 @@
 
 #[allow(dead_code)]
 pub mod auto_trait;
-mod chalk_fulfill;
 pub mod codegen;
 mod coherence;
 mod engine;
@@ -72,10 +71,6 @@ pub use self::util::{
 };
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,
-};
-
-pub use self::chalk_fulfill::{
-    CanonicalGoal as ChalkCanonicalGoal, FulfillmentContext as ChalkFulfillmentContext,
 };
 
 pub use rustc::traits::*;

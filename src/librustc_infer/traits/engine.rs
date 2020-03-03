@@ -3,7 +3,7 @@ use crate::traits::Obligation;
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_hir::def_id::DefId;
 
-use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
+use super::{FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};
 
 pub trait TraitEngine<'tcx>: 'tcx {
@@ -78,11 +78,7 @@ impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
 }
 
 impl dyn TraitEngine<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
-        if tcx.sess.opts.debugging_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new())
-        } else {
-            Box::new(FulfillmentContext::new())
-        }
+    pub fn new(_tcx: TyCtxt<'tcx>) -> Box<Self> {
+        Box::new(FulfillmentContext::new())
     }
 }
