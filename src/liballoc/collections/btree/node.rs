@@ -153,10 +153,15 @@ impl<K, V> InternalNode<K, V> {
     }
 }
 
-/// An owned pointer to a node. This basically is either `Box<LeafNode<K, V>>` or
-/// `Box<InternalNode<K, V>>`. However, it contains no information as to which of the two types
-/// of nodes is actually behind the box, and, partially due to this lack of information, has no
-/// destructor.
+/// A managed, non-null pointer to a node. This is either an owned pointer to
+/// `LeafNode<K, V>`, an owned pointer to `InternalNode<K, V>`, or a (not owned)
+/// pointer to `NodeHeader<(), ()` (more specifically, the pointer to EMPTY_ROOT_NODE).
+/// All of these types have a `NodeHeader<K, V>` prefix, meaning that they have at
+/// least the same size as `NodeHeader<K, V>` and store the same kinds of data at the same
+/// offsets; and they have a pointer alignment at least as large as `NodeHeader<K, V>`'s.
+/// However, `BoxedNode` contains no information as to which of the three types
+/// of nodes it actually contains, and, partially due to this lack of information,
+/// has no destructor.
 struct BoxedNode<K, V> {
     ptr: Unique<LeafNode<K, V>>,
 }
@@ -167,9 +172,7 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        unsafe {
-            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node) as *mut LeafNode<K, V>) }
-        }
+        BoxedNode { ptr: Box::into_unique(node).cast() }
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
@@ -181,10 +184,11 @@ impl<K, V> BoxedNode<K, V> {
     }
 }
 
-/// An owned tree. Note that despite being owned, this does not have a destructor,
-/// and must be cleaned up manually.
+/// Either an owned tree or a shared, empty tree.  Note that this does not have a destructor,
+/// and must be cleaned up manually if it is an owned tree.
 pub struct Root<K, V> {
     node: BoxedNode<K, V>,
+    /// The number of levels below the root node.
     height: usize,
 }
 
@@ -192,21 +196,21 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
+    /// Whether the instance of `Root` wraps a shared, empty root node. If not,
+    /// the entire tree is uniquely owned by the owner of the `Root` instance.
     pub fn is_shared_root(&self) -> bool {
         self.as_ref().is_shared_root()
     }
 
+    /// Returns a shared tree, wrapping a shared root node that is eternally empty.
     pub fn shared_empty_root() -> Self {
         Root {
-            node: unsafe {
-                BoxedNode::from_ptr(NonNull::new_unchecked(
-                    &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V> as *mut _,
-                ))
-            },
+            node: unsafe { BoxedNode::from_ptr(NonNull::from(&EMPTY_ROOT_NODE).cast()) },
             height: 0,
         }
     }
 
+    /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
     }
@@ -310,6 +314,7 @@ impl<K, V> Root<K, V> {
 ///   so '&LeafNode` or `&InternalNode` pointing to the shared root is undefined behavior.
 ///   Turning this into a `NodeHeader` reference is always safe.
 pub struct NodeRef<BorrowType, K, V, Type> {
+    /// The number of levels below the node.
     height: usize,
     node: NonNull<LeafNode<K, V>>,
     // `root` is null unless the borrow type is `Mut`
