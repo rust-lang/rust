@@ -4,7 +4,7 @@ import * as ra from './rust-analyzer-api';
 import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
 import { Ctx } from './ctx';
-import { sendRequestWithRetry } from './util';
+import { sendRequestWithRetry, isRustDocument } from './util';
 
 export function activateHighlighting(ctx: Ctx) {
     const highlighter = new Highlighter(ctx);
@@ -36,7 +36,7 @@ export function activateHighlighting(ctx: Ctx) {
 
     vscode.window.onDidChangeActiveTextEditor(
         async (editor: vscode.TextEditor | undefined) => {
-            if (!editor || editor.document.languageId !== 'rust') return;
+            if (!editor || !isRustDocument(editor.document)) return;
             if (!ctx.config.highlightingOn) return;
             const client = ctx.client;
             if (!client) return;

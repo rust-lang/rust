@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
+import { isRustDocument } from '../util';
 
 // Opens the virtual file that will show the syntax tree
 //
@@ -19,7 +20,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
     vscode.workspace.onDidChangeTextDocument(
         (event: vscode.TextDocumentChangeEvent) => {
             const doc = event.document;
-            if (doc.languageId !== 'rust') return;
+            if (!isRustDocument(doc)) return;
             afterLs(() => tdcp.eventEmitter.fire(tdcp.uri));
         },
         null,
@@ -28,7 +29,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 
     vscode.window.onDidChangeActiveTextEditor(
         (editor: vscode.TextEditor | undefined) => {
-            if (!editor || editor.document.languageId !== 'rust') return;
+            if (!editor || !isRustDocument(editor.document)) return;
             tdcp.eventEmitter.fire(tdcp.uri);
         },
         null,

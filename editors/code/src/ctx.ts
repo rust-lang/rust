@@ -3,6 +3,7 @@ import * as lc from 'vscode-languageclient';
 
 import { Config } from './config';
 import { createClient } from './client';
+import { isRustDocument } from './util';
 
 export class Ctx {
     private constructor(
@@ -23,9 +24,15 @@ export class Ctx {
 
     get activeRustEditor(): vscode.TextEditor | undefined {
         const editor = vscode.window.activeTextEditor;
-        return editor && editor.document.languageId === 'rust'
+        return editor && isRustDocument(editor.document)
             ? editor
             : undefined;
+    }
+
+    get visibleRustEditors(): vscode.TextEditor[] {
+        return vscode.window.visibleTextEditors.filter(
+            editor => isRustDocument(editor.document),
+        );
     }
 
     registerCommand(name: string, factory: (ctx: Ctx) => Cmd) {
