@@ -4,7 +4,7 @@ error[E0280]: the requirement `for<'a> <Self as Iterator>::Item<'a>: 'a` is not 
 LL | trait Iterator {
    | -------------- required by `Iterator`
 LL |     type Item<'a>: 'a;
-   |                    ^^
+   |                    ^^ required by `Iterator` here
 
 error: aborting due to previous error
 

@@ -4330,8 +4330,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Check bounds on type arguments used in the path.
             let (bounds, _) = self.instantiate_bounds(path_span, did, substs);
-            let cause =
-                traits::ObligationCause::new(path_span, self.body_id, traits::ItemObligation(did));
+            let cause = traits::ObligationCause::new(
+                path_span,
+                self.body_id,
+                traits::ItemObligation(did, None),
+            );
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
@@ -5610,7 +5613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
 
         for (i, mut obligation) in traits::predicates_for_generics(
-            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
+            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id, None)),
             self.param_env,
             &bounds,
         )

@@ -13,5 +13,8 @@ fn bar() where Vec<dyn Copy>:, {}
 //~^ ERROR E0277
 //~| ERROR E0038
 
+struct Vec<T> {
+    t: T,
+}
 
 fn main() { }

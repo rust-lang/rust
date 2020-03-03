@@ -138,7 +138,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// In an impl of trait `X` for type `Y`, type `Y` must
     /// also implement all supertraits of `X`.
-    ItemObligation(DefId),
+    ItemObligation(DefId, Option<Span>),
 
     /// Like `ItemObligation`, but with extra detail on the source of the obligation.
     BindingObligation(DefId, Span),
@@ -192,6 +192,8 @@ pub enum ObligationCauseCode<'tcx> {
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
+
+    DerivedCauseCode(Box<ObligationCauseCode<'tcx>>),
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {

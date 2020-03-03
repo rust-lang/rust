@@ -410,7 +410,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::SliceOrArrayElem => Some(super::SliceOrArrayElem),
             super::TupleElem => Some(super::TupleElem),
             super::ProjectionWf(proj) => tcx.lift(&proj).map(super::ProjectionWf),
-            super::ItemObligation(def_id) => Some(super::ItemObligation(def_id)),
+            super::ItemObligation(def_id, span) => Some(super::ItemObligation(def_id, span)),
             super::BindingObligation(def_id, span) => Some(super::BindingObligation(def_id, span)),
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
@@ -442,6 +442,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ImplDerivedObligation(ref cause) => {
                 tcx.lift(cause).map(super::ImplDerivedObligation)
             }
+            super::DerivedCauseCode(ref x) => tcx.lift(&**x).map(|x| x),
             super::CompareImplMethodObligation {
                 item_name,
                 impl_item_def_id,

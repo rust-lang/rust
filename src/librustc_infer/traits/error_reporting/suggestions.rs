@@ -1421,7 +1421,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("note_obligation_cause_for_async_await: next_code={:?}", next_code);
         self.note_obligation_cause_code(
             err,
-            &obligation.predicate,
+            Some(&obligation.predicate),
             next_code.unwrap(),
             &mut Vec::new(),
         );
@@ -1430,7 +1430,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     crate fn note_obligation_cause_code<T>(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        predicate: &T,
+        predicate: Option<&T>,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
     ) where
@@ -1470,15 +1470,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     region, object_ty,
                 ));
             }
-            ObligationCauseCode::ItemObligation(item_def_id) => {
+            ObligationCauseCode::ItemObligation(item_def_id, bound_span) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
 
-                if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
-                    let sp = tcx.sess.source_map().def_span(sp);
-                    err.span_label(sp, &msg);
-                } else {
-                    err.note(&msg);
+                match (
+                    tcx.hir().span_if_local(item_def_id).map(|s| tcx.sess.source_map().def_span(s)),
+                    bound_span,
+                ) {
+                    (Some(item_span), Some(bound_span)) if item_span.overlaps(bound_span) => {
+                        err.span_label(bound_span, &format!("{} here", msg));
+                    }
+                    (Some(item_span), Some(bound_span)) => {
+                        err.span_label(item_span, &msg);
+                        err.span_label(bound_span, &format!("{} here", msg));
+                    }
+                    (None, Some(bound_span)) => {
+                        err.span_label(bound_span, &format!("{} here", msg));
+                    }
+                    (Some(item_span), None) => {
+                        err.span_label(item_span, &msg);
+                    }
+                    _ => {
+                        err.note(&msg);
+                    }
                 }
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
@@ -1576,6 +1591,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
+            ObligationCauseCode::DerivedCauseCode(ref data) => {
+                let mut obligated_types = vec![];
+                self.note_obligation_cause_code(err, None::<&T>, &**data, &mut obligated_types);
+            }
             ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 let ty = parent_trait_ref.skip_binder().self_ty();
@@ -1586,7 +1605,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
                     self.note_obligation_cause_code(
                         err,
-                        &parent_predicate,
+                        Some(&parent_predicate),
                         &data.parent_code,
                         obligated_types,
                     );
@@ -1602,7 +1621,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let parent_predicate = parent_trait_ref.without_const().to_predicate();
                 self.note_obligation_cause_code(
                     err,
-                    &parent_predicate,
+                    Some(&parent_predicate),
                     &data.parent_code,
                     obligated_types,
                 );
@@ -1611,14 +1630,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note(&format!(
                     "the requirement `{}` appears on the impl method \
                      but not on the corresponding trait method",
-                    predicate
+                    predicate.unwrap()
                 ));
             }
             ObligationCauseCode::CompareImplTypeObligation { .. } => {
                 err.note(&format!(
                     "the requirement `{}` appears on the associated impl type \
                      but not on the corresponding associated trait type",
-                    predicate
+                    predicate.unwrap()
                 ));
             }
             ObligationCauseCode::ReturnType

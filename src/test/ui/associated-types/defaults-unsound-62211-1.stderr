@@ -42,6 +42,12 @@ LL |     + Display = Self;
 error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:41:9
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
+LL |     + Display = Self;
+   |       ------- required by `UncheckedCopy` here
+...
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
    |
@@ -56,6 +62,12 @@ LL | impl<T> UncheckedCopy for T {}
 error[E0277]: the trait bound `T: std::ops::Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:41:9
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
+LL |     + Deref<Target = str>
+   |       ------------------- required by `UncheckedCopy` here
+...
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `T`
    |
@@ -68,6 +80,12 @@ LL | impl<T> UncheckedCopy for T {}
 error[E0277]: cannot add-assign `&'static str` to `T`
   --> $DIR/defaults-unsound-62211-1.rs:41:9
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
+LL |     + AddAssign<&'static str>
+   |       ----------------------- required by `UncheckedCopy` here
+...
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ no implementation for `T += &'static str`
    |
@@ -81,6 +99,12 @@ LL | impl<T> UncheckedCopy for T {}
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:41:9
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
+LL |     type Output: Copy
+   |                  ---- required by `UncheckedCopy` here
+...
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |

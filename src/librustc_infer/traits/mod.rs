@@ -64,7 +64,9 @@ pub use self::specialize::{specialization_graph, translate_substs, OverlapError}
 pub use self::structural_match::search_for_structural_match_violation;
 pub use self::structural_match::type_marked_structural;
 pub use self::structural_match::NonStructuralMatchTy;
-pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
+pub use self::util::{
+    elaborate_obligations, elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs,
+};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{
     get_vtable_index_of_object_method, impl_is_default, impl_item_is_final,
@@ -361,7 +363,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec()).collect();
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
+            .map(|o| o.predicate)
+            .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 

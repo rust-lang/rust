@@ -133,8 +133,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        for implication in super::elaborate_predicates(self.tcx, vec![*cond]) {
-            if let ty::Predicate::Trait(implication, _) = implication {
+        for obligation in super::elaborate_predicates(self.tcx, vec![*cond]) {
+            if let ty::Predicate::Trait(implication, _) = obligation.predicate {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
                 // FIXME: I'm just not taking associated types at all here.
@@ -233,7 +233,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
 
                 let is_normalized_ty_expected = match &obligation.cause.code {
-                    ObligationCauseCode::ItemObligation(_)
+                    ObligationCauseCode::ItemObligation(..)
                     | ObligationCauseCode::BindingObligation(_, _)
                     | ObligationCauseCode::ObjectCastObligation(_) => false,
                     _ => true,
@@ -423,7 +423,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         self.note_obligation_cause_code(
             &mut err,
-            &obligation.predicate,
+            Some(&obligation.predicate),
             &obligation.cause.code,
             &mut vec![],
         );
@@ -1164,7 +1164,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
                 err.note(&format!("cannot resolve `{}`", predicate));
-                if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
+                if let ObligationCauseCode::ItemObligation(def_id, _) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
             self.note_obligation_cause_code(
                 err,
-                &obligation.predicate,
+                Some(&obligation.predicate),
                 &obligation.cause.code,
                 &mut vec![],
             );

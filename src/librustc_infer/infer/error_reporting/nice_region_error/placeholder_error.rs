@@ -222,7 +222,7 @@ impl NiceRegionError<'me, 'tcx> {
             format!("trait `{}` defined here", self.tcx().def_path_str(trait_def_id)),
         );
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = cause.code {
+        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id, _) = cause.code {
             err.span_label(span, "doesn't satisfy where-clause");
             err.span_label(
                 self.tcx().def_span(def_id),

@@ -519,7 +519,7 @@ fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
             let cause = traits::ObligationCause::new(
                 span,
                 fcx.body_id,
-                traits::ItemObligation(trait_def_id),
+                traits::ItemObligation(trait_def_id, None),
             );
             let obligation = traits::Obligation::new(cause, fcx.param_env, pred);
 
@@ -754,7 +754,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             // to be *true* but merely *well-formed*.
             let pred = fcx.normalize_associated_types_in(sp, &pred);
             let cause =
-                traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
+                traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id, None));
             traits::Obligation::new(cause, fcx.param_env, pred)
         });
 
@@ -1219,7 +1219,8 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     // Check elaborated bounds.
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 
-    for pred in implied_obligations {
+    for obligation in implied_obligations {
+        let pred = obligation.predicate;
         // Match the existing behavior.
         if pred.is_global() && !pred.has_late_bound_regions() {
             let pred = fcx.normalize_associated_types_in(span, &pred);

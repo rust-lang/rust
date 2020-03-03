@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as std::iter::Iterator>::Item == u32`
   --> $DIR/traits-assoc-type-in-supertrait-bad.rs:11:6
    |
+LL | pub trait Foo: Iterator<Item=<Self as Foo>::Key> {
+   |                         ----------------------- required by `Foo` here
+...
 LL | impl Foo for IntoIter<i32> {
    |      ^^^ expected `i32`, found `u32`
 
