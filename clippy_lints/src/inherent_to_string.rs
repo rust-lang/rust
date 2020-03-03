@@ -120,8 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
 }
 
 fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
-    let display_trait_id =
-        get_trait_def_id(cx, &["core", "fmt", "Display"]).expect("Failed to get trait ID of `Display`!");
+    let display_trait_id = get_trait_def_id(cx, &paths::DISPLAY_TRAIT).expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
     let fn_def_id = cx.tcx.hir().local_def_id(item.hir_id);
