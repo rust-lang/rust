@@ -23,7 +23,7 @@ LL | impl<A, B> Foo<A, B> {
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `A`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
@@ -38,7 +38,7 @@ LL | impl<A, B> Foo<A, B> {
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `B`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to 3 previous errors

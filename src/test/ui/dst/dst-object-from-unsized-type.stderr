@@ -6,7 +6,7 @@ LL | fn test1<T: ?Sized + Foo>(t: &T) {
 LL |     let u: &dyn Foo = t;
    |                       ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
@@ -18,7 +18,7 @@ LL | fn test2<T: ?Sized + Foo>(t: &T) {
 LL |     let v: &dyn Foo = t as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 

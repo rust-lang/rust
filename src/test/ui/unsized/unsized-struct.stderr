@@ -9,7 +9,7 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
@@ -23,7 +23,7 @@ LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-   = help: within `Bar<T>`, the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Bar<T>`
 

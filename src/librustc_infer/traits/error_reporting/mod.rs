@@ -584,17 +584,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             ))
                         );
 
-                        let explanation =
-                            if obligation.cause.code == ObligationCauseCode::MainFunctionType {
-                                "consider using `()`, or a `Result`".to_owned()
-                            } else {
-                                format!(
-                                    "{}the trait `{}` is not implemented for `{}`",
-                                    pre_message,
-                                    trait_ref.print_only_trait_path(),
-                                    trait_ref.self_ty(),
-                                )
-                            };
+                        let explanation = if obligation.cause.code
+                            == ObligationCauseCode::MainFunctionType
+                        {
+                            "consider using `()`, or a `Result`".to_owned()
+                        } else if self.tcx.lang_items().sized_trait().map_or(false, |sized_id| {
+                            let self_ty = trait_ref.self_ty();
+                            sized_id == trait_ref.def_id()
+                                && self_ty.is_some_param()
+                                && self_ty != self.tcx.types.self_param
+                        }) {
+                            // Detect type parameters with an implied `Sized` bound and explain
+                            // it instead of giving a generic message. This will be displayed
+                            // as a `help`.
+                            "type parameters have an implicit `Sized` requirement by default"
+                                .to_string()
+                        } else {
+                            format!(
+                                "{}the trait `{}` is not implemented for `{}`",
+                                pre_message,
+                                trait_ref.print_only_trait_path(),
+                                trait_ref.self_ty(),
+                            )
+                        };
 
                         if self.suggest_add_reference_to_arg(
                             &obligation,

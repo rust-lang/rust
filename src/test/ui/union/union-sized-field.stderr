@@ -6,7 +6,7 @@ LL | union Foo<T: ?Sized> {
 LL |     value: T,
    |     ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of a union may have a dynamically sized type
 
@@ -18,7 +18,7 @@ LL | struct Foo2<T: ?Sized> {
 LL |     value: T,
    |     ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
 
@@ -30,7 +30,7 @@ LL | enum Foo3<T: ?Sized> {
 LL |     Value(T),
    |           ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 

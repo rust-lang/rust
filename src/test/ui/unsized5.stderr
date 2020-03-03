@@ -6,7 +6,7 @@ LL | struct S1<X: ?Sized> {
 LL |     f1: X,
    |     ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
 
@@ -19,7 +19,7 @@ LL |     f: isize,
 LL |     g: X,
    |     ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
 
@@ -51,7 +51,7 @@ LL | enum E<X: ?Sized> {
 LL |     V1(X, isize),
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -63,7 +63,7 @@ LL | enum F<X: ?Sized> {
 LL |     V2{f1: X, f: isize},
    |        ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 

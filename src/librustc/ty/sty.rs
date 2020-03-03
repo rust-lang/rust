@@ -1928,6 +1928,14 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
+    pub fn is_some_param(&self) -> bool {
+        match self.kind {
+            ty::Param(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_slice(&self) -> bool {
         match self.kind {
             RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.kind {
