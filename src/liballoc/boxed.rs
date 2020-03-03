@@ -200,7 +200,7 @@ impl<T> Box<T> {
             let ptr = if layout.size() == 0 {
                 NonNull::dangling()
             } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
             };
             Box::from_raw(ptr.as_ptr())
         }
@@ -270,7 +270,7 @@ impl<T> Box<[T]> {
             let ptr = if layout.size() == 0 {
                 NonNull::dangling()
             } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
             };
             Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
         }

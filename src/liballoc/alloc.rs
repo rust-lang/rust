@@ -165,8 +165,8 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(alloc(layout)).ok_or(AllocErr)
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(alloc(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
     }
 
     #[inline]
@@ -180,13 +180,13 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
+    ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr).map(|p| (p, new_size))
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr)
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
     }
 }
 
@@ -201,7 +201,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
         match Global.alloc(layout) {
-            Ok(ptr) => ptr.as_ptr(),
+            Ok((ptr, _)) => ptr.as_ptr(),
             Err(_) => handle_alloc_error(layout),
         }
     }
