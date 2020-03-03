@@ -239,7 +239,9 @@ impl Layout {
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow (i.e., the rounded value must be less than
         // > `usize::MAX`)
-        let padded_size = self.size() + self.padding_needed_for(self.align());
+        let padded_size = unsafe {
+            crate::intrinsics::unchecked_add(self.size(), self.padding_needed_for(self.align()))
+        };
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutErr { private: () })?;
 
         unsafe {
