@@ -326,12 +326,12 @@ impl<'hir> Map<'hir> {
             },
             Node::TraitItem(item) => match item.kind {
                 TraitItemKind::Const(..) => DefKind::AssocConst,
-                TraitItemKind::Method(..) => DefKind::Method,
+                TraitItemKind::Method(..) => DefKind::AssocFn,
                 TraitItemKind::Type(..) => DefKind::AssocTy,
             },
             Node::ImplItem(item) => match item.kind {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
-                ImplItemKind::Method(..) => DefKind::Method,
+                ImplItemKind::Method(..) => DefKind::AssocFn,
                 ImplItemKind::TyAlias(..) => DefKind::AssocTy,
                 ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
             },

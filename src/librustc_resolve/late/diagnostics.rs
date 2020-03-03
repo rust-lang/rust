@@ -124,7 +124,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             .unwrap_or(false)
                     }
                     Res::Def(DefKind::Ctor(..), _)
-                    | Res::Def(DefKind::Method, _)
+                    | Res::Def(DefKind::AssocFn, _)
                     | Res::Def(DefKind::Const, _)
                     | Res::Def(DefKind::AssocConst, _)
                     | Res::SelfCtor(_)

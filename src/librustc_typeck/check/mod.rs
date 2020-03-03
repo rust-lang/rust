@@ -2976,7 +2976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
         debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
-        self.write_resolution(hir_id, Ok((DefKind::Method, method.def_id)));
+        self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
 
         // When the method is confirmed, the `method.substs` includes
@@ -5364,7 +5364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Res::Def(DefKind::Method, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {

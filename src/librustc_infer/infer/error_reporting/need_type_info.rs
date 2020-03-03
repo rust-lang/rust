@@ -468,7 +468,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &segment.args,
         ) {
             let borrow = tables.borrow();
-            if let Some((DefKind::Method, did)) = borrow.type_dependent_def(e.hir_id) {
+            if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {
                     err.span_suggestion(
