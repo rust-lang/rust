@@ -9,7 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-mod classify;
 mod rename;
 mod search_scope;
 
@@ -27,11 +26,8 @@ use test_utils::tested_by;
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
-pub(crate) use self::{
-    classify::{classify_name_ref, NameRefClass},
-    rename::rename,
-};
-pub(crate) use ra_ide_db::defs::{classify_name, Definition};
+pub(crate) use self::rename::rename;
+pub(crate) use ra_ide_db::defs::{classify_name, classify_name_ref, Definition, NameRefClass};
 
 pub use self::search_scope::SearchScope;
 

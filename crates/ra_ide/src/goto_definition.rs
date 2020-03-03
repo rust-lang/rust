@@ -206,7 +206,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros() {
-        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -223,7 +222,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros_from_other_crates() {
-        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -335,7 +333,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_methods() {
-        covers!(goto_def_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -355,7 +352,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_fields() {
-        covers!(goto_def_for_fields);
         check_goto(
             "
             //- /lib.rs
@@ -374,7 +370,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_record_fields() {
-        covers!(goto_def_for_record_fields);
         check_goto(
             "
             //- /lib.rs
@@ -787,7 +782,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_field_init_shorthand() {
-        covers!(goto_def_for_field_init_shorthand);
         check_goto(
             "
             //- /lib.rs
