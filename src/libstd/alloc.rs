@@ -137,13 +137,15 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
+            .ok_or(AllocErr)
+            .map(|p| (p, layout.size()))
     }
 
     #[inline]
@@ -157,8 +159,10 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
+    ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
+            .ok_or(AllocErr)
+            .map(|p| (p, new_size))
     }
 }
 

@@ -72,7 +72,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         RawVec::allocate_in(capacity, true, a)
     }
 
-    fn allocate_in(capacity: usize, zeroed: bool, mut a: A) -> Self {
+    fn allocate_in(mut capacity: usize, zeroed: bool, mut a: A) -> Self {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
@@ -87,7 +87,10 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 let layout = Layout::from_size_align(alloc_size, align).unwrap();
                 let result = if zeroed { a.alloc_zeroed(layout) } else { a.alloc(layout) };
                 match result {
-                    Ok(ptr) => ptr.cast(),
+                    Ok((ptr, size)) => {
+                        capacity = size / elem_size;
+                        ptr.cast()
+                    }
                     Err(_) => handle_alloc_error(layout),
                 }
             };
@@ -280,7 +283,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
             // 0, getting to here necessarily means the `RawVec` is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
-            let (new_cap, ptr) = match self.current_layout() {
+            let (ptr, new_cap) = match self.current_layout() {
                 Some(cur) => {
                     // Since we guarantee that we never allocate more than
                     // `isize::MAX` bytes, `elem_size * self.cap <= isize::MAX` as
@@ -297,7 +300,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                     alloc_guard(new_size).unwrap_or_else(|_| capacity_overflow());
                     let ptr_res = self.a.realloc(NonNull::from(self.ptr).cast(), cur, new_size);
                     match ptr_res {
-                        Ok(ptr) => (new_cap, ptr),
+                        Ok((ptr, new_size)) => (ptr, new_size / elem_size),
                         Err(_) => handle_alloc_error(Layout::from_size_align_unchecked(
                             new_size,
                             cur.align(),
@@ -310,7 +313,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     let layout = Layout::array::<T>(new_cap).unwrap();
                     match self.a.alloc(layout) {
-                        Ok(ptr) => (new_cap, ptr),
+                        Ok((ptr, new_size)) => (ptr, new_size / elem_size),
                         Err(_) => handle_alloc_error(layout),
                     }
                 }
@@ -598,7 +601,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
                 match self.a.realloc(NonNull::from(self.ptr).cast(), old_layout, new_size) {
-                    Ok(p) => self.ptr = p.cast().into(),
+                    Ok((ptr, _)) => self.ptr = ptr.cast().into(),
                     Err(_) => {
                         handle_alloc_error(Layout::from_size_align_unchecked(new_size, align))
                     }
@@ -631,6 +634,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
         fallibility: Fallibility,
         strategy: ReserveStrategy,
     ) -> Result<(), TryReserveError> {
+        let elem_size = mem::size_of::<T>();
+
         unsafe {
             // NOTE: we don't early branch on ZSTs here because we want this
             // to actually catch "asking for more than usize::MAX" in that case.
@@ -662,7 +667,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 None => self.a.alloc(new_layout),
             };
 
-            let ptr = match (res, fallibility) {
+            let (ptr, new_cap) = match (res, fallibility) {
                 (Err(AllocErr), Infallible) => handle_alloc_error(new_layout),
                 (Err(AllocErr), Fallible) => {
                     return Err(TryReserveError::AllocError {
@@ -670,7 +675,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                         non_exhaustive: (),
                     });
                 }
-                (Ok(ptr), _) => ptr,
+                (Ok((ptr, new_size)), _) => (ptr, new_size / elem_size),
             };
 
             self.ptr = ptr.cast().into();
