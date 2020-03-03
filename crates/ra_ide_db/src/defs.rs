@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Name, Semantics,
-    StructField, TypeParam,
+    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
+    Semantics, StructField, TypeParam,
 };
 use ra_prof::profile;
 use ra_syntax::{
@@ -117,6 +117,8 @@ impl NameClass {
 }
 
 pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    let _p = profile("classify_name");
+
     if let Some(bind_pat) = name.syntax().parent().and_then(ast::BindPat::cast) {
         if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
             return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
@@ -127,7 +129,6 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 }
 
 fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Definition> {
-    let _p = profile("classify_name");
     let parent = name.syntax().parent()?;
 
     match_ast! {
@@ -191,4 +192,75 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
             _ => None,
         }
     }
+}
+
+pub enum NameRefClass {
+    Definition(Definition),
+    FieldShorthand { local: Local, field: Definition },
+}
+
+impl NameRefClass {
+    pub fn definition(self) -> Definition {
+        match self {
+            NameRefClass::Definition(def) => def,
+            NameRefClass::FieldShorthand { local, field: _ } => Definition::Local(local),
+        }
+    }
+}
+
+pub fn classify_name_ref(
+    sema: &Semantics<RootDatabase>,
+    name_ref: &ast::NameRef,
+) -> Option<NameRefClass> {
+    let _p = profile("classify_name_ref");
+
+    let parent = name_ref.syntax().parent()?;
+
+    if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
+        if let Some(func) = sema.resolve_method_call(&method_call) {
+            return Some(NameRefClass::Definition(Definition::ModuleDef(func.into())));
+        }
+    }
+
+    if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
+        if let Some(field) = sema.resolve_field(&field_expr) {
+            return Some(NameRefClass::Definition(Definition::StructField(field)));
+        }
+    }
+
+    if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
+        if let Some((field, local)) = sema.resolve_record_field(&record_field) {
+            let field = Definition::StructField(field);
+            let res = match local {
+                None => NameRefClass::Definition(field),
+                Some(local) => NameRefClass::FieldShorthand { field, local },
+            };
+            return Some(res);
+        }
+    }
+
+    if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
+        if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
+            return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
+        }
+    }
+
+    let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+    let resolved = sema.resolve_path(&path)?;
+    let res = match resolved {
+        PathResolution::Def(def) => Definition::ModuleDef(def),
+        PathResolution::AssocItem(item) => {
+            let def = match item {
+                hir::AssocItem::Function(it) => it.into(),
+                hir::AssocItem::Const(it) => it.into(),
+                hir::AssocItem::TypeAlias(it) => it.into(),
+            };
+            Definition::ModuleDef(def)
+        }
+        PathResolution::Local(local) => Definition::Local(local),
+        PathResolution::TypeParam(par) => Definition::TypeParam(par),
+        PathResolution::Macro(def) => Definition::Macro(def),
+        PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
+    };
+    Some(NameRefClass::Definition(res))
 }

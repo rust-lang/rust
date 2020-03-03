@@ -1,7 +1,10 @@
 //! FIXME: write short doc here
 
 use hir::Semantics;
-use ra_ide_db::{defs::classify_name, symbol_index, RootDatabase};
+use ra_ide_db::{
+    defs::{classify_name, classify_name_ref},
+    symbol_index, RootDatabase,
+};
 use ra_syntax::{
     ast::{self},
     match_ast, AstNode,
@@ -11,7 +14,6 @@ use ra_syntax::{
 
 use crate::{
     display::{ToNav, TryToNav},
-    references::classify_name_ref,
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -94,7 +96,7 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_text, covers};
+    use test_utils::assert_eq_text;
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -206,7 +208,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros() {
-        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -223,7 +224,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros_from_other_crates() {
-        covers!(goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -335,7 +335,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_methods() {
-        covers!(goto_def_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -355,7 +354,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_fields() {
-        covers!(goto_def_for_fields);
         check_goto(
             "
             //- /lib.rs
@@ -374,7 +372,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_record_fields() {
-        covers!(goto_def_for_record_fields);
         check_goto(
             "
             //- /lib.rs
@@ -787,7 +784,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_field_init_shorthand() {
-        covers!(goto_def_for_field_init_shorthand);
         check_goto(
             "
             //- /lib.rs

@@ -7,7 +7,7 @@ mod tests;
 
 use hir::{Name, Semantics};
 use ra_ide_db::{
-    defs::{classify_name, Definition, NameClass},
+    defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 use ra_prof::profile;
@@ -19,11 +19,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    call_info::call_info_for_token,
-    references::{classify_name_ref, NameRefClass},
-    Analysis, FileId,
-};
+use crate::{call_info::call_info_for_token, Analysis, FileId};
 
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
