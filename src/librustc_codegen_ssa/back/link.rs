@@ -186,7 +186,7 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     if flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
-            if let Some(ref root_lib_path) = original_path.ancestors().skip(4).next() {
+            if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
                     "x86_64" => Some("x64".to_string()),
                     "x86" => Some("x86".to_string()),

@@ -338,9 +338,8 @@ impl<'hir> Map<'hir> {
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
                 // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
-                if variant_data.ctor_hir_id().is_none() {
-                    return None;
-                }
+                variant_data.ctor_hir_id()?;
+
                 let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,

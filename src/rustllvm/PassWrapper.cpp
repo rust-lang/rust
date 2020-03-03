@@ -868,8 +868,10 @@ LLVMRustOptimizeWithNewPassManager(
     } else {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
-      for (const auto &C : OptimizerLastEPCallbacks)
-        PB.registerOptimizerLastEPCallback(C);
+      if (OptStage != LLVMRustOptStage::PreLinkThinLTO) {
+        for (const auto &C : OptimizerLastEPCallbacks)
+          PB.registerOptimizerLastEPCallback(C);
+      }
 
       switch (OptStage) {
       case LLVMRustOptStage::PreLinkNoLTO:
@@ -877,6 +879,12 @@ LLVMRustOptimizeWithNewPassManager(
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+        if (!OptimizerLastEPCallbacks.empty()) {
+          FunctionPassManager FPM(DebugPassManager);
+          for (const auto &C : OptimizerLastEPCallbacks)
+            C(FPM, OptLevel);
+          MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+        }
         break;
       case LLVMRustOptStage::PreLinkFatLTO:
         MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);

@@ -189,7 +189,7 @@ impl<'tcx> Body<'tcx> {
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
-            local_decls.len() >= arg_count + 1,
+            local_decls.len() > arg_count,
             "expected at least {} locals, got {}",
             arg_count + 1,
             local_decls.len()

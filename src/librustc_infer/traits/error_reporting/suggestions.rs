@@ -401,9 +401,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
-            if let Some('\'') =
-                snippet.chars().filter(|c| !c.is_whitespace()).skip(refs_number).next()
-            {
+            if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
                 // Do not suggest removal of borrow from type arguments.
                 return;
             }
@@ -464,9 +462,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
-            if let Some('\'') =
-                snippet.chars().filter(|c| !c.is_whitespace()).skip(refs_number).next()
-            {
+            if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
                 // Do not suggest removal of borrow from type arguments.
                 return;
             }
