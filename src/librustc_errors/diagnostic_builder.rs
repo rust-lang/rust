@@ -136,12 +136,11 @@ impl<'a> DiagnosticBuilder<'a> {
 
         let handler = self.0.handler;
 
-        // We need to use `ptr::read` because `DiagnosticBuilder` implements `Drop`.
-        let diagnostic;
-        unsafe {
-            diagnostic = std::ptr::read(&self.0.diagnostic);
-            std::mem::forget(self);
-        };
+        // We must use `Level::Cancelled` for `dummy` to avoid an ICE about an
+        // unused diagnostic.
+        let dummy = Diagnostic::new(Level::Cancelled, "");
+        let diagnostic = std::mem::replace(&mut self.0.diagnostic, dummy);
+
         // Logging here is useful to help track down where in logs an error was
         // actually emitted.
         debug!("buffer: diagnostic={:?}", diagnostic);
