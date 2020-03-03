@@ -172,7 +172,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         let caller_arg = caller_arg.next().ok_or_else(|| err_unsup!(FunctionArgCountMismatch))?;
         if rust_abi {
-            debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
+            assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {

@@ -144,16 +144,16 @@ fn wrapping_range_contains(r: &RangeInclusive<u128>, test: u128) -> bool {
 // "expected something <in the given range>" makes sense.
 fn wrapping_range_format(r: &RangeInclusive<u128>, max_hi: u128) -> String {
     let (lo, hi) = r.clone().into_inner();
-    debug_assert!(hi <= max_hi);
+    assert!(hi <= max_hi);
     if lo > hi {
         format!("less or equal to {}, or greater or equal to {}", hi, lo)
     } else if lo == hi {
         format!("equal to {}", lo)
     } else if lo == 0 {
-        debug_assert!(hi < max_hi, "should not be printing if the range covers everything");
+        assert!(hi < max_hi, "should not be printing if the range covers everything");
         format!("less or equal to {}", hi)
     } else if hi == max_hi {
-        debug_assert!(lo > 0, "should not be printing if the range covers everything");
+        assert!(lo > 0, "should not be printing if the range covers everything");
         format!("greater or equal to {}", lo)
     } else {
         format!("in the range {:?}", r)

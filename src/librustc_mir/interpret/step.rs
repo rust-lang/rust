@@ -287,7 +287,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
             // This should change *something*
-            debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
+            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             if let Some(block) = self.frame().block {
                 info!("// executing {:?}", block);
             }
