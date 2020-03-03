@@ -4,5 +4,5 @@ warning: unnecessary trailing semicolons
 LL |   if (true) { 12; };;; -num;
    |                     ^^ help: remove these semicolons
    |
-   = note: `#[warn(redundant_semicolon)]` on by default
+   = note: `#[warn(redundant_semicolons)]` on by default
 

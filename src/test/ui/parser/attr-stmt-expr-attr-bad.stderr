@@ -411,16 +411,16 @@ LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
    |                                  ^ expected one of `.`, `;`, `?`, or an operator
 
 error: expected statement after outer attribute
-  --> $DIR/attr-stmt-expr-attr-bad.rs:114:44
+  --> $DIR/attr-stmt-expr-attr-bad.rs:114:37
    |
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
-   |                                            ^
+   |                                     ^^^^^^^
 
 error: expected statement after outer attribute
-  --> $DIR/attr-stmt-expr-attr-bad.rs:116:45
+  --> $DIR/attr-stmt-expr-attr-bad.rs:116:37
    |
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr] } } }
-   |                                             ^
+   |                                     ^^^^^^^
 
 error: aborting due to 57 previous errors
 

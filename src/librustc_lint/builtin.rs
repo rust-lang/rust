@@ -775,7 +775,10 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Local(..) => "statements",
             ast::StmtKind::Item(..) => "inner items",
             // expressions will be reported by `check_expr`.
-            ast::StmtKind::Semi(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Mac(..) => return,
+            ast::StmtKind::Empty
+            | ast::StmtKind::Semi(_)
+            | ast::StmtKind::Expr(_)
+            | ast::StmtKind::Mac(_) => return,
         };
 
         warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
