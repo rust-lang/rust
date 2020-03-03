@@ -784,4 +784,55 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn completes_reexported_items_under_correct_name() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                fn foo() {
+                    self::m::<|>
+                }
+
+                mod m {
+                    pub use super::p::wrong_fn as right_fn;
+                    pub use super::p::WRONG_CONST as RIGHT_CONST;
+                    pub use super::p::WrongType as RightType;
+                }
+                mod p {
+                    fn wrong_fn() {}
+                    const WRONG_CONST: u32 = 1;
+                    struct WrongType {};
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "RIGHT_CONST",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "RIGHT_CONST",
+                kind: Const,
+            },
+            CompletionItem {
+                label: "RightType",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "RightType",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "right_fn()",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "right_fn()$0",
+                kind: Function,
+                lookup: "right_fn",
+                detail: "fn wrong_fn()",
+            },
+        ]
+        "###
+        );
+    }
 }
