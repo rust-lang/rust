@@ -248,6 +248,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                                 if is_word(lint, sym!(unused_imports))
                                                     || is_word(lint, sym!(deprecated))
                                                     || is_word(lint, sym!(unreachable_pub))
+                                                    || is_word(lint, sym!(unused))
                                                 {
                                                     return;
                                                 }

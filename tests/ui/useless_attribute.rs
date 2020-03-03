@@ -20,6 +20,10 @@ extern crate proc_macro_derive;
 #[allow(unused_imports)]
 use std::collections;
 
+// don't lint on unused for `use` items
+#[allow(unused)]
+use std::option;
+
 // don't lint on deprecated for `use` items
 mod foo {
     #[deprecated]
