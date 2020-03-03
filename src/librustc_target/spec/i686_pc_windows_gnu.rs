@@ -5,6 +5,7 @@ pub fn target() -> TargetResult {
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
     base.eliminate_frame_pointer = false; // Required for backtraces
+    base.linker = Some("i686-w64-mingw32-gcc".to_string());
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.

@@ -5,6 +5,14 @@ use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
+use rustc_ast::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
+use rustc_ast::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
+use rustc_ast::mut_visit::*;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::util::map_in_place::MapInPlace;
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_data_structures::sync::Lrc;
@@ -14,18 +22,12 @@ use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
+use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
-use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use syntax::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
-use syntax::mut_visit::*;
-use syntax::ptr::P;
-use syntax::token;
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::util::map_in_place::MapInPlace;
-use syntax::visit::{self, AssocCtxt, Visitor};
 
 use smallvec::{smallvec, SmallVec};
 use std::io::ErrorKind;
@@ -375,8 +377,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.span_err(
                     span,
                     &format!(
-                        "expected crate top-level item to be a module after macro expansion, found a {}",
-                        kind.descriptive_variant()
+                        "expected crate top-level item to be a module after macro expansion, found {} {}",
+                        kind.article(), kind.descr()
                     ),
                 );
             }
@@ -501,13 +503,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
-        let attr =
-            attr::find_by_name(item.attrs(), sym::derive).expect("`derive` attribute should exist");
-        let span = attr.span;
+        let attr = attr::find_by_name(item.attrs(), sym::derive);
+        let span = attr.map_or(item.span(), |attr| attr.span);
         let mut err = self
             .cx
             .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
-        if let ast::AttrStyle::Inner = attr.style {
+        if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
             let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
             let suggestion = format!("#[derive({})]", trait_list.join(", "));
             err.span_suggestion(
@@ -667,12 +668,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
+                    // `Annotatable` can be converted into tokens directly, but we are packing it
+                    // into a nonterminal as a piece of AST to make the produced token stream
+                    // look nicer in pretty-printed form. This may be no longer necessary.
                     let item_tok = TokenTree::token(
                         token::Interpolated(Lrc::new(match item {
                             Annotatable::Item(item) => token::NtItem(item),
-                            Annotatable::TraitItem(item) => token::NtTraitItem(item),
-                            Annotatable::ImplItem(item) => token::NtImplItem(item),
-                            Annotatable::ForeignItem(item) => token::NtForeignItem(item),
+                            Annotatable::TraitItem(item)
+                            | Annotatable::ImplItem(item)
+                            | Annotatable::ForeignItem(item) => {
+                                token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
+                            }
                             Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                             Annotatable::Expr(expr) => token::NtExpr(expr),
                             Annotatable::Arm(..)
@@ -862,22 +868,22 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::TraitItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_trait_item(&mut false)?);
+            while let Some(item) = this.parse_trait_item()? {
+                items.extend(item);
             }
             AstFragment::TraitItems(items)
         }
         AstFragmentKind::ImplItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_impl_item(&mut false)?);
+            while let Some(item) = this.parse_impl_item()? {
+                items.extend(item);
             }
             AstFragment::ImplItems(items)
         }
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_foreign_item(&mut false)?);
+            while let Some(item) = this.parse_foreign_item()? {
+                items.extend(item);
             }
             AstFragment::ForeignItems(items)
         }
@@ -1086,6 +1092,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
+            }
+
+            if attr.doc_str().is_some() {
+                self.cx.parse_sess.buffer_lint_with_diagnostic(
+                    &UNUSED_DOC_COMMENTS,
+                    attr.span,
+                    ast::CRATE_NODE_ID,
+                    "unused doc comment",
+                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                );
             }
         }
     }
@@ -1652,10 +1668,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         }
                     }
                 } else {
-                    let mut err = self.cx.struct_span_err(
-                        it.span(),
-                        &format!("expected path to external documentation"),
-                    );
+                    let mut err = self
+                        .cx
+                        .struct_span_err(it.span(), "expected path to external documentation");
 
                     // Check if the user erroneously used `doc(include(...))` syntax.
                     let literal = it.meta_item_list().and_then(|list| {

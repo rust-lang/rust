@@ -1,11 +1,12 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/extern-no-fn.rs:1:9
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/extern-no-fn.rs:2:6
    |
-LL |   extern {
-   |  _________^
-LL | |
-LL | |     f();
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | extern {
+   |        - while parsing this item list starting here
+LL |     f();
+   |      ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
 
 error: aborting due to previous error
 

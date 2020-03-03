@@ -61,7 +61,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let sess_args = cg_opts.chain(tg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
+        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true

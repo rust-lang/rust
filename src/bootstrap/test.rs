@@ -388,6 +388,8 @@ impl Step for Miri {
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
+            // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
+            cargo.env("RUSTC_DEBUG_ASSERTIONS", "true");
             // Let cargo-miri know where xargo ended up.
             cargo.env("XARGO", builder.out.join("bin").join("xargo"));
 
@@ -397,7 +399,7 @@ impl Step for Miri {
             }
 
             // # Determine where Miri put its sysroot.
-            // To this end, we run `cargo miri setup --env` and capture the output.
+            // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
             // (We do this separately from the above so that when the setup actually
             // happens we get some output.)
             // We re-use the `cargo` from above.

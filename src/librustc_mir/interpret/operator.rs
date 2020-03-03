@@ -6,7 +6,7 @@ use rustc::ty::{
     Ty,
 };
 use rustc_apfloat::Float;
-use syntax::ast::FloatTy;
+use rustc_ast::ast::FloatTy;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 

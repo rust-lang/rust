@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
         }
 
         // read `::` if previous code parsed less than 8 groups
-        if !self.read_given_char(':').is_some() || !self.read_given_char(':').is_some() {
+        if self.read_given_char(':').is_none() || self.read_given_char(':').is_none() {
             return None;
         }
 

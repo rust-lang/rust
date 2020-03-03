@@ -252,11 +252,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        traits::Reveal::UserFacing,
-        tcx.sess.opts.debugging_opts.chalk.then_some(def_id),
-    );
+    let unnormalized_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing, None);
 
     let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)

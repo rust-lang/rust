@@ -3,6 +3,7 @@
 use std::iter::once;
 
 use rustc::ty;
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -13,7 +14,6 @@ use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;

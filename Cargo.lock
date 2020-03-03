@@ -420,25 +420,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-engine"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ec698a6f053a23bfbe646d9f2fde4b02abc19125595270a99e6f44ae0bdd1a"
-dependencies = [
- "chalk-macros",
- "rustc-hash",
-]
-
-[[package]]
-name = "chalk-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "295635afd6853aa9f20baeb7f0204862440c0fe994c5a253d5f479dac41d047e"
-dependencies = [
- "lazy_static 0.2.11",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,9 +1235,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77519ef7c5beee314d0804d4534f01e0f9e8d9acdee2b7a48627e590b27e0ec4"
+checksum = "26e07ef27260a78f7e8d218ebac2c72f2c4db50493741b190b6e8eade1da7c68"
 dependencies = [
  "bitflags",
  "libc",
@@ -1269,9 +1250,9 @@ dependencies = [
 
 [[package]]
 name = "git2-curl"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2559abb1d87d27668d31bd868a000f0e2e0065d10e78961b62da95d7a7f1cc7"
+checksum = "af1754ec4170e7dcaf9bb43743bb16eddb8d827b2e0291deb6f220a6e16fe46a"
 dependencies = [
  "curl",
  "git2",
@@ -1789,9 +1770,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.10.0"
+version = "0.11.0+0.99.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9ec6bca50549d34a392611dde775123086acbd994e3fff64954777ce2dc2e51"
+checksum = "4d5d1459353d397a029fb18862166338de938e6be976606bd056cf8f1a912ecf"
 dependencies = [
  "cc",
  "libc",
@@ -3110,7 +3091,6 @@ dependencies = [
  "backtrace",
  "bitflags",
  "byteorder",
- "chalk-engine",
  "jobserver",
  "log",
  "measureme",
@@ -3119,6 +3099,7 @@ dependencies = [
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -3132,7 +3113,6 @@ dependencies = [
  "scoped-tls",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3470,11 +3450,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_ast"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_lexer",
+ "rustc_macros",
+ "rustc_span",
+ "scoped-tls",
+ "serialize",
+ "smallvec 1.0.0",
+]
+
+[[package]]
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
@@ -3484,7 +3480,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3492,6 +3487,7 @@ name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3500,7 +3496,6 @@ dependencies = [
  "rustc_parse",
  "rustc_session",
  "rustc_span",
- "syntax",
 ]
 
 [[package]]
@@ -3508,15 +3503,16 @@ name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_span",
- "syntax",
 ]
 
 [[package]]
 name = "rustc_attr"
 version = "0.0.0"
 dependencies = [
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
@@ -3526,7 +3522,6 @@ dependencies = [
  "rustc_span",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3535,6 +3530,7 @@ version = "0.0.0"
 dependencies = [
  "fmt_macros",
  "log",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3546,7 +3542,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3560,6 +3555,7 @@ dependencies = [
  "measureme",
  "rustc",
  "rustc-demangle",
+ "rustc_ast",
  "rustc_attr",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
@@ -3576,7 +3572,6 @@ dependencies = [
  "rustc_target",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3592,6 +3587,7 @@ dependencies = [
  "num_cpus",
  "rustc",
  "rustc_apfloat",
+ "rustc_ast",
  "rustc_attr",
  "rustc_codegen_utils",
  "rustc_data_structures",
@@ -3604,7 +3600,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serialize",
- "syntax",
  "tempfile",
 ]
 
@@ -3616,12 +3611,12 @@ dependencies = [
  "punycode",
  "rustc",
  "rustc-demangle",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_metadata",
  "rustc_span",
  "rustc_target",
- "syntax",
 ]
 
 [[package]]
@@ -3657,6 +3652,7 @@ dependencies = [
  "lazy_static 1.4.0",
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
@@ -3675,7 +3671,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serialize",
- "syntax",
  "winapi 0.3.8",
 ]
 
@@ -3704,6 +3699,7 @@ name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3716,7 +3712,6 @@ dependencies = [
  "rustc_span",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3737,6 +3732,7 @@ name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
  "lazy_static 1.4.0",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
@@ -3746,7 +3742,6 @@ dependencies = [
  "rustc_target",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3757,13 +3752,13 @@ dependencies = [
  "log",
  "rand 0.7.3",
  "rustc",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_fs_util",
  "rustc_hir",
  "rustc_session",
  "rustc_span",
  "serialize",
- "syntax",
 ]
 
 [[package]]
@@ -3782,6 +3777,7 @@ dependencies = [
  "graphviz",
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_error_codes",
@@ -3793,7 +3789,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3804,6 +3799,7 @@ dependencies = [
  "once_cell",
  "rustc",
  "rustc-rayon",
+ "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",
  "rustc_attr",
@@ -3834,7 +3830,6 @@ dependencies = [
  "rustc_typeck",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
  "tempfile",
  "winapi 0.3.8",
 ]
@@ -3852,6 +3847,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3863,7 +3859,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "syntax",
  "unicode-security",
 ]
 
@@ -3894,6 +3889,7 @@ dependencies = [
  "log",
  "memmap",
  "rustc",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3907,7 +3903,6 @@ dependencies = [
  "serialize",
  "smallvec 1.0.0",
  "stable_deref_trait",
- "syntax",
  "winapi 0.3.8",
 ]
 
@@ -3923,6 +3918,7 @@ dependencies = [
  "polonius-engine",
  "rustc",
  "rustc_apfloat",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3936,7 +3932,6 @@ dependencies = [
  "rustc_target",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3947,6 +3942,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_apfloat",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -3959,7 +3955,6 @@ dependencies = [
  "rustc_target",
  "serialize",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -3968,6 +3963,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "log",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
@@ -3977,7 +3973,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec 1.0.0",
- "syntax",
  "unicode-normalization",
 ]
 
@@ -3987,6 +3982,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -3997,7 +3993,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "syntax",
 ]
 
 [[package]]
@@ -4005,12 +4000,12 @@ name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
  "rustc",
+ "rustc_ast",
  "rustc_errors",
  "rustc_hir",
  "rustc_lint",
  "rustc_metadata",
  "rustc_span",
- "syntax",
 ]
 
 [[package]]
@@ -4019,13 +4014,13 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
  "rustc_span",
  "rustc_typeck",
- "syntax",
 ]
 
 [[package]]
@@ -4036,6 +4031,7 @@ dependencies = [
  "bitflags",
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -4049,7 +4045,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -4060,6 +4055,7 @@ dependencies = [
  "rls-data",
  "rls-span",
  "rustc",
+ "rustc_ast",
  "rustc_ast_pretty",
  "rustc_codegen_utils",
  "rustc_data_structures",
@@ -4067,7 +4063,6 @@ dependencies = [
  "rustc_parse",
  "rustc_span",
  "serde_json",
- "syntax",
 ]
 
 [[package]]
@@ -4076,6 +4071,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "num_cpus",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4084,7 +4080,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serialize",
- "syntax",
 ]
 
 [[package]]
@@ -4129,9 +4124,9 @@ checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
- "chalk-engine",
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_infer",
@@ -4139,7 +4134,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -4162,6 +4156,7 @@ dependencies = [
  "arena",
  "log",
  "rustc",
+ "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -4171,7 +4166,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
- "syntax",
 ]
 
 [[package]]
@@ -4681,21 +4675,6 @@ dependencies = [
  "quote 1.0.2",
  "syn 1.0.11",
  "unicode-xid 0.2.0",
-]
-
-[[package]]
-name = "syntax"
-version = "0.0.0"
-dependencies = [
- "log",
- "rustc_data_structures",
- "rustc_index",
- "rustc_lexer",
- "rustc_macros",
- "rustc_span",
- "scoped-tls",
- "serialize",
- "smallvec 1.0.0",
 ]
 
 [[package]]

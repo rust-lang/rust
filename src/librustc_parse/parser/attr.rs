@@ -1,11 +1,11 @@
 use super::{Parser, PathStyle, TokenType};
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::{Span, Symbol};
-use syntax::ast;
-use syntax::attr;
-use syntax::token::{self, Nonterminal};
-use syntax::util::comments;
 
 use log::debug;
 
@@ -116,7 +116,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::OpenDelim(token::Bracket))?;
                 let item = self.parse_attr_item()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
-                let hi = self.prev_span;
+                let hi = self.prev_token.span;
 
                 let attr_sp = lo.to(hi);
 
@@ -255,7 +255,7 @@ impl<'a> Parser<'a> {
         while self.token.kind != token::Eof {
             let lo = self.token.span;
             let item = self.parse_attr_item()?;
-            expanded_attrs.push((item, lo.to(self.prev_span)));
+            expanded_attrs.push((item, lo.to(self.prev_token.span)));
             if !self.eat(&token::Comma) {
                 break;
             }
@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let path = self.parse_path(PathStyle::Mod)?;
         let kind = self.parse_meta_item_kind()?;
-        let span = lo.to(self.prev_span);
+        let span = lo.to(self.prev_token.span);
         Ok(ast::MetaItem { path, kind, span })
     }
 

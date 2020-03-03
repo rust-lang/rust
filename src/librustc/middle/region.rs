@@ -635,7 +635,7 @@ impl<'tcx> ScopeTree {
     /// Used to sanity check visit_expr call count when
     /// calculating generator interiors.
     pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
-        self.body_expr_count.get(&body_id).map(|r| *r)
+        self.body_expr_count.get(&body_id).copied()
     }
 }
 

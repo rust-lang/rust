@@ -9,6 +9,6 @@ impl Howness for () {
         Empty
     }
 }
-//~^ ERROR expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`,
+//~^ ERROR non-item in item list
 
 fn main() {}

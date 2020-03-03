@@ -5,7 +5,8 @@ LL |     let _result = &Err(41).as_deref_err();
    |                            ^^^^^^^^^^^^ help: there is a method with a similar name: `as_deref_mut`
    |
    = note: the method `as_deref_err` exists but the following trait bounds were not satisfied:
-           `{integer} : std::ops::Deref`
+           `{integer}: std::ops::Deref`
+           `<{integer} as std::ops::Deref>::Target = _`
 
 error: aborting due to previous error
 

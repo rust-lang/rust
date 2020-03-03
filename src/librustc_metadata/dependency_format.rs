@@ -339,7 +339,7 @@ fn activate_injected_dep(
 // there's only going to be one allocator in the output.
 fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
     let sess = &tcx.sess;
-    if list.len() == 0 {
+    if list.is_empty() {
         return;
     }
     let mut panic_runtime = None;

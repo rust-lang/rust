@@ -62,7 +62,7 @@ for details on how to format and write long error codes.
 * All of them are accessible [online](http://doc.rust-lang.org/error-index.html),
   which are auto-generated from rustc source code in different places:
   [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/error_codes.rs),
-  [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/error_codes.rs),
+  [librustc_ast](https://github.com/rust-lang/rust/blob/master/src/librustc_ast/error_codes.rs),
   [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/error_codes.rs),
   [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/error_codes.rs),
   [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/error_codes.rs),

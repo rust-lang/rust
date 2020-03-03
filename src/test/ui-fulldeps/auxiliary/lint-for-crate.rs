@@ -10,12 +10,12 @@ extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate syntax;
+extern crate rustc_ast;
 
 use rustc_driver::plugin::Registry;
 use rustc_lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_span::symbol::Symbol;
-use syntax::attr;
+use rustc_ast::attr;
 
 declare_lint! {
     CRATE_NOT_OKAY,

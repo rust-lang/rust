@@ -92,7 +92,7 @@ fn populate_polonius_move_facts(
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
         all_facts
             .child
-            .extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (child, parent)));
+            .extend(move_path.parents(&move_data.move_paths).map(|(parent, _)| (child, parent)));
     }
 
     // initialized_at

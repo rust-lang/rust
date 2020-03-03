@@ -5,13 +5,13 @@ use rustc::session::config::{Input, PpMode, PpSourceMode};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::print as pprust_hir;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_span::FileName;
-use syntax::ast;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -452,8 +452,8 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                let cm = sess.source_map();
-                *out = pprust_hir::print_crate(cm, krate, src_name, src, annotation.pp_ann())
+                let sm = sess.source_map();
+                *out = pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
             })
         }
 

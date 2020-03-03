@@ -1,12 +1,12 @@
 //! This module contains `HashStable` implementations for various data types
-//! from libsyntax in no particular order.
+//! from librustc_ast in no particular order.
 
 use crate::ich::StableHashingContext;
 
+use rustc_ast::ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::SourceFile;
-use syntax::ast;
 
 use smallvec::SmallVec;
 
@@ -14,7 +14,7 @@ impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        if self.len() == 0 {
+        if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
             return;
         }
@@ -35,7 +35,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
+impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));

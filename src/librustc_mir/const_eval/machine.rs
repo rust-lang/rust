@@ -1,7 +1,6 @@
 use rustc::mir;
 use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc_hir::def_id::DefId;
+use rustc::ty::{self, Ty};
 use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -318,13 +317,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
-    }
-
-    fn find_foreign_static(
-        _tcx: TyCtxt<'tcx>,
-        _def_id: DefId,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        throw_unsup!(ReadForeignStatic)
     }
 
     #[inline(always)]

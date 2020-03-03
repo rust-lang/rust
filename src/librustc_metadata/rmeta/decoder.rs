@@ -34,6 +34,7 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use rustc_ast::ast::{self, Ident};
 use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
@@ -41,7 +42,6 @@ use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_span::source_map::{self, respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
-use syntax::ast::{self, Ident};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -408,20 +408,12 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             {
                 last_source_file
             } else {
-                let mut a = 0;
-                let mut b = imported_source_files.len();
+                let index = imported_source_files
+                    .binary_search_by_key(&lo, |source_file| source_file.original_start_pos)
+                    .unwrap_or_else(|index| index - 1);
 
-                while b - a > 1 {
-                    let m = (a + b) / 2;
-                    if imported_source_files[m].original_start_pos > lo {
-                        b = m;
-                    } else {
-                        a = m;
-                    }
-                }
-
-                self.last_source_file_index = a;
-                &imported_source_files[a]
+                self.last_source_file_index = index;
+                &imported_source_files[index]
             }
         };
 
@@ -500,7 +492,7 @@ impl MetadataBlob {
     }
 }
 
-impl<'tcx> EntryKind<'tcx> {
+impl EntryKind {
     fn def_kind(&self) -> Option<DefKind> {
         Some(match *self {
             EntryKind::Const(..) => DefKind::Const,
@@ -614,11 +606,11 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
     }
 
-    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind<'tcx>> {
+    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
         self.root.per_def.kind.get(self, item_id).map(|k| k.decode(self))
     }
 
-    fn kind(&self, item_id: DefIndex) -> EntryKind<'tcx> {
+    fn kind(&self, item_id: DefIndex) -> EntryKind {
         assert!(!self.is_proc_macro(item_id));
         self.maybe_kind(item_id).unwrap_or_else(|| {
             bug!(
@@ -723,7 +715,7 @@ impl<'a, 'tcx> CrateMetadata {
     fn get_variant(
         &self,
         tcx: TyCtxt<'tcx>,
-        kind: &EntryKind<'_>,
+        kind: &EntryKind,
         index: DefIndex,
         parent_did: DefId,
     ) -> ty::VariantDef {
@@ -1390,6 +1382,13 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    fn generator_kind(&self, id: DefIndex) -> Option<hir::GeneratorKind> {
+        match self.kind(id) {
+            EntryKind::Generator(data) => Some(data),
+            _ => None,
+        }
+    }
+
     fn fn_sig(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         self.root.per_def.fn_sig.get(self, id).unwrap().decode((self, tcx))
     }
@@ -1499,8 +1498,8 @@ impl<'a, 'tcx> CrateMetadata {
                     );
                     debug!(
                         "CrateMetaData::imported_source_files alloc \
-                        source_file {:?} original (start_pos {:?} end_pos {:?}) \
-                        translated (start_pos {:?} end_pos {:?})",
+                         source_file {:?} original (start_pos {:?} end_pos {:?}) \
+                         translated (start_pos {:?} end_pos {:?})",
                         local_version.name,
                         start_pos,
                         end_pos,
@@ -1617,7 +1616,7 @@ impl<'a, 'tcx> CrateMetadata {
 }
 
 // Cannot be implemented on 'ProcMacro', as libproc_macro
-// does not depend on libsyntax
+// does not depend on librustc_ast
 fn macro_kind(raw: &ProcMacro) -> MacroKind {
     match raw {
         ProcMacro::CustomDerive { .. } => MacroKind::Derive,

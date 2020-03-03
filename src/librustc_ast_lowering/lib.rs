@@ -39,6 +39,14 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
 use rustc::{bug, span_bug};
+use rustc_ast::ast;
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::token::{self, Nonterminal, Token};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -58,14 +66,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::node_id::NodeMap;
-use syntax::token::{self, Nonterminal, Token};
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::{self, AssocCtxt, Visitor};
-use syntax::walk_list;
 
 use log::{debug, trace};
 use smallvec::{smallvec, SmallVec};
@@ -462,7 +462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::TyAlias(_, ref generics)
+                    | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -490,7 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lctx.allocate_hir_id_counter(item.id);
                 let owner = match (&item.kind, ctxt) {
                     // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, _, None), AssocCtxt::Trait) => None,
+                    (AssocItemKind::Fn(_, _, _, None), AssocCtxt::Trait) => None,
                     _ => Some(item.id),
                 };
                 self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));

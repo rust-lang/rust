@@ -3,120 +3,69 @@ use core::ptr;
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
 use super::unwrap_unchecked;
 
-macro_rules! def_next {
-    { unsafe fn $name:ident : $next_kv:ident $next_edge:ident $initial_leaf_edge:ident } => {
-        /// Given a leaf edge handle into an immutable tree, returns a handle to the next
-        /// leaf edge and references to the key and value between these edges.
-        /// Unsafe because the caller must ensure that the given leaf edge has a successor.
-        unsafe fn $name <'a, K: 'a, V: 'a>(
-            leaf_edge: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        ) -> (Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>, &'a K, &'a V) {
-            let mut cur_handle = match leaf_edge.$next_kv() {
-                Ok(leaf_kv) => {
-                    let (k, v) = leaf_kv.into_kv();
-                    let next_leaf_edge = leaf_kv.$next_edge();
-                    return (next_leaf_edge, k, v);
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    unwrap_unchecked(next_level)
-                }
-            };
-
-            loop {
-                cur_handle = match cur_handle.$next_kv() {
-                    Ok(internal_kv) => {
-                        let (k, v) = internal_kv.into_kv();
-                        let next_internal_edge = internal_kv.$next_edge();
-                        let next_leaf_edge = next_internal_edge.descend().$initial_leaf_edge();
-                        return (next_leaf_edge, k, v);
-                    }
-                    Err(last_edge) => {
-                        let next_level = last_edge.into_node().ascend().ok();
-                        unwrap_unchecked(next_level)
-                    }
-                }
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+    /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
+    /// on the right side, which is either in the same leaf node or in an ancestor node.
+    /// If the leaf edge is the last one in the tree, returns [`Result::Err`] with the root node.
+    pub fn next_kv(
+        self,
+    ) -> Result<
+        Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
+        NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    > {
+        let mut edge = self.forget_node_type();
+        loop {
+            edge = match edge.right_kv() {
+                Ok(internal_kv) => return Ok(internal_kv),
+                Err(last_edge) => match last_edge.into_node().ascend() {
+                    Ok(parent_edge) => parent_edge.forget_node_type(),
+                    Err(root) => return Err(root.forget_type()),
+                },
             }
         }
-    };
-}
+    }
 
-macro_rules! def_next_mut {
-    { unsafe fn $name:ident : $next_kv:ident $next_edge:ident $initial_leaf_edge:ident } => {
-        /// Given a leaf edge handle into a mutable tree, returns handles to the next
-        /// leaf edge and to the KV between these edges.
-        /// Unsafe for two reasons:
-        /// - the caller must ensure that the given leaf edge has a successor;
-        /// - both returned handles represent mutable references into the same tree
-        ///   that can easily invalidate each other, even on immutable use.
-        unsafe fn $name <'a, K: 'a, V: 'a>(
-            leaf_edge: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        ) -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
-              Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>) {
-            let mut cur_handle = match leaf_edge.$next_kv() {
-                Ok(leaf_kv) => {
-                    let next_leaf_edge = ptr::read(&leaf_kv).$next_edge();
-                    return (next_leaf_edge, leaf_kv.forget_node_type());
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    unwrap_unchecked(next_level)
-                }
-            };
-
-            loop {
-                cur_handle = match cur_handle.$next_kv() {
-                    Ok(internal_kv) => {
-                        let next_internal_edge = ptr::read(&internal_kv).$next_edge();
-                        let next_leaf_edge = next_internal_edge.descend().$initial_leaf_edge();
-                        return (next_leaf_edge, internal_kv.forget_node_type());
-                    }
-                    Err(last_edge) => {
-                        let next_level = last_edge.into_node().ascend().ok();
-                        unwrap_unchecked(next_level)
-                    }
-                }
+    /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
+    /// on the left side, which is either in the same leaf node or in an ancestor node.
+    /// If the leaf edge is the first one in the tree, returns [`Result::Err`] with the root node.
+    pub fn next_back_kv(
+        self,
+    ) -> Result<
+        Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
+        NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    > {
+        let mut edge = self.forget_node_type();
+        loop {
+            edge = match edge.left_kv() {
+                Ok(internal_kv) => return Ok(internal_kv),
+                Err(last_edge) => match last_edge.into_node().ascend() {
+                    Ok(parent_edge) => parent_edge.forget_node_type(),
+                    Err(root) => return Err(root.forget_type()),
+                },
             }
         }
-    };
+    }
 }
 
-macro_rules! def_next_dealloc {
-    { unsafe fn $name:ident : $next_kv:ident $next_edge:ident $initial_leaf_edge:ident } => {
-        /// Given a leaf edge handle into an owned tree, returns a handle to the next
-        /// leaf edge and the key and value between these edges, while deallocating
-        /// any node left behind.
+macro_rules! def_next_kv_uncheched_dealloc {
+    { unsafe fn $name:ident : $adjacent_kv:ident } => {
+        /// Given a leaf edge handle into an owned tree, returns a handle to the next KV,
+        /// while deallocating any node left behind.
         /// Unsafe for two reasons:
-        /// - the caller must ensure that the given leaf edge has a successor;
-        /// - the node pointed at by the given handle, and its ancestors, may be deallocated,
+        /// - The caller must ensure that the leaf edge is not the last one in the tree.
+        /// - The node pointed at by the given handle, and its ancestors, may be deallocated,
         ///   while the reference to those nodes in the surviving ancestors is left dangling;
-        ///   thus using the returned handle is dangerous.
+        ///   thus using the returned handle to navigate further is dangerous.
         unsafe fn $name <K, V>(
             leaf_edge: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
-        ) -> (Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>, K, V) {
-            let mut cur_handle = match leaf_edge.$next_kv() {
-                Ok(leaf_kv) => {
-                    let k = ptr::read(leaf_kv.reborrow().into_kv().0);
-                    let v = ptr::read(leaf_kv.reborrow().into_kv().1);
-                    let next_leaf_edge = leaf_kv.$next_edge();
-                    return (next_leaf_edge, k, v);
-                }
-                Err(last_edge) => {
-                    unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
-                }
-            };
-
+        ) -> Handle<NodeRef<marker::Owned, K, V, marker::LeafOrInternal>, marker::KV> {
+            let mut edge = leaf_edge.forget_node_type();
             loop {
-                cur_handle = match cur_handle.$next_kv() {
-                    Ok(internal_kv) => {
-                        let k = ptr::read(internal_kv.reborrow().into_kv().0);
-                        let v = ptr::read(internal_kv.reborrow().into_kv().1);
-                        let next_internal_edge = internal_kv.$next_edge();
-                        let next_leaf_edge = next_internal_edge.descend().$initial_leaf_edge();
-                        return (next_leaf_edge, k, v);
-                    }
+                edge = match edge.$adjacent_kv() {
+                    Ok(internal_kv) => return internal_kv,
                     Err(last_edge) => {
-                        unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
+                        let parent_edge = last_edge.into_node().deallocate_and_ascend();
+                        unwrap_unchecked(parent_edge).forget_node_type()
                     }
                 }
             }
@@ -124,30 +73,42 @@ macro_rules! def_next_dealloc {
     };
 }
 
-def_next! {unsafe fn next_unchecked: right_kv right_edge first_leaf_edge}
-def_next! {unsafe fn next_back_unchecked: left_kv left_edge last_leaf_edge}
-def_next_mut! {unsafe fn next_unchecked_mut: right_kv right_edge first_leaf_edge}
-def_next_mut! {unsafe fn next_back_unchecked_mut: left_kv left_edge last_leaf_edge}
-def_next_dealloc! {unsafe fn next_unchecked_deallocating: right_kv right_edge first_leaf_edge}
-def_next_dealloc! {unsafe fn next_back_unchecked_deallocating: left_kv left_edge last_leaf_edge}
+def_next_kv_uncheched_dealloc! {unsafe fn next_kv_unchecked_dealloc: right_kv}
+def_next_kv_uncheched_dealloc! {unsafe fn next_back_kv_unchecked_dealloc: left_kv}
+
+/// This replaces the value behind the `v` unique reference by calling the
+/// relevant function.
+///
+/// Safety: The change closure must not panic.
+#[inline]
+unsafe fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
+    let value = ptr::read(v);
+    let (new_value, ret) = change(value);
+    ptr::write(v, new_value);
+    ret
+}
 
 impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge> {
     /// Moves the leaf edge handle to the next leaf edge and returns references to the
     /// key and value in between.
     /// Unsafe because the caller must ensure that the leaf edge is not the last one in the tree.
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        let (next_edge, k, v) = next_unchecked(*self);
-        *self = next_edge;
-        (k, v)
+        replace(self, |leaf_edge| {
+            let kv = leaf_edge.next_kv();
+            let kv = unwrap_unchecked(kv.ok());
+            (kv.next_leaf_edge(), kv.into_kv())
+        })
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
     /// key and value in between.
     /// Unsafe because the caller must ensure that the leaf edge is not the first one in the tree.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        let (next_edge, k, v) = next_back_unchecked(*self);
-        *self = next_edge;
-        (k, v)
+        replace(self, |leaf_edge| {
+            let kv = leaf_edge.next_back_kv();
+            let kv = unwrap_unchecked(kv.ok());
+            (kv.next_back_leaf_edge(), kv.into_kv())
+        })
     }
 }
 
@@ -158,8 +119,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// - The caller must ensure that the leaf edge is not the last one in the tree.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        let (next_edge, kv) = next_unchecked_mut(ptr::read(self));
-        *self = next_edge;
+        let kv = replace(self, |leaf_edge| {
+            let kv = leaf_edge.next_kv();
+            let kv = unwrap_unchecked(kv.ok());
+            (ptr::read(&kv).next_leaf_edge(), kv)
+        });
         // Doing the descend (and perhaps another move) invalidates the references
         // returned by `into_kv_mut`, so we have to do this last.
         kv.into_kv_mut()
@@ -171,8 +135,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// - The caller must ensure that the leaf edge is not the first one in the tree.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        let (next_edge, kv) = next_back_unchecked_mut(ptr::read(self));
-        *self = next_edge;
+        let kv = replace(self, |leaf_edge| {
+            let kv = leaf_edge.next_back_kv();
+            let kv = unwrap_unchecked(kv.ok());
+            (ptr::read(&kv).next_back_leaf_edge(), kv)
+        });
         // Doing the descend (and perhaps another move) invalidates the references
         // returned by `into_kv_mut`, so we have to do this last.
         kv.into_kv_mut()
@@ -192,9 +159,12 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     ///   if the two preconditions above hold.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_unchecked(&mut self) -> (K, V) {
-        let (next_edge, k, v) = next_unchecked_deallocating(ptr::read(self));
-        *self = next_edge;
-        (k, v)
+        replace(self, |leaf_edge| {
+            let kv = next_kv_unchecked_dealloc(leaf_edge);
+            let k = ptr::read(kv.reborrow().into_kv().0);
+            let v = ptr::read(kv.reborrow().into_kv().1);
+            (kv.next_leaf_edge(), (k, v))
+        })
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key
@@ -209,9 +179,12 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     ///   if the two preconditions above hold.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_back_unchecked(&mut self) -> (K, V) {
-        let (next_edge, k, v) = next_back_unchecked_deallocating(ptr::read(self));
-        *self = next_edge;
-        (k, v)
+        replace(self, |leaf_edge| {
+            let kv = next_back_kv_unchecked_dealloc(leaf_edge);
+            let k = ptr::read(kv.reborrow().into_kv().0);
+            let v = ptr::read(kv.reborrow().into_kv().1);
+            (kv.next_back_leaf_edge(), (k, v))
+        })
     }
 }
 
@@ -238,6 +211,32 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
             match node.force() {
                 Leaf(leaf) => return leaf.last_edge(),
                 Internal(internal) => node = internal.last_edge().descend(),
+            }
+        }
+    }
+}
+
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+    /// Returns the leaf edge closest to a KV for forward navigation.
+    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+        match self.force() {
+            Leaf(leaf_kv) => leaf_kv.right_edge(),
+            Internal(internal_kv) => {
+                let next_internal_edge = internal_kv.right_edge();
+                next_internal_edge.descend().first_leaf_edge()
+            }
+        }
+    }
+
+    /// Returns the leaf edge closest to a KV for backward navigation.
+    pub fn next_back_leaf_edge(
+        self,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+        match self.force() {
+            Leaf(leaf_kv) => leaf_kv.left_edge(),
+            Internal(internal_kv) => {
+                let next_internal_edge = internal_kv.left_edge();
+                next_internal_edge.descend().last_leaf_edge()
             }
         }
     }

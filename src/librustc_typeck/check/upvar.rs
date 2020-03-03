@@ -37,6 +37,7 @@ use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
 use rustc::hir::map::Map;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -44,7 +45,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_span::Span;
-use syntax::ast;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {

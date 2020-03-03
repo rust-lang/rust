@@ -3,13 +3,13 @@ use fmt_macros::{Parser, Piece, Position};
 use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
 
+use rustc_ast::ast::{MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::{MetaItem, NestedMetaItem};
 
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
@@ -237,10 +237,8 @@ impl<'tcx> OnUnimplementedDirective {
             }
         }
 
-        let options: FxHashMap<Symbol, String> = options
-            .into_iter()
-            .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned())))
-            .collect();
+        let options: FxHashMap<Symbol, String> =
+            options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref, &options)),
             message: message.map(|m| m.format(tcx, trait_ref, &options)),

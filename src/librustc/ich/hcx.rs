@@ -5,6 +5,7 @@ use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lrc;
@@ -13,14 +14,13 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
-use syntax::ast;
 
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
+    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
+    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -149,7 +149,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => cm,
+            Some(ref mut sm) => sm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()

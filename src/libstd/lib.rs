@@ -233,12 +233,12 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-#![feature(atomic_mut_ptr)]
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
 #![feature(assoc_int_consts)]
 #![feature(associated_type_bounds)]
+#![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]
@@ -550,6 +550,9 @@ pub use core::{
     stringify,
     trace_macros,
 };
+
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use core::primitive;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

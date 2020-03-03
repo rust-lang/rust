@@ -10,8 +10,8 @@ use rustc_hir as hir;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{self, TraitEngine};
 
+use rustc_ast::ast::Ident;
 use rustc_span::Span;
-use syntax::ast::Ident;
 
 use std::iter;
 

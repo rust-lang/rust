@@ -3,8 +3,8 @@
 
 use crate::ty::{self, Ty};
 
+use rustc_ast::ast;
 use rustc_macros::HashStable;
-use syntax::ast;
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

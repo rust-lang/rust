@@ -15,6 +15,9 @@ use rustc::hir::exports::Export;
 use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc::ty;
 use rustc::{bug, span_bug};
+use rustc_ast::ast::{Ident, Name, NodeId};
+use rustc_ast::unwrap_or;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
@@ -25,9 +28,6 @@ use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span};
-use syntax::ast::{Ident, Name, NodeId};
-use syntax::unwrap_or;
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use log::*;
 
@@ -313,9 +313,9 @@ impl<'a> Resolver<'a> {
                             }
                         }
 
-                        if !self.is_accessible_from(binding.vis, parent_scope.module) &&
+                        if !(self.is_accessible_from(binding.vis, parent_scope.module) ||
                        // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
-                       !(self.last_import_segment && binding.is_extern_crate())
+                       (self.last_import_segment && binding.is_extern_crate()))
                         {
                             self.privacy_errors.push(PrivacyError {
                                 ident,
@@ -1403,11 +1403,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res();
                 if res != Res::Err {
-                    if let Some(def_id) = res.opt_def_id() {
-                        if !def_id.is_local() {
-                            this.cstore().export_macros_untracked(def_id.krate);
-                        }
-                    }
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
                 }
             }
@@ -1478,7 +1473,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
         });
 
-        if reexports.len() > 0 {
+        if !reexports.is_empty() {
             if let Some(def_id) = module.def_id() {
                 self.r.export_map.insert(def_id, reexports);
             }

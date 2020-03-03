@@ -1,8 +1,21 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/duplicate-visibility.rs:4:8
+error: visibility `pub` is not followed by an item
+  --> $DIR/duplicate-visibility.rs:4:5
    |
 LL |     pub pub fn foo();
-   |        ^ missing `fn`, `type`, `const`, or `static`
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
 
-error: aborting due to previous error
+error: non-item in item list
+  --> $DIR/duplicate-visibility.rs:4:9
+   |
+LL | extern {
+   |        - item list starts here
+LL |     pub pub fn foo();
+   |         ^^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error: aborting due to 2 previous errors
 

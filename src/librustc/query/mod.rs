@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
-        format!("top-level module")
+        "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id))
     }
@@ -97,6 +97,10 @@ rustc_queries! {
         query lint_levels(_: CrateNum) -> &'tcx LintLevelMap {
             eval_always
             desc { "computing the lint levels for items in this crate" }
+        }
+
+        query parent_module_from_def_id(_: DefId) -> DefId {
+            eval_always
         }
     }
 
@@ -308,6 +312,9 @@ rustc_queries! {
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
 
+        /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
+        query generator_kind(_: DefId) -> Option<hir::GeneratorKind> {}
+
         /// Gets a map with the variance of every item; use `item_variance` instead.
         query crate_variances(_: CrateNum) -> &'tcx ty::CrateVariancesMap<'tcx> {
             desc { "computing the variances for items in this crate" }
@@ -510,7 +517,7 @@ rustc_queries! {
         /// returns a proper constant that is usable by the rest of the compiler.
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
-        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
         query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force
@@ -1121,16 +1128,6 @@ rustc_queries! {
         ) -> Result<traits::EvaluationResult, traits::OverflowError> {
             no_force
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
-        }
-
-        query evaluate_goal(
-            goal: traits::ChalkCanonicalGoal<'tcx>
-        ) -> Result<
-            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-            NoSolution
-        > {
-            no_force
-            desc { "evaluating trait selection obligation `{}`", goal.value.goal }
         }
 
         /// Do not call this query directly: part of the `Eq` type-op

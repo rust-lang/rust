@@ -87,7 +87,7 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use crate::astconv::{AstConv, PathSeg};
+use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
 use crate::middle::lang_items;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
@@ -106,6 +106,8 @@ use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
     ToPredicate, Ty, TyCtxt, UserType, WithConstness,
 };
+use rustc_ast::ast;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -130,8 +132,6 @@ use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
-use syntax::util::parser::ExprPrecedence;
 
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::cmp;
@@ -1315,7 +1315,7 @@ fn check_fn<'a, 'tcx>(
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
 
         // Resume type defaults to `()` if the generator has no argument.
-        let resume_ty = fn_sig.inputs().get(0).map(|ty| *ty).unwrap_or_else(|| tcx.mk_unit());
+        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
@@ -1964,7 +1964,6 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Locate trait definition and items
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
-    let mut overridden_associated_type = None;
 
     let impl_items = || impl_item_refs.iter().map(|iiref| tcx.hir().impl_item(iiref.id));
 
@@ -2046,9 +2045,6 @@ fn check_impl_items_against_trait<'tcx>(
                 hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssocKind::Type {
-                        if ty_trait_item.defaultness.has_value() {
-                            overridden_associated_type = Some(impl_item);
-                        }
                         compare_ty_impl(
                             tcx,
                             &ty_impl_item,
@@ -2082,8 +2078,6 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Check for missing items from trait
     let mut missing_items = Vec::new();
-    let mut invalidated_items = Vec::new();
-    let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
         let is_implemented = trait_def
             .ancestors(tcx, impl_id)
@@ -2094,27 +2088,12 @@ fn check_impl_items_against_trait<'tcx>(
         if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
             if !trait_item.defaultness.has_value() {
                 missing_items.push(*trait_item);
-            } else if associated_type_overridden {
-                invalidated_items.push(trait_item.ident);
             }
         }
     }
 
     if !missing_items.is_empty() {
         missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
-    }
-
-    if !invalidated_items.is_empty() {
-        let invalidator = overridden_associated_type.unwrap();
-        struct_span_err!(
-            tcx.sess,
-            invalidator.span,
-            E0399,
-            "the following trait items need to be reimplemented as `{}` was overridden: `{}`",
-            invalidator.ident,
-            invalidated_items.iter().map(|name| name.to_string()).collect::<Vec<_>>().join("`, `")
-        )
-        .emit();
     }
 }
 
@@ -2921,14 +2900,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("resolve_vars_with_obligations(ty={:?})", ty);
 
         // No Infer()? Nothing needs doing.
-        if !ty.has_infer_types() && !ty.has_infer_consts() {
+        if !ty.has_infer_types_or_consts() {
             debug!("resolve_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(&ty);
-        if !ty.has_infer_types() && !ty.has_infer_consts() {
+        if !ty.has_infer_types_or_consts() {
             debug!("resolve_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
@@ -5017,7 +4996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let sugg = if receiver.ends_with(".clone()")
                                 && method_call_list.contains(&method_call.as_str())
                             {
-                                let max_len = receiver.rfind(".").unwrap();
+                                let max_len = receiver.rfind('.').unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
                                 if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
@@ -5452,10 +5431,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let suppress_errors = AstConv::check_generic_arg_count_for_call(
-                tcx, span, &generics, &seg, false, // `is_method_call`
-            );
-            if suppress_errors {
+            if let Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }) =
+                AstConv::check_generic_arg_count_for_call(
+                    tcx, span, &generics, &seg, false, // `is_method_call`
+                )
+            {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -5467,9 +5447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.impl_self_ty(span, impl_def_id).ty;
-            let adt_def = ty.ty_adt_def();
-
+            let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
             match ty.kind {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
@@ -5484,7 +5462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
-                    if let Some(adt_def) = adt_def {
+                    if let Some(adt_def) = ty.ty_adt_def() {
                         match adt_def.adt_kind() {
                             AdtKind::Enum => {
                                 err.help("did you mean to use one of the enum's variants?");
@@ -5520,6 +5498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
+                infer_args_for_err.is_empty(),
                 // Provide the generic args, and whether types should be inferred.
                 |def_id| {
                     if let Some(&PathSeg(_, index)) =

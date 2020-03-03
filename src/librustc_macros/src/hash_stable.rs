@@ -1,7 +1,6 @@
 use proc_macro2::{self, Ident};
 use quote::quote;
 use syn::{self, parse_quote, Meta, NestedMeta};
-use synstructure;
 
 struct Attributes {
     ignore: bool,

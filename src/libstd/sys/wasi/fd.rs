@@ -13,19 +13,15 @@ pub struct WasiFd {
 fn iovec<'a>(a: &'a mut [IoSliceMut<'_>]) -> &'a [wasi::Iovec] {
     assert_eq!(mem::size_of::<IoSliceMut<'_>>(), mem::size_of::<wasi::Iovec>());
     assert_eq!(mem::align_of::<IoSliceMut<'_>>(), mem::align_of::<wasi::Iovec>());
-    /// SAFETY: `IoSliceMut` and `IoVec` have exactly the same memory layout
-    unsafe {
-        mem::transmute(a)
-    }
+    // SAFETY: `IoSliceMut` and `IoVec` have exactly the same memory layout
+    unsafe { mem::transmute(a) }
 }
 
 fn ciovec<'a>(a: &'a [IoSlice<'_>]) -> &'a [wasi::Ciovec] {
     assert_eq!(mem::size_of::<IoSlice<'_>>(), mem::size_of::<wasi::Ciovec>());
     assert_eq!(mem::align_of::<IoSlice<'_>>(), mem::align_of::<wasi::Ciovec>());
-    /// SAFETY: `IoSlice` and `CIoVec` have exactly the same memory layout
-    unsafe {
-        mem::transmute(a)
-    }
+    // SAFETY: `IoSlice` and `CIoVec` have exactly the same memory layout
+    unsafe { mem::transmute(a) }
 }
 
 impl WasiFd {

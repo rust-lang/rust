@@ -241,13 +241,11 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
-        // Warning, removing the checked_add here led to segfaults in #67174. Further
-        // analysis in #69225 seems to indicate that this is an LTO-related
-        // miscompilation, so #67174 might be able to be reapplied in the future.
-        let padded_size = self
-            .size()
-            .checked_add(self.padding_needed_for(self.align()))
-            .ok_or(LayoutErr { private: () })?;
+        // This cannot overflow. Quoting from the invariant of Layout:
+        // > `size`, when rounded up to the nearest multiple of `align`,
+        // > must not overflow (i.e., the rounded value must be less than
+        // > `usize::MAX`)
+        let padded_size = self.size() + self.padding_needed_for(self.align());
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutErr { private: () })?;
 
         unsafe {

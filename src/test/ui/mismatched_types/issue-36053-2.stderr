@@ -1,15 +1,27 @@
-error[E0599]: no method named `count` found for struct `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>` in the current scope
-  --> $DIR/issue-36053-2.rs:7:55
+error[E0599]: no method named `count` found for struct `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>` in the current scope
+  --> $DIR/issue-36053-2.rs:11:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                                       ^^^^^ method not found in `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>`
+   |                                       --------------  ^^^^^ method not found in `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>`
+   |                                       |
+   |                                       doesn't satisfy `<_ as std::ops::FnOnce<(&&str,)>>::Output = bool`
+   |                                       doesn't satisfy `_: std::ops::FnMut<(&&str,)>`
+   | 
+  ::: $SRC_DIR/libcore/iter/adapters/mod.rs:LL:COL
+   |
+LL | pub struct Filter<I, P> {
+   | ----------------------- doesn't satisfy `_: std::iter::Iterator`
    |
    = note: the method `count` exists but the following trait bounds were not satisfied:
-           `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]> : std::iter::Iterator`
-           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]> : std::iter::Iterator`
+           `<[closure@$DIR/issue-36053-2.rs:11:39: 11:53] as std::ops::FnOnce<(&&str,)>>::Output = bool`
+           which is required by `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
+           `[closure@$DIR/issue-36053-2.rs:11:39: 11:53]: std::ops::FnMut<(&&str,)>`
+           which is required by `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
+           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
+           which is required by `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:11:39: 11:53]>: std::iter::Iterator`
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/issue-36053-2.rs:7:32
+  --> $DIR/issue-36053-2.rs:11:32
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`

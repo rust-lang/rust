@@ -1,12 +1,12 @@
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticBuilder, FatalError};
+use rustc_errors::{error_code, DiagnosticBuilder, FatalError};
 use rustc_lexer::unescape;
 use rustc_lexer::Base;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
-use syntax::token::{self, Token, TokenKind};
-use syntax::util::comments;
 
 use log::debug;
 use std::char;
@@ -172,7 +172,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
-    /// `libsyntax::TokenKind`. This turns strings into interned
+    /// `librustc_ast::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
     fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {
@@ -327,8 +327,7 @@ impl<'a> StringReader<'a> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal".into())
-                        .raise()
+                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
                 }
                 let content_start = start + BytePos(1);
                 let content_end = suffix_start - BytePos(1);
@@ -338,12 +337,8 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(
-                        start + BytePos(1),
-                        suffix_start,
-                        "unterminated byte constant".into(),
-                    )
-                    .raise()
+                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
+                        .raise()
                 }
                 let content_start = start + BytePos(2);
                 let content_end = suffix_start - BytePos(1);
@@ -353,7 +348,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string".into())
+                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
                         .raise()
                 }
                 let content_start = start + BytePos(1);
@@ -367,7 +362,7 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(
                         start + BytePos(1),
                         suffix_start,
-                        "unterminated double quote byte string".into(),
+                        "unterminated double quote byte string",
                     )
                     .raise()
                 }
@@ -500,7 +495,11 @@ impl<'a> StringReader<'a> {
     }
 
     fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
-        let mut err = self.struct_span_fatal(start, start, "unterminated raw string");
+        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+            self.mk_sp(start, start),
+            "unterminated raw string",
+            error_code!(E0748),
+        );
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {

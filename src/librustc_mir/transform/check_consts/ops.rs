@@ -65,10 +65,8 @@ impl NonConstOp for Downcast {
 pub struct FnCallIndirect;
 impl NonConstOp for FnCallIndirect {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = item
-            .tcx
-            .sess
-            .struct_span_err(span, &format!("function pointers are not allowed in const fn"));
+        let mut err =
+            item.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn");
         err.emit();
     }
 }

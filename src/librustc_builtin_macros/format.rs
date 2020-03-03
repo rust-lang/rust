@@ -3,15 +3,15 @@ use Position::*;
 
 use fmt_macros as parse;
 
+use rustc_ast::ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
-use syntax::ast;
-use syntax::ptr::P;
-use syntax::token;
-use syntax::tokenstream::TokenStream;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -158,7 +158,7 @@ fn parse_args<'a>(
         } // accept trailing commas
         if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             named = true;
-            let name = if let token::Ident(name, _) = p.token.kind {
+            let name = if let token::Ident(name, _) = p.normalized_token.kind {
                 p.bump();
                 name
             } else {
@@ -359,7 +359,7 @@ impl<'a, 'b> Context<'a, 'b> {
             refs.sort();
             refs.dedup();
             let (arg_list, mut sp) = if refs.len() == 1 {
-                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.map(|sp| *sp)).collect();
+                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.copied()).collect();
                 (
                     format!("argument {}", refs[0]),
                     if spans.is_empty() {
@@ -894,7 +894,7 @@ pub fn expand_preparsed_format_args(
     };
 
     let (is_literal, fmt_snippet) = match ecx.source_map().span_to_snippet(fmt_sp) {
-        Ok(s) => (s.starts_with("\"") || s.starts_with("r#"), Some(s)),
+        Ok(s) => (s.starts_with('"') || s.starts_with("r#"), Some(s)),
         _ => (false, None),
     };
 
@@ -1096,7 +1096,7 @@ pub fn expand_preparsed_format_args(
         cx.str_pieces.push(s);
     }
 
-    if cx.invalid_refs.len() >= 1 {
+    if !cx.invalid_refs.is_empty() {
         cx.report_invalid_references(numbered_position_args);
     }
 

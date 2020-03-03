@@ -7,8 +7,13 @@ LL |     static fn f() {}
 error: expected one of `:`, `;`, or `=`, found `f`
   --> $DIR/removed-syntax-static-fn.rs:4:15
    |
+LL | impl S {
+   |        - while parsing this item list starting here
 LL |     static fn f() {}
    |               ^ expected one of `:`, `;`, or `=`
+...
+LL | }
+   | - the item list ends here
 
 error: missing type for `static` item
   --> $DIR/removed-syntax-static-fn.rs:4:12

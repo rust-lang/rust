@@ -11,10 +11,10 @@ use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 
 use std::cell::Cell;
 use std::collections::BTreeMap;
@@ -64,8 +64,7 @@ thread_local! {
 /// calling the same query.
 pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
     NO_QUERIES.with(|no_queries| {
-        let old = no_queries.get();
-        no_queries.set(true);
+        let old = no_queries.replace(true);
         let result = f();
         no_queries.set(old);
         result
@@ -78,8 +77,7 @@ pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
 /// so this variable disables that check.
 pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
     FORCE_IMPL_FILENAME_LINE.with(|force| {
-        let old = force.get();
-        force.set(true);
+        let old = force.replace(true);
         let result = f();
         force.set(old);
         result
@@ -89,8 +87,7 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
 /// Adds the `crate::` prefix to paths where appropriate.
 pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
-        let old = flag.get();
-        flag.set(true);
+        let old = flag.replace(true);
         let result = f();
         flag.set(old);
         result
@@ -139,7 +136,7 @@ impl RegionHighlightMode {
     pub fn highlighting_region(&mut self, region: ty::Region<'_>, number: usize) {
         let num_slots = self.highlight_regions.len();
         let first_avail_slot =
-            self.highlight_regions.iter_mut().filter(|s| s.is_none()).next().unwrap_or_else(|| {
+            self.highlight_regions.iter_mut().find(|s| s.is_none()).unwrap_or_else(|| {
                 bug!("can only highlight {} placeholders at a time", num_slots,)
             });
         *first_avail_slot = Some((*region, number));

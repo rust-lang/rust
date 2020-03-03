@@ -10,6 +10,11 @@ mod m {
     impl PrivTr for Priv {}
     pub trait PubTrAux1<T> {}
     pub trait PubTrAux2 { type A; }
+    impl<T> PubTrAux1<T> for u8 {}
+    impl PubTrAux2 for u8 {
+        type A = Priv;
+        //~^ ERROR private type `m::Priv` in public interface
+    }
 
     // "Private-in-public in associated types is hard error" in RFC 2145
     // applies only to the aliased types, not bounds.

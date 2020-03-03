@@ -16,11 +16,11 @@
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
+use rustc_ast::ast;
+use rustc_ast::visit as ast_visit;
 use rustc_session::lint::{LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::visit as ast_visit;
 
 use log::debug;
 use std::slice;
@@ -251,7 +251,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_mac(&mut self, mac: &'a ast::Mac) {
         // FIXME(#54110): So, this setup isn't really right. I think
-        // that (a) the libsyntax visitor ought to be doing this as
+        // that (a) the librustc_ast visitor ought to be doing this as
         // part of `walk_mac`, and (b) we should be calling
         // `visit_path`, *but* that would require a `NodeId`, and I
         // want to get #53686 fixed quickly. -nmatsakis

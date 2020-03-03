@@ -40,13 +40,13 @@ use rustc::ty::fast_reject;
 use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -532,20 +532,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                if !(obligation.param_env, substs).has_local_value() {
-                    match self.tcx().const_eval_resolve(
-                        obligation.param_env,
-                        def_id,
-                        substs,
-                        None,
-                        None,
-                    ) {
-                        Ok(_) => Ok(EvaluatedToOk),
-                        Err(_) => Ok(EvaluatedToErr),
-                    }
-                } else {
-                    // Inference variables still left in param_env or substs.
-                    Ok(EvaluatedToAmbig)
+                match self.tcx().const_eval_resolve(
+                    obligation.param_env,
+                    def_id,
+                    substs,
+                    None,
+                    None,
+                ) {
+                    Ok(_) => Ok(EvaluatedToOk),
+                    Err(_) => Ok(EvaluatedToErr),
                 }
             }
         }
@@ -2162,7 +2157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("builtin_bound: nested={:?}", nested);
                 candidates
                     .vec
-                    .push(BuiltinCandidate { has_nested: nested.skip_binder().len() > 0 });
+                    .push(BuiltinCandidate { has_nested: !nested.skip_binder().is_empty() });
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {
@@ -2416,7 +2411,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         types
             .skip_binder()
-            .into_iter()
+            .iter()
             .flat_map(|ty| {
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
@@ -2922,15 +2917,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             trait_ref,
         )?);
 
-        // FIXME: Chalk
-
-        if !self.tcx().sess.opts.debugging_opts.chalk {
-            obligations.push(Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
-            ));
-        }
+        obligations.push(Obligation::new(
+            obligation.cause.clone(),
+            obligation.param_env,
+            ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+        ));
 
         Ok(VtableClosureData { closure_def_id, substs: substs, nested: obligations })
     }
@@ -3202,7 +3193,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
                     a_last.expect_ty(),
-                    &[b_last.into()],
+                    &[b_last],
                 ));
             }
 

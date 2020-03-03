@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/lit.rs:7:13
    |
+LL |     match &s {
+   |           -- this expression has type `&&str`
 LL |             "abc" => true,
    |             ^^^^^ expected `&str`, found `str`
    |
@@ -10,6 +12,8 @@ LL |             "abc" => true,
 error[E0308]: mismatched types
   --> $DIR/lit.rs:16:9
    |
+LL |     match &s {
+   |           -- this expression has type `&&[u8]`
 LL |         b"abc" => true,
    |         ^^^^^^ expected `&[u8]`, found array `[u8; 3]`
    |

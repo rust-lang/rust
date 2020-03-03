@@ -2,9 +2,9 @@
 
 use crate::ty::TyCtxt;
 
+use rustc_ast::ast::NodeId;
 use rustc_hir::def_id::DefId;
 use rustc_hir::BodyId;
-use syntax::ast::NodeId;
 
 /// The `DepGraphSafe` trait is used to specify what kinds of values
 /// are safe to "leak" into a task. The idea is that this should be

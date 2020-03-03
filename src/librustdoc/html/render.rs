@@ -44,6 +44,7 @@ use std::sync::Arc;
 
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
+use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -57,7 +58,6 @@ use rustc_span::source_map::FileName;
 use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
-use syntax::ast;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
 use crate::config::RenderOptions;
@@ -86,7 +86,7 @@ pub type NameDoc = (String, Option<String>);
 
 crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with("/") && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
+        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
     })
 }
 
@@ -1313,7 +1313,8 @@ impl Context {
                          <p>Version {}</p>\
                      </div>\
                      <a id='all-types' href='index.html'><p>Back to index</p></a>",
-                crate_name, version
+                crate_name,
+                Escape(version),
             )
         } else {
             String::new()
@@ -2783,7 +2784,7 @@ fn assoc_type(
 
 fn render_stability_since_raw(w: &mut Buffer, ver: Option<&str>, containing_ver: Option<&str>) {
     if let Some(v) = ver {
-        if containing_ver != ver && v.len() > 0 {
+        if containing_ver != ver && !v.is_empty() {
             write!(w, "<span class='since' title='Stable since Rust version {0}'>{0}</span>", v)
         }
     }
@@ -3143,7 +3144,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
             .filter_map(|attr| attr.meta_item().and_then(|mi| render_attribute(mi)))
             .collect();
 
-        if display.len() > 0 { Some(format!("{}({})", path, display.join(", "))) } else { None }
+        if !display.is_empty() { Some(format!("{}({})", path, display.join(", "))) } else { None }
     } else {
         None
     }
@@ -3178,7 +3179,7 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }
-    if attrs.len() > 0 {
+    if !attrs.is_empty() {
         write!(
             w,
             "<span class=\"docblock attributes{}\">{}</span>",
@@ -3974,7 +3975,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
                 "<div class='block version'>\
                     <p>Version {}</p>\
                     </div>",
-                version
+                Escape(version)
             );
         }
     }
@@ -4049,7 +4050,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
         return url;
     }
     let mut add = 1;
-    while used_links.insert(format!("{}-{}", url, add)) == false {
+    while !used_links.insert(format!("{}-{}", url, add)) {
         add += 1;
     }
     format!("{}-{}", url, add)

@@ -222,7 +222,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if switch_ty.kind == ty::Bool {
-                    assert!(options.len() > 0 && options.len() <= 2);
+                    assert!(!options.is_empty() && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
                         let (true_bb, false_bb) = match options[0] {
                             1 => (first_bb, second_bb),

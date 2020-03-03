@@ -9,7 +9,7 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 
-use syntax::ast::Mutability;
+use rustc_ast::ast::Mutability;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
 
@@ -187,7 +187,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
         self.walk_aggregate(mplace, fields)
     }
 
-    fn visit_primitive(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn visit_value(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let ty = mplace.layout.ty;
@@ -263,8 +263,11 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                     None => self.ref_tracking.track((mplace, mutability, mode), || ()),
                 }
             }
+            Ok(())
+        } else {
+            // Not a reference -- proceed recursively.
+            self.walk_value(mplace)
         }
-        Ok(())
     }
 }
 

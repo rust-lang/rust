@@ -1,6 +1,6 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_ast::ast::{ExprKind, Stmt, StmtKind};
 use rustc_errors::Applicability;
-use syntax::ast::{ExprKind, Stmt, StmtKind};
 
 declare_lint! {
     pub REDUNDANT_SEMICOLON,

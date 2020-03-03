@@ -6,8 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
 use rustc::mir;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc_hir::def_id::DefId;
+use rustc::ty::{self, Ty};
 use rustc_span::Span;
 
 use super::{
@@ -123,10 +122,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Called before a basic block terminator is executed.
-    /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
-
     /// Entry point to all function calls.
     ///
     /// Returns either the mir to use for the call, or `None` if execution should
@@ -175,18 +170,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
-    /// Called for read access to a foreign static item.
-    ///
-    /// This will only be called once per static and machine; the result is cached in
-    /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
-    /// owned allocation to the map even when the map is shared.)
-    ///
-    /// This allocation will then be fed to `tag_allocation` to initialize the "extra" state.
-    fn find_foreign_static(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
-
     /// Called for all binary operations where the LHS has pointer type.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
@@ -204,6 +187,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to read the specified `local` from the `frame`.
+    #[inline]
     fn access_local(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
@@ -212,12 +196,31 @@ pub trait Machine<'mir, 'tcx>: Sized {
         frame.locals[local].access()
     }
 
+    /// Called before a basic block terminator is executed.
+    /// You can use this to detect endlessly running programs.
+    #[inline]
+    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Called before a `Static` value is accessed.
+    #[inline]
     fn before_access_static(
         _memory_extra: &Self::MemoryExtra,
         _allocation: &Allocation,
     ) -> InterpResult<'tcx> {
         Ok(())
+    }
+
+    /// Called for *every* memory access to determine the real ID of the given allocation.
+    /// This provides a way for the machine to "redirect" certain allocations as it sees fit.
+    ///
+    /// This is used by Miri to redirect extern statics to real allocations.
+    ///
+    /// This function must be idempotent.
+    #[inline]
+    fn canonical_alloc_id(_mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
+        id
     }
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
@@ -247,6 +250,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Return the "base" tag for the given *static* allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
     /// this will return an unusable tag (i.e., accesses will be UB)!
+    ///
+    /// Expects `id` to be already canonical, if needed.
     fn tag_static_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
 
     /// Executes a retagging operation
@@ -259,7 +264,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Called immediately before a new stack frame got pushed
+    /// Called immediately before a new stack frame got pushed.
     fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped

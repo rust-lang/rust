@@ -6,7 +6,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io::{Seek, SeekFrom};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time;
 
@@ -24,7 +24,7 @@ const OS: Option<&str> = None;
 
 type ToolstateData = HashMap<Box<str>, ToolState>;
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd)]
 #[serde(rename_all = "kebab-case")]
 /// Whether a tool can be compiled, tested or neither
 pub enum ToolState {
@@ -143,10 +143,31 @@ pub struct ToolStateCheck;
 impl Step for ToolStateCheck {
     type Output = ();
 
-    /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
+    /// Checks tool state status.
     ///
-    /// This tool in `src/tools` will verify the validity of all our links in the
-    /// documentation to ensure we don't have a bunch of dead ones.
+    /// This is intended to be used in the `checktools.sh` script. To use
+    /// this, set `save-toolstates` in `config.toml` so that tool status will
+    /// be saved to a JSON file. Then, run `x.py test --no-fail-fast` for all
+    /// of the tools to populate the JSON file. After that is done, this
+    /// command can be run to check for any status failures, and exits with an
+    /// error if there are any.
+    ///
+    /// This also handles publishing the results to the `history` directory of
+    /// the toolstate repo https://github.com/rust-lang-nursery/rust-toolstate
+    /// if the env var `TOOLSTATE_PUBLISH` is set. Note that there is a
+    /// *separate* step of updating the `latest.json` file and creating GitHub
+    /// issues and comments in `src/ci/publish_toolstate.sh`, which is only
+    /// performed on master. (The shell/python code is intended to be migrated
+    /// here eventually.)
+    ///
+    /// The rules for failure are:
+    /// * If the PR modifies a tool, the status must be test-pass.
+    ///   NOTE: There is intent to change this, see
+    ///   https://github.com/rust-lang/rust/issues/65000.
+    /// * All "stable" tools must be test-pass on the stable or beta branches.
+    /// * During beta promotion week, a PR is not allowed to "regress" a
+    ///   stable tool. That is, the status is not allowed to get worse
+    ///   (test-pass to test-fail or build-fail).
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;
@@ -171,6 +192,8 @@ impl Step for ToolStateCheck {
         }
 
         check_changed_files(&toolstates);
+        checkout_toolstate_repo();
+        let old_toolstate = read_old_toolstate();
 
         for (tool, _) in STABLE_TOOLS.iter() {
             let state = toolstates[*tool];
@@ -180,11 +203,24 @@ impl Step for ToolStateCheck {
                     did_error = true;
                     eprintln!("error: Tool `{}` should be test-pass but is {}", tool, state);
                 } else if in_beta_week {
-                    did_error = true;
-                    eprintln!(
-                        "error: Tool `{}` should be test-pass but is {} during beta week.",
-                        tool, state
-                    );
+                    let old_state = old_toolstate
+                        .iter()
+                        .find(|ts| ts.tool == *tool)
+                        .expect("latest.json missing tool")
+                        .state();
+                    if state < old_state {
+                        did_error = true;
+                        eprintln!(
+                            "error: Tool `{}` has regressed from {} to {} during beta week.",
+                            tool, old_state, state
+                        );
+                    } else {
+                        eprintln!(
+                            "warning: Tool `{}` is not test-pass (is `{}`), \
+                            this should be fixed before beta is branched.",
+                            tool, state
+                        );
+                    }
                 }
             }
         }
@@ -247,6 +283,70 @@ impl Builder<'_> {
     }
 }
 
+fn toolstate_repo() -> String {
+    env::var("TOOLSTATE_REPO")
+        .unwrap_or_else(|_| "https://github.com/rust-lang-nursery/rust-toolstate.git".to_string())
+}
+
+/// Directory where the toolstate repo is checked out.
+const TOOLSTATE_DIR: &str = "rust-toolstate";
+
+/// Checks out the toolstate repo into `TOOLSTATE_DIR`.
+fn checkout_toolstate_repo() {
+    if let Ok(token) = env::var("TOOLSTATE_REPO_ACCESS_TOKEN") {
+        prepare_toolstate_config(&token);
+    }
+    if Path::new(TOOLSTATE_DIR).exists() {
+        eprintln!("Cleaning old toolstate directory...");
+        t!(fs::remove_dir_all(TOOLSTATE_DIR));
+    }
+
+    let status = Command::new("git")
+        .arg("clone")
+        .arg("--depth=1")
+        .arg(toolstate_repo())
+        .arg(TOOLSTATE_DIR)
+        .status();
+    let success = match status {
+        Ok(s) => s.success(),
+        Err(_) => false,
+    };
+    if !success {
+        panic!("git clone unsuccessful (status: {:?})", status);
+    }
+}
+
+/// Sets up config and authentication for modifying the toolstate repo.
+fn prepare_toolstate_config(token: &str) {
+    fn git_config(key: &str, value: &str) {
+        let status = Command::new("git").arg("config").arg("--global").arg(key).arg(value).status();
+        let success = match status {
+            Ok(s) => s.success(),
+            Err(_) => false,
+        };
+        if !success {
+            panic!("git config key={} value={} successful (status: {:?})", key, value, status);
+        }
+    }
+
+    // If changing anything here, then please check that src/ci/publish_toolstate.sh is up to date
+    // as well.
+    git_config("user.email", "7378925+rust-toolstate-update@users.noreply.github.com");
+    git_config("user.name", "Rust Toolstate Update");
+    git_config("credential.helper", "store");
+
+    let credential = format!("https://{}:x-oauth-basic@github.com\n", token,);
+    let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
+    t!(fs::write(&git_credential_path, credential));
+}
+
+/// Reads the latest toolstate from the toolstate repo.
+fn read_old_toolstate() -> Vec<RepoState> {
+    let latest_path = Path::new(TOOLSTATE_DIR).join("_data").join("latest.json");
+    let old_toolstate = t!(fs::read(latest_path));
+    t!(serde_json::from_slice(&old_toolstate))
+}
+
 /// This function `commit_toolstate_change` provides functionality for pushing a change
 /// to the `rust-toolstate` repository.
 ///
@@ -274,45 +374,7 @@ impl Builder<'_> {
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
 ///           if a private email by GitHub is wanted.
 fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool) {
-    fn git_config(key: &str, value: &str) {
-        let status = Command::new("git").arg("config").arg("--global").arg(key).arg(value).status();
-        let success = match status {
-            Ok(s) => s.success(),
-            Err(_) => false,
-        };
-        if !success {
-            panic!("git config key={} value={} successful (status: {:?})", key, value, status);
-        }
-    }
-
-    // If changing anything here, then please check that src/ci/publish_toolstate.sh is up to date
-    // as well.
-    git_config("user.email", "7378925+rust-toolstate-update@users.noreply.github.com");
-    git_config("user.name", "Rust Toolstate Update");
-    git_config("credential.helper", "store");
-
-    let credential = format!(
-        "https://{}:x-oauth-basic@github.com\n",
-        t!(env::var("TOOLSTATE_REPO_ACCESS_TOKEN")),
-    );
-    let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
-    t!(fs::write(&git_credential_path, credential));
-
-    let status = Command::new("git")
-        .arg("clone")
-        .arg("--depth=1")
-        .arg(t!(env::var("TOOLSTATE_REPO")))
-        .status();
-    let success = match status {
-        Ok(s) => s.success(),
-        Err(_) => false,
-    };
-    if !success {
-        panic!("git clone successful (status: {:?})", status);
-    }
-
-    let old_toolstate = t!(fs::read("rust-toolstate/_data/latest.json"));
-    let old_toolstate: Vec<RepoState> = t!(serde_json::from_slice(&old_toolstate));
+    let old_toolstate = read_old_toolstate();
 
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;
@@ -322,7 +384,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool
 
         // `git commit` failing means nothing to commit.
         let status = t!(Command::new("git")
-            .current_dir("rust-toolstate")
+            .current_dir(TOOLSTATE_DIR)
             .arg("commit")
             .arg("-a")
             .arg("-m")
@@ -334,7 +396,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool
         }
 
         let status = t!(Command::new("git")
-            .current_dir("rust-toolstate")
+            .current_dir(TOOLSTATE_DIR)
             .arg("push")
             .arg("origin")
             .arg("master")
@@ -347,14 +409,14 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool
         eprintln!("Sleeping for 3 seconds before retrying push");
         std::thread::sleep(std::time::Duration::from_secs(3));
         let status = t!(Command::new("git")
-            .current_dir("rust-toolstate")
+            .current_dir(TOOLSTATE_DIR)
             .arg("fetch")
             .arg("origin")
             .arg("master")
             .status());
         assert!(status.success());
         let status = t!(Command::new("git")
-            .current_dir("rust-toolstate")
+            .current_dir(TOOLSTATE_DIR)
             .arg("reset")
             .arg("--hard")
             .arg("origin/master")
@@ -375,18 +437,12 @@ fn change_toolstate(
     let mut regressed = false;
     for repo_state in old_toolstate {
         let tool = &repo_state.tool;
-        let state = if cfg!(target_os = "linux") {
-            &repo_state.linux
-        } else if cfg!(windows) {
-            &repo_state.windows
-        } else {
-            unimplemented!()
-        };
+        let state = repo_state.state();
         let new_state = current_toolstate[tool.as_str()];
 
-        if new_state != *state {
+        if new_state != state {
             eprintln!("The state of `{}` has changed from `{}` to `{}`", tool, state, new_state);
-            if (new_state as u8) < (*state as u8) {
+            if new_state < state {
                 if !["rustc-guide", "miri", "embedded-book"].contains(&tool.as_str()) {
                     regressed = true;
                 }
@@ -403,7 +459,9 @@ fn change_toolstate(
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));
 
-    let history_path = format!("rust-toolstate/history/{}.tsv", OS.expect("linux/windows only"));
+    let history_path = Path::new(TOOLSTATE_DIR)
+        .join("history")
+        .join(format!("{}.tsv", OS.expect("linux/windows only")));
     let mut file = t!(fs::read_to_string(&history_path));
     let end_of_first_line = file.find('\n').unwrap();
     file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit.trim(), toolstate_serialized));
@@ -417,4 +475,16 @@ struct RepoState {
     linux: ToolState,
     commit: String,
     datetime: String,
+}
+
+impl RepoState {
+    fn state(&self) -> ToolState {
+        if cfg!(target_os = "linux") {
+            self.linux
+        } else if cfg!(windows) {
+            self.windows
+        } else {
+            unimplemented!()
+        }
+    }
 }

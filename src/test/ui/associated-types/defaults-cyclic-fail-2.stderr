@@ -1,0 +1,33 @@
+error[E0275]: overflow evaluating the requirement `<() as Tr>::B`
+  --> $DIR/defaults-cyclic-fail-2.rs:12:6
+   |
+LL | impl Tr for () {}
+   |      ^^
+
+error[E0275]: overflow evaluating the requirement `<bool as Tr>::B`
+  --> $DIR/defaults-cyclic-fail-2.rs:30:6
+   |
+LL | impl Tr for bool {
+   |      ^^
+
+error[E0275]: overflow evaluating the requirement `<usize as Tr>::B`
+  --> $DIR/defaults-cyclic-fail-2.rs:37:6
+   |
+LL | impl Tr for usize {
+   |      ^^
+
+error[E0275]: overflow evaluating the requirement `<bool as Tr>::B`
+  --> $DIR/defaults-cyclic-fail-2.rs:32:5
+   |
+LL |     type A = Box<Self::B>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<usize as Tr>::A`
+  --> $DIR/defaults-cyclic-fail-2.rs:39:5
+   |
+LL |     type B = &'static Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

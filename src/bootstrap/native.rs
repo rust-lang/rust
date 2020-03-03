@@ -241,12 +241,8 @@ impl Step for Llvm {
                 cfg.define("LLVM_VERSION_SUFFIX", suffix);
             }
         } else {
-            let mut default_suffix =
-                format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel,);
-            if let Some(sha) = llvm_info.sha_short() {
-                default_suffix.push_str("-");
-                default_suffix.push_str(sha);
-            }
+            let default_suffix =
+                format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
             cfg.define("LLVM_VERSION_SUFFIX", default_suffix);
         }
 

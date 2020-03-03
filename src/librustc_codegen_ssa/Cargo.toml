@@ -20,7 +20,7 @@ jobserver = "0.1.11"
 tempfile = "3.1"
 
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }

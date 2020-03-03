@@ -5,6 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
+use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr::{self as attr, ConstStability, Deprecation, RustcDeprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -18,7 +19,6 @@ use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
-use syntax::ast::CRATE_NODE_ID;
 
 use std::num::NonZeroU32;
 
@@ -106,10 +106,10 @@ pub fn report_unstable(
     };
 
     let msp: MultiSpan = span.into();
-    let cm = &sess.parse_sess.source_map();
+    let sm = &sess.parse_sess.source_map();
     let span_key = msp.primary_span().and_then(|sp: Span| {
         if !sp.is_dummy() {
-            let file = cm.lookup_char_pos(sp.lo()).file;
+            let file = sm.lookup_char_pos(sp.lo()).file;
             if file.name.is_macros() { None } else { Some(span) }
         } else {
             None
@@ -161,7 +161,7 @@ pub fn deprecation_suggestion(
         diag.span_suggestion(
             span,
             "replace the use of the deprecated item",
-            suggestion.to_stringified_ident_guess(),
+            suggestion.to_ident_string(),
             Applicability::MachineApplicable,
         );
     }

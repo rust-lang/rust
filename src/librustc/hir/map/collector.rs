@@ -3,6 +3,7 @@ use crate::hir::map::definitions::{self, DefPathHash};
 use crate::hir::map::{Entry, HirEntryMap, Map};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
+use rustc_ast::ast::NodeId;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -16,7 +17,6 @@ use rustc_index::vec::IndexVec;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol, DUMMY_SP};
-use syntax::ast::NodeId;
 
 use std::iter::repeat;
 

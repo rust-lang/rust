@@ -231,7 +231,7 @@ pub trait Emitter {
                ].contains(&sugg.style)
             {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
+                let msg = if substitution.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
                     format!("help: {}", sugg.msg)

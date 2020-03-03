@@ -93,16 +93,16 @@ LL |         self.x
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error[E0521]: borrowed data escapes outside of function
+error[E0521]: borrowed data escapes outside of method
   --> $DIR/outlives-suggestion-simple.rs:73:9
    |
 LL |     fn get_bar(&self) -> Bar2 {
    |                -----
    |                |
-   |                `self` declared here, outside of the function body
-   |                `self` is a reference that is only valid in the function body
+   |                `self` declared here, outside of the method body
+   |                `self` is a reference that is only valid in the method body
 LL |         Bar2::new(&self)
-   |         ^^^^^^^^^^^^^^^^ `self` escapes the function body here
+   |         ^^^^^^^^^^^^^^^^ `self` escapes the method body here
 
 error: aborting due to 9 previous errors
 

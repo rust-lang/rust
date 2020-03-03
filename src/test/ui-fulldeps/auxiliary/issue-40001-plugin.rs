@@ -9,7 +9,7 @@ extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate syntax;
+extern crate rustc_ast;
 
 use rustc_ast_pretty::pprust;
 use rustc_driver::plugin::Registry;

@@ -15,6 +15,8 @@ use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToTy
 use rustc::middle::free_region::RegionRelations;
 use rustc::middle::lang_items;
 use rustc::middle::region;
+use rustc::mir;
+use rustc::mir::interpret::ConstEvalResult;
 use rustc::session::config::BorrowckMode;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
@@ -23,6 +25,7 @@ use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
@@ -34,7 +37,6 @@ use rustc_span::Span;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
-use syntax::ast;
 
 use self::combine::CombineFields;
 use self::lexical_region_resolve::LexicalRegionResolutions;
@@ -63,6 +65,7 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 
+use crate::infer::canonical::OriginalQueryValues;
 pub use rustc::infer::unify_key;
 
 #[must_use]
@@ -730,8 +733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         F: FnOnce(&Self) -> R,
     {
-        let flag = self.in_snapshot.get();
-        self.in_snapshot.set(false);
+        let flag = self.in_snapshot.replace(false);
         let result = func(self);
         self.in_snapshot.set(flag);
         result
@@ -740,8 +742,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn start_snapshot(&self) -> CombinedSnapshot<'a, 'tcx> {
         debug!("start_snapshot()");
 
-        let in_snapshot = self.in_snapshot.get();
-        self.in_snapshot.set(true);
+        let in_snapshot = self.in_snapshot.replace(true);
 
         let mut inner = self.inner.borrow_mut();
         CombinedSnapshot {
@@ -1481,12 +1482,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> bool {
         let ty = self.resolve_vars_if_possible(&ty);
 
-        // Even if the type may have no inference variables, during
-        // type-checking closure types are in local tables only.
-        if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
-            if !(param_env, ty).has_local_value() {
-                return ty.is_copy_modulo_regions(self.tcx, param_env, span);
-            }
+        if !(param_env, ty).has_local_value() {
+            return ty.is_copy_modulo_regions(self.tcx, param_env, span);
         }
 
         let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
@@ -1564,6 +1561,35 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let u = self.universe.get().next_universe();
         self.universe.set(u);
         u
+    }
+
+    /// Resolves and evaluates a constant.
+    ///
+    /// The constant can be located on a trait like `<A as B>::C`, in which case the given
+    /// substitutions and environment are used to resolve the constant. Alternatively if the
+    /// constant has generic parameters in scope the substitutions are used to evaluate the value of
+    /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
+    /// constant `bar::<T>()` requires a substitution for `T`, if the substitution for `T` is still
+    /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
+    /// returned.
+    ///
+    /// This handles inferences variables within both `param_env` and `substs` by
+    /// performing the operation on their respective canonical forms.
+    pub fn const_eval_resolve(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        promoted: Option<mir::Promoted>,
+        span: Option<Span>,
+    ) -> ConstEvalResult<'tcx> {
+        let mut original_values = OriginalQueryValues::default();
+        let canonical = self.canonicalize_query(&(param_env, substs), &mut original_values);
+
+        let (param_env, substs) = canonical.value;
+        // The return value is the evaluated value which doesn't contain any reference to inference
+        // variables, thus we don't need to substitute back the original values.
+        self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, span)
     }
 }
 

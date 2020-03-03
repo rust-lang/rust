@@ -1,15 +1,15 @@
 use super::{StringReader, UnmatchedBrace};
 
-use rustc_ast_pretty::pprust::token_to_string;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::PResult;
-use rustc_span::Span;
-use syntax::token::{self, Token};
-use syntax::tokenstream::{
+use rustc_ast::token::{self, Token};
+use rustc_ast::tokenstream::{
     DelimSpan,
     IsJoint::{self, *},
     TokenStream, TokenTree, TreeAndJoint,
 };
+use rustc_ast_pretty::pprust::token_to_string;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::PResult;
+use rustc_span::Span;
 
 impl<'a> StringReader<'a> {
     crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
@@ -93,10 +93,8 @@ impl<'a> TokenTreesReader<'a> {
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
-                    if let Some((_, open_sp, close_sp)) = self
-                        .matching_delim_spans
-                        .iter()
-                        .filter(|(d, open_sp, close_sp)| {
+                    if let Some((_, open_sp, close_sp)) =
+                        self.matching_delim_spans.iter().find(|(d, open_sp, close_sp)| {
                             if let Some(close_padding) = sm.span_to_margin(*close_sp) {
                                 if let Some(open_padding) = sm.span_to_margin(*open_sp) {
                                     return delim == d && close_padding != open_padding;
@@ -104,7 +102,6 @@ impl<'a> TokenTreesReader<'a> {
                             }
                             false
                         })
-                        .next()
                     // these are in reverse order as they get inserted on close, but
                     {
                         // we want the last open/first close
@@ -144,7 +141,7 @@ impl<'a> TokenTreesReader<'a> {
                             self.last_delim_empty_block_spans.insert(delim, empty_block_span);
                         }
 
-                        if self.open_braces.len() == 0 {
+                        if self.open_braces.is_empty() {
                             // Clear up these spans to avoid suggesting them as we've found
                             // properly matched delimiters so far for an entire block.
                             self.matching_delim_spans.clear();
@@ -212,7 +209,7 @@ impl<'a> TokenTreesReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(delim_span, delim, tts.into()).into())
+                Ok(TokenTree::Delimited(delim_span, delim, tts).into())
             }
             token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no

@@ -6,6 +6,7 @@ use super::{PatCtxt, PatKind, PatternError};
 
 use rustc::hir::map::Map;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -17,7 +18,6 @@ use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERN
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::{sym, Span};
-use syntax::ast::Mutability;
 
 use std::slice;
 
@@ -142,7 +142,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     }
 
     fn check_in_cx(&self, hir_id: HirId, f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>)) {
-        let module = self.tcx.hir().get_module_parent(hir_id);
+        let module = self.tcx.parent_module(hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |cx| f(cx));
     }
 
@@ -659,7 +659,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
             });
             if !conflicts_ref.is_empty() {
                 let occurs_because = format!(
-                    "move occurs because `{}` has type `{}` which does implement the `Copy` trait",
+                    "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
                     name,
                     tables.node_type(pat.hir_id),
                 );

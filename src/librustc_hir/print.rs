@@ -1,12 +1,12 @@
+use rustc_ast::ast;
+use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
-use rustc_ast_pretty::pprust::{self, Comments, PrintState};
+use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
-use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind, Node};
@@ -126,7 +126,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 
     fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(pprust::ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
 
@@ -140,13 +140,13 @@ pub const INDENT_UNIT: usize = 4;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
-    cm: &'a SourceMap,
+    sm: &'a SourceMap,
     krate: &hir::Crate<'_>,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(cm, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -158,12 +158,12 @@ pub fn print_crate<'a>(
 
 impl<'a> State<'a> {
     pub fn new_from_input(
-        cm: &'a SourceMap,
+        sm: &'a SourceMap,
         filename: FileName,
         input: String,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, filename, input)), ann }
+        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
     }
 }
 

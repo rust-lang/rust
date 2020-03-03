@@ -401,10 +401,8 @@ fn record_accesses<'tcx>(
     // We collect this into a `SmallVec` to avoid calling `is_inlining_candidate` in the lock.
     // FIXME: Call `is_inlining_candidate` when pushing to `neighbors` in `collect_items_rec`
     // instead to avoid creating this `SmallVec`.
-    let accesses: SmallVec<[_; 128]> = callees
-        .into_iter()
-        .map(|mono_item| (*mono_item, is_inlining_candidate(mono_item)))
-        .collect();
+    let accesses: SmallVec<[_; 128]> =
+        callees.iter().map(|mono_item| (*mono_item, is_inlining_candidate(mono_item))).collect();
 
     inlining_map.lock_mut().record_accesses(caller, &accesses);
 }

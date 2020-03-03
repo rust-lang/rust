@@ -13,8 +13,8 @@ pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
     sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
 };
+use rustc_ast::ast;
 use rustc_macros::HashStable;
-use syntax::ast;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -509,7 +509,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ops: &[mir::Operand<'tcx>],
     ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::PointerTag>>> {
-        ops.into_iter().map(|op| self.eval_operand(op, None)).collect()
+        ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
     // Used when the miri-engine runs into a constant and for extracting information from constants

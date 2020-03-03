@@ -1,26 +1,36 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-40006.rs:1:13
+error: expected one of `!` or `::`, found `}`
+  --> $DIR/issue-40006.rs:3:1
    |
-LL |   impl dyn A {
-   |  _____________^
-LL | |     Y
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | impl dyn A {
+   |            - while parsing this item list starting here
+LL |     Y
+   |      - expected one of `!` or `::`
+LL | }
+   | ^
+   | |
+   | unexpected token
+   | the item list ends here
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-40006.rs:7:10
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/issue-40006.rs:8:6
    |
-LL |   trait X {
-   |  __________^
-LL | |     X() {}
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | trait X {
+   |         - while parsing this item list starting here
+LL |     X() {}
+   |      ^ expected one of `!` or `::`
+...
+LL | }
+   | - the item list ends here
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-40006.rs:15:10
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/issue-40006.rs:16:6
    |
-LL |   trait A {
-   |  __________^
-LL | |     X() {}
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | trait A {
+   |         - while parsing this item list starting here
+LL |     X() {}
+   |      ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
 
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:19:17
@@ -28,33 +38,51 @@ error: expected `[`, found `#`
 LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-40006.rs:21:10
+error: expected one of `!` or `::`, found `=`
+  --> $DIR/issue-40006.rs:22:7
    |
-LL |   trait C {
-   |  __________^
-LL | |     L = M;
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | trait C {
+   |         - while parsing this item list starting here
+LL |     L = M;
+   |       ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/issue-40006.rs:24:10
+error: expected one of `!` or `::`, found `=`
+  --> $DIR/issue-40006.rs:25:7
    |
-LL |   trait D {
-   |  __________^
-LL | |     Z = { 2 + 3 };
-   | |____^ missing `fn`, `type`, `const`, or `static`
+LL | trait D {
+   |         - while parsing this item list starting here
+LL |     Z = { 2 + 3 };
+   |       ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
 
 error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:28:9
    |
+LL | trait E {
+   |         - while parsing this item list starting here
 LL |     ::Y ();
    |         ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
+error: missing `fn` for method definition
   --> $DIR/issue-40006.rs:32:8
    |
+LL | impl S {
+   |        - while parsing this item list starting here
 LL |     pub hello_method(&self) {
-   |        ^ missing `fn`, `type`, `const`, or `static`
+   |        ^
+...
+LL | }
+   | - the item list ends here
+   |
+help: add `fn` here to parse `hello_method` as a public method
+   |
+LL |     pub fn hello_method(&self) {
+   |         ^^
 
 error[E0599]: no method named `hello_method` found for struct `S` in the current scope
   --> $DIR/issue-40006.rs:38:7

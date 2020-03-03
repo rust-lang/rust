@@ -452,7 +452,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 }
 
-impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
+impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Similar to `ascend`, gets a reference to a node's parent node, but also
     /// deallocate the current node in the process. This is unsafe because the
     /// current node will still be accessible despite being deallocated.
@@ -460,23 +460,17 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
         self,
     ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
         assert!(!self.is_shared_root());
+        let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(node.cast(), Layout::new::<LeafNode<K, V>>());
-        ret
-    }
-}
-
-impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    /// Similar to `ascend`, gets a reference to a node's parent node, but also
-    /// deallocate the current node in the process. This is unsafe because the
-    /// current node will still be accessible despite being deallocated.
-    pub unsafe fn deallocate_and_ascend(
-        self,
-    ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
-        let node = self.node;
-        let ret = self.ascend().ok();
-        Global.dealloc(node.cast(), Layout::new::<InternalNode<K, V>>());
+        Global.dealloc(
+            node.cast(),
+            if height > 0 {
+                Layout::new::<InternalNode<K, V>>()
+            } else {
+                Layout::new::<LeafNode<K, V>>()
+            },
+        );
         ret
     }
 }
@@ -1427,15 +1421,23 @@ unsafe fn move_edges<K, V>(
     dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
-        unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+        unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
     }
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
+    pub fn forget_node_type(
+        self,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+        unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
+    }
+}
+
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
     pub fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {

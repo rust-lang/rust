@@ -1,10 +1,10 @@
 use crate::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
 
+use rustc_ast::ast;
+use rustc_ast::ast::NodeId;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
-use syntax::ast;
-use syntax::ast::NodeId;
 
 use std::fmt::Debug;
 

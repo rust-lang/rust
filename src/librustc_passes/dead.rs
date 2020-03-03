@@ -15,8 +15,8 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_session::lint;
 
+use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
-use syntax::{ast, attr};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -553,7 +553,7 @@ impl DeadVisitor<'tcx> {
         node_type: &str,
         participle: &str,
     ) {
-        if !name.as_str().starts_with("_") {
+        if !name.as_str().starts_with('_') {
             self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
                 lint.build(&format!("{} is never {}: `{}`", node_type, participle, name)).emit()
             });
@@ -601,13 +601,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(
-                item.hir_id,
-                span,
-                item.ident.name,
-                item.kind.descriptive_variant(),
-                participle,
-            );
+            self.warn_dead_code(item.hir_id, span, item.ident.name, item.kind.descr(), participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);

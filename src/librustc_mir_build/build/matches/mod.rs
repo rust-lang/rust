@@ -19,7 +19,7 @@ use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use syntax::ast::Name;
+use rustc_ast::ast::Name;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -649,7 +649,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             PatKind::Or { ref pats } => {
-                self.visit_bindings(&pats[0], pattern_user_ty.clone(), f);
+                self.visit_bindings(&pats[0], pattern_user_ty, f);
             }
         }
     }
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let target_blocks: Vec<_> = target_candidates
                 .into_iter()
                 .map(|mut candidates| {
-                    if candidates.len() != 0 {
+                    if !candidates.is_empty() {
                         let candidate_start = this.cfg.start_new_block();
                         this.match_candidates(
                             span,
@@ -1942,8 +1942,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.hir.tcx();
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
         let binding_mode = match mode {
-            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
-            BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
+            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability),
+            BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
         };
         debug!("declare_binding: user_ty={:?}", user_ty);
         let local = LocalDecl::<'tcx> {

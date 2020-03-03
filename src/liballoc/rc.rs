@@ -1453,7 +1453,7 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "none")]
+#[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]>
 where
     [T; N]: LengthAtMost32,

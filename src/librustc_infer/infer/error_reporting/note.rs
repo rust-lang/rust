@@ -38,10 +38,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(
                     span,
-                    &format!(
-                        "...so that closure can access `{}`",
-                        var_name.to_stringified_ident_guess()
-                    ),
+                    &format!("...so that closure can access `{}`", var_name.to_ident_string()),
                 );
             }
             infer::InfStackClosure(span) => {
@@ -59,7 +56,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &format!(
                         "...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
-                        self.tcx.hir().name(id).to_stringified_ident_guess()
+                        self.tcx.hir().name(id).to_ident_string()
                     ),
                 );
             }
@@ -651,8 +648,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0491,
-                    "in type `{}`, reference has a longer lifetime \
-                                                than the data it references",
+                    "in type `{}`, reference has a longer lifetime than the data it references",
                     self.ty_to_string(ty)
                 );
                 note_and_explain_region(

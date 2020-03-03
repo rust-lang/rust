@@ -1,6 +1,6 @@
 /*!
 
-Rust MIR: a lowered representation of Rust. Also: an experiment!
+Rust MIR: a lowered representation of Rust.
 
 */
 

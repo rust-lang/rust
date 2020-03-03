@@ -564,3 +564,11 @@ declare_lint_pass! {
         INLINE_NO_SANITIZE,
     ]
 }
+
+declare_lint! {
+    pub UNUSED_DOC_COMMENTS,
+    Warn,
+    "detects doc comments that aren't used by rustdoc"
+}
+
+declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);

@@ -178,7 +178,7 @@ fn main() {
     for lib in output(&mut cmd).split_whitespace() {
         let name = if lib.starts_with("-l") {
             &lib[2..]
-        } else if lib.starts_with("-") {
+        } else if lib.starts_with('-') {
             &lib[1..]
         } else if Path::new(lib).exists() {
             // On MSVC llvm-config will print the full name to libraries, but

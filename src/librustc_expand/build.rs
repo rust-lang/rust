@@ -1,10 +1,10 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
+use rustc_ast::attr;
+use rustc_ast::ptr::P;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
-use syntax::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
-use syntax::attr;
-use syntax::ptr::P;
 
 use rustc_span::Span;
 
@@ -644,7 +644,8 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, Some(expr)))
+        let def = ast::Defaultness::Final;
+        self.item(span, name, Vec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

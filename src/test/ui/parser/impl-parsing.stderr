@@ -22,11 +22,19 @@ error: expected a trait, found type
 LL | impl ?Sized for .. {}
    |      ^^^^^^
 
-error: expected `impl`, found `FAIL`
-  --> $DIR/impl-parsing.rs:9:16
+error: `default` is not followed by an item
+  --> $DIR/impl-parsing.rs:9:1
    |
 LL | default unsafe FAIL
-   |                ^^^^ expected `impl`
+   | ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
 
-error: aborting due to 5 previous errors
+error: expected item, found keyword `unsafe`
+  --> $DIR/impl-parsing.rs:9:9
+   |
+LL | default unsafe FAIL
+   |         ^^^^^^ expected item
+
+error: aborting due to 6 previous errors
 

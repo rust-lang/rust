@@ -5,9 +5,9 @@
 
 use std::str::FromStr;
 
-use syntax::ast;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_ast::ast;
+use rustc_ast::visit;
+use rustc_ast::visit::Visitor;
 
 enum Mode {
     Expression,

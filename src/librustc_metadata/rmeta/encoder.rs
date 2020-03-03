@@ -25,6 +25,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
 use log::{debug, trace};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, SourceFile, Span};
@@ -32,8 +34,6 @@ use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::u32;
-use syntax::ast;
-use syntax::attr;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -306,7 +306,7 @@ impl<'tcx> EncodeContext<'tcx> {
                 assert!(
                     last_min_end <= lazy.position,
                     "make sure that the calls to `lazy*` \
-                    are in the same order as the metadata fields",
+                     are in the same order as the metadata fields",
                 );
                 lazy.position.get() - last_min_end.get()
             }
@@ -503,7 +503,7 @@ impl<'tcx> EncodeContext<'tcx> {
             },
             proc_macro_data,
             proc_macro_stability: if is_proc_macro {
-                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| *stab)
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied()
             } else {
                 None
             },
@@ -1248,12 +1248,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
     }
 
-    fn encode_info_for_generic_param(
-        &mut self,
-        def_id: DefId,
-        kind: EntryKind<'tcx>,
-        encode_type: bool,
-    ) {
+    fn encode_info_for_generic_param(&mut self, def_id: DefId, kind: EntryKind, encode_type: bool) {
         record!(self.per_def.kind[def_id] <- kind);
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
@@ -1271,12 +1266,9 @@ impl EncodeContext<'tcx> {
         let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
 
         record!(self.per_def.kind[def_id] <- match ty.kind {
-            ty::Generator(def_id, ..) => {
-                let layout = self.tcx.generator_layout(def_id);
-                let data = GeneratorData {
-                    layout: layout.clone(),
-                };
-                EntryKind::Generator(self.lazy(data))
+            ty::Generator(..) => {
+                let data = self.tcx.generator_kind(def_id).unwrap();
+                EntryKind::Generator(data)
             }
 
             ty::Closure(..) => EntryKind::Closure,

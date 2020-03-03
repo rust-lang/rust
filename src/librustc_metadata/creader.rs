@@ -10,6 +10,9 @@ use rustc::session::config;
 use rustc::session::search_paths::PathKind;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
@@ -20,9 +23,6 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use syntax::ast;
-use syntax::attr;
-use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
 
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
@@ -463,7 +463,7 @@ impl<'a> CrateLoader<'a> {
             self.load(&mut locator)
                 .map(|r| (r, None))
                 .or_else(|| {
-                    dep_kind = DepKind::UnexportedMacrosOnly;
+                    dep_kind = DepKind::MacrosOnly;
                     self.load_proc_macro(&mut locator, path_kind)
                 })
                 .ok_or_else(move || LoadError::LocatorError(locator))?
@@ -473,7 +473,7 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None) => {
                 let data = self.cstore.get_crate_data(cnum);
                 if data.is_proc_macro_crate() {
-                    dep_kind = DepKind::UnexportedMacrosOnly;
+                    dep_kind = DepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
                 Ok(cnum)
@@ -547,9 +547,6 @@ impl<'a> CrateLoader<'a> {
                     "resolving dep crate {} hash: `{}` extra filename: `{}`",
                     dep.name, dep.hash, dep.extra_filename
                 );
-                if dep.kind == DepKind::UnexportedMacrosOnly {
-                    return krate;
-                }
                 let dep_kind = match dep_kind {
                     DepKind::MacrosOnly => DepKind::MacrosOnly,
                     _ => dep.kind,
@@ -680,10 +677,7 @@ impl<'a> CrateLoader<'a> {
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
             if !data.is_profiler_runtime() {
-                self.sess.err(&format!(
-                    "the crate `profiler_builtins` is not \
-                                        a profiler runtime"
-                ));
+                self.sess.err("the crate `profiler_builtins` is not a profiler runtime");
             }
         }
     }
@@ -853,7 +847,7 @@ impl<'a> CrateLoader<'a> {
                     None => item.ident.name,
                 };
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
-                    DepKind::UnexportedMacrosOnly
+                    DepKind::MacrosOnly
                 } else {
                     DepKind::Explicit
                 };

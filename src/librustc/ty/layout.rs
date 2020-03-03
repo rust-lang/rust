@@ -1,9 +1,9 @@
 use crate::session::{self, DataTypeKind};
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
+use rustc_ast::ast::{self, Ident, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_span::DUMMY_SP;
-use syntax::ast::{self, Ident, IntTy, UintTy};
 
 use std::cmp;
 use std::fmt;
@@ -502,7 +502,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let univariant = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
             Ok(tcx.intern_layout(self.univariant_uninterned(ty, fields, repr, kind)?))
         };
-        debug_assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types_or_consts());
 
         Ok(match ty.kind {
             // Basic scalars.
@@ -798,7 +798,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // (Typechecking will reject discriminant-sizing attrs.)
 
                     let v = present_first.unwrap();
-                    let kind = if def.is_enum() || variants[v].len() == 0 {
+                    let kind = if def.is_enum() || variants[v].is_empty() {
                         StructKind::AlwaysSized
                     } else {
                         let param_env = tcx.param_env(def.did);
@@ -1752,7 +1752,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        debug_assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types_or_consts());
 
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
@@ -2541,12 +2541,15 @@ where
         };
 
         let target = &cx.tcx().sess.target.target;
+        let target_env_gnu_like = matches!(&target.target_env[..], "gnu" | "musl");
         let win_x64_gnu =
             target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
-        let linux_s390x =
-            target.target_os == "linux" && target.arch == "s390x" && target.target_env == "gnu";
-        let linux_sparc64 =
-            target.target_os == "linux" && target.arch == "sparc64" && target.target_env == "gnu";
+        let linux_s390x_gnu_like =
+            target.target_os == "linux" && target.arch == "s390x" && target_env_gnu_like;
+        let linux_sparc64_gnu_like =
+            target.target_os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
+        let linux_powerpc_gnu_like =
+            target.target_os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
         let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false,
@@ -2617,9 +2620,14 @@ where
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
-                // The same is true for s390x-unknown-linux-gnu
-                // and sparc64-unknown-linux-gnu.
-                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
+                // The same is true for {s390x,sparc64,powerpc}-unknown-linux-{gnu,musl}.
+                if is_return
+                    || rust_abi
+                    || (!win_x64_gnu
+                        && !linux_s390x_gnu_like
+                        && !linux_sparc64_gnu_like
+                        && !linux_powerpc_gnu_like)
+                {
                     arg.mode = PassMode::Ignore;
                 }
             }

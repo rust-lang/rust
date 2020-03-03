@@ -89,7 +89,7 @@ pub enum FileName {
     QuoteExpansion(u64),
     /// Command line.
     Anon(u64),
-    /// Hack in `src/libsyntax/parse.rs`.
+    /// Hack in `src/librustc_ast/parse.rs`.
     // FIXME(jseyfried)
     MacroExpansion(u64),
     ProcMacroSourceCode(u64),
@@ -1205,7 +1205,7 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        if self.lines.len() == 0 {
+        if self.lines.is_empty() {
             return None;
         }
 

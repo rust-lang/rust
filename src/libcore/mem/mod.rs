@@ -109,8 +109,9 @@ pub use crate::intrinsics::transmute;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 /// [`ManuallyDrop`]: struct.ManuallyDrop.html
 #[inline]
+#[rustc_const_unstable(feature = "const_forget", issue = "69616")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn forget<T>(t: T) {
+pub const fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 

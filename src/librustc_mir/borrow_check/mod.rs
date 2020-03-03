@@ -28,8 +28,8 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
 
+use rustc_ast::ast::Name;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::Name;
 
 use crate::dataflow;
 use crate::dataflow::generic::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
@@ -365,7 +365,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         // Skip over locals that begin with an underscore or have no name
         match mbcx.local_names[local] {
             Some(name) => {
-                if name.as_str().starts_with("_") {
+                if name.as_str().starts_with('_') {
                     continue;
                 }
             }
@@ -1599,9 +1599,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         if let Some(mpi) = self.move_path_for_place(place_span.0) {
             let move_paths = &self.move_data.move_paths;
-            let mut child = move_paths[mpi].first_child;
-            while let Some(child_mpi) = child {
-                let child_move_path = &move_paths[child_mpi];
+
+            let root_path = &move_paths[mpi];
+            for (child_mpi, child_move_path) in root_path.children(move_paths) {
                 let last_proj = child_move_path.place.projection.last().unwrap();
                 if let ProjectionElem::ConstantIndex { offset, from_end, .. } = last_proj {
                     debug_assert!(!from_end, "Array constant indexing shouldn't be `from_end`.");
@@ -1623,7 +1623,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         }
                     }
                 }
-                child = child_move_path.next_sibling;
             }
         }
     }

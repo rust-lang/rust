@@ -8,8 +8,8 @@
 use crate::session::Session;
 use core::num::IntErrorKind;
 use rustc::bug;
+use rustc_ast::ast;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 use rustc_data_structures::sync::Once;
 

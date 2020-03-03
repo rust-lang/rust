@@ -7,9 +7,10 @@ pub mod map;
 
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::print;
 use rustc_hir::Crate;
+use rustc_hir::HirId;
 use std::ops::Deref;
 
 /// A wrapper type which allows you to access HIR.
@@ -45,9 +46,17 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir(self) -> Hir<'tcx> {
         Hir { tcx: self, map: &self.hir_map }
     }
+
+    pub fn parent_module(self, id: HirId) -> DefId {
+        self.parent_module_from_def_id(DefId::local(id.owner))
+    }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
+    providers.parent_module_from_def_id = |tcx, id| {
+        let hir = tcx.hir();
+        hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id).unwrap()))
+    };
     providers.hir_crate = |tcx, _| tcx.hir_map.untracked_krate();
     map::provide(providers);
 }

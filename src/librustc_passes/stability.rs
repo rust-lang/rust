@@ -9,6 +9,7 @@ use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
@@ -20,7 +21,6 @@ use rustc_hir::{Generics, HirId, Item, StructField, Variant};
 use rustc_infer::traits::misc::can_type_implement_copy;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::Attribute;
 
 use std::cmp::Ordering;
 use std::mem::replace;
@@ -362,7 +362,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant()),
+            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descr()),
         }
 
         intravisit::walk_item(self, i)
@@ -551,7 +551,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     .emit();
                 } else {
                     let param_env = self.tcx.param_env(def_id);
-                    if !can_type_implement_copy(self.tcx, param_env, ty).is_ok() {
+                    if can_type_implement_copy(self.tcx, param_env, ty).is_err() {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::untagged_unions,

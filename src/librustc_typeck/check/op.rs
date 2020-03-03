@@ -5,11 +5,11 @@ use super::{FnCtxt, Needs};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_ast::ast::Ident;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_span::Span;
-use syntax::ast::Ident;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -495,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir_id) => hir_id,
                 None => return false,
             };
-            if self.tcx.has_typeck_tables(def_id) == false {
+            if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
             let fn_sig = {
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(hir_id) => hir_id,
                     None => return false,
                 };
-                if self.tcx.has_typeck_tables(def_id) == false {
+                if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
                 match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
@@ -529,7 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                let (variable_snippet, applicability) = if fn_sig.inputs().len() > 0 {
+                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
                     (
                         format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
                         Applicability::HasPlaceholders,
@@ -597,15 +597,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Ok(lstring) => {
                             err.span_suggestion(
                                 lhs_expr.span,
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     remove_borrow_msg
                                 } else {
                                     msg
                                 },
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
-                                    format!("{}", &lstring[1..])
+                                    lstring[1..].to_string()
                                 } else {
                                     format!("{}.to_owned()", lstring)
                                 },
@@ -630,10 +630,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        let to_string = if l.starts_with("&") {
+                        let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
-                            format!("{}", &l[1..])
+                            l[1..].to_string()
                         } else {
                             format!("{}.to_owned()", l)
                         };

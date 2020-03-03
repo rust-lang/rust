@@ -3,14 +3,14 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 
+use rustc_ast::ast;
+use rustc_ast::token::{self, Nonterminal, Token};
+use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
-use syntax::ast;
-use syntax::token::{self, Nonterminal, Token};
-use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use std::path::{Path, PathBuf};
 use std::str;
@@ -269,7 +269,7 @@ pub fn stream_to_parser<'a>(
 /// # Note
 ///
 /// The main usage of this function is outside of rustc, for those who uses
-/// libsyntax as a library. Please do not remove this function while refactoring
+/// librustc_ast as a library. Please do not remove this function while refactoring
 /// just because it is not used in rustc codebase!
 pub fn stream_to_parser_with_base_dir<'a>(
     sess: &'a ParseSess,
@@ -312,9 +312,6 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // before we fall back to the stringification.
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => {
-            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-        }
-        Nonterminal::NtTraitItem(ref item) | Nonterminal::NtImplItem(ref item) => {
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
         Nonterminal::NtIdent(ident, is_raw) => {
@@ -374,7 +371,7 @@ fn prepend_attrs(
     span: rustc_span::Span,
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?;
-    if attrs.len() == 0 {
+    if attrs.is_empty() {
         return Some(tokens.clone());
     }
     let mut builder = tokenstream::TokenStreamBuilder::new();
@@ -423,7 +420,7 @@ fn prepend_attrs(
         builder.push(tokenstream::TokenTree::Delimited(
             delim_span,
             token::DelimToken::Bracket,
-            brackets.build().into(),
+            brackets.build(),
         ));
     }
     builder.push(tokens.clone());

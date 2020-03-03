@@ -3,14 +3,14 @@ use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::attr;
+use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::attr;
-use syntax::entry::EntryPointType;
 
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
@@ -77,7 +77,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     configure_main(tcx, &ctxt)
 }
 
-// Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
+// Beware, this is duplicated in `librustc_ast/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {

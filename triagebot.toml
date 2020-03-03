@@ -1,6 +1,7 @@
 [relabel]
 allow-unauthenticated = [
     "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
+    "D-*",
     "requires-nightly",
     # I-* without I-nominated
     "I-*", "!I-nominated",
