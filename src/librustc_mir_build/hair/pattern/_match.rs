@@ -1000,7 +1000,7 @@ impl<'tcx> Constructor<'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => PatKind::Wild,
             },

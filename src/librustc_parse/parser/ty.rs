@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
         })?;
 
         if ts.len() == 1 && !trailing {
-            let ty = ts.into_iter().nth(0).unwrap().into_inner();
+            let ty = ts.into_iter().next().unwrap().into_inner();
             let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
