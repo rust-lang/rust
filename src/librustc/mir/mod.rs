@@ -1864,7 +1864,7 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().as_local()
     }
 
-    pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
+    pub fn as_ref(&self) -> PlaceRef<'tcx, 'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
 }
