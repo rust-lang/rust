@@ -526,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we may want to suggest removing a `&`.
                 if !sm.span_to_filename(expr.span).is_real() {
                     if let Ok(code) = sm.span_to_snippet(sp) {
-                        if code.chars().next() == Some('&') {
+                        if code.starts_with('&') {
                             return Some((
                                 sp,
                                 "consider removing the borrow",

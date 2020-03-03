@@ -234,7 +234,7 @@ impl BoundNamesCollector {
             start = false;
             write!(fmt, "{}", r)?;
         }
-        for (_, t) in &self.types {
+        for t in self.types.values() {
             if !start {
                 write!(fmt, ", ")?;
             }

@@ -1382,10 +1382,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         // Write down the order of our locals that will be promoted to the prefix.
         {
-            let mut idx = 0u32;
-            for local in ineligible_locals.iter() {
-                assignments[local] = Ineligible(Some(idx));
-                idx += 1;
+            for (idx, local) in ineligible_locals.iter().enumerate() {
+                assignments[local] = Ineligible(Some(idx as u32));
             }
         }
         debug!("generator saved local assignments: {:?}", assignments);

@@ -1574,9 +1574,9 @@ impl EmitterWriter {
 
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
-            let mut line_pos = 0;
             let mut lines = complete.lines();
-            for line in lines.by_ref().take(MAX_SUGGESTION_HIGHLIGHT_LINES) {
+            for (line_pos, line) in lines.by_ref().take(MAX_SUGGESTION_HIGHLIGHT_LINES).enumerate()
+            {
                 // Print the span column to avoid confusion
                 buffer.puts(
                     row_num,
@@ -1587,7 +1587,6 @@ impl EmitterWriter {
                 // print the suggestion
                 draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                 buffer.append(row_num, line, Style::NoStyle);
-                line_pos += 1;
                 row_num += 1;
             }
 

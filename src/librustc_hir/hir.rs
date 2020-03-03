@@ -679,15 +679,15 @@ impl Crate<'_> {
     where
         V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
-        for (_, item) in &self.items {
+        for item in self.items.values() {
             visitor.visit_item(item);
         }
 
-        for (_, trait_item) in &self.trait_items {
+        for trait_item in self.trait_items.values() {
             visitor.visit_trait_item(trait_item);
         }
 
-        for (_, impl_item) in &self.impl_items {
+        for impl_item in self.impl_items.values() {
             visitor.visit_impl_item(impl_item);
         }
     }
