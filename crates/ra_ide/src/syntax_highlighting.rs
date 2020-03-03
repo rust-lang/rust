@@ -219,10 +219,10 @@ fn highlight_element(
         CHAR => HighlightTag::CharLiteral.into(),
         LIFETIME => {
             let h = Highlight::new(HighlightTag::Lifetime);
-            dbg!(match element.parent().map(|it| it.kind()) {
+            match element.parent().map(|it| it.kind()) {
                 Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
                 _ => h,
-            })
+            }
         }
 
         k if k.is_keyword() => {
