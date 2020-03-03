@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 };
 
                 let implements_partial_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &paths::PARTIAL_ORD) {
+                    if let Some(id) = cx.tcx.lang_items().partial_ord_trait() {
                         utils::implements_trait(cx, ty, id, &[])
                     } else {
                         return;

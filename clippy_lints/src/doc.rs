@@ -1,4 +1,4 @@
-use crate::utils::{get_trait_def_id, implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use crate::utils::{implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
@@ -227,7 +227,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
         } else {
             if_chain! {
                 if let Some(body_id) = body_id;
-                if let Some(future) = get_trait_def_id(cx, &paths::FUTURE);
+                if let Some(future) = cx.tcx.lang_items().future_trait();
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id);
                 let mir = cx.tcx.optimized_mir(def_id);
                 let ret_ty = mir.return_ty();
