@@ -29,6 +29,30 @@ use ra_parser::FragmentKind;
 use ra_syntax::{algo::replace_descendants, SyntaxElement, SyntaxNode};
 use std::{collections::HashMap, sync::Arc};
 
+pub fn expand_eager_macro(
+    db: &impl AstDatabase,
+    macro_call: InFile<ast::MacroCall>,
+    def: MacroDefId,
+    resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
+) -> Option<EagerMacroId> {
+    let args = macro_call.value.token_tree()?;
+    let parsed_args = mbe::ast_to_token_tree(&args)?.0;
+    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
+    let result = eager_macro_recur(db, macro_call.with_value(parsed_args.syntax_node()), resolver)?;
+
+    let subtree = to_subtree(&result)?;
+
+    if let MacroDefKind::BuiltInEager(eager) = def.kind {
+        let (subtree, fragment) = eager.expand(&subtree).ok()?;
+        let eager =
+            EagerCallLoc { def, fragment, subtree: Arc::new(subtree), file_id: macro_call.file_id };
+
+        Some(db.intern_eager_expansion(eager))
+    } else {
+        None
+    }
+}
+
 fn to_subtree(node: &SyntaxNode) -> Option<tt::Subtree> {
     let mut subtree = mbe::syntax_node_to_token_tree(node)?.0;
     subtree.delimiter = None;
@@ -85,28 +109,4 @@ fn eager_macro_recur(
     }
 
     Some(original)
-}
-
-pub fn expand_eager_macro(
-    db: &impl AstDatabase,
-    macro_call: InFile<ast::MacroCall>,
-    def: MacroDefId,
-    resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-) -> Option<EagerMacroId> {
-    let args = macro_call.value.token_tree()?;
-    let parsed_args = mbe::ast_to_token_tree(&args)?.0;
-    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
-    let result = eager_macro_recur(db, macro_call.with_value(parsed_args.syntax_node()), resolver)?;
-
-    let subtree = to_subtree(&result)?;
-
-    if let MacroDefKind::BuiltInEager(eager) = def.kind {
-        let (subtree, fragment) = eager.expand(&subtree).ok()?;
-        let eager =
-            EagerCallLoc { def, fragment, subtree: Arc::new(subtree), file_id: macro_call.file_id };
-
-        Some(db.intern_eager_expansion(eager))
-    } else {
-        None
-    }
 }
