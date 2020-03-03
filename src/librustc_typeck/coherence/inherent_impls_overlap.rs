@@ -23,14 +23,11 @@ impl InherentOverlapChecker<'tcx> {
         let impl_items2 = self.tcx.associated_items(impl2);
 
         for item1 in impl_items1.in_definition_order() {
-            let collision = impl_items2
-                .filter_by_name_unhygienic(item1.ident.name)
-                .find(|item2| {
-                    // Symbols and namespace match, compare hygienically.
-                    item1.kind.namespace() == item2.kind.namespace()
-                        && item1.ident.modern() == item2.ident.modern()
-                })
-                .is_some();
+            let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
+                // Symbols and namespace match, compare hygienically.
+                item1.kind.namespace() == item2.kind.namespace()
+                    && item1.ident.modern() == item2.ident.modern()
+            });
 
             if collision {
                 return true;
