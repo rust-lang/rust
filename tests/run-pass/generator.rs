@@ -4,6 +4,8 @@ use std::ops::{GeneratorState::{self, *}, Generator};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::fmt::Debug;
+use std::mem::ManuallyDrop;
+use std::ptr;
 
 fn basic() {
     fn finish<T>(mut amt: usize, mut t: T) -> T::Return
@@ -12,8 +14,13 @@ fn basic() {
         // We are not moving the `t` around until it gets dropped, so this is okay.
         let mut t = unsafe { Pin::new_unchecked(&mut t) };
         loop {
-            match t.as_mut().resume(()) {
-                GeneratorState::Yielded(y) => amt -= y,
+            let state = t.as_mut().resume(());
+            // Test if the generator is valid (according to type invariants).
+            let _ = unsafe { ManuallyDrop::new(ptr::read(t.as_mut().get_unchecked_mut())) };
+            match state {
+                GeneratorState::Yielded(y) => {
+                    amt -= y;
+                }
                 GeneratorState::Complete(ret) => {
                     assert_eq!(amt, 0);
                     return ret
@@ -109,6 +116,8 @@ fn smoke_resume_arg() {
 
         for (input, out) in inout {
             assert_eq!(gen.as_mut().resume(input), out);
+            // Test if the generator is valid (according to type invariants).
+            let _ = unsafe { ManuallyDrop::new(ptr::read(gen.as_mut().get_unchecked_mut())) };
         }
     }
 
