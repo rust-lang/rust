@@ -181,6 +181,8 @@ fn validate_and_turn_into_const<'tcx>(
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
 
+        debug!("validate_and_turn_into_const: mplace = {:?}", mplace);
+
         // FIXME do not validate promoteds until a decision on
         // https://github.com/rust-lang/rust/issues/67465 is made
         if cid.promoted.is_none() {
@@ -209,6 +211,7 @@ fn validate_and_turn_into_const<'tcx>(
     })();
 
     val.map_err(|error| {
+        trace!("Validation failed: {:?}", error);
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
@@ -251,7 +254,10 @@ pub fn const_eval_validated_provider<'tcx>(
         });
     }
 
-    tcx.const_eval_raw(key).and_then(|val| validate_and_turn_into_const(tcx, val, key))
+    tcx.const_eval_raw(key).and_then(|val| {
+        trace!("const_eval_raw succeeded. val.alloc_id = {:?}. val.ty = {:?}", val.alloc_id, val.ty);
+        validate_and_turn_into_const(tcx, val, key)
+    })
 }
 
 pub fn const_eval_raw_provider<'tcx>(
@@ -271,7 +277,7 @@ pub fn const_eval_raw_provider<'tcx>(
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
+            Err(ErrorHandled::TooGeneric) => { trace!("const_eval_raw: retrying with RevealAll"); }
             // deduplicate calls
             other => return other,
         }

@@ -47,7 +47,7 @@ use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
-use log::debug;
+use log::{debug, trace};
 use std::fmt::Write;
 
 // hardwired lints from librustc
@@ -1181,11 +1181,14 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
+        trace!("UnusedBrokenConst: check_item(_, _, {:?}", it);
         match it.kind {
             hir::ItemKind::Const(_, body_id) => {
+                trace!("UnusedBrokenConst: checking {:?}", body_id);
                 check_const(cx, body_id);
             }
             hir::ItemKind::Static(_, _, body_id) => {
+                trace!("UnusedBrokenConst: checking {:?}", body_id);
                 check_const(cx, body_id);
             }
             _ => {}

@@ -1134,6 +1134,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
+        trace!("raw_const_to_mplace: raw.ty = {:?}", raw.ty);
         let ptr = self.tag_global_base_pointer(Pointer::from(raw.alloc_id));
         let layout = self.layout_of(raw.ty)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
