@@ -37,9 +37,25 @@ pub fn expand_eager_macro(
 ) -> Option<EagerMacroId> {
     let args = macro_call.value.token_tree()?;
     let parsed_args = mbe::ast_to_token_tree(&args)?.0;
-    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
-    let result = eager_macro_recur(db, macro_call.with_value(parsed_args.syntax_node()), resolver)?;
 
+    // Note:
+    // When `lazy_expand` is called, its *parent* file must be already exists.
+    // Here we store an eager macro id for the argument expaned here
+    // for that purpose.
+    let arg_id: MacroCallId = db
+        .intern_eager_expansion({
+            EagerCallLoc {
+                def,
+                fragment: FragmentKind::Expr,
+                subtree: Arc::new(parsed_args.clone()),
+                file_id: macro_call.file_id,
+            }
+        })
+        .into();
+
+    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
+    let result =
+        eager_macro_recur(db, InFile::new(arg_id.as_file(), parsed_args.syntax_node()), resolver)?;
     let subtree = to_subtree(&result)?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
