@@ -2,9 +2,9 @@ use ra_syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
 };
+use test_utils::tested_by;
 
-use crate::assist_ctx::ActionBuilder;
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{assist_ctx::ActionBuilder, Assist, AssistCtx, AssistId};
 
 // Assist: inline_local_variable
 //
@@ -29,6 +29,11 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         _ => return None,
     };
     if bind_pat.is_mutable() {
+        tested_by!(test_not_inline_mut_variable);
+        return None;
+    }
+    if !bind_pat.syntax().text_range().contains_inclusive(ctx.frange.range.start()) {
+        tested_by!(not_applicable_outside_of_bind_pat);
         return None;
     }
     let initializer_expr = let_stmt.initializer()?;
@@ -111,6 +116,8 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
+    use test_utils::covers;
+
     use crate::helpers::{check_assist, check_assist_not_applicable};
 
     use super::*;
@@ -317,9 +324,10 @@ fn foo() {
 
     #[test]
     fn test_not_inline_mut_variable() {
+        covers!(test_not_inline_mut_variable);
         check_assist_not_applicable(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let mut a<|> = 1 + 1;
     a + 1;
@@ -651,11 +659,25 @@ fn foo() {
     fn test_not_applicable_if_variable_unused() {
         check_assist_not_applicable(
             inline_local_variable,
-            "
+            r"
 fn foo() {
     let <|>a = 0;
 }
             ",
+        )
+    }
+
+    #[test]
+    fn not_applicable_outside_of_bind_pat() {
+        covers!(not_applicable_outside_of_bind_pat);
+        check_assist_not_applicable(
+            inline_local_variable,
+            r"
+fn main() {
+    let x = <|>1 + 2;
+    x * 4;
+}
+",
         )
     }
 }
