@@ -559,51 +559,6 @@ impl CrateRoot<'_> {
     }
 }
 
-impl CrateMetadata {
-    crate fn new(
-        sess: &Session,
-        blob: MetadataBlob,
-        root: CrateRoot<'static>,
-        raw_proc_macros: Option<&'static [ProcMacro]>,
-        cnum: CrateNum,
-        cnum_map: CrateNumMap,
-        dep_kind: DepKind,
-        source: CrateSource,
-        private_dep: bool,
-        host_hash: Option<Svh>,
-    ) -> CrateMetadata {
-        let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
-            root.def_path_table.decode((&blob, sess))
-        });
-        let trait_impls = root
-            .impls
-            .decode((&blob, sess))
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-            .collect();
-        let alloc_decoding_state =
-            AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
-        let dependencies = Lock::new(cnum_map.iter().cloned().collect());
-        CrateMetadata {
-            blob,
-            root,
-            def_path_table,
-            trait_impls,
-            raw_proc_macros,
-            source_map_import_info: Once::new(),
-            alloc_decoding_state,
-            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
-            cnum,
-            cnum_map,
-            dependencies,
-            dep_kind: Lock::new(dep_kind),
-            source,
-            private_dep,
-            host_hash,
-            extern_crate: Lock::new(None),
-        }
-    }
-}
-
 impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
@@ -623,10 +578,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 self.cnum,
             )
         })
-    }
-
-    fn local_def_id(&self, index: DefIndex) -> DefId {
-        DefId { krate: self.cnum, index }
     }
 
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
@@ -1194,18 +1145,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .collect()
     }
 
-    // Translate a DefId from the current compilation environment to a DefId
-    // for an external crate.
-    fn reverse_translate_def_id(&self, did: DefId) -> Option<DefId> {
-        for (local, &global) in self.cnum_map.iter_enumerated() {
-            if global == did.krate {
-                return Some(DefId { krate: local, index: did.index });
-            }
-        }
-
-        None
-    }
-
     fn get_inherent_implementations_for_type(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -1412,11 +1351,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
     }
 
-    #[inline]
-    fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        self.def_path_table.def_path_hash(index)
-    }
-
     /// Imports the source_map from an external crate into the source_map of the crate
     /// currently being compiled (the "local crate").
     ///
@@ -1519,33 +1453,52 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .collect()
         })
     }
-
-    /// Get the `DepNodeIndex` corresponding this crate. The result of this
-    /// method is cached in the `dep_node_index` field.
-    fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
-        let mut dep_node_index = self.dep_node_index.load();
-
-        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
-            // We have not cached the DepNodeIndex for this upstream crate yet,
-            // so use the dep-graph to find it out and cache it.
-            // Note that multiple threads can enter this block concurrently.
-            // That is fine because the DepNodeIndex remains constant
-            // throughout the whole compilation session, and multiple stores
-            // would always write the same value.
-
-            let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
-            let dep_node = def_path_hash.to_dep_node(dep_graph::DepKind::CrateMetadata);
-
-            dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
-            assert!(dep_node_index != DepNodeIndex::INVALID);
-            self.dep_node_index.store(dep_node_index);
-        }
-
-        dep_node_index
-    }
 }
 
 impl CrateMetadata {
+    crate fn new(
+        sess: &Session,
+        blob: MetadataBlob,
+        root: CrateRoot<'static>,
+        raw_proc_macros: Option<&'static [ProcMacro]>,
+        cnum: CrateNum,
+        cnum_map: CrateNumMap,
+        dep_kind: DepKind,
+        source: CrateSource,
+        private_dep: bool,
+        host_hash: Option<Svh>,
+    ) -> CrateMetadata {
+        let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
+            root.def_path_table.decode((&blob, sess))
+        });
+        let trait_impls = root
+            .impls
+            .decode((&blob, sess))
+            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+            .collect();
+        let alloc_decoding_state =
+            AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
+        let dependencies = Lock::new(cnum_map.iter().cloned().collect());
+        CrateMetadata {
+            blob,
+            root,
+            def_path_table,
+            trait_impls,
+            raw_proc_macros,
+            source_map_import_info: Once::new(),
+            alloc_decoding_state,
+            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
+            cnum,
+            cnum_map,
+            dependencies,
+            dep_kind: Lock::new(dep_kind),
+            source,
+            private_dep,
+            host_hash,
+            extern_crate: Lock::new(None),
+        }
+    }
+
     crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
         self.dependencies.borrow()
     }
@@ -1617,6 +1570,51 @@ impl CrateMetadata {
 
     crate fn hash(&self) -> Svh {
         self.root.hash
+    }
+
+    fn local_def_id(&self, index: DefIndex) -> DefId {
+        DefId { krate: self.cnum, index }
+    }
+
+    // Translate a DefId from the current compilation environment to a DefId
+    // for an external crate.
+    fn reverse_translate_def_id(&self, did: DefId) -> Option<DefId> {
+        for (local, &global) in self.cnum_map.iter_enumerated() {
+            if global == did.krate {
+                return Some(DefId { krate: local, index: did.index });
+            }
+        }
+
+        None
+    }
+
+    #[inline]
+    fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
+        self.def_path_table.def_path_hash(index)
+    }
+
+    /// Get the `DepNodeIndex` corresponding this crate. The result of this
+    /// method is cached in the `dep_node_index` field.
+    fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
+        let mut dep_node_index = self.dep_node_index.load();
+
+        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
+            // We have not cached the DepNodeIndex for this upstream crate yet,
+            // so use the dep-graph to find it out and cache it.
+            // Note that multiple threads can enter this block concurrently.
+            // That is fine because the DepNodeIndex remains constant
+            // throughout the whole compilation session, and multiple stores
+            // would always write the same value.
+
+            let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
+            let dep_node = def_path_hash.to_dep_node(dep_graph::DepKind::CrateMetadata);
+
+            dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
+            assert!(dep_node_index != DepNodeIndex::INVALID);
+            self.dep_node_index.store(dep_node_index);
+        }
+
+        dep_node_index
     }
 }
 
