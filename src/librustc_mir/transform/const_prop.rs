@@ -126,7 +126,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .collect();
         if !traits::normalize_and_test_predicates(
             tcx,
-            traits::elaborate_predicates(tcx, predicates).collect(),
+            traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
         ) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", source.def_id());
             return;

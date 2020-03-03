@@ -312,19 +312,18 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let item = self.item;
 
         if let Elaborate::All = elaborate {
-            let predicates = obligations.iter().map(|obligation| obligation.predicate).collect();
-            let implied_obligations = traits::elaborate_predicates(tcx, predicates);
-            let implied_obligations = implied_obligations.map(|pred| {
+            let implied_obligations = traits::util::elaborate_obligations(tcx, obligations.clone());
+            let implied_obligations = implied_obligations.map(|obligation| {
                 let mut cause = cause.clone();
                 extend_cause_with_original_assoc_item_obligation(
                     tcx,
                     trait_ref,
                     item,
                     &mut cause,
-                    &pred,
+                    &obligation.predicate,
                     tcx.associated_items(trait_ref.def_id).in_definition_order().copied(),
                 );
-                traits::Obligation::new(cause, param_env, pred)
+                traits::Obligation::new(cause, param_env, obligation.predicate)
             });
             self.out.extend(implied_obligations);
         }
@@ -613,11 +612,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Vec<traits::PredicateObligation<'tcx>> {
         let predicates = self.infcx.tcx.predicates_of(def_id).instantiate(self.infcx.tcx, substs);
-        let cause = self.cause(traits::ItemObligation(def_id));
         predicates
             .predicates
             .into_iter()
-            .map(|pred| traits::Obligation::new(cause.clone(), self.param_env, pred))
+            .zip(predicates.spans.into_iter())
+            .map(|(pred, span)| {
+                let cause = self.cause(traits::BindingObligation(def_id, span));
+                traits::Obligation::new(cause, self.param_env, pred)
+            })
             .filter(|pred| !pred.has_escaping_bound_vars())
             .collect()
     }

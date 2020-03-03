@@ -297,7 +297,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec()).collect();
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
+            .map(|obligation| obligation.predicate)
+            .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 

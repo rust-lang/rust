@@ -3,8 +3,12 @@ error[E0277]: the trait bound `Error: std::cmp::Eq` is not satisfied
    |
 LL |      x: Error
    |      ^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Error`
+   | 
+  ::: $SRC_DIR/libcore/cmp.rs:LL:COL
    |
-   = note: required by `std::cmp::AssertParamIsEq`
+LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
+   |                               -- required by this bound in `std::cmp::AssertParamIsEq`
+   |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
