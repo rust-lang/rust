@@ -178,19 +178,23 @@ mod helpers {
         (db, file_id)
     }
 
-    pub(crate) fn check_assist(assist: AssistHandler, before: &str, after: &str) {
-        check(assist, before, ExpectedResult::After(after));
+    pub(crate) fn check_assist(
+        assist: AssistHandler,
+        ra_fixture_before: &str,
+        ra_fixture_after: &str,
+    ) {
+        check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
     }
 
     // FIXME: instead of having a separate function here, maybe use
     // `extract_ranges` and mark the target as `<target> </target>` in the
     // fixuture?
-    pub(crate) fn check_assist_target(assist: AssistHandler, before: &str, target: &str) {
-        check(assist, before, ExpectedResult::Target(target));
+    pub(crate) fn check_assist_target(assist: AssistHandler, ra_fixture: &str, target: &str) {
+        check(assist, ra_fixture, ExpectedResult::Target(target));
     }
 
-    pub(crate) fn check_assist_not_applicable(assist: AssistHandler, before: &str) {
-        check(assist, before, ExpectedResult::NotApplicable);
+    pub(crate) fn check_assist_not_applicable(assist: AssistHandler, ra_fixture: &str) {
+        check(assist, ra_fixture, ExpectedResult::NotApplicable);
     }
 
     enum ExpectedResult<'a> {
