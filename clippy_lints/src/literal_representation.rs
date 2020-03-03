@@ -131,7 +131,7 @@ pub fn format_numeric_literal(lit: &str, type_suffix: Option<&str>, float: bool)
 #[derive(Debug)]
 pub(super) struct NumericLiteral<'a> {
     /// Which radix the literal was represented in.
-    pub radix: Radix,
+    radix: Radix,
     /// The radix prefix, if present.
     prefix: Option<&'a str>,
 
@@ -147,6 +147,10 @@ pub(super) struct NumericLiteral<'a> {
 }
 
 impl<'a> NumericLiteral<'a> {
+    fn from_lit(src: &'a str, lit: &Lit) -> Option<NumericLiteral<'a>> {
+        NumericLiteral::from_lit_kind(src, &lit.kind)
+    }
+
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {
         if lit_kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
             let (unsuffixed, suffix) = split_suffix(&src, lit_kind);
@@ -155,10 +159,6 @@ impl<'a> NumericLiteral<'a> {
         } else {
             None
         }
-    }
-
-    fn from_lit(src: &'a str, lit: &Lit) -> Option<NumericLiteral<'a>> {
-        NumericLiteral::from_lit_kind(src, &lit.kind)
     }
 
     #[must_use]
@@ -197,6 +197,10 @@ impl<'a> NumericLiteral<'a> {
             exponent,
             suffix,
         }
+    }
+
+    pub fn is_decimal(&self) -> bool {
+        self.radix == Radix::Decimal
     }
 
     fn split_digit_parts(digits: &str, float: bool) -> (&str, Option<&str>, Option<(char, &str)>) {
