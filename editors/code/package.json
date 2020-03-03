@@ -32,24 +32,24 @@
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
-        "jsonc-parser": "^2.1.0",
+        "jsonc-parser": "^2.2.1",
         "node-fetch": "^2.6.0",
         "vscode-languageclient": "^6.1.1"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.2",
         "@rollup/plugin-node-resolve": "^7.1.1",
-        "@types/node": "^12.12.27",
-        "@types/node-fetch": "^2.5.4",
+        "@types/node": "^12.12.29",
+        "@types/node-fetch": "^2.5.5",
         "@types/vscode": "^1.42.0",
-        "@typescript-eslint/eslint-plugin": "^2.20.0",
-        "@typescript-eslint/parser": "^2.20.0",
+        "@typescript-eslint/eslint-plugin": "^2.22.0",
+        "@typescript-eslint/parser": "^2.22.0",
         "eslint": "^6.8.0",
-        "rollup": "^1.31.1",
-        "tslib": "^1.10.0",
-        "typescript": "^3.8.2",
+        "rollup": "^1.32.0",
+        "tslib": "^1.11.1",
+        "typescript": "^3.8.3",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.73.0"
+        "vsce": "^1.74.0"
     },
     "activationEvents": [
         "onLanguage:rust",
