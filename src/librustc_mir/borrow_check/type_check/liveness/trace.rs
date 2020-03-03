@@ -484,7 +484,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(self.elements, &mut self.typeck, kind, live_at);
 
-            polonius::add_var_drops_regions(&mut self.typeck, dropped_local, &kind);
+            polonius::add_drop_of_var_derefs_origin(&mut self.typeck, dropped_local, &kind);
         }
     }
 
