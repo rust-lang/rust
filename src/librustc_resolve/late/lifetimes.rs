@@ -347,7 +347,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
             lifetime_uses: &mut Default::default(),
             missing_named_lifetime_spots: vec![],
         };
-        for (_, item) in &krate.items {
+        for item in krate.items.values() {
             visitor.visit_item(item);
         }
     }

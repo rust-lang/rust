@@ -1652,7 +1652,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         for (projection_bound, _) in &bounds.projection_bounds {
-            for (_, def_ids) in &mut associated_types {
+            for def_ids in associated_types.values_mut() {
                 def_ids.remove(&projection_bound.projection_def_id());
             }
         }

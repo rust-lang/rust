@@ -34,7 +34,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         assert!(self.in_snapshot());
 
         // Go through each placeholder that we created.
-        for (_, &placeholder_region) in placeholder_map {
+        for &placeholder_region in placeholder_map.values() {
             // Find the universe this placeholder inhabits.
             let placeholder = match placeholder_region {
                 ty::RePlaceholder(p) => p,

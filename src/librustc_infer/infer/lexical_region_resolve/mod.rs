@@ -751,7 +751,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for (constraint, _) in &self.data.constraints {
+        for constraint in self.data.constraints.keys() {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(
