@@ -1,5 +1,5 @@
-error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:9:5
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:10:5
    |
 LL | /     if num >= 0.0 {
 LL | |         num
@@ -10,8 +10,8 @@ LL | |     }
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
-error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:17:5
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:18:5
    |
 LL | /     if 0.0 < num {
 LL | |         num
@@ -20,8 +20,8 @@ LL | |         -num
 LL | |     }
    | |_____^ help: try: `num.abs()`
 
-error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:25:5
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:26:5
    |
 LL | /     if a.a > 0.0 {
 LL | |         a.a
@@ -30,8 +30,8 @@ LL | |         -a.a
 LL | |     }
    | |_____^ help: try: `a.a.abs()`
 
-error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:33:5
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:34:5
    |
 LL | /     if 0.0 >= num {
 LL | |         -num
@@ -40,8 +40,8 @@ LL | |         num
 LL | |     }
    | |_____^ help: try: `num.abs()`
 
-error: This looks like you've implemented your own absolute value function
-  --> $DIR/floating_point_abs.rs:41:5
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:42:5
    |
 LL | /     if a.a < 0.0 {
 LL | |         -a.a
@@ -50,8 +50,8 @@ LL | |         a.a
 LL | |     }
    | |_____^ help: try: `a.a.abs()`
 
-error: This looks like you've implemented your own negative absolute value function
-  --> $DIR/floating_point_abs.rs:49:5
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:50:5
    |
 LL | /     if num < 0.0 {
 LL | |         num
@@ -60,8 +60,8 @@ LL | |         -num
 LL | |     }
    | |_____^ help: try: `-num.abs()`
 
-error: This looks like you've implemented your own negative absolute value function
-  --> $DIR/floating_point_abs.rs:57:5
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:58:5
    |
 LL | /     if 0.0 >= num {
 LL | |         num
@@ -70,8 +70,8 @@ LL | |         -num
 LL | |     }
    | |_____^ help: try: `-num.abs()`
 
-error: This looks like you've implemented your own negative absolute value function
-  --> $DIR/floating_point_abs.rs:66:12
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:67:12
    |
 LL |         a: if a.a >= 0.0 { -a.a } else { a.a },
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-a.a.abs()`

@@ -1,17 +1,17 @@
 use crate::consts::{
-    constant, Constant,
+    constant, constant_simple, Constant,
     Constant::{F32, F64},
 };
 use crate::utils::{higher, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Lit, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
-use rustc_ast::ast::{self, FloatTy, LitFloatType, LitKind};
+use rustc_ast::ast;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::{format_numeric_literal, Sugg};
@@ -378,8 +378,8 @@ fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(right) && are_exprs_equal(cx, left, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(left) && are_exprs_equal(cx, right, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && are_exprs_equal(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && are_exprs_equal(cx, right, test),
             _ => false,
         }
     } else {
@@ -387,11 +387,12 @@ fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_
     }
 }
 
+/// See [`is_testing_positive`]
 fn is_testing_negative(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(left) && are_exprs_equal(cx, right, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(right) && are_exprs_equal(cx, left, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && are_exprs_equal(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && are_exprs_equal(cx, left, test),
             _ => false,
         }
     } else {
@@ -404,85 +405,69 @@ fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>)
 }
 
 /// Returns true iff expr is some zero literal
-fn is_zero(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Lit(Lit { node: lit, .. }) = &expr.kind {
-        match lit {
-            LitKind::Int(0, _) => true,
-            LitKind::Float(symb, LitFloatType::Unsuffixed)
-            | LitKind::Float(symb, LitFloatType::Suffixed(FloatTy::F64)) => {
-                symb.as_str().parse::<f64>().unwrap() == 0.0
-            },
-            LitKind::Float(symb, LitFloatType::Suffixed(FloatTy::F32)) => symb.as_str().parse::<f32>().unwrap() == 0.0,
-            _ => false,
-        }
-    } else {
-        false
+fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    match constant_simple(cx, cx.tables, expr) {
+        Some(Constant::Int(i)) => i == 0,
+        Some(Constant::F32(f)) => f == 0.0,
+        Some(Constant::F64(f)) => f == 0.0,
+        _ => false,
     }
 }
 
-/// If the expressions are not opposites, return None
-/// Otherwise, return true if expr2 = -expr1, false if expr1 = -expr2 and return the positive
-/// expression
-fn are_opposites<'a>(
+/// If the two expressions are negations of each other, then it returns
+/// a tuple, in which the first element is true iff expr1 is the
+/// positive expressions, and the second element is the positive
+/// one of the two expressions
+/// If the two expressions are not negations of each other, then it
+/// returns None.
+fn are_negated<'a>(
     cx: &LateContext<'_, '_>,
     expr1: &'a Expr<'a>,
     expr2: &'a Expr<'a>,
 ) -> Option<(bool, &'a Expr<'a>)> {
-    if let ExprKind::Block(
-        Block {
-            stmts: [],
-            expr: Some(expr1_inner),
-            ..
-        },
-        _,
-    ) = &expr1.kind
-    {
-        if let ExprKind::Block(
-            Block {
-                stmts: [],
-                expr: Some(expr2_inner),
-                ..
-            },
-            _,
-        ) = &expr2.kind
-        {
-            if let ExprKind::Unary(UnOp::UnNeg, expr1_neg) = &expr1_inner.kind {
-                if are_exprs_equal(cx, expr1_neg, expr2_inner) {
-                    return Some((false, expr2_inner));
-                }
-            }
-            if let ExprKind::Unary(UnOp::UnNeg, expr2_neg) = &expr2_inner.kind {
-                if are_exprs_equal(cx, expr1_inner, expr2_neg) {
-                    return Some((true, expr1_inner));
-                }
-            }
+    if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
+        if are_exprs_equal(cx, expr1_negated, expr2) {
+            return Some((false, expr2));
+        }
+    }
+    if let ExprKind::Unary(UnOp::UnNeg, expr2_negated) = &expr2.kind {
+        if are_exprs_equal(cx, expr1, expr2_negated) {
+            return Some((true, expr1));
         }
     }
     None
 }
 
 fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    if let Some((cond, body, Some(else_body))) = higher::if_block(&expr) {
-        if let Some((expr1_pos, body)) = are_opposites(cx, body, else_body) {
-            let pos_abs_sugg = (
-                "This looks like you've implemented your own absolute value function",
+    if_chain! {
+        if let Some((cond, body, Some(else_body))) = higher::if_block(&expr);
+        if let ExprKind::Block(block, _) = body.kind;
+        if block.stmts.is_empty();
+        if let Some(if_body_expr) = block.expr;
+        if let ExprKind::Block(else_block, _) = else_body.kind;
+        if else_block.stmts.is_empty();
+        if let Some(else_body_expr) = else_block.expr;
+        if let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr);
+        then {
+            let positive_abs_sugg = (
+                "manual implementation of `abs` method",
                 format!("{}.abs()", Sugg::hir(cx, body, "..")),
             );
-            let neg_abs_sugg = (
-                "This looks like you've implemented your own negative absolute value function",
+            let negative_abs_sugg = (
+                "manual implementation of negation of `abs` method",
                 format!("-{}.abs()", Sugg::hir(cx, body, "..")),
             );
             let sugg = if is_testing_positive(cx, cond, body) {
-                if expr1_pos {
-                    pos_abs_sugg
+                if if_expr_positive {
+                    positive_abs_sugg
                 } else {
-                    neg_abs_sugg
+                    negative_abs_sugg
                 }
             } else if is_testing_negative(cx, cond, body) {
-                if expr1_pos {
-                    neg_abs_sugg
+                if if_expr_positive {
+                    negative_abs_sugg
                 } else {
-                    pos_abs_sugg
+                    positive_abs_sugg
                 }
             } else {
                 return;
