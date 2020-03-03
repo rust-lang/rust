@@ -115,9 +115,7 @@ impl<'tcx> Instance<'tcx> {
         }
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        if self.substs.non_erasable_generics().next().is_none() {
-            return None;
-        }
+        self.substs.non_erasable_generics().next()?;
 
         match self.def {
             InstanceDef::Item(def_id) => tcx
