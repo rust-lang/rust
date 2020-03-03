@@ -1,8 +1,8 @@
 // Test proc-macro crate can be built without addtional RUSTFLAGS
 // on musl target
 
-// run-pass
-// compile-flags: --target=x86_64-unknown-linux-musl
+// build-pass
+// only-musl 
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
