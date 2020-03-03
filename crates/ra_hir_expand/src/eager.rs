@@ -40,7 +40,7 @@ pub fn expand_eager_macro(
 
     // Note:
     // When `lazy_expand` is called, its *parent* file must be already exists.
-    // Here we store an eager macro id for the argument expaned here
+    // Here we store an eager macro id for the argument expanded subtree here
     // for that purpose.
     let arg_id: MacroCallId = db
         .intern_eager_expansion({
