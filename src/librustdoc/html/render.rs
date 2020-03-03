@@ -302,14 +302,14 @@ impl Serialize for IndexItem {
 
 /// A type used for the search index.
 #[derive(Debug)]
-struct Type {
+struct RenderType {
     ty: Option<DefId>,
     idx: Option<usize>,
     name: Option<String>,
     generics: Option<Vec<Generic>>,
 }
 
-impl Serialize for Type {
+impl Serialize for RenderType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -388,12 +388,12 @@ impl Serialize for IndexItemFunctionType {
 
 #[derive(Debug)]
 pub struct TypeWithKind {
-    ty: Type,
+    ty: RenderType,
     kind: TypeKind,
 }
 
-impl From<(Type, TypeKind)> for TypeWithKind {
-    fn from(x: (Type, TypeKind)) -> TypeWithKind {
+impl From<(RenderType, TypeKind)> for TypeWithKind {
+    fn from(x: (RenderType, TypeKind)) -> TypeWithKind {
         TypeWithKind { ty: x.0, kind: x.1 }
     }
 }
