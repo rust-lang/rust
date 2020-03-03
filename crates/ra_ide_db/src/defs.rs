@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Semantics,
+    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Name, Semantics,
     StructField, TypeParam,
 };
 use ra_prof::profile;
@@ -65,6 +65,32 @@ impl NameDefinition {
             NameDefinition::Local(_) => None,
             NameDefinition::TypeParam(_) => None,
         }
+    }
+
+    pub fn name(&self, db: &RootDatabase) -> Option<Name> {
+        let name = match self {
+            NameDefinition::Macro(it) => it.name(db)?,
+            NameDefinition::StructField(it) => it.name(db),
+            NameDefinition::ModuleDef(def) => match def {
+                hir::ModuleDef::Module(it) => it.name(db)?,
+                hir::ModuleDef::Function(it) => it.name(db),
+                hir::ModuleDef::Adt(def) => match def {
+                    hir::Adt::Struct(it) => it.name(db),
+                    hir::Adt::Union(it) => it.name(db),
+                    hir::Adt::Enum(it) => it.name(db),
+                },
+                hir::ModuleDef::EnumVariant(it) => it.name(db),
+                hir::ModuleDef::Const(it) => it.name(db)?,
+                hir::ModuleDef::Static(it) => it.name(db)?,
+                hir::ModuleDef::Trait(it) => it.name(db),
+                hir::ModuleDef::TypeAlias(it) => it.name(db),
+                hir::ModuleDef::BuiltinType(_) => return None,
+            },
+            NameDefinition::SelfType(_) => return None,
+            NameDefinition::Local(it) => it.name(db)?,
+            NameDefinition::TypeParam(it) => it.name(db),
+        };
+        Some(name)
     }
 }
 

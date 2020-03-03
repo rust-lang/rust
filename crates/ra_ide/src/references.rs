@@ -125,9 +125,29 @@ pub(crate) fn find_all_refs(
             (find_node_at_offset::<ast::Name>(&syntax, position.offset), ReferenceKind::Other)
         };
 
-    let RangeInfo { range, info: (name, def) } = find_name(&sema, &syntax, position, opt_name)?;
-    let declaration = def.try_to_nav(db)?;
+    let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
+    let references = find_refs_to_def(db, &def, search_scope)
+        .into_iter()
+        .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
+        .collect();
+
+    let decl_range = def.try_to_nav(db)?.range();
+
+    let declaration = Declaration {
+        nav: def.try_to_nav(db)?,
+        kind: ReferenceKind::Other,
+        access: decl_access(&def, &syntax, decl_range),
+    };
+
+    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
+}
+
+pub(crate) fn find_refs_to_def(
+    db: &RootDatabase,
+    def: &NameDefinition,
+    search_scope: Option<SearchScope>,
+) -> Vec<Reference> {
     let search_scope = {
         let base = SearchScope::for_def(&def, db);
         match search_scope {
@@ -136,20 +156,12 @@ pub(crate) fn find_all_refs(
         }
     };
 
-    let decl_range = declaration.range();
-
-    let declaration = Declaration {
-        nav: declaration,
-        kind: ReferenceKind::Other,
-        access: decl_access(&def, &name, &syntax, decl_range),
+    let name = match def.name(db) {
+        None => return Vec::new(),
+        Some(it) => it.to_string(),
     };
 
-    let references = process_definition(db, def, name, search_scope)
-        .into_iter()
-        .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
-        .collect();
-
-    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
+    process_definition(db, def, name, search_scope)
 }
 
 fn find_name(
@@ -157,21 +169,21 @@ fn find_name(
     syntax: &SyntaxNode,
     position: FilePosition,
     opt_name: Option<ast::Name>,
-) -> Option<RangeInfo<(String, NameDefinition)>> {
+) -> Option<RangeInfo<NameDefinition>> {
     if let Some(name) = opt_name {
         let def = classify_name(sema, &name)?.definition();
         let range = name.syntax().text_range();
-        return Some(RangeInfo::new(range, (name.text().to_string(), def)));
+        return Some(RangeInfo::new(range, def));
     }
     let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
     let def = classify_name_ref(sema, &name_ref)?.definition();
     let range = name_ref.syntax().text_range();
-    Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
+    Some(RangeInfo::new(range, def))
 }
 
 fn process_definition(
     db: &RootDatabase,
-    def: NameDefinition,
+    def: &NameDefinition,
     name: String,
     scope: SearchScope,
 ) -> Vec<Reference> {
@@ -217,7 +229,7 @@ fn process_definition(
 
             if let Some(d) = classify_name_ref(&sema, &name_ref) {
                 let d = d.definition();
-                if d == def {
+                if &d == def {
                     let kind =
                         if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
                             ReferenceKind::StructLiteral
@@ -240,7 +252,6 @@ fn process_definition(
 
 fn decl_access(
     def: &NameDefinition,
-    name: &str,
     syntax: &SyntaxNode,
     range: TextRange,
 ) -> Option<ReferenceAccess> {
@@ -253,7 +264,7 @@ fn decl_access(
     if stmt.initializer().is_some() {
         let pat = stmt.pat()?;
         if let ast::Pat::BindPat(it) = pat {
-            if it.name()?.text().as_str() == name {
+            if it.is_mutable() {
                 return Some(ReferenceAccess::Write);
             }
         }
@@ -463,7 +474,7 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "spam BIND_PAT FileId(1) [44; 48) Other Write",
+            "spam BIND_PAT FileId(1) [44; 48) Other",
             &["FileId(1) [71; 75) Other Read", "FileId(1) [78; 82) Other Read"],
         );
     }
@@ -709,15 +720,15 @@ mod tests {
     fn test_basic_highlight_read_write() {
         let code = r#"
         fn foo() {
-            let i<|> = 0;
+            let mut i<|> = 0;
             i = i + 1;
         }"#;
 
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [36; 37) Other Write",
-            &["FileId(1) [55; 56) Other Write", "FileId(1) [59; 60) Other Read"],
+            "i BIND_PAT FileId(1) [40; 41) Other Write",
+            &["FileId(1) [59; 60) Other Write", "FileId(1) [63; 64) Other Read"],
         );
     }
 
