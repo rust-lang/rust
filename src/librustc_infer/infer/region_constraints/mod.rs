@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{OutlivesPredicate, ReLateBound, ReVar, RegionKind};
+use rustc_middle::ty::{OutlivesPredicate, ReLateBound, ReVar, RegionKind, RegionOutlivesPredicate};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 
@@ -146,10 +146,7 @@ impl<'tcx> Constraint<'tcx> {
         }
     }
 
-    pub fn to_region_outlives_predicate(
-        &self,
-        tcx: &TyCtxt<'tcx>,
-    ) -> RegionOutlivesPredicate<Region<'tcx>, Region<'tcx>> {
+    pub fn to_region_outlives_predicate(&self, tcx: TyCtxt<'tcx>) -> RegionOutlivesPredicate<'tcx> {
         match self {
             Self::VarSubVar(a, b) => OutlivesPredicate(
                 tcx.mk_region(RegionKind::ReVar(*a)),

@@ -8,7 +8,7 @@ use crate::mir::interpret::{get_slice_bytes, ConstValue};
 use crate::traits;
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use crate::ty::{self, List, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -403,7 +403,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             let b_types = b_types.map_bound(GeneratorWitness);
             // Then remove the GeneratorWitness for the result
             let types = relation.relate(&a_types, &b_types)?.map_bound(|witness| witness.0);
-            Ok(tcx.mk_generator_witness(types, List::empty()))
+            Ok(tcx.mk_generator_witness(types, ty::Binder::dummy()))
         }
 
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {

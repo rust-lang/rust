@@ -12,8 +12,7 @@ use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, RegionOutlivesPredicate, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    WithConstness,
+    self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
 };
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
@@ -169,7 +168,7 @@ pub enum TyKind<'tcx> {
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
-    GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>, &'tcx List<RegionOutlivesPredicate<'tcx>>),
+    GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>, Binder<&'tcx List<ty::Predicate<'tcx>>>),
 
     /// The never type `!`
     Never,

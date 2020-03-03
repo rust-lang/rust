@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_middle::middle::region::{self, YieldData};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
@@ -192,14 +192,18 @@ pub fn resolve_interior<'a, 'tcx>(
         constraints_data
             .constraints
             .keys()
-            .map(|constraints| constraints.to_region_outlives_predicate())
+            .map(|constraints| {
+                ty::Binder::bind(constraints.to_region_outlives_predicate(fcx.tcx)).to_predicate()
+            })
             .collect::<Vec<_>>()
     });
     debug!("region outlives inside generator: {:?}", region_constraints);
 
     let region_outlives_list = fcx.tcx.mk_predicates(region_constraints.iter());
 
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list), region_outlives_list);
+    let witness = fcx
+        .tcx
+        .mk_generator_witness(ty::Binder::bind(type_list), ty::Binder::bind(region_outlives_list));
 
     // Store the generator types and spans into the tables for this generator.
     visitor.fcx.inh.tables.borrow_mut().generator_interior_types = type_causes;
