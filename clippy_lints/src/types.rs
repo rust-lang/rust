@@ -27,13 +27,12 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
-use crate::literal_representation::NumericLiteral;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
-    match_path, method_chain_args, multispan_sugg, qpath_res, same_tys, sext, snippet, snippet_opt,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then, unsext,
+    match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, qpath_res, same_tys, sext, snippet,
+    snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
+    span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {

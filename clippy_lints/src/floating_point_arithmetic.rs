@@ -2,7 +2,7 @@ use crate::consts::{
     constant, constant_simple, Constant,
     Constant::{F32, F64},
 };
-use crate::utils::{higher, span_lint_and_sugg, sugg, SpanlessEq};
+use crate::utils::{higher, numeric_literal, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
@@ -14,7 +14,7 @@ use rustc_span::source_map::Spanned;
 use rustc_ast::ast;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
-use sugg::{format_numeric_literal, Sugg};
+use sugg::Sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
@@ -276,7 +276,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                 format!(
                     "{}.powi({})",
                     Sugg::hir(cx, &args[0], ".."),
-                    format_numeric_literal(&exponent.to_string(), None, false)
+                    numeric_literal::format(&exponent.to_string(), None, false)
                 ),
             )
         } else {

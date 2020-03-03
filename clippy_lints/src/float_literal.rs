@@ -1,5 +1,4 @@
-use crate::utils::span_lint_and_sugg;
-use crate::utils::sugg::format_numeric_literal;
+use crate::utils::{numeric_literal, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
@@ -109,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
                             expr.span,
                             "literal cannot be represented as the underlying type without loss of precision",
                             "consider changing the type or replacing it with",
-                            format_numeric_literal(&float_str, type_suffix, true),
+                            numeric_literal::format(&float_str, type_suffix, true),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -120,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
                         expr.span,
                         "float has excessive precision",
                         "consider changing the type or truncating it to",
-                        format_numeric_literal(&float_str, type_suffix, true),
+                        numeric_literal::format(&float_str, type_suffix, true),
                         Applicability::MachineApplicable,
                     );
                 }
