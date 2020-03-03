@@ -1,6 +1,7 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
+use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
@@ -1152,6 +1153,15 @@ rustc_queries! {
             goal: CanonicalPredicateGoal<'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError> {
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
+        }
+
+        query evaluate_goal(
+            goal: traits::ChalkCanonicalGoal<'tcx>
+        ) -> Result<
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
+            NoSolution
+        > {
+            desc { "evaluating trait selection obligation `{}`", goal.value }
         }
 
         /// Do not call this query directly: part of the `Eq` type-op
