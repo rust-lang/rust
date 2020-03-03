@@ -408,7 +408,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
-        place_ref: mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'tcx, 'tcx>,
     ) -> PlaceRef<'tcx, Bx::Value> {
         debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
