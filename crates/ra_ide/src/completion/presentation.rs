@@ -193,11 +193,10 @@ impl Completions {
         name: Option<String>,
         func: hir::Function,
     ) {
-        let func_name = func.name(ctx.db);
         let has_self_param = func.has_self_param(ctx.db);
         let params = func.params(ctx.db);
 
-        let name = name.unwrap_or_else(|| func_name.to_string());
+        let name = name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
         let detail = function_label(&ast_node);
 
@@ -219,9 +218,9 @@ impl Completions {
         {
             tested_by!(inserts_parens_for_function_calls);
             let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
-                (format!("{}()$0", func_name), format!("{}()", name))
+                (format!("{}()$0", name), format!("{}()", name))
             } else {
-                (format!("{}($0)", func_name), format!("{}(…)", name))
+                (format!("{}($0)", name), format!("{}(…)", name))
             };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
