@@ -2,7 +2,7 @@
 // on musl target
 
 // build-pass
-// only-musl 
+// only-musl
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
