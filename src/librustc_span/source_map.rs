@@ -689,7 +689,7 @@ impl SourceMap {
                 whitespace_found = true;
             }
 
-            if whitespace_found && !c.is_whitespace() { false } else { true }
+            !whitespace_found || c.is_whitespace()
         })
     }
 
