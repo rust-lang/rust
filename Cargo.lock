@@ -600,12 +600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lalrpop-intern"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc4fd87be4a815fd373e02773983940f0d75fb26fde8c098e9e45f7af03154c0"
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1023,7 +1017,6 @@ dependencies = [
  "chalk-solve",
  "ena",
  "insta",
- "lalrpop-intern",
  "log",
  "ra_arena",
  "ra_db",

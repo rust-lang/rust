@@ -27,7 +27,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
-    type Identifier = lalrpop_intern::InternedString;
+    type Identifier = TypeAliasId;
     type DefId = InternId;
 
     // FIXME: implement these
@@ -636,7 +636,7 @@ pub(crate) fn associated_ty_data_query(
     let datum = AssociatedTyDatum {
         trait_id: trait_.to_chalk(db),
         id,
-        name: lalrpop_intern::intern(&db.type_alias_data(type_alias).name.to_string()),
+        name: type_alias,
         binders: make_binders(bound_data, generic_params.len()),
     };
     Arc::new(datum)
