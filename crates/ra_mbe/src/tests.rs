@@ -23,6 +23,7 @@ mod rule_parsing {
         check("($($i:ident)*) => ($_)");
         check("($($true:ident)*) => ($true)");
         check("($($false:ident)*) => ($false)");
+        check("($) => ($)");
     }
 
     #[test]

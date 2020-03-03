@@ -86,10 +86,13 @@ pub(crate) fn macro_def(
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);
                 None
             })?;
-            let rules = MacroRules::parse(&tt).ok().or_else(|| {
-                log::warn!("fail on macro_def parse: {:#?}", tt);
-                None
-            })?;
+            let rules = match MacroRules::parse(&tt) {
+                Ok(it) => it,
+                Err(err) => {
+                    log::warn!("fail on macro_def parse: error: {:#?} {:#?}", err, tt);
+                    return None;
+                }
+            };
             Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
         }
         MacroDefKind::BuiltIn(expander) => {
@@ -150,7 +153,9 @@ pub(crate) fn parse_macro(
             // Note:
             // The final goal we would like to make all parse_macro success,
             // such that the following log will not call anyway.
-            log::warn!("fail on macro_parse: (reason: {})", err,);
+            let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
+            let node = loc.kind.node(db);
+            log::warn!("fail on macro_parse: (reason: {} macro_call: {:#})", err, node.value);
         })
         .ok()?;
 

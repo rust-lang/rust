@@ -90,7 +90,11 @@ fn next_op<'a>(
 ) -> Result<Op<'a>, ExpandError> {
     let res = match first {
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '$', .. })) => {
-            let second = src.next().ok_or_else(|| err!("bad var 1"))?;
+            // Note that the '$' itself is a valid token inside macro_rules.
+            let second = match src.next() {
+                None => return Ok(Op::TokenTree(first)),
+                Some(it) => it,
+            };
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
