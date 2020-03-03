@@ -231,8 +231,7 @@ jobs:
       matrix:
         integration:
         - 'rust-lang/cargo'
-        # FIXME: Re-enable once we can test with rls again.
-        # - 'rust-lang/rls'
+        - 'rust-lang/rls'
         - 'rust-lang/chalk'
         - 'rust-lang/rustfmt'
         - 'Marwes/combine'
