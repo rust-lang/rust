@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use super::{plain_summary_line, shorten, Impl, IndexItem, IndexItemFunctionType, ItemType};
-use super::{Generic, RenderInfo, Type, TypeWithKind};
+use super::{Generic, RenderInfo, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {
@@ -664,8 +664,8 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type) -> Type {
-    let t = Type {
+fn get_index_type(clean_type: &clean::Type) -> RenderType {
+    let t = RenderType {
         ty: clean_type.def_id(),
         idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
