@@ -24,9 +24,9 @@ where
 
 fn const_vars_since_snapshot<'tcx>(
     table: &mut UnificationTable<'_, 'tcx, ConstVid<'tcx>>,
-    snapshot: usize,
+    snapshot_var_len: usize,
 ) -> (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>) {
-    let range = vars_since_snapshot(table, snapshot);
+    let range = vars_since_snapshot(table, snapshot_var_len);
     (
         range.start..range.end,
         (range.start.index..range.end.index)
@@ -98,18 +98,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         inner.type_variables().vars_since_snapshot(&snapshot.type_snapshot);
                     let int_vars = vars_since_snapshot(
                         &mut inner.int_unification_table(),
-                        snapshot.int_snapshot,
+                        snapshot.int_var_len,
                     );
                     let float_vars = vars_since_snapshot(
                         &mut inner.float_unification_table(),
-                        snapshot.float_snapshot,
+                        snapshot.float_var_len,
                     );
                     let region_vars = inner
                         .unwrap_region_constraints()
                         .vars_since_snapshot(&snapshot.region_constraints_snapshot);
                     let const_vars = const_vars_since_snapshot(
                         &mut inner.const_unification_table(),
-                        snapshot.const_snapshot,
+                        snapshot.const_var_len,
                     );
 
                     let fudger = InferenceFudger {

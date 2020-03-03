@@ -39,7 +39,6 @@ use rustc_span::Span;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
-use std::marker::PhantomData;
 
 use self::combine::CombineFields;
 use self::free_regions::RegionRelations;
@@ -241,7 +240,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        ut::UnificationTable::with_log(&mut self.int_unification_table, &mut self.undo_log)
+        self.int_unification_table.with_log(&mut self.undo_log)
     }
 
     fn float_unification_table(
@@ -253,7 +252,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        ut::UnificationTable::with_log(&mut self.float_unification_table, &mut self.undo_log)
+        self.float_unification_table.with_log(&mut self.undo_log)
     }
 
     fn const_unification_table(
@@ -265,7 +264,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        ut::UnificationTable::with_log(&mut self.const_unification_table, &mut self.undo_log)
+        self.const_unification_table.with_log(&mut self.undo_log)
     }
 
     pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'tcx, '_> {
@@ -711,9 +710,9 @@ pub struct FullSnapshot<'a, 'tcx> {
     snapshot: CombinedSnapshot<'a, 'tcx>,
     region_constraints_snapshot: RegionSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
-    const_snapshot: usize,
-    int_snapshot: usize,
-    float_snapshot: usize,
+    const_var_len: usize,
+    int_var_len: usize,
+    float_var_len: usize,
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
@@ -837,9 +836,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         FullSnapshot {
             snapshot,
             type_snapshot: inner.type_variables().snapshot(),
-            const_snapshot: inner.const_unification_table().len(),
-            int_snapshot: inner.int_unification_table().len(),
-            float_snapshot: inner.float_unification_table().len(),
+            const_var_len: inner.const_unification_table().len(),
+            int_var_len: inner.int_unification_table().len(),
+            float_var_len: inner.float_unification_table().len(),
             region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
         }
     }
