@@ -490,6 +490,11 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker, flavor) = linker_and_flavor(sess);
 
+    let any_dynamic_crate = crate_type == config::CrateType::Dylib
+        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
+            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        });
+
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd) = get_linker(sess, &linker, flavor);
 
@@ -554,6 +559,15 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     }
     if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
         cmd.args(args);
+    }
+    if any_dynamic_crate {
+        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
+            cmd.args(args);
+        }
+    } else {
+        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
+            cmd.args(args);
+        }
     }
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(get_file_path(sess, obj));
