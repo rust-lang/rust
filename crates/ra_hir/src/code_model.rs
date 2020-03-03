@@ -27,7 +27,7 @@ use hir_ty::{
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AttrsOwner},
+    ast::{self, AttrsOwner, NameOwner},
     AstNode,
 };
 use rustc_hash::FxHashSet;
@@ -603,6 +603,10 @@ impl Static {
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
     }
+
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+        db.static_data(self.id).name.clone()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -673,6 +677,11 @@ impl MacroDef {
         let krate = self.id.krate?;
         let module_id = db.crate_def_map(krate).root;
         Some(Module::new(Crate { id: krate }, module_id))
+    }
+
+    /// XXX: this parses the file
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+        self.source(db).value.name().map(|it| it.as_name())
     }
 }
 
@@ -783,6 +792,7 @@ pub struct Local {
 }
 
 impl Local {
+    // FIXME: why is this an option? It shouldn't be?
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
         let body = db.body(self.parent.into());
         match &body[self.pat_id] {
