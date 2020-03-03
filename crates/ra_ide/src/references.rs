@@ -15,7 +15,10 @@ mod search_scope;
 use hir::Semantics;
 use once_cell::unsync::Lazy;
 use ra_db::SourceDatabaseExt;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{
+    defs::{classify_name, classify_name_ref, Definition},
+    RootDatabase,
+};
 use ra_prof::profile;
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -27,7 +30,6 @@ use test_utils::tested_by;
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 pub(crate) use self::rename::rename;
-pub(crate) use ra_ide_db::defs::{classify_name, classify_name_ref, Definition, NameRefClass};
 
 pub use self::search_scope::SearchScope;
 

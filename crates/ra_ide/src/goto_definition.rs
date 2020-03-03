@@ -1,7 +1,10 @@
 //! FIXME: write short doc here
 
 use hir::Semantics;
-use ra_ide_db::{defs::classify_name, symbol_index, RootDatabase};
+use ra_ide_db::{
+    defs::{classify_name, classify_name_ref},
+    symbol_index, RootDatabase,
+};
 use ra_syntax::{
     ast::{self},
     match_ast, AstNode,
@@ -11,7 +14,6 @@ use ra_syntax::{
 
 use crate::{
     display::{ToNav, TryToNav},
-    references::classify_name_ref,
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -94,7 +96,7 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_text, covers};
+    use test_utils::assert_eq_text;
 
     use crate::mock_analysis::analysis_and_position;
 

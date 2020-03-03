@@ -2,7 +2,7 @@
 
 use hir::{Adt, HasSource, HirDisplay, Semantics};
 use ra_ide_db::{
-    defs::{classify_name, Definition},
+    defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
 use ra_syntax::{
@@ -14,7 +14,6 @@ use ra_syntax::{
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
-    references::classify_name_ref,
     FilePosition, RangeInfo,
 };
 
