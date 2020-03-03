@@ -443,7 +443,7 @@ fn change_toolstate(
         if new_state != state {
             eprintln!("The state of `{}` has changed from `{}` to `{}`", tool, state, new_state);
             if new_state < state {
-                if !["rustc-guide", "miri", "embedded-book"].contains(&tool.as_str()) {
+                if !NIGHTLY_TOOLS.iter().any(|(name, _path)| name == tool) {
                     regressed = true;
                 }
             }
