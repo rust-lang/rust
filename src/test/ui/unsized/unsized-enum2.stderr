@@ -7,7 +7,7 @@ LL |     // parameter
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `W`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -20,7 +20,7 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VB{x: X},
    |        ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -33,7 +33,7 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Y`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -46,7 +46,7 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VD{u: isize, x: Z},
    |                  ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Z`
+   = help: type parameters have an implicit `Sized` requirement by default
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 

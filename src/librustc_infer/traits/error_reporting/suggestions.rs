@@ -28,9 +28,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: hir::HirId,
     ) {
         let self_ty = trait_ref.self_ty();
-        let (param_ty, projection) = match &self_ty.kind {
-            ty::Param(_) => (true, None),
-            ty::Projection(projection) => (false, Some(projection)),
+        let projection = match &self_ty.kind {
+            ty::Param(_) => None,
+            ty::Projection(projection) => Some(projection),
             _ => return,
         };
 
@@ -64,7 +64,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     generics,
                     kind: hir::TraitItemKind::Method(..),
                     ..
-                }) if param_ty && self_ty == self.tcx.types.self_param => {
+                }) if self_ty.is_some_param() && self_ty == self.tcx.types.self_param => {
                     // Restricting `Self` for a single method.
                     suggest_restriction(&generics, "`Self`", err);
                     return;
@@ -138,7 +138,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, span, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
-                    if param_ty =>
+                    if self_ty.is_some_param() =>
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
