@@ -114,6 +114,7 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
+    let _p = profile("find_all_refs");
     let sema = Semantics::new(db);
     let syntax = sema.parse(position.file_id).syntax().clone();
 
