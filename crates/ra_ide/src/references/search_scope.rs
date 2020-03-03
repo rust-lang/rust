@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 
 use ra_ide_db::RootDatabase;
 
-use super::NameDefinition;
+use super::Definition;
 
 pub struct SearchScope {
     entries: FxHashMap<FileId, Option<TextRange>>,
@@ -23,7 +23,7 @@ impl SearchScope {
         SearchScope { entries: FxHashMap::default() }
     }
 
-    pub(crate) fn for_def(def: &NameDefinition, db: &RootDatabase) -> SearchScope {
+    pub(crate) fn for_def(def: &Definition, db: &RootDatabase) -> SearchScope {
         let _p = profile("search_scope");
         let module = match def.module(db) {
             Some(it) => it,
@@ -32,7 +32,7 @@ impl SearchScope {
         let module_src = module.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
-        if let NameDefinition::Local(var) = def {
+        if let Definition::Local(var) = def {
             let range = match var.parent(db) {
                 DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
                 DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),

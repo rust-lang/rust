@@ -7,7 +7,7 @@ mod tests;
 
 use hir::{Name, Semantics};
 use ra_ide_db::{
-    defs::{classify_name, NameClass, NameDefinition},
+    defs::{classify_name, Definition, NameClass},
     RootDatabase,
 };
 use ra_prof::profile;
@@ -172,7 +172,7 @@ fn highlight_element(
             let name = element.into_node().and_then(ast::Name::cast).unwrap();
             let name_kind = classify_name(sema, &name);
 
-            if let Some(NameClass::NameDefinition(NameDefinition::Local(local))) = &name_kind {
+            if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
                 if let Some(name) = local.name(db) {
                     let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
                     *shadow_count += 1;
@@ -181,7 +181,7 @@ fn highlight_element(
             };
 
             match name_kind {
-                Some(NameClass::NameDefinition(def)) => {
+                Some(NameClass::Definition(def)) => {
                     highlight_name(db, def) | HighlightModifier::Definition
                 }
                 Some(NameClass::ConstReference(def)) => highlight_name(db, def),
@@ -196,8 +196,8 @@ fn highlight_element(
             let name_kind = classify_name_ref(sema, &name_ref)?;
 
             match name_kind {
-                NameRefClass::NameDefinition(def) => {
-                    if let NameDefinition::Local(local) = &def {
+                NameRefClass::Definition(def) => {
+                    if let Definition::Local(local) = &def {
                         if let Some(name) = local.name(db) {
                             let shadow_count =
                                 bindings_shadow_count.entry(name.clone()).or_default();
@@ -260,11 +260,11 @@ fn highlight_element(
     }
 }
 
-fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
+fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
     match def {
-        NameDefinition::Macro(_) => HighlightTag::Macro,
-        NameDefinition::StructField(_) => HighlightTag::Field,
-        NameDefinition::ModuleDef(def) => match def {
+        Definition::Macro(_) => HighlightTag::Macro,
+        Definition::StructField(_) => HighlightTag::Field,
+        Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(_) => HighlightTag::Function,
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
@@ -277,10 +277,10 @@ fn highlight_name(db: &RootDatabase, def: NameDefinition) -> Highlight {
             hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
             hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
         },
-        NameDefinition::SelfType(_) => HighlightTag::SelfType,
-        NameDefinition::TypeParam(_) => HighlightTag::TypeParam,
+        Definition::SelfType(_) => HighlightTag::SelfType,
+        Definition::TypeParam(_) => HighlightTag::TypeParam,
         // FIXME: distinguish between locals and parameters
-        NameDefinition::Local(local) => {
+        Definition::Local(local) => {
             let mut h = Highlight::new(HighlightTag::Local);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;

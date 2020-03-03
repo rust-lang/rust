@@ -2,7 +2,7 @@
 
 use hir::{Adt, HasSource, HirDisplay, Semantics};
 use ra_ide_db::{
-    defs::{classify_name, NameDefinition},
+    defs::{classify_name, Definition},
     RootDatabase,
 };
 use ra_syntax::{
@@ -92,20 +92,20 @@ fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
     }
 }
 
-fn hover_text_from_name_kind(db: &RootDatabase, def: NameDefinition) -> Option<String> {
+fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
     return match def {
-        NameDefinition::Macro(it) => {
+        Definition::Macro(it) => {
             let src = it.source(db);
             hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)))
         }
-        NameDefinition::StructField(it) => {
+        Definition::StructField(it) => {
             let src = it.source(db);
             match src.value {
                 hir::FieldSource::Named(it) => hover_text(it.doc_comment_text(), it.short_label()),
                 _ => None,
             }
         }
-        NameDefinition::ModuleDef(it) => match it {
+        Definition::ModuleDef(it) => match it {
             hir::ModuleDef::Module(it) => match it.definition_source(db).value {
                 hir::ModuleSource::Module(it) => {
                     hover_text(it.doc_comment_text(), it.short_label())
@@ -123,10 +123,10 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: NameDefinition) -> Option<S
             hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
             hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        NameDefinition::Local(it) => {
+        Definition::Local(it) => {
             Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string()))
         }
-        NameDefinition::TypeParam(_) | NameDefinition::SelfType(_) => {
+        Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }

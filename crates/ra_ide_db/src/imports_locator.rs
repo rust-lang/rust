@@ -6,7 +6,7 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
-    defs::{classify_name, NameDefinition},
+    defs::{classify_name, Definition},
     symbol_index::{self, FileSymbol, Query},
     RootDatabase,
 };
@@ -43,13 +43,13 @@ impl<'a> ImportsLocator<'a> {
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(&import_candidate))
             .filter_map(|name_definition_to_import| match name_definition_to_import {
-                NameDefinition::ModuleDef(module_def) => Some(module_def),
+                Definition::ModuleDef(module_def) => Some(module_def),
                 _ => None,
             })
             .collect()
     }
 
-    fn get_name_definition(&mut self, import_candidate: &FileSymbol) -> Option<NameDefinition> {
+    fn get_name_definition(&mut self, import_candidate: &FileSymbol) -> Option<Definition> {
         let _p = profile("get_name_definition");
         let file_id = import_candidate.file_id;
 

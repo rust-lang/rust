@@ -13,7 +13,7 @@ use ra_syntax::{
 
 use crate::{
     // expand::original_range,
-    references::NameDefinition,
+    references::Definition,
     FileSymbol,
 };
 
@@ -189,15 +189,15 @@ impl ToNav for FileSymbol {
     }
 }
 
-impl TryToNav for NameDefinition {
+impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
-            NameDefinition::Macro(it) => Some(it.to_nav(db)),
-            NameDefinition::StructField(it) => Some(it.to_nav(db)),
-            NameDefinition::ModuleDef(it) => it.try_to_nav(db),
-            NameDefinition::SelfType(it) => Some(it.to_nav(db)),
-            NameDefinition::Local(it) => Some(it.to_nav(db)),
-            NameDefinition::TypeParam(it) => Some(it.to_nav(db)),
+            Definition::Macro(it) => Some(it.to_nav(db)),
+            Definition::StructField(it) => Some(it.to_nav(db)),
+            Definition::ModuleDef(it) => it.try_to_nav(db),
+            Definition::SelfType(it) => Some(it.to_nav(db)),
+            Definition::Local(it) => Some(it.to_nav(db)),
+            Definition::TypeParam(it) => Some(it.to_nav(db)),
         }
     }
 }

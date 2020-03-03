@@ -31,7 +31,7 @@ pub(crate) use self::{
     classify::{classify_name_ref, NameRefClass},
     rename::rename,
 };
-pub(crate) use ra_ide_db::defs::{classify_name, NameDefinition};
+pub(crate) use ra_ide_db::defs::{classify_name, Definition};
 
 pub use self::search_scope::SearchScope;
 
@@ -145,7 +145,7 @@ pub(crate) fn find_all_refs(
 
 pub(crate) fn find_refs_to_def(
     db: &RootDatabase,
-    def: &NameDefinition,
+    def: &Definition,
     search_scope: Option<SearchScope>,
 ) -> Vec<Reference> {
     let search_scope = {
@@ -169,7 +169,7 @@ fn find_name(
     syntax: &SyntaxNode,
     position: FilePosition,
     opt_name: Option<ast::Name>,
-) -> Option<RangeInfo<NameDefinition>> {
+) -> Option<RangeInfo<Definition>> {
     if let Some(name) = opt_name {
         let def = classify_name(sema, &name)?.definition();
         let range = name.syntax().text_range();
@@ -183,7 +183,7 @@ fn find_name(
 
 fn process_definition(
     db: &RootDatabase,
-    def: &NameDefinition,
+    def: &Definition,
     name: String,
     scope: SearchScope,
 ) -> Vec<Reference> {
@@ -250,13 +250,9 @@ fn process_definition(
     refs
 }
 
-fn decl_access(
-    def: &NameDefinition,
-    syntax: &SyntaxNode,
-    range: TextRange,
-) -> Option<ReferenceAccess> {
+fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
     match def {
-        NameDefinition::Local(_) | NameDefinition::StructField(_) => {}
+        Definition::Local(_) | Definition::StructField(_) => {}
         _ => return None,
     };
 
@@ -273,10 +269,10 @@ fn decl_access(
     None
 }
 
-fn reference_access(def: &NameDefinition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
     match def {
-        NameDefinition::Local(_) | NameDefinition::StructField(_) => {}
+        Definition::Local(_) | Definition::StructField(_) => {}
         _ => return None,
     };
 
