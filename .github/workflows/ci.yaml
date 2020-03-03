@@ -87,7 +87,7 @@ jobs:
 
       - name: Prepare cache 2
         if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/debug/xtask.exe
+        run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
   typescript:
     name: TypeScript
