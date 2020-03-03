@@ -2225,6 +2225,14 @@ impl From<&str> for String {
     }
 }
 
+#[stable(feature = "???", since = "1.43.0")]
+impl From<&mut str> for String {
+    #[inline]
+    fn from(s: &mut str) -> String {
+        s.to_owned()
+    }
+}
+
 #[stable(feature = "from_ref_string", since = "1.35.0")]
 impl From<&String> for String {
     #[inline]
