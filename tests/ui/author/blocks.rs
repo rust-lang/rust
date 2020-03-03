@@ -1,5 +1,5 @@
 #![feature(stmt_expr_attributes)]
-#![allow(redundant_semicolon, clippy::no_effect)]
+#![allow(redundant_semicolons, clippy::no_effect)]
 
 #[rustfmt::skip]
 fn main() {
