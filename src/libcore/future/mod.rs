@@ -58,7 +58,7 @@ where
     impl<T: Generator<ResumeTy, Yield = ()>> Future for GenFuture<T> {
         type Output = T::Return;
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            // Safety: Safe because we're !Unpin + !Drop mapping to a ?Unpin value
+            // Safety: Safe because we're !Unpin + !Drop, and this is just a field projection.
             let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
 
             // Resume the generator, turning the `&mut Context` into a `NonNull` raw pointer. The
