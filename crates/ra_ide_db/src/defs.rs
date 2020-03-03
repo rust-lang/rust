@@ -17,8 +17,9 @@ use ra_syntax::{
 
 use crate::RootDatabase;
 
+// FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq)]
-pub enum NameDefinition {
+pub enum Definition {
     Macro(MacroDef),
     StructField(StructField),
     ModuleDef(ModuleDef),
@@ -27,26 +28,26 @@ pub enum NameDefinition {
     TypeParam(TypeParam),
 }
 
-impl NameDefinition {
+impl Definition {
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
         match self {
-            NameDefinition::Macro(it) => it.module(db),
-            NameDefinition::StructField(it) => Some(it.parent_def(db).module(db)),
-            NameDefinition::ModuleDef(it) => it.module(db),
-            NameDefinition::SelfType(it) => Some(it.module(db)),
-            NameDefinition::Local(it) => Some(it.module(db)),
-            NameDefinition::TypeParam(it) => Some(it.module(db)),
+            Definition::Macro(it) => it.module(db),
+            Definition::StructField(it) => Some(it.parent_def(db).module(db)),
+            Definition::ModuleDef(it) => it.module(db),
+            Definition::SelfType(it) => Some(it.module(db)),
+            Definition::Local(it) => Some(it.module(db)),
+            Definition::TypeParam(it) => Some(it.module(db)),
         }
     }
 
     pub fn visibility(&self, db: &RootDatabase) -> Option<ast::Visibility> {
         match self {
-            NameDefinition::Macro(_) => None,
-            NameDefinition::StructField(sf) => match sf.source(db).value {
+            Definition::Macro(_) => None,
+            Definition::StructField(sf) => match sf.source(db).value {
                 FieldSource::Named(it) => it.visibility(),
                 FieldSource::Pos(it) => it.visibility(),
             },
-            NameDefinition::ModuleDef(def) => match def {
+            Definition::ModuleDef(def) => match def {
                 ModuleDef::Module(it) => it.declaration_source(db)?.value.visibility(),
                 ModuleDef::Function(it) => it.source(db).value.visibility(),
                 ModuleDef::Adt(adt) => match adt {
@@ -61,17 +62,17 @@ impl NameDefinition {
                 ModuleDef::EnumVariant(_) => None,
                 ModuleDef::BuiltinType(_) => None,
             },
-            NameDefinition::SelfType(_) => None,
-            NameDefinition::Local(_) => None,
-            NameDefinition::TypeParam(_) => None,
+            Definition::SelfType(_) => None,
+            Definition::Local(_) => None,
+            Definition::TypeParam(_) => None,
         }
     }
 
     pub fn name(&self, db: &RootDatabase) -> Option<Name> {
         let name = match self {
-            NameDefinition::Macro(it) => it.name(db)?,
-            NameDefinition::StructField(it) => it.name(db),
-            NameDefinition::ModuleDef(def) => match def {
+            Definition::Macro(it) => it.name(db)?,
+            Definition::StructField(it) => it.name(db),
+            Definition::ModuleDef(def) => match def {
                 hir::ModuleDef::Module(it) => it.name(db)?,
                 hir::ModuleDef::Function(it) => it.name(db),
                 hir::ModuleDef::Adt(def) => match def {
@@ -86,31 +87,31 @@ impl NameDefinition {
                 hir::ModuleDef::TypeAlias(it) => it.name(db),
                 hir::ModuleDef::BuiltinType(_) => return None,
             },
-            NameDefinition::SelfType(_) => return None,
-            NameDefinition::Local(it) => it.name(db)?,
-            NameDefinition::TypeParam(it) => it.name(db),
+            Definition::SelfType(_) => return None,
+            Definition::Local(it) => it.name(db)?,
+            Definition::TypeParam(it) => it.name(db),
         };
         Some(name)
     }
 }
 
 pub enum NameClass {
-    NameDefinition(NameDefinition),
+    Definition(Definition),
     /// `None` in `if let None = Some(82) {}`
-    ConstReference(NameDefinition),
+    ConstReference(Definition),
 }
 
 impl NameClass {
-    pub fn into_definition(self) -> Option<NameDefinition> {
+    pub fn into_definition(self) -> Option<Definition> {
         match self {
-            NameClass::NameDefinition(it) => Some(it),
+            NameClass::Definition(it) => Some(it),
             NameClass::ConstReference(_) => None,
         }
     }
 
-    pub fn definition(self) -> NameDefinition {
+    pub fn definition(self) -> Definition {
         match self {
-            NameClass::NameDefinition(it) | NameClass::ConstReference(it) => it,
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
         }
     }
 }
@@ -118,14 +119,14 @@ impl NameClass {
 pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
     if let Some(bind_pat) = name.syntax().parent().and_then(ast::BindPat::cast) {
         if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
-            return Some(NameClass::ConstReference(NameDefinition::ModuleDef(def)));
+            return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
         }
     }
 
-    classify_name_inner(sema, name).map(NameClass::NameDefinition)
+    classify_name_inner(sema, name).map(NameClass::Definition)
 }
 
-fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameDefinition> {
+fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Definition> {
     let _p = profile("classify_name");
     let parent = name.syntax().parent()?;
 
@@ -133,59 +134,59 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
         match parent {
             ast::BindPat(it) => {
                 let local = sema.to_def(&it)?;
-                Some(NameDefinition::Local(local))
+                Some(Definition::Local(local))
             },
             ast::RecordFieldDef(it) => {
                 let field: hir::StructField = sema.to_def(&it)?;
-                Some(NameDefinition::StructField(field))
+                Some(Definition::StructField(field))
             },
             ast::Module(it) => {
                 let def = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::StructDef(it) => {
                 let def: hir::Struct = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::UnionDef(it) => {
                 let def: hir::Union = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::EnumDef(it) => {
                 let def: hir::Enum = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::TraitDef(it) => {
                 let def: hir::Trait = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::StaticDef(it) => {
                 let def: hir::Static = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::EnumVariant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::FnDef(it) => {
                 let def: hir::Function = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::ConstDef(it) => {
                 let def: hir::Const = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::TypeAliasDef(it) => {
                 let def: hir::TypeAlias = sema.to_def(&it)?;
-                Some(NameDefinition::ModuleDef(def.into()))
+                Some(Definition::ModuleDef(def.into()))
             },
             ast::MacroCall(it) => {
                 let def = sema.to_def(&it)?;
-                Some(NameDefinition::Macro(def))
+                Some(Definition::Macro(def))
             },
             ast::TypeParam(it) => {
                 let def = sema.to_def(&it)?;
-                Some(NameDefinition::TypeParam(def))
+                Some(Definition::TypeParam(def))
             },
             _ => None,
         }
