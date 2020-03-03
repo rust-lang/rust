@@ -139,12 +139,15 @@ pub fn run_pre_cache() -> Result<()> {
     }
 
     fs2::remove_file("./target/.rustc_info.json")?;
-    let to_delete = ["ra_", "heavy_test"];
+    let to_delete = ["ra_", "heavy_test", "xtask"];
     for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
         for entry in Path::new(dir).read_dir()? {
             let entry = entry?;
             if to_delete.iter().any(|&it| entry.path().display().to_string().contains(it)) {
-                rm_rf(&entry.path())?
+                // Can't delete yourself on windows :-(
+                if !entry.path().ends_with("xtask.exe") {
+                    rm_rf(&entry.path())?
+                }
             }
         }
     }
