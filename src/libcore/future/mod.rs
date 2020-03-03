@@ -26,7 +26,7 @@ pub use self::future::Future;
 #[unstable(feature = "gen_future", issue = "50547")]
 #[cfg(not(bootstrap))]
 #[derive(Debug, Copy, Clone)]
-pub struct ResumeTy(pub NonNull<Context<'static>>);
+pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[unstable(feature = "gen_future", issue = "50547")]
 #[cfg(not(bootstrap))]
