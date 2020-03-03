@@ -2,14 +2,14 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
-use rustc_ast::ast::{Expr, ExprKind, Mac, StrLit, StrStyle};
+use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, Mac, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
 
@@ -175,7 +175,12 @@ declare_clippy_lint! {
     "writing a literal with a format string"
 }
 
-declare_lint_pass!(Write => [
+#[derive(Default)]
+pub struct Write {
+    in_debug_impl: bool,
+}
+
+impl_lint_pass!(Write => [
     PRINT_WITH_NEWLINE,
     PRINTLN_EMPTY_STRING,
     PRINT_STDOUT,
@@ -187,10 +192,34 @@ declare_lint_pass!(Write => [
 ]);
 
 impl EarlyLintPass for Write {
+    fn check_item(&mut self, _: &EarlyContext<'_>, item: &Item) {
+        if let ItemKind::Impl {
+            of_trait: Some(trait_ref),
+            ..
+        } = &item.kind
+        {
+            let trait_name = trait_ref
+                .path
+                .segments
+                .iter()
+                .last()
+                .expect("path has at least one segment")
+                .ident
+                .name;
+            if trait_name == sym!(Debug) {
+                self.in_debug_impl = true;
+            }
+        }
+    }
+
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &Item) {
+        self.in_debug_impl = false;
+    }
+
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
         if mac.path == sym!(println) {
             span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.args.inner_tokens(), false) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), false) {
                 if fmt_str.symbol == Symbol::intern("") {
                     span_lint_and_sugg(
                         cx,
@@ -205,7 +234,7 @@ impl EarlyLintPass for Write {
             }
         } else if mac.path == sym!(print) {
             span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.args.inner_tokens(), false) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), false) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -226,7 +255,7 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(write) {
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.args.inner_tokens(), true) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), true) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -247,7 +276,7 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(writeln) {
-            if let (Some(fmt_str), expr) = check_tts(cx, &mac.args.inner_tokens(), true) {
+            if let (Some(fmt_str), expr) = self.check_tts(cx, &mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
                     let suggestion = expr.map_or_else(
@@ -296,129 +325,136 @@ fn newline_span(fmtstr: &StrLit) -> Span {
     sp.with_lo(newline_sp_hi - newline_sp_len).with_hi(newline_sp_hi)
 }
 
-/// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
-/// `Option`s. The first `Option` of the tuple is the macro's format string. It includes
-/// the contents of the string, whether it's a raw string, and the span of the literal in the
-/// source. The second `Option` in the tuple is, in the `write[ln]!` case, the expression the
-/// `format_str` should be written to.
-///
-/// Example:
-///
-/// Calling this function on
-/// ```rust
-/// # use std::fmt::Write;
-/// # let mut buf = String::new();
-/// # let something = "something";
-/// writeln!(buf, "string to write: {}", something);
-/// ```
-/// will return
-/// ```rust,ignore
-/// (Some("string to write: {}"), Some(buf))
-/// ```
-#[allow(clippy::too_many_lines)]
-fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
-    use fmt_macros::{
-        AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, Parser, Piece,
-    };
-    let tts = tts.clone();
-
-    let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false, None);
-    let mut expr: Option<Expr> = None;
-    if is_write {
-        expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
-            Ok(p) => Some(p.into_inner()),
-            Err(_) => return (None, None),
+impl Write {
+    /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
+    /// `Option`s. The first `Option` of the tuple is the macro's format string. It includes
+    /// the contents of the string, whether it's a raw string, and the span of the literal in the
+    /// source. The second `Option` in the tuple is, in the `write[ln]!` case, the expression the
+    /// `format_str` should be written to.
+    ///
+    /// Example:
+    ///
+    /// Calling this function on
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
+    /// # let something = "something";
+    /// writeln!(buf, "string to write: {}", something);
+    /// ```
+    /// will return
+    /// ```rust,ignore
+    /// (Some("string to write: {}"), Some(buf))
+    /// ```
+    #[allow(clippy::too_many_lines)]
+    fn check_tts<'a>(
+        &self,
+        cx: &EarlyContext<'a>,
+        tts: &TokenStream,
+        is_write: bool,
+    ) -> (Option<StrLit>, Option<Expr>) {
+        use fmt_macros::{
+            AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, Parser, Piece,
         };
-        // might be `writeln!(foo)`
-        if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
-            return (None, expr);
-        }
-    }
+        let tts = tts.clone();
 
-    let fmtstr = match parser.parse_str_lit() {
-        Ok(fmtstr) => fmtstr,
-        Err(_) => return (None, expr),
-    };
-    let tmp = fmtstr.symbol.as_str();
-    let mut args = vec![];
-    let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
-    while let Some(piece) = fmt_parser.next() {
-        if !fmt_parser.errors.is_empty() {
-            return (None, expr);
-        }
-        if let Piece::NextArgument(arg) = piece {
-            if arg.format.ty == "?" {
-                // FIXME: modify rustc's fmt string parser to give us the current span
-                span_lint(cx, USE_DEBUG, parser.prev_token.span, "use of `Debug`-based formatting");
+        let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false, None);
+        let mut expr: Option<Expr> = None;
+        if is_write {
+            expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+                Ok(p) => Some(p.into_inner()),
+                Err(_) => return (None, None),
+            };
+            // might be `writeln!(foo)`
+            if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
+                return (None, expr);
             }
-            args.push(arg);
         }
-    }
-    let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
-    let mut idx = 0;
-    loop {
-        const SIMPLE: FormatSpec<'_> = FormatSpec {
-            fill: None,
-            align: AlignUnknown,
-            flags: 0,
-            precision: CountImplied,
-            precision_span: None,
-            width: CountImplied,
-            width_span: None,
-            ty: "",
-            ty_span: None,
+
+        let fmtstr = match parser.parse_str_lit() {
+            Ok(fmtstr) => fmtstr,
+            Err(_) => return (None, expr),
         };
-        if !parser.eat(&token::Comma) {
-            return (Some(fmtstr), expr);
+        let tmp = fmtstr.symbol.as_str();
+        let mut args = vec![];
+        let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
+        while let Some(piece) = fmt_parser.next() {
+            if !fmt_parser.errors.is_empty() {
+                return (None, expr);
+            }
+            if let Piece::NextArgument(arg) = piece {
+                if !self.in_debug_impl && arg.format.ty == "?" {
+                    // FIXME: modify rustc's fmt string parser to give us the current span
+                    span_lint(cx, USE_DEBUG, parser.prev_token.span, "use of `Debug`-based formatting");
+                }
+                args.push(arg);
+            }
         }
-        let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|mut err| err.cancel()) {
-            expr
-        } else {
-            return (Some(fmtstr), None);
-        };
-        match &token_expr.kind {
-            ExprKind::Lit(_) => {
-                let mut all_simple = true;
-                let mut seen = false;
-                for arg in &args {
-                    match arg.position {
-                        ArgumentImplicitlyIs(n) | ArgumentIs(n) => {
-                            if n == idx {
-                                all_simple &= arg.format == SIMPLE;
-                                seen = true;
-                            }
-                        },
-                        ArgumentNamed(_) => {},
-                    }
-                }
-                if all_simple && seen {
-                    span_lint(cx, lint, token_expr.span, "literal with an empty format string");
-                }
-                idx += 1;
-            },
-            ExprKind::Assign(lhs, rhs, _) => {
-                if let ExprKind::Lit(_) = rhs.kind {
-                    if let ExprKind::Path(_, p) = &lhs.kind {
-                        let mut all_simple = true;
-                        let mut seen = false;
-                        for arg in &args {
-                            match arg.position {
-                                ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
-                                ArgumentNamed(name) => {
-                                    if *p == name {
-                                        seen = true;
-                                        all_simple &= arg.format == SIMPLE;
-                                    }
-                                },
-                            }
-                        }
-                        if all_simple && seen {
-                            span_lint(cx, lint, rhs.span, "literal with an empty format string");
+        let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
+        let mut idx = 0;
+        loop {
+            const SIMPLE: FormatSpec<'_> = FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountImplied,
+                precision_span: None,
+                width: CountImplied,
+                width_span: None,
+                ty: "",
+                ty_span: None,
+            };
+            if !parser.eat(&token::Comma) {
+                return (Some(fmtstr), expr);
+            }
+            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|mut err| err.cancel()) {
+                expr
+            } else {
+                return (Some(fmtstr), None);
+            };
+            match &token_expr.kind {
+                ExprKind::Lit(_) => {
+                    let mut all_simple = true;
+                    let mut seen = false;
+                    for arg in &args {
+                        match arg.position {
+                            ArgumentImplicitlyIs(n) | ArgumentIs(n) => {
+                                if n == idx {
+                                    all_simple &= arg.format == SIMPLE;
+                                    seen = true;
+                                }
+                            },
+                            ArgumentNamed(_) => {},
                         }
                     }
-                }
-            },
-            _ => idx += 1,
+                    if all_simple && seen {
+                        span_lint(cx, lint, token_expr.span, "literal with an empty format string");
+                    }
+                    idx += 1;
+                },
+                ExprKind::Assign(lhs, rhs, _) => {
+                    if let ExprKind::Lit(_) = rhs.kind {
+                        if let ExprKind::Path(_, p) = &lhs.kind {
+                            let mut all_simple = true;
+                            let mut seen = false;
+                            for arg in &args {
+                                match arg.position {
+                                    ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
+                                    ArgumentNamed(name) => {
+                                        if *p == name {
+                                            seen = true;
+                                            all_simple &= arg.format == SIMPLE;
+                                        }
+                                    },
+                                }
+                            }
+                            if all_simple && seen {
+                                span_lint(cx, lint, rhs.span, "literal with an empty format string");
+                            }
+                        }
+                    }
+                },
+                _ => idx += 1,
+            }
         }
     }
 }
