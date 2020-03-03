@@ -44,7 +44,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
         })
         | Node::TraitItem(hir::TraitItem {
             kind:
-                hir::TraitItemKind::Method(hir::FnSig { decl, .. }, hir::TraitMethod::Provided(body_id)),
+                hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitMethod::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
         Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })

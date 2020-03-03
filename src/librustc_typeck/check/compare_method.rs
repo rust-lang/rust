@@ -412,8 +412,8 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
         TypeError::Mutability => {
             if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
                 let trait_m_iter = match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
-                    TraitItemKind::Method(ref trait_m_sig, _) => trait_m_sig.decl.inputs.iter(),
-                    _ => bug!("{:?} is not a TraitItemKind::Method", trait_m),
+                    TraitItemKind::Fn(ref trait_m_sig, _) => trait_m_sig.decl.inputs.iter(),
+                    _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
                 };
 
                 impl_m_iter
@@ -440,10 +440,10 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
             if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
                 let (trait_m_output, trait_m_iter) =
                     match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
-                        TraitItemKind::Method(ref trait_m_sig, _) => {
+                        TraitItemKind::Fn(ref trait_m_sig, _) => {
                             (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
                         }
-                        _ => bug!("{:?} is not a TraitItemKind::Method", trait_m),
+                        _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
                     };
 
                 let impl_iter = impl_sig.inputs().iter();
@@ -708,7 +708,7 @@ fn compare_number_of_method_arguments<'tcx>(
         let trait_m_hir_id = tcx.hir().as_local_hir_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_hir_id {
             match tcx.hir().expect_trait_item(trait_id).kind {
-                TraitItemKind::Method(ref trait_m_sig, _) => {
+                TraitItemKind::Fn(ref trait_m_sig, _) => {
                     let pos = if trait_number_args > 0 { trait_number_args - 1 } else { 0 };
                     if let Some(arg) = trait_m_sig.decl.inputs.get(pos) {
                         Some(if pos == 0 {
