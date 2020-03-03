@@ -44,7 +44,6 @@ use std::sync::Arc;
 
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -3152,6 +3151,7 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
             continue;
         }
 
+        // FIXME: this currently renders too many spaces as in: `#[repr(C, align (8))]`.
         attrs.push_str(&pprust::attribute_to_string(&attr));
     }
     if !attrs.is_empty() {
