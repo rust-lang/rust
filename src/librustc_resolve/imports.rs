@@ -1252,7 +1252,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.r.per_ns(|this, ns| {
-            if let Some(binding) = source_bindings[ns].get().ok() {
+            if let Ok(binding) = source_bindings[ns].get() {
                 this.import_res_map.entry(directive.id).or_default()[ns] = Some(binding.res());
             }
         });
@@ -1293,7 +1293,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
 
         self.r.per_ns(|this, ns| {
-            if let Some(binding) = source_bindings[ns].get().ok() {
+            if let Ok(binding) = source_bindings[ns].get() {
                 if binding.res() == Res::Err {
                     return;
                 }
