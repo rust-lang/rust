@@ -12,6 +12,7 @@ pub mod higher;
 mod hir_utils;
 pub mod inspector;
 pub mod internal_lints;
+pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
 pub mod sugg;

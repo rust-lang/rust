@@ -14,4 +14,10 @@ fn main() {
     &v as &[i32];
     1.0 as f64;
     1 as u64;
+    0x10 as f32;
+    0o10 as f32;
+    0b10 as f32;
+    0x11 as f64;
+    0o11 as f64;
+    0b11 as f64;
 }

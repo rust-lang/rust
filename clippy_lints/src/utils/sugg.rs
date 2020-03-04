@@ -15,8 +15,6 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
 
-pub use crate::literal_representation::format_numeric_literal;
-
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
     /// An expression that never needs parenthesis such as `1337` or `[0; 42]`.
