@@ -31,5 +31,5 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
-        publish_dir: ./book
+        publish_dir: ./target/doc
         force_orphan: true
