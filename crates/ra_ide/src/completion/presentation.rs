@@ -9,7 +9,7 @@ use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use crate::display::{const_label, function_label, macro_label, type_label};
+use crate::display::{const_label, macro_label, type_label, FunctionSignature};
 
 impl Completions {
     pub(crate) fn add_field(
@@ -198,7 +198,7 @@ impl Completions {
 
         let name = name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
-        let detail = function_label(&ast_node);
+        let function_signature = FunctionSignature::from(&ast_node);
 
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
@@ -209,7 +209,7 @@ impl Completions {
                 })
                 .set_documentation(func.docs(ctx.db))
                 .set_deprecated(is_deprecated(func, ctx.db))
-                .detail(detail);
+                .detail(function_signature.to_string());
 
         // Add `<>` for generic types
         if ctx.use_item_syntax.is_none()
@@ -217,11 +217,19 @@ impl Completions {
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
         {
             tested_by!(inserts_parens_for_function_calls);
-            let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
-                (format!("{}()$0", name), format!("{}()", name))
-            } else {
-                (format!("{}($0)", name), format!("{}(…)", name))
-            };
+
+            let (snippet, label) =
+                if params.is_empty() || has_self_param && params.len() == 1 {
+                    (format!("{}()$0", name), format!("{}()", name))
+                } else {
+                    let function_params_snippet =
+                        join(function_signature.parameter_names.iter().enumerate().map(
+                            |(index, param_name)| format!("${{{}:{}}}", index + 1, param_name),
+                        ))
+                        .separator(", ")
+                        .to_string();
+                    (format!("{}({})$0", name, function_params_snippet), format!("{}(…)", name))
+                };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
 
@@ -486,7 +494,7 @@ mod tests {
                 label: "with_args(…)",
                 source_range: [80; 85),
                 delete: [80; 85),
-                insert: "with_args($0)",
+                insert: "with_args(${1:x}, ${2:y})$0",
                 kind: Function,
                 lookup: "with_args",
                 detail: "fn with_args(x: i32, y: String)",
@@ -630,7 +638,7 @@ mod tests {
                 label: "foo(…)",
                 source_range: [61; 63),
                 delete: [61; 63),
-                insert: "foo($0)",
+                insert: "foo(${1:xs})$0",
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
@@ -659,7 +667,7 @@ mod tests {
                 label: "foo(…)",
                 source_range: [64; 66),
                 delete: [64; 66),
-                insert: "foo($0)",
+                insert: "foo(${1:xs})$0",
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
@@ -687,7 +695,7 @@ mod tests {
                 label: "foo(…)",
                 source_range: [68; 70),
                 delete: [68; 70),
-                insert: "foo($0)",
+                insert: "foo(${1:xs})$0",
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
@@ -715,7 +723,7 @@ mod tests {
                 label: "foo(…)",
                 source_range: [61; 63),
                 delete: [61; 63),
-                insert: "foo($0)",
+                insert: "foo(${1:xs})$0",
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve<i128>)",

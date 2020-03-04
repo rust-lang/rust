@@ -38,7 +38,7 @@ mod tests {
                 label: "quux(…)",
                 source_range: [91; 91),
                 delete: [91; 91),
-                insert: "quux($0)",
+                insert: "quux(${1:x})$0",
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux(x: i32)",
