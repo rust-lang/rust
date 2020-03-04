@@ -41,6 +41,11 @@ jobs:
         target: x86_64-unknown-linux-musl
         override: true
 
+    - name: Install Nodejs
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
     - name: Dist
       if: github.event_name == 'push'
       run: cargo xtask dist
