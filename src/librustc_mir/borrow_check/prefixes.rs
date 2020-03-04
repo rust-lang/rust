@@ -13,12 +13,12 @@ use rustc::mir::{Place, PlaceRef, ProjectionElem, ReadOnlyBodyAndCache};
 use rustc::ty::{self, TyCtxt};
 use rustc_hir as hir;
 
-pub trait IsPrefixOf<'cx, 'tcx> {
-    fn is_prefix_of(&self, other: PlaceRef<'cx, 'tcx>) -> bool;
+pub trait IsPrefixOf<'tcx> {
+    fn is_prefix_of(&self, other: PlaceRef<'tcx, 'tcx>) -> bool;
 }
 
-impl<'cx, 'tcx> IsPrefixOf<'cx, 'tcx> for PlaceRef<'cx, 'tcx> {
-    fn is_prefix_of(&self, other: PlaceRef<'cx, 'tcx>) -> bool {
+impl<'tcx> IsPrefixOf<'tcx> for PlaceRef<'tcx, 'tcx> {
+    fn is_prefix_of(&self, other: PlaceRef<'tcx, 'tcx>) -> bool {
         self.local == other.local
             && self.projection.len() <= other.projection.len()
             && self.projection == &other.projection[..self.projection.len()]
