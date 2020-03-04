@@ -1,5 +1,3 @@
-use std::usize;
-
 fn one_line_ref() -> i16 {
     *&1
 }

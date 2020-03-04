@@ -27,7 +27,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let (dest, ret) = ret.unwrap();
             let n = this
                 .align_offset(args[0], args[1])?
-                .unwrap_or_else(|| this.truncate(u128::max_value(), dest.layout));
+                .unwrap_or_else(|| this.truncate(u128::MAX, dest.layout));
             this.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
             this.go_to_block(ret);
             return Ok(None);

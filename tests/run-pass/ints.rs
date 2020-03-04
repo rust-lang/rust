@@ -51,8 +51,8 @@ fn main() {
     assert_eq!(arith(), 5*5);
     assert_eq!(match_int(), 20);
     assert_eq!(match_int_range(), 4);
-    assert_eq!(i64::min_value().overflowing_mul(-1), (i64::min_value(), true));
-    assert_eq!(i32::min_value().overflowing_mul(-1), (i32::min_value(), true));
-    assert_eq!(i16::min_value().overflowing_mul(-1), (i16::min_value(), true));
-    assert_eq!(i8::min_value().overflowing_mul(-1), (i8::min_value(), true));
+    assert_eq!(i64::MIN.overflowing_mul(-1), (i64::MIN, true));
+    assert_eq!(i32::MIN.overflowing_mul(-1), (i32::MIN, true));
+    assert_eq!(i16::MIN.overflowing_mul(-1), (i16::MIN, true));
+    assert_eq!(i8::MIN.overflowing_mul(-1), (i8::MIN, true));
 }

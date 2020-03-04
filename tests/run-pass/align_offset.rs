@@ -5,15 +5,15 @@ fn test_align_offset() {
 
     assert_eq!(raw.align_offset(2), 0);
     assert_eq!(raw.align_offset(4), 0);
-    assert_eq!(raw.align_offset(8), usize::max_value()); // requested alignment higher than allocation alignment
+    assert_eq!(raw.align_offset(8), usize::MAX); // requested alignment higher than allocation alignment
 
     assert_eq!(raw.wrapping_offset(1).align_offset(2), 1);
     assert_eq!(raw.wrapping_offset(1).align_offset(4), 3);
-    assert_eq!(raw.wrapping_offset(1).align_offset(8), usize::max_value()); // requested alignment higher than allocation alignment
+    assert_eq!(raw.wrapping_offset(1).align_offset(8), usize::MAX); // requested alignment higher than allocation alignment
 
     assert_eq!(raw.wrapping_offset(2).align_offset(2), 0);
     assert_eq!(raw.wrapping_offset(2).align_offset(4), 2);
-    assert_eq!(raw.wrapping_offset(2).align_offset(8), usize::max_value()); // requested alignment higher than allocation alignment
+    assert_eq!(raw.wrapping_offset(2).align_offset(8), usize::MAX); // requested alignment higher than allocation alignment
 }
 
 fn test_align_to() {

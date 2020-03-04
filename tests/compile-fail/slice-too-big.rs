@@ -1,5 +1,4 @@
 use std::mem;
-use std::usize;
 
 fn main() { unsafe {
     let ptr = Box::into_raw(Box::new(0u8));
