@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        (moved_place, used_place, span): (PlaceRef<'cx, 'tcx>, PlaceRef<'cx, 'tcx>, Span),
+        (moved_place, used_place, span): (PlaceRef<'cx, 'tcx>, PlaceRef<'tcx, 'tcx>, Span),
         mpi: MovePathIndex,
     ) {
         debug!(

@@ -468,7 +468,8 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
     /// when errors in the map are being re-added to the error buffer so that errors with the
     /// same primary span come out in a consistent order.
-    move_error_reported: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'cx, 'tcx>, DiagnosticBuilder<'cx>)>,
+    move_error_reported:
+        BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx, 'tcx>, DiagnosticBuilder<'cx>)>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
     uninitialized_error_reported: FxHashSet<PlaceRef<'cx, 'tcx>>,
@@ -1527,7 +1528,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'cx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx, 'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         let maybe_uninits = &flow_state.uninits;
@@ -1593,7 +1594,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'cx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx, 'tcx>, Span),
         maybe_uninits: &BitSet<MovePathIndex>,
         from: u32,
         to: u32,
@@ -1632,7 +1633,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'cx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx, 'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         let maybe_uninits = &flow_state.uninits;
@@ -1817,7 +1818,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         fn check_parent_of_field<'cx, 'tcx>(
             this: &mut MirBorrowckCtxt<'cx, 'tcx>,
             location: Location,
-            base: PlaceRef<'cx, 'tcx>,
+            base: PlaceRef<'tcx, 'tcx>,
             span: Span,
             flow_state: &Flows<'cx, 'tcx>,
         ) {

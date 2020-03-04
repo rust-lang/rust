@@ -29,7 +29,7 @@ pub(super) struct Prefixes<'cx, 'tcx> {
     body: ReadOnlyBodyAndCache<'cx, 'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
-    next: Option<PlaceRef<'cx, 'tcx>>,
+    next: Option<PlaceRef<'tcx, 'tcx>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -50,7 +50,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// terminating the iteration early based on `kind`.
     pub(super) fn prefixes(
         &self,
-        place_ref: PlaceRef<'cx, 'tcx>,
+        place_ref: PlaceRef<'tcx, 'tcx>,
         kind: PrefixSet,
     ) -> Prefixes<'cx, 'tcx> {
         Prefixes { next: Some(place_ref), kind, body: self.body, tcx: self.infcx.tcx }
@@ -58,7 +58,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
-    type Item = PlaceRef<'cx, 'tcx>;
+    type Item = PlaceRef<'tcx, 'tcx>;
     fn next(&mut self) -> Option<Self::Item> {
         let mut cursor = self.next?;
 
