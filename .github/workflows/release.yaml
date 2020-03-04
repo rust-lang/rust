@@ -41,43 +41,18 @@ jobs:
         target: x86_64-unknown-linux-musl
         override: true
 
-    - name: Create distribution dir
-      run: mkdir ./dist
-
-    - name: Build
-      if: matrix.os == 'ubuntu-latest'
-      run: cargo build --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
-      env:
-        CC: clang
-
-    - name: Build VS Code extension
-      if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+    - name: Dist
+      if: github.event_name == 'push'
       run: cargo xtask dist
 
-    - name: Build VS Code extension
-      if: matrix.os == 'ubuntu-latest' && github.event_name != 'push'
+    - name: Dist
+      if: github.event_name != 'push'
       run: cargo xtask dist --nightly
-
-    - name: Build
-      if: matrix.os != 'ubuntu-latest'
-      run: cargo build --package rust-analyzer --bin rust-analyzer --release
-
-    - name: Copy binary
-      if: matrix.os == 'ubuntu-latest'
-      run: cp ./target/x86_64-unknown-linux-musl/release/rust-analyzer ./dist/rust-analyzer-linux && strip ./dist/rust-analyzer-linux
-
-    - name: Copy binary
-      if: matrix.os == 'macos-latest'
-      run: cp ./target/release/rust-analyzer ./dist/rust-analyzer-mac
-
-    - name: Copy binary
-      if: matrix.os == 'windows-latest'
-      run: copy ./target/release/rust-analyzer.exe ./dist/rust-analyzer-windows.exe
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: server-${{ matrix.os }}
+        name: dist-${{ matrix.os }}
         path: ./dist
 
   make-release:
@@ -101,19 +76,15 @@ jobs:
 
     - uses: actions/download-artifact@v1
       with:
-        name: editor-plugins
+        name: dist-macos-latest
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: server-macos-latest
+        name: dist-ubuntu-latest
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: server-ubuntu-latest
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: server-windows-latest
+        name: dist-windows-latest
         path: dist
     - run: ls -all ./dist
 
