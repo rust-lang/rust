@@ -849,7 +849,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        if self.normalized_token.span.rust_2018() && self.eat_keyword(kw::Await) {
+        if self.token.uninterpolated_span().rust_2018() && self.eat_keyword(kw::Await) {
             return self.mk_await_expr(self_arg, lo);
         }
 
@@ -963,7 +963,7 @@ impl<'a> Parser<'a> {
             //       |             ^ expected expression
             self.bump();
             Ok(self.mk_expr_err(self.token.span))
-        } else if self.normalized_token.span.rust_2018() {
+        } else if self.token.uninterpolated_span().rust_2018() {
             // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
                 if self.is_async_block() {
@@ -1396,11 +1396,14 @@ impl<'a> Parser<'a> {
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
-        let asyncness =
-            if self.normalized_token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
-        if asyncness.is_async() {
+        let asyncness = if self.token.uninterpolated_span().rust_2018() {
+            self.parse_asyncness()
+        } else {
+            Async::No
+        };
+        if let Async::Yes { span, .. } = asyncness {
             // Feature-gate `async ||` closures.
-            self.sess.gated_spans.gate(sym::async_closure, self.normalized_prev_token.span);
+            self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
         let capture_clause = self.parse_capture_clause();
@@ -1756,7 +1759,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-        self.normalized_token.span.rust_2018() &&
+        self.token.uninterpolated_span().rust_2018() &&
         // Prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }

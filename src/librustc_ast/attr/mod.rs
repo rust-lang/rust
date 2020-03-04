@@ -286,6 +286,10 @@ impl MetaItem {
 }
 
 impl AttrItem {
+    pub fn span(&self) -> Span {
+        self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
+    }
+
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
         Some(MetaItem {
             path: self.path.clone(),

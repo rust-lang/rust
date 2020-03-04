@@ -328,6 +328,18 @@ impl Token {
         mem::replace(self, Token::dummy())
     }
 
+    /// For interpolated tokens returns a span of the fragment to which the interpolated
+    /// token refers, for all other tokens this is just a regular span.
+    /// It is particularly important to use this for identifiers and lifetimes
+    /// for which spans affect name resolution. This also includes edition checks
+    /// for edition-specific keyword identifiers.
+    pub fn uninterpolated_span(&self) -> Span {
+        match &self.kind {
+            Interpolated(nt) => nt.span(),
+            _ => self.span,
+        }
+    }
+
     pub fn is_op(&self) -> bool {
         match self.kind {
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
@@ -713,6 +725,24 @@ pub enum Nonterminal {
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Nonterminal, 40);
+
+impl Nonterminal {
+    fn span(&self) -> Span {
+        match self {
+            NtItem(item) => item.span,
+            NtBlock(block) => block.span,
+            NtStmt(stmt) => stmt.span,
+            NtPat(pat) => pat.span,
+            NtExpr(expr) | NtLiteral(expr) => expr.span,
+            NtTy(ty) => ty.span,
+            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            NtMeta(attr_item) => attr_item.span(),
+            NtPath(path) => path.span,
+            NtVis(vis) => vis.span,
+            NtTT(tt) => tt.span(),
+        }
+    }
+}
 
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {

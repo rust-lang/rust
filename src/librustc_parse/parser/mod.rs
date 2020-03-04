@@ -884,7 +884,7 @@ impl<'a> Parser<'a> {
     /// Parses asyncness: `async` or nothing.
     fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            let span = self.normalized_prev_token.span;
+            let span = self.prev_token.uninterpolated_span();
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
             Async::No
@@ -894,7 +894,7 @@ impl<'a> Parser<'a> {
     /// Parses unsafety: `unsafe` or nothing.
     fn parse_unsafety(&mut self) -> Unsafe {
         if self.eat_keyword(kw::Unsafe) {
-            Unsafe::Yes(self.normalized_prev_token.span)
+            Unsafe::Yes(self.prev_token.uninterpolated_span())
         } else {
             Unsafe::No
         }
@@ -903,7 +903,7 @@ impl<'a> Parser<'a> {
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self) -> Const {
         if self.eat_keyword(kw::Const) {
-            Const::Yes(self.normalized_prev_token.span)
+            Const::Yes(self.prev_token.uninterpolated_span())
         } else {
             Const::No
         }
