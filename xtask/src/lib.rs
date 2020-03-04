@@ -19,7 +19,7 @@ use std::{
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, rm_rf, run},
+    not_bash::{fs2, pushd, pwd, rm_rf, run},
 };
 
 pub use anyhow::Result;
@@ -205,4 +205,43 @@ Release: release:{}[]
 
 fn is_release_tag(tag: &str) -> bool {
     tag.len() == "2020-02-24".len() && tag.starts_with(|c: char| c.is_ascii_digit())
+}
+
+pub fn run_dist(nightly: bool) -> Result<()> {
+    let dist = project_root().join("dist");
+    rm_rf(&dist)?;
+    fs2::create_dir_all(&dist)?;
+
+    let _d = pushd("./editors/code");
+
+    let package_json_path = pwd().join("package.json");
+    let original_package_json = fs2::read_to_string(&package_json_path)?;
+    let _restore =
+        Restore { path: package_json_path.clone(), contents: original_package_json.clone() };
+
+    let mut package_json = original_package_json.replace(r#""enableProposedApi": true,"#, r#""#);
+
+    if nightly {
+        package_json = package_json
+            .replace(r#""name": "rust-analyzer""#, r#""name": "rust-analyzer-nightly""#)
+            .replace(
+                r#""displayName": "rust-analyzer""#,
+                r#""displayName": "rust-analyzer nightly""#,
+            );
+    }
+    fs2::write(package_json_path, package_json)?;
+
+    run!("npx vsce package -o {}/rust-analyzer.vsix", dist.display())?;
+    Ok(())
+}
+
+struct Restore {
+    path: PathBuf,
+    contents: String,
+}
+
+impl Drop for Restore {
+    fn drop(&mut self) {
+        fs2::write(&self.path, &self.contents).unwrap();
+    }
 }

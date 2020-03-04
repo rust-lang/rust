@@ -1,4 +1,5 @@
 /target/
+/dist/
 crates/*/target
 **/*.rs.bk
 **/*.rs.pending-snap
