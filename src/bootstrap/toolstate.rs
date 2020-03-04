@@ -330,11 +330,11 @@ fn prepare_toolstate_config(token: &str) {
             Err(_) => false,
         };
         if !success {
-            panic!("git config key={} value={} successful (status: {:?})", key, value, status);
+            panic!("git config key={} value={} failed (status: {:?})", key, value, status);
         }
     }
 
-    // If changing anything here, then please check that src/ci/publish_toolstate.sh is up to date
+    // If changing anything here, then please check that `src/ci/publish_toolstate.sh` is up to date
     // as well.
     git_config("user.email", "7378925+rust-toolstate-update@users.noreply.github.com");
     git_config("user.name", "Rust Toolstate Update");
@@ -382,7 +382,9 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;
     for _ in 1..=5 {
-        // Update the toolstate results (the new commit-to-toolstate mapping) in the toolstate repo.
+        // Upload the test results (the new commit-to-toolstate mapping) to the toolstate repo.
+        // This does *not* change the "current toolstate"; that only happens post-landing
+        // via `src/ci/docker/publish_toolstate.sh`.
         change_toolstate(&current_toolstate);
 
         // `git commit` failing means nothing to commit.
