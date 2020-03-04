@@ -711,7 +711,7 @@ rustc_queries! {
 
         query layout_raw(
             env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-        ) -> Result<&'tcx ty::layout::LayoutDetails, ty::layout::LayoutError<'tcx>> {
+        ) -> Result<&'tcx ty::layout::Layout, ty::layout::LayoutError<'tcx>> {
             no_force
             desc { "computing layout of `{}`", env.value }
         }
