@@ -1521,7 +1521,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    fn classify_drop_access_kind(&self, place: PlaceRef<'cx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
+    fn classify_drop_access_kind(&self, place: PlaceRef<'tcx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place.projection {
             [] => StorageDeadOrDrop::LocalStorageDead,
