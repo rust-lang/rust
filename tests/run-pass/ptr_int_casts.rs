@@ -16,7 +16,7 @@ fn main() {
     // this used to trigger an ICE on 32bit)
     let val = &mut ptr::null();
     *val = (1 as *const u8).wrapping_offset(-4);
-    assert_eq!(*val as usize, usize::max_value() - 2);
+    assert_eq!(*val as usize, usize::MAX - 2);
 
     {   // ptr-int-ptr
         let x = 13;

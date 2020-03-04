@@ -427,15 +427,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // We cap the number of read bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
+        let count = count.min(this.isize_max() as u64).min(isize::MAX as u64);
 
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             // This can never fail because `count` was capped to be smaller than
-            // `isize::max_value()`.
+            // `isize::MAX`.
             let count = isize::try_from(count).unwrap();
             // We want to read at most `count` bytes. We are sure that `count` is not negative
             // because it was a target's `usize`. Also we are sure that its smaller than
-            // `usize::max_value()` because it is a host's `isize`.
+            // `usize::MAX` because it is a host's `isize`.
             let mut bytes = vec![0; count as usize];
             let result = file
                 .read(&mut bytes)
@@ -481,7 +481,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // We cap the number of written bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count.min(this.isize_max() as u64).min(isize::max_value() as u64);
+        let count = count.min(this.isize_max() as u64).min(isize::MAX as u64);
 
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;

@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::i32;
-
 pub fn main() {
     // This tests that do (not) do sign extension properly when loading integers
-    assert_eq!(u32::max_value() as i64, 4294967295);
-    assert_eq!(i32::min_value() as i64, -2147483648);
+    assert_eq!(u32::MAX as i64, 4294967295);
+    assert_eq!(i32::MIN as i64, -2147483648);
 
-    assert_eq!(i8::min_value(), -128);
-
-    assert_eq!(i8::max_value(), 127);
+    assert_eq!(i8::MAX, 127);
+    assert_eq!(i8::MIN, -128);
 
     assert_eq!(i32::from_str_radix("A", 16), Ok(10));
 

@@ -443,10 +443,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Saturating cast to i16. Even those are outside the valid exponent range to
                 // `scalbn` below will do its over/underflow handling.
-                let exp = if exp > i16::max_value() as i32 {
-                    i16::max_value()
-                } else if exp < i16::min_value() as i32 {
-                    i16::min_value()
+                let exp = if exp > i16::MAX as i32 {
+                    i16::MAX
+                } else if exp < i16::MIN as i32 {
+                    i16::MIN
                 } else {
                     exp.try_into().unwrap()
                 };
