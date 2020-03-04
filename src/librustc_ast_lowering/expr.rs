@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::DUMMY_SP;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -471,6 +470,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    /// Lower an `async` construct to a generator that is then wrapped so it implements `Future`.
+    ///
+    /// This results in:
+    ///
+    /// ```text
+    /// std::future::from_generator(static move? |_task_context| -> <ret_ty> {
+    ///     <body>
+    /// })
+    /// ```
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
@@ -481,46 +489,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
-            Some(ty) => FnRetTy::Ty(ty),
-            None => FnRetTy::Default(span),
+            Some(ty) => hir::FnRetTy::Return(self.lower_ty(&ty, ImplTraitContext::disallowed())),
+            None => hir::FnRetTy::DefaultReturn(span),
         };
 
-        let task_context_id = self.resolver.next_node_id();
-        let task_context_hid = self.lower_node_id(task_context_id);
+        // Resume argument type. We let the compiler infer this to simplify the lowering. It is
+        // fully constrained by `future::from_generator`.
+        let input_ty = hir::Ty { hir_id: self.next_id(), kind: hir::TyKind::Infer, span };
 
-        let arg_ty = Ty { id: self.resolver.next_node_id(), kind: TyKind::Infer, span: DUMMY_SP };
-        let arg_pat = Pat {
-            id: task_context_id,
-            kind: PatKind::Ident(
-                BindingMode::ByValue(Mutability::Mut),
-                Ident::with_dummy_span(sym::_task_context),
-                None,
-            ),
-            span: DUMMY_SP,
-        };
-        let ast_decl = FnDecl {
-            inputs: vec![Param {
-                attrs: AttrVec::new(),
-                ty: AstP(arg_ty),
-                pat: AstP(arg_pat),
-                id: self.resolver.next_node_id(),
-                span: DUMMY_SP,
-                is_placeholder: false,
-            }],
+        // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
+        let decl = self.arena.alloc(hir::FnDecl {
+            inputs: arena_vec![self; input_ty],
             output,
-        };
-        let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
-        let body_id = self.lower_fn_body(&ast_decl, |this| {
+            c_variadic: false,
+            implicit_self: hir::ImplicitSelfKind::None,
+        });
+
+        // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
+        let (pat, task_context_hid) = self.pat_ident_binding_mode(
+            span,
+            Ident::with_dummy_span(sym::_task_context),
+            hir::BindingAnnotation::Mutable,
+        );
+        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, span };
+        let params = arena_vec![self; param];
+
+        let body_id = self.lower_body(move |this| {
             this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
             let res = body(this);
             this.task_context = old_ctx;
-            res
+            (params, res)
         });
 
-        // `static |task_context| -> <ret_ty> { body }`:
+        // `static |_task_context| -> <ret_ty> { body }`:
         let generator_kind = hir::ExprKind::Closure(
             capture_clause,
             decl,
