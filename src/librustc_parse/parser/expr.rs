@@ -955,7 +955,7 @@ impl<'a> Parser<'a> {
         };
         let kind = if es.len() == 1 && !trailing_comma {
             // `(e)` is parenthesized `e`.
-            ExprKind::Paren(es.into_iter().nth(0).unwrap())
+            ExprKind::Paren(es.into_iter().next().unwrap())
         } else {
             // `(e,)` is a tuple with only one field, `e`.
             ExprKind::Tup(es)

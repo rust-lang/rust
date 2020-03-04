@@ -620,7 +620,7 @@ impl SourceMap {
     /// if no character could be found or if an error occurred while retrieving the code snippet.
     pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
         if let Ok(prev_source) = self.span_to_prev_source(sp) {
-            let prev_source = prev_source.rsplit(c).nth(0).unwrap_or("").trim_start();
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("").trim_start();
             if !prev_source.is_empty() && !prev_source.contains('\n') {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
             }
@@ -640,7 +640,7 @@ impl SourceMap {
         for ws in &[" ", "\t", "\n"] {
             let pat = pat.to_owned() + ws;
             if let Ok(prev_source) = self.span_to_prev_source(sp) {
-                let prev_source = prev_source.rsplit(&pat).nth(0).unwrap_or("").trim_start();
+                let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
                 if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
@@ -655,7 +655,7 @@ impl SourceMap {
     pub fn span_until_char(&self, sp: Span, c: char) -> Span {
         match self.span_to_snippet(sp) {
             Ok(snippet) => {
-                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_end();
+                let snippet = snippet.split(c).next().unwrap_or("").trim_end();
                 if !snippet.is_empty() && !snippet.contains('\n') {
                     sp.with_hi(BytePos(sp.lo().0 + snippet.len() as u32))
                 } else {
