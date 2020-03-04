@@ -163,7 +163,7 @@ impl CodeSuggestion {
                         None => buf.push_str(&line[lo..]),
                     }
                 }
-                if let None = hi_opt {
+                if hi_opt.is_none() {
                     buf.push('\n');
                 }
             }

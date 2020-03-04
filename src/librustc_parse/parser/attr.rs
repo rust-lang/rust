@@ -37,7 +37,7 @@ impl<'a> Parser<'a> {
                     let inner_parse_policy = InnerAttributeParsePolicy::NotPermitted {
                         reason: inner_error_reason,
                         saw_doc_comment: just_parsed_doc_comment,
-                        prev_attr_sp: attrs.last().and_then(|a| Some(a.span)),
+                        prev_attr_sp: attrs.last().map(|a| a.span),
                     };
                     let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     attrs.push(attr);

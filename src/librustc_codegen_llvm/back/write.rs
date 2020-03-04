@@ -725,7 +725,7 @@ pub(crate) unsafe fn codegen(
                         Err(_) => return 0,
                     };
 
-                    if let Err(_) = write!(cursor, "{:#}", demangled) {
+                    if write!(cursor, "{:#}", demangled).is_err() {
                         // Possible only if provided buffer is not big enough
                         return 0;
                     }
