@@ -58,6 +58,12 @@ impl CopyStruct {
             self.opt
         };
 
+        let _ = if let Some(x) = self.opt {
+            x
+        } else {
+            return None;
+        };
+
         self.opt
     }
 }
@@ -89,6 +95,26 @@ impl MoveStruct {
             return None;
         }
         Some(Vec::new())
+    }
+
+    pub fn if_let_ref_func(self) -> Option<Vec<u32>> {
+        let mut v: &Vec<_> = if let Some(ref v) = self.opt {
+            v
+        } else {
+            return None;
+        };
+
+        Some(v.clone())
+    }
+
+    pub fn if_let_mov_func(self) -> Option<Vec<u32>> {
+        let mut v = if let Some(v) = self.opt {
+            v
+        } else {
+            return None;
+        };
+
+        Some(v)
     }
 }
 
