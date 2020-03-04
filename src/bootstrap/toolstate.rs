@@ -225,8 +225,11 @@ impl Step for ToolStateCheck {
                         );
                     }
                 }
-                // publish_toolstate.py will be responsible for creating
-                // comments/issues warning people if there is a regression.
+                // `publish_toolstate.py` is responsible for updating
+                // `latest.json` and creating comments/issues warning people
+                // if there is a regression. That all happens in a separate CI
+                // job on the master branch once the PR has passed all tests
+                // on the `auto` branch.
             }
         }
 
@@ -385,7 +388,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
         // Upload the test results (the new commit-to-toolstate mapping) to the toolstate repo.
         // This does *not* change the "current toolstate"; that only happens post-landing
         // via `src/ci/docker/publish_toolstate.sh`.
-        change_toolstate(&current_toolstate);
+        publish_test_results(&current_toolstate);
 
         // `git commit` failing means nothing to commit.
         let status = t!(Command::new("git")
@@ -434,7 +437,12 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
     }
 }
 
-fn change_toolstate(current_toolstate: &ToolstateData) {
+/// Updates the "history" files with the latest results.
+///
+/// These results will later be promoted to `latest.json` by the
+/// `publish_toolstate.py` script if the PR passes all tests and is merged to
+/// master.
+fn publish_test_results(current_toolstate: &ToolstateData) {
     let commit = t!(std::process::Command::new("git").arg("rev-parse").arg("HEAD").output());
     let commit = t!(String::from_utf8(commit.stdout));
 
