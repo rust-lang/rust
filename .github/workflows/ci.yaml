@@ -3,28 +3,30 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - staging
-      - trying
+    - master
+    - staging
+    - trying
 
 jobs:
   rust-audit:
     name: Audit Rust vulnerabilities
     runs-on: ubuntu-latest
     steps:
-        - name: Checkout repository
-          uses: actions/checkout@v1
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-        - run: cargo install cargo-audit
-        - run: cargo audit
+    - run: cargo install cargo-audit
+    - run: cargo audit
 
   rust:
     name: Rust
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+
     env:
       RUSTFLAGS: -D warnings
       CC: deny_c
@@ -32,62 +34,62 @@ jobs:
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
+
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-      - name: Checkout repository
-        uses: actions/checkout@v1
+    # We need to disable the existing toolchain to avoid updating rust-docs
+    # which takes a long time. The fastest way to do this is to rename the
+    # existing folder, as deleting it takes about as much time as not doing
+    # anything and just updating rust-docs.
+    - name: Rename existing rust toolchain (Windows)
+      if: matrix.os == 'windows-latest'
+      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
-      # We need to disable the existing toolchain to avoid updating rust-docs
-      # which takes a long time. The fastest way to do this is to rename the
-      # existing folder, as deleting it takes about as much time as not doing
-      # anything and just updating rust-docs.
-      - name: Rename existing rust toolchain (Windows)
-        if: matrix.os == 'windows-latest'
-        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        components: rustfmt, rust-src
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          components: rustfmt, rust-src
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache cargo registry
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache cargo index
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache cargo target dir
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Compile
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --no-run
 
-      - name: Compile
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-run
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
 
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+    - name: Prepare cache
+      run: cargo xtask pre-cache
 
-      - name: Prepare cache
-        run: cargo xtask pre-cache
-
-      - name: Prepare cache 2
-        if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
+    - name: Prepare cache 2
+      if: matrix.os == 'windows-latest'
+      run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
   typescript:
     name: TypeScript
@@ -96,22 +98,22 @@ jobs:
       CXX: g++-4.9
       CC: gcc-4.9
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v1
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-      - name: Install Nodejs
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12.x
+    - name: Install Nodejs
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
 
-      - run: npm ci
-        working-directory: ./editors/code
+    - run: npm ci
+      working-directory: ./editors/code
 
-      - run: npm audit
-        working-directory: ./editors/code
+    - run: npm audit
+      working-directory: ./editors/code
 
-      - run: npm run lint
-        working-directory: ./editors/code
+    - run: npm run lint
+      working-directory: ./editors/code
 
-      - run: npm run package --scripts-prepend-node-path
-        working-directory: ./editors/code
+    - run: npm run package --scripts-prepend-node-path
+      working-directory: ./editors/code
