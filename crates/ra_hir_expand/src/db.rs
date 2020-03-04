@@ -176,16 +176,21 @@ pub(crate) fn parse_macro(
                 MacroCallId::LazyMacro(id) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro(id);
                     let node = loc.kind.node(db);
+
+                    // collect parent information for warning log
+                    let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
+                        it.file_id.call_node(db)
+                    })
+                    .map(|n| format!("{:#}", n.value))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
                     log::warn!(
-                        "fail on macro_parse: (reason: {} macro_call: {:#})",
+                        "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",
                         err,
-                        node.value
+                        node.value,
+                        parents
                     );
-                    let mut parent = loc.kind.file_id().call_node(db);
-                    while let Some(node) = parent.clone() {
-                        log::warn!("parent: macro_call: {:#})", node.value);
-                        parent = node.file_id.call_node(db);
-                    }
                 }
                 _ => {
                     log::warn!("fail on macro_parse: (reason: {})", err);
