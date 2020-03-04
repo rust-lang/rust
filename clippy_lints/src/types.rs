@@ -1214,23 +1214,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                     if let LitKind::Int(n, _) = lit.node;
                     if let Some(src) = snippet_opt(cx, lit.span);
                     if cast_to.is_floating_point();
+                    if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node);
+                    let from_nbits = 128 - n.leading_zeros();
+                    let to_nbits = fp_ty_mantissa_nbits(cast_to);
+                    if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
                     then {
-                        let from_nbits = 128 - n.leading_zeros();
-                        let to_nbits = fp_ty_mantissa_nbits(cast_to);
-                        if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
-                            if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal() {
-                                span_lint_and_sugg(
-                                    cx,
-                                    UNNECESSARY_CAST,
-                                    expr.span,
-                                    &format!("casting integer literal to `{}` is unnecessary", cast_to),
-                                    "try",
-                                    format!("{}_{}", n, cast_to),
-                                    Applicability::MachineApplicable,
-                                );
-                                return;
-                            }
-                        }
+                        span_lint_and_sugg(
+                            cx,
+                            UNNECESSARY_CAST,
+                            expr.span,
+                            &format!("casting integer literal to `{}` is unnecessary", cast_to),
+                            "try",
+                            format!("{}_{}", n, cast_to),
+                            Applicability::MachineApplicable,
+                        );
+                        return;
                     }
                 }
                 match lit.node {
