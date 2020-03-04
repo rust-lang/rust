@@ -218,18 +218,20 @@ impl Completions {
         {
             tested_by!(inserts_parens_for_function_calls);
 
-            let (snippet, label) =
-                if params.is_empty() || has_self_param && params.len() == 1 {
-                    (format!("{}()$0", name), format!("{}()", name))
-                } else {
-                    let function_params_snippet =
-                        join(function_signature.parameter_names.iter().enumerate().map(
+            let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
+                (format!("{}()$0", name), format!("{}()", name))
+            } else {
+                let to_skip = if has_self_param { 1 } else { 0 };
+                let function_params_snippet =
+                    join(
+                        function_signature.parameter_names.iter().skip(to_skip).enumerate().map(
                             |(index, param_name)| format!("${{{}:{}}}", index + 1, param_name),
-                        ))
-                        .separator(", ")
-                        .to_string();
-                    (format!("{}({})$0", name, function_params_snippet), format!("{}(…)", name))
-                };
+                        ),
+                    )
+                    .separator(", ")
+                    .to_string();
+                (format!("{}({})$0", name, function_params_snippet), format!("{}(…)", name))
+            };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
 
@@ -307,8 +309,8 @@ mod tests {
 
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
 
-    fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Reference)
+    fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
+        do_completion(ra_fixture, CompletionKind::Reference)
     }
 
     #[test]
@@ -528,6 +530,36 @@ mod tests {
         ]
         "###
         );
+    }
+
+    #[test]
+    fn parens_for_method_call() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct S {}
+                impl S {
+                    fn foo(&self, x: i32) {}
+                }
+                fn bar(s: &S) {
+                    s.f<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [171; 172),
+                delete: [171; 172),
+                insert: "foo(${1:x})$0",
+                kind: Method,
+                lookup: "foo",
+                detail: "fn foo(&self, x: i32)",
+            },
+        ]
+        "###
+        )
     }
 
     #[test]
