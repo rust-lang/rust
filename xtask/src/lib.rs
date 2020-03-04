@@ -90,7 +90,6 @@ pub fn run_clippy() -> Result<()> {
 
     let allowed_lints = [
         "clippy::collapsible_if",
-        "clippy::map_clone", // FIXME: remove when Iterator::copied stabilizes (1.36.0)
         "clippy::needless_pass_by_value",
         "clippy::nonminimal_bool",
         "clippy::redundant_pattern_matching",
