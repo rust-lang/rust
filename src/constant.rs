@@ -439,10 +439,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn find_foreign_static(_: TyCtxt<'tcx>, _: DefId) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
-        panic!();
-    }
-
     fn binary_ptr_op(
         _: &InterpCx<'mir, 'tcx, Self>,
         _: mir::BinOp,

@@ -10,7 +10,7 @@
 
 use crate::prelude::*;
 
-use syntax::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
 pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> bool {

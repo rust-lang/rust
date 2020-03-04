@@ -555,7 +555,7 @@ fn trans_stmt<'tcx>(
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::InlineAsm(asm) => {
-            use syntax::ast::Name;
+            use rustc_ast::ast::Name;
             let InlineAsm {
                 asm,
                 outputs: _,
@@ -568,7 +568,7 @@ fn trans_stmt<'tcx>(
                 clobbers,      // Vec<Name>
                 volatile,      // bool
                 alignstack,    // bool
-                dialect: _,    // syntax::ast::AsmDialect
+                dialect: _,    // rustc_ast::ast::AsmDialect
                 asm_str_style: _,
             } = asm;
             match &*asm_code.as_str() {

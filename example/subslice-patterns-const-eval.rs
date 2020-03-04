@@ -4,8 +4,6 @@
 
 // run-pass
 
-#![feature(slice_patterns)]
-
 #[derive(PartialEq, Debug, Clone)]
 struct N(u8);
 

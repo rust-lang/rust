@@ -84,7 +84,7 @@ fn main() {
     let empty: [i32; 0] = [];
     assert!(empty.is_sorted());
 
-    println!("{:?}", unsafe { std::intrinsics::caller_location() });
+    println!("{:?}", std::intrinsics::caller_location());
 
     unsafe {
         test_simd();

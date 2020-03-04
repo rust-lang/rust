@@ -94,7 +94,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_native_library(&mut self, name: syntax::ast::Name) {
+    fn add_native_library(&mut self, name: rustc_ast::ast::Name) {
         let location = find_library(name, &self.config.lib_search_paths, self.config.sess);
         self.add_archive(location.clone(), |_| false)
             .unwrap_or_else(|e| {

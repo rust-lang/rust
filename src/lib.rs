@@ -17,7 +17,7 @@ extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-extern crate syntax;
+extern crate rustc_ast;
 
 use std::any::Any;
 
@@ -67,7 +67,7 @@ mod prelude {
     pub use std::collections::{HashMap, HashSet};
     pub use std::convert::{TryFrom, TryInto};
 
-    pub use syntax::ast::{FloatTy, IntTy, UintTy};
+    pub use rustc_ast::ast::{FloatTy, IntTy, UintTy};
     pub use rustc_span::{Pos, Span};
 
     pub use rustc::bug;
