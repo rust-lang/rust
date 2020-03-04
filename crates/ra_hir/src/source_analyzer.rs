@@ -7,7 +7,6 @@
 //! purely for "IDE needs".
 use std::{iter::once, sync::Arc};
 
-use either::Either;
 use hir_def::{
     body::{
         scope::{ExprScopes, ScopeId},
@@ -21,7 +20,7 @@ use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
 use ra_syntax::{
     ast::{self, AstNode},
-    AstPtr, SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
 
 use crate::{
@@ -249,38 +248,6 @@ impl SourceAnalyzer {
         // This must be a normal source file rather than macro file.
         let hir_path = crate::Path::from_ast(path.clone())?;
         resolve_hir_path(db, &self.resolver, &hir_path)
-    }
-
-    fn resolve_local_name(
-        &self,
-        name_ref: &ast::NameRef,
-    ) -> Option<Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>> {
-        let name = name_ref.as_name();
-        let source_map = self.body_source_map.as_ref()?;
-        let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, InFile::new(self.file_id, name_ref.syntax()))?;
-        let entry = scopes.resolve_name_in_scope(scope, &name)?;
-        Some(source_map.pat_syntax(entry.pat())?.value)
-    }
-
-    // FIXME: we only use this in `inline_local_variable` assist, ideally, we
-    // should switch to general reference search infra there.
-    pub(crate) fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
-        let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let ptr = Either::Left(AstPtr::new(&ast::Pat::from(pat.clone())));
-        fn_def
-            .syntax()
-            .descendants()
-            .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| match self.resolve_local_name(&name_ref) {
-                None => false,
-                Some(d_ptr) => d_ptr == ptr,
-            })
-            .map(|name_ref| ReferenceDescriptor {
-                name: name_ref.text().to_string(),
-                range: name_ref.syntax().text_range(),
-            })
-            .collect()
     }
 
     pub(crate) fn expand(
