@@ -1,3 +1,4 @@
+use ra_ide_db::defs::Definition;
 use ra_syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -37,6 +38,15 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
     let initializer_expr = let_stmt.initializer()?;
+
+    let def = ctx.sema.to_def(&bind_pat)?;
+    let def = Definition::Local(def);
+    let refs = def.find_usages(ctx.db, None);
+    if refs.is_empty() {
+        tested_by!(test_not_applicable_if_variable_unused);
+        return None;
+    };
+
     let delete_range = if let Some(whitespace) = let_stmt
         .syntax()
         .next_sibling_or_token()
@@ -49,16 +59,14 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
     } else {
         let_stmt.syntax().text_range()
     };
-    let refs = ctx.sema.find_all_refs(&bind_pat);
-    if refs.is_empty() {
-        return None;
-    };
 
     let mut wrap_in_parens = vec![true; refs.len()];
 
     for (i, desc) in refs.iter().enumerate() {
-        let usage_node =
-            ctx.covering_node_for_range(desc.range).ancestors().find_map(ast::PathExpr::cast)?;
+        let usage_node = ctx
+            .covering_node_for_range(desc.file_range.range)
+            .ancestors()
+            .find_map(ast::PathExpr::cast)?;
         let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
         let usage_parent = match usage_parent_option {
             Some(u) => u,
@@ -103,11 +111,9 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         move |edit: &mut ActionBuilder| {
             edit.delete(delete_range);
             for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
-                if should_wrap {
-                    edit.replace(desc.range, init_in_paren.clone())
-                } else {
-                    edit.replace(desc.range, init_str.clone())
-                }
+                let replacement =
+                    if should_wrap { init_in_paren.clone() } else { init_str.clone() };
+                edit.replace(desc.file_range.range, replacement)
             }
             edit.set_cursor(delete_range.start())
         },
@@ -657,6 +663,7 @@ fn foo() {
 
     #[test]
     fn test_not_applicable_if_variable_unused() {
+        covers!(test_not_applicable_if_variable_unused);
         check_assist_not_applicable(
             inline_local_variable,
             r"

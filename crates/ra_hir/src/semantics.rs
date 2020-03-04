@@ -19,7 +19,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, ReferenceDescriptor, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Function, HirFileId, InFile, Local, MacroDef, Module, ModuleDef, Name, Origin, Path,
     PathResolution, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
@@ -169,12 +169,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db, DB> {
         let resolver = def.id.resolver(self.db);
         SemanticsScope { db: self.db, resolver }
-    }
-
-    // FIXME: we only use this in `inline_local_variable` assist, ideally, we
-    // should switch to general reference search infra there.
-    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
-        self.analyze(pat.syntax()).find_all_refs(pat)
     }
 
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
