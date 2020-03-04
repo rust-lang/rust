@@ -4,11 +4,15 @@
 
 use std::ops::{Generator, GeneratorState};
 
+fn mkstr(my_name: String, my_mood: String) -> String {
+    format!("{} is {}", my_name.trim(), my_mood.trim())
+}
+
 fn my_scenario() -> impl Generator<String, Yield = &'static str, Return = String> {
     |_arg: String| {
         let my_name = yield "What is your name?";
         let my_mood = yield "How are you feeling?";
-        format!("{} is {}", my_name.trim(), my_mood.trim())
+        mkstr(my_name, my_mood)
     }
 }
 
