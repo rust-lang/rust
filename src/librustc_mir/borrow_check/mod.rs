@@ -468,11 +468,10 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
     /// when errors in the map are being re-added to the error buffer so that errors with the
     /// same primary span come out in a consistent order.
-    move_error_reported:
-        BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx, 'tcx>, DiagnosticBuilder<'cx>)>,
+    move_error_reported: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'cx>)>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    uninitialized_error_reported: FxHashSet<PlaceRef<'tcx, 'tcx>>,
+    uninitialized_error_reported: FxHashSet<PlaceRef<'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
@@ -1528,7 +1527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'tcx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         let maybe_uninits = &flow_state.uninits;
@@ -1594,7 +1593,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'tcx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx>, Span),
         maybe_uninits: &BitSet<MovePathIndex>,
         from: u32,
         to: u32,
@@ -1633,7 +1632,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        place_span: (PlaceRef<'tcx, 'tcx>, Span),
+        place_span: (PlaceRef<'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         let maybe_uninits = &flow_state.uninits;
@@ -1711,10 +1710,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// An Err result includes a tag indicated why the search failed.
     /// Currently this can only occur if the place is built off of a
     /// static variable, as we do not track those in the MoveData.
-    fn move_path_closest_to(
-        &mut self,
-        place: PlaceRef<'tcx, 'tcx>,
-    ) -> (PlaceRef<'tcx, 'tcx>, MovePathIndex) {
+    fn move_path_closest_to(&mut self, place: PlaceRef<'tcx>) -> (PlaceRef<'tcx>, MovePathIndex) {
         match self.move_data.rev_lookup.find(place) {
             LookupResult::Parent(Some(mpi)) | LookupResult::Exact(mpi) => {
                 (self.move_data.move_paths[mpi].place.as_ref(), mpi)
@@ -1723,7 +1719,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn move_path_for_place(&mut self, place: PlaceRef<'tcx, 'tcx>) -> Option<MovePathIndex> {
+    fn move_path_for_place(&mut self, place: PlaceRef<'tcx>) -> Option<MovePathIndex> {
         // If returns None, then there is no move path corresponding
         // to a direct owner of `place` (which means there is nothing
         // that borrowck tracks for its analysis).
@@ -1818,7 +1814,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         fn check_parent_of_field<'cx, 'tcx>(
             this: &mut MirBorrowckCtxt<'cx, 'tcx>,
             location: Location,
-            base: PlaceRef<'tcx, 'tcx>,
+            base: PlaceRef<'tcx>,
             span: Span,
             flow_state: &Flows<'cx, 'tcx>,
         ) {
@@ -2067,9 +2063,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns the root place if the place passed in is a projection.
     fn is_mutable(
         &self,
-        place: PlaceRef<'tcx, 'tcx>,
+        place: PlaceRef<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx, 'tcx>> {
+    ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx>> {
         match place {
             PlaceRef { local, projection: [] } => {
                 let local = &self.body.local_decls[local];
@@ -2220,7 +2216,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// then returns the index of the field being projected. Note that this closure will always
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
-    pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx, 'tcx>) -> Option<Field> {
+    pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
         let mut place_projection = place_ref.projection;
         let mut by_ref = false;
 
