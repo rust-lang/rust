@@ -4,6 +4,9 @@
 //! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]

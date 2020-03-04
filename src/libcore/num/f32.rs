@@ -4,6 +4,9 @@
 //! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -14,17 +17,21 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f32`.
+/// Use [`f32::RADIX`](../../std/primitive.f32.html#associatedconstant.RADIX) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
+/// Use [`f32::MANTISSA_DIGITS`](../../std/primitive.f32.html#associatedconstant.MANTISSA_DIGITS) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// Approximate number of significant digits in base 10.
+/// Use [`f32::DIGITS`](../../std/primitive.f32.html#associatedconstant.DIGITS) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
+/// Use [`f32::EPSILON`](../../std/primitive.f32.html#associatedconstant.EPSILON) instead.
 ///
 /// This is the difference between `1.0` and the next larger representable number.
 ///
@@ -33,36 +40,46 @@ pub const DIGITS: u32 = f32::DIGITS;
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
+/// Use [`f32::MIN`](../../std/primitive.f32.html#associatedconstant.MIN) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: f32 = f32::MIN;
 /// Smallest positive normal `f32` value.
+/// Use [`f32::MIN_POSITIVE`](../../std/primitive.f32.html#associatedconstant.MIN_POSITIVE) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// Largest finite `f32` value.
+/// Use [`f32::MAX`](../../std/primitive.f32.html#associatedconstant.MAX) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
+/// Use [`f32::MIN_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// Maximum possible power of 2 exponent.
+/// Use [`f32::MAX_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
+/// Use [`f32::MIN_10_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_10_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// Maximum possible power of 10 exponent.
+/// Use [`f32::MAX_10_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_10_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
+/// Use [`f32::NAN`](../../std/primitive.f32.html#associatedconstant.NAN) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f32 = f32::NAN;
 /// Infinity (∞).
+/// Use [`f32::INFINITY`](../../std/primitive.f32.html#associatedconstant.INFINITY) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f32 = f32::INFINITY;
 /// Negative infinity (−∞).
+/// Use [`f32::NEG_INFINITY`](../../std/primitive.f32.html#associatedconstant.NEG_INFINITY) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
@@ -154,15 +171,15 @@ pub mod consts {
 #[cfg(not(test))]
 impl f32 {
     /// The radix or base of the internal representation of `f32`.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const RADIX: u32 = 2;
 
     /// Number of significant digits in base 2.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 24;
 
     /// Approximate number of significant digits in base 10.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const DIGITS: u32 = 6;
 
     /// [Machine epsilon] value for `f32`.
@@ -170,48 +187,46 @@ impl f32 {
     /// This is the difference between `1.0` and the next larger representable number.
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const EPSILON: f32 = 1.19209290e-07_f32;
 
     /// Smallest finite `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN: f32 = -3.40282347e+38_f32;
     /// Smallest positive normal `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
     /// Largest finite `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f32 = 3.40282347e+38_f32;
 
     /// One greater than the minimum possible normal power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -125;
     /// Maximum possible power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 128;
 
     /// Minimum possible normal power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_10_EXP: i32 = -37;
     /// Maximum possible power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 38;
 
     /// Not a Number (NaN).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
     /// Negative infinity (-∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
     /// Returns `true` if this value is `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let nan = f32::NAN;
     /// let f = 7.0_f32;
     ///
@@ -236,8 +251,6 @@ impl f32 {
     /// `false` otherwise.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 7.0f32;
     /// let inf = f32::INFINITY;
     /// let neg_inf = f32::NEG_INFINITY;
@@ -258,8 +271,6 @@ impl f32 {
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 7.0f32;
     /// let inf = f32::INFINITY;
     /// let neg_inf = f32::NEG_INFINITY;
@@ -283,8 +294,6 @@ impl f32 {
     /// [subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
     /// let max = f32::MAX;
     /// let lower_than_min = 1.0e-40_f32;
@@ -312,7 +321,6 @@ impl f32 {
     ///
     /// ```
     /// use std::num::FpCategory;
-    /// use std::f32;
     ///
     /// let num = 12.4_f32;
     /// let inf = f32::INFINITY;
@@ -372,8 +380,6 @@ impl f32 {
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
     ///
@@ -388,7 +394,7 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// use std::f32::{self, consts};
+    /// use std::f32::consts;
     ///
     /// let angle = consts::PI;
     ///
@@ -407,7 +413,7 @@ impl f32 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// use std::f32::{self, consts};
+    /// use std::f32::consts;
     ///
     /// let angle = 180.0f32;
     ///
