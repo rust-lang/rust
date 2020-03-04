@@ -524,7 +524,7 @@ impl DepGraph {
             edge_list_indices.push((start, end));
         }
 
-        debug_assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
+        debug_assert!(edge_list_data.len() <= u32::MAX as usize);
         debug_assert_eq!(edge_list_data.len(), total_edge_count);
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data }

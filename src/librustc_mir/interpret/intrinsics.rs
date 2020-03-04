@@ -203,7 +203,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if is_add {
                             // max unsigned
                             Scalar::from_uint(
-                                u128::max_value() >> (128 - num_bits),
+                                u128::MAX >> (128 - num_bits),
                                 Size::from_bits(num_bits),
                             )
                         } else {
@@ -381,11 +381,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
-        // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`.
+        // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
         let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
         if overflow || res.assert_bits(a.layout.size) != 0 {
-            // Then, check if `b` is -1, which is the "min_value / -1" case.
+            // Then, check if `b` is -1, which is the "MIN / -1" case.
             let minus1 = Scalar::from_int(-1, dest.layout.size);
             let b_scalar = b.to_scalar().unwrap();
             if b_scalar == minus1 {
