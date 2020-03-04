@@ -96,7 +96,7 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_text;
+    use test_utils::{assert_eq_text, covers};
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -208,6 +208,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros() {
+        covers!(ra_ide_db::goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -224,6 +225,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros_from_other_crates() {
+        covers!(ra_ide_db::goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -335,6 +337,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_methods() {
+        covers!(ra_ide_db::goto_def_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -354,6 +357,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_fields() {
+        covers!(ra_ide_db::goto_def_for_fields);
         check_goto(
             "
             //- /lib.rs
@@ -372,6 +376,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_record_fields() {
+        covers!(ra_ide_db::goto_def_for_record_fields);
         check_goto(
             "
             //- /lib.rs
@@ -784,6 +789,7 @@ mod tests {
 
     #[test]
     fn goto_def_for_field_init_shorthand() {
+        covers!(ra_ide_db::goto_def_for_field_init_shorthand);
         check_goto(
             "
             //- /lib.rs
