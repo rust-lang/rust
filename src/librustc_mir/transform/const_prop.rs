@@ -545,7 +545,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_ty = left.ty(&self.local_decls, self.tcx);
             let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
             let right_size = r.layout.size;
-            let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
+            let r_bits = r.to_scalar().ok();
+            // This is basically `force_bits`.
+            let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
             if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,

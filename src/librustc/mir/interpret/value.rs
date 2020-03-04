@@ -170,6 +170,10 @@ impl<Tag> From<Double> for Scalar<Tag> {
 }
 
 impl Scalar<()> {
+    /// Make sure the `data` fits in `size`.
+    /// This is guaranteed by all constructors here, but since the enum variants are public,
+    /// it could still be violated (even though no code outside this file should
+    /// construct `Scalar`s).
     #[inline(always)]
     fn check_data(data: u128, size: u8) {
         debug_assert_eq!(
@@ -364,10 +368,10 @@ impl<'tcx, Tag> Scalar<Tag> {
         target_size: Size,
         cx: &impl HasDataLayout,
     ) -> Result<u128, Pointer<Tag>> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -378,19 +382,15 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    #[inline(always)]
-    pub fn check_raw(data: u128, size: u8, target_size: Size) {
-        assert_eq!(target_size.bytes(), size as u64);
-        assert_ne!(size, 0, "you should never look at the bits of a ZST");
-        Scalar::check_data(data, size);
-    }
-
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
+    /// This method is intentionally private!
+    /// It is just a helper for other methods in this file.
     #[inline]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+    fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                Self::check_raw(data, size, target_size);
+                assert_eq!(target_size.bytes(), size as u64);
+                Scalar::check_data(data, size);
                 Ok(data)
             }
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
@@ -402,20 +402,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
     }
 
-    /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
-    /// This method is intentionally private, do not make it public.
     #[inline]
-    fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        match self {
-            Scalar::Raw { data: 0, .. } => throw_unsup!(InvalidNullPointerUsage),
-            Scalar::Raw { .. } => throw_unsup!(ReadBytesAsPointer),
-            Scalar::Ptr(p) => Ok(p),
-        }
-    }
-
-    #[inline(always)]
     pub fn assert_ptr(self) -> Pointer<Tag> {
-        self.to_ptr().expect("expected a Pointer but got Raw bits")
+        match self {
+            Scalar::Ptr(p) => p,
+            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits"),
+        }
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
@@ -593,12 +585,6 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
         }
-    }
-
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
-    #[inline(always)]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
-        self.not_undef()?.to_bits(target_size)
     }
 
     #[inline(always)]

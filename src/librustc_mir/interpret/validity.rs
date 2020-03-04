@@ -322,16 +322,17 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                let size = value.layout.size;
                 let value = value.to_scalar_or_undef();
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                    try_validation!(
-                        value.to_bits(size),
-                        value,
-                        self.path,
-                        "initialized plain (non-pointer) bytes"
-                    );
+                    let is_bits = value.not_undef().map_or(false, |v| v.is_bits());
+                    if !is_bits {
+                        throw_validation_failure!(
+                            value,
+                            self.path,
+                            "initialized plain (non-pointer) bytes"
+                        )
+                    }
                 } else {
                     // At run-time, for now, we accept *anything* for these types, including
                     // undef. We should fix that, but let's start low.

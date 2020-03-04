@@ -1396,21 +1396,19 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            let val = if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, size })) =
-                value.val
-            {
-                // For this specific pattern we can skip a lot of effort and go
-                // straight to the result, after doing a bit of checking. (We
-                // could remove this branch and just use the next branch, which
-                // is more general but much slower.)
-                Scalar::<()>::check_raw(data, size, target_size);
-                data
-            } else if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
-                // This is a more general form of the previous branch.
-                val
-            } else {
-                return None;
-            };
+            let val = (|| {
+                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
+                    // For this specific pattern we can skip a lot of effort and go
+                    // straight to the result, after doing a bit of checking. (We
+                    // could remove this branch and just fall through, which
+                    // is more general but much slower.)
+                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size, &tcx) {
+                        return Some(bits);
+                    }
+                }
+                // This is a more general form of the previous case.
+                value.try_eval_bits(tcx, param_env, ty)
+            })()?;
             let val = val ^ bias;
             Some(IntRange { range: val..=val, ty, span })
         } else {
