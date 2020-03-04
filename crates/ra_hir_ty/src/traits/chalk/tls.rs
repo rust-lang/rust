@@ -69,6 +69,11 @@ impl DebugContext<'_> {
                 let name = self.0.type_alias_data(type_alias).name.clone();
                 write!(f, "{}::{}", trait_name, name)?;
             }
+            TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
+                crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                    write!(f, "{{impl trait {} of {:?}}}", idx, func)?;
+                }
+            },
             TypeCtor::Closure { def, expr } => {
                 write!(f, "{{closure {:?} in ", expr.into_raw())?;
                 match def {

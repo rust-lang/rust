@@ -1110,7 +1110,6 @@ fn test() {
 }
 
 #[test]
-#[ignore]
 fn impl_trait() {
     assert_snapshot!(
         infer(r#"
@@ -1156,6 +1155,52 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     244..252 'y.foo2()': i64
     258..259 'z': impl Trait<u64>
     258..266 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn return_pos_impl_trait() {
+    assert_snapshot!(
+        infer(r#"
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Self::Item;
+}
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>) { loop {} }
+fn baz<T>(t: T) -> (impl Iterator<Item = impl Trait<T>>, impl Trait<T>) { loop {} }
+
+fn test() {
+    // let (a, b) = bar();
+    // a.next().foo();
+    // b.foo();
+    let (c, d) = baz(1u128);
+    c.next();//.foo();
+    // d.foo();
+}
+"#),
+        @r###"
+    50..54 'self': &mut Self
+    102..106 'self': &Self
+    185..196 '{ loop {} }': ({unknown}, {unknown})
+    187..194 'loop {}': !
+    192..194 '{}': ()
+    207..208 't': T
+    269..280 '{ loop {} }': ({unknown}, {unknown})
+    271..278 'loop {}': !
+    276..278 '{}': ()
+    292..429 '{     ...o(); }': ()
+    368..374 '(c, d)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    369..370 'c': impl Iterator<Item = impl Trait<u128>>
+    372..373 'd': impl Trait<u128>
+    377..380 'baz': fn baz<u128>(u128) -> (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    377..387 'baz(1u128)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    381..386 '1u128': u128
+    393..394 'c': impl Iterator<Item = impl Trait<u128>>
+    393..401 'c.next()': impl Trait<u128>
     "###
     );
 }

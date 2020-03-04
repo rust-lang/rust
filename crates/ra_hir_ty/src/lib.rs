@@ -147,6 +147,12 @@ pub enum TypeCtor {
     /// an **application type** like `(Iterator::Item)<T>`.
     AssociatedType(TypeAliasId),
 
+    /// This represents a placeholder for an opaque type in situations where we
+    /// don't know the hidden type (i.e. currently almost always). This is
+    /// analogous to the `AssociatedType` type constructor. As with that one,
+    /// these are only produced by Chalk.
+    OpaqueType(OpaqueTyId),
+
     /// The type of a specific closure.
     ///
     /// The closure signature is stored in a `FnPtr` type in the first type
@@ -194,6 +200,14 @@ impl TypeCtor {
                 let generic_params = generics(db.upcast(), type_alias.into());
                 generic_params.len()
             }
+            TypeCtor::OpaqueType(opaque_ty_id) => {
+                match opaque_ty_id {
+                    OpaqueTyId::ReturnTypeImplTrait(func, _) => {
+                        let generic_params = generics(db.upcast(), func.into());
+                        generic_params.len()
+                    }
+                }
+            }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
             TypeCtor::Tuple { cardinality } => cardinality as usize,
         }
@@ -220,6 +234,11 @@ impl TypeCtor {
             TypeCtor::AssociatedType(type_alias) => {
                 Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
             }
+            TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
+                OpaqueTyId::ReturnTypeImplTrait(func, _) => {
+                    Some(func.lookup(db.upcast()).module(db.upcast()).krate)
+                }
+            },
         }
     }
 
@@ -241,6 +260,7 @@ impl TypeCtor {
             TypeCtor::Adt(adt) => Some(adt.into()),
             TypeCtor::FnDef(callable) => Some(callable.into()),
             TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
+            TypeCtor::OpaqueType(_impl_trait_id) => None,
         }
     }
 }
@@ -251,6 +271,12 @@ impl TypeCtor {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ApplicationTy {
     pub ctor: TypeCtor,
+    pub parameters: Substs,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct OpaqueTy {
+    pub opaque_ty_id: OpaqueTyId,
     pub parameters: Substs,
 }
 
@@ -308,6 +334,12 @@ pub enum Ty {
     /// trait and all its parameters are fully known.
     Projection(ProjectionTy),
 
+    /// An opaque type (`impl Trait`).
+    ///
+    /// This is currently only used for return type impl trait; each instance of
+    /// `impl Trait` in a return type gets its own ID.
+    Opaque(OpaqueTy),
+
     /// A placeholder for a type parameter; for example, `T` in `fn f<T>(x: T)
     /// {}` when we're type-checking the body of that function. In this
     /// situation, we know this stands for *some* type, but don't know the exact
@@ -331,12 +363,6 @@ pub enum Ty {
     /// implicit; Chalk has the `Binders` struct to make it explicit, but it
     /// didn't seem worth the overhead yet.
     Dyn(Arc<[GenericPredicate]>),
-
-    /// An opaque type (`impl Trait`).
-    ///
-    /// The predicates are quantified over the `Self` type; see `Ty::Dyn` for
-    /// more.
-    Opaque(Arc<[GenericPredicate]>),
 
     /// A placeholder for a type which could not be computed; this is propagated
     /// to avoid useless error messages. Doubles as a placeholder where type
@@ -490,7 +516,7 @@ impl Deref for Substs {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Binders<T> {
     pub num_binders: usize,
     pub value: T,
@@ -531,6 +557,20 @@ impl<T: TypeWalk> Binders<T> {
     pub fn subst_prefix(self, subst: &Substs) -> Binders<T> {
         assert!(subst.len() < self.num_binders);
         Binders::new(self.num_binders - subst.len(), self.value.subst_bound_vars(subst))
+    }
+}
+
+impl<T: TypeWalk> TypeWalk for Binders<T> {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.value.walk(f);
+    }
+
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        self.value.walk_mut_binders(f, binders.shifted_in())
     }
 }
 
@@ -947,9 +987,14 @@ impl TypeWalk for Ty {
                     t.walk(f);
                 }
             }
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+            Ty::Dyn(predicates) => {
                 for p in predicates.iter() {
                     p.walk(f);
+                }
+            }
+            Ty::Opaque(o_ty) => {
+                for t in o_ty.parameters.iter() {
+                    t.walk(f);
                 }
             }
             Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
@@ -969,13 +1014,48 @@ impl TypeWalk for Ty {
             Ty::Projection(p_ty) => {
                 p_ty.parameters.walk_mut_binders(f, binders);
             }
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+            Ty::Dyn(predicates) => {
                 for p in make_mut_slice(predicates) {
                     p.walk_mut_binders(f, binders.shifted_in());
                 }
+            }
+            Ty::Opaque(o_ty) => {
+                o_ty.parameters.walk_mut_binders(f, binders);
             }
             Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self, binders);
     }
+}
+
+impl<T: TypeWalk> TypeWalk for Vec<T> {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        for t in self {
+            t.walk(f);
+        }
+    }
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        for t in self {
+            t.walk_mut_binders(f, binders);
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum OpaqueTyId {
+    ReturnTypeImplTrait(hir_def::FunctionId, u16),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct ReturnTypeImplTraits {
+    pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct ReturnTypeImplTrait {
+    pub(crate) bounds: Binders<Vec<GenericPredicate>>,
 }

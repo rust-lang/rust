@@ -359,6 +359,21 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ">")?;
                 }
             }
+            TypeCtor::OpaqueType(opaque_ty_id) => {
+                let bounds = match opaque_ty_id {
+                    crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                        let datas =
+                            f.db.return_type_impl_traits(func).expect("impl trait id without data");
+                        let data = (*datas)
+                            .as_ref()
+                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                        data.clone().subst(&self.parameters)
+                    }
+                };
+                write!(f, "impl ")?;
+                write_bounds_like_dyn_trait(&bounds.value, f)?;
+                // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
+            }
             TypeCtor::Closure { .. } => {
                 let sig = self.parameters[0].callable_sig(f.db);
                 if let Some(sig) = sig {
@@ -427,13 +442,23 @@ impl HirDisplay for Ty {
                 }
             }
             Ty::Bound(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                match self {
-                    Ty::Dyn(_) => write!(f, "dyn ")?,
-                    Ty::Opaque(_) => write!(f, "impl ")?,
-                    _ => unreachable!(),
-                };
+            Ty::Dyn(predicates) => {
+                write!(f, "dyn ")?;
                 write_bounds_like_dyn_trait(predicates, f)?;
+            }
+            Ty::Opaque(opaque_ty) => {
+                let bounds = match opaque_ty.opaque_ty_id {
+                    crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                        let datas =
+                            f.db.return_type_impl_traits(func).expect("impl trait id without data");
+                        let data = (*datas)
+                            .as_ref()
+                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                        data.clone().subst(&opaque_ty.parameters)
+                    }
+                };
+                write!(f, "impl ")?;
+                write_bounds_like_dyn_trait(&bounds.value, f)?;
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
