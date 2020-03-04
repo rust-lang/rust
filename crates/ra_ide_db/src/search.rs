@@ -5,12 +5,31 @@
 use std::mem;
 
 use hir::{DefWithBody, HasSource, ModuleSource};
-use ra_db::{FileId, SourceDatabaseExt};
+use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{AstNode, TextRange};
 use rustc_hash::FxHashMap;
 
 use crate::{defs::Definition, RootDatabase};
+
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub file_range: FileRange,
+    pub kind: ReferenceKind,
+    pub access: Option<ReferenceAccess>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReferenceKind {
+    StructLiteral,
+    Other,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ReferenceAccess {
+    Read,
+    Write,
+}
 
 pub struct SearchScope {
     entries: FxHashMap<FileId, Option<TextRange>>,
