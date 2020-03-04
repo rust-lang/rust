@@ -181,6 +181,15 @@ pub(crate) fn parse_macro(
                         err,
                         node.value
                     );
+                    
+                    let mut parent = loc.kind.file_id().call_node(db);                    
+                    while let Some(node) = parent.clone() {
+                        log::warn!(
+                            "parent: macro_call: {:#})",
+                            node.value
+                        );
+                        parent = node.file_id.call_node(db);
+                    }
                 }
                 _ => {
                     log::warn!("fail on macro_parse: (reason: {})", err);
