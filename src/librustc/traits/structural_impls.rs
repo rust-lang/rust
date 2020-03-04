@@ -415,9 +415,9 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
             }
-            super::ObjectTypeBound(ty, r) => tcx
-                .lift(&ty)
-                .and_then(|ty| tcx.lift(&r).and_then(|r| Some(super::ObjectTypeBound(ty, r)))),
+            super::ObjectTypeBound(ty, r) => {
+                tcx.lift(&ty).and_then(|ty| tcx.lift(&r).map(|r| super::ObjectTypeBound(ty, r)))
+            }
             super::ObjectCastObligation(ty) => tcx.lift(&ty).map(super::ObjectCastObligation),
             super::Coercion { source, target } => {
                 Some(super::Coercion { source: tcx.lift(&source)?, target: tcx.lift(&target)? })
