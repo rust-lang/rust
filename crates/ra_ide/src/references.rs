@@ -10,11 +10,11 @@
 //! resolved to the search element definition, we get a reference.
 
 mod rename;
-mod search_scope;
 
 use hir::Semantics;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
+    search::SearchScope,
     RootDatabase,
 };
 use ra_prof::profile;
@@ -28,7 +28,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 
 pub(crate) use self::rename::rename;
 
-pub use ra_ide_db::search::{Reference, ReferenceAccess, ReferenceKind, SearchScope};
+pub use ra_ide_db::search::{Reference, ReferenceAccess, ReferenceKind};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {

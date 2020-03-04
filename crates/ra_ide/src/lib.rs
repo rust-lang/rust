@@ -68,9 +68,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
     inlay_hints::{InlayHint, InlayKind},
-    references::{
-        Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
-    },
+    references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     ssr::SsrError,
@@ -88,6 +86,7 @@ pub use ra_ide_db::{
     feature_flags::FeatureFlags,
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
+    search::SearchScope,
     symbol_index::Query,
     RootDatabase,
 };

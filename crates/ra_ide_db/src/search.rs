@@ -55,16 +55,58 @@ impl SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
-    pub fn for_def(def: &Definition, db: &RootDatabase) -> SearchScope {
+    pub fn intersection(&self, other: &SearchScope) -> SearchScope {
+        let (mut small, mut large) = (&self.entries, &other.entries);
+        if small.len() > large.len() {
+            mem::swap(&mut small, &mut large)
+        }
+
+        let res = small
+            .iter()
+            .filter_map(|(file_id, r1)| {
+                let r2 = large.get(file_id)?;
+                let r = intersect_ranges(*r1, *r2)?;
+                Some((*file_id, r))
+            })
+            .collect();
+
+        return SearchScope::new(res);
+
+        fn intersect_ranges(
+            r1: Option<TextRange>,
+            r2: Option<TextRange>,
+        ) -> Option<Option<TextRange>> {
+            match (r1, r2) {
+                (None, r) | (r, None) => Some(r),
+                (Some(r1), Some(r2)) => {
+                    let r = r1.intersection(&r2)?;
+                    Some(Some(r))
+                }
+            }
+        }
+    }
+}
+
+impl IntoIterator for SearchScope {
+    type Item = (FileId, Option<TextRange>);
+    type IntoIter = std::collections::hash_map::IntoIter<FileId, Option<TextRange>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.into_iter()
+    }
+}
+
+impl Definition {
+    fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = profile("search_scope");
-        let module = match def.module(db) {
+        let module = match self.module(db) {
             Some(it) => it,
             None => return SearchScope::empty(),
         };
         let module_src = module.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
-        if let Definition::Local(var) = def {
+        if let Definition::Local(var) = self {
             let range = match var.parent(db) {
                 DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
                 DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
@@ -75,7 +117,7 @@ impl SearchScope {
             return SearchScope::new(res);
         }
 
-        let vis = def.visibility(db).as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
+        let vis = self.visibility(db).as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
 
         if vis.as_str() == "pub(super)" {
             if let Some(parent_module) = module.parent(db) {
@@ -131,48 +173,6 @@ impl SearchScope {
         SearchScope::new(res)
     }
 
-    pub fn intersection(&self, other: &SearchScope) -> SearchScope {
-        let (mut small, mut large) = (&self.entries, &other.entries);
-        if small.len() > large.len() {
-            mem::swap(&mut small, &mut large)
-        }
-
-        let res = small
-            .iter()
-            .filter_map(|(file_id, r1)| {
-                let r2 = large.get(file_id)?;
-                let r = intersect_ranges(*r1, *r2)?;
-                Some((*file_id, r))
-            })
-            .collect();
-
-        return SearchScope::new(res);
-
-        fn intersect_ranges(
-            r1: Option<TextRange>,
-            r2: Option<TextRange>,
-        ) -> Option<Option<TextRange>> {
-            match (r1, r2) {
-                (None, r) | (r, None) => Some(r),
-                (Some(r1), Some(r2)) => {
-                    let r = r1.intersection(&r2)?;
-                    Some(Some(r))
-                }
-            }
-        }
-    }
-}
-
-impl IntoIterator for SearchScope {
-    type Item = (FileId, Option<TextRange>);
-    type IntoIter = std::collections::hash_map::IntoIter<FileId, Option<TextRange>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.entries.into_iter()
-    }
-}
-
-impl Definition {
     pub fn find_usages(
         &self,
         db: &RootDatabase,
@@ -181,7 +181,7 @@ impl Definition {
         let _p = profile("Definition::find_usages");
 
         let search_scope = {
-            let base = SearchScope::for_def(self, db);
+            let base = self.search_scope(db);
             match search_scope {
                 None => base,
                 Some(scope) => base.intersection(&scope),
