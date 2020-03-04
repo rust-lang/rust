@@ -303,7 +303,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, place: PlaceRef<'cx, 'tcx>, field: Field) -> String {
+    fn describe_field(&self, place: PlaceRef<'tcx, 'tcx>, field: Field) -> String {
         // FIXME Place2 Make this work iteratively
         match place {
             PlaceRef { local, projection: [] } => {
