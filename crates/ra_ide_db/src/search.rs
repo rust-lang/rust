@@ -1,7 +1,9 @@
-//! Generally, `search_scope` returns files that might contain references for the element.
-//! For `pub(crate)` things it's a crate, for `pub` things it's a crate and dependant crates.
-//! In some cases, the location of the references is known to within a `TextRange`,
-//! e.g. for things like local variables.
+//! Implementation of find-usages functionality.
+//!
+//! It is based on the standard ide trick: first, we run a fast text search to
+//! get a super-set of matches. Then, we we confirm each match using precise
+//! name resolution.
+
 use std::mem;
 
 use hir::{DefWithBody, HasSource, ModuleSource, Semantics};
@@ -38,6 +40,10 @@ pub enum ReferenceAccess {
     Write,
 }
 
+/// Generally, `search_scope` returns files that might contain references for the element.
+/// For `pub(crate)` things it's a crate, for `pub` things it's a crate and dependant crates.
+/// In some cases, the location of the references is known to within a `TextRange`,
+/// e.g. for things like local variables.
 pub struct SearchScope {
     entries: FxHashMap<FileId, Option<TextRange>>,
 }
