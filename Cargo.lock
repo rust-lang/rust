@@ -2137,6 +2137,7 @@ dependencies = [
  "rustc-workspace-hack",
  "rustc_version",
  "serde",
+ "serde_json",
  "shell-escape",
  "vergen",
 ]
