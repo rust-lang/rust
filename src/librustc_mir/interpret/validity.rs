@@ -46,6 +46,8 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr, $details:expr) => {{
         match $e {
             Ok(x) => x,
+            // We re-throw the error, so we are okay with allocation:
+            // this can only slow down builds that fail anyway.
             Err(_) => throw_validation_failure!($what, $where, $details),
         }
     }};
@@ -53,6 +55,8 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr) => {{
         match $e {
             Ok(x) => x,
+            // We re-throw the error, so we are okay with allocation:
+            // this can only slow down builds that fail anyway.
             Err(_) => throw_validation_failure!($what, $where),
         }
     }};
@@ -359,10 +363,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         format_args!("a dangling {} (created from integer)", kind),
                         self.path
                     ),
-                    _ => throw_validation_failure!(
-                        format_args!("a dangling {} (not entirely in bounds)", kind),
-                        self.path
-                    ),
+                    err_unsup!(PointerOutOfBounds { .. }) | err_unsup!(DanglingPointerDeref) => {
+                        throw_validation_failure!(
+                            format_args!("a dangling {} (not entirely in bounds)", kind),
+                            self.path
+                        )
+                    }
+                    _ => bug!("Unexpected error during ptr inbounds test: {}", err),
                 }
             }
         };
@@ -638,6 +645,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 err_unsup!(ReadPointerAsBytes) => {
                     throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
                 }
+                // Propagate upwards (that will also check for unexpected errors).
                 _ => return Err(err),
             },
         }
@@ -797,7 +805,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Try to cast to ptr *once* instead of all the time.
         let op = self.force_op_ptr(op).unwrap_or(op);
 
-        // Run it
-        visitor.visit_value(op)
+        // Run it.
+        match visitor.visit_value(op) {
+            Ok(()) => Ok(()),
+            Err(err) if matches!(err.kind, err_unsup!(ValidationFailure { .. })) => Err(err),
+            Err(err) if cfg!(debug_assertions) => {
+                bug!("Unexpected error during validation: {}", err)
+            }
+            Err(err) => Err(err),
+        }
     }
 }
