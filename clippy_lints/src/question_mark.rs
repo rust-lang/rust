@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use crate::utils::paths::{OPTION, OPTION_NONE};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    higher, match_def_path, match_qpath, match_type, snippet_with_applicability, span_lint_and_then, SpanlessEq,
+    higher, match_def_path, match_qpath, match_type, snippet_with_applicability, span_lint_and_sugg, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -58,7 +58,7 @@ impl QuestionMark {
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let receiver_str = snippet_with_applicability(cx, subject.span, "..", &mut applicability);
+                let receiver_str = &Sugg::hir_with_applicability(cx, subject, "..", &mut applicability);
                 let mut replacement: Option<String> = None;
                 if let Some(else_) = else_ {
                     if_chain! {
@@ -77,19 +77,14 @@ impl QuestionMark {
                 }
 
                 if let Some(replacement_str) = replacement {
-                    span_lint_and_then(
+                    span_lint_and_sugg(
                         cx,
                         QUESTION_MARK,
                         expr.span,
                         "this block may be rewritten with the `?` operator",
-                        |db| {
-                            db.span_suggestion(
-                                expr.span,
-                                "replace it with",
-                                replacement_str,
-                                applicability,
-                            );
-                        }
+                        "replace it with",
+                        replacement_str,
+                        applicability,
                     )
                }
             }
@@ -124,19 +119,14 @@ impl QuestionMark {
                     if by_ref { ".as_ref()" } else { "" },
                 );
 
-                span_lint_and_then(
+                span_lint_and_sugg(
                     cx,
                     QUESTION_MARK,
                     expr.span,
                     "this if-let-else may be rewritten with the `?` operator",
-                    |db| {
-                        db.span_suggestion(
-                            expr.span,
-                            "replace it with",
-                            replacement,
-                            applicability,
-                        );
-                    }
+                    "replace it with",
+                    replacement,
+                    applicability,
                 )
             }
         }
