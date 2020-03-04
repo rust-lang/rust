@@ -58,7 +58,9 @@ pub use crate::intrinsics::transmute;
 ///
 /// # Examples
 ///
-/// Leak an I/O object, never closing the file:
+/// The canonical safe use of `mem::forget` is to circumvent a value's destructor
+/// implemented by the `Drop` trait. For example, this will leak a `File`, i.e. reclaim
+/// the space taken by the variable but never close the underlying system resource:
 ///
 /// ```no_run
 /// use std::mem;
@@ -68,8 +70,14 @@ pub use crate::intrinsics::transmute;
 /// mem::forget(file);
 /// ```
 ///
-/// The practical use cases for `forget` are rather specialized and mainly come
-/// up in unsafe or FFI code. For example:
+/// This is useful when the ownership of the underlying was previously
+/// transferred to code outside of Rust, for example by transmitting the raw
+/// file descriptor to C code.
+///
+/// # Relationship with `ManuallyDrop`
+///
+/// Using `mem::forget` to transmit memory ownership is error-prone and is best
+/// replaced with `ManuallyDrop`. Consider, for example, this code:
 ///
 /// ```
 /// use std::mem;
@@ -77,18 +85,25 @@ pub use crate::intrinsics::transmute;
 /// let mut v = vec![65, 122];
 /// // Build a `String` using the contents of `v`
 /// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), 2, v.capacity()) };
-/// // immediately leak `v` because its memory is now managed by `s`
-/// mem::forget(v);
+/// // leak `v` because its memory is now managed by `s`
+/// mem::forget(v);  // ERROR - v is invalid and must not be passed to a function
 /// assert_eq!(s, "Az");
 /// // `s` is implicitly dropped and its memory deallocated.
 /// ```
 ///
-/// The above is correct, but brittle. If code gets added between the construction of
-/// `String` and the invocation of `mem::forget()`, a panic within it will cause a double
-/// free because the same memory is handled by both `v` and `s`. This can be fixed by
-/// storing the result of `v.as_mut_ptr()` in a local variable and calling `mem::forget()`
-/// before `String::from_raw_parts`. This kind of issue can be more robustly prevented by
-/// using [`ManuallyDrop`], which is usually preferred for such cases:
+/// There are two issues with the above example:
+///
+/// * If more code were added between the construction of `String` and the invocation of
+///   `mem::forget()`, a panic within it would cause a double free because the same memory
+///   is handled by both `v` and `s`.
+/// * After calling `v.as_mut_ptr()` and transmitting the ownership of the data to `s`,
+///   the `v` value is invalid. Although moving a value to `mem::forget` (which won't
+///   inspect it) seems safe, some types have strict requirements on their values that
+///   make them invalid when dangling or no longer owned.  Using invalid values in any
+///   way, including passing them to or returning them from functions, constitutes
+///   undefined behavior and may break the assumptions made by the compiler.
+///
+/// Switching to `ManuallyDrop` avoids both issues:
 ///
 /// ```
 /// use std::mem::ManuallyDrop;
@@ -108,12 +123,15 @@ pub use crate::intrinsics::transmute;
 ///
 /// `ManuallyDrop` robustly prevents double-free because we disable `v`'s destructor
 /// before doing anything else. `mem::forget()` doesn't allow this because it consumes its
-/// argument, forcing us to call it only after extracting anything we need from `v`.
+/// argument, forcing us to call it only after extracting anything we need from `v`.  Even
+/// if a panic were introduced between construction of `ManuallyDrop` and building the
+/// string (which cannot happen in the code as shown), it would result in a leak and not a
+/// double free. In other words, `ManuallyDrop` errs on the side of leaking instead of
+/// erring on the side of dropping.
 ///
-/// Note that the above code cannot panic between construction of `ManuallyDrop` and
-/// building the string. But even if it could (after a modification), a panic there would
-/// result in a leak and not a double free. In other words, `ManuallyDrop` errs on the
-/// side of leaking instead of erring on the side of dropping.
+/// Also, `ManuallyDrop` prevents us from having to "touch" `v` after transferring the
+/// ownership to `s` - the final step of interacting with `v` to dispoe of it without
+/// running its destructor is entirely avoided.
 ///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
