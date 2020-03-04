@@ -215,6 +215,9 @@ impl Step for ToolStateCheck {
                             tool, old_state, state
                         );
                     } else {
+                        // This warning only appears in the logs, which most
+                        // people won't read. It's mostly here for testing and
+                        // debugging.
                         eprintln!(
                             "warning: Tool `{}` is not test-pass (is `{}`), \
                             this should be fixed before beta is branched.",
@@ -222,6 +225,8 @@ impl Step for ToolStateCheck {
                         );
                     }
                 }
+                // publish_toolstate.py will be responsible for creating
+                // comments/issues warning people if there is a regression.
             }
         }
 
@@ -230,7 +235,7 @@ impl Step for ToolStateCheck {
         }
 
         if builder.config.channel == "nightly" && env::var_os("TOOLSTATE_PUBLISH").is_some() {
-            commit_toolstate_change(&toolstates, in_beta_week);
+            commit_toolstate_change(&toolstates);
         }
     }
 
@@ -373,14 +378,12 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
 ///           if a private email by GitHub is wanted.
-fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool) {
-    let old_toolstate = read_old_toolstate();
-
+fn commit_toolstate_change(current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;
     for _ in 1..=5 {
         // Update the toolstate results (the new commit-to-toolstate mapping) in the toolstate repo.
-        change_toolstate(&current_toolstate, &old_toolstate, in_beta_week);
+        change_toolstate(&current_toolstate);
 
         // `git commit` failing means nothing to commit.
         let status = t!(Command::new("git")
@@ -429,31 +432,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData, in_beta_week: bool
     }
 }
 
-fn change_toolstate(
-    current_toolstate: &ToolstateData,
-    old_toolstate: &[RepoState],
-    in_beta_week: bool,
-) {
-    let mut regressed = false;
-    for repo_state in old_toolstate {
-        let tool = &repo_state.tool;
-        let state = repo_state.state();
-        let new_state = current_toolstate[tool.as_str()];
-
-        if new_state != state {
-            eprintln!("The state of `{}` has changed from `{}` to `{}`", tool, state, new_state);
-            if new_state < state {
-                if !NIGHTLY_TOOLS.iter().any(|(name, _path)| name == tool) {
-                    regressed = true;
-                }
-            }
-        }
-    }
-
-    if regressed && in_beta_week {
-        std::process::exit(1);
-    }
-
+fn change_toolstate(current_toolstate: &ToolstateData) {
     let commit = t!(std::process::Command::new("git").arg("rev-parse").arg("HEAD").output());
     let commit = t!(String::from_utf8(commit.stdout));
 
