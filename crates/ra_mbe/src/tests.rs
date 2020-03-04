@@ -825,6 +825,19 @@ fn test_tt_group() {
     )
     .assert_expand_items(r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
 }
+
+#[test]
+fn test_tt_composite() {
+    parse_macro(
+        r#"
+            macro_rules! foo {
+                 ($i:tt) => { 0 }
+            }
+    "#,
+    )
+    .assert_expand_items(r#"foo! { => }"#, r#"0"#);
+}
+
 #[test]
 fn test_lifetime() {
     parse_macro(

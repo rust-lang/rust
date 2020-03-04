@@ -155,6 +155,60 @@ impl<'a> TtIter<'a> {
         ok
     }
 
+    pub(crate) fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
+        let tt = self.next().ok_or_else(|| ())?.clone();
+        let punct = match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.spacing == tt::Spacing::Joint => {
+                punct
+            }
+            _ => return Ok(tt),
+        };
+
+        let (second, third) = match (self.peek_n(0), self.peek_n(1)) {
+            (
+                Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p2))),
+                Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p3))),
+            ) if p2.spacing == tt::Spacing::Joint => (p2.char, Some(p3.char)),
+            (Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p2))), _) => (p2.char, None),
+            _ => return Ok(tt),
+        };
+
+        match (punct.char, second, third) {
+            ('.', '.', Some('.'))
+            | ('.', '.', Some('='))
+            | ('<', '<', Some('='))
+            | ('>', '>', Some('=')) => {
+                let tt2 = self.next().unwrap().clone();
+                let tt3 = self.next().unwrap().clone();
+                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt, tt2, tt3] }.into())
+            }
+            ('-', '=', None)
+            | ('-', '>', None)
+            | (':', ':', None)
+            | ('!', '=', None)
+            | ('.', '.', None)
+            | ('*', '=', None)
+            | ('/', '=', None)
+            | ('&', '&', None)
+            | ('&', '=', None)
+            | ('%', '=', None)
+            | ('^', '=', None)
+            | ('+', '=', None)
+            | ('<', '<', None)
+            | ('<', '=', None)
+            | ('=', '=', None)
+            | ('=', '>', None)
+            | ('>', '=', None)
+            | ('>', '>', None)
+            | ('|', '=', None)
+            | ('|', '|', None) => {
+                let tt2 = self.next().unwrap().clone();
+                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt.clone(), tt2] }.into())
+            }
+            _ => Ok(tt),
+        }
+    }
+
     pub(crate) fn expect_lifetime(&mut self) -> Result<&tt::Ident, ()> {
         let ident = self.expect_ident()?;
         // check if it start from "`"
@@ -302,7 +356,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> Result<Option<Fragment>, Ex
                     let ident = input.expect_ident().map_err(|()| err!("expected ident"))?.clone();
                     tt::Leaf::from(ident).into()
                 }
-                "tt" => input.next().ok_or_else(|| err!())?.clone(),
+                "tt" => input.expect_tt().map_err(|()| err!())?.clone(),
                 "lifetime" => {
                     let ident = input.expect_lifetime().map_err(|()| err!())?;
                     tt::Leaf::Ident(ident.clone()).into()

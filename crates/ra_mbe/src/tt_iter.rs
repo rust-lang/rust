@@ -53,6 +53,10 @@ impl<'a> TtIter<'a> {
             _ => Err(()),
         }
     }
+
+    pub(crate) fn peek_n(&self, n: usize) -> Option<&tt::TokenTree> {
+        self.inner.as_slice().get(n)
+    }
 }
 
 impl<'a> Iterator for TtIter<'a> {
