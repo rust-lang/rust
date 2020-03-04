@@ -34,7 +34,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     ) -> Self::Value;
     fn from_const_alloc(
         &self,
-        layout: layout::TyLayout<'tcx>,
+        layout: layout::TyAndLayout<'tcx>,
         alloc: &Allocation,
         offset: layout::Size,
     ) -> PlaceRef<'tcx, Self::Value>;

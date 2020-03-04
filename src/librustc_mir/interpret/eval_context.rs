@@ -7,7 +7,7 @@ use rustc::mir;
 use rustc::mir::interpret::{
     sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
 };
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAndLayout};
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -114,7 +114,7 @@ pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
     pub value: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     #[stable_hasher(ignore)]
-    pub layout: Cell<Option<TyLayout<'tcx>>>,
+    pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
@@ -202,10 +202,10 @@ where
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
-    type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
+    type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| err_inval!(Layout(layout)).into())
@@ -284,13 +284,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+    pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
         sign_extend(value, ty.size)
     }
 
     #[inline(always)]
-    pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+    pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         truncate(value, ty.size)
     }
 
@@ -373,8 +373,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyLayout<'tcx>>,
-    ) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         // `const_prop` runs into this with an invalid (empty) frame, so we
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
@@ -401,7 +401,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn size_and_align_of(
         &self,
         metadata: MemPlaceMeta<M::PointerTag>,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));

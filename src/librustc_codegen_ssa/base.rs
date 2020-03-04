@@ -31,7 +31,7 @@ use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::lang_items;
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
@@ -341,7 +341,7 @@ pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
-    layout: layout::TyLayout<'_>,
+    layout: layout::TyAndLayout<'_>,
 ) -> Bx::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
@@ -366,7 +366,7 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     dst_align: Align,
     src: Bx::Value,
     src_align: Align,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     flags: MemFlags,
 ) {
     let size = layout.size.bytes();

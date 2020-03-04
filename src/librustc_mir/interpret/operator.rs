@@ -4,7 +4,7 @@ use rustc::mir;
 use rustc::mir::interpret::{InterpResult, Scalar};
 use rustc::ty::{
     self,
-    layout::{LayoutOf, TyLayout},
+    layout::{LayoutOf, TyAndLayout},
     Ty,
 };
 use rustc_apfloat::Float;
@@ -123,9 +123,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         bin_op: mir::BinOp,
         // passing in raw bits
         l: u128,
-        left_layout: TyLayout<'tcx>,
+        left_layout: TyAndLayout<'tcx>,
         r: u128,
-        right_layout: TyLayout<'tcx>,
+        right_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
         use rustc::mir::BinOp::*;
 

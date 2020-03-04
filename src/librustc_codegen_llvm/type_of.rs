@@ -3,18 +3,18 @@ use crate::common::*;
 use crate::type_::Type;
 use log::debug;
 use rustc::bug;
-use rustc::ty::layout::{self, Align, FnAbiExt, LayoutOf, PointeeInfo, Size, TyLayout};
+use rustc::ty::layout::{self, Align, FnAbiExt, LayoutOf, PointeeInfo, Size, TyAndLayout};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc_codegen_ssa::traits::*;
-use rustc_target::abi::TyLayoutMethods;
+use rustc_target::abi::TyAndLayoutMethods;
 
 use std::fmt::Write;
 
 fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
-    layout: TyLayout<'tcx>,
-    defer: &mut Option<(&'a Type, TyLayout<'tcx>)>,
+    layout: TyAndLayout<'tcx>,
+    defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
 ) -> &'a Type {
     match layout.abi {
         layout::Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -110,7 +110,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
 ) -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
@@ -202,7 +202,7 @@ pub trait LayoutLlvmExt<'tcx> {
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
-impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
+impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
             layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
@@ -344,7 +344,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         let (a, b) = match self.abi {
             layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-            _ => bug!("TyLayout::scalar_pair_element_llty({:?}): not applicable", self),
+            _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];
 
@@ -366,13 +366,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn llvm_field_index(&self, index: usize) -> u64 {
         match self.abi {
             layout::Abi::Scalar(_) | layout::Abi::ScalarPair(..) => {
-                bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
             _ => {}
         }
         match self.fields {
             layout::FieldPlacement::Union(_) => {
-                bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
 
             layout::FieldPlacement::Array { .. } => index as u64,

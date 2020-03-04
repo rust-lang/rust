@@ -4,7 +4,7 @@ use crate::ModuleCodegen;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
+use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc::ty::query::Providers;
 use rustc::ty::{Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -35,12 +35,12 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 
 impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 

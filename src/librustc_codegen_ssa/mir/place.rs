@@ -8,7 +8,7 @@ use crate::MemFlags;
 
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
 use rustc::ty::{self, Ty};
 
 #[derive(Copy, Clone, Debug)]
@@ -20,19 +20,23 @@ pub struct PlaceRef<'tcx, V> {
     pub llextra: Option<V>,
 
     /// The monomorphized type of this place, including variant information.
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 
     /// The alignment we know for this place.
     pub align: Align,
 }
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
-    pub fn new_sized(llval: V, layout: TyLayout<'tcx>) -> PlaceRef<'tcx, V> {
+    pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
         PlaceRef { llval, llextra: None, layout, align: layout.align.abi }
     }
 
-    pub fn new_sized_aligned(llval: V, layout: TyLayout<'tcx>, align: Align) -> PlaceRef<'tcx, V> {
+    pub fn new_sized_aligned(
+        llval: V,
+        layout: TyAndLayout<'tcx>,
+        align: Align,
+    ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
         PlaceRef { llval, llextra: None, layout, align }
     }
@@ -41,7 +45,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> Self {
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
@@ -53,7 +57,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> Self {
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
         let ptr_ty = bx.cx().tcx().mk_mut_ptr(layout.ty);

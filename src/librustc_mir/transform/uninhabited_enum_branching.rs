@@ -5,7 +5,7 @@ use rustc::mir::{
     BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Operand, Rvalue, StatementKind,
     TerminatorKind,
 };
-use rustc::ty::layout::{Abi, TyLayout, Variants};
+use rustc::ty::layout::{Abi, TyAndLayout, Variants};
 use rustc::ty::{Ty, TyCtxt};
 
 pub struct UninhabitedEnumBranching;
@@ -49,7 +49,7 @@ fn get_switched_on_type<'tcx>(
 }
 
 fn variant_discriminants<'tcx>(
-    layout: &TyLayout<'tcx>,
+    layout: &TyAndLayout<'tcx>,
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Vec<u128> {
