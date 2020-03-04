@@ -110,20 +110,16 @@ impl SourceAnalyzer {
     fn expand_expr(
         &self,
         db: &impl HirDatabase,
-        expr: InFile<&ast::Expr>,
+        expr: InFile<ast::MacroCall>,
     ) -> Option<InFile<ast::Expr>> {
-        let macro_call = ast::MacroCall::cast(expr.value.syntax().clone())?;
-        let macro_file =
-            self.body_source_map.as_ref()?.node_macro_file(expr.with_value(&macro_call))?;
+        let macro_file = self.body_source_map.as_ref()?.node_macro_file(expr.as_ref())?;
         let expanded = db.parse_or_expand(macro_file)?;
-        let kind = expanded.kind();
-        let expr = InFile::new(macro_file, ast::Expr::cast(expanded)?);
 
-        if ast::MacroCall::can_cast(kind) {
-            self.expand_expr(db, expr.as_ref())
-        } else {
-            Some(expr)
-        }
+        let res = match ast::MacroCall::cast(expanded.clone()) {
+            Some(call) => self.expand_expr(db, InFile::new(macro_file, call))?,
+            _ => InFile::new(macro_file, ast::Expr::cast(expanded)?),
+        };
+        Some(res)
     }
 
     fn trait_env(&self, db: &impl HirDatabase) -> Arc<TraitEnvironment> {
@@ -131,11 +127,13 @@ impl SourceAnalyzer {
     }
 
     pub(crate) fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
-        let expr_id = if let Some(expr) = self.expand_expr(db, InFile::new(self.file_id, expr)) {
-            self.body_source_map.as_ref()?.node_expr(expr.as_ref())?
-        } else {
-            self.expr_id(expr)?
-        };
+        let expr_id = match expr {
+            ast::Expr::MacroCall(call) => {
+                let expr = self.expand_expr(db, InFile::new(self.file_id, call.clone()))?;
+                self.body_source_map.as_ref()?.node_expr(expr.as_ref())
+            }
+            _ => self.expr_id(expr),
+        }?;
 
         let ty = self.infer.as_ref()?[expr_id].clone();
         let environment = self.trait_env(db);
