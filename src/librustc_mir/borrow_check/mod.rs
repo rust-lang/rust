@@ -472,7 +472,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
         BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx, 'tcx>, DiagnosticBuilder<'cx>)>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    uninitialized_error_reported: FxHashSet<PlaceRef<'cx, 'tcx>>,
+    uninitialized_error_reported: FxHashSet<PlaceRef<'tcx, 'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
