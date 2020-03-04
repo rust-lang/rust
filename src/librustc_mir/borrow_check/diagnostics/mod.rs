@@ -782,7 +782,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn closure_span(
         &self,
         def_id: DefId,
-        target_place: PlaceRef<'cx, 'tcx>,
+        target_place: PlaceRef<'tcx, 'tcx>,
         places: &Vec<Operand<'tcx>>,
     ) -> Option<(Span, Option<GeneratorKind>, Span)> {
         debug!(
