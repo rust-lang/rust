@@ -4,10 +4,7 @@ use std::{env, path::PathBuf, str};
 
 use anyhow::{bail, format_err, Context, Result};
 
-use crate::{
-    not_bash::{pushd, run},
-    project_root,
-};
+use crate::not_bash::{pushd, run};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 41;
@@ -27,7 +24,6 @@ pub struct ServerOpt {
 
 impl InstallCmd {
     pub fn run(self) -> Result<()> {
-        let _dir = pushd(project_root());
         let both = self.server.is_some() && self.client.is_some();
         if cfg!(target_os = "macos") {
             fix_path_for_mac().context("Fix path for mac")?

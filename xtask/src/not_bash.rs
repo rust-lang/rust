@@ -19,6 +19,11 @@ pub mod fs2 {
         fs::read_dir(path).with_context(|| format!("Failed to read {}", path.display()))
     }
 
+    pub fn read_to_string<P: AsRef<Path>>(path: P) -> Result<String> {
+        let path = path.as_ref();
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))
+    }
+
     pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> Result<()> {
         let path = path.as_ref();
         fs::write(path, contents).with_context(|| format!("Failed to write {}", path.display()))
@@ -40,6 +45,11 @@ pub mod fs2 {
         let path = path.as_ref();
         fs::remove_dir_all(path).with_context(|| format!("Failed to remove dir {}", path.display()))
     }
+
+    pub fn create_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
+        let path = path.as_ref();
+        fs::create_dir_all(path).with_context(|| format!("Failed to create dir {}", path.display()))
+    }
 }
 
 macro_rules! _run {
@@ -59,6 +69,10 @@ pub struct Pushd {
 pub fn pushd(path: impl Into<PathBuf>) -> Pushd {
     Env::with(|env| env.pushd(path.into()));
     Pushd { _p: () }
+}
+
+pub fn pwd() -> PathBuf {
+    Env::with(|env| env.cwd())
 }
 
 impl Drop for Pushd {
@@ -85,7 +99,6 @@ pub fn run_process(cmd: String, echo: bool) -> Result<String> {
 }
 
 fn run_process_inner(cmd: &str, echo: bool) -> Result<String> {
-    let cwd = Env::with(|env| env.cwd());
     let mut args = shelx(cmd);
     let binary = args.remove(0);
 
@@ -95,7 +108,7 @@ fn run_process_inner(cmd: &str, echo: bool) -> Result<String> {
 
     let output = Command::new(binary)
         .args(args)
-        .current_dir(cwd)
+        .current_dir(pwd())
         .stdin(Stdio::null())
         .stderr(Stdio::inherit())
         .output()?;

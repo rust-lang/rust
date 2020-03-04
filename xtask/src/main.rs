@@ -14,13 +14,17 @@ use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
     install::{ClientOpt, InstallCmd, ServerOpt},
-    pre_commit, run_clippy, run_fuzzer, run_pre_cache, run_release, run_rustfmt, Result,
+    not_bash::pushd,
+    pre_commit, project_root, run_clippy, run_dist, run_fuzzer, run_pre_cache, run_release,
+    run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
     if env::args().next().map(|it| it.contains("pre-commit")) == Some(true) {
         return pre_commit::run_hook();
     }
+
+    let _d = pushd(project_root());
 
     let mut args = Arguments::from_env();
     let subcommand = args.subcommand()?.unwrap_or_default();
@@ -97,6 +101,11 @@ FLAGS:
             args.finish()?;
             run_release(dry_run)
         }
+        "dist" => {
+            let nightly = args.contains("--nightly");
+            args.finish()?;
+            run_dist(nightly)
+        }
         _ => {
             eprintln!(
                 "\
@@ -112,7 +121,8 @@ SUBCOMMANDS:
     fuzz-tests
     codegen
     install
-    lint"
+    lint
+    dist"
             );
             Ok(())
         }
