@@ -1,5 +1,8 @@
 name: release
 on:
+  schedule:
+  - cron: '0 0 * * *' # midnight UTC
+
   push:
     branches:
     - release
@@ -113,6 +116,9 @@ jobs:
         node-version: 12.x
 
     - run: echo "::set-env name=TAG::$(date --iso)"
+      if: github.event_name == 'push'
+    - run: echo "::set-env name=TAG::nightly"
+      if: github.event_name != 'push'
     - run: 'echo "TAG: $TAG"'
 
     - name: Checkout repository
@@ -136,59 +142,18 @@ jobs:
         path: dist
     - run: ls -all ./dist
 
-    - name: Create Release
-      id: create_release
-      # uses: actions/create-release@v1
-      # https://github.com/actions/create-release/pull/32
-      uses: fleskesvor/create-release@1a72e235c178bf2ae6c51a8ae36febc24568c5fe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Publish Release
+      uses: ./.github/actions/github-release
       with:
-        tag_name: ${{ env.TAG }}
-        release_name: ${{ env.TAG }}
-        draft: false
-        prerelease: false
-
-    - uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/rust-analyzer-linux
-        asset_name: rust-analyzer-linux
-        asset_content_type: application/octet-stream
-
-    - uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/rust-analyzer-mac
-        asset_name: rust-analyzer-mac
-        asset_content_type: application/octet-stream
-
-    - uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/rust-analyzer-windows.exe
-        asset_name: rust-analyzer-windows.exe
-        asset_content_type: application/octet-stream
-
-    - uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/rust-analyzer.vsix
-        asset_name: rust-analyzer.vsix
-        asset_content_type: application/octet-stream
+        files: "dist/*"
+        name: ${{ env.TAG }}
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - run: npm ci
       working-directory: ./editors/code
 
     - name: Publish Extension
+      if: github.event_name == 'push'
       working-directory: ./editors/code
       # token from https://dev.azure.com/rust-analyzer/
       run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
