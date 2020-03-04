@@ -1060,6 +1060,7 @@ version = "0.1.0"
 dependencies = [
  "fst",
  "log",
+ "once_cell",
  "ra_db",
  "ra_hir",
  "ra_prof",

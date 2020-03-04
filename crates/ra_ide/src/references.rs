@@ -13,8 +13,6 @@ mod rename;
 mod search_scope;
 
 use hir::Semantics;
-use once_cell::unsync::Lazy;
-use ra_db::SourceDatabaseExt;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
@@ -23,15 +21,16 @@ use ra_prof::profile;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    match_ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
+    AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,
 };
-use test_utils::tested_by;
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 pub(crate) use self::rename::rename;
 
-pub use ra_ide_db::search::{Reference, ReferenceAccess, ReferenceKind, SearchScope};
+pub use ra_ide_db::search::{
+    find_refs_to_def, Reference, ReferenceAccess, ReferenceKind, SearchScope,
+};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -122,84 +121,6 @@ pub(crate) fn find_all_refs(
     Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
 }
 
-pub(crate) fn find_refs_to_def(
-    db: &RootDatabase,
-    def: &Definition,
-    search_scope: Option<SearchScope>,
-) -> Vec<Reference> {
-    let _p = profile("find_refs_to_def");
-
-    let search_scope = {
-        let base = SearchScope::for_def(&def, db);
-        match search_scope {
-            None => base,
-            Some(scope) => base.intersection(&scope),
-        }
-    };
-
-    let name = match def.name(db) {
-        None => return Vec::new(),
-        Some(it) => it.to_string(),
-    };
-
-    let pat = name.as_str();
-    let mut refs = vec![];
-
-    for (file_id, search_range) in search_scope {
-        let text = db.file_text(file_id);
-        let search_range =
-            search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
-
-        let sema = Semantics::new(db);
-        let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
-
-        for (idx, _) in text.match_indices(pat) {
-            let offset = TextUnit::from_usize(idx);
-            if !search_range.contains_inclusive(offset) {
-                tested_by!(search_filters_by_range);
-                continue;
-            }
-
-            let name_ref =
-                if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&tree, offset) {
-                    name_ref
-                } else {
-                    // Handle macro token cases
-                    let token = match tree.token_at_offset(offset) {
-                        TokenAtOffset::None => continue,
-                        TokenAtOffset::Single(t) => t,
-                        TokenAtOffset::Between(_, t) => t,
-                    };
-                    let expanded = sema.descend_into_macros(token);
-                    match ast::NameRef::cast(expanded.parent()) {
-                        Some(name_ref) => name_ref,
-                        _ => continue,
-                    }
-                };
-
-            if let Some(d) = classify_name_ref(&sema, &name_ref) {
-                let d = d.definition();
-                if &d == def {
-                    let kind =
-                        if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
-                            ReferenceKind::StructLiteral
-                        } else {
-                            ReferenceKind::Other
-                        };
-
-                    let file_range = sema.original_range(name_ref.syntax());
-                    refs.push(Reference {
-                        file_range,
-                        kind,
-                        access: reference_access(&d, &name_ref),
-                    });
-                }
-            }
-        }
-    }
-    refs
-}
-
 fn find_name(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
@@ -236,48 +157,6 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
     None
 }
 
-fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
-    // Only Locals and Fields have accesses for now.
-    match def {
-        Definition::Local(_) | Definition::StructField(_) => {}
-        _ => return None,
-    };
-
-    let mode = name_ref.syntax().ancestors().find_map(|node| {
-        match_ast! {
-            match (node) {
-                ast::BinExpr(expr) => {
-                    if expr.op_kind()?.is_assignment() {
-                        // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
-                        // FIXME: This is not terribly accurate.
-                        if let Some(lhs) = expr.lhs() {
-                            if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
-                                return Some(ReferenceAccess::Write);
-                            }
-                        }
-                    }
-                    Some(ReferenceAccess::Read)
-                },
-                _ => {None}
-            }
-        }
-    });
-
-    // Default Locals and Fields to read
-    mode.or(Some(ReferenceAccess::Read))
-}
-
-fn is_record_lit_name_ref(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::RecordLit::cast)
-        .and_then(|l| l.path())
-        .and_then(|p| p.segment())
-        .map(|p| p.name_ref().as_ref() == Some(name_ref))
-        .unwrap_or(false)
-}
-
 fn get_struct_def_name_for_struc_litetal_search(
     syntax: &SyntaxNode,
     position: FilePosition,
@@ -294,20 +173,6 @@ fn get_struct_def_name_for_struc_litetal_search(
         }
     }
     None
-}
-
-fn is_call_expr_name_ref(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::CallExpr::cast)
-        .and_then(|c| match c.expr()? {
-            ast::Expr::PathExpr(p) => {
-                Some(p.path()?.segment()?.name_ref().as_ref() == Some(name_ref))
-            }
-            _ => None,
-        })
-        .unwrap_or(false)
 }
 
 #[cfg(test)]
