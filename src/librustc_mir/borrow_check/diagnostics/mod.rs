@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
