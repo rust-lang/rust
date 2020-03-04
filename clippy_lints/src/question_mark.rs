@@ -57,7 +57,8 @@ impl QuestionMark {
             if Self::is_option(cx, subject);
 
             then {
-                let receiver_str = &Sugg::hir(cx, subject, "..");
+                let mut applicability = Applicability::MachineApplicable;
+                let receiver_str = snippet_with_applicability(cx, subject.span, "..", &mut applicability);
                 let mut replacement: Option<String> = None;
                 if let Some(else_) = else_ {
                     if_chain! {
@@ -86,7 +87,7 @@ impl QuestionMark {
                                 expr.span,
                                 "replace it with",
                                 replacement_str,
-                                Applicability::MaybeIncorrect, // snippet
+                                applicability,
                             );
                         }
                     )
