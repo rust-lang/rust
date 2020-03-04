@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn search_filters_by_range() {
-        covers!(search_filters_by_range);
+        covers!(ra_ide_db::search_filters_by_range);
         let code = r#"
             fn foo() {
                 let spam<|> = 92;
@@ -603,7 +603,10 @@ mod tests {
     fn check_result(res: ReferenceSearchResult, expected_decl: &str, expected_refs: &[&str]) {
         res.declaration().assert_match(expected_decl);
         assert_eq!(res.references.len(), expected_refs.len());
-        res.references().iter().enumerate().for_each(|(i, r)| r.assert_match(expected_refs[i]));
+        res.references()
+            .iter()
+            .enumerate()
+            .for_each(|(i, r)| ref_assert_match(r, expected_refs[i]));
     }
 
     impl Declaration {
@@ -621,21 +624,16 @@ mod tests {
         }
     }
 
-    impl Reference {
-        fn debug_render(&self) -> String {
-            let mut s = format!(
-                "{:?} {:?} {:?}",
-                self.file_range.file_id, self.file_range.range, self.kind
-            );
-            if let Some(access) = self.access {
-                s.push_str(&format!(" {:?}", access));
-            }
-            s
+    fn ref_debug_render(r: &Reference) -> String {
+        let mut s = format!("{:?} {:?} {:?}", r.file_range.file_id, r.file_range.range, r.kind);
+        if let Some(access) = r.access {
+            s.push_str(&format!(" {:?}", access));
         }
+        s
+    }
 
-        fn assert_match(&self, expected: &str) {
-            let actual = self.debug_render();
-            test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
-        }
+    fn ref_assert_match(r: &Reference, expected: &str) {
+        let actual = ref_debug_render(r);
+        test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
     }
 }

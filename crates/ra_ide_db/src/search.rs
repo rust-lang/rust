@@ -12,6 +12,7 @@ use ra_syntax::{
     algo::find_node_at_offset, ast, match_ast, AstNode, TextRange, TextUnit, TokenAtOffset,
 };
 use rustc_hash::FxHashMap;
+use test_utils::tested_by;
 
 use crate::{
     defs::{classify_name_ref, Definition},
@@ -206,7 +207,7 @@ impl Definition {
             for (idx, _) in text.match_indices(pat) {
                 let offset = TextUnit::from_usize(idx);
                 if !search_range.contains_inclusive(offset) {
-                    // tested_by!(search_filters_by_range);
+                    tested_by!(search_filters_by_range; force);
                     continue;
                 }
 
