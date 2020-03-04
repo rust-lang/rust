@@ -5,7 +5,7 @@
     clippy::blacklisted_name,
     clippy::no_effect,
     clippy::redundant_clone,
-    redundant_semicolon,
+    redundant_semicolons,
     unused_assignments
 )]
 

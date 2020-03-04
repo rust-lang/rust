@@ -1,10 +1,7 @@
 if_chain! {
     if let ExprKind::Block(ref block) = expr.kind;
     if let Some(trailing_expr) = &block.expr;
-    if block.stmts.len() == 1;
-    if let StmtKind::Semi(ref e, _) = block.stmts[0].kind
-    if let ExprKind::Tup(ref elements) = e.kind;
-    if elements.len() == 0;
+    if block.stmts.len() == 0;
     then {
         // report your lint here
     }
