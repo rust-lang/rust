@@ -219,7 +219,7 @@ pub(super) fn from_known_layout<'tcx>(
             if cfg!(debug_assertions) {
                 let layout2 = compute()?;
                 assert_eq!(
-                    layout.details, layout2.details,
+                    layout.layout, layout2.layout,
                     "mismatch in layout of supposedly equal-layout types {:?} and {:?}",
                     layout.ty, layout2.ty
                 );

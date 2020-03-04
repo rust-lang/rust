@@ -688,7 +688,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 let ty1 = substs[0].expect_ty();
                                 let ty2 = substs[1].expect_ty();
                                 let ty_is_scalar = |ty| {
-                                    this.ecx.layout_of(ty).ok().map(|ty| ty.details.abi.is_scalar())
+                                    this.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
                                         == Some(true)
                                 };
                                 if ty_is_scalar(ty1) && ty_is_scalar(ty2) {

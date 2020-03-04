@@ -20,7 +20,7 @@ use crate::mir::{
 };
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
-use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
+use crate::ty::layout::{Layout, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
@@ -985,7 +985,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores memory for globals (statics/consts).
     pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
-    layout_interner: ShardedHashMap<&'tcx LayoutDetails, ()>,
+    layout_interner: ShardedHashMap<&'tcx Layout, ()>,
 
     output_filenames: Arc<OutputFilenames>,
 }
@@ -1040,7 +1040,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.const_stability_interner.intern(stab, |stab| self.arena.alloc(stab))
     }
 
-    pub fn intern_layout(self, layout: LayoutDetails) -> &'tcx LayoutDetails {
+    pub fn intern_layout(self, layout: Layout) -> &'tcx Layout {
         self.layout_interner.intern(layout, |layout| self.arena.alloc(layout))
     }
 
