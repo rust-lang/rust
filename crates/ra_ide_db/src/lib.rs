@@ -9,6 +9,7 @@ pub mod feature_flags;
 pub mod symbol_index;
 pub mod change;
 pub mod defs;
+pub mod search;
 pub mod imports_locator;
 mod wasm_shims;
 

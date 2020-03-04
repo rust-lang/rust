@@ -31,7 +31,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 
 pub(crate) use self::rename::rename;
 
-pub use self::search_scope::SearchScope;
+pub use ra_ide_db::search::SearchScope;
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
