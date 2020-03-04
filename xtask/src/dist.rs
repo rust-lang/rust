@@ -30,12 +30,12 @@ fn dist_client(nightly: bool) -> Result<()> {
     let mut package_json = original_package_json.replace(r#""enableProposedApi": true,"#, r#""#);
 
     if nightly {
-        package_json = package_json
-            .replace(r#""name": "rust-analyzer""#, r#""name": "rust-analyzer-nightly""#)
-            .replace(
-                r#""displayName": "rust-analyzer""#,
-                r#""displayName": "rust-analyzer nightly""#,
-            );
+        package_json = package_json.replace(
+            r#""displayName": "rust-analyzer""#,
+            r#""displayName": "rust-analyzer nightly""#,
+        );
+    } else {
+        package_json = original_package_json.replace(r#""enableProposedApi": true,"#, r#""#);
     }
     fs2::write(package_json_path, package_json)?;
 
