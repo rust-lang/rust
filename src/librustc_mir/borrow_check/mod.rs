@@ -1713,8 +1713,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// static variable, as we do not track those in the MoveData.
     fn move_path_closest_to(
         &mut self,
-        place: PlaceRef<'_, 'tcx>,
-    ) -> (PlaceRef<'cx, 'tcx>, MovePathIndex) {
+        place: PlaceRef<'tcx, 'tcx>,
+    ) -> (PlaceRef<'tcx, 'tcx>, MovePathIndex) {
         match self.move_data.rev_lookup.find(place) {
             LookupResult::Parent(Some(mpi)) | LookupResult::Exact(mpi) => {
                 (self.move_data.move_paths[mpi].place.as_ref(), mpi)
