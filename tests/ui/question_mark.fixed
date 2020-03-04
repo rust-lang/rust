@@ -2,9 +2,7 @@
 #![allow(unreachable_code)]
 
 fn some_func(a: Option<u32>) -> Option<u32> {
-    if a.is_none() {
-        return None;
-    }
+    a?;
 
     a
 }
@@ -47,25 +45,13 @@ pub struct CopyStruct {
 impl CopyStruct {
     #[rustfmt::skip]
     pub fn func(&self) -> Option<u32> {
-        if (self.opt).is_none() {
-            return None;
-        }
+        (self.opt)?;
 
-        if self.opt.is_none() {
-            return None
-        }
+        self.opt?;
 
-        let _ = if self.opt.is_none() {
-            return None;
-        } else {
-            self.opt
-        };
+        let _ = Some(self.opt?);
 
-        let _ = if let Some(x) = self.opt {
-            x
-        } else {
-            return None;
-        };
+        let _ = self.opt?;
 
         self.opt
     }
@@ -78,44 +64,30 @@ pub struct MoveStruct {
 
 impl MoveStruct {
     pub fn ref_func(&self) -> Option<Vec<u32>> {
-        if self.opt.is_none() {
-            return None;
-        }
+        self.opt.as_ref()?;
 
         self.opt.clone()
     }
 
     pub fn mov_func_reuse(self) -> Option<Vec<u32>> {
-        if self.opt.is_none() {
-            return None;
-        }
+        self.opt.as_ref()?;
 
         self.opt
     }
 
     pub fn mov_func_no_use(self) -> Option<Vec<u32>> {
-        if self.opt.is_none() {
-            return None;
-        }
+        self.opt.as_ref()?;
         Some(Vec::new())
     }
 
     pub fn if_let_ref_func(self) -> Option<Vec<u32>> {
-        let v: &Vec<_> = if let Some(ref v) = self.opt {
-            v
-        } else {
-            return None;
-        };
+        let v: &Vec<_> = self.opt.as_ref()?;
 
         Some(v.clone())
     }
 
     pub fn if_let_mov_func(self) -> Option<Vec<u32>> {
-        let v = if let Some(v) = self.opt {
-            v
-        } else {
-            return None;
-        };
+        let v = self.opt?;
 
         Some(v)
     }

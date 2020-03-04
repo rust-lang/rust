@@ -1698,12 +1698,7 @@ fn detect_absurd_comparison<'a, 'tcx>(
         return None;
     }
 
-    let normalized = normalize_comparison(op, lhs, rhs);
-    let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
-        val
-    } else {
-        return None;
-    };
+    let (rel, normalized_lhs, normalized_rhs) = normalize_comparison(op, lhs, rhs)?;
 
     let lx = detect_extreme_expr(cx, normalized_lhs);
     let rx = detect_extreme_expr(cx, normalized_rhs);

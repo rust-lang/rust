@@ -1,13 +1,15 @@
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{def, Block, Expr, ExprKind, StmtKind};
+use rustc_hir::{def, BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::paths::{OPTION, OPTION_NONE};
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, match_def_path, match_type, span_lint_and_then, SpanlessEq};
+use crate::utils::{
+    higher, match_def_path, match_qpath, match_type, snippet_with_applicability, span_lint_and_sugg, SpanlessEq,
+};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
@@ -55,7 +57,8 @@ impl QuestionMark {
             if Self::is_option(cx, subject);
 
             then {
-                let receiver_str = &Sugg::hir(cx, subject, "..");
+                let mut applicability = Applicability::MachineApplicable;
+                let receiver_str = &Sugg::hir_with_applicability(cx, subject, "..", &mut applicability);
                 let mut replacement: Option<String> = None;
                 if let Some(else_) = else_ {
                     if_chain! {
@@ -74,21 +77,57 @@ impl QuestionMark {
                 }
 
                 if let Some(replacement_str) = replacement {
-                    span_lint_and_then(
+                    span_lint_and_sugg(
                         cx,
                         QUESTION_MARK,
                         expr.span,
                         "this block may be rewritten with the `?` operator",
-                        |db| {
-                            db.span_suggestion(
-                                expr.span,
-                                "replace_it_with",
-                                replacement_str,
-                                Applicability::MaybeIncorrect, // snippet
-                            );
-                        }
+                        "replace it with",
+                        replacement_str,
+                        applicability,
                     )
                }
+            }
+        }
+    }
+
+    fn check_if_let_some_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+        if_chain! {
+            if let ExprKind::Match(subject, arms, source) = &expr.kind;
+            if *source == MatchSource::IfLetDesugar { contains_else_clause: true };
+            if Self::is_option(cx, subject);
+
+            if let PatKind::TupleStruct(path1, fields, None) = &arms[0].pat.kind;
+            if match_qpath(path1, &["Some"]);
+            if let PatKind::Binding(annot, _, bind, _) = &fields[0].kind;
+            let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
+
+            if let ExprKind::Block(block, None) = &arms[0].body.kind;
+            if block.stmts.is_empty();
+            if let Some(trailing_expr) = &block.expr;
+            if let ExprKind::Path(path) = &trailing_expr.kind;
+            if match_qpath(path, &[&bind.as_str()]);
+
+            if let PatKind::Wild = arms[1].pat.kind;
+            if Self::expression_returns_none(cx, arms[1].body);
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                let receiver_str = snippet_with_applicability(cx, subject.span, "..", &mut applicability);
+                let replacement = format!(
+                    "{}{}?",
+                    receiver_str,
+                    if by_ref { ".as_ref()" } else { "" },
+                );
+
+                span_lint_and_sugg(
+                    cx,
+                    QUESTION_MARK,
+                    expr.span,
+                    "this if-let-else may be rewritten with the `?` operator",
+                    "replace it with",
+                    replacement,
+                    applicability,
+                )
             }
         }
     }
@@ -158,5 +197,6 @@ impl QuestionMark {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for QuestionMark {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         Self::check_is_none_and_early_return_none(cx, expr);
+        Self::check_if_let_some_and_early_return_none(cx, expr);
     }
 }
