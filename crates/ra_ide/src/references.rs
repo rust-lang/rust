@@ -127,6 +127,8 @@ pub(crate) fn find_refs_to_def(
     def: &Definition,
     search_scope: Option<SearchScope>,
 ) -> Vec<Reference> {
+    let _p = profile("find_refs_to_def");
+
     let search_scope = {
         let base = SearchScope::for_def(&def, db);
         match search_scope {
@@ -140,38 +142,10 @@ pub(crate) fn find_refs_to_def(
         Some(it) => it.to_string(),
     };
 
-    process_definition(db, def, name, search_scope)
-}
-
-fn find_name(
-    sema: &Semantics<RootDatabase>,
-    syntax: &SyntaxNode,
-    position: FilePosition,
-    opt_name: Option<ast::Name>,
-) -> Option<RangeInfo<Definition>> {
-    if let Some(name) = opt_name {
-        let def = classify_name(sema, &name)?.definition();
-        let range = name.syntax().text_range();
-        return Some(RangeInfo::new(range, def));
-    }
-    let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(sema, &name_ref)?.definition();
-    let range = name_ref.syntax().text_range();
-    Some(RangeInfo::new(range, def))
-}
-
-fn process_definition(
-    db: &RootDatabase,
-    def: &Definition,
-    name: String,
-    scope: SearchScope,
-) -> Vec<Reference> {
-    let _p = profile("process_definition");
-
     let pat = name.as_str();
     let mut refs = vec![];
 
-    for (file_id, search_range) in scope {
+    for (file_id, search_range) in search_scope {
         let text = db.file_text(file_id);
         let search_range =
             search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
@@ -224,6 +198,23 @@ fn process_definition(
         }
     }
     refs
+}
+
+fn find_name(
+    sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
+    position: FilePosition,
+    opt_name: Option<ast::Name>,
+) -> Option<RangeInfo<Definition>> {
+    if let Some(name) = opt_name {
+        let def = classify_name(sema, &name)?.definition();
+        let range = name.syntax().text_range();
+        return Some(RangeInfo::new(range, def));
+    }
+    let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
+    let def = classify_name_ref(sema, &name_ref)?.definition();
+    let range = name_ref.syntax().text_range();
+    Some(RangeInfo::new(range, def))
 }
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
