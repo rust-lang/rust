@@ -16,6 +16,17 @@ fn main() {
 
     }
 
+    let _ = {
+        // inner lint attributes are allowed on blocks
+        #![allow(unused_variables)]
+        #![warn(unused_variables)]
+        #![deny(unused_variables)]
+        #![forbid(unused_variables)]
+        #![rustc_dummy] //~ ERROR attributes on expressions are experimental
+    };
+
+    let _ = #[allow(unused_variables)] {}; //~ ERROR attributes on expressions are experimental
+
     #[rustc_dummy]
     5;
 

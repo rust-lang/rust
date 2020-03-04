@@ -8,7 +8,25 @@ LL |     #[rustfmt::skip]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:95:18
+  --> $DIR/stmt_expr_attrs_no_feature.rs:25:9
+   |
+LL |         #![rustc_dummy]
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:28:13
+   |
+LL |     let _ = #[allow(unused_variables)] {};
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:106:18
    |
 LL |     fn y(a: [u8; #[rustc_dummy] 5]);
    |                  ^^^^^^^^^^^^^^
@@ -17,7 +35,7 @@ LL |     fn y(a: [u8; #[rustc_dummy] 5]);
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:102:19
+  --> $DIR/stmt_expr_attrs_no_feature.rs:113:19
    |
 LL |     const Y: u8 = #[rustc_dummy] 5;
    |                   ^^^^^^^^^^^^^^
@@ -26,7 +44,7 @@ LL |     const Y: u8 = #[rustc_dummy] 5;
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:108:19
+  --> $DIR/stmt_expr_attrs_no_feature.rs:119:19
    |
 LL |     const Y: [u8; #[rustc_dummy] 5];
    |                   ^^^^^^^^^^^^^^
@@ -35,7 +53,7 @@ LL |     const Y: [u8; #[rustc_dummy] 5];
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:114:18
+  --> $DIR/stmt_expr_attrs_no_feature.rs:125:18
    |
 LL |     field2: [u8; #[rustc_dummy] 5]
    |                  ^^^^^^^^^^^^^^
@@ -44,7 +62,7 @@ LL |     field2: [u8; #[rustc_dummy] 5]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:119:10
+  --> $DIR/stmt_expr_attrs_no_feature.rs:130:10
    |
 LL |     [u8; #[rustc_dummy] 5]
    |          ^^^^^^^^^^^^^^
@@ -53,7 +71,7 @@ LL |     [u8; #[rustc_dummy] 5]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:125:14
+  --> $DIR/stmt_expr_attrs_no_feature.rs:136:14
    |
 LL |         [u8; #[rustc_dummy] 5]
    |              ^^^^^^^^^^^^^^
@@ -62,7 +80,7 @@ LL |         [u8; #[rustc_dummy] 5]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:130:22
+  --> $DIR/stmt_expr_attrs_no_feature.rs:141:22
    |
 LL |         field2: [u8; #[rustc_dummy] 5]
    |                      ^^^^^^^^^^^^^^
@@ -71,7 +89,7 @@ LL |         field2: [u8; #[rustc_dummy] 5]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/stmt_expr_attrs_no_feature.rs:138:14
+  --> $DIR/stmt_expr_attrs_no_feature.rs:149:14
    |
 LL |         6 => #[rustc_dummy] (),
    |              ^^^^^^^^^^^^^^
@@ -79,6 +97,6 @@ LL |         6 => #[rustc_dummy] (),
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
-error: aborting due to 9 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

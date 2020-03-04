@@ -9,7 +9,7 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::{parse_in, validate_attr};
-use rustc_ast::ast::{self, AttrItem, Attribute, MetaItem};
+use rustc_ast::ast::{self, AttrItem, AttrStyle, Attribute, MetaItem};
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
@@ -389,7 +389,9 @@ impl<'a> StripUnconfigured<'a> {
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
     pub fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true)
+            && !(attr.is_lint() && attr.style == AttrStyle::Inner)
+        {
             let mut err = feature_err(
                 self.sess,
                 sym::stmt_expr_attributes,

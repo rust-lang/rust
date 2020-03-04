@@ -177,6 +177,15 @@ impl Attribute {
         matches
     }
 
+    /// Checks if the attribute is a lint attribute (`allow`, `warn`, `deny`, or `forbid`).
+    pub fn is_lint(&self) -> bool {
+        if let Some(ident) = self.ident().map(Ident::as_str) {
+            ident == "allow" || ident == "warn" || ident == "deny" || ident == "forbid"
+        } else {
+            false
+        }
+    }
+
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         match self.kind {

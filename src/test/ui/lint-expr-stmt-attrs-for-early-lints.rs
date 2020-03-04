@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(stmt_expr_attributes)]
 #![deny(unused_parens)]
 
 // Tests that lint attributes on statements/expressions are
@@ -11,4 +10,9 @@ fn main() {
     {
         let _ = (9);
     }
+
+    let _ = {
+        #![allow(unused_parens)]
+        let _ = (9);
+    };
 }
