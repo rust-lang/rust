@@ -19,7 +19,7 @@ fn main() {
         (A, B) | (ref B, c) | (c, A) => ()
         //~^ ERROR variable `A` is not bound in all patterns
         //~| ERROR variable `B` is not bound in all patterns
-        //~| ERROR variable `B` is bound in inconsistent ways
+        //~| ERROR variable `B` is bound inconsistently
         //~| ERROR mismatched types
         //~| ERROR variable `c` is not bound in all patterns
         //~| HELP consider making the path in the pattern qualified: `?::A`

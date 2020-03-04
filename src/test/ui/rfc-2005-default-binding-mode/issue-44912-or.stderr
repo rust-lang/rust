@@ -1,4 +1,4 @@
-error[E0409]: variable `x` is bound in inconsistent ways within the same match arm
+error[E0409]: variable `x` is bound inconsistently across alternatives separated by `|`
   --> $DIR/issue-44912-or.rs:6:35
    |
 LL |         Some((x, 3)) | &Some((ref x, 5)) => x,

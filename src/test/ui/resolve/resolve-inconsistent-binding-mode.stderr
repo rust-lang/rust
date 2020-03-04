@@ -1,58 +1,58 @@
-error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:7:32
+error[E0409]: variable `i` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/resolve-inconsistent-binding-mode.rs:9:34
    |
-LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |                   -            ^ bound in different ways
-   |                   |
-   |                   first binding
+LL |         Opts::A(ref i) | Opts::B(i) => {}
+   |                     -            ^ bound in different ways
+   |                     |
+   |                     first binding
 
-error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
+error[E0409]: variable `i` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/resolve-inconsistent-binding-mode.rs:18:34
    |
-LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |                   -            ^ bound in different ways
-   |                   |
-   |                   first binding
+LL |         Opts::A(ref i) | Opts::B(i) => {}
+   |                     -            ^ bound in different ways
+   |                     |
+   |                     first binding
 
-error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:25:40
+error[E0409]: variable `i` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/resolve-inconsistent-binding-mode.rs:27:42
    |
-LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
-   |                       - first binding  ^ bound in different ways
+LL |         Opts::A(ref mut i) | Opts::B(ref i) => {}
+   |                         - first binding  ^ bound in different ways
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:7:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:9:34
    |
 LL |     match x {
    |           - this expression has type `Opts`
-LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |               -----            ^ expected `&isize`, found `isize`
-   |               |
-   |               first introduced with type `&isize` here
+LL |         Opts::A(ref i) | Opts::B(i) => {}
+   |                 -----            ^ expected `&isize`, found `isize`
+   |                 |
+   |                 first introduced with type `&isize` here
    |
    = note: in the same arm, a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:18:34
    |
 LL |     match x {
    |           - this expression has type `Opts`
-LL |       Opts::A(ref i) | Opts::B(i) => {}
-   |               -----            ^ expected `&isize`, found `isize`
-   |               |
-   |               first introduced with type `&isize` here
+LL |         Opts::A(ref i) | Opts::B(i) => {}
+   |                 -----            ^ expected `&isize`, found `isize`
+   |                 |
+   |                 first introduced with type `&isize` here
    |
    = note: in the same arm, a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:25:36
+  --> $DIR/resolve-inconsistent-binding-mode.rs:27:38
    |
 LL |     match x {
    |           - this expression has type `Opts`
-LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
-   |               ---------            ^^^^^ types differ in mutability
-   |               |
-   |               first introduced with type `&mut isize` here
+LL |         Opts::A(ref mut i) | Opts::B(ref i) => {}
+   |                 ---------            ^^^^^ types differ in mutability
+   |                 |
+   |                 first introduced with type `&mut isize` here
    |
    = note: expected type `&mut isize`
               found type `&isize`

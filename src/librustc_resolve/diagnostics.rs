@@ -249,8 +249,7 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0409,
-                    "variable `{}` is bound in inconsistent \
-                                ways within the same match arm",
+                    "variable `{}` is bound inconsistently across alternatives separated by `|`",
                     variable_name
                 );
                 err.span_label(span, "bound in different ways");
