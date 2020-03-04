@@ -28,9 +28,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 
 pub(crate) use self::rename::rename;
 
-pub use ra_ide_db::search::{
-    find_refs_to_def, Reference, ReferenceAccess, ReferenceKind, SearchScope,
-};
+pub use ra_ide_db::search::{Reference, ReferenceAccess, ReferenceKind, SearchScope};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -105,7 +103,8 @@ pub(crate) fn find_all_refs(
 
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
-    let references = find_refs_to_def(db, &def, search_scope)
+    let references = def
+        .find_usages(db, search_scope)
         .into_iter()
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();

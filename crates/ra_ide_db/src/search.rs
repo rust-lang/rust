@@ -171,85 +171,88 @@ impl IntoIterator for SearchScope {
     }
 }
 
-pub fn find_refs_to_def(
-    db: &RootDatabase,
-    def: &Definition,
-    search_scope: Option<SearchScope>,
-) -> Vec<Reference> {
-    let _p = profile("find_refs_to_def");
+impl Definition {
+    pub fn find_usages(
+        &self,
+        db: &RootDatabase,
+        search_scope: Option<SearchScope>,
+    ) -> Vec<Reference> {
+        let _p = profile("Definition::find_usages");
 
-    let search_scope = {
-        let base = SearchScope::for_def(&def, db);
-        match search_scope {
-            None => base,
-            Some(scope) => base.intersection(&scope),
-        }
-    };
-
-    let name = match def.name(db) {
-        None => return Vec::new(),
-        Some(it) => it.to_string(),
-    };
-
-    let pat = name.as_str();
-    let mut refs = vec![];
-
-    for (file_id, search_range) in search_scope {
-        let text = db.file_text(file_id);
-        let search_range =
-            search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
-
-        let sema = Semantics::new(db);
-        let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
-
-        for (idx, _) in text.match_indices(pat) {
-            let offset = TextUnit::from_usize(idx);
-            if !search_range.contains_inclusive(offset) {
-                // tested_by!(search_filters_by_range);
-                continue;
+        let search_scope = {
+            let base = SearchScope::for_def(self, db);
+            match search_scope {
+                None => base,
+                Some(scope) => base.intersection(&scope),
             }
+        };
 
-            let name_ref =
-                if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&tree, offset) {
-                    name_ref
-                } else {
-                    // Handle macro token cases
-                    let token = match tree.token_at_offset(offset) {
-                        TokenAtOffset::None => continue,
-                        TokenAtOffset::Single(t) => t,
-                        TokenAtOffset::Between(_, t) => t,
+        let name = match self.name(db) {
+            None => return Vec::new(),
+            Some(it) => it.to_string(),
+        };
+
+        let pat = name.as_str();
+        let mut refs = vec![];
+
+        for (file_id, search_range) in search_scope {
+            let text = db.file_text(file_id);
+            let search_range =
+                search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
+
+            let sema = Semantics::new(db);
+            let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
+
+            for (idx, _) in text.match_indices(pat) {
+                let offset = TextUnit::from_usize(idx);
+                if !search_range.contains_inclusive(offset) {
+                    // tested_by!(search_filters_by_range);
+                    continue;
+                }
+
+                let name_ref =
+                    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&tree, offset) {
+                        name_ref
+                    } else {
+                        // Handle macro token cases
+                        let token = match tree.token_at_offset(offset) {
+                            TokenAtOffset::None => continue,
+                            TokenAtOffset::Single(t) => t,
+                            TokenAtOffset::Between(_, t) => t,
+                        };
+                        let expanded = sema.descend_into_macros(token);
+                        match ast::NameRef::cast(expanded.parent()) {
+                            Some(name_ref) => name_ref,
+                            _ => continue,
+                        }
                     };
-                    let expanded = sema.descend_into_macros(token);
-                    match ast::NameRef::cast(expanded.parent()) {
-                        Some(name_ref) => name_ref,
-                        _ => continue,
-                    }
-                };
 
-            // FIXME: reuse sb
-            // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
+                // FIXME: reuse sb
+                // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
-            if let Some(d) = classify_name_ref(&sema, &name_ref) {
-                let d = d.definition();
-                if &d == def {
-                    let kind =
-                        if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
+                if let Some(d) = classify_name_ref(&sema, &name_ref) {
+                    let d = d.definition();
+                    if &d == self {
+                        let kind = if is_record_lit_name_ref(&name_ref)
+                            || is_call_expr_name_ref(&name_ref)
+                        {
                             ReferenceKind::StructLiteral
                         } else {
                             ReferenceKind::Other
                         };
 
-                    let file_range = sema.original_range(name_ref.syntax());
-                    refs.push(Reference {
-                        file_range,
-                        kind,
-                        access: reference_access(&d, &name_ref),
-                    });
+                        let file_range = sema.original_range(name_ref.syntax());
+                        refs.push(Reference {
+                            file_range,
+                            kind,
+                            access: reference_access(&d, &name_ref),
+                        });
+                    }
                 }
             }
         }
+        refs
     }
-    refs
 }
 
 fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
