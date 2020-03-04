@@ -46,7 +46,8 @@ fn main() {
     // path 3a
     assert_eq!(test(&foo[1..3]), MatchArm::Arm(2));
     // path 3b
-    assert_eq!(test(&[Some(Test::Bar), Some(Test::Baz), Some(Test::Baz), Some(Test::Bar)]), MatchArm::Arm(2));
+    assert_eq!(test(&[Some(Test::Bar), Some(Test::Baz), Some(Test::Baz), Some(Test::Bar)]),
+        MatchArm::Arm(2));
     // path 4
     assert_eq!(test(&foo[4..]), MatchArm::Wild);
 }
