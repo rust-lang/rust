@@ -420,11 +420,7 @@ fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 /// one of the two expressions
 /// If the two expressions are not negations of each other, then it
 /// returns None.
-fn are_negated<'a>(
-    cx: &LateContext<'_, '_>,
-    expr1: &'a Expr<'a>,
-    expr2: &'a Expr<'a>,
-) -> Option<(bool, &'a Expr<'a>)> {
+fn are_negated<'a>(cx: &LateContext<'_, '_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
     if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
         if are_exprs_equal(cx, expr1_negated, expr2) {
             return Some((false, expr2));
