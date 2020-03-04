@@ -74,15 +74,10 @@ jobs:
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Compile
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --no-run
+      run: cargo test --no-run
 
     - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
+      run: cargo test
 
     - name: Prepare cache
       run: cargo xtask pre-cache

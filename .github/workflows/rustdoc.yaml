@@ -24,10 +24,7 @@ jobs:
         components: rustfmt, rust-src
 
     - name: Build Documentation
-      uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --all --no-deps
+      run: cargo doc --all --no-deps
 
     - name: Deploy Docs
       uses: peaceiris/actions-gh-pages@v2.6.0-rc0

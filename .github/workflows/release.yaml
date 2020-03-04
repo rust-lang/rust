@@ -43,19 +43,13 @@ jobs:
 
     - name: Build
       if: matrix.os == 'ubuntu-latest'
-      uses: actions-rs/cargo@v1
+      run: cargo build --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
       env:
         CC: clang
-      with:
-        command: build
-        args: --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
 
     - name: Build
       if: matrix.os != 'ubuntu-latest'
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --package rust-analyzer --bin rust-analyzer --release
+      run: cargo build --package rust-analyzer --bin rust-analyzer --release
 
     - name: Create distribution dir
       run: mkdir ./dist
