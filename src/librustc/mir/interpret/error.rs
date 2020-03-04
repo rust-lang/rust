@@ -354,7 +354,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     Unsupported(String),
 
     /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons.
+    /// This must not allocate for performance reasons (hence `str`, not `String`).
     ConstPropUnsupported(&'tcx str),
 
     // -- Everything below is not categorized yet --
@@ -609,6 +609,22 @@ impl fmt::Debug for InterpError<'_> {
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
             MachineStop(_) => bug!("unhandled MachineStop"),
+        }
+    }
+}
+
+impl InterpError<'_> {
+    /// Some errors allocate to be created as they contain free-from strings.
+    /// And sometiems we want to be sure that did not happen as it is a
+    /// waste of resources.
+    pub fn allocates(&self) -> bool {
+        match self {
+            InterpError::MachineStop(_)
+            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            | InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
+            _ => false,
         }
     }
 }
