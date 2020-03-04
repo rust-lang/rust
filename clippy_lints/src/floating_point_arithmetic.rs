@@ -1,8 +1,8 @@
 use crate::consts::{
-    constant, Constant,
+    constant, constant_simple, Constant,
     Constant::{F32, F64},
 };
-use crate::utils::{span_lint_and_sugg, sugg};
+use crate::utils::{higher, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
@@ -72,6 +72,16 @@ declare_clippy_lint! {
     /// let _ = a.log(E);
     /// let _ = a.powf(2.0);
     /// let _ = a * 2.0 + 4.0;
+    /// let _ = if a < 0.0 {
+    ///     -a
+    /// } else {
+    ///     a
+    /// };
+    /// let _ = if a < 0.0 {
+    ///     a
+    /// } else {
+    ///     -a
+    /// };
     /// ```
     ///
     /// is better expressed as
@@ -88,6 +98,8 @@ declare_clippy_lint! {
     /// let _ = a.ln();
     /// let _ = a.powi(2);
     /// let _ = a.mul_add(2.0, 4.0);
+    /// let _ = a.abs();
+    /// let _ = -a.abs();
     /// ```
     pub SUBOPTIMAL_FLOPS,
     nursery,
@@ -359,6 +371,116 @@ fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
+/// Returns true iff expr is an expression which tests whether or not
+/// test is positive or an expression which tests whether or not test
+/// is nonnegative.
+/// Used for check-custom-abs function below
+fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+    if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
+        match op {
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && are_exprs_equal(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && are_exprs_equal(cx, right, test),
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+/// See [`is_testing_positive`]
+fn is_testing_negative(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+    if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
+        match op {
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && are_exprs_equal(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && are_exprs_equal(cx, left, test),
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
+    SpanlessEq::new(cx).ignore_fn().eq_expr(expr1, expr2)
+}
+
+/// Returns true iff expr is some zero literal
+fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    match constant_simple(cx, cx.tables, expr) {
+        Some(Constant::Int(i)) => i == 0,
+        Some(Constant::F32(f)) => f == 0.0,
+        Some(Constant::F64(f)) => f == 0.0,
+        _ => false,
+    }
+}
+
+/// If the two expressions are negations of each other, then it returns
+/// a tuple, in which the first element is true iff expr1 is the
+/// positive expressions, and the second element is the positive
+/// one of the two expressions
+/// If the two expressions are not negations of each other, then it
+/// returns None.
+fn are_negated<'a>(cx: &LateContext<'_, '_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
+    if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
+        if are_exprs_equal(cx, expr1_negated, expr2) {
+            return Some((false, expr2));
+        }
+    }
+    if let ExprKind::Unary(UnOp::UnNeg, expr2_negated) = &expr2.kind {
+        if are_exprs_equal(cx, expr1, expr2_negated) {
+            return Some((true, expr1));
+        }
+    }
+    None
+}
+
+fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let Some((cond, body, Some(else_body))) = higher::if_block(&expr);
+        if let ExprKind::Block(block, _) = body.kind;
+        if block.stmts.is_empty();
+        if let Some(if_body_expr) = block.expr;
+        if let ExprKind::Block(else_block, _) = else_body.kind;
+        if else_block.stmts.is_empty();
+        if let Some(else_body_expr) = else_block.expr;
+        if let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr);
+        then {
+            let positive_abs_sugg = (
+                "manual implementation of `abs` method",
+                format!("{}.abs()", Sugg::hir(cx, body, "..")),
+            );
+            let negative_abs_sugg = (
+                "manual implementation of negation of `abs` method",
+                format!("-{}.abs()", Sugg::hir(cx, body, "..")),
+            );
+            let sugg = if is_testing_positive(cx, cond, body) {
+                if if_expr_positive {
+                    positive_abs_sugg
+                } else {
+                    negative_abs_sugg
+                }
+            } else if is_testing_negative(cx, cond, body) {
+                if if_expr_positive {
+                    negative_abs_sugg
+                } else {
+                    positive_abs_sugg
+                }
+            } else {
+                return;
+            };
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                sugg.0,
+                "try",
+                sugg.1,
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args) = &expr.kind {
@@ -375,6 +497,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
         } else {
             check_expm1(cx, expr);
             check_mul_add(cx, expr);
+            check_custom_abs(cx, expr);
         }
     }
 }
