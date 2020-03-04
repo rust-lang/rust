@@ -97,9 +97,10 @@ impl<'a> Parser<'a> {
     fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
         match self.parse_expr() {
             Ok(expr) => Ok(expr),
-            Err(mut err) => match self.normalized_token.kind {
-                token::Ident(name, false)
-                    if name == kw::Underscore && self.look_ahead(1, |t| t == &token::Comma) =>
+            Err(mut err) => match self.token.ident() {
+                Some((ident, false))
+                    if ident.name == kw::Underscore
+                        && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
@@ -331,21 +332,19 @@ impl<'a> Parser<'a> {
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
-        Some(Spanned {
-            node: match (AssocOp::from_token(&self.token), &self.normalized_token.kind) {
-                (Some(op), _) => op,
-                (None, token::Ident(sym::and, false)) => {
-                    self.error_bad_logical_op("and", "&&", "conjunction");
-                    AssocOp::LAnd
-                }
-                (None, token::Ident(sym::or, false)) => {
-                    self.error_bad_logical_op("or", "||", "disjunction");
-                    AssocOp::LOr
-                }
-                _ => return None,
-            },
-            span: self.normalized_token.span,
-        })
+        let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
+            (Some(op), _) => (op, self.token.span),
+            (None, Some((ident, false))) if ident.name == sym::and => {
+                self.error_bad_logical_op("and", "&&", "conjunction");
+                (AssocOp::LAnd, ident.span)
+            }
+            (None, Some((ident, false))) if ident.name == sym::or => {
+                self.error_bad_logical_op("or", "||", "disjunction");
+                (AssocOp::LOr, ident.span)
+            }
+            _ => return None,
+        };
+        Some(source_map::respan(span, op))
     }
 
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
@@ -1907,20 +1906,23 @@ impl<'a> Parser<'a> {
 
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
     fn find_struct_error_after_field_looking_code(&self) -> Option<Field> {
-        if let token::Ident(name, _) = self.normalized_token.kind {
-            if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
-                return Some(ast::Field {
-                    ident: Ident::new(name, self.normalized_token.span),
+        match self.token.ident() {
+            Some((ident, is_raw))
+                if (is_raw || !ident.is_reserved())
+                    && self.look_ahead(1, |t| *t == token::Colon) =>
+            {
+                Some(ast::Field {
+                    ident,
                     span: self.token.span,
                     expr: self.mk_expr_err(self.token.span),
                     is_shorthand: false,
                     attrs: AttrVec::new(),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
-                });
+                })
             }
+            _ => None,
         }
-        None
     }
 
     fn recover_struct_comma_after_dotdot(&mut self, span: Span) {

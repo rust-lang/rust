@@ -480,9 +480,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
-        match self.normalized_token.kind {
-            token::Ident(name, _) => {
-                if self.token.is_reserved_ident() {
+        match self.token.ident() {
+            Some((ident, is_raw)) => {
+                if !is_raw && ident.is_reserved() {
                     let mut err = self.expected_ident_found();
                     if recover {
                         err.emit();
@@ -491,7 +491,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.bump();
-                Ok(Ident::new(name, self.normalized_prev_token.span))
+                Ok(ident)
             }
             _ => Err(match self.prev_token.kind {
                 TokenKind::DocComment(..) => {

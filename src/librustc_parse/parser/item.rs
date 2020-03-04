@@ -750,10 +750,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
-        match self.normalized_token.kind {
-            token::Ident(name @ kw::Underscore, false) => {
+        match self.token.ident() {
+            Some((ident, false)) if ident.name == kw::Underscore => {
                 self.bump();
-                Ok(Ident::new(name, self.normalized_prev_token.span))
+                Ok(ident)
             }
             _ => self.parse_ident(),
         }
@@ -1609,15 +1609,12 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| {
-            match this.normalized_token.kind {
-                // Preserve hygienic context.
-                token::Ident(name, _) => {
-                    this.bump();
-                    Ident::new(name, this.normalized_prev_token.span)
-                }
-                _ => unreachable!(),
+        let expect_self_ident = |this: &mut Self| match this.token.ident() {
+            Some((ident, false)) => {
+                this.bump();
+                ident
             }
+            _ => unreachable!(),
         };
         // Is `self` `n` tokens ahead?
         let is_isolated_self = |this: &Self, n| {

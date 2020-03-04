@@ -156,44 +156,43 @@ fn parse_args<'a>(
         if p.token == token::Eof {
             break;
         } // accept trailing commas
-        if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
-            named = true;
-            let name = if let token::Ident(name, _) = p.normalized_token.kind {
+        match p.token.ident() {
+            Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
+                named = true;
                 p.bump();
-                name
-            } else {
-                unreachable!();
-            };
-
-            p.expect(&token::Eq)?;
-            let e = p.parse_expr()?;
-            if let Some(prev) = names.get(&name) {
-                ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))
-                    .span_label(args[*prev].span, "previously here")
-                    .span_label(e.span, "duplicate argument")
-                    .emit();
-                continue;
-            }
-
-            // Resolve names into slots early.
-            // Since all the positional args are already seen at this point
-            // if the input is valid, we can simply append to the positional
-            // args. And remember the names.
-            let slot = args.len();
-            names.insert(name, slot);
-            args.push(e);
-        } else {
-            let e = p.parse_expr()?;
-            if named {
-                let mut err = ecx
-                    .struct_span_err(e.span, "positional arguments cannot follow named arguments");
-                err.span_label(e.span, "positional arguments must be before named arguments");
-                for pos in names.values() {
-                    err.span_label(args[*pos].span, "named argument");
+                p.expect(&token::Eq)?;
+                let e = p.parse_expr()?;
+                if let Some(prev) = names.get(&ident.name) {
+                    ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
+                        .span_label(args[*prev].span, "previously here")
+                        .span_label(e.span, "duplicate argument")
+                        .emit();
+                    continue;
                 }
-                err.emit();
+
+                // Resolve names into slots early.
+                // Since all the positional args are already seen at this point
+                // if the input is valid, we can simply append to the positional
+                // args. And remember the names.
+                let slot = args.len();
+                names.insert(ident.name, slot);
+                args.push(e);
             }
-            args.push(e);
+            _ => {
+                let e = p.parse_expr()?;
+                if named {
+                    let mut err = ecx.struct_span_err(
+                        e.span,
+                        "positional arguments cannot follow named arguments",
+                    );
+                    err.span_label(e.span, "positional arguments must be before named arguments");
+                    for pos in names.values() {
+                        err.span_label(args[*pos].span, "named argument");
+                    }
+                    err.emit();
+                }
+                args.push(e);
+            }
         }
     }
     Ok((fmtstr, args, names))

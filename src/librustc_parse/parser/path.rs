@@ -240,10 +240,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
-        match self.normalized_token.kind {
-            token::Ident(name, _) if name.is_path_segment_keyword() => {
+        match self.token.ident() {
+            Some((ident, false)) if ident.is_path_segment_keyword() => {
                 self.bump();
-                Ok(Ident::new(name, self.normalized_prev_token.span))
+                Ok(ident)
             }
             _ => self.parse_ident(),
         }
