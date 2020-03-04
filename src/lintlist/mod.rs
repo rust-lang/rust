@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 358] = [
+pub const ALL_LINTS: [Lint; 359] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1784,6 +1784,13 @@ pub const ALL_LINTS: [Lint; 358] = [
         desc: "Lint usages of standard library `const`s that could be replaced by `const fn`s",
         deprecation: None,
         module: "replace_consts",
+    },
+    Lint {
+        name: "rest_pat_in_fully_bound_structs",
+        group: "restriction",
+        desc: "a match on a struct that binds all fields but still uses the wildcard pattern",
+        deprecation: None,
+        module: "matches",
     },
     Lint {
         name: "result_expect_used",

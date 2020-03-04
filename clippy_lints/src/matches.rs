@@ -14,8 +14,8 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, PatKind, QPath,
-    RangeEnd,
+    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Pat, PatKind,
+    QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -311,6 +311,36 @@ declare_clippy_lint! {
     "a match with a single binding instead of using `let` statement"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
+    ///
+    /// **Why is this bad?** Correctness and readability. It's like having a wildcard pattern after
+    /// matching all enum variants explicitly.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # struct A { a: i32 }
+    /// let a = A { a: 5 };
+    ///
+    /// // Bad
+    /// match a {
+    ///     A { a: 5, .. } => {},
+    ///     _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match a {
+    ///     A { a: 5 } => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    pub REST_PAT_IN_FULLY_BOUND_STRUCTS,
+    restriction,
+    "a match on a struct that binds all fields but still uses the wildcard pattern"
+}
+
 #[derive(Default)]
 pub struct Matches {
     infallible_destructuring_match_linted: bool,
@@ -327,7 +357,8 @@ impl_lint_pass!(Matches => [
     WILDCARD_ENUM_MATCH_ARM,
     WILDCARD_IN_OR_PATTERNS,
     MATCH_SINGLE_BINDING,
-    INFALLIBLE_DESTRUCTURING_MATCH
+    INFALLIBLE_DESTRUCTURING_MATCH,
+    REST_PAT_IN_FULLY_BOUND_STRUCTS
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
@@ -384,6 +415,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
                         snippet_with_applicability(cx, target.span, "..", &mut applicability),
                     ),
                     applicability,
+                );
+            }
+        }
+    }
+
+    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+        if_chain! {
+            if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
+            if let QPath::Resolved(_, ref path) = qpath;
+            if let Some(def_id) = path.res.opt_def_id();
+            let ty = cx.tcx.type_of(def_id);
+            if let ty::Adt(def, _) = ty.kind;
+            if def.is_struct() || def.is_union();
+            if fields.len() == def.non_enum_variant().fields.len();
+
+            then {
+                span_lint_and_help(
+                    cx,
+                    REST_PAT_IN_FULLY_BOUND_STRUCTS,
+                    pat.span,
+                    "unnecessary use of `..` pattern in struct binding. All fields were already bound",
+                    "consider removing `..` from this binding",
                 );
             }
         }
