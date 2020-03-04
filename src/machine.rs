@@ -84,6 +84,9 @@ pub struct MemoryExtra {
     /// An allocation ID to report when it is being allocated
     /// (helps for debugging memory leaks).
     tracked_alloc_id: Option<AllocId>,
+
+    /// The `AllocId` for the `environ` static.
+    pub(crate) environ: Option<Scalar<Tag>>,
 }
 
 impl MemoryExtra {
@@ -99,6 +102,7 @@ impl MemoryExtra {
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             tracked_alloc_id,
+            environ: None,
         }
     }
 
@@ -117,6 +121,16 @@ impl MemoryExtra {
                     .extra
                     .extern_statics
                     .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
+                    .unwrap_none();
+
+                // "environ"
+                let layout = this.layout_of(this.tcx.types.usize)?;
+                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                this.write_scalar(this.memory.extra.environ.unwrap(), place.into())?;
+                this.memory
+                    .extra
+                    .extern_statics
+                    .insert(Symbol::intern("environ"), place.ptr.assert_ptr().alloc_id)
                     .unwrap_none();
             }
             _ => {} // No "extern statics" supported on this platform

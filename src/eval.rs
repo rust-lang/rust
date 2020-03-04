@@ -77,8 +77,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ),
     );
     // Complete initialization.
-    MemoryExtra::init_extern_statics(&mut ecx)?;
     EnvVars::init(&mut ecx, config.excluded_env_vars);
+    MemoryExtra::init_extern_statics(&mut ecx)?;
 
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(tcx, main_id);

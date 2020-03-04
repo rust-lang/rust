@@ -2,6 +2,7 @@ use std::ffi::{OsString, OsStr};
 use std::env;
 
 use crate::stacked_borrows::Tag;
+use crate::rustc_target::abi::LayoutOf;
 use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -20,15 +21,29 @@ impl EnvVars {
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         excluded_env_vars: Vec<String>,
     ) {
+        let mut vars = Vec::new();
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr =
                         alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx);
                     ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
+                    vars.push(var_ptr.into());
                 }
             }
         }
+        // Add the trailing null pointer
+        vars.push(Scalar::from_int(0, ecx.pointer_size()));
+        // Make an array with all these pointers inside Miri.
+        let tcx = ecx.tcx;
+        let environ_layout =
+            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), vars.len() as u64)).unwrap();
+        let environ_place = ecx.allocate(environ_layout, MiriMemoryKind::Machine.into());
+        for (idx, var) in vars.into_iter().enumerate() {
+            let place = ecx.mplace_field(environ_place, idx as u64).unwrap();
+            ecx.write_scalar(var, place.into()).unwrap();
+        }
+        ecx.memory.extra.environ = Some(environ_place.ptr.into());
     }
 }
 
