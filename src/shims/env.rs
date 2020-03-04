@@ -21,29 +21,16 @@ impl EnvVars {
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         excluded_env_vars: Vec<String>,
     ) {
-        let mut vars = Vec::new();
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr =
                         alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx);
                     ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
-                    vars.push(var_ptr.into());
                 }
             }
         }
-        // Add the trailing null pointer
-        vars.push(Scalar::from_int(0, ecx.pointer_size()));
-        // Make an array with all these pointers inside Miri.
-        let tcx = ecx.tcx;
-        let environ_layout =
-            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), vars.len() as u64)).unwrap();
-        let environ_place = ecx.allocate(environ_layout, MiriMemoryKind::Machine.into());
-        for (idx, var) in vars.into_iter().enumerate() {
-            let place = ecx.mplace_field(environ_place, idx as u64).unwrap();
-            ecx.write_scalar(var, place.into()).unwrap();
-        }
-        ecx.memory.extra.environ = Some(environ_place.ptr.into());
+        ecx.update_environ().unwrap();
     }
 }
 
@@ -94,6 +81,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((name, value)) = new {
             let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this);
             if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
+                this.update_environ()?;
                 this.memory
                     .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
@@ -112,6 +100,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let name = this.read_os_str_from_c_str(name_ptr)?.to_owned();
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
                 success = Some(this.machine.env_vars.map.remove(&name));
+                this.update_environ()?;
             }
         }
         if let Some(old) = success {
@@ -164,5 +153,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(-1)
             }
         }
+    }
+
+    fn update_environ(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        // Collect all the pointers to each variable in a vector.
+        let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
+        // Add the trailing null pointer.
+        vars.push(Scalar::from_int(0, this.pointer_size()));
+        // Make an array with all these pointers inside Miri.
+        let tcx = this.tcx;
+        let vars_layout =
+            this.layout_of(tcx.mk_array(tcx.types.usize, vars.len() as u64))?;
+        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Machine.into());
+        for (idx, var) in vars.into_iter().enumerate() {
+            let place = this.mplace_field(vars_place, idx as u64)?;
+            this.write_scalar(var, place.into())?;
+        }
+
+        this.write_scalar(
+            vars_place.ptr,
+            this.memory.extra.environ.unwrap().into(),
+        )?;
+
+        Ok(())
     }
 }

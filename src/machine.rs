@@ -70,7 +70,7 @@ pub struct AllocExtra {
 
 /// Extra global memory data
 #[derive(Clone, Debug)]
-pub struct MemoryExtra {
+pub struct MemoryExtra<'tcx> {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
 
@@ -85,11 +85,11 @@ pub struct MemoryExtra {
     /// (helps for debugging memory leaks).
     tracked_alloc_id: Option<AllocId>,
 
-    /// The `AllocId` for the `environ` static.
-    pub(crate) environ: Option<Scalar<Tag>>,
+    /// Place where the `environ` static is stored.
+    pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
 }
 
-impl MemoryExtra {
+impl<'tcx> MemoryExtra<'tcx> {
     pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>, tracked_alloc_id: Option<AllocId>) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
@@ -107,7 +107,7 @@ impl MemoryExtra {
     }
 
     /// Sets up the "extern statics" for this machine.
-    pub fn init_extern_statics<'mir, 'tcx>(
+    pub fn init_extern_statics<'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         match this.tcx.sess.target.target.target_os.as_str() {
@@ -126,12 +126,13 @@ impl MemoryExtra {
                 // "environ"
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-                this.write_scalar(this.memory.extra.environ.unwrap(), place.into())?;
+                this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
                 this.memory
                     .extra
                     .extern_statics
                     .insert(Symbol::intern("environ"), place.ptr.assert_ptr().alloc_id)
                     .unwrap_none();
+                this.memory.extra.environ = Some(place);
             }
             _ => {} // No "extern statics" supported on this platform
         }
@@ -217,7 +218,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     type FrameExtra = FrameData<'tcx>;
-    type MemoryExtra = MemoryExtra;
+    type MemoryExtra = MemoryExtra<'tcx>;
     type AllocExtra = AllocExtra;
     type PointerTag = Tag;
     type ExtraFnVal = Dlsym;
@@ -343,7 +344,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn init_allocation_extra<'b>(
-        memory_extra: &MemoryExtra,
+        memory_extra: &MemoryExtra<'tcx>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
@@ -380,7 +381,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
+    fn tag_static_base_pointer(memory_extra: &MemoryExtra<'tcx>, id: AllocId) -> Self::PointerTag {
         if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
             stacked_borrows.borrow_mut().static_base_ptr(id)
         } else {
