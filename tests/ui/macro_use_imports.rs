@@ -1,11 +1,40 @@
-// edition:2018
+// compile-flags: --edition 2018
+// aux-build:macro_rules.rs
+// aux-build:macro_use_helper.rs
+
+#![allow(clippy::single_component_path_imports)]
 #![warn(clippy::macro_use_imports)]
 
-use std::collections::HashMap;
 #[macro_use]
-use std::prelude;
+extern crate macro_use_helper as mac;
+
+#[macro_use]
+extern crate clippy_mini_macro_test as mini_mac;
+
+mod a {
+    #[macro_use]
+    use std::prelude;
+    #[macro_use]
+    use mac;
+    #[macro_use]
+    use mini_mac;
+    #[macro_use]
+    use mac::inner;
+
+    #[derive(ClippyMiniMacroTest)]
+    struct Test;
+
+    fn main() {
+        pub_macro!();
+        inner_mod!();
+        pub_in_private!(_var);
+        function!();
+        let v: ty_mac!() = Vec::default();
+
+        inner::try_err!();
+    }
+}
 
 fn main() {
-    let _ = HashMap::<u8, u8>::new();
     println!();
 }

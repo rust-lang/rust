@@ -60,6 +60,7 @@ extern crate rustc_trait_selection;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 
+use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
 use rustc_session::Session;
@@ -1060,9 +1061,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
-    let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
-    store.register_late_pass(move || box wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports));
-    store.register_early_pass(|| box macro_use::MacroUseImports);
+    store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
@@ -1080,6 +1079,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         single_char_binding_names_threshold,
     });
     store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
+    store.register_late_pass(|| box macro_use::MacroUseImports::default());
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
