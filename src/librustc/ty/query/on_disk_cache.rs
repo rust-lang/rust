@@ -92,7 +92,7 @@ struct AbsoluteBytePos(u32);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= ::std::u32::MAX as usize);
+        debug_assert!(pos <= u32::MAX as usize);
         AbsoluteBytePos(pos as u32)
     }
 
