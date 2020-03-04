@@ -694,7 +694,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
-        moved_place: PlaceRef<'cx, 'tcx>, // Could also be an upvar.
+        moved_place: PlaceRef<'tcx, 'tcx>, // Could also be an upvar.
         location: Location,
     ) -> UseSpans {
         use self::UseSpans::*;
