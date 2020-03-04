@@ -2220,7 +2220,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// then returns the index of the field being projected. Note that this closure will always
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
-    pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'cx, 'tcx>) -> Option<Field> {
+    pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx, 'tcx>) -> Option<Field> {
         let mut place_projection = place_ref.projection;
         let mut by_ref = false;
 

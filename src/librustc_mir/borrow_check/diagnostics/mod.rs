@@ -139,7 +139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// End-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
-    pub(super) fn describe_place(&self, place_ref: PlaceRef<'cx, 'tcx>) -> Option<String> {
+    pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx, 'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
@@ -149,7 +149,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx, 'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
         let mut buf = String::new();
@@ -162,7 +162,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx, 'tcx>,
         buf: &mut String,
         mut autoderef: bool,
         including_downcast: &IncludingDowncast,
