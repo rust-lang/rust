@@ -399,7 +399,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     pub(super) fn borrowed_content_source(
         &self,
-        deref_base: PlaceRef<'cx, 'tcx>,
+        deref_base: PlaceRef<'tcx, 'tcx>,
     ) -> BorrowedContentSource<'tcx> {
         let tcx = self.infcx.tcx;
 
