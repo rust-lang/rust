@@ -1068,6 +1068,7 @@ dependencies = [
  "rayon",
  "rustc-hash",
  "superslice",
+ "test_utils",
 ]
 
 [[package]]

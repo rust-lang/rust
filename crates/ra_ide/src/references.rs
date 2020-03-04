@@ -222,9 +222,6 @@ fn process_definition(
                     }
                 };
 
-            // FIXME: reuse sb
-            // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
-
             if let Some(d) = classify_name_ref(&sema, &name_ref) {
                 let d = d.definition();
                 if &d == def {

@@ -30,6 +30,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[macro_export]
 macro_rules! tested_by {
+    ($ident:ident; force) => {{
+        {
+            // sic! use call-site crate
+            crate::marks::$ident.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }};
     ($ident:ident) => {{
         #[cfg(test)]
         {
@@ -41,9 +47,12 @@ macro_rules! tested_by {
 
 #[macro_export]
 macro_rules! covers {
+    // sic! use call-site crate
     ($ident:ident) => {
-        // sic! use call-site crate
-        let _checker = $crate::marks::MarkChecker::new(&crate::marks::$ident);
+        $crate::covers!(crate::$ident)
+    };
+    ($krate:ident :: $ident:ident) => {
+        let _checker = $crate::marks::MarkChecker::new(&$krate::marks::$ident);
     };
 }
 
@@ -52,7 +61,7 @@ macro_rules! marks {
     ($($ident:ident)*) => {
         $(
         #[allow(bad_style)]
-        pub(crate) static $ident: std::sync::atomic::AtomicUsize =
+        pub static $ident: std::sync::atomic::AtomicUsize =
             std::sync::atomic::AtomicUsize::new(0);
         )*
     };

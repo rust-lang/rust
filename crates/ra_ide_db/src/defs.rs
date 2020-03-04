@@ -14,6 +14,7 @@ use ra_syntax::{
     ast::{self, AstNode, VisibilityOwner},
     match_ast,
 };
+use test_utils::tested_by;
 
 use crate::RootDatabase;
 
@@ -217,18 +218,22 @@ pub fn classify_name_ref(
     let parent = name_ref.syntax().parent()?;
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
+        tested_by!(goto_def_for_methods; force);
         if let Some(func) = sema.resolve_method_call(&method_call) {
             return Some(NameRefClass::Definition(Definition::ModuleDef(func.into())));
         }
     }
 
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
+        tested_by!(goto_def_for_fields; force);
         if let Some(field) = sema.resolve_field(&field_expr) {
             return Some(NameRefClass::Definition(Definition::StructField(field)));
         }
     }
 
     if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
+        tested_by!(goto_def_for_record_fields; force);
+        tested_by!(goto_def_for_field_init_shorthand; force);
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {
             let field = Definition::StructField(field);
             let res = match local {
@@ -240,6 +245,7 @@ pub fn classify_name_ref(
     }
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
+        tested_by!(goto_def_for_macros; force);
         if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
             return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
         }
