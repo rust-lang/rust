@@ -1039,7 +1039,6 @@ dependencies = [
  "itertools",
  "join_to_string",
  "log",
- "once_cell",
  "ra_assists",
  "ra_cfg",
  "ra_db",
