@@ -33,7 +33,7 @@ required-features = ["rustc_tests"]
 cargo_metadata = { version = "0.9.0", optional = true }
 directories = { version = "2.0", optional = true }
 rustc_version = { version = "0.2.3", optional = true }
-serde_json = { version = "1.0.44", optional = true }
+serde_json = { version = "1.0.40", optional = true }
 
 getrandom = { version = "0.1.8", features = ["std"] }
 byteorder = "1.3"
