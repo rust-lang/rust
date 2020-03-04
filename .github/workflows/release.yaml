@@ -2,7 +2,7 @@ name: release
 on:
   push:
     branches:
-      - release
+    - release
 
 jobs:
   build-server:
@@ -11,183 +11,184 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+
     env:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
+
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-      - name: Checkout repository
-        uses: actions/checkout@v1
+    # We need to disable the existing toolchain to avoid updating rust-docs
+    # which takes a long time. The fastest way to do this is to rename the
+    # existing folder, as deleting it takes about as much time as not doing
+    # anything and just updating rust-docs.
+    - name: Rename existing rust toolchain (Windows)
+      if: matrix.os == 'windows-latest'
+      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
-      # We need to disable the existing toolchain to avoid updating rust-docs
-      # which takes a long time. The fastest way to do this is to rename the
-      # existing folder, as deleting it takes about as much time as not doing
-      # anything and just updating rust-docs.
-      - name: Rename existing rust toolchain (Windows)
-        if: matrix.os == 'windows-latest'
-        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        target: x86_64-unknown-linux-musl
+        override: true
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          target: x86_64-unknown-linux-musl
-          override: true
+    - name: Build
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions-rs/cargo@v1
+      env:
+        CC: clang
+      with:
+        command: build
+        args: --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
 
-      - name: Build
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions-rs/cargo@v1
-        env:
-          CC: clang
-        with:
-          command: build
-          args: --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl
+    - name: Build
+      if: matrix.os != 'ubuntu-latest'
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --package rust-analyzer --bin rust-analyzer --release
 
-      - name: Build
-        if: matrix.os != 'ubuntu-latest'
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --package rust-analyzer --bin rust-analyzer --release
+    - name: Create distribution dir
+      run: mkdir ./dist
 
-      - name: Create distribution dir
-        run: mkdir ./dist
+    - name: Copy binary
+      if: matrix.os == 'ubuntu-latest'
+      run: cp ./target/x86_64-unknown-linux-musl/release/rust-analyzer ./dist/rust-analyzer-linux && strip ./dist/rust-analyzer-linux
 
-      - name: Copy binary
-        if: matrix.os == 'ubuntu-latest'
-        run: cp ./target/x86_64-unknown-linux-musl/release/rust-analyzer ./dist/rust-analyzer-linux && strip ./dist/rust-analyzer-linux
+    - name: Copy binary
+      if: matrix.os == 'macos-latest'
+      run: cp ./target/release/rust-analyzer ./dist/rust-analyzer-mac
 
-      - name: Copy binary
-        if: matrix.os == 'macos-latest'
-        run: cp ./target/release/rust-analyzer ./dist/rust-analyzer-mac
+    - name: Copy binary
+      if: matrix.os == 'windows-latest'
+      run: copy ./target/release/rust-analyzer.exe ./dist/rust-analyzer-windows.exe
 
-      - name: Copy binary
-        if: matrix.os == 'windows-latest'
-        run: copy ./target/release/rust-analyzer.exe ./dist/rust-analyzer-windows.exe
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: server-${{ matrix.os }}
-          path: ./dist
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: server-${{ matrix.os }}
+        path: ./dist
 
   build-clients:
     name: build-clients
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v1
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-      - name: Install Nodejs
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12.x
+    - name: Install Nodejs
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
 
-      - run: npm ci
-        working-directory: ./editors/code
+    - run: npm ci
+      working-directory: ./editors/code
 
-      - run: npm run package --scripts-prepend-node-path
-        working-directory: ./editors/code
+    - run: npm run package --scripts-prepend-node-path
+      working-directory: ./editors/code
 
-      - name: Copy vscode extension
-        run: mkdir -p ./dist/code && cp ./editors/code/rust-analyzer.vsix ./dist/
+    - name: Copy vscode extension
+      run: mkdir -p ./dist/code && cp ./editors/code/rust-analyzer.vsix ./dist/
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: editor-plugins
-          path: ./dist
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: editor-plugins
+        path: ./dist
 
   make-release:
     name: make-release
     runs-on: ubuntu-latest
     needs: ['build-server', 'build-clients']
     steps:
-      - name: Install Nodejs
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12.x
+    - name: Install Nodejs
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
 
-      - run: echo "::set-env name=TAG::$(date --iso)"
-      - run: 'echo "TAG: $TAG"'
+    - run: echo "::set-env name=TAG::$(date --iso)"
+    - run: 'echo "TAG: $TAG"'
 
-      - name: Checkout repository
-        uses: actions/checkout@v1
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
-      - uses: actions/download-artifact@v1
-        with:
-          name: editor-plugins
-          path: dist
-      - uses: actions/download-artifact@v1
-        with:
-          name: server-macos-latest
-          path: dist
-      - uses: actions/download-artifact@v1
-        with:
-          name: server-ubuntu-latest
-          path: dist
-      - uses: actions/download-artifact@v1
-        with:
-          name: server-windows-latest
-          path: dist
-      - run: ls -all ./dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: editor-plugins
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: server-macos-latest
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: server-ubuntu-latest
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: server-windows-latest
+        path: dist
+    - run: ls -all ./dist
 
-      - name: Create Release
-        id: create_release
-        # uses: actions/create-release@v1
-        # https://github.com/actions/create-release/pull/32
-        uses: fleskesvor/create-release@1a72e235c178bf2ae6c51a8ae36febc24568c5fe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.TAG }}
-          release_name: ${{ env.TAG }}
-          draft: false
-          prerelease: false
+    - name: Create Release
+      id: create_release
+      # uses: actions/create-release@v1
+      # https://github.com/actions/create-release/pull/32
+      uses: fleskesvor/create-release@1a72e235c178bf2ae6c51a8ae36febc24568c5fe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.TAG }}
+        release_name: ${{ env.TAG }}
+        draft: false
+        prerelease: false
 
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-linux
-          asset_name: rust-analyzer-linux
-          asset_content_type: application/octet-stream
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/rust-analyzer-linux
+        asset_name: rust-analyzer-linux
+        asset_content_type: application/octet-stream
 
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-mac
-          asset_name: rust-analyzer-mac
-          asset_content_type: application/octet-stream
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/rust-analyzer-mac
+        asset_name: rust-analyzer-mac
+        asset_content_type: application/octet-stream
 
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer-windows.exe
-          asset_name: rust-analyzer-windows.exe
-          asset_content_type: application/octet-stream
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/rust-analyzer-windows.exe
+        asset_name: rust-analyzer-windows.exe
+        asset_content_type: application/octet-stream
 
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer.vsix
-          asset_name: rust-analyzer.vsix
-          asset_content_type: application/octet-stream
+    - uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/rust-analyzer.vsix
+        asset_name: rust-analyzer.vsix
+        asset_content_type: application/octet-stream
 
-      - run: npm ci
-        working-directory: ./editors/code
+    - run: npm ci
+      working-directory: ./editors/code
 
-      - name: Publish Extension
-        working-directory: ./editors/code
-        # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
+    - name: Publish Extension
+      working-directory: ./editors/code
+      # token from https://dev.azure.com/rust-analyzer/
+      run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
