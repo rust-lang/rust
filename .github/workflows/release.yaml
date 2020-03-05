@@ -9,7 +9,7 @@ on:
 
 jobs:
   dist:
-    name: build-server
+    name: dist
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
