@@ -1,4 +1,4 @@
-error[E0624]: method `method` is private
+error[E0624]: associated function `method` is private
   --> $DIR/trait-method-private.rs:19:9
    |
 LL |     foo.method();

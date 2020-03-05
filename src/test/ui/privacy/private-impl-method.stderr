@@ -1,4 +1,4 @@
-error[E0624]: method `foo` is private
+error[E0624]: associated function `foo` is private
   --> $DIR/private-impl-method.rs:20:7
    |
 LL |     s.foo();

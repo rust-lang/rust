@@ -1,4 +1,4 @@
-error[E0624]: method `new` is private
+error[E0624]: associated function `new` is private
   --> $DIR/static-method-privacy.rs:9:13
    |
 LL |     let _ = a::S::new();
