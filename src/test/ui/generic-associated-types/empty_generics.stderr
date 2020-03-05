@@ -1,10 +1,10 @@
-error: expected one of `>`, `const`, identifier, or lifetime, found `,`
+error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `,`
   --> $DIR/empty_generics.rs:5:14
    |
 LL | trait Foo {
    |           - while parsing this item list starting here
 LL |     type Bar<,>;
-   |              ^ expected one of `>`, `const`, identifier, or lifetime
+   |              ^ expected one of `#`, `>`, `const`, identifier, or lifetime
 LL |
 LL | }
    | - the item list ends here

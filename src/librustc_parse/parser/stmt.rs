@@ -1,3 +1,4 @@
+use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
 use super::diagnostics::Error;
 use super::expr::LhsExpr;
 use super::pat::GateOr;
@@ -238,13 +239,11 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
-        maybe_whole!(self, NtBlock, |x| x);
-
-        if !self.eat(&token::OpenDelim(token::Brace)) {
-            return self.error_block_no_opening_brace();
+        let (attrs, block) = self.parse_inner_attrs_and_block()?;
+        if let [.., last] = &*attrs {
+            self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);
         }
-
-        self.parse_block_tail(self.prev_token.span, BlockCheckMode::Default)
+        Ok(block)
     }
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {

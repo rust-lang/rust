@@ -1,10 +1,19 @@
+error: expected outer doc comment
+  --> $DIR/doc-comment-in-if-statement.rs:2:13
+   |
+LL |     if true /*!*/ {}
+   |             ^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+
 error: expected `{`, found doc comment `/*!*/`
   --> $DIR/doc-comment-in-if-statement.rs:2:13
    |
 LL |     if true /*!*/ {}
-   |     --      ^^^^^ expected `{`
-   |     |
+   |     --      ^^^^^ -- help: try placing this code inside a block: `{ {} }`
+   |     |       |
+   |     |       expected `{`
    |     this `if` expression has a condition, but no block
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
