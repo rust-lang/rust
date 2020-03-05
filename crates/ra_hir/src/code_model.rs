@@ -480,6 +480,14 @@ impl Adt {
     pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
     }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        match self {
+            Adt::Struct(s) => s.name(db),
+            Adt::Union(u) => u.name(db),
+            Adt::Enum(e) => e.name(db),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -504,6 +512,14 @@ impl VariantDef {
             VariantDef::Struct(it) => it.module(db),
             VariantDef::Union(it) => it.module(db),
             VariantDef::EnumVariant(it) => it.module(db),
+        }
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        match self {
+            VariantDef::Struct(s) => s.name(db),
+            VariantDef::Union(u) => u.name(db),
+            VariantDef::EnumVariant(e) => e.name(db),
         }
     }
 
@@ -532,6 +548,14 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+        }
+    }
+
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+        match self {
+            DefWithBody::Function(f) => Some(f.name(db)),
+            DefWithBody::Static(s) => s.name(db),
+            DefWithBody::Const(c) => c.name(db),
         }
     }
 }

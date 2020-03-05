@@ -104,6 +104,10 @@ impl RootDatabase {
         db.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
         db
     }
+
+    pub fn get_crate_original_name(&self, crate_id: &CrateId) -> Option<String> {
+        self.debug_data.crate_names.get(crate_id).cloned()
+    }
 }
 
 impl salsa::ParallelDatabase for RootDatabase {
