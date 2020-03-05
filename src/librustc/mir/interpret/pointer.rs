@@ -78,9 +78,9 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     fn overflowing_signed_offset(&self, val: u64, i: i128) -> (u64, bool) {
         // FIXME: is it possible to over/underflow here?
         if i < 0 {
-            // Trickery to ensure that `i64::min_value()` works fine: compute `n = -i`.
+            // Trickery to ensure that `i64::MIN` works fine: compute `n = -i`.
             // This formula only works for true negative values; it overflows for zero!
-            let n = u64::max_value() - (i as u64) + 1;
+            let n = u64::MAX - (i as u64) + 1;
             let res = val.overflowing_sub(n);
             self.truncate_to_ptr(res)
         } else {
