@@ -6,6 +6,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, InFile,
 };
+use ra_prof::profile;
 use ra_syntax::ast::{self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner};
 
 use crate::{
@@ -186,6 +187,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn impl_data_query(db: &impl DefDatabase, id: ImplId) -> Arc<ImplData> {
+        let _p = profile("impl_data_query");
         let impl_loc = id.lookup(db);
         let src = impl_loc.source(db);
 

@@ -11,6 +11,7 @@ use hir_expand::{
 };
 use ra_arena::{map::ArenaMap, Arena};
 use ra_db::FileId;
+use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
@@ -71,6 +72,7 @@ impl GenericParams {
         db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
+        let _p = profile("generic_params_query");
         let (params, _source_map) = GenericParams::new(db, def);
         Arc::new(params)
     }
