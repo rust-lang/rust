@@ -20,9 +20,22 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Function, HirFileId, InFile, Local, MacroDef, Module, ModuleDef, Name, Origin, Path,
-    PathResolution, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
+    AssocItem, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef, Name,
+    Origin, Path, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathResolution {
+    /// An item
+    Def(ModuleDef),
+    /// A local binding (only value namespace)
+    Local(Local),
+    /// A generic parameter
+    TypeParam(TypeParam),
+    SelfType(ImplDef),
+    Macro(MacroDef),
+    AssocItem(AssocItem),
+}
 
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {

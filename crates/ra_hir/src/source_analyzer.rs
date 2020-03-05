@@ -20,12 +20,12 @@ use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodePtr, TextUnit,
 };
 
 use crate::{
-    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, ModPath, ModuleDef, Path,
-    PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Function, Local, MacroDef,
+    ModPath, ModuleDef, Path, PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -38,25 +38,6 @@ pub(crate) struct SourceAnalyzer {
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<InferenceResult>>,
     scopes: Option<Arc<ExprScopes>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PathResolution {
-    /// An item
-    Def(crate::ModuleDef),
-    /// A local binding (only value namespace)
-    Local(Local),
-    /// A generic parameter
-    TypeParam(TypeParam),
-    SelfType(crate::ImplDef),
-    Macro(MacroDef),
-    AssocItem(crate::AssocItem),
-}
-
-#[derive(Debug)]
-pub struct ReferenceDescriptor {
-    pub range: TextRange,
-    pub name: String,
 }
 
 impl SourceAnalyzer {
