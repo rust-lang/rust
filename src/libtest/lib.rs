@@ -158,7 +158,7 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
             .filter(|test| test.desc.name.as_slice() == name)
             .map(make_owned_test)
             .next()
-            .expect(&format!("couldn't find a test with the provided name '{}'", name));
+            .unwrap_or_else(|| panic!("couldn't find a test with the provided name '{}'", name));
         let TestDescAndFn { desc, testfn } = test;
         let testfn = match testfn {
             StaticTestFn(f) => f,
