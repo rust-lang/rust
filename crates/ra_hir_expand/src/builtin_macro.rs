@@ -367,7 +367,7 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, "std::option::Option::None:: <&str>");
+        assert_eq!(expanded, "std::option::Option::None:: < &str>");
     }
 
     #[test]
@@ -414,7 +414,7 @@ mod tests {
 
         assert_eq!(
             expanded,
-            r#"std::fmt::Arguments::new_v1(&[] ,&[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
+            r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
         );
     }
 }

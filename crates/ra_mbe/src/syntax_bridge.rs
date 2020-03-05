@@ -388,11 +388,12 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             return;
         }
 
+        let mut last = self.cursor;
         for _ in 0..n_tokens {
             if self.cursor.eof() {
                 break;
             }
-
+            last = self.cursor;
             let text: SmolStr = match self.cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     // Mark the range if needed
@@ -441,11 +442,11 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         self.inner.token(kind, text);
 
         // Add whitespace between adjoint puncts
-        let next = self.cursor.bump();
+        let next = last.bump();
         if let (
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(curr))),
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(_))),
-        ) = (self.cursor.token_tree(), next.token_tree())
+        ) = (last.token_tree(), next.token_tree())
         {
             if curr.spacing == tt::Spacing::Alone {
                 self.inner.token(WHITESPACE, " ".into());

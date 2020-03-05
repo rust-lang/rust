@@ -266,7 +266,7 @@ mod tests {
             BuiltinDeriveExpander::Copy,
         );
 
-        assert_eq!(expanded, "impl <>std::marker::CopyforFoo <>{}");
+        assert_eq!(expanded, "impl< >std::marker::CopyforFoo< >{}");
     }
 
     #[test]

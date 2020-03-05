@@ -825,6 +825,50 @@ fn test_tt_group() {
     )
     .assert_expand_items(r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
 }
+
+#[test]
+fn test_tt_composite() {
+    parse_macro(
+        r#"
+            macro_rules! foo {
+                 ($i:tt) => { 0 }
+            }
+    "#,
+    )
+    .assert_expand_items(r#"foo! { => }"#, r#"0"#);
+}
+
+#[test]
+fn test_tt_composite2() {
+    let node = parse_macro(
+        r#"
+            macro_rules! foo {
+                ($($tt:tt)*) => { abs!(=> $($tt)*) }
+            }
+    "#,
+    )
+    .expand_items(r#"foo!{#}"#);
+
+    let res = format!("{:#?}", &node);
+    assert_eq_text!(
+        res.trim(),
+        r###"MACRO_ITEMS@[0; 10)
+  MACRO_CALL@[0; 10)
+    PATH@[0; 3)
+      PATH_SEGMENT@[0; 3)
+        NAME_REF@[0; 3)
+          IDENT@[0; 3) "abs"
+    EXCL@[3; 4) "!"
+    TOKEN_TREE@[4; 10)
+      L_PAREN@[4; 5) "("
+      EQ@[5; 6) "="
+      R_ANGLE@[6; 7) ">"
+      WHITESPACE@[7; 8) " "
+      POUND@[8; 9) "#"
+      R_PAREN@[9; 10) ")""###
+    );
+}
+
 #[test]
 fn test_lifetime() {
     parse_macro(
