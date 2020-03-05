@@ -1780,6 +1780,11 @@ fn prepare_enum_metadata(
                 .zip(&def.variants)
                 .map(|((_, discr), v)| {
                     let name = v.ident.as_str();
+                    let is_unsigned = match discr.ty.kind {
+                        ty::Int(_) => false,
+                        ty::Uint(_) => true,
+                        _ => bug!("non integer discriminant"),
+                    };
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
@@ -1787,7 +1792,7 @@ fn prepare_enum_metadata(
                             name.len(),
                             // FIXME: what if enumeration has i128 discriminant?
                             discr.val as i64,
-                            false, // FIXME: IsUnsigned.
+                            is_unsigned,
                         ))
                     }
                 })
