@@ -171,14 +171,16 @@ ARGS:
 rust-analyzer-analysis-bench
 
 USAGE:
-    rust-analyzer analysis-bench [FLAGS] [OPTIONS] [PATH]
+    rust-analyzer analysis-bench [FLAGS] [OPTIONS]
 
 FLAGS:
     -h, --help        Prints help information
     -v, --verbose
 
 OPTIONS:
+    --project <PATH>                 Path to directory with Cargo.toml
     --complete <PATH:LINE:COLUMN>    Compute completions at this location
+    --goto-def <PATH:LINE:COLUMN>    Compute goto definition at this location
     --highlight <PATH>               Hightlight this file
 
 ARGS:
@@ -187,7 +189,7 @@ ARGS:
                     return Ok(Err(HelpPrinted));
                 }
 
-                let path: PathBuf = matches.opt_value_from_str("--path")?.unwrap_or_default();
+                let path: PathBuf = matches.opt_value_from_str("--project")?.unwrap_or_default();
                 let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
                 let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
                 let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
