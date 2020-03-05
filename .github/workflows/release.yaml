@@ -1,7 +1,7 @@
 name: release
 on:
   schedule:
-  - cron: '0 0 * * *' # midnight UTC
+  - cron: '*/15 * * * *' # midnight UTC
 
   push:
     branches:
@@ -73,7 +73,7 @@ jobs:
     - run: echo "::set-env name=TAG::$(date --iso)"
       if: github.event_name == 'push'
     - run: echo "::set-env name=TAG::nightly"
-      if: github.event_name != 'push'
+      if: github.event_name == 'schedule'
     - run: 'echo "TAG: $TAG"'
 
     - name: Checkout repository
