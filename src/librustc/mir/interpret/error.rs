@@ -245,7 +245,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
@@ -291,7 +291,7 @@ pub enum InvalidProgramInfo<'tcx> {
     Layout(layout::LayoutError<'tcx>),
 }
 
-impl fmt::Debug for InvalidProgramInfo<'tcx> {
+impl fmt::Debug for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
@@ -304,7 +304,7 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-pub enum UndefinedBehaviorInfo {
+pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
     /// Free-form case for experimental UB. Only for errors that are never caught!
@@ -321,9 +321,11 @@ pub enum UndefinedBehaviorInfo {
     RemainderByZero,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
+    InvalidMeta(&'tcx str),
 }
 
-impl fmt::Debug for UndefinedBehaviorInfo {
+impl fmt::Debug for UndefinedBehaviorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
@@ -338,6 +340,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
+            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
         }
     }
 }
@@ -577,7 +580,7 @@ impl fmt::Debug for ResourceExhaustionInfo {
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
-    UndefinedBehavior(UndefinedBehaviorInfo),
+    UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),

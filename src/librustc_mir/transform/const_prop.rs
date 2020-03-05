@@ -637,11 +637,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
-        if let Err(e) = self.ecx.validate_operand(
+        if let Err(e) = self.ecx.const_validate_operand(
             value,
             vec![],
             // FIXME: is ref tracking too expensive?
-            Some(&mut interpret::RefTracking::empty()),
+            &mut interpret::RefTracking::empty(),
+            /*may_ref_to_static*/ true,
         ) {
             trace!("validation error, attempt failed: {:?}", e);
             return;
