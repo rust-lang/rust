@@ -920,7 +920,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (
                             _,
@@ -971,7 +971,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     }
                 }
                 Candidate::Repeat(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);

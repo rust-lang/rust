@@ -2727,7 +2727,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>) -> String {
     let name = it.name.as_ref().unwrap();
     let ty = match it.type_() {
         Typedef | AssocType => AssocType,
-        s @ _ => s,
+        s => s,
     };
 
     let anchor = format!("#{}.{}", ty, name);
@@ -3150,7 +3150,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     }
 }
 
-const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
+const ATTRIBUTE_WHITELIST: &[Symbol] = &[
     sym::export_name,
     sym::lang,
     sym::link_section,
@@ -4610,7 +4610,7 @@ fn item_keyword(w: &mut Buffer, cx: &Context, it: &clean::Item) {
     document(w, cx, it)
 }
 
-crate const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";
+crate const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
 
 fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())

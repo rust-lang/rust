@@ -60,7 +60,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             .chain(ia.inputs.iter().map(|s| s.to_string()))
             .chain(ext_constraints)
             .chain(clobbers)
-            .chain(arch_clobbers.iter().map(|s| s.to_string()))
+            .chain(arch_clobbers.iter().map(|s| (*s).to_string()))
             .collect::<Vec<String>>()
             .join(",");
 

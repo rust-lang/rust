@@ -313,7 +313,7 @@ fn should_fail(i: &ast::Item) -> bool {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let ref sd = cx.parse_sess.span_diagnostic;
+            let sd = &cx.parse_sess.span_diagnostic;
 
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
@@ -378,7 +378,7 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let ref sd = cx.parse_sess.span_diagnostic;
+    let sd = &cx.parse_sess.span_diagnostic;
     if let ast::ItemKind::Fn(_, ref sig, ref generics, _) = i.kind {
         if let ast::Unsafe::Yes(span) = sig.header.unsafety {
             sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")

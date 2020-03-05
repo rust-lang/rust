@@ -1198,7 +1198,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         t: BasicBlock,
         f: BasicBlock,
     ) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [u128] = &[0];
+        static BOOL_SWITCH_FALSE: &[u128] = &[0];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,

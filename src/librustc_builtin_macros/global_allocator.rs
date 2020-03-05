@@ -57,12 +57,12 @@ impl AllocFnFactory<'_, '_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> Stmt {
         let mut abi_args = Vec::new();
         let mut i = 0;
-        let ref mut mk = || {
+        let mut mk = || {
             let name = self.cx.ident_of(&format!("arg{}", i), self.span);
             i += 1;
             name
         };
-        let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, mk)).collect();
+        let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, &mut mk)).collect();
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));

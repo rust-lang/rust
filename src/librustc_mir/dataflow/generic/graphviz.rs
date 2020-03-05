@@ -604,8 +604,8 @@ fn write_diff<A: Analysis<'tcx>>(
     Ok(())
 }
 
-const BR_LEFT: &'static str = r#"<br align="left"/>"#;
-const BR_LEFT_SPACE: &'static str = r#"<br align="left"/> "#;
+const BR_LEFT: &str = r#"<br align="left"/>"#;
+const BR_LEFT_SPACE: &str = r#"<br align="left"/> "#;
 
 /// Line break policy that breaks at 40 characters and starts the next line with a single space.
 const LIMIT_30_ALIGN_1: Option<LineBreak> = Some(LineBreak { sequence: BR_LEFT_SPACE, limit: 30 });
