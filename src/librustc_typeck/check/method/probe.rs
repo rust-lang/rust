@@ -1403,6 +1403,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
+                        result = ProbeResult::NoMatch;
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
                                 Err(_) => return true,
@@ -1413,7 +1414,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                         // Determine exactly which obligation wasn't met, so
                                         // that we can give more context in the error.
                                         if !self.predicate_may_hold(&obligation) {
-                                            result = ProbeResult::NoMatch;
                                             let o = self.resolve_vars_if_possible(obligation);
                                             let predicate =
                                                 self.resolve_vars_if_possible(&predicate);
@@ -1431,7 +1431,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 _ => {
                                     // Some nested subobligation of this predicate
                                     // failed.
-                                    result = ProbeResult::NoMatch;
                                     let predicate = self.resolve_vars_if_possible(&predicate);
                                     possibly_unsatisfied_predicates.push((predicate, None));
                                 }
