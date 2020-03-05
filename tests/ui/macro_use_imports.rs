@@ -1,5 +1,5 @@
 // compile-flags: --edition 2018
-#![warn(clippy::macro_use_import)]
+#![warn(clippy::macro_use_imports)]
 
 use std::collections::HashMap;
 #[macro_use]

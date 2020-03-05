@@ -19,14 +19,14 @@ declare_clippy_lint! {
     /// #[macro_use]
     /// use lazy_static;
     /// ```
-    pub MACRO_USE_IMPORT,
+    pub MACRO_USE_IMPORTS,
     pedantic,
     "#[macro_use] is no longer needed"
 }
 
-declare_lint_pass!(MacroUseImport => [MACRO_USE_IMPORT]);
+declare_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 
-impl EarlyLintPass for MacroUseImport {
+impl EarlyLintPass for MacroUseImports {
     fn check_item(&mut self, ecx: &EarlyContext<'_>, item: &ast::Item) {
         if_chain! {
             if ecx.sess.opts.edition == Edition::Edition2018;
@@ -40,7 +40,7 @@ impl EarlyLintPass for MacroUseImport {
                 let help = format!("use {}::<macro name>", snippet(ecx, use_tree.span, "_"));
                 span_lint_and_sugg(
                     ecx,
-                    MACRO_USE_IMPORT,
+                    MACRO_USE_IMPORTS,
                     mac_attr.span,
                     msg,
                     "remove the attribute and import the macro directly, try",

@@ -600,7 +600,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::WHILE_IMMUTABLE_CONDITION,
         &loops::WHILE_LET_LOOP,
         &loops::WHILE_LET_ON_ITERATOR,
-        &macro_use::MACRO_USE_IMPORT,
+        &macro_use::MACRO_USE_IMPORTS,
         &main_recursion::MAIN_RECURSION,
         &map_clone::MAP_CLONE,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
@@ -1014,7 +1014,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
-    store.register_early_pass(|| box macro_use::MacroUseImport);
+    store.register_early_pass(|| box macro_use::MacroUseImports);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1082,7 +1082,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&literal_representation::LARGE_DIGIT_GROUPS),
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
-        LintId::of(&macro_use::MACRO_USE_IMPORT),
+        LintId::of(&macro_use::MACRO_USE_IMPORTS),
         LintId::of(&matches::SINGLE_MATCH_ELSE),
         LintId::of(&methods::FILTER_MAP),
         LintId::of(&methods::FILTER_MAP_NEXT),
