@@ -7,7 +7,6 @@ use rustc_span::DUMMY_SP;
 
 use std::cmp;
 use std::fmt;
-use std::i128;
 use std::iter;
 use std::mem;
 use std::ops::Bound;
@@ -1001,7 +1000,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
-                let (mut min, mut max) = (i128::max_value(), i128::min_value());
+                let (mut min, mut max) = (i128::MAX, i128::MIN);
                 let discr_type = def.repr.discr_type();
                 let bits = Integer::from_attr(self, discr_type).size().bits();
                 for (i, discr) in def.discriminants(tcx) {
@@ -1021,7 +1020,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
                 // We might have no inhabited variants, so pretend there's at least one.
-                if (min, max) == (i128::max_value(), i128::min_value()) {
+                if (min, max) == (i128::MAX, i128::MIN) {
                     min = 0;
                     max = 0;
                 }
