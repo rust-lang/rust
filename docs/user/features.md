@@ -105,9 +105,9 @@ Start `cargo watch` for live error highlighting. Will prompt to install if it's 
 
 Stop `cargo watch`.
 
-#### Structural Seach and Replace 
+#### Structural Seach and Replace
 
-Search and replace with named wildcards that will match any expression. 
+Search and replace with named wildcards that will match any expression.
 The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`. A `$<name>:expr` placeholder in the search pattern will match any expression and `$<name>` will reference it in the replacement. Available via the command `rust-analyzer.ssr`.
 
 ```rust
@@ -195,4 +195,5 @@ In VS Code, the following settings can be used to configure the inlay hints:
 * `rust-analyzer.maxInlayHintLength` — shortens the hints if their length exceeds the value specified. If no value is specified (`null`), no shortening is applied.
 
 **Note:** VS Code does not have native support for inlay hints [yet](https://github.com/microsoft/vscode/issues/16221) and the hints are implemented using decorations.
-This approach has limitations: the caret movement near the end of the hint may look [weird](https://github.com/rust-analyzer/rust-analyzer/issues/1623).
+This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
+[1](https://github.com/rust-analyzer/rust-analyzer/issues/1623), [2](https://github.com/rust-analyzer/rust-analyzer/issues/3453).
