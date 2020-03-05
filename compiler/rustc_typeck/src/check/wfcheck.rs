@@ -163,6 +163,23 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 }
             }
         }
+        hir::ItemKind::TyAlias(ref ty, hir::Generics { params: [], .. }) => {
+            // We explicitely only check cases with *no* type parameters to avoid regressions on
+            // existing incorrectly accepted code like `type T<X> = <X as Trait>::Foo;`.
+
+            // We don't use `check_item_type` to *not* emit `!Sized` errors.
+            let ty_span = ty.span;
+            for_id(tcx, item.hir_id(), ty_span).with_fcx(|fcx, tcx| {
+                let ty = tcx.type_of(def_id);
+                let item_ty = fcx.normalize_associated_types_in(ty_span, ty);
+                fcx.register_wf_obligation(
+                    item_ty.into(),
+                    ty_span,
+                    ObligationCauseCode::MiscObligation,
+                );
+                vec![]
+            });
+        }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| vec![fcx.non_enum_variant(struct_def)]);
 

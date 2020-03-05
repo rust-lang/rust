@@ -7,9 +7,11 @@ type FnGood = for<#[cfg(yes)] 'a, #[cfg(no)] T> fn(); // OK
 type FnBad = for<#[cfg(no)] 'a, #[cfg(yes)] T> fn();
 //~^ ERROR only lifetime parameters can be used in this context
 
-type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(no)] T> Copy; // OK
+type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(no)] T> Copy;
+//~^ ERROR the trait `Copy` cannot be made into an object
 type PolyBad = dyn for<#[cfg(no)] 'a, #[cfg(yes)] T> Copy;
 //~^ ERROR only lifetime parameters can be used in this context
+//~| ERROR the trait `Copy` cannot be made into an object
 
 struct WhereGood where for<#[cfg(yes)] 'a, #[cfg(no)] T> u8: Copy; // OK
 struct WhereBad where for<#[cfg(no)] 'a, #[cfg(yes)] T> u8: Copy;
@@ -27,8 +29,10 @@ type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
 //~^ ERROR cannot find attribute `unknown` in this scope
 
 type PolyNo = dyn for<#[cfg_attr(no, unknown)] 'a> Copy; // OK
+//~^ ERROR the trait `Copy` cannot be made into an object
 type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
 //~^ ERROR cannot find attribute `unknown` in this scope
+//~| ERROR the trait `Copy` cannot be made into an object
 
 struct WhereNo where for<#[cfg_attr(no, unknown)] 'a> u8: Copy; // OK
 struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;

@@ -2,13 +2,12 @@
 
 extern crate issue_3907;
 
-type Foo = dyn issue_3907::Foo + 'static;
+type Foo = dyn issue_3907::Foo + 'static; //~ ERROR E0038
 
 struct S {
     name: isize
 }
 
-fn bar(_x: Foo) {}
-//~^ ERROR E0038
+fn bar(_x: Foo) {} //~ ERROR E0038
 
 fn main() {}

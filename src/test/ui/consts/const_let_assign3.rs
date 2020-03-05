@@ -17,13 +17,6 @@ const FOO: S = {
     s
 };
 
-type Array = [u32; {
-    let mut x = 2;
-    let y = &mut x; //~ ERROR mutable reference
-    *y = 42;
-    *y
-}];
-
 fn main() {
     assert_eq!(FOO.state, 3);
 }
