@@ -318,11 +318,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    pub(super) fn parse_block_tail(
-        &mut self,
-        lo: Span,
-        s: BlockCheckMode,
-    ) -> PResult<'a, P<Block>> {
+    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
             if self.token == token::Eof {
