@@ -1733,9 +1733,9 @@ fn panic_safe() {
     let moduli = &[5, 20, 50];
 
     #[cfg(miri)]
-    let lens = 1..13;
+    let lens = 1..10;
     #[cfg(miri)]
-    let moduli = &[10];
+    let moduli = &[5];
 
     for len in lens {
         for &modulus in moduli {
