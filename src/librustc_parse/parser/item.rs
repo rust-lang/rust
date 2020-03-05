@@ -1412,10 +1412,25 @@ impl<'a> Parser<'a> {
     /// or e.g. a block when the function is a provided one.
     fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
         let (inner_attrs, body) = if self.check(&token::Semi) {
-            self.bump();
+            self.bump(); // `;`
             (Vec::new(), None)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+        } else if self.token.kind == token::Eq {
+            // Recover `fn foo() = $expr;`.
+            self.bump(); // `=`
+            let eq_sp = self.prev_token.span;
+            let _ = self.parse_expr()?;
+            self.expect_semi()?; // `;`
+            let span = eq_sp.to(self.prev_token.span);
+            self.struct_span_err(span, "function body cannot be `= expression;`")
+                .multipart_suggestion(
+                    "surround the expression with `{` and `}` instead of `=` and `;`",
+                    vec![(eq_sp, "{".to_string()), (self.prev_token.span, " }".to_string())],
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            (Vec::new(), Some(self.mk_block_err(span)))
         } else {
             return self.expected_semi_or_open_brace();
         };
