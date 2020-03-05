@@ -485,7 +485,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         }))
                         | Some(hir::Node::ImplItem(hir::ImplItem {
                             ident,
-                            kind: hir::ImplItemKind::Method(sig, _),
+                            kind: hir::ImplItemKind::Fn(sig, _),
                             ..
                         })) => Some(
                             arg_pos
@@ -527,7 +527,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     ident,
-                    kind: hir::ImplItemKind::Method(sig, _),
+                    kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
                     err.span_label(ident.span, "");

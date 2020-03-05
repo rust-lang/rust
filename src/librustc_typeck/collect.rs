@@ -745,7 +745,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
     tcx.predicates_of(def_id);
     let impl_item = tcx.hir().expect_impl_item(impl_item_id);
     match impl_item.kind {
-        hir::ImplItemKind::Method(..) => {
+        hir::ImplItemKind::Fn(..) => {
             tcx.fn_sig(def_id);
         }
         hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => {
@@ -1127,7 +1127,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Method(ref sig, _) => {
+            hir::ImplItemKind::Fn(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
@@ -1437,12 +1437,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Fn(sig, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             ident,
             generics,
             ..
         })
-        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), ident, generics, .. })
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), ident, generics, .. })
         | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {

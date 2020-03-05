@@ -60,7 +60,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         },
 
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Method(..) => {}
+            hir::ImplItemKind::Fn(..) => {}
 
             _ => unsupported(),
         },
