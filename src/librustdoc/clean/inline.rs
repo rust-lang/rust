@@ -42,11 +42,7 @@ pub fn try_inline(
     attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
-    let did = if let Some(did) = res.opt_def_id() {
-        did
-    } else {
-        return None;
-    };
+    let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
     }
