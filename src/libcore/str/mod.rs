@@ -2,7 +2,9 @@
 
 //! String manipulation.
 //!
-//! For more details, see the `std::str` module.
+//! For more details, see the [`std::str`] module.
+//!
+//! [`std::str`]: ../../std/str/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

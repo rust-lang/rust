@@ -737,8 +737,8 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
 }
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
-    let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-    tcx.hir().krate().par_visit_all_item_likes(&mut visit);
+    let visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
+    tcx.hir().krate().par_visit_all_item_likes(&visit);
 }
 
 fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {

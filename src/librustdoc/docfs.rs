@@ -90,14 +90,14 @@ impl DocFS {
             let sender = self.errors.sender.clone().unwrap();
             rayon::spawn(move || match fs::write(&path, &contents) {
                 Ok(_) => {
-                    sender
-                        .send(None)
-                        .expect(&format!("failed to send error on \"{}\"", path.display()));
+                    sender.send(None).unwrap_or_else(|_| {
+                        panic!("failed to send error on \"{}\"", path.display())
+                    });
                 }
                 Err(e) => {
-                    sender
-                        .send(Some(format!("\"{}\": {}", path.display(), e)))
-                        .expect(&format!("failed to send non-error on \"{}\"", path.display()));
+                    sender.send(Some(format!("\"{}\": {}", path.display(), e))).unwrap_or_else(
+                        |_| panic!("failed to send non-error on \"{}\"", path.display()),
+                    );
                 }
             });
             Ok(())

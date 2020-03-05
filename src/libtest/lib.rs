@@ -96,7 +96,7 @@ use time::TestExecTime;
 // Process exit code to be used to indicate test failures.
 const ERROR_EXIT_CODE: i32 = 101;
 
-const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
+const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -158,7 +158,7 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
             .filter(|test| test.desc.name.as_slice() == name)
             .map(make_owned_test)
             .next()
-            .expect(&format!("couldn't find a test with the provided name '{}'", name));
+            .unwrap_or_else(|| panic!("couldn't find a test with the provided name '{}'", name));
         let TestDescAndFn { desc, testfn } = test;
         let testfn = match testfn {
             StaticTestFn(f) => f,

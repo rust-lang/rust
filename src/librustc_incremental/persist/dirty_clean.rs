@@ -343,7 +343,8 @@ impl DirtyCleanVisitor<'tcx> {
                 &format!("clean/dirty auto-assertions not yet defined for {:?}", node),
             ),
         };
-        let labels = Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| l.to_string())));
+        let labels =
+            Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
         (name, labels)
     }
 

@@ -1432,7 +1432,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             }
                             msg
                         }
-                        ref s @ _ => bug!("unexpected import subclass {:?}", s),
+                        ref s => bug!("unexpected import subclass {:?}", s),
                     };
                     let mut err = this.session.struct_span_err(binding.span, &msg);
 

@@ -121,9 +121,7 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => {
-                lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
-            }
+            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(|lt| GenericArg::Lifetime(lt)),
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None

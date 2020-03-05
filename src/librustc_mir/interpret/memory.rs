@@ -565,7 +565,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
-        if let Some(_) = self.get_fn_alloc(id) {
+        if self.get_fn_alloc(id).is_some() {
             return if let AllocCheck::Dereferenceable = liveness {
                 // The caller requested no function pointers.
                 throw_unsup!(DerefFunctionPointer)

@@ -2331,7 +2331,7 @@ fn specialize_one_pattern<'p, 'tcx>(
         PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
-            let ref variant = adt_def.variants[variant_index];
+            let variant = &adt_def.variants[variant_index];
             let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)

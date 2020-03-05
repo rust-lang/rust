@@ -284,7 +284,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
-                                    fmt.to_string(),
+                                    (*fmt).to_string(),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -476,7 +476,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 match ty {
                     Placeholder(_) => {
                         // record every (position, type) combination only once
-                        let ref mut seen_ty = self.arg_unique_types[arg];
+                        let seen_ty = &mut self.arg_unique_types[arg];
                         let i = seen_ty.iter().position(|x| *x == ty).unwrap_or_else(|| {
                             let i = seen_ty.len();
                             seen_ty.push(ty);
@@ -526,7 +526,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // Map the arguments
         for i in 0..args_len {
-            let ref arg_types = self.arg_types[i];
+            let arg_types = &self.arg_types[i];
             let arg_offsets = arg_types.iter().map(|offset| sofar + *offset).collect::<Vec<_>>();
             self.arg_index_map.push(arg_offsets);
             sofar += self.arg_unique_types[i].len();
@@ -597,7 +597,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             let arg_idx = match arg_index_consumed.get_mut(i) {
                                 None => 0, // error already emitted elsewhere
                                 Some(offset) => {
-                                    let ref idx_map = self.arg_index_map[i];
+                                    let idx_map = &self.arg_index_map[i];
                                     // unwrap_or branch: error already emitted elsewhere
                                     let arg_idx = *idx_map.get(*offset).unwrap_or(&0);
                                     *offset += 1;
@@ -721,7 +721,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let name = names_pos[i];
             let span = self.ecx.with_def_site_ctxt(e.span);
             pats.push(self.ecx.pat_ident(span, name));
-            for ref arg_ty in self.arg_unique_types[i].iter() {
+            for arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));

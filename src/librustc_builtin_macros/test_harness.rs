@@ -326,7 +326,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 /// &[&test1, &test2]
 fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
-    let ref ecx = cx.ext_cx;
+    let ecx = &cx.ext_cx;
 
     ecx.expr_vec_slice(
         sp,

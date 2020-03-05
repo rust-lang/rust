@@ -1550,21 +1550,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
-            let applicable_close_candidates: Vec<ty::AssocItem> =
-                method_names
-                    .iter()
-                    .filter_map(|&method_name| {
-                        pcx.reset();
-                        pcx.method_name = Some(method_name);
-                        pcx.assemble_inherent_candidates();
-                        pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
-                            .map_or(None, |_| {
-                                pcx.pick_core()
-                                    .and_then(|pick| pick.ok())
-                                    .and_then(|pick| Some(pick.item))
-                            })
-                    })
-                    .collect();
+            let applicable_close_candidates: Vec<ty::AssocItem> = method_names
+                .iter()
+                .filter_map(|&method_name| {
+                    pcx.reset();
+                    pcx.method_name = Some(method_name);
+                    pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
+                        .map_or(None, |_| {
+                            pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
+                        })
+                })
+                .collect();
 
             if applicable_close_candidates.is_empty() {
                 Ok(None)

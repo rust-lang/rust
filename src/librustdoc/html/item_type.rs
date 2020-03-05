@@ -62,7 +62,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let inner = match item.inner {
             clean::StrippedItem(box ref item) => item,
-            ref inner @ _ => inner,
+            ref inner => inner,
         };
 
         match *inner {
@@ -194,7 +194,7 @@ impl fmt::Display for ItemType {
     }
 }
 
-pub const NAMESPACE_TYPE: &'static str = "t";
-pub const NAMESPACE_VALUE: &'static str = "v";
-pub const NAMESPACE_MACRO: &'static str = "m";
-pub const NAMESPACE_KEYWORD: &'static str = "k";
+pub const NAMESPACE_TYPE: &str = "t";
+pub const NAMESPACE_VALUE: &str = "v";
+pub const NAMESPACE_MACRO: &str = "m";
+pub const NAMESPACE_KEYWORD: &str = "k";
