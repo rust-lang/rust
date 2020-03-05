@@ -600,7 +600,7 @@ fn user_substs_applied_to_res<'tcx>(
         // a tuple-struct or tuple-variant. This has the type of a
         // `Fn` but with the user-given substitutions.
         Res::Def(DefKind::Fn, _)
-        | Res::Def(DefKind::Method, _)
+        | Res::Def(DefKind::AssocFn, _)
         | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
         | Res::Def(DefKind::Const, _)
         | Res::Def(DefKind::AssocConst, _) => {
@@ -703,7 +703,7 @@ fn convert_path_expr<'a, 'tcx>(
     match res {
         // A regular function, constructor function or a constant.
         Res::Def(DefKind::Fn, _)
-        | Res::Def(DefKind::Method, _)
+        | Res::Def(DefKind::AssocFn, _)
         | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
         | Res::SelfCtor(..) => {
             let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);

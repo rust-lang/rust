@@ -811,7 +811,7 @@ fn primary_body_of(
         },
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Const(ref ty, Some(body)) => Some((body, Some(ty), None, None)),
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Provided(body)) => {
                 Some((body, None, Some(&sig.header), Some(&sig.decl)))
             }
             _ => None,
@@ -1733,7 +1733,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
-                if let hir::TraitItemKind::Method(sig, _) = &item.kind {
+                if let hir::TraitItemKind::Fn(sig, _) = &item.kind {
                     let abi = sig.header.abi;
                     fn_maybe_err(tcx, item.ident.span, abi);
                 }
@@ -2976,7 +2976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
         debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
-        self.write_resolution(hir_id, Ok((DefKind::Method, method.def_id)));
+        self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
 
         // When the method is confirmed, the `method.substs` includes
@@ -4769,7 +4769,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Node::TraitItem(&hir::TraitItem {
                 ident,
-                kind: hir::TraitItemKind::Method(ref sig, ..),
+                kind: hir::TraitItemKind::Fn(ref sig, ..),
                 ..
             }) => Some((&sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
@@ -4863,7 +4863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 }))
                 | Some(Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                    kind: hir::TraitItemKind::Fn(.., hir::TraitMethod::Provided(body_id)),
                     ..
                 })) => {
                     let body = hir.body(*body_id);
@@ -4934,7 +4934,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .join(", ")
                 }
                 Some(Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                    kind: hir::TraitItemKind::Fn(.., hir::TraitMethod::Required(idents)),
                     ..
                 })) => {
                     sugg_call = idents
@@ -5364,7 +5364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Res::Def(DefKind::Method, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
