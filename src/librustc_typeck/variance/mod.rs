@@ -1,7 +1,7 @@
-//! Module for inferring the variance of type and lifetime parameters. See the [rustc guide]
+//! Module for inferring the variance of type and lifetime parameters. See the [rustc dev guide]
 //! chapter for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/variance.html
+//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/variance.html
 
 use hir::Node;
 use rustc::ty::query::Providers;

@@ -1,8 +1,8 @@
 // ignore-tidy-filelength
 
-//! Candidate selection. See the [rustc guide] for more information on how this works.
+//! Candidate selection. See the [rustc dev guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#selection
+//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#selection
 
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
@@ -931,9 +931,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //
     // The selection process begins by examining all in-scope impls,
     // caller obligations, and so forth and assembling a list of
-    // candidates. See the [rustc guide] for more details.
+    // candidates. See the [rustc dev guide] for more details.
     //
-    // [rustc guide]:
+    // [rustc dev guide]:
     // https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#candidate-assembly
 
     fn candidate_from_obligation<'o>(
@@ -2447,9 +2447,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //
     // Confirmation unifies the output type parameters of the trait
     // with the values found in the obligation, possibly yielding a
-    // type error.  See the [rustc guide] for more details.
+    // type error.  See the [rustc dev guide] for more details.
     //
-    // [rustc guide]:
+    // [rustc dev guide]:
     // https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#confirmation
 
     fn confirm_candidate(

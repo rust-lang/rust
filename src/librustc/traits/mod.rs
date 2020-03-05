@@ -1,6 +1,6 @@
-//! Trait Resolution. See the [rustc guide] for more information on how this works.
+//! Trait Resolution. See the [rustc dev guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html
+//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html
 
 pub mod query;
 pub mod select;

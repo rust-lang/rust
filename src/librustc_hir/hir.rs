@@ -609,9 +609,9 @@ pub struct ModuleItems {
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
-/// For more details, see the [rustc guide].
+/// For more details, see the [rustc dev guide].
 ///
-/// [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/hir.html
+/// [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate<'hir> {
     pub module: Mod<'hir>,

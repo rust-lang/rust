@@ -14,9 +14,9 @@
 //!   (or `tcx`), which is the central context during most of
 //!   compilation, containing the interners and other things.
 //!
-//! For more information about how rustc works, see the [rustc guide].
+//! For more information about how rustc works, see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/
+//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/
 //!
 //! # Note
 //!

@@ -17,7 +17,7 @@
 //! `instantiate_query_result` method.
 //!
 //! For a more detailed look at what is happening here, check
-//! out the [chapter in the rustc guide][c].
+//! out the [chapter in the rustc dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html
 

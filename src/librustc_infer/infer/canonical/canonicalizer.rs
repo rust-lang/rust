@@ -1,7 +1,7 @@
 //! This module contains the "canonicalizer" itself.
 //!
 //! For an overview of what canonicalization is and how it fits into
-//! rustc, check out the [chapter in the rustc guide][c].
+//! rustc, check out the [chapter in the rustc dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html
 
@@ -33,7 +33,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// with a mapping M that maps `'?0` to `'static`.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
@@ -77,7 +77,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// reference to `'static` alone.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>

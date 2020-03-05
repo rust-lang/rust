@@ -19,7 +19,7 @@ chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
 
 The Rust build system has a Python script called `x.py` to bootstrap building
 the compiler. More information about it may be found by running `./x.py --help`
-or reading the [rustc guide][rustcguidebuild].
+or reading the [rustc dev guide][rustcguidebuild].
 
 [rustcguidebuild]: https://rust-lang.github.io/rustc-dev-guide/building/how-to-build-and-run.html
 
@@ -249,13 +249,13 @@ Most real-time collaboration happens in a variety of channels on the
 community, documentation, and all major contribution areas in the Rust ecosystem.
 A good place to ask for help would be the #help channel.
 
-The [rustc guide] might be a good place to start if you want to find out how
+The [rustc dev guide] might be a good place to start if you want to find out how
 various parts of the compiler work.
 
 Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 
 [rust-discord]: https://discord.gg/rust-lang
-[rustc guide]: https://rust-lang.github.io/rustc-dev-guide/about-this-guide.html
+[rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/about-this-guide.html
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 ## License
