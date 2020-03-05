@@ -891,10 +891,10 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
       unwrap(InsertAtEnd)));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateEnumerator(LLVMRustDIBuilderRef Builder,
-                                  const char *Name, uint64_t Val) {
-  return wrap(Builder->createEnumerator(Name, Val));
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
+    LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
+    int64_t Value, bool IsUnsigned) {
+  return wrap(Builder->createEnumerator({Name, NameLen}, Value, IsUnsigned));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(

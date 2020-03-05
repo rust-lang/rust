@@ -1779,13 +1779,15 @@ fn prepare_enum_metadata(
                 .discriminants(cx.tcx)
                 .zip(&def.variants)
                 .map(|((_, discr), v)| {
-                    let name = SmallCStr::new(&v.ident.as_str());
+                    let name = v.ident.as_str();
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
-                            name.as_ptr(),
+                            name.as_ptr().cast(),
+                            name.len(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            discr.val as u64,
+                            discr.val as i64,
+                            false, // FIXME: IsUnsigned.
                         ))
                     }
                 })
@@ -1794,13 +1796,15 @@ fn prepare_enum_metadata(
                 .as_generator()
                 .variant_range(enum_def_id, cx.tcx)
                 .map(|variant_index| {
-                    let name = SmallCStr::new(&substs.as_generator().variant_name(variant_index));
+                    let name = substs.as_generator().variant_name(variant_index);
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
-                            name.as_ptr(),
+                            name.as_ptr().cast(),
+                            name.len(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            variant_index.as_usize() as u64,
+                            variant_index.as_usize() as i64,
+                            false, // FIXME: IsUnsigned.
                         ))
                     }
                 })
