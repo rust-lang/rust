@@ -369,7 +369,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Ok(&lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
                         };
                     }
                     CheckLintNameResult::Ok(&lint_ids)
@@ -404,7 +404,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
                         };
                     }
                     CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
