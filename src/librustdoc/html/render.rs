@@ -2727,7 +2727,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>) -> String {
     let name = it.name.as_ref().unwrap();
     let ty = match it.type_() {
         Typedef | AssocType => AssocType,
-        s @ _ => s,
+        s => s,
     };
 
     let anchor = format!("#{}.{}", ty, name);

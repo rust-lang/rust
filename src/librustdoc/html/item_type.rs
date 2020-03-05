@@ -62,7 +62,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let inner = match item.inner {
             clean::StrippedItem(box ref item) => item,
-            ref inner @ _ => inner,
+            ref inner => inner,
         };
 
         match *inner {
