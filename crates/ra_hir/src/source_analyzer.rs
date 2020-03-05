@@ -20,7 +20,7 @@ use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodePtr, TextUnit,
 };
 
 use crate::{
@@ -51,12 +51,6 @@ pub enum PathResolution {
     SelfType(crate::ImplDef),
     Macro(MacroDef),
     AssocItem(crate::AssocItem),
-}
-
-#[derive(Debug)]
-pub struct ReferenceDescriptor {
-    pub range: TextRange,
-    pub name: String,
 }
 
 impl SourceAnalyzer {
