@@ -33,7 +33,17 @@ if git diff --exit-code --quiet; then
   exit 0
 fi
 
-git add .
-git commit -m "Automatic deploy to GitHub Pages: ${SHA}"
+if [[ -n $TAG_NAME ]]; then
+  # Add the new dir
+  git add $TAG_NAME
+  # Update the symlink
+  git add stable
+  # Update versions file
+  git add versions.json
+  git commit -m "Add documentation for ${TAG_NAME} release: ${SHA}"
+else
+  git add .
+  git commit -m "Automatic deploy to GitHub Pages: ${SHA}"
+fi
 
 git push "$SSH_REPO" "$TARGET_BRANCH"
