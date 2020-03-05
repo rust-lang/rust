@@ -45,8 +45,7 @@ pub use crate::{
         StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     has_source::HasSource,
-    semantics::{original_range, Semantics, SemanticsScope},
-    source_analyzer::PathResolution,
+    semantics::{original_range, PathResolution, Semantics, SemanticsScope},
 };
 
 pub use hir_def::{

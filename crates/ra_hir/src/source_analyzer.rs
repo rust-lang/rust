@@ -24,8 +24,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase, Adt, Const, EnumVariant, Function, Local, MacroDef, ModPath, ModuleDef, Path,
-    PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Function, Local, MacroDef,
+    ModPath, ModuleDef, Path, PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -38,19 +38,6 @@ pub(crate) struct SourceAnalyzer {
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<InferenceResult>>,
     scopes: Option<Arc<ExprScopes>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PathResolution {
-    /// An item
-    Def(crate::ModuleDef),
-    /// A local binding (only value namespace)
-    Local(Local),
-    /// A generic parameter
-    TypeParam(TypeParam),
-    SelfType(crate::ImplDef),
-    Macro(MacroDef),
-    AssocItem(crate::AssocItem),
 }
 
 impl SourceAnalyzer {
