@@ -426,6 +426,11 @@ fn loop_turn(
             show_message(req::MessageType::Info, msg, &connection.sender);
         }
         world_state.check_watcher.update();
+        pool.execute({
+            let subs = loop_state.subscriptions.subscriptions();
+            let snap = world_state.snapshot();
+            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
+        });
     }
 
     if state_changed {
