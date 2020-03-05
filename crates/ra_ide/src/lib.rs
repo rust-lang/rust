@@ -13,6 +13,7 @@
 pub mod mock_analysis;
 mod source_change;
 
+mod prime_caches;
 mod status;
 mod completion;
 mod runnables;
@@ -225,6 +226,10 @@ impl Analysis {
     /// Debug info about the current state of the analysis.
     pub fn status(&self) -> Cancelable<String> {
         self.with_db(|db| status::status(&*db))
+    }
+
+    pub fn prime_caches(&self, files: Vec<FileId>) -> Cancelable<()> {
+        self.with_db(|db| prime_caches::prime_caches(db, files))
     }
 
     /// Gets the text of the source file.
