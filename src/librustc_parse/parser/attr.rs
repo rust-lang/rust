@@ -201,12 +201,8 @@ impl<'a> Parser<'a> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             match self.token.kind {
-                token::Pound => {
-                    // Don't even try to parse if it's not an inner attribute.
-                    if !self.look_ahead(1, |t| t == &token::Not) {
-                        break;
-                    }
-
+                // Only try to parse if it is an inner attribute (has `!`).
+                token::Pound if self.look_ahead(1, |t| t == &token::Not) => {
                     let attr = self.parse_attribute(true)?;
                     assert_eq!(attr.style, ast::AttrStyle::Inner);
                     attrs.push(attr);
