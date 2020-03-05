@@ -1802,9 +1802,9 @@ fn prepare_enum_metadata(
                             DIB(cx),
                             name.as_ptr().cast(),
                             name.len(),
-                            // FIXME: what if enumeration has i128 discriminant?
-                            variant_index.as_usize() as i64,
-                            false, // FIXME: IsUnsigned.
+                            // Generators use u32 as discriminant type.
+                            variant_index.as_u32().into(),
+                            true, // IsUnsigned
                         ))
                     }
                 })
