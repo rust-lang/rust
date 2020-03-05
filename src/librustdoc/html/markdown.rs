@@ -869,12 +869,8 @@ pub fn plain_summary_line(md: &str) -> String {
         }
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
-    let mut p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
-    while let Some(t) = p.next() {
-        if !t.is_empty() {
-            s.push_str(&t);
-        }
-    }
+    let p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
+    p.into_iter().filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
     s
 }
 
