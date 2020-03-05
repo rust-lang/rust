@@ -190,7 +190,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Method(..) => NodeKind::Fn,
+            ImplItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },
 

@@ -47,7 +47,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Method(..) => {
+            ImplItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }

@@ -90,11 +90,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
             }
             hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(body_id)),
+                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)),
                 ..
             }) => self.describe_generator(*body_id).or_else(|| Some("a trait method")),
             hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Method(sig, body_id),
+                kind: hir::ImplItemKind::Fn(sig, body_id),
                 ..
             }) => self.describe_generator(*body_id).or_else(|| {
                 Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {

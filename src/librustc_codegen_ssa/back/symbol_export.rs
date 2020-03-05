@@ -88,7 +88,7 @@ fn reachable_non_generics_provider(
                 // Only consider nodes that actually have exported symbols.
                 Node::Item(&hir::Item { kind: hir::ItemKind::Static(..), .. })
                 | Node::Item(&hir::Item { kind: hir::ItemKind::Fn(..), .. })
-                | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Method(..), .. }) => {
+                | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&

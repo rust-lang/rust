@@ -939,10 +939,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })) = id.map(|id| self.tcx.hir().get(id))
                                 {
                                     let self_first_arg = match method {
-                                        hir::TraitMethod::Required([ident, ..]) => {
+                                        hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitMethod::Provided(body_id) => {
+                                        hir::TraitFn::Provided(body_id) => {
                                             match &self.tcx.hir().body(*body_id).params[..] {
                                                 [hir::Param {
                                                     pat:
