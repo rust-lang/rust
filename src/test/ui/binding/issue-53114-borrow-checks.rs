@@ -2,7 +2,7 @@
 // checker, and both had some deviations from our ideal state. This test
 // captures the behavior of how `_` bindings are handled with respect to how we
 // flag expressions that are meant to request unsafe blocks.
-
+#![allow(irrefutable_let_patterns)]
 struct M;
 
 fn let_wild_gets_moved_expr() {
@@ -30,6 +30,20 @@ fn match_moved_expr_to_wild() {
     //~^ ERROR [E0382]
 }
 
+fn if_let_moved_expr_to_wild() {
+    let m = M;
+    drop(m);
+    if let _ = m { } // #53114: should eventually be accepted too
+    //~^ ERROR [E0382]
+
+    let mm = (M, M); // variation on above with `_` in substructure
+    if let (_x, _) = mm { }
+    if let (_, _y) = mm { }
+    //~^ ERROR [E0382]
+    if let (_, _) = mm { }
+    //~^ ERROR [E0382]
+}
+
 fn let_wild_gets_borrowed_expr() {
     let mut m = M;
     let r = &mut m;
@@ -52,6 +66,18 @@ fn match_borrowed_expr_to_wild() {
     let mut mm = (M, M); // variation on above with `_` in substructure
     let (r1, r2) = (&mut mm.0, &mut mm.1);
     match mm { (_, _) => { } }
+    drop((r1, r2));
+}
+
+fn if_let_borrowed_expr_to_wild() {
+    let mut m = M;
+    let r = &mut m;
+    if let _ = m { } // accepted, and want it to continue to be
+    drop(r);
+
+    let mut mm = (M, M); // variation on above with `_` in substructure
+    let (r1, r2) = (&mut mm.0, &mut mm.1);
+    if let (_, _) = mm { }
     drop((r1, r2));
 }
 
