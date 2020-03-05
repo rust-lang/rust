@@ -259,6 +259,24 @@ impl ast::UseItem {
     }
 }
 
+impl ast::UseTree {
+    #[must_use]
+    pub fn with_path(&self, path: ast::Path) -> ast::UseTree {
+        if let Some(old) = self.path() {
+            return replace_descendants(self, iter::once((old, path)));
+        }
+        self.clone()
+    }
+
+    #[must_use]
+    pub fn with_use_tree_list(&self, use_tree_list: ast::UseTreeList) -> ast::UseTree {
+        if let Some(old) = self.use_tree_list() {
+            return replace_descendants(self, iter::once((old, use_tree_list)));
+        }
+        self.clone()
+    }
+}
+
 #[must_use]
 pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
     N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()
