@@ -1069,24 +1069,22 @@ impl<'a> Parser<'a> {
 
     fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
+        let label = Some(label);
         self.expect(&token::Colon)?;
         if self.eat_keyword(kw::While) {
-            return self.parse_while_expr(Some(label), lo, attrs);
+            self.parse_while_expr(label, lo, attrs)
+        } else if self.eat_keyword(kw::For) {
+            self.parse_for_expr(label, lo, attrs)
+        } else if self.eat_keyword(kw::Loop) {
+            self.parse_loop_expr(label, lo, attrs)
+        } else if self.check(&token::OpenDelim(token::Brace)) {
+            self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
+        } else {
+            let msg = "expected `while`, `for`, `loop` or `{` after a label";
+            self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
+            // Continue as an expression in an effort to recover on `'label: non_block_expr`.
+            self.parse_expr()
         }
-        if self.eat_keyword(kw::For) {
-            return self.parse_for_expr(Some(label), lo, attrs);
-        }
-        if self.eat_keyword(kw::Loop) {
-            return self.parse_loop_expr(Some(label), lo, attrs);
-        }
-        if self.token == token::OpenDelim(token::Brace) {
-            return self.parse_block_expr(Some(label), lo, BlockCheckMode::Default, attrs);
-        }
-
-        let msg = "expected `while`, `for`, `loop` or `{` after a label";
-        self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
-        // Continue as an expression in an effort to recover on `'label: non_block_expr`.
-        self.parse_expr()
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
