@@ -801,6 +801,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             E0198,
                             "negative impls cannot be unsafe"
                         )
+                        .span_label(sp, "negative because of this")
                         .span_label(span, "unsafe because of this")
                         .emit();
                     }
@@ -819,45 +820,40 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ref self_ty,
                 items: _,
             } => {
+                let error = |annotation_span, annotation, note, code| {
+                    let mut err = self.err_handler().struct_span_err(
+                        self_ty.span,
+                        &format!("inherent impls cannot be {}", annotation),
+                    );
+                    err.span_label(annotation_span, &format!("{} because of this", annotation));
+                    err.span_label(self_ty.span, "inherent impl for this type");
+                    if note {
+                        err.note(&format!(
+                            "only trait implementations may be annotated with {}",
+                            annotation
+                        ));
+                    }
+                    if code {
+                        err.code(error_code!(E0197));
+                    }
+                    err.emit();
+                };
+
                 self.invalid_visibility(
                     &item.vis,
                     Some("place qualifiers on individual impl items instead"),
                 );
                 if let Unsafe::Yes(span) = unsafety {
-                    struct_span_err!(
-                        self.session,
-                        vec![span, self_ty.span],
-                        E0197,
-                        "inherent impls cannot be unsafe"
-                    )
-                    .span_label(span, "unsafe because of this")
-                    .span_label(self_ty.span, "inherent impl for this type")
-                    .emit();
+                    error(span, "unsafe", false, true)
                 }
                 if let ImplPolarity::Negative(span) = polarity {
-                    self.err_handler().span_err(span, "inherent impls cannot be negative");
+                    error(span, "negative", false, false);
                 }
                 if let Defaultness::Default(def_span) = defaultness {
-                    self.err_handler()
-                        .struct_span_err(
-                            vec![def_span, self_ty.span],
-                            "inherent impls cannot be `default`",
-                        )
-                        .span_label(def_span, "`default` because of this")
-                        .span_label(self_ty.span, "inherent impl for this type")
-                        .note("only trait implementations may be annotated with `default`")
-                        .emit();
+                    error(def_span, "`default`", true, false);
                 }
                 if let Const::Yes(span) = constness {
-                    self.err_handler()
-                        .struct_span_err(
-                            vec![span, self_ty.span],
-                            "inherent impls cannot be `const`",
-                        )
-                        .span_label(span, "`const` because of this")
-                        .span_label(self_ty.span, "inherent impl for this type")
-                        .note("only trait implementations may be annotated with `const`")
-                        .emit();
+                    error(span, "`const`", true, false);
                 }
             }
             ItemKind::Fn(def, ref sig, ref generics, ref body) => {
