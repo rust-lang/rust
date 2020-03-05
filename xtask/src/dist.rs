@@ -56,9 +56,9 @@ fn dist_server() -> Result<()> {
     let (src, dst) = if cfg!(target_os = "linux") {
         ("./target/x86_64-unknown-linux-musl/release/rust-analyzer", "./dist/rust-analyzer-linux")
     } else if cfg!(target_os = "windows") {
-        ("/target/release/rust-analyzer.exe", "./dist/rust-analyzer-windows.exe")
+        ("./target/release/rust-analyzer.exe", "./dist/rust-analyzer-windows.exe")
     } else if cfg!(target_os = "macos") {
-        ("/target/release/rust-analyzer", "./dist/rust-analyzer-mac")
+        ("./target/release/rust-analyzer", "./dist/rust-analyzer-mac")
     } else {
         panic!("Unsupported OS")
     };
