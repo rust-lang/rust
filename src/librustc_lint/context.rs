@@ -335,7 +335,7 @@ impl LintStore {
             lint_name.to_string()
         };
         // If the lint was scoped with `tool::` check if the tool lint exists
-        if let Some(_) = tool_name {
+        if tool_name.is_some() {
             match self.by_name.get(&complete_name) {
                 None => match self.lint_groups.get(&*complete_name) {
                     None => return CheckLintNameResult::Tool(Err((None, String::new()))),

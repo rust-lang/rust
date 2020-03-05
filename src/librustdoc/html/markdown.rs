@@ -296,7 +296,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         ""
                     }
                 )),
-                playground_button.as_ref().map(String::as_str),
+                playground_button.as_deref(),
                 Some((s1.as_str(), s2)),
             ));
             Some(Event::Html(s.into()))
@@ -315,7 +315,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         ""
                     }
                 )),
-                playground_button.as_ref().map(String::as_str),
+                playground_button.as_deref(),
                 None,
             ));
             Some(Event::Html(s.into()))
