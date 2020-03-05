@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use crate::{
-    not_bash::{fs2, pushd, pwd, rm_rf, run},
+    not_bash::{fs2, pushd, rm_rf, run},
     project_root,
 };
 
@@ -22,7 +22,7 @@ pub fn run_dist(nightly: bool) -> Result<()> {
 fn dist_client(nightly: bool) -> Result<()> {
     let _d = pushd("./editors/code");
 
-    let package_json_path = pwd().join("package.json");
+    let package_json_path = PathBuf::from("./package.json");
     let original_package_json = fs2::read_to_string(&package_json_path)?;
     let _restore =
         Restore { path: package_json_path.clone(), contents: original_package_json.clone() };
