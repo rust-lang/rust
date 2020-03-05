@@ -426,7 +426,7 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
     for a in attrs.iter() {
         if a.check_name(sym::crate_type) {
             if let Some(n) = a.value_str() {
-                if let Some(_) = categorize_crate_type(n) {
+                if categorize_crate_type(n).is_some() {
                     return;
                 }
 

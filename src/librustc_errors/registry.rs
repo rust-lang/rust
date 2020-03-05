@@ -27,6 +27,6 @@ impl Registry {
         if !self.long_descriptions.contains_key(code) {
             return Err(InvalidErrorCode);
         }
-        Ok(self.long_descriptions.get(code).unwrap().clone())
+        Ok(*self.long_descriptions.get(code).unwrap())
     }
 }

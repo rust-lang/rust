@@ -64,7 +64,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     }
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
-        if let Some(_) = &mut self.borrowck_context {
+        if self.borrowck_context.is_some() {
             let origin = NLLRegionVariableOrigin::Existential { from_forall };
             self.infcx.next_nll_region_var(origin)
         } else {

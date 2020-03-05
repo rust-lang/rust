@@ -1086,7 +1086,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     for param in params {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
                         {
-                            if snippet.starts_with("&") && !snippet.starts_with("&'") {
+                            if snippet.starts_with('&') && !snippet.starts_with("&'") {
                                 introduce_suggestion
                                     .push((param.span, format!("&'a {}", &snippet[1..])));
                             } else if snippet.starts_with("&'_ ") {
@@ -1118,7 +1118,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 (1, Some(name), Some("'_")) => {
                     suggest_existing(err, name.to_string());
                 }
-                (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
+                (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
                     suggest_existing(err, format!("{}<{}>", snippet, name));
                 }
                 (0, _, Some("&")) => {
@@ -1127,7 +1127,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 (0, _, Some("'_")) => {
                     suggest_new(err, "'a");
                 }
-                (0, _, Some(snippet)) if !snippet.ends_with(">") => {
+                (0, _, Some(snippet)) if !snippet.ends_with('>') => {
                     suggest_new(err, &format!("{}<'a>", snippet));
                 }
                 _ => {
