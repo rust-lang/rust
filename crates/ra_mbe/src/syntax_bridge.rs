@@ -448,7 +448,9 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(_))),
         ) = (last.token_tree(), next.token_tree())
         {
-            if curr.spacing == tt::Spacing::Alone {
+            // Note: We always assume the semi-colon would be the last token in
+            // other parts of RA such that we don't add whitespace here.
+            if curr.spacing == tt::Spacing::Alone && curr.char != ';' {
                 self.inner.token(WHITESPACE, " ".into());
                 self.text_pos += TextUnit::of_char(' ');
             }
