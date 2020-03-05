@@ -50,7 +50,7 @@ pub use self::types::Type::*;
 pub use self::types::Visibility::{Inherited, Public};
 pub use self::types::*;
 
-const FN_OUTPUT_NAME: &'static str = "Output";
+const FN_OUTPUT_NAME: &str = "Output";
 
 pub trait Clean<T> {
     fn clean(&self, cx: &DocContext<'_>) -> T;

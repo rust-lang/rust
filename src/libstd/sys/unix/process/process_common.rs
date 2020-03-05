@@ -19,9 +19,9 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
     } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &'static str = "null:\0";
+        const DEV_NULL: &str = "null:\0";
     } else {
-        const DEV_NULL: &'static str = "/dev/null\0";
+        const DEV_NULL: &str = "/dev/null\0";
     }
 }
 

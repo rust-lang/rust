@@ -19,7 +19,7 @@ use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 use log::{debug, trace};
 use std::mem;
 
-const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
+const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident) -> Param {

@@ -96,7 +96,7 @@ use time::TestExecTime;
 // Process exit code to be used to indicate test failures.
 const ERROR_EXIT_CODE: i32 = 101;
 
-const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
+const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
