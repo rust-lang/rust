@@ -1,7 +1,7 @@
 name: release
 on:
   schedule:
-  - cron: '*/15 * * * *' # midnight UTC
+  - cron: '0 0 * * *' # midnight UTC
 
   push:
     branches:
