@@ -732,6 +732,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "identity_op",
     },
     Lint {
+        name: "if_let_mutex",
+        group: "correctness",
+        desc: "default lint description",
+        deprecation: None,
+        module: "if_let_mutex",
+    },
+    Lint {
         name: "if_let_some_result",
         group: "style",
         desc: "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead",
