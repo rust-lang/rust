@@ -1077,7 +1077,7 @@ impl<'a> Parser<'a> {
             self.parse_for_expr(label, lo, attrs)
         } else if self.eat_keyword(kw::Loop) {
             self.parse_loop_expr(label, lo, attrs)
-        } else if self.check(&token::OpenDelim(token::Brace)) {
+        } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
         } else {
             let msg = "expected `while`, `for`, `loop` or `{` after a label";
@@ -1361,18 +1361,20 @@ impl<'a> Parser<'a> {
         opt_label: Option<Label>,
         lo: Span,
         blk_mode: BlockCheckMode,
-        outer_attrs: AttrVec,
+        mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         if let Some(label) = opt_label {
             self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
         }
 
-        self.expect(&token::OpenDelim(token::Brace))?;
+        if self.token.is_whole_block() {
+            self.struct_span_err(self.token.span, "cannot use a `block` macro fragment here")
+                .span_label(lo.to(self.token.span), "the `block` fragment is within this context")
+                .emit();
+        }
 
-        let mut attrs = outer_attrs;
-        attrs.extend(self.parse_inner_attributes()?);
-
-        let blk = self.parse_block_tail(lo, blk_mode)?;
+        let (inner_attrs, blk) = self.parse_block_common(lo, blk_mode)?;
+        attrs.extend(inner_attrs);
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 

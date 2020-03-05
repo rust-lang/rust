@@ -535,6 +535,16 @@ impl Token {
         false
     }
 
+    // Is the token an interpolated block (`$b:block`)?
+    pub fn is_whole_block(&self) -> bool {
+        if let Interpolated(ref nt) = self.kind {
+            if let NtBlock(..) = **nt {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Returns `true` if the token is either the `mut` or `const` keyword.
     pub fn is_mutability(&self) -> bool {
         self.is_keyword(kw::Mut) || self.is_keyword(kw::Const)

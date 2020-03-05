@@ -240,13 +240,11 @@ impl<'a> Parser<'a> {
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         maybe_whole!(self, NtBlock, |x| x);
 
-        let lo = self.token.span;
-
         if !self.eat(&token::OpenDelim(token::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
-        self.parse_block_tail(lo, BlockCheckMode::Default)
+        self.parse_block_tail(self.prev_token.span, BlockCheckMode::Default)
     }
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
@@ -301,15 +299,22 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_inner_attrs_and_block(
         &mut self,
     ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
+        self.parse_block_common(self.token.span, BlockCheckMode::Default)
+    }
 
-        let lo = self.token.span;
+    /// Parses a block. Inner attributes are allowed.
+    pub(super) fn parse_block_common(
+        &mut self,
+        lo: Span,
+        blk_mode: BlockCheckMode,
+    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         if !self.eat(&token::OpenDelim(token::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
-        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, BlockCheckMode::Default)?))
+        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, blk_mode)?))
     }
 
     /// Parses the rest of a block expression or function body.
