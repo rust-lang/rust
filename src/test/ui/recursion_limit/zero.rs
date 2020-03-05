@@ -1,4 +1,4 @@
-// Test that a `recursion_limit` of 0 is valid
+// Test that a `limit` of 0 is valid
 
 #![recursion_limit = "0"]
 

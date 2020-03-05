@@ -1,9 +1,9 @@
-// Recursion limit.
-//
-// There are various parts of the compiler that must impose arbitrary limits
-// on how deeply they recurse to prevent stack overflow. Users can override
-// this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
-// just peeks and looks for that attribute.
+//! Registering limits, recursion_limit, type_length_limit and const_eval_limit
+//!
+//! There are various parts of the compiler that must impose arbitrary limits
+//! on how deeply they recurse to prevent stack overflow. Users can override
+//! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
+//! just peeks and looks for that attribute.
 
 use crate::session::Session;
 use core::num::IntErrorKind;
@@ -16,6 +16,7 @@ use rustc_data_structures::sync::Once;
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
     update_limit(sess, krate, &sess.recursion_limit, sym::recursion_limit, 128);
     update_limit(sess, krate, &sess.type_length_limit, sym::type_length_limit, 1048576);
+    update_limit(sess, krate, &sess.const_eval_limit, sym::const_eval_limit, 1_000_000);
 }
 
 fn update_limit(
@@ -37,10 +38,8 @@ fn update_limit(
                     return;
                 }
                 Err(e) => {
-                    let mut err = sess.struct_span_err(
-                        attr.span,
-                        "`recursion_limit` must be a non-negative integer",
-                    );
+                    let mut err =
+                        sess.struct_span_err(attr.span, "`limit` must be a non-negative integer");
 
                     let value_span = attr
                         .meta()
@@ -49,11 +48,11 @@ fn update_limit(
                         .unwrap_or(attr.span);
 
                     let error_str = match e.kind() {
-                        IntErrorKind::Overflow => "`recursion_limit` is too large",
-                        IntErrorKind::Empty => "`recursion_limit` must be a non-negative integer",
+                        IntErrorKind::Overflow => "`limit` is too large",
+                        IntErrorKind::Empty => "`limit` must be a non-negative integer",
                         IntErrorKind::InvalidDigit => "not a valid integer",
-                        IntErrorKind::Underflow => bug!("`recursion_limit` should never underflow"),
-                        IntErrorKind::Zero => bug!("zero is a valid `recursion_limit`"),
+                        IntErrorKind::Underflow => bug!("`limit` should never underflow"),
+                        IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
 
