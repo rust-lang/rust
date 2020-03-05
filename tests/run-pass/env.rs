@@ -8,4 +8,6 @@ fn main() {
     assert_eq!(env::var("MIRI_TEST"), Ok("the answer".to_owned()));
     // Test that miri environment is isolated when communication is disabled.
     assert!(env::var("MIRI_ENV_VAR_TEST").is_err());
+    // Test that the new variable is in the `std::env::Vars` iterator
+    assert!(env::vars().any(|(name, value)| name == "MIRI_TEST"))
 }
