@@ -1411,23 +1411,13 @@ impl<'a> Parser<'a> {
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the function is a provided one.
     fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = match self.token.kind {
-            token::Semi => {
-                self.bump();
-                (Vec::new(), None)
-            }
-            token::OpenDelim(token::Brace) => {
-                let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                (attrs, Some(body))
-            }
-            token::Interpolated(ref nt) => match **nt {
-                token::NtBlock(..) => {
-                    let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                    (attrs, Some(body))
-                }
-                _ => return self.expected_semi_or_open_brace(),
-            },
-            _ => return self.expected_semi_or_open_brace(),
+        let (inner_attrs, body) = if self.check(&token::Semi) {
+            self.bump();
+            (Vec::new(), None)
+        } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
+            self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+        } else {
+            return self.expected_semi_or_open_brace();
         };
         attrs.extend(inner_attrs);
         Ok(body)
