@@ -241,7 +241,7 @@ where
                     )?;
 
                     let state_on_unwind = this.results.get().clone();
-                    this.results.seek_after_assume_call_returns(terminator_loc);
+                    this.results.seek_after_assume_success(terminator_loc);
                     write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
 
                     write!(w, "</td>")

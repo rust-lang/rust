@@ -161,10 +161,15 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         self.borrowed_locals.borrow().analysis().terminator_effect(trans, terminator, loc);
 
         match &terminator.kind {
-            TerminatorKind::Call { destination: Some((place, _)), .. }
-            | TerminatorKind::Yield { resume_arg: place, .. } => {
+            TerminatorKind::Call { destination: Some((place, _)), .. } => {
                 trans.gen(place.local);
             }
+
+            // Note that we do *not* gen the `resume_arg` of `Yield` terminators. The reason for
+            // that is that a `yield` will return from the function, and `resume_arg` is written
+            // only when the generator is later resumed. Unlike `Call`, this doesn't require the
+            // place to have storage *before* the yield, only after.
+            TerminatorKind::Yield { .. } => {}
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
@@ -229,6 +234,15 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         return_place: &mir::Place<'tcx>,
     ) {
         trans.gen(return_place.local);
+    }
+
+    fn yield_resume_effect(
+        &self,
+        trans: &mut BitSet<Self::Idx>,
+        _resume_block: BasicBlock,
+        resume_place: &mir::Place<'tcx>,
+    ) {
+        trans.gen(resume_place.local);
     }
 }
 

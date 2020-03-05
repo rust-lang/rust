@@ -506,7 +506,7 @@ fn locals_live_across_suspend_points(
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            let loc = Location { block: block, statement_index: data.statements.len() };
+            let loc = Location { block, statement_index: data.statements.len() };
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -539,7 +539,7 @@ fn locals_live_across_suspend_points(
             let mut live_locals_here = storage_required;
             live_locals_here.intersect(&liveness.outs[block]);
 
-            // The generator argument is ignored
+            // The generator argument is ignored.
             live_locals_here.remove(self_arg());
 
             debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);

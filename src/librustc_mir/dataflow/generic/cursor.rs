@@ -2,7 +2,7 @@
 
 use std::borrow::Borrow;
 
-use rustc::mir::{self, BasicBlock, Location};
+use rustc::mir::{self, BasicBlock, Location, TerminatorKind};
 use rustc_index::bit_set::BitSet;
 
 use super::{Analysis, Results};
@@ -29,14 +29,14 @@ where
 
     pos: CursorPosition,
 
-    /// When this flag is set, the cursor is pointing at a `Call` terminator whose call return
-    /// effect has been applied to `state`.
+    /// When this flag is set, the cursor is pointing at a `Call` or `Yield` terminator whose call
+    /// return or resume effect has been applied to `state`.
     ///
-    /// This flag helps to ensure that multiple calls to `seek_after_assume_call_returns` with the
+    /// This flag helps to ensure that multiple calls to `seek_after_assume_success` with the
     /// same target will result in exactly one invocation of `apply_call_return_effect`. It is
     /// sufficient to clear this only in `seek_to_block_start`, since seeking away from a
     /// terminator will always require a cursor reset.
-    call_return_effect_applied: bool,
+    success_effect_applied: bool,
 }
 
 impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
@@ -50,7 +50,7 @@ where
             body,
             pos: CursorPosition::BlockStart(mir::START_BLOCK),
             state: results.borrow().entry_sets[mir::START_BLOCK].clone(),
-            call_return_effect_applied: false,
+            success_effect_applied: false,
             results,
         }
     }
@@ -76,14 +76,14 @@ where
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
         self.state.overwrite(&self.results.borrow().entry_sets[block]);
         self.pos = CursorPosition::BlockStart(block);
-        self.call_return_effect_applied = false;
+        self.success_effect_applied = false;
     }
 
     /// Advances the cursor to hold all effects up to and including to the "before" effect of the
     /// statement (or terminator) at the given location.
     ///
     /// If you wish to observe the full effect of a statement or terminator, not just the "before"
-    /// effect, use `seek_after` or `seek_after_assume_call_returns`.
+    /// effect, use `seek_after` or `seek_after_assume_success`.
     pub fn seek_before(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
         self.seek_(target, false);
@@ -93,7 +93,7 @@ where
     /// terminators) up to and including the `target`.
     ///
     /// If the `target` is a `Call` terminator, any call return effect for that terminator will
-    /// **not** be observed. Use `seek_after_assume_call_returns` if you wish to observe the call
+    /// **not** be observed. Use `seek_after_assume_success` if you wish to observe the call
     /// return effect.
     pub fn seek_after(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
@@ -101,7 +101,7 @@ where
         // If we have already applied the call return effect, we are currently pointing at a `Call`
         // terminator. Unconditionally reset the dataflow cursor, since there is no way to "undo"
         // the call return effect.
-        if self.call_return_effect_applied {
+        if self.success_effect_applied {
             self.seek_to_block_start(target.block);
         }
 
@@ -111,25 +111,25 @@ where
     /// Advances the cursor to hold all effects up to and including of the statement (or
     /// terminator) at the given location.
     ///
-    /// If the `target` is a `Call` terminator, any call return effect for that terminator will
-    /// be observed. Use `seek_after` if you do **not** wish to observe the call return effect.
-    pub fn seek_after_assume_call_returns(&mut self, target: Location) {
+    /// If the `target` is a `Call` or `Yield` terminator, any call return or resume effect for that
+    /// terminator will be observed. Use `seek_after` if you do **not** wish to observe the
+    /// "success" effect.
+    pub fn seek_after_assume_success(&mut self, target: Location) {
         let terminator_loc = self.body.terminator_loc(target.block);
         assert!(target.statement_index <= terminator_loc.statement_index);
 
         self.seek_(target, true);
 
-        if target != terminator_loc {
+        if target != terminator_loc || self.success_effect_applied {
             return;
         }
 
+        // Apply the effect of the "success" path of the terminator.
+
+        self.success_effect_applied = true;
         let terminator = self.body.basic_blocks()[target.block].terminator();
-        if let mir::TerminatorKind::Call {
-            destination: Some((return_place, _)), func, args, ..
-        } = &terminator.kind
-        {
-            if !self.call_return_effect_applied {
-                self.call_return_effect_applied = true;
+        match &terminator.kind {
+            TerminatorKind::Call { destination: Some((return_place, _)), func, args, .. } => {
                 self.results.borrow().analysis.apply_call_return_effect(
                     &mut self.state,
                     target.block,
@@ -138,6 +138,14 @@ where
                     return_place,
                 );
             }
+            TerminatorKind::Yield { resume, resume_arg, .. } => {
+                self.results.borrow().analysis.apply_yield_resume_effect(
+                    &mut self.state,
+                    *resume,
+                    resume_arg,
+                );
+            }
+            _ => {}
         }
     }
 
@@ -172,7 +180,7 @@ where
                 self.seek_to_block_start(target.block)
             }
 
-            // N.B., `call_return_effect_applied` is checked in `seek_after`, not here.
+            // N.B., `success_effect_applied` is checked in `seek_after`, not here.
             _ => (),
         }
 
