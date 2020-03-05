@@ -39,6 +39,7 @@ fn dist_client(nightly: bool) -> Result<()> {
     }
     fs2::write(package_json_path, package_json)?;
 
+    run!("npm ci")?;
     run!("npx vsce package -o ../../dist/rust-analyzer.vsix")?;
     Ok(())
 }
