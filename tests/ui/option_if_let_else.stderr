@@ -1,0 +1,62 @@
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:5:5
+   |
+LL | /     if let Some(x) = string {
+LL | |         (true, x)
+LL | |     } else {
+LL | |         (false, "hello")
+LL | |     }
+   | |_____^ help: try: `string.map_or((false, "hello"), |x| (true, x))`
+   |
+   = note: `-D clippy::option-if-let-else` implied by `-D warnings`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:13:5
+   |
+LL | /     if let Some(x) = arg {
+LL | |         let y = x * x;
+LL | |         y * y
+LL | |     } else {
+LL | |         13
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL |     arg.map_or(13, |x| {
+LL |         let y = x * x;
+LL |         y * y
+LL |     })
+   |
+
+error: use Option::map_or_else instead of an if let/else
+  --> $DIR/option_if_let_else.rs:22:13
+   |
+LL |       let _ = if let Some(x) = arg {
+   |  _____________^
+LL | |         x * x * x * x
+LL | |     } else {
+LL | |         let mut y = 1;
+...  |
+LL | |         y
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = arg.map_or_else(|| {
+LL |         let mut y = 1;
+LL |         y = (y + 2 / y) / 2;
+LL |         y = (y + 2 / y) / 2;
+LL |         y
+LL |     }, |x| x * x * x * x);
+   |
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:51:13
+   |
+LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
+
+error: aborting due to 4 previous errors
+
