@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// ```
     pub IF_LET_MUTEX,
     correctness,
-    "locking a `Mutex` in an `if let` block can cause deadlock"
+    "locking a `Mutex` in an `if let` block can cause deadlocks"
 }
 
 declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
