@@ -2,7 +2,7 @@ error[E0197]: inherent impls cannot be unsafe
   --> $DIR/E0197.rs:3:1
    |
 LL | unsafe impl Foo { }
-   | ------^^^^^^^^^^^^^
+   | ^^^^^^      ^^^ inherent impl for this type
    | |
    | unsafe because of this
 

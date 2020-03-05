@@ -779,7 +779,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 defaultness: _,
                 constness: _,
                 generics: _,
-                of_trait: Some(_),
+                of_trait: Some(ref t),
                 ref self_ty,
                 items: _,
             } => {
@@ -794,10 +794,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .help("use `auto trait Trait {}` instead")
                             .emit();
                     }
-                    if let (Unsafe::Yes(span), ImplPolarity::Negative) = (unsafety, polarity) {
+                    if let (Unsafe::Yes(span), ImplPolarity::Negative(sp)) = (unsafety, polarity) {
                         struct_span_err!(
                             this.session,
-                            item.span,
+                            sp.to(t.path.span),
                             E0198,
                             "negative impls cannot be unsafe"
                         )
@@ -816,7 +816,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 constness,
                 generics: _,
                 of_trait: None,
-                self_ty: _,
+                ref self_ty,
                 items: _,
             } => {
                 self.invalid_visibility(
@@ -826,28 +826,36 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if let Unsafe::Yes(span) = unsafety {
                     struct_span_err!(
                         self.session,
-                        item.span,
+                        vec![span, self_ty.span],
                         E0197,
                         "inherent impls cannot be unsafe"
                     )
                     .span_label(span, "unsafe because of this")
+                    .span_label(self_ty.span, "inherent impl for this type")
                     .emit();
                 }
-                if polarity == ImplPolarity::Negative {
-                    self.err_handler().span_err(item.span, "inherent impls cannot be negative");
+                if let ImplPolarity::Negative(span) = polarity {
+                    self.err_handler().span_err(span, "inherent impls cannot be negative");
                 }
                 if let Defaultness::Default(def_span) = defaultness {
-                    let span = self.session.source_map().def_span(item.span);
                     self.err_handler()
-                        .struct_span_err(span, "inherent impls cannot be `default`")
+                        .struct_span_err(
+                            vec![def_span, self_ty.span],
+                            "inherent impls cannot be `default`",
+                        )
                         .span_label(def_span, "`default` because of this")
+                        .span_label(self_ty.span, "inherent impl for this type")
                         .note("only trait implementations may be annotated with `default`")
                         .emit();
                 }
                 if let Const::Yes(span) = constness {
                     self.err_handler()
-                        .struct_span_err(item.span, "inherent impls cannot be `const`")
+                        .struct_span_err(
+                            vec![span, self_ty.span],
+                            "inherent impls cannot be `const`",
+                        )
                         .span_label(span, "`const` because of this")
+                        .span_label(self_ty.span, "inherent impl for this type")
                         .note("only trait implementations may be annotated with `const`")
                         .emit();
                 }

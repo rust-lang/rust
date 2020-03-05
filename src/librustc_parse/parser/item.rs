@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
         let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
             self.bump(); // `!`
-            ast::ImplPolarity::Negative
+            ast::ImplPolarity::Negative(self.prev_token.span)
         } else {
             ast::ImplPolarity::Positive
         };

@@ -1175,7 +1175,7 @@ impl<'a> State<'a> {
                     self.s.space();
                 }
 
-                if polarity == ast::ImplPolarity::Negative {
+                if let ast::ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 

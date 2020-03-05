@@ -1548,7 +1548,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative, .. } => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be negative");
             }

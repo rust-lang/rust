@@ -1,8 +1,8 @@
 error[E0198]: negative impls cannot be unsafe
-  --> $DIR/E0198.rs:5:1
+  --> $DIR/E0198.rs:5:13
    |
 LL | unsafe impl !Send for Foo { }
-   | ------^^^^^^^^^^^^^^^^^^^^^^^
+   | ------      ^^^^^
    | |
    | unsafe because of this
 
