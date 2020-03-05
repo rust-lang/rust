@@ -925,9 +925,15 @@ mod mut_keyword {}
 //
 /// Make an item visible to others.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The keyword `pub` makes any module, function, or data structure accessible from inside
+/// of external modules. The `pub` keyword may also be used in a `use` declaration to re-export
+/// an identifier from a namespace.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// For more information on the `pub` keyword, please see the visibility section
+/// of the [reference] and for some examples, see [Rust by Example].
+///
+/// [reference]:../reference/visibility-and-privacy.html?highlight=pub#visibility-and-privacy
+/// [Rust by Example]:../rust-by-example/mod/visibility.html
 mod pub_keyword {}
 
 #[doc(keyword = "ref")]
