@@ -920,7 +920,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Uint(ui)) => {
                 let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
-                let max = truncate(u128::max_value(), bit_size);
+                let max = truncate(u128::MAX, bit_size);
 
                 let ui_str = ui.name_str();
                 if data == max {
