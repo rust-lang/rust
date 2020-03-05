@@ -304,7 +304,11 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
-        self.expect(&token::OpenDelim(token::Brace))?;
+
+        if !self.eat(&token::OpenDelim(token::Brace)) {
+            return self.error_block_no_opening_brace();
+        }
+
         Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, BlockCheckMode::Default)?))
     }
 
