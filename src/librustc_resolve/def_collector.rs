@@ -132,7 +132,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name)
             }
             ItemKind::MacroDef(..) => DefPathData::MacroNs(i.ident.name),
-            ItemKind::Mac(..) => return self.visit_macro_invoc(i.id),
+            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(..) => {
                 return visit::walk_item(self, i);
@@ -160,7 +160,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        if let ForeignItemKind::Macro(_) = foreign_item.kind {
+        if let ForeignItemKind::MacCall(_) = foreign_item.kind {
             return self.visit_macro_invoc(foreign_item.id);
         }
 
@@ -232,7 +232,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name)
             }
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
+            AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
 
         let def = self.create_def(i.id, def_data, i.span);
@@ -241,7 +241,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.kind {
-            PatKind::Mac(..) => return self.visit_macro_invoc(pat.id),
+            PatKind::MacCall(..) => return self.visit_macro_invoc(pat.id),
             _ => visit::walk_pat(self, pat),
         }
     }
@@ -253,7 +253,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = match expr.kind {
-            ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
+            ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(_, asyncness, ..) => {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
@@ -276,7 +276,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
-            TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
+            TyKind::MacCall(..) => return self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
                 self.create_def(node_id, DefPathData::ImplTrait, ty.span);
             }
@@ -287,7 +287,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
-            StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id),
+            StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id),
             _ => visit::walk_stmt(self, stmt),
         }
     }
@@ -295,7 +295,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_token(&mut self, t: Token) {
         if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
-                if let ExprKind::Mac(..) = expr.kind {
+                if let ExprKind::MacCall(..) = expr.kind {
                     self.visit_macro_invoc(expr.id);
                 }
             }

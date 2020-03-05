@@ -1068,7 +1068,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     self.visit_ty(default_ty)
                 }
             }
-            ast::AssocItemKind::Macro(_) => {}
+            ast::AssocItemKind::MacCall(_) => {}
         }
     }
 
@@ -1105,7 +1105,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::AssocItemKind::Macro(_) => {}
+            ast::AssocItemKind::MacCall(_) => {}
         }
     }
 
@@ -1347,7 +1347,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 walk_list!(self, visit_ty, ty);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
-            Mac(_) => (),
+            MacCall(_) => (),
             _ => visit::walk_item(self, item),
         }
     }
@@ -1552,7 +1552,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     self.dumper.dump_def(&access, var_data);
                 }
             }
-            ast::ForeignItemKind::Macro(..) => {}
+            ast::ForeignItemKind::MacCall(..) => {}
         }
     }
 }
