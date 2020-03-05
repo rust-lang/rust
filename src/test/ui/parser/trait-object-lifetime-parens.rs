@@ -8,7 +8,8 @@ fn check<'a>() {
     let _: Box<Trait + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
     let _: Box<('a) + Trait>;
     //~^ ERROR expected type, found `'a`
-    //~| ERROR expected `:`, found `)`
+    //~| ERROR expected `while`, `for`, `loop` or `{` after a label
+    //~| ERROR expected expression, found `)`
 }
 
 fn main() {}

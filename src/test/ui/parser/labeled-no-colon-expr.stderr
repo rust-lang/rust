@@ -1,0 +1,70 @@
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:4:5
+   |
+LL |     'l0 while false {}
+   |     ---^^^^^^^^^^^^^^^
+   |     |
+   |     the label
+
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:5:5
+   |
+LL |     'l1 for _ in 0..1 {}
+   |     ---^^^^^^^^^^^^^^^^^
+   |     |
+   |     the label
+
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:6:5
+   |
+LL |     'l2 loop {}
+   |     ---^^^^^^^^
+   |     |
+   |     the label
+
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:7:5
+   |
+LL |     'l3 {}
+   |     ---^^^
+   |     |
+   |     the label
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/labeled-no-colon-expr.rs:8:9
+   |
+LL |     'l4 0;
+   |         ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:8:9
+   |
+LL |     'l4 0;
+   |     --- ^
+   |     |
+   |     the label
+
+error: cannot use a `block` macro fragment here
+  --> $DIR/labeled-no-colon-expr.rs:13:17
+   |
+LL |             'l5 $b;
+   |             ----^^
+   |             |
+   |             the `block` fragment is within this context
+...
+LL |     m!({});
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: labeled expression must be followed by `:`
+  --> $DIR/labeled-no-colon-expr.rs:16:8
+   |
+LL |             'l5 $b;
+   |             --- the label
+...
+LL |     m!({});
+   |        ^^
+
+error: aborting due to 8 previous errors
+

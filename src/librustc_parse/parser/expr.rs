@@ -673,10 +673,28 @@ impl<'a> Parser<'a> {
     /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
     fn parse_borrow_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         self.expect_and()?;
+        let has_lifetime = self.token.is_lifetime() && self.look_ahead(1, |t| t != &token::Colon);
+        let lifetime = has_lifetime.then(|| self.expect_lifetime()); // For recovery, see below.
         let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
         let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
-        Ok((lo.to(span), ExprKind::AddrOf(borrow_kind, mutbl, expr)))
+        let (hi, expr) = self.interpolated_or_expr_span(expr)?;
+        let span = lo.to(hi);
+        if let Some(lt) = lifetime {
+            self.error_remove_borrow_lifetime(span, lt.ident.span);
+        }
+        Ok((span, ExprKind::AddrOf(borrow_kind, mutbl, expr)))
+    }
+
+    fn error_remove_borrow_lifetime(&self, span: Span, lt_span: Span) {
+        self.struct_span_err(span, "borrow expressions cannot be annotated with lifetimes")
+            .span_label(lt_span, "annotated with lifetime here")
+            .span_suggestion(
+                lt_span,
+                "remove the lifetime annotation",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Parse `mut?` or `raw [ const | mut ]`.
@@ -1067,11 +1085,12 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
+    /// Parse `'label: $expr`. The label is already parsed.
     fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
         let label = Some(label);
-        self.expect(&token::Colon)?;
-        if self.eat_keyword(kw::While) {
+        let ate_colon = self.eat(&token::Colon);
+        let expr = if self.eat_keyword(kw::While) {
             self.parse_while_expr(label, lo, attrs)
         } else if self.eat_keyword(kw::For) {
             self.parse_for_expr(label, lo, attrs)
@@ -1084,7 +1103,15 @@ impl<'a> Parser<'a> {
             self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
             // Continue as an expression in an effort to recover on `'label: non_block_expr`.
             self.parse_expr()
+        }?;
+
+        if !ate_colon {
+            self.struct_span_err(expr.span, "labeled expression must be followed by `:`")
+                .span_label(lo, "the label")
+                .emit();
         }
+
+        Ok(expr)
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
