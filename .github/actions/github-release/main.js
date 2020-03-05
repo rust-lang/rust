@@ -68,6 +68,7 @@ async function runOnce() {
   const release = await octokit.repos.createRelease({
     owner,
     repo,
+    name,
     tag_name: name,
     prerelease: name === 'nightly',
   });
