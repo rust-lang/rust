@@ -1016,7 +1016,7 @@ pub const ALL_LINTS: [Lint; 360] = [
         module: "float_literal",
     },
     Lint {
-        name: "macro_use_import",
+        name: "macro_use_imports",
         group: "pedantic",
         desc: "#[macro_use] is no longer needed",
         deprecation: None,
