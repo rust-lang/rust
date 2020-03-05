@@ -235,11 +235,18 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
-        // This cannot overflow. Quoting from the invariant of Layout:
+        // `padded_size` cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow (i.e., the rounded value must be less than
         // > `usize::MAX`)
-        let padded_size = self.size() + self.padding_needed_for(self.align());
+        //
+        // However, replacing this line with an `unchecked_add` or a regular `+`
+        // operator caused a noticeable slowdown, see #69710.
+        let padded_size = self
+            .size()
+            .checked_add(self.padding_needed_for(self.align()))
+            .ok_or(LayoutErr { private: () })?;
+
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutErr { private: () })?;
 
         unsafe {
