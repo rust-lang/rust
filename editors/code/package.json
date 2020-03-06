@@ -45,7 +45,7 @@
         "@typescript-eslint/eslint-plugin": "^2.22.0",
         "@typescript-eslint/parser": "^2.22.0",
         "eslint": "^6.8.0",
-        "rollup": "^1.32.0",
+        "rollup": "^1.32.1",
         "tslib": "^1.11.1",
         "typescript": "^3.8.3",
         "typescript-formatter": "^7.2.2",
