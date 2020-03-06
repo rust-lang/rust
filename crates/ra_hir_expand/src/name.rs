@@ -174,6 +174,7 @@ pub mod known {
         line,
         stringify,
         concat,
+        include,
         format_args,
         format_args_nl,
         env,

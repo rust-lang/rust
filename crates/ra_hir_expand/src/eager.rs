@@ -42,24 +42,26 @@ pub fn expand_eager_macro(
     // When `lazy_expand` is called, its *parent* file must be already exists.
     // Here we store an eager macro id for the argument expanded subtree here
     // for that purpose.
-    let arg_id: MacroCallId = db
-        .intern_eager_expansion({
-            EagerCallLoc {
-                def,
-                fragment: FragmentKind::Expr,
-                subtree: Arc::new(parsed_args.clone()),
-                file_id: macro_call.file_id,
-            }
-        })
-        .into();
+    let arg_id = db.intern_eager_expansion({
+        EagerCallLoc {
+            def,
+            fragment: FragmentKind::Expr,
+            subtree: Arc::new(parsed_args.clone()),
+            file_id: macro_call.file_id,
+        }
+    });
+    let arg_file_id: MacroCallId = arg_id.into();
 
     let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
-    let result =
-        eager_macro_recur(db, InFile::new(arg_id.as_file(), parsed_args.syntax_node()), resolver)?;
+    let result = eager_macro_recur(
+        db,
+        InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
+        resolver,
+    )?;
     let subtree = to_subtree(&result)?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
-        let (subtree, fragment) = eager.expand(&subtree).ok()?;
+        let (subtree, fragment) = eager.expand(db, arg_id, &subtree).ok()?;
         let eager =
             EagerCallLoc { def, fragment, subtree: Arc::new(subtree), file_id: macro_call.file_id };
 

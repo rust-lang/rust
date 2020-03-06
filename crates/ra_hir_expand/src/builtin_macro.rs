@@ -5,8 +5,9 @@ use crate::{
     name, AstId, CrateId, MacroDefId, MacroDefKind, TextUnit,
 };
 
-use crate::{quote, LazyMacroId};
+use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
 use either::Either;
+use ra_db::{FileId, RelativePath};
 use ra_parser::FragmentKind;
 
 macro_rules! register_builtin {
@@ -38,12 +39,14 @@ macro_rules! register_builtin {
         impl EagerExpander {
             pub fn expand(
                 &self,
+                db: &dyn AstDatabase,
+                arg_id: EagerMacroId,
                 tt: &tt::Subtree,
             ) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
                 let expander = match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
-                expander(tt)
+                expander(db,arg_id,tt)
             }
         }
 
@@ -80,7 +83,6 @@ pub fn find_builtin_macro(
 
 register_builtin! {
     LAZY:
-
     (column, Column) => column_expand,
     (compile_error, CompileError) => compile_error_expand,
     (file, File) => file_expand,
@@ -94,8 +96,8 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand,
 
     EAGER:
-    // eagers
-    (concat, Concat) => concat_expand
+    (concat, Concat) => concat_expand,
+    (include, Include) => include_expand
 }
 
 fn line_expand(
@@ -251,7 +253,11 @@ fn unquote_str(lit: &tt::Literal) -> Option<String> {
     token.value()
 }
 
-fn concat_expand(tt: &tt::Subtree) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+fn concat_expand(
+    _db: &dyn AstDatabase,
+    _arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
     let mut text = String::new();
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
@@ -264,6 +270,40 @@ fn concat_expand(tt: &tt::Subtree) -> Result<(tt::Subtree, FragmentKind), mbe::E
     }
 
     Ok((quote!(#text), FragmentKind::Expr))
+}
+
+fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Option<FileId> {
+    let call_site = call_id.as_file().original_file(db);
+    let path = RelativePath::new(&path);
+
+    db.resolve_relative_path(call_site, &path)
+}
+
+fn include_expand(
+    db: &dyn AstDatabase,
+    arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let path = tt
+        .token_trees
+        .get(0)
+        .and_then(|tt| match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(&it),
+            _ => None,
+        })
+        .ok_or_else(|| mbe::ExpandError::ConversionError)?;
+
+    let file_id =
+        relative_file(db, arg_id.into(), &path).ok_or_else(|| mbe::ExpandError::ConversionError)?;
+
+    // FIXME:
+    // Handle include as expression
+    let node =
+        db.parse_or_expand(file_id.into()).ok_or_else(|| mbe::ExpandError::ConversionError)?;
+    let res =
+        mbe::syntax_node_to_token_tree(&node).ok_or_else(|| mbe::ExpandError::ConversionError)?.0;
+
+    Ok((res, FragmentKind::Items))
 }
 
 #[cfg(test)]

@@ -439,6 +439,51 @@ fn main() {
 }
 
 #[test]
+fn infer_builtin_macros_include() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs 
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+include!("foo.rs");
+
+fn main() {
+    bar()<|>;
+}
+
+//- /foo.rs
+fn bar() -> u32 {0}
+"#,
+    );
+    assert_eq!("u32", type_at_pos(&db, pos));
+}
+
+#[test]
+fn infer_builtin_macros_include_concat() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs 
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+#[rustc_builtin_macro]
+macro_rules! concat {() => {}}
+
+include!(concat!("f", "oo.rs"));
+
+fn main() {
+    bar()<|>;
+}
+
+//- /foo.rs
+fn bar() -> u32 {0}
+"#,
+    );
+    assert_eq!("u32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_builtin_macros_concat_with_lazy() {
     assert_snapshot!(
         infer(r#"
