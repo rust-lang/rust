@@ -547,10 +547,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 (&self_ty.kind, parent_pred)
                             {
                                 if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
-                                    let id = self.tcx.hir().as_local_hir_id(def.did).unwrap();
-                                    let node = self.tcx.hir().get(id);
+                                    let node = self
+                                        .tcx
+                                        .hir()
+                                        .as_local_hir_id(def.did)
+                                        .map(|id| self.tcx.hir().get(id));
                                     match node {
-                                        hir::Node::Item(hir::Item { kind, .. }) => {
+                                        Some(hir::Node::Item(hir::Item { kind, .. })) => {
                                             if let Some(g) = kind.generics() {
                                                 let key = match &g.where_clause.predicates[..] {
                                                     [.., pred] => {
