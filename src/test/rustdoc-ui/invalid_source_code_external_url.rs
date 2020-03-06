@@ -1,3 +1,3 @@
-// compile-flags:--Z unstable-options --source-code-external-url hello
+// compile-flags:--Z unstable-options --source-code-external-url /hello
 
 pub struct Foo;
