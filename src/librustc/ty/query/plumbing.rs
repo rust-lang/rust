@@ -449,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let state = Q::query_state(self);
 
-        state.cache.lookup::<_, _, _, _, Q>(
+        state.cache.lookup(
             state,
             QueryStateShard::<Q>::get_cache,
             key,
