@@ -156,6 +156,9 @@ pub struct BodySourceMap {
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 }
 
+#[derive(Debug)]
+pub struct SyntheticSyntax;
+
 impl Body {
     pub(crate) fn body_with_source_map_query(
         db: &impl DefDatabase,
@@ -219,8 +222,8 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub fn expr_syntax(&self, expr: ExprId) -> Option<ExprSource> {
-        self.expr_map_back.get(expr).copied()
+    pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
+        self.expr_map_back.get(expr).copied().ok_or(SyntheticSyntax)
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
@@ -238,8 +241,8 @@ impl BodySourceMap {
         self.expr_map.get(&src).cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<PatSource> {
-        self.pat_map_back.get(pat).copied()
+    pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
+        self.pat_map_back.get(pat).copied().ok_or(SyntheticSyntax)
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {

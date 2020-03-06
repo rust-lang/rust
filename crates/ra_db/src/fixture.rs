@@ -21,9 +21,9 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, file_id)
     }
 
-    fn with_files(fixture: &str) -> Self {
+    fn with_files(ra_fixture: &str) -> Self {
         let mut db = Self::default();
-        let pos = with_files(&mut db, fixture);
+        let pos = with_files(&mut db, ra_fixture);
         assert!(pos.is_none());
         db
     }

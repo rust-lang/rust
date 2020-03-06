@@ -158,7 +158,7 @@ pub fn analysis_stats(
                 // in super-verbose mode for just one function, we print every single expression
                 let (_, sm) = db.body_with_source_map(f_id.into());
                 let src = sm.expr_syntax(expr_id);
-                if let Some(src) = src {
+                if let Ok(src) = src {
                     let original_file = src.file_id.original_file(db);
                     let line_index = host.analysis().file_line_index(original_file).unwrap();
                     let text_range = src.value.either(
@@ -186,7 +186,7 @@ pub fn analysis_stats(
                 if verbosity.is_verbose() {
                     let (_, sm) = db.body_with_source_map(f_id.into());
                     let src = sm.expr_syntax(expr_id);
-                    if let Some(src) = src {
+                    if let Ok(src) = src {
                         // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
                         // But also, we should just turn the type mismatches into diagnostics and provide these
                         let root = db.parse_or_expand(src.file_id).unwrap();
