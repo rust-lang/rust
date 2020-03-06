@@ -155,8 +155,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Updates the `environ` static. It should not be called before
+    /// `MemoryExtra::init_extern_statics`.
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        // Deallocate the old environ value.
+        let old_vars_ptr = this.read_scalar(this.memory.extra.environ.unwrap().into())?.not_undef()?;
+        // The pointer itself can be null because `MemoryExtra::init_extern_statics` only
+        // initializes the place for the static but not the static itself.
+        if !this.is_null(old_vars_ptr)? {
+            this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
+        }
         // Collect all the pointers to each variable in a vector.
         let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
         // Add the trailing null pointer.
@@ -170,7 +179,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let place = this.mplace_field(vars_place, idx as u64)?;
             this.write_scalar(var, place.into())?;
         }
-
         this.write_scalar(
             vars_place.ptr,
             this.memory.extra.environ.unwrap().into(),
