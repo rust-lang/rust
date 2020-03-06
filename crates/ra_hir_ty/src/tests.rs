@@ -11,8 +11,13 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use hir_def::{
-    body::BodySourceMap, child_by_source::ChildBySource, db::DefDatabase, item_scope::ItemScope,
-    keys, nameres::CrateDefMap, AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
+    body::{BodySourceMap, SyntheticSyntax},
+    child_by_source::ChildBySource,
+    db::DefDatabase,
+    item_scope::ItemScope,
+    keys,
+    nameres::CrateDefMap,
+    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::InFile;
 use insta::assert_snapshot;
@@ -67,20 +72,20 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
-                Some(sp) => {
+                Ok(sp) => {
                     sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
                 }
-                None => continue,
+                Err(SyntheticSyntax) => continue,
             };
             types.push((syntax_ptr, ty));
         }
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let syntax_ptr = match body_source_map.expr_syntax(expr) {
-                Some(sp) => {
+                Ok(sp) => {
                     sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
                 }
-                None => continue,
+                Err(SyntheticSyntax) => continue,
             };
             types.push((syntax_ptr, ty));
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr) {

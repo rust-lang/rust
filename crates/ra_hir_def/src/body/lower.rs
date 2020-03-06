@@ -14,9 +14,10 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
+use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
-    body::{Body, BodySourceMap, Expander, PatPtr},
+    body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
     expr::{
@@ -102,44 +103,48 @@ where
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::Left(ptr);
-        let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
+        let id = self.make_expr(expr, Ok(src));
         self.source_map.expr_map.insert(src, id);
-        self.source_map.expr_map_back.insert(id, src);
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
     // somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
-        self.body.exprs.alloc(expr)
+        self.make_expr(expr, Err(SyntheticSyntax))
     }
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::Right(ptr);
-        let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
+        let id = self.make_expr(expr, Ok(src));
         self.source_map.expr_map.insert(src, id);
+        id
+    }
+    fn empty_block(&mut self) -> ExprId {
+        self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None })
+    }
+    fn missing_expr(&mut self) -> ExprId {
+        self.alloc_expr_desugared(Expr::Missing)
+    }
+    fn make_expr(&mut self, expr: Expr, src: Result<ExprSource, SyntheticSyntax>) -> ExprId {
+        let id = self.body.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src);
         id
     }
+
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
-        let id = self.body.pats.alloc(pat);
         let src = self.expander.to_source(ptr);
+        let id = self.make_pat(pat, Ok(src));
         self.source_map.pat_map.insert(src, id);
-        self.source_map.pat_map_back.insert(id, src);
         id
     }
-
-    fn empty_block(&mut self) -> ExprId {
-        let block = Expr::Block { statements: Vec::new(), tail: None };
-        self.body.exprs.alloc(block)
-    }
-
-    fn missing_expr(&mut self) -> ExprId {
-        self.body.exprs.alloc(Expr::Missing)
-    }
-
     fn missing_pat(&mut self) -> PatId {
-        self.body.pats.alloc(Pat::Missing)
+        self.make_pat(Pat::Missing, Err(SyntheticSyntax))
+    }
+    fn make_pat(&mut self, pat: Pat, src: Result<PatSource, SyntheticSyntax>) -> PatId {
+        let id = self.body.pats.alloc(pat);
+        self.source_map.pat_map_back.insert(id, src);
+        id
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {

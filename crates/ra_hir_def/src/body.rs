@@ -149,12 +149,15 @@ pub type PatSource = InFile<PatPtr>;
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
     expr_map: FxHashMap<ExprSource, ExprId>,
-    expr_map_back: ArenaMap<ExprId, ExprSource>,
+    expr_map_back: ArenaMap<ExprId, Result<ExprSource, SyntheticSyntax>>,
     pat_map: FxHashMap<PatSource, PatId>,
-    pat_map_back: ArenaMap<PatId, PatSource>,
+    pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 }
+
+#[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
+pub struct SyntheticSyntax;
 
 impl Body {
     pub(crate) fn body_with_source_map_query(
@@ -219,8 +222,8 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub fn expr_syntax(&self, expr: ExprId) -> Option<ExprSource> {
-        self.expr_map_back.get(expr).copied()
+    pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
+        self.expr_map_back[expr]
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
@@ -238,8 +241,8 @@ impl BodySourceMap {
         self.expr_map.get(&src).cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<PatSource> {
-        self.pat_map_back.get(pat).copied()
+    pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
+        self.pat_map_back[pat]
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
