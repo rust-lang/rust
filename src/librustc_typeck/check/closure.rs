@@ -675,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
         let output_assoc_item =
-            self.tcx.associated_items(future_trait).in_definition_order().nth(0).unwrap().def_id;
+            self.tcx.associated_items(future_trait).in_definition_order().next().unwrap().def_id;
         if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,
