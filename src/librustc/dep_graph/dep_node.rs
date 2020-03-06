@@ -179,7 +179,7 @@ macro_rules! define_dep_nodes {
             $(
                 #[inline(always)]
                 #[allow(unreachable_code, non_snake_case)]
-                pub fn $variant<'tcx>(_tcx: TyCtxt<'tcx>, $(arg: $tuple_arg_ty)*) -> DepNode {
+                pub fn $variant(_tcx: TyCtxt<'_>, $(arg: $tuple_arg_ty)*) -> DepNode {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);

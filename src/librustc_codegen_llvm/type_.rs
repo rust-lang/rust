@@ -240,7 +240,7 @@ impl Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }
 
-    pub fn i8p_llcx(llcx: &'ll llvm::Context) -> &'ll Type {
+    pub fn i8p_llcx(llcx: &llvm::Context) -> &Type {
         Type::i8_llcx(llcx).ptr_to()
     }
 
