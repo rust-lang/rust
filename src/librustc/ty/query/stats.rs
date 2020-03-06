@@ -1,5 +1,6 @@
-use crate::ty::query::config::QueryAccessors;
-use crate::ty::query::plumbing::QueryState;
+use crate::ty::query::caches::QueryCache;
+use crate::ty::query::config::{QueryAccessors, QueryConfig};
+use crate::ty::query::plumbing::QueryStateImpl;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -37,9 +38,9 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<'tcx, Q: QueryAccessors<'tcx>>(
+fn stats<'tcx, K, V, C: QueryCache<K, V>>(
     name: &'static str,
-    map: &QueryState<'tcx, Q>,
+    map: &QueryStateImpl<'tcx, K, V, C>,
 ) -> QueryStats {
     let mut stats = QueryStats {
         name,
@@ -47,10 +48,10 @@ fn stats<'tcx, Q: QueryAccessors<'tcx>>(
         cache_hits: map.cache_hits.load(Ordering::Relaxed),
         #[cfg(not(debug_assertions))]
         cache_hits: 0,
-        key_size: mem::size_of::<Q::Key>(),
-        key_type: type_name::<Q::Key>(),
-        value_size: mem::size_of::<Q::Value>(),
-        value_type: type_name::<Q::Value>(),
+        key_size: mem::size_of::<K>(),
+        key_type: type_name::<K>(),
+        value_size: mem::size_of::<V>(),
+        value_type: type_name::<V>(),
         entry_count: map.iter_results(|results| results.count()),
         local_def_id_keys: None,
     };
@@ -125,7 +126,11 @@ macro_rules! print_stats {
             let mut queries = Vec::new();
 
             $($(
-                queries.push(stats::<queries::$name<'_>>(
+                queries.push(stats::<
+                    <queries::$name<'_> as QueryConfig<'_>>::Key,
+                    <queries::$name<'_> as QueryConfig<'_>>::Value,
+                    <queries::$name<'_> as QueryAccessors<'_>>::Cache,
+                >(
                     stringify!($name),
                     &tcx.queries.$name,
                 ));
