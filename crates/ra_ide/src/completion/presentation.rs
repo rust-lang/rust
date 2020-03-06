@@ -103,7 +103,7 @@ impl Completions {
             }
         };
 
-        // If not an import, add parenthesis automatically.
+        // Add `<>` for generic types
         if ctx.is_path_type
             && !ctx.has_type_args
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
@@ -211,7 +211,7 @@ impl Completions {
                 .set_deprecated(is_deprecated(func, ctx.db))
                 .detail(function_signature.to_string());
 
-        // Add `<>` for generic types
+        // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none()
             && !ctx.is_call
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
