@@ -135,7 +135,7 @@ trait Writer {
     fn string<T: Display>(&mut self, text: T, klass: Class) -> io::Result<()>;
 }
 
-// Implement `Writer` for anthing that can be written to, this just implements
+// Implement `Writer` for anything that can be written to, this just implements
 // the default rustdoc behaviour.
 impl<U: Write> Writer for U {
     fn string<T: Display>(&mut self, text: T, klass: Class) -> io::Result<()> {

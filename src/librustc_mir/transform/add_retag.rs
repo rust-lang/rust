@@ -20,7 +20,7 @@ fn is_stable(place: PlaceRef<'_, '_>) -> bool {
             // Which place this evaluates to can change with any memory write,
             // so cannot assume this to be stable.
             ProjectionElem::Deref => false,
-            // Array indices are intersting, but MIR building generates a *fresh*
+            // Array indices are interesting, but MIR building generates a *fresh*
             // temporary for every array access, so the index cannot be changed as
             // a side-effect.
             ProjectionElem::Index { .. } |

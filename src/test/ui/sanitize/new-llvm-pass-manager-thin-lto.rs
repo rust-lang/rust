@@ -1,6 +1,6 @@
 // Regression test for sanitizer function instrumentation passes not
 // being run when compiling with new LLVM pass manager and ThinLTO.
-// Note: The issue occured only on non-zero opt-level.
+// Note: The issue occurred only on non-zero opt-level.
 //
 // min-llvm-version 9.0
 // needs-sanitizer-support

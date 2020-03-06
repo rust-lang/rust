@@ -579,7 +579,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             | ConstraintCategory::UseAsConst
             | ConstraintCategory::UseAsStatic = constraint.category
             {
-                // "Returning" from a promoted is an assigment to a
+                // "Returning" from a promoted is an assignment to a
                 // temporary from the user's point of view.
                 constraint.category = ConstraintCategory::Boring;
             }

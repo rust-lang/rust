@@ -1096,7 +1096,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => {
-                // We parse const arguments as path types as we cannot distiguish them durring
+                // We parse const arguments as path types as we cannot distinguish them during
                 // parsing. We try to resolve that ambiguity by attempting resolution in both the
                 // type and value namespaces. If we resolved the path in the value namespace, we
                 // transform it into a generic const argument.

@@ -904,7 +904,7 @@ pub fn expand_preparsed_format_args(
     };
 
     /// Finds the indices of all characters that have been processed and differ between the actual
-    /// written code (code snippet) and the `InternedString` that get's processed in the `Parser`
+    /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
     /// in order to properly synthethise the intra-string `Span`s for error diagnostics.
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
         let mut eat_ws = false;

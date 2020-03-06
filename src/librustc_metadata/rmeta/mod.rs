@@ -201,7 +201,7 @@ crate struct CrateRoot<'tcx> {
 
     per_def: LazyPerDefTables<'tcx>,
 
-    /// The DefIndex's of any proc macros delcared by this crate.
+    /// The DefIndex's of any proc macros declared by this crate.
     proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     compiler_builtins: bool,

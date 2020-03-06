@@ -3601,7 +3601,7 @@ fn render_impl(
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
     show_default_items: bool,
-    // This argument is used to reference same type with different pathes to avoid duplication
+    // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {

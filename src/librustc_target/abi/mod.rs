@@ -401,7 +401,7 @@ impl Align {
     }
 }
 
-/// A pair of aligments, ABI-mandated and preferred.
+/// A pair of alignments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {

@@ -91,7 +91,7 @@ pub use crate::intrinsics::transmute;
 /// Using `ManuallyDrop` here has two advantages:
 ///
 /// * We do not "touch" `v` after disassembling it. For some types, operations
-///   such as passing ownership (to a funcion like `mem::forget`) requires them to actually
+///   such as passing ownership (to a function like `mem::forget`) requires them to actually
 ///   be fully owned right now; that is a promise we do not want to make here as we are
 ///   in the process of transferring ownership to the new `String` we are building.
 /// * In case of an unexpected panic, `ManuallyDrop` is not dropped, but if the panic

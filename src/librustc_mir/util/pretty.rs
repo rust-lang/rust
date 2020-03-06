@@ -490,7 +490,7 @@ fn write_scope_tree(
     }
 
     let children = match scope_tree.get(&parent) {
-        Some(childs) => childs,
+        Some(children) => children,
         None => return Ok(()),
     };
 

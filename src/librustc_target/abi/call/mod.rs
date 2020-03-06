@@ -365,11 +365,11 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                         //
                         // NB: for all tagged `enum`s (which include all non-C-like
                         // `enum`s with defined FFI representation), this will
-                        // match the homogenous computation on the equivalent
+                        // match the homogeneous computation on the equivalent
                         // `struct { tag; union { variant1; ... } }` and/or
                         // `union { struct { tag; variant1; } ... }`
                         // (the offsets of variant fields should be identical
-                        // between the two for either to be a homogenous aggregate).
+                        // between the two for either to be a homogeneous aggregate).
                         let variant_start = total;
                         for variant_idx in variants.indices() {
                             let (variant_result, variant_total) =
@@ -542,7 +542,7 @@ pub struct FnAbi<'a, Ty> {
     /// The count of non-variadic arguments.
     ///
     /// Should only be different from args.len() when c_variadic is true.
-    /// This can be used to know wether an argument is variadic or not.
+    /// This can be used to know whether an argument is variadic or not.
     pub fixed_count: usize,
 
     pub conv: Conv,

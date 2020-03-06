@@ -612,7 +612,7 @@ fn receiver_is_dispatchable<'tcx>(
     };
 
     // the type `U` in the query
-    // use a bogus type parameter to mimick a forall(U) query using u32::MAX for now.
+    // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
     // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =

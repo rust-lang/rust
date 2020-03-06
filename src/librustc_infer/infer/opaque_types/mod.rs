@@ -264,7 +264,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// ```
     ///
     /// Here we would report a more complex "in constraint", like `'r
-    /// in ['a, 'b, 'static]` (where `'r` is some regon appearing in
+    /// in ['a, 'b, 'static]` (where `'r` is some region appearing in
     /// the hidden type).
     ///
     /// # Constrain regions, not the hidden concrete type

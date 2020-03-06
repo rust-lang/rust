@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return r;
         }
 
-        debug!("pick: actual search failed, assemble diagnotics");
+        debug!("pick: actual search failed, assemble diagnostics");
 
         let static_candidates = mem::take(&mut self.static_candidates);
         let private_candidate = self.private_candidate.take();

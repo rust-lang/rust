@@ -655,7 +655,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     // FIXME(#44232): the `used_features` table no longer exists, so we
-    // don't lint about unused features. We should reenable this one day!
+    // don't lint about unused features. We should re-enable this one day!
 }
 
 fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {

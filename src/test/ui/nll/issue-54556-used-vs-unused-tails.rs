@@ -1,4 +1,4 @@
-// Ths test case is exploring the space of how blocs with tail
+// This test case is exploring the space of how blocks with tail
 // expressions and statements can be composed, trying to keep each
 // case on one line so that we can compare them via a vertical scan
 // with the human eye.

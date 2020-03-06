@@ -387,7 +387,7 @@ declare_features! (
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
 
-    /// Allows infering `'static` outlives requirements (RFC 2093).
+    /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
     /// Allows accessing fields of unions inside `const` functions.

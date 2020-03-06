@@ -185,7 +185,7 @@ fn compute_symbol_name(
     //
     // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
     //   same-named symbol when imported from different wasm modules will get
-    //   hooked up incorectly. As a result foreign symbols, on the wasm target,
+    //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
     //   with a wasm import module, get mangled. Additionally our codegen will
     //   deduplicate symbols based purely on the symbol name, but for wasm this
     //   isn't quite right because the same-named symbol on wasm can come from

@@ -125,7 +125,7 @@ fn parse_expected(
     let captures = RE.captures(line)?;
 
     match (cfg, captures.name("cfgs")) {
-        // Only error messages that contain our `cfg` betweeen the square brackets apply to us.
+        // Only error messages that contain our `cfg` between the square brackets apply to us.
         (Some(cfg), Some(filter)) if !filter.as_str().split(',').any(|s| s == cfg) => return None,
         (Some(_), Some(_)) => {}
 

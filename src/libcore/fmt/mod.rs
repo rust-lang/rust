@@ -255,7 +255,7 @@ pub struct ArgumentV1<'a> {
     formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
 }
 
-// This gurantees a single stable value for the function pointer associated with
+// This guarantees a single stable value for the function pointer associated with
 // indices/counts in the formatting infrastructure.
 //
 // Note that a function defined as such would not be correct as functions are

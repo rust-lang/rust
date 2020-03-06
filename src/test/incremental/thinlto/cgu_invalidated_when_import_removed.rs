@@ -41,7 +41,7 @@ mod foo {
     // In cfail2, ThinLTO decides that foo() does not get inlined into main, and
     // instead bar() gets inlined into foo(). But faulty logic in our incr.
     // ThinLTO implementation thought that `main()` is unchanged and thus reused
-    // the object file still containing a call to the now non-existant bar().
+    // the object file still containing a call to the now non-existent bar().
     pub fn foo(){
         bar()
     }

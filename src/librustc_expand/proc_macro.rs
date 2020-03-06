@@ -133,7 +133,7 @@ impl MultiItemModifier for ProcMacroDerive {
         };
 
         let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
-        let msg = "proc-macro derive produced unparseable tokens";
+        let msg = "proc-macro derive produced unparsable tokens";
 
         let mut parser =
             rustc_parse::stream_to_parser(ecx.parse_sess, stream, Some("proc-macro derive"));

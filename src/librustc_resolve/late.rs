@@ -553,7 +553,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let prev = replace(&mut self.diagnostic_metadata.currently_processing_generics, true);
         match arg {
             GenericArg::Type(ref ty) => {
-                // We parse const arguments as path types as we cannot distiguish them during
+                // We parse const arguments as path types as we cannot distinguish them during
                 // parsing. We try to resolve that ambiguity by attempting resolution the type
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on

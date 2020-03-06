@@ -292,7 +292,7 @@ where
 
         let all_bytes = 0..self.len();
         // This 'inspect' is okay since following access respects undef and relocations. This does
-        // influence interpreter exeuction, but only to detect the error of cycles in evalution
+        // influence interpreter exeuction, but only to detect the error of cycles in evaluation
         // dependencies.
         let bytes = self.inspect_with_undef_and_ptr_outside_interpreter(all_bytes);
 

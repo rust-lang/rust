@@ -169,7 +169,7 @@ where
 }
 
 // N.B. This type is not public because the protocol around checking the
-// `err` field is not enforcable otherwise.
+// `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     err: Option<FixupError<'tcx>>,

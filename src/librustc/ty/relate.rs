@@ -72,7 +72,7 @@ pub trait TypeRelation<'tcx>: Sized {
         b: &T,
     ) -> RelateResult<'tcx, T>;
 
-    // Overrideable relations. You shouldn't typically call these
+    // Overridable relations. You shouldn't typically call these
     // directly, instead call `relate()`, which in turn calls
     // these. This is both more uniform but also allows us to add
     // additional hooks for other types in the future if needed

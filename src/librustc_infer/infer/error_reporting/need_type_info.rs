@@ -391,7 +391,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
             if let ExprKind::MethodCall(segment, ..) = &e.kind {
-                // Suggest specifiying type params or point out the return type of the call:
+                // Suggest specifying type params or point out the return type of the call:
                 //
                 // error[E0282]: type annotations needed
                 //   --> $DIR/type-annotations-needed-expr.rs:2:39

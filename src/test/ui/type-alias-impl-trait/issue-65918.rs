@@ -6,7 +6,7 @@
 
 use std::marker::PhantomData;
 
-/* copied Index and TryFrom for convinience (and simplicity) */
+/* copied Index and TryFrom for convenience (and simplicity) */
 trait MyIndex<T> {
     type O;
     fn my_index(self) -> Self::O;

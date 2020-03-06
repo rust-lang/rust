@@ -505,7 +505,7 @@ fn ty_is_non_local_constructor<'tcx>(ty: Ty<'tcx>, in_crate: InCrate) -> Option<
             //
             // We choose to treat all opaque types as non-local, even
             // those that appear within the same crate. This seems
-            // somewhat suprising at first, but makes sense when
+            // somewhat surprising at first, but makes sense when
             // you consider that opaque types are supposed to hide
             // the underlying type *within the same crate*. When an
             // opaque type is used from outside the module

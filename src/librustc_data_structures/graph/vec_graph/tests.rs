@@ -23,7 +23,7 @@ fn num_nodes() {
 }
 
 #[test]
-fn succesors() {
+fn successors() {
     let graph = create_graph();
     assert_eq!(graph.successors(0), &[1]);
     assert_eq!(graph.successors(1), &[2, 3]);

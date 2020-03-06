@@ -141,7 +141,7 @@ fn copy_third_party_objects(
         copy_and_stamp(&srcdir, "crt1.o");
     }
 
-    // Copies libunwind.a compiled to be linked wit x86_64-fortanix-unknown-sgx.
+    // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
     //
     // This target needs to be linked to Fortanix's port of llvm's libunwind.
     // libunwind requires support for rwlock and printing to stderr,

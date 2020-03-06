@@ -1395,7 +1395,7 @@ fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
         .any(is_suggestable_infer_ty)
 }
 
-/// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
+/// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
 /// use inference to provide suggestions for the appropriate type if possible.
 fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     use hir::TyKind::*;

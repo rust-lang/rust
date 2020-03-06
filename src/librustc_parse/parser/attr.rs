@@ -138,7 +138,7 @@ impl<'a> Parser<'a> {
 
                         if let Some(prev_attr_sp) = prev_attr_sp {
                             diagnostic
-                                .span_label(attr_sp, "not permitted following an outer attibute")
+                                .span_label(attr_sp, "not permitted following an outer attribute")
                                 .span_label(prev_attr_sp, prev_attr_note);
                         }
 

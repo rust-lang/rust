@@ -991,7 +991,7 @@ fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
     if let mbe::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
         frag_can_be_followed_by_any(frag_spec.name)
     } else {
-        // (Non NT's can always be followed by anthing in matchers.)
+        // (Non NT's can always be followed by anything in matchers.)
         true
     }
 }

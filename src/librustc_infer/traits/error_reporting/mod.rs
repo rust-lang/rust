@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // we're only talking about builtin traits, which are known to be
                 // inhabited. We used to check for `self.tcx.sess.has_errors()` to
                 // avoid inundating the user with unnecessary errors, but we now
-                // check upstream for type errors and dont add the obligations to
+                // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self
                     .tcx

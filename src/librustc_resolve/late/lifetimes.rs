@@ -540,7 +540,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     LifetimeName::Implicit => {
                         // For types like `dyn Foo`, we should
                         // generate a special form of elided.
-                        span_bug!(ty.span, "object-lifetime-default expected, not implict",);
+                        span_bug!(ty.span, "object-lifetime-default expected, not implicit",);
                     }
                     LifetimeName::ImplicitObjectLifetimeDefault => {
                         // If the user does not write *anything*, we

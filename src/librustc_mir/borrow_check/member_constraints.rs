@@ -125,7 +125,7 @@ where
         // wind up mapped to the same key `S`, we would append the
         // linked list for `Ra` onto the end of the linked list for
         // `Rb` (or vice versa) -- this basically just requires
-        // rewriting the final link from one list to point at the othe
+        // rewriting the final link from one list to point at the other
         // other (see `append_list`).
 
         let MemberConstraintSet { first_constraints, mut constraints, choice_regions } = self;

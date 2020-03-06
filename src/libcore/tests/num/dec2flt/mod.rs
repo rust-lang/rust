@@ -44,7 +44,7 @@ fn ordinary() {
 #[test]
 fn special_code_paths() {
     test_literal!(36893488147419103229.0); // 2^65 - 3, triggers half-to-even with even significand
-    test_literal!(101e-33); // Triggers the tricky underflow case in AlgorithmM (for f32)
+    test_literal!(101e-33); // Triggers the tricky underflow case in algorithm (for f32)
     test_literal!(1e23); // Triggers AlgorithmR
     test_literal!(2075e23); // Triggers another path through AlgorithmR
     test_literal!(8713e-23); // ... and yet another.

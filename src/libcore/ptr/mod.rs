@@ -19,7 +19,7 @@
 //! * All pointers (except for the null pointer) are valid for all operations of
 //!   [size zero][zst].
 //! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
-//!   be *dereferencable*: the memory range of the given size starting at the pointer must all be
+//!   be *dereferenceable*: the memory range of the given size starting at the pointer must all be
 //!   within the bounds of a single allocated object. Note that in Rust,
 //!   every (stack-allocated) variable is considered a separate allocated object.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
