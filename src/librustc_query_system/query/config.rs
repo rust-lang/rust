@@ -31,6 +31,30 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub compute: fn(CTX, K) -> V,
 
     pub hash_result: fn(&mut CTX::StableHashingContext, &V) -> Option<Fingerprint>,
+    pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
+    pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
+}
+
+impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
+    pub(crate) fn compute(&self, tcx: CTX, key: K) -> V {
+        (self.compute)(tcx, key)
+    }
+
+    pub(crate) fn hash_result(
+        &self,
+        hcx: &mut CTX::StableHashingContext,
+        value: &V,
+    ) -> Option<Fingerprint> {
+        (self.hash_result)(hcx, value)
+    }
+
+    pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
+        (self.cache_on_disk)(tcx, key, value)
+    }
+
+    pub(crate) fn try_load_from_disk(&self, tcx: CTX, index: SerializedDepNodeIndex) -> Option<V> {
+        (self.try_load_from_disk)(tcx, index)
+    }
 }
 
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
@@ -60,7 +84,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
     fn describe(tcx: CTX, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
-    fn cache_on_disk(_: CTX, _: Self::Key, _: Option<&Self::Value>) -> bool {
+    fn cache_on_disk(_: CTX, _: &Self::Key, _: Option<&Self::Value>) -> bool {
         false
     }
 
@@ -82,6 +106,8 @@ where
         eval_always: Q::EVAL_ALWAYS,
         compute: Q::compute,
         hash_result: Q::hash_result,
+        cache_on_disk: Q::cache_on_disk,
+        try_load_from_disk: Q::try_load_from_disk,
     };
 }
 
@@ -98,7 +124,7 @@ where
         }
     }
 
-    default fn cache_on_disk(_: CTX, _: Self::Key, _: Option<&Self::Value>) -> bool {
+    default fn cache_on_disk(_: CTX, _: &Self::Key, _: Option<&Self::Value>) -> bool {
         false
     }
 

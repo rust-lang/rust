@@ -365,7 +365,7 @@ fn add_query_description_impl(
             #[allow(unused_variables, unused_braces)]
             fn cache_on_disk(
                 #tcx: TyCtxt<'tcx>,
-                #key: Self::Key,
+                #key: &Self::Key,
                 #value: Option<&Self::Value>
             ) -> bool {
                 #expr
@@ -441,7 +441,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                                             .unwrap_or(false));
 
                             let key = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node).unwrap();
-                            if queries::#name::cache_on_disk($tcx, key, None) {
+                            if queries::#name::cache_on_disk($tcx, &key, None) {
                                 let _ = $tcx.#name(key);
                             }
                         }

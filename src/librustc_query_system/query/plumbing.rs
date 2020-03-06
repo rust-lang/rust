@@ -439,12 +439,13 @@ where
             let marked = tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
-                    load_from_disk_and_cache_in_memory::<Q, _>(
+                    load_from_disk_and_cache_in_memory(
                         tcx,
                         key.clone(),
                         prev_dep_node_index,
                         dep_node_index,
                         &dep_node,
+                        &Q::VTABLE,
                     ),
                     dep_node_index,
                 )
@@ -460,16 +461,16 @@ where
     result
 }
 
-fn load_from_disk_and_cache_in_memory<Q, CTX>(
+fn load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
-    key: Q::Key,
+    key: K,
     prev_dep_node_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
     dep_node: &DepNode<CTX::DepKind>,
-) -> Q::Value
+    query: &QueryVtable<CTX, K, V>,
+) -> V
 where
     CTX: QueryContext,
-    Q: QueryDescription<CTX>,
 {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
@@ -477,9 +478,9 @@ where
     debug_assert!(tcx.dep_graph().is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
-    let result = if Q::cache_on_disk(tcx, key.clone(), None) {
+    let result = if query.cache_on_disk(tcx, &key, None) {
         let prof_timer = tcx.profiler().incr_cache_loading();
-        let result = Q::try_load_from_disk(tcx, prev_dep_node_index);
+        let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         // We always expect to find a cached result for things that
@@ -503,7 +504,7 @@ where
         let prof_timer = tcx.profiler().query_provider();
 
         // The dep-graph for this computation is already in-place.
-        let result = tcx.dep_graph().with_ignore(|| Q::compute(tcx, key));
+        let result = tcx.dep_graph().with_ignore(|| query.compute(tcx, key));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -513,7 +514,7 @@ where
     // If `-Zincremental-verify-ich` is specified, re-hash results from
     // the cache and make sure that they have the expected fingerprint.
     if unlikely!(tcx.incremental_verify_ich()) {
-        incremental_verify_ich::<Q, _>(tcx, &result, dep_node, dep_node_index);
+        incremental_verify_ich(tcx, &result, dep_node, dep_node_index, query);
     }
 
     result
@@ -521,14 +522,14 @@ where
 
 #[inline(never)]
 #[cold]
-fn incremental_verify_ich<Q, CTX>(
+fn incremental_verify_ich<CTX, K, V>(
     tcx: CTX,
-    result: &Q::Value,
+    result: &V,
     dep_node: &DepNode<CTX::DepKind>,
     dep_node_index: DepNodeIndex,
+    query: &QueryVtable<CTX, K, V>,
 ) where
     CTX: QueryContext,
-    Q: QueryDescription<CTX>,
 {
     assert!(
         Some(tcx.dep_graph().fingerprint_of(dep_node_index))
@@ -540,7 +541,7 @@ fn incremental_verify_ich<Q, CTX>(
     debug!("BEGIN verify_ich({:?})", dep_node);
     let mut hcx = tcx.create_stable_hashing_context();
 
-    let new_hash = Q::hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
+    let new_hash = query.hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
     debug!("END verify_ich({:?})", dep_node);
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
