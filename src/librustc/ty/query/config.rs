@@ -28,6 +28,7 @@ pub trait QueryConfig<'tcx> {
 pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
+    const DEP_KIND: DepKind;
 
     type Cache: QueryCache<Self::Key, Self::Value>;
 
@@ -37,8 +38,6 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self>;
 
     fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
-
-    fn dep_kind() -> DepKind;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
