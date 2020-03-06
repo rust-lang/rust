@@ -229,10 +229,7 @@ impl TypeMap<'ll, 'tcx> {
         &mut self,
         enum_type_id: UniqueTypeId,
     ) -> String {
-        let variant_part_type_id =
-            format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id));
-        self.unique_id_interner.intern(&variant_part_type_id);
-        variant_part_type_id
+        format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id))
     }
 }
 
