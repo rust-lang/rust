@@ -66,14 +66,6 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::traits::impls_for_trait_query)]
     fn impls_for_trait(&self, krate: CrateId, trait_: TraitId) -> Arc<[ImplId]>;
 
-    /// This provides the Chalk trait solver instance. Because Chalk always
-    /// works from a specific crate, this query is keyed on the crate; and
-    /// because Chalk does its own internal caching, the solver is wrapped in a
-    /// Mutex and the query does an untracked read internally, to make sure the
-    /// cached state is thrown away when input facts change.
-    #[salsa::invoke(crate::traits::trait_solver_query)]
-    fn trait_solver(&self, krate: CrateId) -> crate::traits::TraitSolver;
-
     // Interned IDs for Chalk integration
     #[salsa::interned]
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::TypeCtorId;

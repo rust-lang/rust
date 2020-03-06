@@ -362,7 +362,6 @@ impl RootDatabase {
             hir::db::GenericDefaultsQuery
             hir::db::ImplsInCrateQuery
             hir::db::ImplsForTraitQuery
-            hir::db::TraitSolverQuery
             hir::db::InternTypeCtorQuery
             hir::db::InternChalkImplQuery
             hir::db::InternAssocTyValueQuery
