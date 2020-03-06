@@ -21,11 +21,11 @@ use hir_expand::name::Name;
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase {
-    #[salsa::transparent]
+    #[salsa::invoke(infer_wait)]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
-    #[salsa::invoke(crate::do_infer_query)]
-    fn do_infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
+    #[salsa::invoke(crate::infer::infer_query)]
+    fn infer_query(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
@@ -103,8 +103,8 @@ pub trait HirDatabase: DefDatabase {
     ) -> Option<crate::traits::Solution>;
 }
 
-fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("wait_infer").detail(|| match def {
+fn infer_wait(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
+    let _p = profile("infer:wait").detail(|| match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
         DefWithBodyId::StaticId(it) => {
             db.static_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
@@ -113,7 +113,7 @@ fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
             db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
         }
     });
-    db.do_infer(def)
+    db.infer_query(def)
 }
 
 #[test]

@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 pub use hir_def::db::{
-    AttrsQuery, BodyQuery, BodyWithSourceMapQuery, ComputeCrateDefMapQuery, ConstDataQuery,
+    AttrsQuery, BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQueryQuery,
     CrateLangItemsQuery, DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery,
     ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternConstQuery,
     InternDatabase, InternDatabaseStorage, InternEnumQuery, InternFunctionQuery, InternImplQuery,
@@ -14,10 +14,10 @@ pub use hir_expand::db::{
     MacroExpandQuery, ParseMacroQuery,
 };
 pub use hir_ty::db::{
-    AssociatedTyDataQuery, AssociatedTyValueQuery, CallableItemSignatureQuery, DoInferQuery,
-    FieldTypesQuery, GenericDefaultsQuery, GenericPredicatesForParamQuery, GenericPredicatesQuery,
-    HirDatabase, HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery,
-    ImplsForTraitQuery, ImplsInCrateQuery, InternAssocTyValueQuery, InternChalkImplQuery,
+    AssociatedTyDataQuery, AssociatedTyValueQuery, CallableItemSignatureQuery, FieldTypesQuery,
+    GenericDefaultsQuery, GenericPredicatesForParamQuery, GenericPredicatesQuery, HirDatabase,
+    HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, ImplsForTraitQuery,
+    ImplsInCrateQuery, InferQueryQuery, InternAssocTyValueQuery, InternChalkImplQuery,
     InternTypeCtorQuery, StructDatumQuery, TraitDatumQuery, TraitSolveQuery, TyQuery, ValueTyQuery,
 };
 
