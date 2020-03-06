@@ -5,7 +5,7 @@
 use crate::dep_graph::{DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
-use crate::query::config::QueryDescription;
+use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
 use crate::query::QueryContext;
 
@@ -406,7 +406,7 @@ where
     // expensive for some `DepKind`s.
     if !tcx.dep_graph().is_fully_enabled() {
         let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-        return force_query_with_job::<Q, _>(tcx, key, job, null_dep_node).0;
+        return force_query_with_job(tcx, key, job, null_dep_node, &Q::VTABLE).0;
     }
 
     if Q::ANON {
@@ -455,7 +455,7 @@ where
         }
     }
 
-    let (result, dep_node_index) = force_query_with_job::<Q, _>(tcx, key, job, dep_node);
+    let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, &Q::VTABLE);
     tcx.dep_graph().read_index(dep_node_index);
     result
 }
@@ -549,14 +549,17 @@ fn incremental_verify_ich<Q, CTX>(
 }
 
 #[inline(always)]
-fn force_query_with_job<Q, CTX>(
+fn force_query_with_job<C, CTX>(
     tcx: CTX,
-    key: Q::Key,
-    job: JobOwner<'_, CTX, Q::Cache>,
+    key: C::Key,
+    job: JobOwner<'_, CTX, C>,
     dep_node: DepNode<CTX::DepKind>,
-) -> (Q::Stored, DepNodeIndex)
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) -> (C::Stored, DepNodeIndex)
 where
-    Q: QueryDescription<CTX>,
+    C: QueryCache,
+    C::Key: Eq + Clone + Debug,
+    C::Stored: Clone,
     CTX: QueryContext,
 {
     // If the following assertion triggers, it can have two reasons:
@@ -577,16 +580,16 @@ where
 
     let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
         tcx.start_query(job.id, diagnostics, |tcx| {
-            if Q::EVAL_ALWAYS {
+            if query.eval_always {
                 tcx.dep_graph().with_eval_always_task(
                     dep_node,
                     tcx,
                     key,
-                    Q::compute,
-                    Q::hash_result,
+                    query.compute,
+                    query.hash_result,
                 )
             } else {
-                tcx.dep_graph().with_task(dep_node, tcx, key, Q::compute, Q::hash_result)
+                tcx.dep_graph().with_task(dep_node, tcx, key, query.compute, query.hash_result)
             }
         })
     });
@@ -684,7 +687,7 @@ where
                 #[cfg(parallel_compiler)]
                 TryGetJob::JobCompleted(_) => return,
             };
-            force_query_with_job::<Q, _>(tcx, key, job, dep_node);
+            force_query_with_job(tcx, key, job, dep_node, &Q::VTABLE);
         },
     );
 }

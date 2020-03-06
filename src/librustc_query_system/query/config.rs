@@ -24,6 +24,15 @@ pub trait QueryConfig<CTX> {
     type Stored: Clone;
 }
 
+pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
+    pub eval_always: bool,
+
+    // Don't use this method to compute query results, instead use the methods on TyCtxt
+    pub compute: fn(CTX, K) -> V,
+
+    pub hash_result: fn(&mut CTX::StableHashingContext, &V) -> Option<Fingerprint>,
+}
+
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
@@ -58,6 +67,22 @@ pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
     fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
         panic!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
+}
+
+pub(crate) trait QueryVtableExt<CTX: QueryContext, K, V> {
+    const VTABLE: QueryVtable<CTX, K, V>;
+}
+
+impl<CTX, Q> QueryVtableExt<CTX, Q::Key, Q::Value> for Q
+where
+    CTX: QueryContext,
+    Q: QueryDescription<CTX>,
+{
+    const VTABLE: QueryVtable<CTX, Q::Key, Q::Value> = QueryVtable {
+        eval_always: Q::EVAL_ALWAYS,
+        compute: Q::compute,
+        hash_result: Q::hash_result,
+    };
 }
 
 impl<CTX: QueryContext, M> QueryDescription<CTX> for M
