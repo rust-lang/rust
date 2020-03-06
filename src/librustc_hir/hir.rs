@@ -1863,8 +1863,8 @@ pub enum TraitMethod<'hir> {
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<BodyId>),
-    /// A method with an optional body.
-    Method(FnSig<'hir>, TraitMethod<'hir>),
+    /// An associated function with an optional body.
+    Fn(FnSig<'hir>, TraitMethod<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -2699,7 +2699,7 @@ impl Node<'_> {
 
     pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
         match self {
-            Node::TraitItem(TraitItem { kind: TraitItemKind::Method(fn_sig, _), .. })
+            Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Method(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
             Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {

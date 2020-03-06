@@ -75,7 +75,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ParenthesizedGenericArgs::Ok
                         }
                         // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::Method, _)
+                        Res::Def(DefKind::AssocFn, _)
                         | Res::Def(DefKind::AssocConst, _)
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>

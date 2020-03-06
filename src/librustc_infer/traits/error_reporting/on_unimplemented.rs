@@ -70,7 +70,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 })
             }
             hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)),
+                kind: hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(body_id)),
                 ..
             }) => self.describe_generator(*body_id).or_else(|| Some("a trait method")),
             hir::Node::ImplItem(hir::ImplItem {

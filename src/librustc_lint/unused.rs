@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 match callee.kind {
                     hir::ExprKind::Path(ref qpath) => {
                         match cx.tables.qpath_res(qpath, callee.hir_id) {
-                            Res::Def(DefKind::Fn, def_id) | Res::Def(DefKind::Method, def_id) => {
+                            Res::Def(DefKind::Fn, def_id) | Res::Def(DefKind::AssocFn, def_id) => {
                                 Some(def_id)
                             }
                             // `Res::Local` if it was a closure, for which we
