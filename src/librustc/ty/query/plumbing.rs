@@ -74,7 +74,7 @@ impl<'tcx, Q: QueryAccessors<'tcx>> QueryState<'tcx, Q> {
 
         let shard = self.shards.get_shard_index_by_hash(key_hash);
         let lock = self.shards.get_shard_by_index(shard).lock();
-        QueryLookup { key_hash, shard, lock }
+        QueryLookupImpl { key_hash, shard, lock }
     }
 }
 
@@ -115,10 +115,11 @@ impl<'tcx, M: QueryAccessors<'tcx>> Default for QueryState<'tcx, M> {
 }
 
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub(crate) struct QueryLookup<'tcx, Q: QueryAccessors<'tcx>> {
+pub(crate) type QueryLookup<'tcx, Q> = QueryLookupImpl<'tcx, QueryStateShard<'tcx, Q>>;
+pub(crate) struct QueryLookupImpl<'tcx, QSS> {
     pub(super) key_hash: u64,
     pub(super) shard: usize,
-    pub(super) lock: LockGuard<'tcx, QueryStateShard<'tcx, Q>>,
+    pub(super) lock: LockGuard<'tcx, QSS>,
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
