@@ -59,7 +59,7 @@ pub fn inner_with_ref(x: Option<MyEnum>) {
 
 pub fn mixed_no_ref(x: MixedEnum) {
     match x {
-        MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
+        MixedEnum::A { i: _ } | MixedEnum::B(_) => {
             println!("match");
         }
     }
@@ -67,7 +67,7 @@ pub fn mixed_no_ref(x: MixedEnum) {
 
 pub fn mixed_with_ref(x: MixedEnum) {
     match x {
-        MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
+        MixedEnum::A { i: _ } | MixedEnum::B(_) => {
             println!("match");
         }
     }

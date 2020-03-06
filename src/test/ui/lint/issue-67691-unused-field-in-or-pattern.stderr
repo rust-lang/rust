@@ -56,8 +56,8 @@ LL |         MixedEnum::A { i } | MixedEnum::B(i) => {
    |
 help: try ignoring the field
    |
-LL |         MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
-   |                        ^^^^                  ^^
+LL |         MixedEnum::A { i: _ } | MixedEnum::B(_) => {
+   |                        ^^^^                  ^
 
 error: unused variable: `i`
   --> $DIR/issue-67691-unused-field-in-or-pattern.rs:70:24
@@ -67,8 +67,8 @@ LL |         MixedEnum::A { ref i } | MixedEnum::B(ref i) => {
    |
 help: try ignoring the field
    |
-LL |         MixedEnum::A { i: _ } | MixedEnum::B(_i) => {
-   |                        ^^^^                  ^^
+LL |         MixedEnum::A { i: _ } | MixedEnum::B(_) => {
+   |                        ^^^^                  ^
 
 error: aborting due to 6 previous errors
 

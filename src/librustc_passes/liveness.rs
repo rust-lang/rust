@@ -1556,15 +1556,16 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .map(|(_, span)| (span, format!("{}: _", name)))
                             .collect::<Vec<_>>();
 
-                        let non_shorthands = non_shorthands
-                            .into_iter()
-                            .map(|(_, span)| (span, format!("_{}", name)))
-                            .collect::<Vec<_>>();
-
                         // If we have both shorthand and non-shorthand, prefer the "try ignoring
-                        // the field" message.
+                        // the field" message, and suggest `_` for the non-shorthands. If we only
+                        // have non-shorthand, then prefix with an underscore instead.
                         if !shorthands.is_empty() {
-                            shorthands.extend(non_shorthands);
+                            shorthands.extend(
+                                non_shorthands
+                                    .into_iter()
+                                    .map(|(_, span)| (span, "_".to_string()))
+                                    .collect::<Vec<_>>(),
+                            );
 
                             err.multipart_suggestion(
                                 "try ignoring the field",
@@ -1574,7 +1575,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         } else {
                             err.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
-                                non_shorthands,
+                                non_shorthands
+                                    .into_iter()
+                                    .map(|(_, span)| (span, format!("_{}", name)))
+                                    .collect::<Vec<_>>(),
                                 Applicability::MachineApplicable,
                             );
                         }
