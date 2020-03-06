@@ -5,18 +5,78 @@
 
 pub enum Void {}
 
-enum UninhabitedUnivariant { _Variant(Void), }
+enum UninhabitedUnivariant {
+    _Variant(Void),
+}
+
+enum UninhabitedMultivariant2 {
+    _Variant(Void),
+    _Warriont(Void),
+}
+
+enum UninhabitedMultivariant3 {
+    _Variant(Void),
+    _Warriont(Void),
+    _Worrynot(Void),
+}
 
 #[repr(C)]
-enum UninhabitedUnivariantC { _Variant(Void), }
+enum UninhabitedUnivariantC {
+    _Variant(Void),
+}
 
 #[repr(i32)]
-enum UninhabitedUnivariant32 { _Variant(Void), }
+enum UninhabitedUnivariant32 {
+    _Variant(Void),
+}
 
 fn main() {
     let _seed: UninhabitedUnivariant = None.unwrap();
     match _seed {
         UninhabitedUnivariant::_Variant(_x) => {}
+    }
+
+    let _seed: UninhabitedMultivariant2 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant2::_Variant(_x) => {}
+        UninhabitedMultivariant2::_Warriont(_x) => {}
+    }
+
+    let _seed: UninhabitedMultivariant2 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant2::_Variant(_x) => {}
+        _ => {}
+    }
+
+    let _seed: UninhabitedMultivariant2 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant2::_Warriont(_x) => {}
+        _ => {}
+    }
+
+    let _seed: UninhabitedMultivariant3 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant3::_Variant(_x) => {}
+        UninhabitedMultivariant3::_Warriont(_x) => {}
+        UninhabitedMultivariant3::_Worrynot(_x) => {}
+    }
+
+    let _seed: UninhabitedMultivariant3 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant3::_Variant(_x) => {}
+        _ => {}
+    }
+
+    let _seed: UninhabitedMultivariant3 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant3::_Warriont(_x) => {}
+        _ => {}
+    }
+
+    let _seed: UninhabitedMultivariant3 = None.unwrap();
+    match _seed {
+        UninhabitedMultivariant3::_Worrynot(_x) => {}
+        _ => {}
     }
 
     let _seed: UninhabitedUnivariantC = None.unwrap();
