@@ -54,7 +54,7 @@ impl Default for FeatureFlags {
         FeatureFlags::new(&[
             ("lsp.diagnostics", true),
             ("completion.insertion.add-call-parenthesis", true),
-            ("completion.insertion.add-argument-sippets", true),
+            ("completion.insertion.add-argument-snippets", true),
             ("completion.enable-postfix", true),
             ("call-info.full", true),
             ("notifications.workspace-loaded", true),

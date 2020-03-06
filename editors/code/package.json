@@ -197,7 +197,7 @@
                             "type": "boolean",
                             "description": "Whether to add parenthesis when completing functions"
                         },
-                        "completion.insertion.add-argument-sippets": {
+                        "completion.insertion.add-argument-snippets": {
                             "type": "boolean",
                             "description": "Whether to add argument snippets when completing functions"
                         },
