@@ -25,6 +25,27 @@ fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
 }
 
+pub fn use_tree(
+    path: ast::Path,
+    use_tree_list: Option<ast::UseTreeList>,
+    alias: Option<ast::Alias>,
+) -> ast::UseTree {
+    let mut buf = "use ".to_string();
+    buf += &path.syntax().to_string();
+    if let Some(use_tree_list) = use_tree_list {
+        buf += &format!("::{}", use_tree_list.syntax());
+    }
+    if let Some(alias) = alias {
+        buf += &format!(" {}", alias.syntax());
+    }
+    ast_from_text(&buf)
+}
+
+pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::UseTreeList {
+    let use_trees = use_trees.into_iter().map(|it| it.syntax().clone()).join(", ");
+    ast_from_text(&format!("use {{{}}};", use_trees))
+}
+
 pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
