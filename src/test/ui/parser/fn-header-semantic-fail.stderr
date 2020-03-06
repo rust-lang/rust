@@ -2,7 +2,7 @@ error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:13:5
    |
 LL |     const async unsafe extern "C" fn ff5() {} // OK.
-   |     -----^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^-^^^^^------------------------------
    |     |     |
    |     |     `async` because of this
    |     `const` because of this
@@ -45,7 +45,7 @@ error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:21:9
    |
 LL |         const async unsafe extern "C" fn ft5();
-   |         -----^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^-^^^^^----------------------------
    |         |     |
    |         |     `async` because of this
    |         `const` because of this
@@ -88,7 +88,7 @@ error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
-   |         -----^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^-^^^^^------------------------------
    |         |     |
    |         |     `async` because of this
    |         `const` because of this
@@ -97,7 +97,7 @@ error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:46:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
-   |         -----^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^-^^^^^------------------------------
    |         |     |
    |         |     `async` because of this
    |         `const` because of this
@@ -160,7 +160,7 @@ error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:55:9
    |
 LL |         const async unsafe extern "C" fn fe5();
-   |         -----^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^-^^^^^----------------------------
    |         |     |
    |         |     `async` because of this
    |         `const` because of this

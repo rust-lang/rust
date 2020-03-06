@@ -13,7 +13,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, struct_span_err, Applicability};
+use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
@@ -887,30 +887,63 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     if !generics.params.is_empty() {
-                        struct_span_err!(
+                        let spans: Vec<_> = generics.params.iter().map(|i| i.ident.span).collect();
+                        let last = spans.iter().last().map(|s| *s);
+                        let len = spans.len();
+                        let mut err = struct_span_err!(
                             self.session,
-                            item.span,
+                            spans,
                             E0567,
                             "auto traits cannot have generic parameters"
-                        )
-                        .emit();
+                        );
+                        if let Some(span) = last {
+                            err.span_label(
+                                span,
+                                &format!(
+                                    "cannot have {these} generic parameter{s}",
+                                    these = if len == 1 { "this" } else { "these" },
+                                    s = pluralize!(len)
+                                ),
+                            );
+                        }
+                        err.span_label(
+                            item.ident.span,
+                            "auto trait cannot have generic parameters",
+                        );
+                        err.emit();
                     }
                     if !bounds.is_empty() {
-                        struct_span_err!(
+                        let spans: Vec<_> = bounds.iter().map(|b| b.span()).collect();
+                        let last = spans.iter().last().map(|s| *s);
+                        let len = spans.len();
+                        let mut err = struct_span_err!(
                             self.session,
-                            item.span,
+                            spans,
                             E0568,
                             "auto traits cannot have super traits"
-                        )
-                        .emit();
+                        );
+                        if let Some(span) = last {
+                            err.span_label(
+                                span,
+                                &format!(
+                                    "cannot have {these} super trait{s}",
+                                    these = if len == 1 { "this" } else { "these" },
+                                    s = pluralize!(len)
+                                ),
+                            );
+                        }
+                        err.span_label(item.ident.span, "auto trait cannot have super traits");
+                        err.emit();
                     }
                     if !trait_items.is_empty() {
+                        let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
                         struct_span_err!(
                             self.session,
-                            item.span,
+                            spans,
                             E0380,
                             "auto traits cannot have methods or associated items"
                         )
+                        .span_label(item.ident.span, "auto trait cannot have items")
                         .emit();
                     }
                 }
@@ -1157,9 +1190,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }) = fk.header()
         {
             self.err_handler()
-                .struct_span_err(span, "functions cannot be both `const` and `async`")
+                .struct_span_err(
+                    vec![*cspan, *aspan],
+                    "functions cannot be both `const` and `async`",
+                )
                 .span_label(*cspan, "`const` because of this")
                 .span_label(*aspan, "`async` because of this")
+                .span_label(span, "") // Point at the fn header.
                 .emit();
         }
 
