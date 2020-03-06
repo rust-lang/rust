@@ -3,7 +3,6 @@
 //! `ra_ide` crate.
 
 use std::{
-    collections::hash_map::Entry,
     fmt::Write as _,
     io::Write as _,
     process::{self, Stdio},
@@ -13,15 +12,15 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, CompletionItem,
-    Diagnostic, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SemanticTokens, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    TextDocumentIdentifier, TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
+    Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
+    Range, RenameParams, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
+    TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
-    AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
+    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
     SearchScope,
 };
 use ra_prof::profile;
@@ -649,6 +648,31 @@ pub fn handle_formatting(
     }]))
 }
 
+fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<CodeAction> {
+    let arg = to_value(assist.source_change.try_conv_with(world)?)?;
+    let title = assist.label;
+    let command = Command {
+        title: title.clone(),
+        command: "rust-analyzer.applySourceChange".to_string(),
+        arguments: Some(vec![arg]),
+    };
+
+    let kind = match assist.id {
+        AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
+        AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
+        _ => None,
+    };
+
+    Ok(CodeAction {
+        title,
+        kind,
+        diagnostics: None,
+        edit: None,
+        command: Some(command),
+        is_preferred: None,
+    })
+}
+
 pub fn handle_code_action(
     world: WorldSnapshot,
     params: req::CodeActionParams,
@@ -695,59 +719,44 @@ pub fn handle_code_action(
         res.push(fix.action.clone());
     }
 
-    let mut groups = FxHashMap::default();
+    let mut grouped_assists: FxHashMap<String, Vec<Assist>> = FxHashMap::default();
     for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
-        let arg = to_value(assist.source_change.try_conv_with(&world)?)?;
+        match &assist.group_label {
+            Some(label) => grouped_assists.entry(label.to_owned()).or_default().push(assist),
+            None => res.push(create_single_code_action(assist, &world)?.into()),
+        }
+    }
 
-        let (command, title, arg) = match assist.group_label {
-            None => ("rust-analyzer.applySourceChange", assist.label.clone(), arg),
+    for (group_label, assists) in grouped_assists {
+        if assists.len() == 1 {
+            res.push(
+                create_single_code_action(assists.into_iter().next().unwrap(), &world)?.into(),
+            );
+        } else {
+            let title = group_label;
 
-            // Group all assists with the same `group_label` into a single CodeAction.
-            Some(group_label) => {
-                match groups.entry(group_label.clone()) {
-                    Entry::Occupied(entry) => {
-                        let idx: usize = *entry.get();
-                        match &mut res[idx] {
-                            CodeActionOrCommand::CodeAction(CodeAction {
-                                command: Some(Command { arguments: Some(arguments), .. }),
-                                ..
-                            }) => match arguments.as_mut_slice() {
-                                [serde_json::Value::Array(arguments)] => arguments.push(arg),
-                                _ => panic!("invalid group"),
-                            },
-                            _ => panic!("invalid group"),
-                        }
-                        continue;
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(res.len());
-                    }
-                }
-                ("rust-analyzer.selectAndApplySourceChange", group_label, to_value(vec![arg])?)
+            let mut arguments = Vec::with_capacity(assists.len());
+            for assist in assists {
+                arguments.push(to_value(assist.source_change.try_conv_with(&world)?)?);
             }
-        };
 
-        let command = Command {
-            title: assist.label.clone(),
-            command: command.to_string(),
-            arguments: Some(vec![arg]),
-        };
-
-        let kind = match assist.id {
-            AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
-            AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
-            _ => None,
-        };
-
-        let action = CodeAction {
-            title,
-            kind,
-            diagnostics: None,
-            edit: None,
-            command: Some(command),
-            is_preferred: None,
-        };
-        res.push(action.into());
+            let command = Some(Command {
+                title: title.clone(),
+                command: "rust-analyzer.selectAndApplySourceChange".to_string(),
+                arguments: Some(vec![serde_json::Value::Array(arguments)]),
+            });
+            res.push(
+                CodeAction {
+                    title,
+                    kind: None,
+                    diagnostics: None,
+                    edit: None,
+                    command,
+                    is_preferred: None,
+                }
+                .into(),
+            );
+        }
     }
 
     Ok(Some(res))
