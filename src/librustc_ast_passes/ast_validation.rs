@@ -910,6 +910,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             item.ident.span,
                             "auto trait cannot have generic parameters",
                         );
+                        err.span_suggestion_verbose(
+                            generics.span,
+                            "remove the parameters for the auto trait to be valid",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
                         err.emit();
                     }
                     if !bounds.is_empty() {
@@ -922,6 +928,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             E0568,
                             "auto traits cannot have super traits"
                         );
+                        err.span_label(item.ident.span, "auto trait cannot have super traits");
                         if let Some(span) = last {
                             err.span_label(
                                 span,
@@ -931,8 +938,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                     s = pluralize!(len)
                                 ),
                             );
+                            err.span_suggestion_verbose(
+                                generics.span.shrink_to_hi().to(span),
+                                "remove the super traits for the auto trait to be valid",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
                         }
-                        err.span_label(item.ident.span, "auto trait cannot have super traits");
                         err.emit();
                     }
                     if !trait_items.is_empty() {

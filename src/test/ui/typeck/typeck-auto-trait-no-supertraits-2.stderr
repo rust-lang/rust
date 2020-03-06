@@ -5,6 +5,11 @@ LL | auto trait Magic : Sized where Option<Self> : Magic {}
    |            -----   ^^^^^ cannot have this super trait
    |            |
    |            auto trait cannot have super traits
+   |
+help: remove the super traits for the auto trait to be valid
+   |
+LL | auto trait Magic where Option<Self> : Magic {}
+   |                --
 
 error: aborting due to previous error
 
