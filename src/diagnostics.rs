@@ -6,6 +6,7 @@ use crate::*;
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
     PoppedTrackedPointerTag(Item),
+    CreatedAlloc(AllocId),
 }
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
@@ -97,9 +98,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         DIAGNOSTICS.with(|diagnostics| {
             for e in diagnostics.borrow_mut().drain(..) {
+                use NonHaltingDiagnostic::*;
                 let msg = match e {
-                    NonHaltingDiagnostic::PoppedTrackedPointerTag(item) =>
+                    PoppedTrackedPointerTag(item) =>
                         format!("popped tracked tag for item {:?}", item),
+                    CreatedAlloc(AllocId(id)) =>
+                        format!("created allocation with id {}", id),
                 };
                 report_msg(this, msg, false);
             }

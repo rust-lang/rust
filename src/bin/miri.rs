@@ -135,6 +135,7 @@ fn main() {
     let mut ignore_leaks = false;
     let mut seed: Option<u64> = None;
     let mut tracked_pointer_tag: Option<miri::PtrId> = None;
+    let mut tracked_alloc_id: Option<miri::AllocId> = None;
     let mut rustc_args = vec![];
     let mut miri_args = vec![];
     let mut after_dashdash = false;
@@ -206,6 +207,17 @@ fn main() {
                         panic!("-Zmiri-track-pointer-tag must be a nonzero id");
                     }
                 }
+                arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
+                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-alloc-id=").parse()
+                    {
+                        Ok(id) => id,
+                        Err(err) => panic!(
+                            "-Zmiri-track-alloc-id requires a valid `u64` as the argument: {}",
+                            err
+                        ),
+                    };
+                    tracked_alloc_id = Some(miri::AllocId(id));
+                }
                 _ => {
                     rustc_args.push(arg);
                 }
@@ -240,6 +252,7 @@ fn main() {
         seed,
         args: miri_args,
         tracked_pointer_tag,
+        tracked_alloc_id,
     };
     rustc_driver::install_ice_hook();
     let result = rustc_driver::catch_fatal_errors(move || {

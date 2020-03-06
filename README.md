@@ -180,6 +180,8 @@ Several `-Z` flags are relevant for Miri:
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
+* `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
+  being allocated.  This helps in debugging memory leaks.
 
 Moreover, Miri recognizes some environment variables:
 
