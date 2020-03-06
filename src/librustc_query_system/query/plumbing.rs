@@ -410,21 +410,7 @@ where
     }
 
     if Q::ANON {
-        let prof_timer = tcx.profiler().query_provider();
-
-        let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            tcx.start_query(job.id, diagnostics, |tcx| {
-                tcx.dep_graph().with_anon_task(Q::DEP_KIND, || Q::compute(tcx, key))
-            })
-        });
-
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        tcx.dep_graph().read_index(dep_node_index);
-
-        if unlikely!(!diagnostics.is_empty()) {
-            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
-        }
+        let (result, dep_node_index) = try_execute_anon_query(tcx, key, job.id, &Q::VTABLE);
 
         return job.complete(tcx, result, dep_node_index);
     }
@@ -459,6 +445,35 @@ where
     let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, &Q::VTABLE);
     tcx.dep_graph().read_index(dep_node_index);
     result
+}
+
+fn try_execute_anon_query<CTX, K, V>(
+    tcx: CTX,
+    key: K,
+    job_id: QueryJobId<CTX::DepKind>,
+    query: &QueryVtable<CTX, K, V>,
+) -> (V, DepNodeIndex)
+where
+    CTX: QueryContext,
+{
+    debug_assert!(query.anon);
+    let prof_timer = tcx.profiler().query_provider();
+
+    let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
+        tcx.start_query(job_id, diagnostics, |tcx| {
+            tcx.dep_graph().with_anon_task(query.dep_kind, || query.compute(tcx, key))
+        })
+    });
+
+    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+    tcx.dep_graph().read_index(dep_node_index);
+
+    if unlikely!(!diagnostics.is_empty()) {
+        tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+    }
+
+    (result, dep_node_index)
 }
 
 fn load_from_disk_and_cache_in_memory<CTX, K, V>(

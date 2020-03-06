@@ -25,6 +25,8 @@ pub trait QueryConfig<CTX> {
 }
 
 pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
+    pub anon: bool,
+    pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
@@ -103,6 +105,8 @@ where
     Q: QueryDescription<CTX>,
 {
     const VTABLE: QueryVtable<CTX, Q::Key, Q::Value> = QueryVtable {
+        anon: Q::ANON,
+        dep_kind: Q::DEP_KIND,
         eval_always: Q::EVAL_ALWAYS,
         compute: Q::compute,
         hash_result: Q::hash_result,
