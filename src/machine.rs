@@ -334,6 +334,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
+        if Some(id) == memory_extra.tracked_alloc_id {
+            register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
+        }
+
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let (stacks, base_tag) =
