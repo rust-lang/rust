@@ -820,23 +820,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ref self_ty,
                 items: _,
             } => {
-                let error = |annotation_span, annotation, note, code| {
+                let error = |annotation_span, annotation| {
                     let mut err = self.err_handler().struct_span_err(
                         self_ty.span,
                         &format!("inherent impls cannot be {}", annotation),
                     );
                     err.span_label(annotation_span, &format!("{} because of this", annotation));
                     err.span_label(self_ty.span, "inherent impl for this type");
-                    if note {
-                        err.note(&format!(
-                            "only trait implementations may be annotated with {}",
-                            annotation
-                        ));
-                    }
-                    if code {
-                        err.code(error_code!(E0197));
-                    }
-                    err.emit();
+                    err
                 };
 
                 self.invalid_visibility(
@@ -844,16 +835,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some("place qualifiers on individual impl items instead"),
                 );
                 if let Unsafe::Yes(span) = unsafety {
-                    error(span, "unsafe", false, true)
+                    error(span, "unsafe").code(error_code!(E0197)).emit();
                 }
                 if let ImplPolarity::Negative(span) = polarity {
-                    error(span, "negative", false, false);
+                    error(span, "negative").emit();
                 }
                 if let Defaultness::Default(def_span) = defaultness {
-                    error(def_span, "`default`", true, false);
+                    error(def_span, "`default`")
+                        .note("only trait implementations may be annotated with `default`")
+                        .emit();
                 }
                 if let Const::Yes(span) = constness {
-                    error(span, "`const`", true, false);
+                    error(span, "`const`")
+                        .note("only trait implementations may be annotated with `const`")
+                        .emit();
                 }
             }
             ItemKind::Fn(def, ref sig, ref generics, ref body) => {
