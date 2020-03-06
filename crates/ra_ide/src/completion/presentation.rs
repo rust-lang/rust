@@ -225,7 +225,7 @@ impl Completions {
                 let snippet = if ctx
                     .db
                     .feature_flags
-                    .get("completion.insertion.add-argument-sippets")
+                    .get("completion.insertion.add-argument-snippets")
                 {
                     let to_skip = if has_self_param { 1 } else { 0 };
                     let function_params_snippet = join(

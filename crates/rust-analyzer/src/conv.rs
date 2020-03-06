@@ -3,10 +3,10 @@
 
 use lsp_types::{
     self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,
-    Location, LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp,
-    SemanticTokenModifier, SemanticTokenType, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
-    WorkspaceEdit,
+    Location, LocationLink, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel,
+    Position, Range, RenameFile, ResourceOp, SemanticTokenModifier, SemanticTokenType,
+    SignatureInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem,
+    TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
@@ -220,17 +220,20 @@ impl Conv for ra_ide::Documentation {
     }
 }
 
-impl Conv for ra_ide::FunctionSignature {
+impl ConvWith<bool> for ra_ide::FunctionSignature {
     type Output = lsp_types::SignatureInformation;
-    fn conv(self) -> Self::Output {
-        use lsp_types::{ParameterInformation, ParameterLabel, SignatureInformation};
+    fn conv_with(self, concise: bool) -> Self::Output {
+        let (label, documentation, params) = if concise {
+            let mut params = self.parameters;
+            if self.has_self_param {
+                params.remove(0);
+            }
+            (params.join(", "), None, params)
+        } else {
+            (self.to_string(), self.doc.map(|it| it.conv()), self.parameters)
+        };
 
-        let label = self.to_string();
-
-        let documentation = self.doc.map(|it| it.conv());
-
-        let parameters: Vec<ParameterInformation> = self
-            .parameters
+        let parameters: Vec<ParameterInformation> = params
             .into_iter()
             .map(|param| ParameterInformation {
                 label: ParameterLabel::Simple(param),
