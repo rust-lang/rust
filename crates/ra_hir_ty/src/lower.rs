@@ -91,7 +91,14 @@ pub enum TypeParamLoweringMode {
 
 impl Ty {
     pub fn from_hir(ctx: &TyLoweringContext<'_, impl HirDatabase>, type_ref: &TypeRef) -> Self {
-        match type_ref {
+        Ty::from_hir_ext(ctx, type_ref).0
+    }
+    pub fn from_hir_ext(
+        ctx: &TyLoweringContext<'_, impl HirDatabase>,
+        type_ref: &TypeRef,
+    ) -> (Self, Option<TypeNs>) {
+        let mut res = None;
+        let ty = match type_ref {
             TypeRef::Never => Ty::simple(TypeCtor::Never),
             TypeRef::Tuple(inner) => {
                 let inner_tys: Arc<[Ty]> = inner.iter().map(|tr| Ty::from_hir(ctx, tr)).collect();
@@ -100,7 +107,11 @@ impl Ty {
                     Substs(inner_tys),
                 )
             }
-            TypeRef::Path(path) => Ty::from_hir_path(ctx, path),
+            TypeRef::Path(path) => {
+                let (ty, res_) = Ty::from_hir_path(ctx, path);
+                res = res_;
+                ty
+            }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
                 Ty::apply_one(TypeCtor::RawPtr(*mutability), inner_ty)
@@ -183,7 +194,8 @@ impl Ty {
                 }
             }
             TypeRef::Error => Ty::Unknown,
-        }
+        };
+        (ty, res)
     }
 
     /// This is only for `generic_predicates_for_param`, where we can't just
@@ -217,17 +229,19 @@ impl Ty {
     pub(crate) fn from_type_relative_path(
         ctx: &TyLoweringContext<'_, impl HirDatabase>,
         ty: Ty,
+        // We need the original resolution to lower `Self::AssocTy` correctly
+        res: Option<TypeNs>,
         remaining_segments: PathSegments<'_>,
-    ) -> Ty {
+    ) -> (Ty, Option<TypeNs>) {
         if remaining_segments.len() == 1 {
             // resolve unselected assoc types
             let segment = remaining_segments.first().unwrap();
-            Ty::select_associated_type(ctx, ty, segment)
+            (Ty::select_associated_type(ctx, ty, res, segment), None)
         } else if remaining_segments.len() > 1 {
             // FIXME report error (ambiguous associated type)
-            Ty::Unknown
+            (Ty::Unknown, None)
         } else {
-            ty
+            (ty, res)
         }
     }
 
@@ -236,14 +250,14 @@ impl Ty {
         resolution: TypeNs,
         resolved_segment: PathSegment<'_>,
         remaining_segments: PathSegments<'_>,
-    ) -> Ty {
+    ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
                 // if this is a bare dyn Trait, we'll directly put the required ^0 for the self type in there
                 let self_ty = if remaining_segments.len() == 0 { Some(Ty::Bound(0)) } else { None };
                 let trait_ref =
                     TraitRef::from_resolved_path(ctx, trait_, resolved_segment, self_ty);
-                return if remaining_segments.len() == 1 {
+                let ty = if remaining_segments.len() == 1 {
                     let segment = remaining_segments.first().unwrap();
                     let associated_ty = associated_type_by_name_including_super_traits(
                         ctx.db,
@@ -269,6 +283,7 @@ impl Ty {
                 } else {
                     Ty::Dyn(Arc::new([GenericPredicate::Implemented(trait_ref)]))
                 };
+                return (ty, None);
             }
             TypeNs::GenericParam(param_id) => {
                 let generics =
@@ -306,22 +321,25 @@ impl Ty {
             TypeNs::BuiltinType(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
             TypeNs::TypeAliasId(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
             // FIXME: report error
-            TypeNs::EnumVariantId(_) => return Ty::Unknown,
+            TypeNs::EnumVariantId(_) => return (Ty::Unknown, None),
         };
 
-        Ty::from_type_relative_path(ctx, ty, remaining_segments)
+        Ty::from_type_relative_path(ctx, ty, Some(resolution), remaining_segments)
     }
 
-    pub(crate) fn from_hir_path(ctx: &TyLoweringContext<'_, impl HirDatabase>, path: &Path) -> Ty {
+    pub(crate) fn from_hir_path(
+        ctx: &TyLoweringContext<'_, impl HirDatabase>,
+        path: &Path,
+    ) -> (Ty, Option<TypeNs>) {
         // Resolve the path (in type namespace)
         if let Some(type_ref) = path.type_anchor() {
-            let ty = Ty::from_hir(ctx, &type_ref);
-            return Ty::from_type_relative_path(ctx, ty, path.segments());
+            let (ty, res) = Ty::from_hir_ext(ctx, &type_ref);
+            return Ty::from_type_relative_path(ctx, ty, res, path.segments());
         }
         let (resolution, remaining_index) =
             match ctx.resolver.resolve_path_in_type_ns(ctx.db, path.mod_path()) {
                 Some(it) => it,
-                None => return Ty::Unknown,
+                None => return (Ty::Unknown, None),
             };
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
@@ -336,31 +354,27 @@ impl Ty {
     fn select_associated_type(
         ctx: &TyLoweringContext<'_, impl HirDatabase>,
         self_ty: Ty,
+        res: Option<TypeNs>,
         segment: PathSegment<'_>,
     ) -> Ty {
-        let def = match ctx.resolver.generic_def() {
-            Some(def) => def,
-            None => return Ty::Unknown, // this can't actually happen
-        };
-        let param_id = match self_ty {
-            Ty::Placeholder(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
-            Ty::Bound(idx) if ctx.type_param_mode == TypeParamLoweringMode::Variable => {
-                let generics = generics(ctx.db, def);
-                let param_id = if let Some((id, _)) = generics.iter().nth(idx as usize) {
-                    id
-                } else {
-                    return Ty::Unknown;
-                };
-                param_id
+        let traits_from_env: Vec<_> = match res {
+            Some(TypeNs::SelfType(impl_id)) => match ctx.db.impl_trait(impl_id) {
+                None => return Ty::Unknown,
+                Some(trait_ref) => vec![trait_ref.value.trait_],
+            },
+            Some(TypeNs::GenericParam(param_id)) => {
+                let predicates = ctx.db.generic_predicates_for_param(param_id);
+                predicates
+                    .iter()
+                    .filter_map(|pred| match &pred.value {
+                        GenericPredicate::Implemented(tr) => Some(tr.trait_),
+                        _ => None,
+                    })
+                    .collect()
             }
-            _ => return Ty::Unknown, // Error: Ambiguous associated type
+            _ => return Ty::Unknown,
         };
-        let predicates = ctx.db.generic_predicates_for_param(param_id);
-        let traits_from_env = predicates.iter().filter_map(|pred| match &pred.value {
-            GenericPredicate::Implemented(tr) => Some(tr.trait_),
-            _ => None,
-        });
-        let traits = traits_from_env.flat_map(|t| all_super_traits(ctx.db, t));
+        let traits = traits_from_env.into_iter().flat_map(|t| all_super_traits(ctx.db, t));
         for t in traits {
             if let Some(associated_ty) = ctx.db.trait_data(t).associated_type_by_name(&segment.name)
             {

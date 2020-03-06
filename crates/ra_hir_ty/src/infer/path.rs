@@ -40,7 +40,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ctx = crate::lower::TyLoweringContext::new(self.db, &resolver);
-            let ty = Ty::from_type_relative_path(&ctx, ty, remaining_segments_for_ty);
+            let (ty, _) = Ty::from_type_relative_path(&ctx, ty, None, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
                 &path.segments().last().expect("path had at least one segment").name,
@@ -115,7 +115,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
                 let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-                let ty = Ty::from_partly_resolved_hir_path(
+                let (ty, _) = Ty::from_partly_resolved_hir_path(
                     &ctx,
                     def,
                     resolved_segment,
