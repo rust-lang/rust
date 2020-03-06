@@ -502,14 +502,14 @@ impl Options {
             if !h.ends_with('/') {
                 h.push('/');
             }
-            h
+            h.replace("\\", "/")
         });
         if let Some(ref source_code_external_url) = source_code_external_url {
-            if !source_code_external_url.starts_with("http://")
-                && !source_code_external_url.starts_with("https://")
-            {
-                diag.struct_err("option `--source-code-external-url` argument must be an URL")
-                    .emit();
+            if source_code_external_url.starts_with("/") {
+                diag.struct_err(
+                    "option `--source-code-external-url` argument cannot be an absolute local path",
+                )
+                .emit();
                 return Err(1);
             }
         }

@@ -1553,6 +1553,21 @@ impl Context {
     }
 }
 
+fn compute_path(path: String) -> String {
+    if path.split('/').find(|x| *x == "..").is_none() {
+        return path;
+    }
+    let mut new_path = Vec::new();
+    for part in path.split('/') {
+        if part == ".." && !new_path.is_empty() {
+            new_path.pop();
+        } else {
+            new_path.push(part);
+        }
+    }
+    new_path.join("/")
+}
+
 impl Context {
     /// Generates a url appropriate for an `href` attribute back to the source of
     /// this item.
@@ -1607,10 +1622,13 @@ impl Context {
         };
         if let Some(ref source_code_external_url) = self.shared.source_code_external_url {
             Some(format!(
-                "{root}{krate}/{path}#{lines}",
-                root = source_code_external_url,
-                krate = krate,
-                path = path,
+                "{path}#{lines}",
+                path = compute_path(format!(
+                    "{root}{krate}/{path}",
+                    root = source_code_external_url,
+                    krate = krate,
+                    path = path,
+                ),),
                 lines = lines
             ))
         } else {
