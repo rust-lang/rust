@@ -446,7 +446,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     .filter_map(|(i, k)| {
                         if let GenericArgKind::Type(ty) = k.unpack() { Some((i, ty)) } else { None }
                     })
-                    .filter(|(_, ty)| !ty.is_some_param())
+                    .filter(|(_, ty)| !matches!(ty.kind, ty::Param(_)))
                     .collect();
                 if !bad_substs.is_empty() {
                     let identity_substs = InternalSubsts::identity_for_item(self.tcx, self.def_id);

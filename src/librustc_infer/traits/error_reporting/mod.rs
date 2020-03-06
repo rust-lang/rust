@@ -591,7 +591,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         } else if self.tcx.lang_items().sized_trait().map_or(false, |sized_id| {
                             let self_ty = trait_ref.self_ty();
                             sized_id == trait_ref.def_id()
-                                && self_ty.is_some_param()
+                                && matches!(self_ty.kind, ty::Param(_))
                                 && self_ty != self.tcx.types.self_param
                         }) {
                             // Detect type parameters with an implied `Sized` bound and explain

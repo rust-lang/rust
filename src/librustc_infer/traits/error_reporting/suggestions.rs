@@ -64,7 +64,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     generics,
                     kind: hir::TraitItemKind::Method(..),
                     ..
-                }) if self_ty.is_some_param() && self_ty == self.tcx.types.self_param => {
+                }) if matches!(self_ty.kind, ty::Param(_))
+                    && self_ty == self.tcx.types.self_param =>
+                {
                     // Restricting `Self` for a single method.
                     suggest_restriction(&generics, "`Self`", err);
                     return;
@@ -138,7 +140,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, span, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
-                    if self_ty.is_some_param() =>
+                    if matches!(self_ty.kind, ty::Param(_)) =>
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
