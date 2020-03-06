@@ -63,8 +63,8 @@ mod pat;
 mod coerce;
 
 /// The entry point of type inference.
-pub fn do_infer_query(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("infer");
+pub(crate) fn infer_query(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
+    let _p = profile("infer_query");
     let resolver = def.resolver(db);
     let mut ctx = InferenceContext::new(db, def, resolver);
 

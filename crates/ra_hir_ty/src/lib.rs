@@ -26,7 +26,7 @@ pub mod traits;
 pub mod method_resolution;
 mod op;
 mod lower;
-mod infer;
+pub(crate) mod infer;
 pub mod display;
 pub(crate) mod utils;
 pub mod db;
@@ -57,7 +57,7 @@ use crate::{
 use display::HirDisplay;
 
 pub use autoderef::autoderef;
-pub use infer::{do_infer_query, InferTy, InferenceResult};
+pub use infer::{InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub use lower::{
     callable_item_sig, ImplTraitLoweringMode, TyDefId, TyLoweringContext, ValueTyDefId,

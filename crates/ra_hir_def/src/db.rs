@@ -47,11 +47,11 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
-    #[salsa::transparent]
+    #[salsa::invoke(crate_def_map_wait)]
     fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
-    #[salsa::invoke(CrateDefMap::compute_crate_def_map_query)]
-    fn compute_crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
+    #[salsa::invoke(CrateDefMap::crate_def_map_query)]
+    fn crate_def_map_query(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
@@ -109,7 +109,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 }
 
-fn crate_def_map(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
-    let _p = profile("wait_crate_def_map");
-    db.compute_crate_def_map(krate)
+fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
+    let _p = profile("crate_def_map:wait");
+    db.crate_def_map_query(krate)
 }

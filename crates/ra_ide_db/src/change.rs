@@ -279,7 +279,7 @@ impl RootDatabase {
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
 
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
-        self.query(hir::db::DoInferQuery).sweep(sweep);
+        self.query(hir::db::InferQueryQuery).sweep(sweep);
         self.query(hir::db::BodyQuery).sweep(sweep);
     }
 
@@ -318,7 +318,7 @@ impl RootDatabase {
 
             // DefDatabase
             hir::db::RawItemsQuery
-            hir::db::ComputeCrateDefMapQuery
+            hir::db::CrateDefMapQueryQuery
             hir::db::StructDataQuery
             hir::db::UnionDataQuery
             hir::db::EnumDataQuery
@@ -350,7 +350,7 @@ impl RootDatabase {
             hir::db::InternImplQuery
 
             // HirDatabase
-            hir::db::DoInferQuery
+            hir::db::InferQueryQuery
             hir::db::TyQuery
             hir::db::ValueTyQuery
             hir::db::ImplSelfTyQuery
