@@ -16,6 +16,7 @@ use crate::{
     Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
     TyDefId, TypeCtor, ValueTyDefId,
 };
+use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
@@ -111,7 +112,15 @@ pub trait HirDatabase: DefDatabase {
 }
 
 fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("wait_infer");
+    let _p = profile("wait_infer").detail(|| match def {
+        DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
+        DefWithBodyId::StaticId(it) => {
+            db.static_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
+        }
+        DefWithBodyId::ConstId(it) => {
+            db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
+        }
+    });
     db.do_infer(def)
 }
 

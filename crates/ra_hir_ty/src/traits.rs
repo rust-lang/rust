@@ -221,7 +221,10 @@ pub(crate) fn trait_solve_query(
     krate: CrateId,
     goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
-    let _p = profile("trait_solve_query");
+    let _p = profile("trait_solve_query").detail(|| match &goal.value.value {
+        Obligation::Trait(it) => db.trait_data(it.trait_).name.to_string(),
+        Obligation::Projection(_) => "projection".to_string(),
+    });
     log::debug!("trait_solve_query({})", goal.value.value.display(db));
 
     if let Obligation::Projection(pred) = &goal.value.value {
