@@ -1,5 +1,5 @@
-//! See Rustc Guide chapters on [trait-resolution] and [trait-specialization] for more info on how
-//! this works.
+//! See Rustc Dev Guide chapters on [trait-resolution] and [trait-specialization] for more info on
+//! how this works.
 //!
 //! [trait-resolution]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-dev-guide/traits/specialization.html
