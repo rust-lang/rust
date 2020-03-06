@@ -25,13 +25,11 @@ use rustc::ty::{self, Instance, ParamEnv, Ty};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
 
 use libc::c_uint;
 use log::debug;
 use std::cell::RefCell;
-use std::ffi::CString;
 
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_ast::ast;
@@ -273,12 +271,10 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         // Get the linkage_name, which is just the symbol name
         let linkage_name = mangled_name_of_instance(self, instance);
+        let linkage_name = linkage_name.name.as_str();
 
         // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
         let scope_line = loc.line;
-
-        let function_name = CString::new(name).unwrap();
-        let linkage_name = SmallCStr::new(&linkage_name.name.as_str());
 
         let mut flags = DIFlags::FlagPrototyped;
 
@@ -303,8 +299,10 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
-                function_name.as_ptr(),
-                linkage_name.as_ptr(),
+                name.as_ptr().cast(),
+                name.len(),
+                linkage_name.as_ptr().cast(),
+                linkage_name.len(),
                 file_metadata,
                 loc.line as c_uint,
                 function_type_metadata,
@@ -424,12 +422,13 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                             let actual_type_metadata =
                                 type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
-                            let name = SmallCStr::new(&name.as_str());
+                            let name = name.as_str();
                             Some(unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                     DIB(cx),
                                     None,
-                                    name.as_ptr(),
+                                    name.as_ptr().cast(),
+                                    name.len(),
                                     actual_type_metadata,
                                     file_metadata,
                                     0,
@@ -542,13 +541,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
         let align = self.align_of(variable_type);
 
-        let name = SmallCStr::new(&variable_name.as_str());
+        let name = variable_name.as_str();
         unsafe {
             llvm::LLVMRustDIBuilderCreateVariable(
                 DIB(self),
                 dwarf_tag,
                 scope_metadata,
-                name.as_ptr(),
+                name.as_ptr().cast(),
+                name.len(),
                 file_metadata,
                 loc.line as c_uint,
                 type_metadata,

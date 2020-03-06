@@ -1,6 +1,5 @@
 // Namespace Handling.
 
-use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
 use super::utils::{debug_context, DIB};
 use rustc::ty::{self, Instance};
 
@@ -9,8 +8,6 @@ use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use rustc::hir::map::DefPathData;
 use rustc_hir::def_id::DefId;
-
-use rustc_data_structures::small_c_str::SmallCStr;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
@@ -34,16 +31,15 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
         DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate),
         data => data.as_symbol(),
     };
-
-    let namespace_name = SmallCStr::new(&namespace_name.as_str());
+    let namespace_name = namespace_name.as_str();
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(
             DIB(cx),
             parent_scope,
-            namespace_name.as_ptr(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            namespace_name.as_ptr().cast(),
+            namespace_name.len(),
+            false, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )
     };
 
