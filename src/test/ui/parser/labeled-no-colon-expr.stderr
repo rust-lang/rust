@@ -2,32 +2,36 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:4:5
    |
 LL |     'l0 while false {}
-   |     ---^^^^^^^^^^^^^^^
-   |     |
+   |     ----^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: add `:` after the label
    |     the label
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:5:5
    |
 LL |     'l1 for _ in 0..1 {}
-   |     ---^^^^^^^^^^^^^^^^^
-   |     |
+   |     ----^^^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: add `:` after the label
    |     the label
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:6:5
    |
 LL |     'l2 loop {}
-   |     ---^^^^^^^^
-   |     |
+   |     ----^^^^^^^
+   |     |  |
+   |     |  help: add `:` after the label
    |     the label
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:7:5
    |
 LL |     'l3 {}
-   |     ---^^^
-   |     |
+   |     ----^^
+   |     |  |
+   |     |  help: add `:` after the label
    |     the label
 
 error: expected `while`, `for`, `loop` or `{` after a label
@@ -40,8 +44,9 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:8:9
    |
 LL |     'l4 0;
-   |     --- ^
-   |     |
+   |     ----^
+   |     |  |
+   |     |  help: add `:` after the label
    |     the label
 
 error: cannot use a `block` macro fragment here
@@ -61,7 +66,9 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:16:8
    |
 LL |             'l5 $b;
-   |             --- the label
+   |             ---- help: add `:` after the label
+   |             |
+   |             the label
 ...
 LL |     m!({});
    |        ^^

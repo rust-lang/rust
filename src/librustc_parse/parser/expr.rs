@@ -1106,12 +1106,22 @@ impl<'a> Parser<'a> {
         }?;
 
         if !ate_colon {
-            self.struct_span_err(expr.span, "labeled expression must be followed by `:`")
-                .span_label(lo, "the label")
-                .emit();
+            self.error_labeled_expr_must_be_followed_by_colon(lo, expr.span);
         }
 
         Ok(expr)
+    }
+
+    fn error_labeled_expr_must_be_followed_by_colon(&self, lo: Span, span: Span) {
+        self.struct_span_err(span, "labeled expression must be followed by `:`")
+            .span_label(lo, "the label")
+            .span_suggestion_short(
+                lo.shrink_to_hi(),
+                "add `:` after the label",
+                ": ".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
