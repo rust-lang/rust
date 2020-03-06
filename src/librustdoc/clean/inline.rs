@@ -577,7 +577,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     name: ref _name,
                 },
             ref bounds,
-        } => !(*s == "Self" && did == trait_did) && !bounds.is_empty(),
+        } => !(bounds.is_empty() || *s == "Self" && did == trait_did),
         _ => true,
     });
     g
