@@ -19,7 +19,7 @@ use rustc::ty::{self, TyCtxt};
 pub fn codegen_fulfill_obligation<'tcx>(
     ty: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Vtable<'tcx, ()> {
+) -> Option<Vtable<'tcx, ()>> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = ty.erase_regions(&trait_ref);
 
@@ -47,11 +47,15 @@ pub fn codegen_fulfill_obligation<'tcx>(
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
-                bug!(
-                    "Encountered ambiguity selecting `{:?}` during codegen, \
-                      presuming due to overflow",
-                    trait_ref
-                )
+                infcx.tcx.sess.delay_span_bug(
+                    rustc_span::DUMMY_SP,
+                    &format!(
+                        "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
+                         overflow or prior type error",
+                        trait_ref
+                    ),
+                );
+                return None;
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
@@ -71,7 +75,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         let vtable = infcx.drain_fulfillment_cx_or_panic(&mut fulfill_cx, &vtable);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-        vtable
+        Some(vtable)
     })
 }
 
