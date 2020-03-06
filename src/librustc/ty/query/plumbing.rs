@@ -56,15 +56,25 @@ impl<'tcx, K, C: Default> Default for QueryStateShardImpl<'tcx, K, C> {
     }
 }
 
-pub(crate) struct QueryState<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
-    pub(super) cache: D::Cache,
-    pub(super) shards: Sharded<QueryStateShard<'tcx, D>>,
+pub(crate) type QueryState<'tcx, Q> = QueryStateImpl<
+    'tcx,
+    <Q as QueryConfig<'tcx>>::Key,
+    <Q as QueryConfig<'tcx>>::Value,
+    <Q as QueryAccessors<'tcx>>::Cache,
+>;
+
+pub(crate) struct QueryStateImpl<'tcx, K, V, C: QueryCache<K, V>> {
+    pub(super) cache: C,
+    pub(super) shards: Sharded<QueryStateShardImpl<'tcx, K, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: AtomicUsize,
 }
 
-impl<'tcx, Q: QueryAccessors<'tcx>> QueryState<'tcx, Q> {
-    pub(super) fn get_lookup<K: Hash>(&'tcx self, key: &K) -> QueryLookup<'tcx, Q> {
+impl<'tcx, K, V, C: QueryCache<K, V>> QueryStateImpl<'tcx, K, V, C> {
+    pub(super) fn get_lookup<K2: Hash>(
+        &'tcx self,
+        key: &K2,
+    ) -> QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, C::Sharded>> {
         // We compute the key's hash once and then use it for both the
         // shard lookup and the hashmap lookup. This relies on the fact
         // that both of them use `FxHasher`.
@@ -88,12 +98,10 @@ pub(super) enum QueryResult<'tcx> {
     Poisoned,
 }
 
-impl<'tcx, M: QueryAccessors<'tcx>> QueryState<'tcx, M> {
+impl<'tcx, K, V, C: QueryCache<K, V>> QueryStateImpl<'tcx, K, V, C> {
     pub fn iter_results<R>(
         &self,
-        f: impl for<'a> FnOnce(
-            Box<dyn Iterator<Item = (&'a M::Key, &'a M::Value, DepNodeIndex)> + 'a>,
-        ) -> R,
+        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
     ) -> R {
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
@@ -103,10 +111,10 @@ impl<'tcx, M: QueryAccessors<'tcx>> QueryState<'tcx, M> {
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx>> Default for QueryState<'tcx, M> {
-    fn default() -> QueryState<'tcx, M> {
-        QueryState {
-            cache: M::Cache::default(),
+impl<'tcx, K, V, C: QueryCache<K, V>> Default for QueryStateImpl<'tcx, K, V, C> {
+    fn default() -> QueryStateImpl<'tcx, K, V, C> {
+        QueryStateImpl {
+            cache: C::default(),
             shards: Default::default(),
             #[cfg(debug_assertions)]
             cache_hits: AtomicUsize::new(0),
@@ -441,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let state = Q::query_state(self);
 
-        state.cache.lookup(
+        state.cache.lookup::<_, _, _, _, Q>(
             state,
             QueryStateShard::<Q>::get_cache,
             key,
@@ -1035,7 +1043,7 @@ macro_rules! define_queries_inner {
                 let mut string_cache = QueryKeyStringCache::new();
 
                 $({
-                    alloc_self_profile_query_strings_for_query_cache(
+                    alloc_self_profile_query_strings_for_query_cache::<queries::$name<'_>>(
                         self,
                         stringify!($name),
                         &self.queries.$name,
