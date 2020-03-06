@@ -134,7 +134,7 @@ fn dump_matched_mir_node<'tcx, F>(
         if let Some(ref layout) = body.generator_layout {
             writeln!(file, "// generator_layout = {:?}", layout)?;
         }
-        writeln!(file, "")?;
+        writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_user_type_annotations(body, &mut file)?;
         write_mir_fn(tcx, source, body, &mut extra_data, &mut file)?;
@@ -242,13 +242,13 @@ pub fn write_mir_pretty<'tcx>(
             first = false;
         } else {
             // Put empty lines between all items
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
 
         write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
 
         for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
-            writeln!(w, "")?;
+            writeln!(w)?;
             let src = MirSource { instance: ty::InstanceDef::Item(def_id), promoted: Some(i) };
             write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
         }
@@ -271,7 +271,7 @@ where
         extra_data(PassWhere::BeforeBlock(block), w)?;
         write_basic_block(tcx, block, body, extra_data, w)?;
         if block.index() + 1 != body.basic_blocks().len() {
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
     }
 
@@ -529,7 +529,7 @@ pub fn write_mir_intro<'tcx>(
     write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
 
     // Add an empty line before the first block is printed.
-    writeln!(w, "")?;
+    writeln!(w)?;
 
     Ok(())
 }
