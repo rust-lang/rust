@@ -1128,11 +1128,25 @@ impl DepGraphData {
             let icx = if let Some(icx) = icx { icx } else { return };
             if let Some(task_deps) = icx.task_deps {
                 let mut task_deps = task_deps.lock();
+                let task_deps = &mut *task_deps;
                 if cfg!(debug_assertions) {
                     self.current.total_read_count.fetch_add(1, Relaxed);
                 }
-                if task_deps.read_set.insert(source) {
+
+                // As long as we only have a low number of reads we can avoid doing a hash
+                // insert and potentially allocating/reallocating the hashmap
+                let new_read = if task_deps.reads.len() < TASK_DEPS_READS_CAP {
+                    task_deps.reads.iter().all(|other| *other != source)
+                } else {
+                    task_deps.read_set.insert(source)
+                };
+                if new_read {
                     task_deps.reads.push(source);
+                    if task_deps.reads.len() == TASK_DEPS_READS_CAP {
+                        // Fill `read_set` with what we have so far so we can use the hashset next
+                        // time
+                        task_deps.read_set.extend(task_deps.reads.iter().copied());
+                    }
 
                     #[cfg(debug_assertions)]
                     {
@@ -1154,10 +1168,11 @@ impl DepGraphData {
     }
 }
 
+const TASK_DEPS_READS_CAP: usize = 8;
 pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
-    reads: SmallVec<[DepNodeIndex; 8]>,
+    reads: SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
 
