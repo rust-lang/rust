@@ -46,6 +46,10 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
     ast_from_text(&format!("use {{{}}};", use_trees))
 }
 
+pub fn use_item(use_tree: ast::UseTree) -> ast::UseItem {
+    ast_from_text(&format!("use {};", use_tree.syntax()))
+}
+
 pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
