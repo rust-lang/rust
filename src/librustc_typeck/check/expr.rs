@@ -1311,6 +1311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty_span: Span,
     ) {
         if variant.recovered {
+            self.set_tainted_by_errors();
             return;
         }
         let mut err = self.type_error_struct_with_diag(
