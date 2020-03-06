@@ -4,5 +4,11 @@
 use std::time::SystemTime;
 
 fn main() {
-   let _now = SystemTime::now();
+   let now1 = SystemTime::now();
+
+    // Do some work to make time pass.
+    for _ in 0..10 { drop(vec![42]); }
+
+   let now2 = SystemTime::now();
+   assert!(now2 > now1);
 }

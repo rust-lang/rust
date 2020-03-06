@@ -215,9 +215,13 @@ fn test_directory() {
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();
+    // Now there should be nothing left in the directory.
+    let dir_iter = read_dir(&dir_path).unwrap();
+    let file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
+    assert!(file_names.is_empty());
 
     // Deleting the directory should succeed.
     remove_dir(&dir_path).unwrap();
-    // Reading the metadata of a non-existent file should fail with a "not found" error.
+    // Reading the metadata of a non-existent directory should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
 }
