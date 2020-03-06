@@ -14,7 +14,7 @@ pub struct AddRetag;
 /// after the assignment, we can be sure to obtain the same place value.
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
-fn is_stable(place: PlaceRef<'_, '_>) -> bool {
+fn is_stable(place: PlaceRef<'_>) -> bool {
     place.projection.iter().all(|elem| {
         match elem {
             // Which place this evaluates to can change with any memory write,
