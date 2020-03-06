@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::caches::QueryCache;
-use crate::ty::query::config::{QueryAccessors, QueryDescription};
+use crate::ty::query::config::{QueryAccessors, QueryConfig, QueryDescription};
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryShardJobId};
 use crate::ty::query::Query;
 use crate::ty::tls;
@@ -27,25 +27,32 @@ use std::ptr;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub(crate) struct QueryStateShard<'tcx, D: QueryAccessors<'tcx> + ?Sized> {
-    pub(super) cache: <<D as QueryAccessors<'tcx>>::Cache as QueryCache<D::Key, D::Value>>::Sharded,
-    pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
+pub(crate) type QueryStateShard<'tcx, Q> = QueryStateShardImpl<
+    'tcx,
+    <Q as QueryConfig<'tcx>>::Key,
+    <<Q as QueryAccessors<'tcx>>::Cache as QueryCache<
+        <Q as QueryConfig<'tcx>>::Key,
+        <Q as QueryConfig<'tcx>>::Value,
+    >>::Sharded,
+>;
+
+pub(crate) struct QueryStateShardImpl<'tcx, K, C> {
+    pub(super) cache: C,
+    pub(super) active: FxHashMap<K, QueryResult<'tcx>>,
 
     /// Used to generate unique ids for active jobs.
     pub(super) jobs: u32,
 }
 
-impl<'tcx, Q: QueryAccessors<'tcx>> QueryStateShard<'tcx, Q> {
-    fn get_cache(
-        &mut self,
-    ) -> &mut <<Q as QueryAccessors<'tcx>>::Cache as QueryCache<Q::Key, Q::Value>>::Sharded {
+impl<'tcx, K, C> QueryStateShardImpl<'tcx, K, C> {
+    fn get_cache(&mut self) -> &mut C {
         &mut self.cache
     }
 }
 
-impl<'tcx, Q: QueryAccessors<'tcx>> Default for QueryStateShard<'tcx, Q> {
-    fn default() -> QueryStateShard<'tcx, Q> {
-        QueryStateShard { cache: Default::default(), active: Default::default(), jobs: 0 }
+impl<'tcx, K, C: Default> Default for QueryStateShardImpl<'tcx, K, C> {
+    fn default() -> QueryStateShardImpl<'tcx, K, C> {
+        QueryStateShardImpl { cache: Default::default(), active: Default::default(), jobs: 0 }
     }
 }
 
@@ -122,7 +129,7 @@ pub(super) struct JobOwner<'tcx, Q: QueryDescription<'tcx>> {
     id: QueryJobId,
 }
 
-impl<'tcx, Q: QueryDescription<'tcx>> JobOwner<'tcx, Q> {
+impl<'tcx, Q: QueryDescription<'tcx> + 'tcx> JobOwner<'tcx, Q> {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
     /// This function assumes that `try_get_cached` is already called and returned `lookup`.
@@ -470,7 +477,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub(super) fn try_execute_query<Q: QueryDescription<'tcx>>(
+    pub(super) fn try_execute_query<Q: QueryDescription<'tcx> + 'tcx>(
         self,
         span: Span,
         key: Q::Key,
@@ -634,7 +641,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    fn force_query_with_job<Q: QueryDescription<'tcx>>(
+    fn force_query_with_job<Q: QueryDescription<'tcx> + 'tcx>(
         self,
         key: Q::Key,
         job: JobOwner<'tcx, Q>,
