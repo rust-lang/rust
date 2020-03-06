@@ -936,25 +936,12 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
     let Item { id, ident, vis, attrs, kind, span, tokens: _ } = item.deref_mut();
-    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
-    smallvec![item]
-}
-
-pub fn walk_nested_item(
-    visitor: &mut impl MutVisitor,
-    id: &mut NodeId,
-    span: &mut Span,
-    ident: &mut Ident,
-    vis: &mut Visibility,
-    attrs: &mut Vec<Attribute>,
-    kind: &mut AssocItemKind,
-) {
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(_, ty, expr) | AssocItemKind::Static(ty, _, expr) => {
+        AssocItemKind::Const(_, ty, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
@@ -971,6 +958,7 @@ pub fn walk_nested_item(
         AssocItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
+    smallvec![item]
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
@@ -1036,7 +1024,28 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
     let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
-    walk_nested_item(visitor, id, span, ident, vis, attrs, kind);
+    visitor.visit_id(id);
+    visitor.visit_ident(ident);
+    visitor.visit_vis(vis);
+    visit_attrs(attrs, visitor);
+    match kind {
+        ForeignItemKind::Static(ty, _, expr) => {
+            visitor.visit_ty(ty);
+            visit_opt(expr, |expr| visitor.visit_expr(expr));
+        }
+        ForeignItemKind::Fn(_, sig, generics, body) => {
+            visitor.visit_generics(generics);
+            visit_fn_sig(sig, visitor);
+            visit_opt(body, |body| visitor.visit_block(body));
+        }
+        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+            visitor.visit_generics(generics);
+            visit_bounds(bounds, visitor);
+            visit_opt(ty, |ty| visitor.visit_ty(ty));
+        }
+        ForeignItemKind::Macro(mac) => visitor.visit_mac(mac),
+    }
+    visitor.visit_span(span);
     smallvec![item]
 }
 

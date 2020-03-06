@@ -400,7 +400,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ForeignItemKind::TyAlias(..) => {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
-            ast::ForeignItemKind::Macro(..) | ast::ForeignItemKind::Const(..) => {}
+            ast::ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, i)

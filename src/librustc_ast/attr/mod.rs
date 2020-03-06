@@ -721,6 +721,6 @@ macro_rules! derive_has_attrs {
 }
 
 derive_has_attrs! {
-    Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::Arm,
+    Item, Expr, Local, ast::AssocItem, ast::ForeignItem, ast::StructField, ast::Arm,
     ast::Field, ast::FieldPat, ast::Variant, ast::Param, GenericParam
 }

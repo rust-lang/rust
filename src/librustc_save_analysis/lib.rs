@@ -151,8 +151,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Const(_, ref ty, _)
-            | ast::ForeignItemKind::Static(ref ty, _, _) => {
+            ast::ForeignItemKind::Static(ref ty, _, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);

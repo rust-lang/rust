@@ -971,19 +971,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
-        let ast::Item { id, span, ident, attrs, kind, vis, tokens: _ } = item;
-        self.print_nested_item_kind(*id, *span, *ident, attrs, kind, vis);
-    }
-
-    fn print_nested_item_kind(
-        &mut self,
-        id: ast::NodeId,
-        span: Span,
-        ident: ast::Ident,
-        attrs: &[Attribute],
-        kind: &ast::AssocItemKind,
-        vis: &ast::Visibility,
-    ) {
+        let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
@@ -991,9 +979,6 @@ impl<'a> State<'a> {
         match kind {
             ast::ForeignItemKind::Fn(def, sig, gen, body) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
-            }
-            ast::ForeignItemKind::Const(def, ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
                 let def = ast::Defaultness::Final;
@@ -1413,8 +1398,29 @@ impl<'a> State<'a> {
     }
 
     crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
-        let ast::Item { id, span, ident, attrs, kind, vis, tokens: _ } = item;
-        self.print_nested_item_kind(*id, *span, *ident, attrs, kind, vis);
+        let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
+        self.ann.pre(self, AnnNode::SubItem(id));
+        self.hardbreak_if_not_bol();
+        self.maybe_print_comment(span.lo());
+        self.print_outer_attributes(attrs);
+        match kind {
+            ast::AssocItemKind::Fn(def, sig, gen, body) => {
+                self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
+            }
+            ast::AssocItemKind::Const(def, ty, body) => {
+                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
+            }
+            ast::AssocItemKind::TyAlias(def, generics, bounds, ty) => {
+                self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
+            }
+            ast::AssocItemKind::Macro(m) => {
+                self.print_mac(m);
+                if m.args.need_semicolon() {
+                    self.s.word(";");
+                }
+            }
+        }
+        self.ann.post(self, AnnNode::SubItem(id))
     }
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {

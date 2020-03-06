@@ -976,7 +976,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ForeignItemKind::Static(_, _, body) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
             }
-            ForeignItemKind::Const(..) | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)

@@ -38,6 +38,7 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::iter;
 
@@ -2443,10 +2444,10 @@ impl Item {
     }
 }
 
-impl<K: IntoItemKind> Item<K> {
+impl<K: Into<ItemKind>> Item<K> {
     pub fn into_item(self) -> Item {
         let Item { attrs, id, span, vis, ident, kind, tokens } = self;
-        Item { attrs, id, span, vis, ident, kind: kind.into_item_kind(), tokens }
+        Item { attrs, id, span, vis, ident, kind: kind.into(), tokens }
     }
 }
 
@@ -2626,20 +2627,11 @@ impl ItemKind {
     }
 }
 
-pub trait IntoItemKind {
-    fn into_item_kind(self) -> ItemKind;
-}
-
-// FIXME(Centril): These definitions should be unmerged;
-// see https://github.com/rust-lang/rust/pull/69194#discussion_r379899975
-pub type ForeignItem = Item<AssocItemKind>;
-pub type ForeignItemKind = AssocItemKind;
-
 /// Represents associated items.
 /// These include items in `impl` and `trait` definitions.
 pub type AssocItem = Item<AssocItemKind>;
 
-/// Represents non-free item kinds.
+/// Represents associated item kinds.
 ///
 /// The term "provided" in the variants below refers to the item having a default
 /// definition / body. Meanwhile, a "required" item lacks a definition / body.
@@ -2648,16 +2640,14 @@ pub type AssocItem = Item<AssocItemKind>;
 /// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum AssocItemKind {
-    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
     /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(Defaultness, P<Ty>, Option<P<Expr>>),
-    /// A static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
-    /// A function.
+    /// An associated function.
     Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
-    /// A type.
+    /// An associated type.
     TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
-    /// A macro expanding to items.
+    /// A macro expanding to associated items.
     Macro(Mac),
 }
 
@@ -2665,19 +2655,72 @@ impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
             Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
-            Self::Macro(..) | Self::Static(..) => Defaultness::Final,
+            Self::Macro(..) => Defaultness::Final,
         }
     }
 }
 
-impl IntoItemKind for AssocItemKind {
-    fn into_item_kind(self) -> ItemKind {
-        match self {
+impl From<AssocItemKind> for ItemKind {
+    fn from(assoc_item_kind: AssocItemKind) -> ItemKind {
+        match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
-            AssocItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
             AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
             AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
             AssocItemKind::Macro(a) => ItemKind::Mac(a),
         }
     }
 }
+
+impl TryFrom<ItemKind> for AssocItemKind {
+    type Error = ItemKind;
+
+    fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
+        Ok(match item_kind {
+            ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
+            ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
+            ItemKind::Mac(a) => AssocItemKind::Macro(a),
+            _ => return Err(item_kind),
+        })
+    }
+}
+
+/// An item in `extern` block.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum ForeignItemKind {
+    /// A foreign static item (`static FOO: u8`).
+    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    /// A foreign function.
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
+    /// A foreign type.
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
+    /// A macro expanding to foreign items.
+    Macro(Mac),
+}
+
+impl From<ForeignItemKind> for ItemKind {
+    fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
+        match foreign_item_kind {
+            ForeignItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
+            ForeignItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
+            ForeignItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
+            ForeignItemKind::Macro(a) => ItemKind::Mac(a),
+        }
+    }
+}
+
+impl TryFrom<ItemKind> for ForeignItemKind {
+    type Error = ItemKind;
+
+    fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
+        Ok(match item_kind {
+            ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
+            ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
+            ItemKind::Mac(a) => ForeignItemKind::Macro(a),
+            _ => return Err(item_kind),
+        })
+    }
+}
+
+pub type ForeignItem = Item<ForeignItemKind>;

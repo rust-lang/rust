@@ -24,6 +24,7 @@ use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use log::debug;
+use std::convert::TryFrom;
 use std::mem;
 
 pub(super) type ItemInfo = (Ident, ItemKind);
@@ -650,16 +651,16 @@ impl<'a> Parser<'a> {
     /// Parses associated items.
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         Ok(self.parse_item_(req_name)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
-            let kind = match kind {
-                ItemKind::Mac(a) => AssocItemKind::Macro(a),
-                ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
-                ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
-                ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
-                ItemKind::Static(a, _, b) => {
-                    self.struct_span_err(span, "associated `static` items are not allowed").emit();
-                    AssocItemKind::Const(Defaultness::Final, a, b)
-                }
-                _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
+            let kind = match AssocItemKind::try_from(kind) {
+                Ok(kind) => kind,
+                Err(kind) => match kind {
+                    ItemKind::Static(a, _, b) => {
+                        self.struct_span_err(span, "associated `static` items are not allowed")
+                            .emit();
+                        AssocItemKind::Const(Defaultness::Final, a, b)
+                    }
+                    _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
+                },
             };
             Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
@@ -836,16 +837,15 @@ impl<'a> Parser<'a> {
     /// Parses a foreign item (one in an `extern { ... }` block).
     pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
         Ok(self.parse_item_(|_| true)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
-            let kind = match kind {
-                ItemKind::Mac(a) => ForeignItemKind::Macro(a),
-                ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
-                ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
-                ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
-                ItemKind::Const(_, a, b) => {
-                    self.error_on_foreign_const(span, ident);
-                    ForeignItemKind::Static(a, Mutability::Not, b)
-                }
-                _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
+            let kind = match ForeignItemKind::try_from(kind) {
+                Ok(kind) => kind,
+                Err(kind) => match kind {
+                    ItemKind::Const(_, a, b) => {
+                        self.error_on_foreign_const(span, ident);
+                        ForeignItemKind::Static(a, Mutability::Not, b)
+                    }
+                    _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
+                },
             };
             Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
         }))
