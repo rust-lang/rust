@@ -11,6 +11,8 @@ extern crate span_test_macros;
 
 extern crate span_api_tests;
 
+// FIXME(69775): Investigate `assert_fake_source_file`.
+
 use span_api_tests::{reemit, assert_source_file, macro_stringify};
 
 macro_rules! say_hello {
