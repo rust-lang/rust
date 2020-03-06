@@ -1,6 +1,6 @@
 //! Candidate selection. See the [rustc guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html#selection
+//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#selection
 
 use self::EvaluationResult::*;
 

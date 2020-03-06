@@ -1,6 +1,6 @@
 //! HIR datatypes. See the [rustc guide] for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/hir.html
 
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)] // For the unsizing cast on `&[]`

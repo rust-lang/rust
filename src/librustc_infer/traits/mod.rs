@@ -1,6 +1,6 @@
 //! Trait Resolution. See the [rustc guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html
 
 #[allow(dead_code)]
 pub mod auto_trait;

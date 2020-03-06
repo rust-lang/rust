@@ -5,4 +5,4 @@ This directory contains the source code of the rust project, including:
 
 For more information on how various parts of the compiler work, see the [rustc guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-dev-guide/about-this-guide.html

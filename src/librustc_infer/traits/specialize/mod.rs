@@ -7,7 +7,7 @@
 //! See the [rustc guide] for a bit more detail on how specialization
 //! fits together with the rest of the trait machinery.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/traits/specialization.html
 
 pub mod specialization_graph;
 use specialization_graph::GraphExt;

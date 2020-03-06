@@ -194,7 +194,7 @@ impl DepGraph {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/incremental-compilation.html
+    /// [rustc guide]: https://rust-lang.github.io/rustc-dev-guide/incremental-compilation.html
     pub fn with_task<'a, C, A, R>(
         &self,
         key: DepNode,

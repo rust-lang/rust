@@ -4,7 +4,7 @@
 //! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc::ty::fold::TypeFoldable;

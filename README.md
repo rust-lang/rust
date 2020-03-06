@@ -15,13 +15,13 @@ Read ["Installation"] from [The Book].
 ## Installing from Source
 
 _Note: If you wish to contribute to the compiler, you should read [this
-chapter][rustcguidebuild] of the rustc-guide instead of this section._
+chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
 
 The Rust build system has a Python script called `x.py` to bootstrap building
 the compiler. More information about it may be found by running `./x.py --help`
 or reading the [rustc guide][rustcguidebuild].
 
-[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/building/how-to-build-and-run.html
+[rustcguidebuild]: https://rust-lang.github.io/rustc-dev-guide/building/how-to-build-and-run.html
 
 ### Building on *nix
 1. Make sure you have installed the dependencies:
@@ -255,7 +255,7 @@ various parts of the compiler work.
 Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 
 [rust-discord]: https://discord.gg/rust-lang
-[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-dev-guide/about-this-guide.html
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 ## License

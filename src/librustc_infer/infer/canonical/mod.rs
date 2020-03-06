@@ -19,7 +19,7 @@
 //! For a more detailed look at what is happening here, check
 //! out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/rustc-dev-guide/traits/canonicalization.html
 
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
