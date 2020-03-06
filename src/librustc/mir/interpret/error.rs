@@ -304,7 +304,7 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-pub enum UndefinedBehaviorInfo<'tcx> {
+pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
     /// Free-form case for experimental UB. Only for errors that are never caught!
@@ -322,10 +322,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
-    InvalidMeta(&'tcx str),
+    InvalidMeta(&'static str),
 }
 
-impl fmt::Debug for UndefinedBehaviorInfo<'_> {
+impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
@@ -358,7 +358,7 @@ pub enum UnsupportedOpInfo<'tcx> {
 
     /// When const-prop encounters a situation it does not support, it raises this error.
     /// This must not allocate for performance reasons (hence `str`, not `String`).
-    ConstPropUnsupported(&'tcx str),
+    ConstPropUnsupported(&'static str),
 
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -580,7 +580,7 @@ impl fmt::Debug for ResourceExhaustionInfo {
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
-    UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
+    UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),
