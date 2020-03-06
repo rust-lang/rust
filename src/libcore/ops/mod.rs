@@ -42,7 +42,7 @@
 //! ```rust
 //! use std::ops::{Add, Sub};
 //!
-//! #[derive(Debug, PartialEq)]
+//! #[derive(Debug, Copy, Clone, PartialEq)]
 //! struct Point {
 //!     x: i32,
 //!     y: i32,
