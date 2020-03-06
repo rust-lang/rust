@@ -1043,7 +1043,7 @@ macro_rules! define_queries_inner {
                 let mut string_cache = QueryKeyStringCache::new();
 
                 $({
-                    alloc_self_profile_query_strings_for_query_cache::<queries::$name<'_>>(
+                    alloc_self_profile_query_strings_for_query_cache(
                         self,
                         stringify!($name),
                         &self.queries.$name,
