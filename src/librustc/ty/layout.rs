@@ -779,20 +779,26 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         .filter_map(|(i, v)| if absent(v) { None } else { Some(i) });
                     (present_variants.next(), present_variants.next())
                 };
-                let present_first = match present_first {
-                    present_first @ Some(_) => present_first,
-                    // Uninhabited because it has no variants, or only absent ones.
-                    None if def.is_enum() => return tcx.layout_raw(param_env.and(tcx.types.never)),
-                    // if it's a struct, still compute a layout so that we can still compute the
-                    // field offsets
-                    None => Some(VariantIdx::new(0)),
+                let (present_first, allow_enum_layout_opt) = match present_first {
+                    present_first @ Some(_) => (present_first, !def.repr.inhibit_enum_layout_opt()),
+                    // Do not run layout optimizations because it has no variants,
+                    // or only absent ones, which will make the niche logic ICE.
+                    None if def.is_enum() => {
+                        if variants.is_empty() {
+                            return tcx.layout_raw(param_env.and(tcx.types.never));
+                        } else {
+                            (None, false)
+                        }
+                    }
+                    // If it's a struct, still compute a valid layout.
+                    None => (Some(VariantIdx::new(0)), !def.repr.inhibit_enum_layout_opt()),
                 };
 
                 let is_struct = !def.is_enum() ||
                     // Only one variant is present.
                     (present_second.is_none() &&
                     // Representation optimizations are allowed.
-                    !def.repr.inhibit_enum_layout_opt());
+                    allow_enum_layout_opt);
                 if is_struct {
                     // Struct, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
@@ -883,7 +889,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
 
                 // Niche-filling enum optimization.
-                if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
+                if allow_enum_layout_opt && no_explicit_discriminants {
                     let mut dataful_variant = None;
                     let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
 
