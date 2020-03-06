@@ -27,7 +27,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Method(..) => {
+            TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }

@@ -620,7 +620,7 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::ForeignTy
             | DefKind::Fn
             | DefKind::OpaqueTy
-            | DefKind::Method
+            | DefKind::AssocFn
             | DefKind::Trait
             | DefKind::TyParam
             | DefKind::Variant => (),
@@ -1298,7 +1298,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             _ => None,
         };
         let def = def.filter(|(kind, _)| match kind {
-            DefKind::Method
+            DefKind::AssocFn
             | DefKind::AssocConst
             | DefKind::AssocTy
             | DefKind::AssocOpaqueTy

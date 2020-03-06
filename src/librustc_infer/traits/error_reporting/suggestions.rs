@@ -62,7 +62,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match node {
                 hir::Node::TraitItem(hir::TraitItem {
                     generics,
-                    kind: hir::TraitItemKind::Method(..),
+                    kind: hir::TraitItemKind::Fn(..),
                     ..
                 }) if param_ty && self_ty == self.tcx.types.self_param => {
                     // Restricting `Self` for a single method.
@@ -73,7 +73,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     generics,
-                    kind: hir::TraitItemKind::Method(..),
+                    kind: hir::TraitItemKind::Fn(..),
                     ..
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
@@ -803,7 +803,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
             | Node::TraitItem(&hir::TraitItem {
                 span,
-                kind: hir::TraitItemKind::Method(ref sig, _),
+                kind: hir::TraitItemKind::Fn(ref sig, _),
                 ..
             }) => (
                 self.tcx.sess.source_map().def_span(span),
