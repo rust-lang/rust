@@ -58,9 +58,6 @@ bitflags! {
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
         const RUSTC_STD_INTERNAL_SYMBOL = 1 << 6;
-        /// `#[no_debug]`: an indicator that no debugging information should be
-        /// generated for this function by LLVM.
-        const NO_DEBUG                  = 1 << 7;
         /// `#[thread_local]`: indicates a static is actually a thread local
         /// piece of memory
         const THREAD_LOCAL              = 1 << 8;
