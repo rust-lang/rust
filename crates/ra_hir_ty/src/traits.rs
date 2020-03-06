@@ -1,12 +1,9 @@
 //! Trait solving using Chalk.
-use std::{
-    panic,
-    sync::{Arc, Mutex},
-};
+use std::{panic, sync::Arc};
 
 use chalk_ir::cast::Cast;
 use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
-use ra_db::{impl_intern_key, salsa, Canceled, CrateId};
+use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
@@ -19,74 +16,6 @@ use self::chalk::{from_chalk, Interner, ToChalk};
 pub(crate) mod chalk;
 mod builtin;
 
-#[derive(Debug, Clone)]
-pub struct TraitSolver {
-    krate: CrateId,
-    inner: Arc<Mutex<chalk_solve::Solver<Interner>>>,
-}
-
-/// We need eq for salsa
-impl PartialEq for TraitSolver {
-    fn eq(&self, other: &TraitSolver) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
-    }
-}
-
-impl Eq for TraitSolver {}
-
-impl TraitSolver {
-    fn solve(
-        &self,
-        db: &impl HirDatabase,
-        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
-    ) -> Option<chalk_solve::Solution<Interner>> {
-        let context = ChalkContext { db, krate: self.krate };
-        log::debug!("solve goal: {:?}", goal);
-        let mut solver = match self.inner.lock() {
-            Ok(it) => it,
-            // Our cancellation works via unwinding, but, as chalk is not
-            // panic-safe, we need to make sure to propagate the cancellation.
-            // Ideally, we should also make chalk panic-safe.
-            Err(_) => ra_db::Canceled::throw(),
-        };
-
-        let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
-
-        let solution = panic::catch_unwind({
-            let solver = panic::AssertUnwindSafe(&mut solver);
-            let context = panic::AssertUnwindSafe(&context);
-            move || {
-                solver.0.solve_limited(context.0, goal, || {
-                    context.0.db.check_canceled();
-                    let remaining = fuel.get();
-                    fuel.set(remaining - 1);
-                    if remaining == 0 {
-                        log::debug!("fuel exhausted");
-                    }
-                    remaining > 0
-                })
-            }
-        });
-
-        let solution = match solution {
-            Ok(it) => it,
-            Err(err) => {
-                if err.downcast_ref::<Canceled>().is_some() {
-                    panic::resume_unwind(err)
-                } else {
-                    log::error!("chalk panicked :-(");
-                    // Reset the solver, as it is not panic-safe.
-                    *solver = create_chalk_solver();
-                    None
-                }
-            }
-        };
-
-        log::debug!("solve({:?}) => {:?}", goal, solution);
-        solution
-    }
-}
-
 /// This controls the maximum size of types Chalk considers. If we set this too
 /// high, we can run into slow edge cases; if we set it too low, Chalk won't
 /// find some solutions.
@@ -98,16 +27,6 @@ const CHALK_SOLVER_FUEL: i32 = 100;
 struct ChalkContext<'a, DB> {
     db: &'a DB,
     krate: CrateId,
-}
-
-pub(crate) fn trait_solver_query(
-    db: &(impl HirDatabase + salsa::Database),
-    krate: CrateId,
-) -> TraitSolver {
-    db.salsa_runtime().report_untracked_read();
-    // krate parameter is just so we cache a unique solver per crate
-    log::debug!("Creating new solver for crate {:?}", krate);
-    TraitSolver { krate, inner: Arc::new(Mutex::new(create_chalk_solver())) }
 }
 
 fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
@@ -239,8 +158,33 @@ pub(crate) fn trait_solve_query(
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    let solution = db.trait_solver(krate).solve(db, &u_canonical);
+    let solution = solve(db, krate, &u_canonical);
     solution.map(|solution| solution_from_chalk(db, solution))
+}
+
+fn solve(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
+) -> Option<chalk_solve::Solution<Interner>> {
+    let context = ChalkContext { db, krate };
+    log::debug!("solve goal: {:?}", goal);
+    let mut solver = create_chalk_solver();
+
+    let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
+
+    let solution = solver.solve_limited(&context, goal, || {
+        context.db.check_canceled();
+        let remaining = fuel.get();
+        fuel.set(remaining - 1);
+        if remaining == 0 {
+            log::debug!("fuel exhausted");
+        }
+        remaining > 0
+    });
+
+    log::debug!("solve({:?}) => {:?}", goal, solution);
+    solution
 }
 
 fn solution_from_chalk(
