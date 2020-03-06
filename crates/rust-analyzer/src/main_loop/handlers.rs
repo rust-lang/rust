@@ -459,8 +459,12 @@ pub fn handle_signature_help(
     let _p = profile("handle_signature_help");
     let position = params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
-        let active_parameter = call_info.active_parameter.map(|it| it as i64);
-        let sig_info = call_info.signature.conv();
+        let concise = !world.analysis().feature_flags().get("call-info.full");
+        let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
+        if concise && call_info.signature.has_self_param {
+            active_parameter = active_parameter.map(|it| it.saturating_sub(1));
+        }
+        let sig_info = call_info.signature.conv_with(concise);
 
         Ok(Some(req::SignatureHelp {
             signatures: vec![sig_info],

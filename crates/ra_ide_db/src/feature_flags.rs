@@ -56,6 +56,7 @@ impl Default for FeatureFlags {
             ("completion.insertion.add-call-parenthesis", true),
             ("completion.insertion.add-argument-sippets", true),
             ("completion.enable-postfix", true),
+            ("call-info.full", true),
             ("notifications.workspace-loaded", true),
             ("notifications.cargo-toml-not-found", true),
         ])

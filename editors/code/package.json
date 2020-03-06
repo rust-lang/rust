@@ -205,6 +205,10 @@
                             "type": "boolean",
                             "description": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
                         },
+                        "call-info.full": {
+                            "type": "boolean",
+                            "description": "Show function name and docs in parameter hints"
+                        },
                         "notifications.workspace-loaded": {
                             "type": "boolean",
                             "description": "Whether to show `workspace loaded` message"
