@@ -139,7 +139,7 @@ impl ast::RecordFieldList {
         let mut to_insert: ArrayVec<[SyntaxElement; 4]> = ArrayVec::new();
         to_insert.push(space.into());
         to_insert.push(field.syntax().clone().into());
-        to_insert.push(tokens::comma().into());
+        to_insert.push(make::token(T![,]).into());
 
         macro_rules! after_l_curly {
             () => {{
@@ -160,7 +160,7 @@ impl ast::RecordFieldList {
                 {
                     InsertPosition::After(comma)
                 } else {
-                    to_insert.insert(0, tokens::comma().into());
+                    to_insert.insert(0, make::token(T![,]).into());
                     InsertPosition::After($anchor.syntax().clone().into())
                 }
             };

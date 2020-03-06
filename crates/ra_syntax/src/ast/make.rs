@@ -240,21 +240,12 @@ fn unroot(n: SyntaxNode) -> SyntaxNode {
 }
 
 pub mod tokens {
-    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
     use once_cell::sync::Lazy;
+
+    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
         Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2, !true)\n;"));
-
-    pub fn comma() -> SyntaxToken {
-        SOURCE_FILE
-            .tree()
-            .syntax()
-            .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == T![,])
-            .unwrap()
-    }
 
     pub fn single_space() -> SyntaxToken {
         SOURCE_FILE
