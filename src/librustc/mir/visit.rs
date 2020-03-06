@@ -888,7 +888,7 @@ macro_rules! visit_place_fns {
     () => (
         fn visit_projection(
             &mut self,
-            local: &Local,
+            local: Local,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
@@ -898,7 +898,7 @@ macro_rules! visit_place_fns {
 
         fn visit_projection_elem(
             &mut self,
-            local: &Local,
+            local: Local,
             proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             context: PlaceContext,
@@ -925,7 +925,7 @@ macro_rules! visit_place_fns {
 
             self.visit_place_base(&place.local, context, location);
 
-            self.visit_projection(&place.local,
+            self.visit_projection(place.local,
                                   &place.projection,
                                   context,
                                   location);
@@ -933,7 +933,7 @@ macro_rules! visit_place_fns {
 
         fn super_projection(
             &mut self,
-            local: &Local,
+            local: Local,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
@@ -947,7 +947,7 @@ macro_rules! visit_place_fns {
 
         fn super_projection_elem(
             &mut self,
-            _local: &Local,
+            _local: Local,
             _proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             _context: PlaceContext,

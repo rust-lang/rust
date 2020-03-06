@@ -276,7 +276,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         }
                     };
                     self.visit_place_base(&place.local, ctx, location);
-                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -289,7 +289,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
                     self.visit_place_base(&place.local, ctx, location);
-                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -408,7 +408,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     }
     fn visit_projection_elem(
         &mut self,
-        place_local: &Local,
+        place_local: Local,
         proj_base: &[PlaceElem<'tcx>],
         elem: &PlaceElem<'tcx>,
         context: PlaceContext,
@@ -428,11 +428,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
-                            let decl = &self.body.local_decls[*local];
+                            let decl = &self.body.local_decls[local];
                             if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
                                 let span = decl.source_info.span;
                                 self.check_static(def_id, span);
@@ -452,7 +452,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
