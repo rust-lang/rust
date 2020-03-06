@@ -51,6 +51,47 @@ fn test() {
 }
 
 #[test]
+fn self_in_struct_lit() {
+    assert_snapshot!(infer(
+        r#"
+//- /main.rs
+struct S<T> { x: T }
+
+impl S<u32> {
+    fn foo() {
+        Self { x: 1 };
+    }
+}
+"#,
+    ), @r###"
+    [63; 93) '{     ...     }': ()
+    [73; 86) 'Self { x: 1 }': S<u32>
+    [83; 84) '1': u32
+    "###);
+}
+
+#[test]
+fn type_alias_in_struct_lit() {
+    assert_snapshot!(infer(
+        r#"
+//- /main.rs
+struct S<T> { x: T }
+
+type SS = S<u32>;
+
+fn foo() {
+    SS { x: 1 };
+}
+
+"#,
+    ), @r###"
+    [64; 84) '{     ...1 }; }': ()
+    [70; 81) 'SS { x: 1 }': S<u32>
+    [78; 79) '1': u32
+    "###);
+}
+
+#[test]
 fn infer_ranges() {
     let (db, pos) = TestDB::with_position(
         r#"

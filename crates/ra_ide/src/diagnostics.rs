@@ -473,6 +473,33 @@ mod tests {
     }
 
     #[test]
+    fn test_fill_struct_fields_self() {
+        let before = r"
+            struct TestStruct {
+                one: i32,
+            }
+
+            impl TestStruct {
+                fn test_fn() {
+                    let s = Self {};
+                }
+            }
+        ";
+        let after = r"
+            struct TestStruct {
+                one: i32,
+            }
+
+            impl TestStruct {
+                fn test_fn() {
+                    let s = Self { one: ()};
+                }
+            }
+        ";
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
     fn test_fill_struct_fields_enum() {
         let before = r"
             enum Expr {
