@@ -75,15 +75,19 @@ pub struct MemoryExtra {
     pub intptrcast: intptrcast::MemoryExtra,
 
     /// Mapping extern static names to their canonical allocation.
-    pub(crate) extern_statics: FxHashMap<Symbol, AllocId>,
+    extern_statics: FxHashMap<Symbol, AllocId>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
     pub(crate) rng: RefCell<StdRng>,
+
+    /// An allocation ID to report when it is being allocated
+    /// (helps for debugging memory leaks).
+    tracked_alloc_id: Option<AllocId>,
 }
 
 impl MemoryExtra {
-    pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>) -> Self {
+    pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>, tracked_alloc_id: Option<AllocId>) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
         } else {
@@ -94,6 +98,7 @@ impl MemoryExtra {
             intptrcast: Default::default(),
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
+            tracked_alloc_id,
         }
     }
 

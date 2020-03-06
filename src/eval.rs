@@ -30,6 +30,24 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
     /// The stacked borrow id to report about
     pub tracked_pointer_tag: Option<PtrId>,
+    /// The allocation id to report about.
+    pub tracked_alloc_id: Option<AllocId>,
+}
+
+impl Default for MiriConfig {
+    fn default() -> MiriConfig {
+        MiriConfig {
+            validate: true,
+            stacked_borrows: true,
+            communicate: false,
+            ignore_leaks: false,
+            excluded_env_vars: vec![],
+            args: vec![],
+            seed: None,
+            tracked_pointer_tag: None,
+            tracked_alloc_id: None,
+        }
+    }
 }
 
 /// Details of premature program termination.
@@ -55,6 +73,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             StdRng::seed_from_u64(config.seed.unwrap_or(0)),
             config.stacked_borrows,
             config.tracked_pointer_tag,
+            config.tracked_alloc_id,
         ),
     );
     // Complete initialization.

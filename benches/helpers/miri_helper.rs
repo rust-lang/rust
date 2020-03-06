@@ -29,16 +29,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
                 tcx.entry_fn(LOCAL_CRATE).expect("no main or start function found");
 
             self.bencher.iter(|| {
-                let config = miri::MiriConfig {
-                    validate: true,
-                    stacked_borrows: true,
-                    communicate: false,
-                    ignore_leaks: false,
-                    excluded_env_vars: vec![],
-                    args: vec![],
-                    seed: None,
-                    tracked_pointer_tag: None,
-                };
+                let config = miri::MiriConfig::default();
                 eval_main(tcx, entry_def_id, config);
             });
         });
