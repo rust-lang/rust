@@ -482,7 +482,7 @@ impl<'a> TraitDef<'a> {
                         })
                         .cloned(),
                 );
-                push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
+                push(Annotatable::Item(P(ast::Item { attrs, ..(*newitem).clone() })))
             }
             _ => {
                 // Non-Item derive is an error, but it should have been

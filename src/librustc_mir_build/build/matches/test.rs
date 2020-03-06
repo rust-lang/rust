@@ -64,10 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() { BinOp::Ge } else { BinOp::Eq };
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Len { len: len as u64, op: op },
-                }
+                Test { span: match_pair.pattern.span, kind: TestKind::Len { len: len as u64, op } }
             }
 
             PatKind::Or { .. } => bug!("or-patterns should have already been handled"),

@@ -403,7 +403,7 @@ pub type NormalizedTy<'tcx> = Normalized<'tcx, Ty<'tcx>>;
 
 impl<'tcx, T> Normalized<'tcx, T> {
     pub fn with<U>(self, value: U) -> Normalized<'tcx, U> {
-        Normalized { value: value, obligations: self.obligations }
+        Normalized { value, obligations: self.obligations }
     }
 }
 
@@ -1291,7 +1291,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
                 substs: trait_ref.substs,
                 item_def_id: obligation.predicate.item_def_id,
             },
-            ty: ty,
+            ty,
         }
     });
 

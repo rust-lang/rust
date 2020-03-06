@@ -47,7 +47,7 @@ pub fn resolve_instance<'tcx>(
                 }
             }
         };
-        Some(Instance { def: def, substs: substs })
+        Some(Instance { def, substs })
     };
     debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
     result

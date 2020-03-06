@@ -77,11 +77,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             if found_anon_region {
                                 let is_first = index == 0;
                                 Some(AnonymousParamInfo {
-                                    param: param,
+                                    param,
                                     param_ty: new_param_ty,
-                                    param_ty_span: param_ty_span,
-                                    bound_region: bound_region,
-                                    is_first: is_first,
+                                    param_ty_span,
+                                    bound_region,
+                                    is_first,
                                 })
                             } else {
                                 None

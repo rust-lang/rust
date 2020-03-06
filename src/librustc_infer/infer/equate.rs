@@ -19,7 +19,7 @@ impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
         fields: &'combine mut CombineFields<'infcx, 'tcx>,
         a_is_expected: bool,
     ) -> Equate<'combine, 'infcx, 'tcx> {
-        Equate { fields: fields, a_is_expected: a_is_expected }
+        Equate { fields, a_is_expected }
     }
 }
 

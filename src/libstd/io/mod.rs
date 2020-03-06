@@ -371,7 +371,7 @@ where
     F: FnMut(&R) -> usize,
 {
     let start_len = buf.len();
-    let mut g = Guard { len: buf.len(), buf: buf };
+    let mut g = Guard { len: buf.len(), buf };
     let ret;
     loop {
         if g.len == g.buf.len() {
@@ -939,7 +939,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, limit: limit }
+        Take { inner: self, limit }
     }
 }
 

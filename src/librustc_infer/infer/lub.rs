@@ -18,7 +18,7 @@ impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
         fields: &'combine mut CombineFields<'infcx, 'tcx>,
         a_is_expected: bool,
     ) -> Lub<'combine, 'infcx, 'tcx> {
-        Lub { fields: fields, a_is_expected: a_is_expected }
+        Lub { fields, a_is_expected }
     }
 }
 
