@@ -425,7 +425,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
+        return match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
                 let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
@@ -438,7 +438,33 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 (ty, Some(var.into()))
             }
+            Some(TypeNs::SelfType(impl_id)) => {
+                let generics = crate::utils::generics(self.db, impl_id.into());
+                let substs = Substs::type_params_for_generics(&generics);
+                let ty = self.db.impl_self_ty(impl_id).subst(&substs);
+                let variant = ty_variant(&ty);
+                (ty, variant)
+            }
+            Some(TypeNs::TypeAliasId(it)) => {
+                let substs = Substs::build_for_def(self.db, it)
+                    .fill(std::iter::repeat_with(|| self.table.new_type_var()))
+                    .build();
+                let ty = self.db.ty(it.into()).subst(&substs);
+                let variant = ty_variant(&ty);
+                (ty, variant)
+            }
             Some(_) | None => (Ty::Unknown, None),
+        };
+
+        fn ty_variant(ty: &Ty) -> Option<VariantId> {
+            ty.as_adt().and_then(|(adt_id, _)| match adt_id {
+                AdtId::StructId(s) => Some(VariantId::StructId(s)),
+                AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
+                AdtId::EnumId(_) => {
+                    // Error E0071, expected struct, variant or union type, found enum `Foo`
+                    None
+                }
+            })
         }
     }
 
