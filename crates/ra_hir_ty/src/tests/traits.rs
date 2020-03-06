@@ -1803,6 +1803,47 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 }
 
 #[test]
+fn unselected_projection_on_trait_self() {
+    assert_snapshot!(infer(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+
+    fn f(&self, x: Self::Item);
+}
+
+struct S;
+
+impl Trait for S {
+    type Item = u32;
+    fn f(&self, x: Self::Item) { let y = x; }
+}
+
+struct S2;
+
+impl Trait for S2 {
+    type Item = i32;
+    fn f(&self, x: <Self>::Item) { let y = x; }
+}
+"#,
+    ), @r###"
+    [54; 58) 'self': &Self
+    [60; 61) 'x': {unknown}
+    [140; 144) 'self': &S
+    [146; 147) 'x': u32
+    [161; 175) '{ let y = x; }': ()
+    [167; 168) 'y': u32
+    [171; 172) 'x': u32
+    [242; 246) 'self': &S2
+    [248; 249) 'x': i32
+    [265; 279) '{ let y = x; }': ()
+    [271; 272) 'y': i32
+    [275; 276) 'x': i32
+    "###);
+}
+
+#[test]
 fn trait_impl_self_ty() {
     let t = type_at(
         r#"
