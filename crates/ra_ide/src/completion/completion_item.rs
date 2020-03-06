@@ -47,6 +47,10 @@ pub struct CompletionItem {
 
     /// Whether this item is marked as deprecated
     deprecated: bool,
+
+    /// If completing a function call, ask the editor to show parameter popup
+    /// after completion.
+    trigger_call_info: bool,
 }
 
 // We use custom debug for CompletionItem to make `insta`'s diffs more readable.
@@ -139,6 +143,7 @@ impl CompletionItem {
             kind: None,
             text_edit: None,
             deprecated: None,
+            trigger_call_info: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -177,6 +182,10 @@ impl CompletionItem {
     pub fn deprecated(&self) -> bool {
         self.deprecated
     }
+
+    pub fn trigger_call_info(&self) -> bool {
+        self.trigger_call_info
+    }
 }
 
 /// A helper to make `CompletionItem`s.
@@ -193,6 +202,7 @@ pub(crate) struct Builder {
     kind: Option<CompletionItemKind>,
     text_edit: Option<TextEdit>,
     deprecated: Option<bool>,
+    trigger_call_info: Option<bool>,
 }
 
 impl Builder {
@@ -221,6 +231,7 @@ impl Builder {
             kind: self.kind,
             completion_kind: self.completion_kind,
             deprecated: self.deprecated.unwrap_or(false),
+            trigger_call_info: self.trigger_call_info.unwrap_or(false),
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -269,6 +280,10 @@ impl Builder {
     }
     pub(crate) fn set_deprecated(mut self, deprecated: bool) -> Builder {
         self.deprecated = Some(deprecated);
+        self
+    }
+    pub(crate) fn trigger_call_info(mut self) -> Builder {
+        self.trigger_call_info = Some(true);
         self
     }
 }

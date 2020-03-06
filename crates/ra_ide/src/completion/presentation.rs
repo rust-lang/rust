@@ -221,6 +221,7 @@ impl Completions {
             let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
                 (format!("{}()$0", name), format!("{}()", name))
             } else {
+                builder = builder.trigger_call_info();
                 let snippet = if ctx
                     .db
                     .feature_flags

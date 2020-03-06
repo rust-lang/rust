@@ -150,6 +150,16 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
             deprecated: Some(self.deprecated()),
+            command: if self.trigger_call_info() {
+                let cmd = lsp_types::Command {
+                    title: "triggerParameterHints".into(),
+                    command: "editor.action.triggerParameterHints".into(),
+                    arguments: None,
+                };
+                Some(cmd)
+            } else {
+                None
+            },
             ..Default::default()
         };
 
