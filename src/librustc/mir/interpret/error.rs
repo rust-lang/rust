@@ -617,8 +617,8 @@ impl fmt::Debug for InterpError<'_> {
 }
 
 impl InterpError<'_> {
-    /// Some errors allocate to be created as they contain free-from strings.
-    /// And sometiems we want to be sure that did not happen as it is a
+    /// Some errors allocate to be created as they contain free-form strings.
+    /// And sometimes we want to be sure that did not happen as it is a
     /// waste of resources.
     pub fn allocates(&self) -> bool {
         match self {
