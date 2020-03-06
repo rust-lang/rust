@@ -413,6 +413,8 @@ where
                 // This is a narrow bug-fix for rust-lang/rust#69191: if we are
                 // trying to access absent field of uninhabited variant, then
                 // signal UB (but don't ICE the compiler).
+                // FIXME temporary hack to work around incoherence between
+                // layout computation and MIR building
                 if field >= count as u64 && base.layout.abi == layout::Abi::Uninhabited {
                     throw_ub!(Unreachable);
                 }
