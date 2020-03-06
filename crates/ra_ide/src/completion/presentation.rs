@@ -103,7 +103,7 @@ impl Completions {
             }
         };
 
-        // If not an import, add parenthesis automatically.
+        // Add `<>` for generic types
         if ctx.is_path_type
             && !ctx.has_type_args
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
@@ -211,7 +211,7 @@ impl Completions {
                 .set_deprecated(is_deprecated(func, ctx.db))
                 .detail(function_signature.to_string());
 
-        // Add `<>` for generic types
+        // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none()
             && !ctx.is_call
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
@@ -221,16 +221,26 @@ impl Completions {
             let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
                 (format!("{}()$0", name), format!("{}()", name))
             } else {
-                let to_skip = if has_self_param { 1 } else { 0 };
-                let function_params_snippet =
-                    join(
+                builder = builder.trigger_call_info();
+                let snippet = if ctx
+                    .db
+                    .feature_flags
+                    .get("completion.insertion.add-argument-sippets")
+                {
+                    let to_skip = if has_self_param { 1 } else { 0 };
+                    let function_params_snippet = join(
                         function_signature.parameter_names.iter().skip(to_skip).enumerate().map(
                             |(index, param_name)| format!("${{{}:{}}}", index + 1, param_name),
                         ),
                     )
                     .separator(", ")
                     .to_string();
-                (format!("{}({})$0", name, function_params_snippet), format!("{}(…)", name))
+                    format!("{}({})$0", name, function_params_snippet)
+                } else {
+                    format!("{}($0)", name)
+                };
+
+                (snippet, format!("{}(…)", name))
             };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }

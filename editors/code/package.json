@@ -197,6 +197,10 @@
                             "type": "boolean",
                             "description": "Whether to add parenthesis when completing functions"
                         },
+                        "completion.insertion.add-argument-sippets": {
+                            "type": "boolean",
+                            "description": "Whether to add argument snippets when completing functions"
+                        },
                         "completion.enable-postfix": {
                             "type": "boolean",
                             "description": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
