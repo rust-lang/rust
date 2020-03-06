@@ -14,7 +14,7 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use super::ExprSource;
+use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
@@ -133,14 +133,18 @@ where
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
-        let id = self.body.pats.alloc(pat);
         let src = self.expander.to_source(ptr);
+        let id = self.make_pat(pat, Ok(src));
         self.source_map.pat_map.insert(src, id);
-        self.source_map.pat_map_back.insert(id, src);
         id
     }
     fn missing_pat(&mut self) -> PatId {
-        self.body.pats.alloc(Pat::Missing)
+        self.make_pat(Pat::Missing, Err(SyntheticSyntax))
+    }
+    fn make_pat(&mut self, pat: Pat, src: Result<PatSource, SyntheticSyntax>) -> PatId {
+        let id = self.body.pats.alloc(pat);
+        self.source_map.pat_map_back.insert(id, src);
+        id
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
