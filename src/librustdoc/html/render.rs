@@ -1542,7 +1542,7 @@ impl Context {
         }
 
         if self.shared.sort_modules_alphabetically {
-            for (_, items) in &mut map {
+            for items in map.values_mut() {
                 items.sort();
             }
         }
