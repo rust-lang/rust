@@ -111,7 +111,7 @@ pub trait HirDatabase: DefDatabase {
 }
 
 fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("infer");
+    let _p = profile("wait_infer");
     db.do_infer(def)
 }
 

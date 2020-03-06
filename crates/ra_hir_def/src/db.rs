@@ -110,6 +110,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
 }
 
 fn crate_def_map(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
-    let _p = profile("crate_def_map");
+    let _p = profile("wait_crate_def_map");
     db.compute_crate_def_map(krate)
 }
