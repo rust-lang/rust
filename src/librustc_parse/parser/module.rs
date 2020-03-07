@@ -102,20 +102,18 @@ impl<'a> Parser<'a> {
         id_sp: Span,
     ) -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
-            return Ok(ModulePathSuccess {
-                directory_ownership: match path.file_name().and_then(|s| s.to_str()) {
-                    // All `#[path]` files are treated as though they are a `mod.rs` file.
-                    // This means that `mod foo;` declarations inside `#[path]`-included
-                    // files are siblings,
-                    //
-                    // Note that this will produce weirdness when a file named `foo.rs` is
-                    // `#[path]` included and contains a `mod foo;` declaration.
-                    // If you encounter this, it's your own darn fault :P
-                    Some(_) => DirectoryOwnership::Owned { relative: None },
-                    _ => DirectoryOwnership::UnownedViaMod,
-                },
-                path,
-            });
+            let directory_ownership = match path.file_name().and_then(|s| s.to_str()) {
+                // All `#[path]` files are treated as though they are a `mod.rs` file.
+                // This means that `mod foo;` declarations inside `#[path]`-included
+                // files are siblings,
+                //
+                // Note that this will produce weirdness when a file named `foo.rs` is
+                // `#[path]` included and contains a `mod foo;` declaration.
+                // If you encounter this, it's your own darn fault :P
+                Some(_) => DirectoryOwnership::Owned { relative: None },
+                _ => DirectoryOwnership::UnownedViaMod,
+            };
+            return Ok(ModulePathSuccess { directory_ownership, path });
         }
 
         let relative = match self.directory.ownership {
