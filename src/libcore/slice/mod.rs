@@ -103,7 +103,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first(&self) -> Option<&T> {
-        self.get(0)
+        if let [first, ..] = self { Some(first) } else { None }
     }
 
     /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
@@ -121,7 +121,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(0)
+        if let [first, ..] = self { Some(first) } else { None }
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -139,7 +139,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first(&self) -> Option<(&T, &[T])> {
-        if self.is_empty() { None } else { Some((&self[0], &self[1..])) }
+        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -159,12 +159,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        if self.is_empty() {
-            None
-        } else {
-            let split = self.split_at_mut(1);
-            Some((&mut split.0[0], split.1))
-        }
+        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
@@ -182,8 +177,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
-        let len = self.len();
-        if len == 0 { None } else { Some((&self[len - 1], &self[..(len - 1)])) }
+        if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
@@ -203,13 +197,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        let len = self.len();
-        if len == 0 {
-            None
-        } else {
-            let split = self.split_at_mut(len - 1);
-            Some((&mut split.1[0], split.0))
-        }
+        if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
     /// Returns the last element of the slice, or `None` if it is empty.
@@ -226,8 +214,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last(&self) -> Option<&T> {
-        let last_idx = self.len().checked_sub(1)?;
-        self.get(last_idx)
+        if let [.., last] = self { Some(last) } else { None }
     }
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -245,8 +232,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        let last_idx = self.len().checked_sub(1)?;
-        self.get_mut(last_idx)
+        if let [.., last] = self { Some(last) } else { None }
     }
 
     /// Returns a reference to an element or subslice depending on the type of

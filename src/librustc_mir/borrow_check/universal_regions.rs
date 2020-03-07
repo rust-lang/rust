@@ -486,7 +486,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             defining_ty,
             unnormalized_output_ty,
             unnormalized_input_tys,
-            yield_ty: yield_ty,
+            yield_ty,
         }
     }
 

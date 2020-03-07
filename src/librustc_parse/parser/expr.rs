@@ -544,8 +544,8 @@ impl<'a> Parser<'a> {
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
-        match self.parse_ty_no_plus() {
-            Ok(rhs) => Ok(mk_expr(self, rhs)),
+        let cast_expr = match self.parse_ty_no_plus() {
+            Ok(rhs) => mk_expr(self, rhs),
             Err(mut type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
@@ -599,17 +599,70 @@ impl<'a> Parser<'a> {
                             )
                             .emit();
 
-                        Ok(expr)
+                        expr
                     }
                     Err(mut path_err) => {
                         // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
                         mem::replace(self, parser_snapshot_after_type);
-                        Err(type_err)
+                        return Err(type_err);
                     }
                 }
             }
-        }
+        };
+
+        self.parse_and_disallow_postfix_after_cast(cast_expr)
+    }
+
+    /// Parses a postfix operators such as `.`, `?`, or index (`[]`) after a cast,
+    /// then emits an error and returns the newly parsed tree.
+    /// The resulting parse tree for `&x as T[0]` has a precedence of `((&x) as T)[0]`.
+    fn parse_and_disallow_postfix_after_cast(
+        &mut self,
+        cast_expr: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
+        // Save the memory location of expr before parsing any following postfix operators.
+        // This will be compared with the memory location of the output expression.
+        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
+        let addr_before = &*cast_expr as *const _ as usize;
+        let span = cast_expr.span;
+        let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
+        let changed = addr_before != &*with_postfix as *const _ as usize;
+
+        // Check if an illegal postfix operator has been added after the cast.
+        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
+            let msg = format!(
+                "casts cannot be followed by {}",
+                match with_postfix.kind {
+                    ExprKind::Index(_, _) => "indexing",
+                    ExprKind::Try(_) => "?",
+                    ExprKind::Field(_, _) => "a field access",
+                    ExprKind::MethodCall(_, _) => "a method call",
+                    ExprKind::Call(_, _) => "a function call",
+                    ExprKind::Await(_) => "`.await`",
+                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                }
+            );
+            let mut err = self.struct_span_err(span, &msg);
+            // If type ascription is "likely an error", the user will already be getting a useful
+            // help message, and doesn't need a second.
+            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
+                self.maybe_annotate_with_ascription(&mut err, false);
+            } else {
+                let suggestions = vec![
+                    (span.shrink_to_lo(), "(".to_string()),
+                    (span.shrink_to_hi(), ")".to_string()),
+                ];
+                err.multipart_suggestion(
+                    "try surrounding the expression in parentheses",
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
+        };
+        Ok(with_postfix)
     }
 
     fn parse_assoc_op_ascribe(&mut self, lhs: P<Expr>, lhs_span: Span) -> PResult<'a, P<Expr>> {
@@ -955,7 +1008,7 @@ impl<'a> Parser<'a> {
         };
         let kind = if es.len() == 1 && !trailing_comma {
             // `(e)` is parenthesized `e`.
-            ExprKind::Paren(es.into_iter().nth(0).unwrap())
+            ExprKind::Paren(es.into_iter().next().unwrap())
         } else {
             // `(e,)` is a tuple with only one field, `e`.
             ExprKind::Tup(es)

@@ -418,7 +418,7 @@ struct GuardFrameLocal {
 
 impl GuardFrameLocal {
     fn new(id: hir::HirId, _binding_mode: BindingMode) -> Self {
-        GuardFrameLocal { id: id }
+        GuardFrameLocal { id }
     }
 }
 

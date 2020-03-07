@@ -1446,7 +1446,7 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
         match successor_count {
             0 => Ok(()),
 
-            1 => write!(fmt, " -> {:?}", self.successors().nth(0).unwrap()),
+            1 => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
 
             _ => {
                 write!(fmt, " -> [")?;

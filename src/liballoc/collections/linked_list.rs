@@ -959,7 +959,7 @@ impl<T> LinkedList<T> {
         let it = self.head;
         let old_len = self.len;
 
-        DrainFilter { list: self, it: it, pred: filter, idx: 0, old_len: old_len }
+        DrainFilter { list: self, it, pred: filter, idx: 0, old_len }
     }
 }
 

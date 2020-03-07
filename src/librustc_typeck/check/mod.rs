@@ -4234,7 +4234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let substs = self.fresh_substs_for_item(span, did);
         let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
 
-        TypeAndSubsts { substs: substs, ty: substd_ty }
+        TypeAndSubsts { substs, ty: substd_ty }
     }
 
     /// Unifies the output type with the expected type early, for more coercions
@@ -5244,7 +5244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .associated_items(future_trait)
                     .in_definition_order()
-                    .nth(0)
+                    .next()
                     .unwrap()
                     .def_id;
                 let predicate =

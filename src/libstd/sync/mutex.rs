@@ -416,7 +416,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock: lock, poison: guard })
+        poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock, poison: guard })
     }
 }
 

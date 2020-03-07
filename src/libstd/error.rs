@@ -135,7 +135,7 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.41.0", reason = "use the Display impl or to_string()")]
+    #[rustc_deprecated(since = "1.42.0", reason = "use the Display impl or to_string()")]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }

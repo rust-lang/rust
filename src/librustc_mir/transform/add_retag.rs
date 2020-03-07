@@ -75,8 +75,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         {
             let source_info = SourceInfo {
                 scope: OUTERMOST_SOURCE_SCOPE,
-                span: span, // FIXME: Consider using just the span covering the function
-                            // argument declaration.
+                span, // FIXME: Consider using just the span covering the function
+                      // argument declaration.
             };
             // Gather all arguments, skip return value.
             let places = local_decls

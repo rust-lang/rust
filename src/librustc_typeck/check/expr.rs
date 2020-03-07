@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let needs = Needs::maybe_mut_place(mutbl);
         let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
-        let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
+        let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
             _ if tm.ty.references_error() => self.tcx.types.err,
             hir::BorrowKind::Raw => {

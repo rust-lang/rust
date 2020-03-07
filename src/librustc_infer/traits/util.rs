@@ -55,7 +55,7 @@ struct PredicateSet<'tcx> {
 
 impl PredicateSet<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self { tcx: tcx, set: Default::default() }
+        Self { tcx, set: Default::default() }
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {

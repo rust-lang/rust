@@ -72,7 +72,7 @@ pub struct Edge {
 
 fn outgoing(body: &Body<'_>, bb: BasicBlock) -> Vec<Edge> {
     (0..body[bb].terminator().successors().count())
-        .map(|index| Edge { source: bb, index: index })
+        .map(|index| Edge { source: bb, index })
         .collect()
 }
 

@@ -377,10 +377,10 @@ impl<'s> LintLevelsBuilder<'s> {
         let prev = self.cur;
         if !specs.is_empty() {
             self.cur = self.sets.list.len() as u32;
-            self.sets.list.push(LintSet::Node { specs: specs, parent: prev });
+            self.sets.list.push(LintSet::Node { specs, parent: prev });
         }
 
-        BuilderPush { prev: prev, changed: prev != self.cur }
+        BuilderPush { prev, changed: prev != self.cur }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.

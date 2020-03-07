@@ -147,7 +147,7 @@ fn main() {
         eprintln!("Must provide path to write unicode tables to");
         eprintln!(
             "e.g. {} src/libcore/unicode/unicode_data.rs",
-            std::env::args().nth(0).unwrap_or_default()
+            std::env::args().next().unwrap_or_default()
         );
         std::process::exit(1);
     });

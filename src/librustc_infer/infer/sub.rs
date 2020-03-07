@@ -19,7 +19,7 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
         f: &'combine mut CombineFields<'infcx, 'tcx>,
         a_is_expected: bool,
     ) -> Sub<'combine, 'infcx, 'tcx> {
-        Sub { fields: f, a_is_expected: a_is_expected }
+        Sub { fields: f, a_is_expected }
     }
 
     fn with_expected_switched<R, F: FnOnce(&mut Self) -> R>(&mut self, f: F) -> R {

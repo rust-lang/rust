@@ -465,16 +465,13 @@ impl<T> From<T> for RwLock<T> {
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.borrow(), |_| RwLockReadGuard { lock: lock })
+        poison::map_result(lock.poison.borrow(), |_| RwLockReadGuard { lock })
     }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| RwLockWriteGuard {
-            lock: lock,
-            poison: guard,
-        })
+        poison::map_result(lock.poison.borrow(), |guard| RwLockWriteGuard { lock, poison: guard })
     }
 }
 
