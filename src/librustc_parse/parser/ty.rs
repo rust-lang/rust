@@ -148,18 +148,14 @@ impl<'a> Parser<'a> {
             self.parse_impl_ty(&mut impl_dyn_multi)?
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
-        } else if self.check(&token::Question)
-            || self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus())
-        {
-            // Bound list (trait object type)
-            let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
-            TyKind::TraitObject(bounds, TraitObjectSyntax::None)
         } else if self.eat_lt() {
             // Qualified path
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
         } else if self.check_path() {
             self.parse_path_start_ty(lo, allow_plus)?
+        } else if self.can_begin_bound() {
+            self.parse_bare_trait_object(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
             if allow_c_variadic == AllowCVariadic::Yes {
                 TyKind::CVarArgs
@@ -216,6 +212,15 @@ impl<'a> Parser<'a> {
         } else {
             Ok(TyKind::Tup(ts))
         }
+    }
+
+    fn parse_bare_trait_object(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
+        let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
+        let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
+        if lt_no_plus {
+            self.struct_span_err(lo, "lifetime in trait object type must be followed by `+`").emit()
+        }
+        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
 
     fn parse_remaining_bounds_path(

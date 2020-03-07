@@ -10,25 +10,11 @@ error: parenthesized lifetime bounds are not supported
 LL |     let _: Box<Trait + ('a)>;
    |                        ^^^^ help: remove the parentheses
 
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/trait-object-lifetime-parens.rs:9:19
-   |
-LL |     let _: Box<('a) + Trait>;
-   |                   ^ expected `while`, `for`, `loop` or `{` after a label
-
-error: expected expression, found `)`
-  --> $DIR/trait-object-lifetime-parens.rs:9:19
-   |
-LL |     let _: Box<('a) + Trait>;
-   |                   ^ expected expression
-
-error: expected type, found `'a`
+error: lifetime in trait object type must be followed by `+`
   --> $DIR/trait-object-lifetime-parens.rs:9:17
    |
 LL |     let _: Box<('a) + Trait>;
-   |         -       ^^ expected type
-   |         |
-   |         while parsing the type for `_`
+   |                 ^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
