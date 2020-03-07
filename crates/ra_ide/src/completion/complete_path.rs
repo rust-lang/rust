@@ -835,4 +835,37 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn completes_in_simple_macro_call() {
+        let completions = do_reference_completion(
+            r#"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn main() { m!(self::f<|>); }
+                fn foo() {}
+            "#,
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo()",
+                source_range: [93; 94),
+                delete: [93; 94),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [93; 94),
+                delete: [93; 94),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###);
+    }
 }
