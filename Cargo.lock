@@ -960,6 +960,7 @@ name = "ra_hir"
 version = "0.1.0"
 dependencies = [
  "either",
+ "itertools",
  "log",
  "ra_db",
  "ra_hir_def",

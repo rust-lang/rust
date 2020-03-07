@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Completion of names from the current scope, e.g. locals and imported items.
 
 use crate::completion::{CompletionContext, Completions};
 
@@ -796,5 +796,73 @@ mod tests {
         ]
         "###
         )
+    }
+
+    #[test]
+    fn completes_in_simple_macro_1() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn quux(x: i32) {
+                    let y = 92;
+                    m!(<|>);
+                }
+                "
+            ),
+            @"[]"
+        );
+    }
+
+    #[test]
+    fn completes_in_simple_macro_2() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn quux(x: i32) {
+                    let y = 92;
+                    m!(x<|>);
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "m!",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "m!($0)",
+                kind: Macro,
+                detail: "macro_rules! m",
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "quux(${1:x})$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux(x: i32)",
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "x",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "y",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "y",
+                kind: Binding,
+                detail: "i32",
+            },
+        ]
+        "###
+        );
     }
 }

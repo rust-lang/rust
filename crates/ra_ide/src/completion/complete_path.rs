@@ -1,4 +1,4 @@
-//! Completion of paths, including when writing a single name.
+//! Completion of paths, i.e. `some::prefix::<|>`.
 
 use hir::{Adt, PathResolution, ScopeDef};
 use ra_syntax::AstNode;

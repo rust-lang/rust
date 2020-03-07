@@ -5,7 +5,7 @@ use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast, AstNode, SourceFile,
+    ast, AstNode,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
@@ -20,6 +20,9 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) sema: Semantics<'a, RootDatabase>,
     pub(super) db: &'a RootDatabase,
     pub(super) offset: TextUnit,
+    /// The token before the cursor, in the original file.
+    pub(super) original_token: SyntaxToken,
+    /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
     pub(super) module: Option<hir::Module>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
@@ -67,12 +70,18 @@ impl<'a> CompletionContext<'a> {
             let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
             parse.reparse(&edit).tree()
         };
+        let fake_ident_token =
+            file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
 
+        // TODO: shouldn't this take the position into account? (in case we're inside a mod {})
         let module = sema.to_module_def(position.file_id);
-        let token = original_file.syntax().token_at_offset(position.offset).left_biased()?;
+        let original_token =
+            original_file.syntax().token_at_offset(position.offset).left_biased()?;
+        let token = sema.descend_into_macros(original_token.clone());
         let mut ctx = CompletionContext {
             sema,
             db,
+            original_token,
             token,
             offset: position.offset,
             module,
@@ -95,15 +104,45 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
         };
-        ctx.fill(&original_file, file_with_fake_ident, position.offset);
+
+        let mut original_file = original_file.syntax().clone();
+        let mut hypothetical_file = file_with_fake_ident.syntax().clone();
+        let mut offset = position.offset;
+        let mut fake_ident_token = fake_ident_token;
+
+        // Are we inside a macro call?
+        while let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
+            find_node_at_offset::<ast::MacroCall>(&original_file, offset),
+            find_node_at_offset::<ast::MacroCall>(&hypothetical_file, offset),
+        ) {
+            if let (Some(actual_expansion), Some(hypothetical_expansion)) = (
+                ctx.sema.expand(&actual_macro_call),
+                ctx.sema.expand_hypothetical(
+                    &actual_macro_call,
+                    &macro_call_with_fake_ident,
+                    fake_ident_token,
+                ),
+            ) {
+                // TODO check that the expansions 'look the same' up to the inserted token?
+                original_file = actual_expansion;
+                hypothetical_file = hypothetical_expansion.0;
+                fake_ident_token = hypothetical_expansion.1;
+                offset = fake_ident_token.text_range().start();
+            } else {
+                break;
+            }
+        }
+
+        ctx.fill(&original_file, hypothetical_file, offset);
         Some(ctx)
     }
 
     // The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
+        // check kind of macro-expanded token, but use range of original token
         match self.token.kind() {
             // workaroud when completion is triggered by trigger characters.
-            IDENT => self.token.text_range(),
+            IDENT => self.original_token.text_range(),
             _ => TextRange::offset_len(self.offset, 0.into()),
         }
     }
@@ -114,14 +153,12 @@ impl<'a> CompletionContext<'a> {
 
     fn fill(
         &mut self,
-        original_file: &ast::SourceFile,
-        file_with_fake_ident: ast::SourceFile,
+        original_file: &SyntaxNode,
+        file_with_fake_ident: SyntaxNode,
         offset: TextUnit,
     ) {
         // First, let's try to complete a reference to some declaration.
-        if let Some(name_ref) =
-            find_node_at_offset::<ast::NameRef>(file_with_fake_ident.syntax(), offset)
-        {
+        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
             // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.
             // See RFC#1685.
             if is_node::<ast::Param>(name_ref.syntax()) {
@@ -133,8 +170,7 @@ impl<'a> CompletionContext<'a> {
 
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
-        if let Some(name) = find_node_at_offset::<ast::Name>(file_with_fake_ident.syntax(), offset)
-        {
+        if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 let parent = bind_pat.syntax().parent();
                 if parent.clone().and_then(ast::MatchArm::cast).is_some()
@@ -148,23 +184,24 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
-                self.record_lit_pat = find_node_at_offset(original_file.syntax(), self.offset);
+                self.record_lit_pat =
+                    self.sema.find_node_at_offset_with_macros(&original_file, self.offset);
             }
         }
     }
 
-    fn classify_name_ref(&mut self, original_file: &SourceFile, name_ref: ast::NameRef) {
+    fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
         self.name_ref_syntax =
-            find_node_at_offset(original_file.syntax(), name_ref.syntax().text_range().start());
+            find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
         if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
-            self.record_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
+            self.record_lit_syntax =
+                self.sema.find_node_at_offset_with_macros(&original_file, self.offset);
         }
 
         self.impl_def = self
-            .token
-            .parent()
-            .ancestors()
+            .sema
+            .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::ImplDef::cast);
 
@@ -183,12 +220,12 @@ impl<'a> CompletionContext<'a> {
             _ => (),
         }
 
-        self.use_item_syntax = self.token.parent().ancestors().find_map(ast::UseItem::cast);
+        self.use_item_syntax =
+            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::UseItem::cast);
 
         self.function_syntax = self
-            .token
-            .parent()
-            .ancestors()
+            .sema
+            .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
 
@@ -242,7 +279,7 @@ impl<'a> CompletionContext<'a> {
 
                 if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
                     if let Some(if_expr) =
-                        find_node_at_offset::<ast::IfExpr>(original_file.syntax(), off)
+                        self.sema.find_node_at_offset_with_macros::<ast::IfExpr>(original_file, off)
                     {
                         if if_expr.syntax().text_range().end()
                             < name_ref.syntax().text_range().start()
@@ -259,7 +296,7 @@ impl<'a> CompletionContext<'a> {
             self.dot_receiver = field_expr
                 .expr()
                 .map(|e| e.syntax().text_range())
-                .and_then(|r| find_node_with_range(original_file.syntax(), r));
+                .and_then(|r| find_node_with_range(original_file, r));
             self.dot_receiver_is_ambiguous_float_literal =
                 if let Some(ast::Expr::Literal(l)) = &self.dot_receiver {
                     match l.kind() {
@@ -275,7 +312,7 @@ impl<'a> CompletionContext<'a> {
             self.dot_receiver = method_call_expr
                 .expr()
                 .map(|e| e.syntax().text_range())
-                .and_then(|r| find_node_with_range(original_file.syntax(), r));
+                .and_then(|r| find_node_with_range(original_file, r));
             self.is_call = true;
         }
     }

@@ -157,6 +157,13 @@ impl HirFileId {
             }
         }
     }
+
+    pub fn macro_file(self) -> Option<MacroFile> {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => None,
+            HirFileIdRepr::MacroFile(m) => Some(m),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -296,7 +303,7 @@ pub struct ExpansionInfo {
     exp_map: Arc<mbe::TokenMap>,
 }
 
-pub use mbe::Origin;
+pub use mbe::{syntax_node_to_token_tree, Origin};
 use ra_parser::FragmentKind;
 
 impl ExpansionInfo {

@@ -6,13 +6,14 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    TraitId,
+    AsMacroCall, TraitId,
 };
 use hir_expand::ExpansionInfo;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::skip_trivia_token, ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    algo::{self, skip_trivia_token},
+    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -70,6 +71,37 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         Some(node)
     }
 
+    pub fn expand_hypothetical(
+        &self,
+        actual_macro_call: &ast::MacroCall,
+        hypothetical_call: &ast::MacroCall,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        let macro_call =
+            self.find_file(actual_macro_call.syntax().clone()).with_value(actual_macro_call);
+        let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
+        let macro_call_id = macro_call
+            .as_call_id(self.db, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
+        let macro_file = macro_call_id.as_file().macro_file().unwrap();
+        let (tt, tmap_1) =
+            hir_expand::syntax_node_to_token_tree(hypothetical_call.token_tree().unwrap().syntax())
+                .unwrap();
+        let range = token_to_map
+            .text_range()
+            .checked_sub(hypothetical_call.token_tree().unwrap().syntax().text_range().start())?;
+        let token_id = tmap_1.token_by_range(range)?;
+        let macro_def = hir_expand::db::expander(self.db, macro_call_id)?;
+        let (node, tmap_2) = hir_expand::db::parse_macro_with_arg(
+            self.db,
+            macro_file,
+            Some(std::sync::Arc::new((tt, tmap_1))),
+        )?;
+        let token_id = macro_def.0.map_id_down(token_id);
+        let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
+        let token = algo::find_covering_element(&node.syntax_node(), range).into_token()?;
+        Some((node.syntax_node(), token))
+    }
+
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         let parent = token.parent();
         let parent = self.find_file(parent);
@@ -102,6 +134,25 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         let node = self.find_file(node);
         node.ancestors_with_macros(self.db).map(|it| it.value)
+    }
+
+    pub fn ancestors_at_offset_with_macros(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+        use itertools::Itertools;
+        node.token_at_offset(offset)
+            .map(|token| self.ancestors_with_macros(token.parent()))
+            .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
+    }
+
+    pub fn find_node_at_offset_with_macros<N: AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> Option<N> {
+        self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {

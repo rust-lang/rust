@@ -584,4 +584,102 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn works_in_simple_macro_1() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.x<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 157),
+                delete: [156; 157),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_recursive() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.x<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 157),
+                delete: [156; 157),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_2() {
+        // this doesn't work yet because the macro doesn't expand without the token -- maybe it can be fixed with better recovery
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.<|>)
+                }
+                ",
+            ),
+            @r###"[]"###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_recursive_1() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(m!(m!(a.x<|>)))
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [162; 163),
+                delete: [162; 163),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
 }

@@ -130,15 +130,42 @@ pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
+    macro_expand_with_arg(db, id, None)
+}
+
+// TODO hack
+pub fn expander(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_id) => {
+            // TODO
+            unimplemented!()
+        }
+    };
+
+    let loc = db.lookup_intern_macro(lazy_id);
+    let macro_rules = db.macro_def(loc.def)?;
+    Some(macro_rules)
+}
+
+pub(crate) fn macro_expand_with_arg(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
+) -> Result<Arc<tt::Subtree>, String> {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(id) => {
+            // TODO
             return Ok(db.lookup_intern_eager_expansion(id).subtree);
         }
     };
 
     let loc = db.lookup_intern_macro(lazy_id);
-    let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
+    let macro_arg = arg.or_else(|| db.macro_arg(id)).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
     let tt = macro_rules.0.expand(db, lazy_id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
@@ -163,11 +190,23 @@ pub(crate) fn parse_macro(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
+    parse_macro_with_arg(db, macro_file, None)
+}
+
+pub fn parse_macro_with_arg(
+    db: &dyn AstDatabase,
+    macro_file: MacroFile,
+    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
+) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
     let _p = profile("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
-    let tt = db
-        .macro_expand(macro_call_id)
+    let expansion = if let Some(arg) = arg {
+        macro_expand_with_arg(db, macro_call_id, Some(arg))
+    } else {
+        db.macro_expand(macro_call_id)
+    };
+    let tt = expansion
         .map_err(|err| {
             // Note:
             // The final goal we would like to make all parse_macro success,
@@ -185,15 +224,13 @@ pub(crate) fn parse_macro(
                     .collect::<Vec<_>>()
                     .join("\n");
 
-                    log::warn!(
+                    eprintln!(
                         "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",
-                        err,
-                        node.value,
-                        parents
+                        err, node.value, parents
                     );
                 }
                 _ => {
-                    log::warn!("fail on macro_parse: (reason: {})", err);
+                    eprintln!("fail on macro_parse: (reason: {})", err);
                 }
             }
         })
