@@ -40,6 +40,7 @@ struct TokenTreesReader<'a> {
     /// Used only for error recovery when arriving to EOF with mismatched braces.
     matching_delim_spans: Vec<(token::DelimToken, Span, Span)>,
     last_unclosed_found_span: Option<Span>,
+    /// Collect empty block spans that might have been auto-inserted by editors.
     last_delim_empty_block_spans: FxHashMap<token::DelimToken, Span>,
 }
 
@@ -138,7 +139,11 @@ impl<'a> TokenTreesReader<'a> {
 
                         if tts.is_empty() {
                             let empty_block_span = open_brace_span.to(close_brace_span);
-                            self.last_delim_empty_block_spans.insert(delim, empty_block_span);
+                            if !sm.is_multiline(empty_block_span) {
+                                // Only track if the block is in the form of `{}`, otherwise it is
+                                // likely that it was written on purpose.
+                                self.last_delim_empty_block_spans.insert(delim, empty_block_span);
+                            }
                         }
 
                         if self.open_braces.is_empty() {
