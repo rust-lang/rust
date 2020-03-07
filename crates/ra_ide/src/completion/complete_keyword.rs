@@ -79,6 +79,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 }
 
 fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
+    // FIXME move this to CompletionContext and make it handle macros
     for node in leaf.parent().ancestors() {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;

@@ -87,4 +87,32 @@ mod tests {
         ]
         "###);
     }
+
+    #[test]
+    fn test_record_pattern_field_in_simple_macro() {
+        let completions = complete(
+            r"
+            macro_rules! m { ($e:expr) => { $e } }
+            struct S { foo: u32 }
+
+            fn process(f: S) {
+                m!(match f {
+                    S { f<|>: 92 } => (),
+                })
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo",
+                source_range: [171; 172),
+                delete: [171; 172),
+                insert: "foo",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+    }
 }

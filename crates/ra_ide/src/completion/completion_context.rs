@@ -185,7 +185,7 @@ impl<'a> CompletionContext<'a> {
             }
             if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
                 self.record_lit_pat =
-                    self.sema.find_node_at_offset_with_macros(&original_file, self.offset);
+                    self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }
         }
     }
