@@ -236,7 +236,8 @@ where
                 return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
             }
 
-            let cached = tcx.try_get_cached::<Q, _, _, _>(
+            let cached = tcx.try_get_cached(
+                Q::query_state(tcx),
                 (*key).clone(),
                 |value, index| (value.clone(), index),
                 |_, _| panic!("value must be in cache after waiting"),
@@ -460,23 +461,22 @@ impl<'tcx> TyCtxt<'tcx> {
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
     #[inline(always)]
-    fn try_get_cached<Q, R, OnHit, OnMiss>(
+    fn try_get_cached<K, V, C, R, OnHit, OnMiss>(
         self,
-        key: Q::Key,
+        state: &'tcx QueryStateImpl<'tcx, K, V, C>,
+        key: K,
         // `on_hit` can be called while holding a lock to the query cache
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        Q: QueryDescription<'tcx> + 'tcx,
-        OnHit: FnOnce(&Q::Value, DepNodeIndex) -> R,
-        OnMiss: FnOnce(Q::Key, QueryLookup<'tcx, Q>) -> R,
+        C: QueryCache<K, V>,
+        OnHit: FnOnce(&V, DepNodeIndex) -> R,
+        OnMiss: FnOnce(K, QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, C::Sharded>>) -> R,
     {
-        let state = Q::query_state(self);
-
         state.cache.lookup(
             state,
-            QueryStateShard::<Q>::get_cache,
+            QueryStateShardImpl::<K, C::Sharded>::get_cache,
             key,
             |value, index| {
                 if unlikely!(self.prof.enabled()) {
@@ -500,7 +500,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        self.try_get_cached::<Q, _, _, _>(
+        self.try_get_cached(
+            Q::query_state(self),
             key,
             |value, index| {
                 self.dep_graph.read_index(index);
@@ -770,7 +771,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
 
-        self.try_get_cached::<Q, _, _, _>(
+        self.try_get_cached(
+            Q::query_state(self),
             key,
             |_, _| {
                 // Cache hit, do nothing
