@@ -140,6 +140,18 @@ impl Layout {
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
+    /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer,
+    /// which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    pub const fn dangling(&self) -> NonNull<u8> {
+        // align is non-zero and a power of two
+        unsafe { NonNull::new_unchecked(self.align() as *mut u8) }
+    }
+
     /// Creates a layout describing the record that can hold a value
     /// of the same layout as `self`, but that also is aligned to
     /// alignment `align` (measured in bytes).
