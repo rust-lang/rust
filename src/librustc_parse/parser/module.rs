@@ -31,14 +31,10 @@ impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
         let lo = self.token.span;
-        let krate = Ok(ast::Crate {
-            attrs: self.parse_inner_attributes()?,
-            module: self.parse_mod_items(&token::Eof, lo)?,
-            span: lo.to(self.token.span),
-            // Filled in by proc_macro_harness::inject()
-            proc_macros: Vec::new(),
-        });
-        krate
+        let (module, attrs) = self.parse_mod(&token::Eof)?;
+        let span = lo.to(self.token.span);
+        let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
+        Ok(ast::Crate { attrs, module, span, proc_macros })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
@@ -60,15 +56,21 @@ impl<'a> Parser<'a> {
             self.push_directory(id, &attrs);
 
             self.expect(&token::OpenDelim(token::Brace))?;
-            let mod_inner_lo = self.token.span;
-            let inner_attrs = self.parse_inner_attributes()?;
-            let module = self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)?;
+            let module = self.parse_mod(&token::CloseDelim(token::Brace))?;
 
             self.directory = old_directory;
-            (module, inner_attrs)
+            module
         };
         attrs.append(&mut inner_attrs);
         Ok((id, ItemKind::Mod(module)))
+    }
+
+    /// Parses the contents of a module (inner attributes followed by module items).
+    fn parse_mod(&mut self, term: &TokenKind) -> PResult<'a, (Mod, Vec<Attribute>)> {
+        let lo = self.token.span;
+        let attrs = self.parse_inner_attributes()?;
+        let module = self.parse_mod_items(term, lo)?;
+        Ok((module, attrs))
     }
 
     /// Given a termination token, parses all of the items in a module.
@@ -268,12 +270,11 @@ impl<'a> Parser<'a> {
         let mut p0 =
             new_sub_parser_from_file(self.sess, &path, directory_ownership, Some(name), id_sp);
         p0.cfg_mods = self.cfg_mods;
-        let mod_inner_lo = p0.token.span;
-        let mod_attrs = p0.parse_inner_attributes()?;
-        let mut m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
-        m0.inline = false;
+        let mut module = p0.parse_mod(&token::Eof)?;
+        module.0.inline = false;
+
         self.sess.included_mod_stack.borrow_mut().pop();
-        Ok((m0, mod_attrs))
+        Ok(module)
     }
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
