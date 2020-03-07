@@ -67,8 +67,8 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
     let edit = {
-        let receiver_range =
-            ctx.dot_receiver.as_ref().expect("no receiver available").syntax().text_range();
+        let receiver_syntax = ctx.dot_receiver.as_ref().expect("no receiver available").syntax();
+        let receiver_range = ctx.sema.original_range(receiver_syntax).range;
         let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
         TextEdit::replace(delete_range, snippet.to_string())
     };
@@ -273,6 +273,67 @@ mod tests {
                 source_range: [52; 52),
                 delete: [49; 52),
                 insert: "&mut 42",
+                detail: "&mut expr",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro() {
+        assert_debug_snapshot!(
+            do_postfix_completion(
+                r#"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn main() {
+                    let bar: u8 = 12;
+                    m!(bar.b<|>)
+                }
+                "#,
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "Box::new(bar)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "dbg!(bar)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "!bar",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "&bar",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: [149; 150),
+                delete: [145; 150),
+                insert: "&mut bar",
                 detail: "&mut expr",
             },
         ]
