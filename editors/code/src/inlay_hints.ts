@@ -13,7 +13,7 @@ export function activateInlayHints(ctx: Ctx) {
             if (!ctx.config.displayInlayHints) {
                 return this.dispose();
             }
-            if (!this.updater) this.updater = HintsUpdater.create(ctx);
+            if (!this.updater) this.updater = new HintsUpdater(ctx);
         },
         dispose() {
             this.updater?.dispose();
@@ -67,25 +67,21 @@ class HintsUpdater implements Disposable {
     private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
     private readonly disposables: Disposable[] = [];
 
-    private constructor(private readonly ctx: Ctx) { }
-
-    static create(ctx: Ctx) {
-        const self = new HintsUpdater(ctx);
-
+    constructor(private readonly ctx: Ctx) {
         vscode.window.onDidChangeVisibleTextEditors(
-            self.onDidChangeVisibleTextEditors,
-            self,
-            self.disposables
+            this.onDidChangeVisibleTextEditors,
+            this,
+            this.disposables
         );
 
         vscode.workspace.onDidChangeTextDocument(
-            self.onDidChangeTextDocument,
-            self,
-            self.disposables
+            this.onDidChangeTextDocument,
+            this,
+            this.disposables
         );
 
         // Set up initial cache shape
-        ctx.visibleRustEditors.forEach(editor => self.sourceFiles.set(
+        ctx.visibleRustEditors.forEach(editor => this.sourceFiles.set(
             editor.document.uri.toString(),
             {
                 document: editor.document,
@@ -94,9 +90,7 @@ class HintsUpdater implements Disposable {
             }
         ));
 
-        self.syncCacheAndRenderHints();
-
-        return self;
+        this.syncCacheAndRenderHints();
     }
 
     dispose() {
