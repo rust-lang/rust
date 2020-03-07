@@ -1,156 +1,214 @@
+import * as lc from "vscode-languageclient";
 import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
-import { Ctx } from './ctx';
-import { log, sendRequestWithRetry, isRustDocument } from './util';
+import { Ctx, Disposable } from './ctx';
+import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor } from './util';
+
 
 export function activateInlayHints(ctx: Ctx) {
-    const hintsUpdater = new HintsUpdater(ctx);
-    vscode.window.onDidChangeVisibleTextEditors(
-        async _ => hintsUpdater.refresh(),
-        null,
-        ctx.subscriptions
-    );
-
-    vscode.workspace.onDidChangeTextDocument(
-        async event => {
-            if (event.contentChanges.length === 0) return;
-            if (!isRustDocument(event.document)) return;
-            await hintsUpdater.refresh();
+    const maybeUpdater = {
+        updater: null as null | HintsUpdater,
+        onConfigChange() {
+            if (!ctx.config.displayInlayHints) {
+                return this.dispose();
+            }
+            if (!this.updater) this.updater = new HintsUpdater(ctx);
         },
-        null,
-        ctx.subscriptions
-    );
+        dispose() {
+            this.updater?.dispose();
+            this.updater = null;
+        }
+    };
+
+    ctx.pushCleanup(maybeUpdater);
 
     vscode.workspace.onDidChangeConfiguration(
-        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints),
-        null,
-        ctx.subscriptions
+        maybeUpdater.onConfigChange, maybeUpdater, ctx.subscriptions
     );
 
-    ctx.pushCleanup({
-        dispose() {
-            hintsUpdater.clear();
-        }
-    });
-
-    // XXX: we don't await this, thus Promise rejections won't be handled, but
-    // this should never throw in fact...
-    void hintsUpdater.setEnabled(ctx.config.displayInlayHints);
+    maybeUpdater.onConfigChange();
 }
 
-const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
-    after: {
-        color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-        fontStyle: "normal",
-    },
-});
 
-const parameterHintDecorationType = vscode.window.createTextEditorDecorationType({
-    before: {
-        color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-        fontStyle: "normal",
-    },
-});
-
-class HintsUpdater {
-    private pending = new Map<string, vscode.CancellationTokenSource>();
-    private ctx: Ctx;
-    private enabled: boolean;
-
-    constructor(ctx: Ctx) {
-        this.ctx = ctx;
-        this.enabled = false;
-    }
-
-    async setEnabled(enabled: boolean): Promise<void> {
-        log.debug({ enabled, prev: this.enabled });
-
-        if (this.enabled === enabled) return;
-        this.enabled = enabled;
-
-        if (this.enabled) {
-            return await this.refresh();
-        } else {
-            return this.clear();
+const typeHints = {
+    decorationType: vscode.window.createTextEditorDecorationType({
+        after: {
+            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+            fontStyle: "normal",
         }
+    }),
+
+    toDecoration(hint: ra.InlayHint.TypeHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
+        return {
+            range: conv.asRange(hint.range),
+            renderOptions: { after: { contentText: `: ${hint.label}` } }
+        };
+    }
+};
+
+const paramHints = {
+    decorationType: vscode.window.createTextEditorDecorationType({
+        before: {
+            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+            fontStyle: "normal",
+        }
+    }),
+
+    toDecoration(hint: ra.InlayHint.ParamHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
+        return {
+            range: conv.asRange(hint.range),
+            renderOptions: { before: { contentText: `${hint.label}: ` } }
+        };
+    }
+};
+
+class HintsUpdater implements Disposable {
+    private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
+    private readonly disposables: Disposable[] = [];
+
+    constructor(private readonly ctx: Ctx) {
+        vscode.window.onDidChangeVisibleTextEditors(
+            this.onDidChangeVisibleTextEditors,
+            this,
+            this.disposables
+        );
+
+        vscode.workspace.onDidChangeTextDocument(
+            this.onDidChangeTextDocument,
+            this,
+            this.disposables
+        );
+
+        // Set up initial cache shape
+        ctx.visibleRustEditors.forEach(editor => this.sourceFiles.set(
+            editor.document.uri.toString(),
+            {
+                document: editor.document,
+                inlaysRequest: null,
+                cachedDecorations: null
+            }
+        ));
+
+        this.syncCacheAndRenderHints();
     }
 
-    clear() {
-        this.ctx.visibleRustEditors.forEach(it => {
-            this.setTypeDecorations(it, []);
-            this.setParameterDecorations(it, []);
+    dispose() {
+        this.sourceFiles.forEach(file => file.inlaysRequest?.cancel());
+        this.ctx.visibleRustEditors.forEach(editor => this.renderDecorations(editor, { param: [], type: [] }));
+        this.disposables.forEach(d => d.dispose());
+    }
+
+    onDidChangeTextDocument({ contentChanges, document }: vscode.TextDocumentChangeEvent) {
+        if (contentChanges.length === 0 || !isRustDocument(document)) return;
+        this.syncCacheAndRenderHints();
+    }
+
+    private syncCacheAndRenderHints() {
+        // FIXME: make inlayHints request pass an array of files?
+        this.sourceFiles.forEach((file, uri) => this.fetchHints(file).then(hints => {
+            if (!hints) return;
+
+            file.cachedDecorations = this.hintsToDecorations(hints);
+
+            for (const editor of this.ctx.visibleRustEditors) {
+                if (editor.document.uri.toString() === uri) {
+                    this.renderDecorations(editor, file.cachedDecorations);
+                }
+            }
+        }));
+    }
+
+    onDidChangeVisibleTextEditors() {
+        const newSourceFiles = new Map<string, RustSourceFile>();
+
+        // Rerendering all, even up-to-date editors for simplicity
+        this.ctx.visibleRustEditors.forEach(async editor => {
+            const uri = editor.document.uri.toString();
+            const file = this.sourceFiles.get(uri) ?? {
+                document: editor.document,
+                inlaysRequest: null,
+                cachedDecorations: null
+            };
+            newSourceFiles.set(uri, file);
+
+            // No text documents changed, so we may try to use the cache
+            if (!file.cachedDecorations) {
+                file.inlaysRequest?.cancel();
+
+                const hints = await this.fetchHints(file);
+                if (!hints) return;
+
+                file.cachedDecorations = this.hintsToDecorations(hints);
+            }
+
+            this.renderDecorations(editor, file.cachedDecorations);
         });
+
+        // Cancel requests for no longer visible (disposed) source files
+        this.sourceFiles.forEach((file, uri) => {
+            if (!newSourceFiles.has(uri)) file.inlaysRequest?.cancel();
+        });
+
+        this.sourceFiles = newSourceFiles;
     }
 
-    async refresh() {
-        if (!this.enabled) return;
-        await Promise.all(this.ctx.visibleRustEditors.map(it => this.refreshEditor(it)));
+    private renderDecorations(editor: RustEditor, decorations: InlaysDecorations) {
+        editor.setDecorations(typeHints.decorationType, decorations.type);
+        editor.setDecorations(paramHints.decorationType, decorations.param);
     }
 
-    private async refreshEditor(editor: vscode.TextEditor): Promise<void> {
-        const newHints = await this.queryHints(editor.document.uri.toString());
-        if (newHints == null) return;
+    private hintsToDecorations(hints: ra.InlayHint[]): InlaysDecorations {
+        const decorations: InlaysDecorations = { type: [], param: [] };
+        const conv = this.ctx.client.protocol2CodeConverter;
 
-        const newTypeDecorations = newHints
-            .filter(hint => hint.kind === ra.InlayKind.TypeHint)
-            .map(hint => ({
-                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
-                renderOptions: {
-                    after: {
-                        contentText: `: ${hint.label}`,
-                    },
-                },
-            }));
-        this.setTypeDecorations(editor, newTypeDecorations);
-
-        const newParameterDecorations = newHints
-            .filter(hint => hint.kind === ra.InlayKind.ParameterHint)
-            .map(hint => ({
-                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
-                renderOptions: {
-                    before: {
-                        contentText: `${hint.label}: `,
-                    },
-                },
-            }));
-        this.setParameterDecorations(editor, newParameterDecorations);
+        for (const hint of hints) {
+            switch (hint.kind) {
+                case ra.InlayHint.Kind.TypeHint: {
+                    decorations.type.push(typeHints.toDecoration(hint, conv));
+                    continue;
+                }
+                case ra.InlayHint.Kind.ParamHint: {
+                    decorations.param.push(paramHints.toDecoration(hint, conv));
+                    continue;
+                }
+            }
+        }
+        return decorations;
     }
 
-    private setTypeDecorations(
-        editor: vscode.TextEditor,
-        decorations: vscode.DecorationOptions[],
-    ) {
-        editor.setDecorations(
-            typeHintDecorationType,
-            this.enabled ? decorations : [],
-        );
-    }
-
-    private setParameterDecorations(
-        editor: vscode.TextEditor,
-        decorations: vscode.DecorationOptions[],
-    ) {
-        editor.setDecorations(
-            parameterHintDecorationType,
-            this.enabled ? decorations : [],
-        );
-    }
-
-    private async queryHints(documentUri: string): Promise<ra.InlayHint[] | null> {
-        this.pending.get(documentUri)?.cancel();
+    private async fetchHints(file: RustSourceFile): Promise<null | ra.InlayHint[]> {
+        file.inlaysRequest?.cancel();
 
         const tokenSource = new vscode.CancellationTokenSource();
-        this.pending.set(documentUri, tokenSource);
+        file.inlaysRequest = tokenSource;
 
-        const request = { textDocument: { uri: documentUri } };
+        const request = { textDocument: { uri: file.document.uri.toString() } };
 
         return sendRequestWithRetry(this.ctx.client, ra.inlayHints, request, tokenSource.token)
             .catch(_ => null)
             .finally(() => {
-                if (!tokenSource.token.isCancellationRequested) {
-                    this.pending.delete(documentUri);
+                if (file.inlaysRequest === tokenSource) {
+                    file.inlaysRequest = null;
                 }
             });
     }
+}
+
+interface InlaysDecorations {
+    type: vscode.DecorationOptions[];
+    param: vscode.DecorationOptions[];
+}
+
+interface RustSourceFile {
+    /*
+    * Source of the token to cancel in-flight inlay hints request if any.
+    */
+    inlaysRequest: null | vscode.CancellationTokenSource;
+    /**
+    * Last applied decorations.
+    */
+    cachedDecorations: null | InlaysDecorations;
+
+    document: RustDocument;
 }

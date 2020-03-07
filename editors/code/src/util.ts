@@ -1,7 +1,6 @@
 import * as lc from "vscode-languageclient";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { TextDocument } from "vscode";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
@@ -67,9 +66,16 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function isRustDocument(document: TextDocument) {
+export type RustDocument = vscode.TextDocument & { languageId: "rust" };
+export type RustEditor = vscode.TextEditor & { document: RustDocument; id: string };
+
+export function isRustDocument(document: vscode.TextDocument): document is RustDocument {
     return document.languageId === 'rust'
         // SCM diff views have the same URI as the on-disk document but not the same content
         && document.uri.scheme !== 'git'
         && document.uri.scheme !== 'svn';
+}
+
+export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
+    return isRustDocument(editor.document);
 }
