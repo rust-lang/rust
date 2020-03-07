@@ -542,11 +542,7 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
         let node = self.get_entry(hir_id).node;
-        if let Node::Crate(..) = node {
-            None
-        } else {
-            Some(node)
-        }
+        if let Node::Crate(..) = node { None } else { Some(node) }
     }
 
     /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
