@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        let (hi, ex) = match self.normalized_token.kind {
+        let (hi, ex) = match self.token.uninterpolate().kind {
             token::Not => self.parse_unary_expr(lo, UnOp::Not), // `!expr`
             token::Tilde => self.recover_tilde_expr(lo),        // `~expr`
             token::BinOp(token::Minus) => self.parse_unary_expr(lo, UnOp::Neg), // `-expr`
@@ -755,7 +755,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
-        match self.normalized_token.kind {
+        match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))

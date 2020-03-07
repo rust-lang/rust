@@ -14,8 +14,8 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::kw;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span, DUMMY_SP};
-use std::fmt;
-use std::mem;
+use std::borrow::Cow;
+use std::{fmt, mem};
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 #[derive(HashStable_Generic)]
@@ -454,6 +454,22 @@ impl Token {
                 _ => false,
             },
             _ => false,
+        }
+    }
+
+    // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
+    // into the regular identifier or lifetime token it refers to,
+    // otherwise returns the original token.
+    pub fn uninterpolate(&self) -> Cow<'_, Token> {
+        match &self.kind {
+            Interpolated(nt) => match **nt {
+                NtIdent(ident, is_raw) => {
+                    Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
+                }
+                NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
+                _ => Cow::Borrowed(self),
+            },
+            _ => Cow::Borrowed(self),
         }
     }
 

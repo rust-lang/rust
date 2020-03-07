@@ -1544,7 +1544,7 @@ impl<'a> Parser<'a> {
 
         let is_name_required = match self.token.kind {
             token::DotDotDot => false,
-            _ => req_name(self.normalized_token.span.edition()),
+            _ => req_name(self.token.uninterpolate().span.edition()),
         };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
@@ -1648,7 +1648,7 @@ impl<'a> Parser<'a> {
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.normalized_token.kind {
+        let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
             token::BinOp(token::And) => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
