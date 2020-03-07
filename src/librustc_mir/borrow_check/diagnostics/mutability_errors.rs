@@ -445,7 +445,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    /// Targetted error when encountering an `FnMut` closure where an `Fn` closure was expected.
+    /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {}", act));
 

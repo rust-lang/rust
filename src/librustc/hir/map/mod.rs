@@ -653,7 +653,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Wether `hir_id` corresponds to a `mod` or a crate.
+    /// Whether `hir_id` corresponds to a `mod` or a crate.
     pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
         match self.lookup(hir_id) {
             Some(Entry { node: Node::Item(Item { kind: ItemKind::Mod(_), .. }), .. })

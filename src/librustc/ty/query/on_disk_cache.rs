@@ -425,7 +425,7 @@ impl<'sess> OnDiskCache<'sess> {
 
 //- DECODING -------------------------------------------------------------------
 
-/// A decoder that can read fro the incr. comp. cache. It is similar to the one
+/// A decoder that can read from the incr. comp. cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
 struct CacheDecoder<'a, 'tcx> {

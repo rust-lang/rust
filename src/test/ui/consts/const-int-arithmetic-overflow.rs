@@ -8,7 +8,7 @@
 const fn add(x: i8, y: i8) -> i8 { x+y }
 const fn sub(x: i8, y: i8) -> i8 { x-y }
 const fn mul(x: i8, y: i8) -> i8 { x*y }
-// div and rem are always checked, so we cannot test their result in case of oveflow.
+// div and rem are always checked, so we cannot test their result in case of overflow.
 const fn neg(x: i8) -> i8 { -x }
 
 fn main() {

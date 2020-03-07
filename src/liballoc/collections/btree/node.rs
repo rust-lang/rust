@@ -306,7 +306,7 @@ impl<K, V> Root<K, V> {
 ///   `NodeRef` could be pointing to either type of node.
 ///   Note that in case of a leaf node, this might still be the shared root!
 ///   Only turn this into a `LeafNode` reference if you know it is not the shared root!
-///   Shared references must be dereferencable *for the entire size of their pointee*,
+///   Shared references must be dereferenceable *for the entire size of their pointee*,
 ///   so '&LeafNode` or `&InternalNode` pointing to the shared root is undefined behavior.
 ///   Turning this into a `NodeHeader` reference is always safe.
 pub struct NodeRef<BorrowType, K, V, Type> {

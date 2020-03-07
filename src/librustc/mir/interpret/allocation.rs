@@ -610,7 +610,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
         // the source and write it to the destination. Even if we optimized the memory accesses,
         // we'd be doing all of this `repeat` times.
-        // Therefor we precompute a compressed version of the undef mask of the source value and
+        // Therefore we precompute a compressed version of the undef mask of the source value and
         // then write it back `repeat` times without computing any more information from the source.
 
         // A precomputed cache for ranges of defined/undefined bits

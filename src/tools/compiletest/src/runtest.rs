@@ -1487,7 +1487,7 @@ impl<'test> TestCx<'test> {
                 // can turn it back on if needed.
                 if !self.is_rustdoc()
                     // Note that we use the local pass mode here as we don't want
-                    // to set unused to allow if we've overriden the pass mode
+                    // to set unused to allow if we've overridden the pass mode
                     // via command line flags.
                     && local_pm != Some(PassMode::Run)
                 {

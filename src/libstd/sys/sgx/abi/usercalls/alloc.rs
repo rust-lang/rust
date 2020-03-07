@@ -151,7 +151,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
 /// It is also possible to obtain a mutable reference `&mut UserRef<T>`. Unlike
 /// regular mutable references, these are not exclusive. Userspace may always
 /// write to the backing memory at any time, so it can't be assumed that there
-/// the pointed-to memory is uniquely borrowed. The two different refence types
+/// the pointed-to memory is uniquely borrowed. The two different reference types
 /// are used solely to indicate intent: a mutable reference is for writing to
 /// user memory, an immutable reference for reading from user memory.
 #[unstable(feature = "sgx_platform", issue = "56975")]

@@ -292,7 +292,7 @@ error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:80:32
    |
 LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] let _ = 0; }
-   |                        ------- ^^^^^^^^ not permitted following an outer attibute
+   |                        ------- ^^^^^^^^ not permitted following an outer attribute
    |                        |
    |                        previous outer attribute
    |
@@ -302,7 +302,7 @@ error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:82:32
    |
 LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] 0; }
-   |                        ------- ^^^^^^^^ not permitted following an outer attibute
+   |                        ------- ^^^^^^^^ not permitted following an outer attribute
    |                        |
    |                        previous outer attribute
    |
@@ -312,7 +312,7 @@ error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:84:32
    |
 LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!(); }
-   |                        ------- ^^^^^^^^ not permitted following an outer attibute
+   |                        ------- ^^^^^^^^ not permitted following an outer attribute
    |                        |
    |                        previous outer attribute
    |
@@ -322,7 +322,7 @@ error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:86:32
    |
 LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo![]; }
-   |                        ------- ^^^^^^^^ not permitted following an outer attibute
+   |                        ------- ^^^^^^^^ not permitted following an outer attribute
    |                        |
    |                        previous outer attribute
    |
@@ -332,7 +332,7 @@ error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:32
    |
 LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!{}; }
-   |                        ------- ^^^^^^^^ not permitted following an outer attibute
+   |                        ------- ^^^^^^^^ not permitted following an outer attribute
    |                        |
    |                        previous outer attribute
    |

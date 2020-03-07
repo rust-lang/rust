@@ -736,7 +736,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     }
 }
 
-// Actual LTO type we end up chosing based on multiple factors.
+// Actual LTO type we end up choosing based on multiple factors.
 enum ComputedLtoType {
     No,
     Thin,

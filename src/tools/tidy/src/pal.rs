@@ -41,7 +41,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libpanic_unwind",
     "src/libunwind",
     // black_box implementation is LLVM-version specific and it uses
-    // target_os to tell targets with different LLVM-versions appart
+    // target_os to tell targets with different LLVM-versions apart
     // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
     "src/libcore/hint.rs",
     "src/libstd/sys/", // Platform-specific code for std lives here.

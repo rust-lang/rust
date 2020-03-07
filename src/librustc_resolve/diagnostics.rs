@@ -1089,7 +1089,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         // Sort extern crate names in reverse order to get
-        // 1) some consistent ordering for emitted dignostics, and
+        // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.r.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();

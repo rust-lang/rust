@@ -731,7 +731,7 @@ where
         self.elaborator.patch().new_block(base_block)
     }
 
-    /// Ceates a pair of drop-loops of `place`, which drops its contents, even
+    /// Creates a pair of drop-loops of `place`, which drops its contents, even
     /// in the case of 1 panic. If `ptr_based`, creates a pointer loop,
     /// otherwise create an index loop.
     fn drop_loop_pair(

@@ -221,7 +221,7 @@ pub trait PrettyPrinter<'tcx>:
     /// This is typically the case for all non-`'_` regions.
     fn region_should_not_be_omitted(&self, region: ty::Region<'_>) -> bool;
 
-    // Defaults (should not be overriden):
+    // Defaults (should not be overridden):
 
     /// If possible, this returns a global path resolving to `def_id` that is visible
     /// from at least one local module, and returns `true`. If the crate defining `def_id` is
@@ -236,7 +236,7 @@ pub trait PrettyPrinter<'tcx>:
     /// post-process it into the valid and visible version that
     /// accounts for re-exports.
     ///
-    /// This method should only be callled by itself or
+    /// This method should only be called by itself or
     /// `try_print_visible_def_path`.
     ///
     /// `callers` is a chain of visible_parent's leading to `def_id`,
@@ -685,7 +685,7 @@ pub trait PrettyPrinter<'tcx>:
                 if self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
                 } else if let ty::ConstKind::Unevaluated(..) = sz.val {
-                    // do not try to evalute unevaluated constants. If we are const evaluating an
+                    // do not try to evaluate unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!(write("_"));

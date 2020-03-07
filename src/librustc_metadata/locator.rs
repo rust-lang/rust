@@ -711,7 +711,7 @@ impl<'a> CrateLocator<'a> {
         // See also #68149 which provides more detail on why emitting the
         // dependency on the rlib is a bad thing.
         //
-        // We currenty do not verify that these other sources are even in sync,
+        // We currently do not verify that these other sources are even in sync,
         // and this is arguably a bug (see #10786), but because reading metadata
         // is quite slow (especially from dylibs) we currently do not read it
         // from the other crate sources.

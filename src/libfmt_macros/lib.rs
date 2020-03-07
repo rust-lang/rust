@@ -176,7 +176,7 @@ pub struct Parser<'a> {
     skips: Vec<usize>,
     /// Span of the last opening brace seen, used for error reporting
     last_opening_brace: Option<InnerSpan>,
-    /// Wether the source string is comes from `println!` as opposed to `format!` or `print!`
+    /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
 }
 

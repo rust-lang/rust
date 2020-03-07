@@ -1053,7 +1053,7 @@ macro_rules! define_queries_inner {
 
         impl TyCtxt<$tcx> {
             /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-            /// are executed instead of just returing their results.
+            /// are executed instead of just returning their results.
             #[inline(always)]
             pub fn ensure(self) -> TyCtxtEnsure<$tcx> {
                 TyCtxtEnsure {

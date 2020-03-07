@@ -312,7 +312,7 @@
 //!
 //! ## Examples
 //!
-//! For a type like [`Vec<T>`], both possibilites (structural pinning or not) make sense.
+//! For a type like [`Vec<T>`], both possibilities (structural pinning or not) make sense.
 //! A [`Vec<T>`] with structural pinning could have `get_pin`/`get_pin_mut` methods to get
 //! pinned references to elements. However, it could *not* allow calling
 //! [`pop`][Vec::pop] on a pinned [`Vec<T>`] because that would move the (structurally pinned)
@@ -539,7 +539,7 @@ impl<P: Deref> Pin<P> {
     /// ```
     /// A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
     ///
-    /// Similarily, calling `Pin::new_unchecked` on an `Rc<T>` is unsafe because there could be
+    /// Similarly, calling `Pin::new_unchecked` on an `Rc<T>` is unsafe because there could be
     /// aliases to the same data that are not subject to the pinning restrictions:
     /// ```
     /// use std::rc::Rc;

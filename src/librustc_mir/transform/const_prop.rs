@@ -664,7 +664,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return;
         }
 
-        // FIXME> figure out what tho do when try_read_immediate fails
+        // FIXME> figure out what to do when try_read_immediate fails
         let imm = self.use_ecx(|this| this.ecx.try_read_immediate(value));
 
         if let Some(Ok(imm)) = imm {

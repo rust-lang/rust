@@ -4,7 +4,7 @@
 
 // rust-lang/rust#59535:
 //
-// This is analgous to cgu_invalidated_when_import_removed.rs, but it covers
+// This is analogous to cgu_invalidated_when_import_removed.rs, but it covers
 // the other direction:
 //
 // We start with a call-graph like `[A] -> [B -> D] [C]` (where the letters are

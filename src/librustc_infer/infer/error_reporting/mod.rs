@@ -1819,7 +1819,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                // Explicitely use the name instead of `sub`'s `Display` impl. The `Display` impl
+                // Explicitly use the name instead of `sub`'s `Display` impl. The `Display` impl
                 // for the bound is not suitable for suggestions when `-Zverbose` is set because it
                 // uses `Debug` output, so we handle it specially here so that suggestions are
                 // always correct.

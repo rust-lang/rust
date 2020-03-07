@@ -27,7 +27,7 @@ pub enum TestResult {
 unsafe impl Send for TestResult {}
 
 /// Creates a `TestResult` depending on the raw result of test execution
-/// and assotiated data.
+/// and associated data.
 pub fn calc_result<'a>(
     desc: &TestDesc,
     task_result: Result<(), &'a (dyn Any + 'static + Send)>,

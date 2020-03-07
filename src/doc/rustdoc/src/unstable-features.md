@@ -453,7 +453,7 @@ override `ignore`.
 
 ### `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
 
-Using thses options looks like this:
+Using these options looks like this:
 
 ```bash
 $ rustdoc src/lib.rs -Z unstable-options --runtool runner --runtool-arg --do-thing --runtool-arg --do-other-thing

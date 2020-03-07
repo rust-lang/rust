@@ -895,7 +895,7 @@ impl<'a> Parser<'a> {
         let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
-            // Likely inside a macro, can't provide meaninful suggestions.
+            // Likely inside a macro, can't provide meaningful suggestions.
             return self.expect(&token::Semi).map(drop);
         } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.

@@ -114,7 +114,7 @@ const INITIAL_BM: BindingMode = BindingMode::BindByValue(hir::Mutability::Not);
 enum AdjustMode {
     /// Peel off all immediate reference types.
     Peel,
-    /// Reset binding mode to the inital mode.
+    /// Reset binding mode to the initial mode.
     Reset,
     /// Pass on the input binding mode and expected type.
     Pass,
@@ -897,7 +897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
         let missing_parenthesis = match (&expected.kind, fields, had_err) {
-            // #67037: only do this if we could sucessfully type-check the expected type against
+            // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
             (ty::Adt(_, substs), [field], false) => {

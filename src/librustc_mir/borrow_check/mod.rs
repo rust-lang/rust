@@ -452,7 +452,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     /// for the activation of the borrow.
     reservation_warnings:
         FxHashMap<BorrowIndex, (Place<'tcx>, Span, Location, BorrowKind, BorrowData<'tcx>)>,
-    /// This field keeps track of move errors that are to be reported for given move indicies.
+    /// This field keeps track of move errors that are to be reported for given move indices.
     ///
     /// There are situations where many errors can be reported for a single move out (see #53807)
     /// and we want only the best of those errors.

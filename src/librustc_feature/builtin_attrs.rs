@@ -175,7 +175,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Stable attributes:
     // ==========================================================================
 
-    // Condtional compilation:
+    // Conditional compilation:
     ungated!(cfg, Normal, template!(List: "predicate")),
     ungated!(cfg_attr, Normal, template!(List: "predicate, attr1, attr2, ...")),
 

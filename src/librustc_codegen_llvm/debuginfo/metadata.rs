@@ -637,7 +637,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                 unsafe {
                     // The choice of type here is pretty arbitrary -
                     // anything reading the debuginfo for a recursive
-                    // type is going to see *somthing* weird - the only
+                    // type is going to see *something* weird - the only
                     // question is what exactly it will see.
                     let (size, align) = cx.size_and_align_of(t);
                     llvm::LLVMRustDIBuilderCreateBasicType(

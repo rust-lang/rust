@@ -285,7 +285,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     // Ordinarily, we can rely on the visit order of HIR intravisit
     // to correspond to the actual execution order of statements.
-    // However, there's a weird corner case with compund assignment
+    // However, there's a weird corner case with compound assignment
     // operators (e.g. `a += b`). The evaluation order depends on whether
     // or not the operator is overloaded (e.g. whether or not a trait
     // like AddAssign is implemented).
