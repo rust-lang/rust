@@ -1,7 +1,13 @@
 # Code generation
 
 Code generation or "codegen" is the part of the compiler that actually
-generates an executable binary. rustc uses LLVM for code generation.
+generates an executable binary. Usually, rustc uses LLVM for code generation;
+there is also support for [Cranelift]. The key is that rustc doesn't implement
+codegen itself. It's worth noting, though, that in the rust source code, many
+parts of the backend have `codegen` in their names (there are no hard
+boundaries).
+
+[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/master/cranelift
 
 > NOTE: If you are looking for hints on how to debug code generation bugs,
 > please see [this section of the debugging chapter][debugging].
@@ -10,28 +16,16 @@ generates an executable binary. rustc uses LLVM for code generation.
 
 ## What is LLVM?
 
-All of the preceding chapters of this guide have one thing in common: we never
-generated any executable machine code at all! With this chapter, all of that
-changes.
+[LLVM](https://llvm.org) is "a collection of modular and reusable compiler and
+toolchain technologies". In particular, the LLVM project contains a pluggable
+compiler backend (also called "LLVM"), which is used by many compiler projects,
+including the `clang` C compiler and our beloved `rustc`.
 
-Like most compilers, rustc is composed of a "frontend" and a "backend". The
-"frontend" is responsible for taking raw source code, checking it for
-correctness, and getting it into a format `X` from which we can generate
-executable machine code. The "backend" then takes that format `X` and produces
-(possibly optimized) executable machine code for some platform. All of the
-previous chapters deal with rustc's frontend.
-
-rustc's backend is [LLVM](https://llvm.org), "a collection of modular and
-reusable compiler and toolchain technologies". In particular, the LLVM project
-contains a pluggable compiler backend (also called "LLVM"), which is used by
-many compiler projects, including the `clang` C compiler and our beloved
-`rustc`.
-
-LLVM's "format `X`" is called LLVM IR. It is basically assembly code with
+LLVM takes input in the form of LLVM IR. It is basically assembly code with
 additional low-level types and annotations added. These annotations are helpful
 for doing optimizations on the LLVM IR and outputted machine code. The end
-result of all this is (at long last) something executable (e.g. an ELF object
-or wasm).
+result of all this is (at long last) something executable (e.g. an ELF object,
+an EXE, or wasm).
 
 There are a few benefits to using LLVM:
 
@@ -49,6 +43,34 @@ There are a few benefits to using LLVM:
 
 [spectre]: https://meltdownattack.com/
 
-## Generating LLVM IR
+## Running LLVM, linking, and metadata generation
 
-TODO
+Once LLVM IR for all of the functions and statics, etc is built, it is time to
+start running LLVM and its optimisation passes. LLVM IR is grouped into
+"modules". Multiple "modules" can be codegened at the same time to aid in
+multi-core utilisation. These "modules" are what we refer to as _codegen
+units_. These units were established way back during monomorphisation
+collection phase.
+
+Once LLVM produces objects from these modules, these objects are passed to the
+linker along with, optionally, the metadata object and an archive or an
+executable is produced.
+
+It is not necessarily the codegen phase described above that runs the
+optimisations. With certain kinds of LTO, the optimisation might happen at the
+linking time instead. It is also possible for some optimisations to happen
+before objects are passed on to the linker and some to happen during the
+linking.
+
+This all happens towards the very end of compilation. The code for this can be
+found in [`librustc_codegen_ssa::back`][ssaback] and
+[`librustc_codegen_llvm::back`][llvmback]. Sadly, this piece of code is not
+really well-separated into LLVM-dependent code; the [`rustc_codegen_ssa`][ssa]
+contains a fair amount of code specific to the LLVM backend.
+
+Once these components are done with their work you end up with a number of
+files in your filesystem corresponding to the outputs you have requested.
+
+[ssa]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
+[ssaback]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/back/index.html
+[llvmback]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/back/index.html
