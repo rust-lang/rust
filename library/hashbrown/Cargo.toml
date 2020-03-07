@@ -32,7 +32,7 @@ autocfg = "1"
 lazy_static = "1.2"
 rand = { version = "0.7.3", features = ["small_rng"] }
 rayon = "1.0"
-rustc-hash = "1.0"
+rustc-hash = "=1.0"
 serde_test = "1.0"
 doc-comment = "0.3.1"
 
