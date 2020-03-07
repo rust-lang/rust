@@ -4,9 +4,8 @@
 This chapter contains a few tips to debug the compiler. These tips aim to be
 useful no matter what you are working on.  Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
-Testing
-chapter](./incrcomp-debugging.html) or
-the [LLVM Debugging chapter](./codegen/debugging.md)).
+Testing chapter](./incrcomp-debugging.html) or the [LLVM Debugging
+chapter](./backend/debugging.md)).
 
 ## `-Z` flags
 

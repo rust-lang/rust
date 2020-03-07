@@ -101,13 +101,16 @@
     - [Constant evaluation](./const-eval.md)
         - [miri const evaluator](./miri.md)
     - [Parameter Environments](./param_env.md)
-    - [Code Generation](./codegen.md)
-        - [Updating LLVM](./codegen/updating-llvm.md)
-        - [Debugging LLVM](./codegen/debugging.md)
-        - [Backend Agnostic Codegen](./codegen/backend-agnostic.md)
-    - [Profile-guided Optimization](./profile-guided-optimization.md)
-    - [Sanitizers Support](./sanitizers.md)
-    - [Debugging Support in Rust Compiler](./debugging-support-in-rustc.md)
+    - [Compiler Backend](./backend/backend.md)
+        - [Monomorphization](./backend/monomorph.md)
+        - [Lowering MIR](./backend/lowering-mir.md)
+        - [Code Generation](./backend/codegen.md)
+            - [Updating LLVM](./backend/updating-llvm.md)
+            - [Debugging LLVM](./backend/debugging.md)
+            - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
+        - [Profile-guided Optimization](./profile-guided-optimization.md)
+        - [Sanitizers Support](./sanitizers.md)
+        - [Debugging Support in Rust Compiler](./debugging-support-in-rustc.md)
 
 ---
 

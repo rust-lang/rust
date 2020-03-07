@@ -23,7 +23,7 @@ it useful to look at the various codegen options listed under `-Chelp`
 and the internal options under `-Zhelp` -- there are a number that
 pertain to LLVM (just search for LLVM).
 
-[d]: ../codegen/debugging.md
+[d]: ../backend/debugging.md
 
 ## If you do narrow to an LLVM bug
 

@@ -6,7 +6,7 @@ generates an executable binary. rustc uses LLVM for code generation.
 > NOTE: If you are looking for hints on how to debug code generation bugs,
 > please see [this section of the debugging chapter][debugging].
 
-[debugging]: codegen/debugging.html
+[debugging]: ./debugging.md
 
 ## What is LLVM?
 

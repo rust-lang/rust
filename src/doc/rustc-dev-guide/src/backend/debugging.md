@@ -3,7 +3,7 @@
 > NOTE: If you are looking for info about code generation, please see [this
 > chapter][codegen] instead.
 
-[codegen]: ../codegen.md
+[codegen]: ./codegen.md
 
 This section is about debugging compiler bugs in code generation (e.g. why the
 compiler generated some piece of code or crashed in LLVM).  LLVM is a big
