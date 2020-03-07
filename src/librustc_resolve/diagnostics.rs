@@ -916,51 +916,46 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
-        let session = &self.session;
-        let mk_struct_span_error = |is_constructor| {
-            let mut descr = binding.res().descr().to_string();
-            if is_constructor {
-                descr += " constructor";
-            }
-            if binding.is_import() {
-                descr += " import";
-            }
-
-            let mut err =
-                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
-
-            err.span_label(ident.span, &format!("this {} is private", descr));
-            err.span_note(
-                session.source_map().def_span(binding.span),
-                &format!("the {} `{}` is defined here", descr, ident),
-            );
-
-            err
-        };
-
-        let mut err = if let NameBindingKind::Res(
+    /// If the binding refers to a tuple struct constructor with fields,
+    /// returns the span of its fields.
+    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+        if let NameBindingKind::Res(
             Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
             _,
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
             if let Some(fields) = self.field_names.get(&def_id) {
-                let mut err = mk_struct_span_error(true);
                 let first_field = fields.first().expect("empty field list in the map");
-                err.span_label(
-                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                    "a constructor is private if any of the fields is private",
-                );
-                err
-            } else {
-                mk_struct_span_error(false)
+                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
             }
-        } else {
-            mk_struct_span_error(false)
-        };
+        }
+        None
+    }
 
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+
+        let ctor_fields_span = self.ctor_fields_span(binding);
+        let mut descr = binding.res().descr().to_string();
+        if ctor_fields_span.is_some() {
+            descr += " constructor";
+        }
+        if binding.is_import() {
+            descr += " import";
+        }
+
+        let mut err =
+            struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
+        err.span_label(ident.span, &format!("this {} is private", descr));
+        if let Some(span) = ctor_fields_span {
+            err.span_label(span, "a constructor is private if any of the fields is private");
+        }
+
+        err.span_note(
+            self.session.source_map().def_span(binding.span),
+            &format!("the {} `{}` is defined here", descr, ident),
+        );
         err.emit();
     }
 }
