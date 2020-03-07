@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![allow(unused_variables, clippy::many_single_char_names, clippy::clone_double_ref)]
-#![warn(clippy::explicit_deref_method)]
+#![warn(clippy::explicit_deref_methods)]
 
 use std::ops::{Deref, DerefMut};
 
@@ -34,19 +34,24 @@ fn main() {
 
     let b: String = concat(&*a);
 
+    let b = &*just_return(a);
+
+    let b: String = concat(&*just_return(a));
+
+    let b: &str = &*a.deref();
+
+    let opt_a = Some(a.clone());
+    let b = &*opt_a.unwrap();
+
     // following should not require linting
 
-    let b = just_return(a).deref();
-
-    let b: String = concat(just_return(a).deref());
+    let b: &str = &*a.deref();
 
     let b: String = a.deref().clone();
 
     let b: usize = a.deref_mut().len();
 
     let b: &usize = &a.deref().len();
-
-    let b: &str = a.deref().deref();
 
     let b: &str = &*a;
 
@@ -58,9 +63,6 @@ fn main() {
         };
     }
     let b: &str = expr_deref!(a);
-
-    let opt_a = Some(a);
-    let b = opt_a.unwrap().deref();
 
     // The struct does not implement Deref trait
     #[derive(Copy, Clone)]

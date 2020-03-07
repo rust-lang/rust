@@ -4,7 +4,7 @@ error: explicit deref method call
 LL |     let b: &str = a.deref();
    |                   ^^^^^^^^^ help: try this: `&*a`
    |
-   = note: `-D clippy::explicit-deref-method` implied by `-D warnings`
+   = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
 
 error: explicit deref_mut method call
   --> $DIR/dereference.rs:23:23
@@ -42,5 +42,29 @@ error: explicit deref method call
 LL |     let b: String = concat(a.deref());
    |                            ^^^^^^^^^ help: try this: `&*a`
 
-error: aborting due to 7 previous errors
+error: explicit deref method call
+  --> $DIR/dereference.rs:37:13
+   |
+LL |     let b = just_return(a).deref();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*just_return(a)`
+
+error: explicit deref method call
+  --> $DIR/dereference.rs:39:28
+   |
+LL |     let b: String = concat(just_return(a).deref());
+   |                            ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*just_return(a)`
+
+error: explicit deref method call
+  --> $DIR/dereference.rs:41:19
+   |
+LL |     let b: &str = a.deref().deref();
+   |                   ^^^^^^^^^^^^^^^^^ help: try this: `&*a.deref()`
+
+error: explicit deref method call
+  --> $DIR/dereference.rs:44:13
+   |
+LL |     let b = opt_a.unwrap().deref();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*opt_a.unwrap()`
+
+error: aborting due to 11 previous errors
 
