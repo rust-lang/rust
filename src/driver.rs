@@ -67,8 +67,17 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .declare_function("main", Linkage::Import, &sig)
         .unwrap();
 
-    codegen_cgus(tcx, &mut jit_module, &mut None);
+    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let mono_items = cgus
+        .iter()
+        .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
+        .flatten()
+        .collect::<FxHashMap<_, (_, _)>>();
+
+    codegen_mono_items(tcx, &mut jit_module, None, mono_items);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module);
     crate::allocator::codegen(tcx, &mut jit_module);
+
     jit_module.finalize_definitions();
 
     tcx.sess.abort_if_errors();
@@ -196,6 +205,13 @@ fn run_aot(
             }
         };
 
+    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let mono_items = cgus
+        .iter()
+        .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
+        .flatten()
+        .collect::<FxHashMap<_, (_, _)>>();
+
     let mut module = new_module("some_file".to_string());
 
     let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
@@ -208,7 +224,8 @@ fn run_aot(
         None
     };
 
-    codegen_cgus(tcx, &mut module, &mut debug);
+    codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
 
     tcx.sess.abort_if_errors();
 
@@ -281,23 +298,6 @@ fn run_aot(
         linker_info: LinkerInfo::new(tcx),
         crate_info: CrateInfo::new(tcx),
     })
-}
-
-fn codegen_cgus<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    module: &mut Module<impl Backend + 'static>,
-    debug: &mut Option<DebugContext<'tcx>>,
-) {
-    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-    let mono_items = cgus
-        .iter()
-        .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
-        .flatten()
-        .collect::<FxHashMap<_, (_, _)>>();
-
-    codegen_mono_items(tcx, module, debug.as_mut(), mono_items);
-
-    crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 }
 
 fn codegen_mono_items<'tcx>(
