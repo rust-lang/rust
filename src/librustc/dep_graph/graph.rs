@@ -350,12 +350,7 @@ impl DepGraph {
     {
         if let Some(ref data) = self.data {
             let (result, task_deps) = ty::tls::with_context(|icx| {
-                let task_deps = Lock::new(TaskDeps {
-                    #[cfg(debug_assertions)]
-                    node: None,
-                    reads: SmallVec::new(),
-                    read_set: Default::default(),
-                });
+                let task_deps = Lock::new(TaskDeps::default());
 
                 let r = {
                     let icx = ty::tls::ImplicitCtxt { task_deps: Some(&task_deps), ..icx.clone() };
@@ -968,7 +963,7 @@ pub enum WorkProductFileKind {
 #[derive(Clone)]
 struct DepNodeData {
     node: DepNode,
-    edges: SmallVec<[DepNodeIndex; 8]>,
+    edges: EdgesVec,
     fingerprint: Fingerprint,
 }
 
@@ -1093,7 +1088,7 @@ impl CurrentDepGraph {
     fn alloc_node(
         &self,
         dep_node: DepNode,
-        edges: SmallVec<[DepNodeIndex; 8]>,
+        edges: EdgesVec,
         fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         debug_assert!(
@@ -1105,7 +1100,7 @@ impl CurrentDepGraph {
     fn intern_node(
         &self,
         dep_node: DepNode,
-        edges: SmallVec<[DepNodeIndex; 8]>,
+        edges: EdgesVec,
         fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         match self.node_to_node_index.get_shard_by_value(&dep_node).lock().entry(dep_node) {
@@ -1168,11 +1163,14 @@ impl DepGraphData {
     }
 }
 
+/// The capacity of the `reads` field `SmallVec`
 const TASK_DEPS_READS_CAP: usize = 8;
+type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
+#[derive(Default)]
 pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
-    reads: SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>,
+    reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
 }
 
