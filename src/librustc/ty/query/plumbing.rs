@@ -877,7 +877,7 @@ macro_rules! define_queries_inner {
                                 };
                                 let info = QueryInfo {
                                     span: job.span,
-                                    query: queries::$name::query(k.clone())
+                                    query: Query::$name(k.clone())
                                 };
                                 Some((id, QueryJobInfo { info,  job: job.clone() }))
                         } else {
@@ -964,11 +964,6 @@ macro_rules! define_queries_inner {
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
 
             type Cache = query_storage!([$($modifiers)*][$K, $V]);
-
-            #[inline(always)]
-            fn query(key: Self::Key) -> Query<'tcx> {
-                Query::$name(key)
-            }
 
             #[inline(always)]
             fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<$tcx, Self> {
