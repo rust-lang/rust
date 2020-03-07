@@ -115,6 +115,11 @@ impl<'a> CompletionContext<'a> {
             find_node_at_offset::<ast::MacroCall>(&original_file, offset),
             find_node_at_offset::<ast::MacroCall>(&hypothetical_file, offset),
         ) {
+            if actual_macro_call.path().as_ref().map(|s| s.syntax().text())
+                != macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text())
+            {
+                break;
+            }
             if let (Some(actual_expansion), Some(hypothetical_expansion)) = (
                 ctx.sema.expand(&actual_macro_call),
                 ctx.sema.expand_hypothetical(
@@ -123,11 +128,15 @@ impl<'a> CompletionContext<'a> {
                     fake_ident_token,
                 ),
             ) {
+                let new_offset = hypothetical_expansion.1.text_range().start();
+                if new_offset >= actual_expansion.text_range().end() {
+                    break;
+                }
                 // TODO check that the expansions 'look the same' up to the inserted token?
                 original_file = actual_expansion;
                 hypothetical_file = hypothetical_expansion.0;
                 fake_ident_token = hypothetical_expansion.1;
-                offset = fake_ident_token.text_range().start();
+                offset = new_offset;
             } else {
                 break;
             }
