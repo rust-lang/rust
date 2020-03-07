@@ -1,3 +1,6 @@
-type X = (?'a) +;
+fn main() {}
+
+type X<'a> = (?'a) +;
 //~^ ERROR `?` may only modify trait bounds, not lifetime bounds
-//~| ERROR expected trait bound, not lifetime bound
+//~| ERROR at least one trait is required for an object type
+//~| WARN trait objects without an explicit `dyn` are deprecated

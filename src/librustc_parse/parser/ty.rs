@@ -142,7 +142,7 @@ impl<'a> Parser<'a> {
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
-                self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
+                self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
@@ -203,21 +203,12 @@ impl<'a> Parser<'a> {
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                 TyKind::Path(None, path) if maybe_bounds => {
-                    self.parse_remaining_bounds(Vec::new(), path, lo, true)
+                    self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
                 }
-                TyKind::TraitObject(mut bounds, TraitObjectSyntax::None)
+                TyKind::TraitObject(bounds, TraitObjectSyntax::None)
                     if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
                 {
-                    let path = match bounds.remove(0) {
-                        GenericBound::Trait(pt, ..) => pt.trait_ref.path,
-                        GenericBound::Outlives(..) => {
-                            return Err(self.struct_span_err(
-                                ty.span,
-                                "expected trait bound, not lifetime bound",
-                            ));
-                        }
-                    };
-                    self.parse_remaining_bounds(Vec::new(), path, lo, true)
+                    self.parse_remaining_bounds(bounds, true)
                 }
                 // `(TYPE)`
                 _ => Ok(TyKind::Paren(P(ty))),
@@ -227,18 +218,26 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_remaining_bounds(
+    fn parse_remaining_bounds_path(
         &mut self,
         generic_params: Vec<GenericParam>,
         path: ast::Path,
         lo: Span,
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
-        assert_ne!(self.token, token::Question);
-
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
-        let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
-        if parse_plus {
+        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
+        self.parse_remaining_bounds(bounds, parse_plus)
+    }
+
+    /// Parse the remainder of a bare trait object type given an already parsed list.
+    fn parse_remaining_bounds(
+        &mut self,
+        mut bounds: GenericBounds,
+        plus: bool,
+    ) -> PResult<'a, TyKind> {
+        assert_ne!(self.token, token::Question);
+        if plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
             bounds.append(&mut self.parse_generic_bounds(Some(self.prev_token.span))?);
         }
@@ -358,7 +357,7 @@ impl<'a> Parser<'a> {
             }))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
-            self.parse_remaining_bounds(Vec::new(), path, lo, true)
+            self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
         } else {
             // Just a type path.
             Ok(TyKind::Path(None, path))
