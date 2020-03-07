@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
 import { Ctx, Disposable } from './ctx';
-import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor, log } from './util';
+import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor } from './util';
 
 
 export function activateInlayHints(ctx: Ctx) {
@@ -86,7 +86,8 @@ class HintsUpdater implements Disposable {
 
         // Set up initial cache shape
         ctx.visibleRustEditors.forEach(editor => self.sourceFiles.set(
-            editor.document.uri.toString(), {
+            editor.document.uri.toString(),
+            {
                 document: editor.document,
                 inlaysRequest: null,
                 cachedDecorations: null
@@ -104,9 +105,8 @@ class HintsUpdater implements Disposable {
         this.disposables.forEach(d => d.dispose());
     }
 
-    onDidChangeTextDocument({contentChanges, document}: vscode.TextDocumentChangeEvent) {
+    onDidChangeTextDocument({ contentChanges, document }: vscode.TextDocumentChangeEvent) {
         if (contentChanges.length === 0 || !isRustDocument(document)) return;
-        log.debug(`[inlays]: changed text doc!`);
         this.syncCacheAndRenderHints();
     }
 
@@ -126,7 +126,6 @@ class HintsUpdater implements Disposable {
     }
 
     onDidChangeVisibleTextEditors() {
-        log.debug(`[inlays]: changed visible text editors`);
         const newSourceFiles = new Map<string, RustSourceFile>();
 
         // Rerendering all, even up-to-date editors for simplicity
@@ -184,11 +183,7 @@ class HintsUpdater implements Disposable {
         return decorations;
     }
 
-    lastReqId = 0;
     private async fetchHints(file: RustSourceFile): Promise<null | ra.InlayHint[]> {
-        const reqId = ++this.lastReqId;
-
-        log.debug(`[inlays]: ${reqId} requesting`);
         file.inlaysRequest?.cancel();
 
         const tokenSource = new vscode.CancellationTokenSource();
@@ -197,18 +192,12 @@ class HintsUpdater implements Disposable {
         const request = { textDocument: { uri: file.document.uri.toString() } };
 
         return sendRequestWithRetry(this.ctx.client, ra.inlayHints, request, tokenSource.token)
-            .catch(_ => {
-                log.debug(`[inlays]: ${reqId} err`);
-                return null;
-            })
+            .catch(_ => null)
             .finally(() => {
                 if (file.inlaysRequest === tokenSource) {
                     file.inlaysRequest = null;
-                    log.debug(`[inlays]: ${reqId} got response!`);
-                } else {
-                    log.debug(`[inlays]: ${reqId} cancelled!`);
                 }
-            })
+            });
     }
 }
 
@@ -227,5 +216,5 @@ interface RustSourceFile {
     */
     cachedDecorations: null | InlaysDecorations;
 
-    document: RustDocument
+    document: RustDocument;
 }
