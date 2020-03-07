@@ -191,23 +191,16 @@ impl Lit {
     ///
     /// Keep this in sync with `Token::can_begin_literal_or_bool`.
     pub fn from_token(token: &Token) -> Result<Lit, LitError> {
-        let lit = match token.kind {
+        let lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {
                 token::Lit::new(token::Bool, name, None)
             }
             token::Literal(lit) => lit,
             token::Interpolated(ref nt) => {
-                match &**nt {
-                    token::NtIdent(ident, false) if ident.name.is_bool_lit() => {
-                        let lit = token::Lit::new(token::Bool, ident.name, None);
-                        return Lit::from_lit_token(lit, ident.span);
+                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
+                    if let ast::ExprKind::Lit(lit) = &expr.kind {
+                        return Ok(lit.clone());
                     }
-                    token::NtExpr(expr) | token::NtLiteral(expr) => {
-                        if let ast::ExprKind::Lit(lit) = &expr.kind {
-                            return Ok(lit.clone());
-                        }
-                    }
-                    _ => {}
                 }
                 return Err(LitError::NotLiteral);
             }

@@ -357,7 +357,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
-        match self.kind {
+        match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             OpenDelim(..)                     | // tuple, array or block
@@ -375,12 +375,10 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => match **nt {
-                NtIdent(ident, is_raw) => ident_can_begin_expr(ident.name, ident.span, is_raw),
                 NtLiteral(..) |
                 NtExpr(..)    |
                 NtBlock(..)   |
-                NtPath(..)    |
-                NtLifetime(..) => true,
+                NtPath(..) => true,
                 _ => false,
             },
             _ => false,
@@ -389,7 +387,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a type.
     pub fn can_begin_type(&self) -> bool {
-        match self.kind {
+        match self.uninterpolate().kind {
             Ident(name, is_raw)        =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
             OpenDelim(Paren)            | // tuple
@@ -403,8 +401,7 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match **nt {
-                NtIdent(ident, is_raw) => ident_can_begin_type(ident.name, ident.span, is_raw),
-                NtTy(..) | NtPath(..) | NtLifetime(..) => true,
+                NtTy(..) | NtPath(..) => true,
                 _ => false,
             },
             _ => false,
@@ -445,11 +442,10 @@ impl Token {
     ///
     /// Keep this in sync with `Lit::from_token`.
     pub fn can_begin_literal_or_bool(&self) -> bool {
-        match self.kind {
+        match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
-                NtIdent(ident, false) if ident.name.is_bool_lit() => true,
                 NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
                 _ => false,
             },
@@ -475,24 +471,18 @@ impl Token {
 
     /// Returns an identifier if this token is an identifier.
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
-        match self.kind {
-            Ident(name, is_raw) => Some((ast::Ident::new(name, self.span), is_raw)),
-            Interpolated(ref nt) => match **nt {
-                NtIdent(ident, is_raw) => Some((ident, is_raw)),
-                _ => None,
-            },
+        let token = self.uninterpolate();
+        match token.kind {
+            Ident(name, is_raw) => Some((ast::Ident::new(name, token.span), is_raw)),
             _ => None,
         }
     }
 
     /// Returns a lifetime identifier if this token is a lifetime.
     pub fn lifetime(&self) -> Option<ast::Ident> {
-        match self.kind {
-            Lifetime(name) => Some(ast::Ident::new(name, self.span)),
-            Interpolated(ref nt) => match **nt {
-                NtLifetime(ident) => Some(ident),
-                _ => None,
-            },
+        let token = self.uninterpolate();
+        match token.kind {
+            Lifetime(name) => Some(ast::Ident::new(name, token.span)),
             _ => None,
         }
     }

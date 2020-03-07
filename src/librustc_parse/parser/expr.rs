@@ -50,7 +50,6 @@ macro_rules! maybe_whole_expr {
                         AttrVec::new(),
                     ));
                 }
-                // N.B., `NtIdent(ident)` is normalized to `Ident` in `fn bump`.
                 _ => {}
             };
         }
@@ -482,7 +481,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
-        let token_cannot_continue_expr = |t: &Token| match t.kind {
+        let token_cannot_continue_expr = |t: &Token| match t.uninterpolate().kind {
             // These tokens can start an expression after `!`, but
             // can't continue an expression after an ident
             token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
