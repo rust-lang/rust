@@ -3,9 +3,9 @@
 #[cfg(target_os="linux")]
 fn get_environ() -> *const *const u8 {
   extern "C" {
-    static environ: *const *const u8;
+    static mut environ: *const *const u8;
   }
-  environ
+  unsafe { environ }
 }
 
 #[cfg(target_os="macos")]

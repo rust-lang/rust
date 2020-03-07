@@ -112,29 +112,23 @@ impl<'tcx> MemoryExtra<'tcx> {
     ) -> InterpResult<'tcx> {
         let target_os = this.tcx.sess.target.target.target_os.as_str();
         match target_os {
-            "linux" | "macos" => {
-                if target_os == "linux" {
-                    // "__cxa_thread_atexit_impl"
-                    // This should be all-zero, pointer-sized.
-                    let layout = this.layout_of(this.tcx.types.usize)?;
-                    let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-                    this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
-                    this.memory
-                        .extra
-                        .extern_statics
-                        .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
-                        .unwrap_none();
-                }
-                // "environ"
+            "linux" => {
+                // "__cxa_thread_atexit_impl"
+                // This should be all-zero, pointer-sized.
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
                 this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
                 this.memory
                     .extra
                     .extern_statics
-                    .insert(Symbol::intern("environ"), place.ptr.assert_ptr().alloc_id)
+                    .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
                     .unwrap_none();
-                this.memory.extra.environ = Some(place);
+                // "environ"
+                this.memory
+                    .extra
+                    .extern_statics
+                    .insert(Symbol::intern("environ"), this.memory.extra.environ.unwrap().ptr.assert_ptr().alloc_id)
+                    .unwrap_none();
             }
             _ => {} // No "extern statics" supported on this platform
         }

@@ -30,6 +30,11 @@ impl EnvVars {
                 }
             }
         }
+        // Initialize the `environ` static
+        let layout = ecx.layout_of(ecx.tcx.types.usize)?;
+        let place = ecx.allocate(layout, MiriMemoryKind::Machine.into());
+        ecx.write_scalar(Scalar::from_machine_usize(0, &*ecx.tcx), place.into())?;
+        ecx.memory.extra.environ = Some(place);
         ecx.update_environ()
     }
 }
@@ -156,12 +161,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Updates the `environ` static. It should not be called before
-    /// `MemoryExtra::init_extern_statics`.
+    /// `EnvVars::init`.
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Deallocate the old environ value.
         let old_vars_ptr = this.read_scalar(this.memory.extra.environ.unwrap().into())?.not_undef()?;
-        // The pointer itself can be null because `MemoryExtra::init_extern_statics` only
+        // The pointer itself can be null because `EnvVars::init` only
         // initializes the place for the static but not the static itself.
         if !this.is_null(old_vars_ptr)? {
             this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
