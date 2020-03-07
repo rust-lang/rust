@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     # We need to disable the existing toolchain to avoid updating rust-docs
     # which takes a long time. The fastest way to do this is to rename the
@@ -77,7 +77,7 @@ jobs:
     - run: 'echo "TAG: $TAG"'
 
     - name: Checkout repository
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - uses: actions/download-artifact@v1
       with:
