@@ -20,7 +20,7 @@ impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         excluded_env_vars: Vec<String>,
-    ) {
+    ) -> InterpResult<'tcx> {
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
@@ -30,7 +30,7 @@ impl EnvVars {
                 }
             }
         }
-        ecx.update_environ().unwrap();
+        ecx.update_environ()
     }
 }
 

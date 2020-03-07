@@ -85,7 +85,7 @@ pub struct MemoryExtra<'tcx> {
     /// (helps for debugging memory leaks).
     tracked_alloc_id: Option<AllocId>,
 
-    /// Place where the `environ` static is stored. Its value should not change after initialization.
+    /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
     pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
 }
 
