@@ -34,7 +34,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         let attributes = tcx.get_attrs(def_id);
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(body, tcx, param_env).unwrap();
-        let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
+        let mdpe = MoveDataParamEnv { move_data, param_env };
 
         let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
             .into_engine(tcx, body, def_id)

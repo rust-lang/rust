@@ -872,7 +872,7 @@ where
         debug!("drop_flag_reset_block({:?},{:?})", self, mode);
 
         let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
-        let block_start = Location { block: block, statement_index: 0 };
+        let block_start = Location { block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, mode);
         block
     }
@@ -921,7 +921,7 @@ where
 
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
-            args: args,
+            args,
             destination: Some((unit_temp, target)),
             cleanup: None,
             from_hir_call: false,

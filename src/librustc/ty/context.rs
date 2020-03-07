@@ -2256,22 +2256,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty: ty, mutbl: hir::Mutability::Mut })
+        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty: ty, mutbl: hir::Mutability::Not })
+        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty: ty, mutbl: hir::Mutability::Mut })
+        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty: ty, mutbl: hir::Mutability::Not })
+        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]
@@ -2393,7 +2393,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
-        self.mk_ty(Param(ParamTy { index, name: name }))
+        self.mk_ty(Param(ParamTy { index, name }))
     }
 
     #[inline]

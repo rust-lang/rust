@@ -619,7 +619,7 @@ impl<'tcx> FulfillmentError<'tcx> {
         obligation: PredicateObligation<'tcx>,
         code: FulfillmentErrorCode<'tcx>,
     ) -> FulfillmentError<'tcx> {
-        FulfillmentError { obligation: obligation, code: code, points_at_arg_span: false }
+        FulfillmentError { obligation, code, points_at_arg_span: false }
     }
 }
 

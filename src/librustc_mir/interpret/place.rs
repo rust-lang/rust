@@ -655,7 +655,7 @@ where
             }
             local => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.cur_frame(), local: local },
+                place: Place::Local { frame: self.cur_frame(), local },
                 layout: self.layout_of_local(self.frame(), local, None)?,
             },
         };

@@ -44,7 +44,7 @@ impl Module<'hir> {
         vis: &'hir hir::Visibility<'hir>,
     ) -> Module<'hir> {
         Module {
-            name: name,
+            name,
             id: hir::CRATE_HIR_ID,
             vis,
             where_outer: rustc_span::DUMMY_SP,

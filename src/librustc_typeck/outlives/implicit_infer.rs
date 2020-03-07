@@ -31,10 +31,10 @@ pub fn infer_predicates<'tcx>(
         predicates_added = false;
 
         let mut visitor = InferVisitor {
-            tcx: tcx,
+            tcx,
             global_inferred_outlives: &mut global_inferred_outlives,
             predicates_added: &mut predicates_added,
-            explicit_map: explicit_map,
+            explicit_map,
         };
 
         // Visit all the crates and infer predicates

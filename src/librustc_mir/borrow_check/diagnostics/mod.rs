@@ -175,7 +175,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 self.append_place_to_string(
-                    PlaceRef { local: local, projection: &[] },
+                    PlaceRef { local, projection: &[] },
                     buf,
                     autoderef,
                     &including_downcast,

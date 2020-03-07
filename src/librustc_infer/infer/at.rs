@@ -179,7 +179,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
-        Trace { at: self, trace: trace, a_is_expected }
+        Trace { at: self, trace, a_is_expected }
     }
 }
 

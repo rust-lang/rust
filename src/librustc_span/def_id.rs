@@ -130,7 +130,7 @@ impl DefId {
     /// Makes a local `DefId` from the given `DefIndex`.
     #[inline]
     pub fn local(index: DefIndex) -> DefId {
-        DefId { krate: LOCAL_CRATE, index: index }
+        DefId { krate: LOCAL_CRATE, index }
     }
 
     #[inline]

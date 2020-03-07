@@ -96,7 +96,7 @@ impl<T> Cursor<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: T) -> Cursor<T> {
-        Cursor { pos: 0, inner: inner }
+        Cursor { pos: 0, inner }
     }
 
     /// Consumes this cursor, returning the underlying value.

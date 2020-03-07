@@ -2102,7 +2102,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .is_ok()
             {
                 let def_id = module.def_id().unwrap();
-                found_traits.push(TraitCandidate { def_id: def_id, import_ids: smallvec![] });
+                found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
             }
         }
 
