@@ -12,7 +12,6 @@ use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType, DIVariable,
 };
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 
@@ -22,7 +21,7 @@ use crate::common::CodegenCx;
 use crate::value::Value;
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty};
+use rustc::ty::{self, Instance, ParamEnv, Ty};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -239,12 +238,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> Option<FunctionDebugContext<&'ll DIScope>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
-        }
-
-        if let InstanceDef::Item(def_id) = instance.def {
-            if self.tcx().codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-                return None;
-            }
         }
 
         let span = mir.span;
