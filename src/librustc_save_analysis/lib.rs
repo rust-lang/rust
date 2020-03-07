@@ -334,7 +334,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                                     Some(_) => ImplKind::Direct,
                                     None => ImplKind::Inherent,
                                 },
-                                span: span,
+                                span,
                                 value: String::new(),
                                 parent: None,
                                 children: items

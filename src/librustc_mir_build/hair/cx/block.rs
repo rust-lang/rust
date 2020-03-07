@@ -84,7 +84,7 @@ fn mirror_stmts<'a, 'tcx>(
 
                 result.push(StmtRef::Mirror(Box::new(Stmt {
                     kind: StmtKind::Let {
-                        remainder_scope: remainder_scope,
+                        remainder_scope,
                         init_scope: region::Scope {
                             id: hir_id.local_id,
                             data: region::ScopeData::Node,

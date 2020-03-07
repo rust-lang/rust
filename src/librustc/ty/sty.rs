@@ -1193,7 +1193,7 @@ pub struct ParamTy {
 
 impl<'tcx> ParamTy {
     pub fn new(index: u32, name: Symbol) -> ParamTy {
-        ParamTy { index, name: name }
+        ParamTy { index, name }
     }
 
     pub fn for_self() -> ParamTy {

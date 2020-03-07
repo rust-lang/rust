@@ -493,7 +493,7 @@ impl<'tcx> EncodeContext<'tcx> {
             edition: tcx.sess.edition(),
             has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-            has_default_lib_allocator: has_default_lib_allocator,
+            has_default_lib_allocator,
             plugin_registrar_fn: tcx.plugin_registrar_fn(LOCAL_CRATE).map(|id| id.index),
             proc_macro_decls_static: if is_proc_macro {
                 let id = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap();

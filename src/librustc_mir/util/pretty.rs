@@ -297,7 +297,7 @@ where
     writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
 
     // List of statements in the middle.
-    let mut current_location = Location { block: block, statement_index: 0 };
+    let mut current_location = Location { block, statement_index: 0 };
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);

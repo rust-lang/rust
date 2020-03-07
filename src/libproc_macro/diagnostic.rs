@@ -55,13 +55,15 @@ pub struct Diagnostic {
 }
 
 macro_rules! diagnostic_child_methods {
-    ($spanned:ident, $regular:ident, $level:expr) => (
+    ($spanned:ident, $regular:ident, $level:expr) => {
         /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `spans` and
         /// `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $spanned<S, T>(mut self, spans: S, message: T) -> Diagnostic
-            where S: MultiSpan, T: Into<String>
+        where
+            S: MultiSpan,
+            T: Into<String>,
         {
             self.children.push(Diagnostic::spanned(spans, $level, message));
             self
@@ -74,7 +76,7 @@ macro_rules! diagnostic_child_methods {
             self.children.push(Diagnostic::new($level, message));
             self
         }
-    )
+    };
 }
 
 /// Iterator over the children diagnostics of a `Diagnostic`.
@@ -96,7 +98,7 @@ impl Diagnostic {
     /// Creates a new diagnostic with the given `level` and `message`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
-        Diagnostic { level: level, message: message.into(), spans: vec![], children: vec![] }
+        Diagnostic { level, message: message.into(), spans: vec![], children: vec![] }
     }
 
     /// Creates a new diagnostic with the given `level` and `message` pointing to
@@ -107,12 +109,7 @@ impl Diagnostic {
         S: MultiSpan,
         T: Into<String>,
     {
-        Diagnostic {
-            level: level,
-            message: message.into(),
-            spans: spans.into_spans(),
-            children: vec![],
-        }
+        Diagnostic { level, message: message.into(), spans: spans.into_spans(), children: vec![] }
     }
 
     diagnostic_child_methods!(span_error, error, Level::Error);

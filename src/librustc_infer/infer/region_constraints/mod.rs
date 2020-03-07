@@ -766,7 +766,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         b: Region<'tcx>,
         origin: SubregionOrigin<'tcx>,
     ) -> Region<'tcx> {
-        let vars = TwoRegions { a: a, b: b };
+        let vars = TwoRegions { a, b };
         if let Some(&c) = self.combine_map(t).get(&vars) {
             return tcx.mk_region(ReVar(c));
         }

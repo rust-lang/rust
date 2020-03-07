@@ -474,7 +474,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 
     fn record_move(&mut self, place: &Place<'tcx>, path: MovePathIndex) {
-        let move_out = self.builder.data.moves.push(MoveOut { path: path, source: self.loc });
+        let move_out = self.builder.data.moves.push(MoveOut { path, source: self.loc });
         debug!(
             "gather_move({:?}, {:?}): adding move {:?} of {:?}",
             self.loc, place, move_out, path

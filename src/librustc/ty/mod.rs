@@ -370,7 +370,7 @@ pub trait DefIdTree: Copy {
 
 impl<'tcx> DefIdTree for TyCtxt<'tcx> {
     fn parent(self, id: DefId) -> Option<DefId> {
-        self.def_key(id).parent.map(|index| DefId { index: index, ..id })
+        self.def_key(id).parent.map(|index| DefId { index, ..id })
     }
 }
 
@@ -2227,7 +2227,7 @@ impl ReprOptions {
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
-        ReprOptions { int: size, align: max_align, pack: min_pack, flags: flags }
+        ReprOptions { int: size, align: max_align, pack: min_pack, flags }
     }
 
     #[inline]

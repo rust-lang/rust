@@ -258,7 +258,7 @@ pub enum Visibility {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name: name, items: Default::default(), size_estimate: None }
+        CodegenUnit { name, items: Default::default(), size_estimate: None }
     }
 
     pub fn name(&self) -> Symbol {

@@ -192,7 +192,7 @@ impl DefPath {
             }
         }
         data.reverse();
-        DefPath { data: data, krate: krate }
+        DefPath { data, krate }
     }
 
     /// Returns a string representation of the `DefPath` without

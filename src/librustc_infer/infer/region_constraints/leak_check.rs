@@ -85,7 +85,7 @@ impl<'tcx> TaintSet<'tcx> {
     fn new(directions: TaintDirections, initial_region: ty::Region<'tcx>) -> Self {
         let mut regions = FxHashSet::default();
         regions.insert(initial_region);
-        TaintSet { directions: directions, regions: regions }
+        TaintSet { directions, regions }
     }
 
     fn fixed_point(

@@ -506,7 +506,7 @@ fn locals_live_across_suspend_points(
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            let loc = Location { block: block, statement_index: data.statements.len() };
+            let loc = Location { block, statement_index: data.statements.len() };
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.

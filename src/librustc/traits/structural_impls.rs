@@ -532,9 +532,9 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 nested,
             }) => tcx.lift(&substs).map(|substs| {
                 traits::VtableGenerator(traits::VtableGeneratorData {
-                    generator_def_id: generator_def_id,
-                    substs: substs,
-                    nested: nested,
+                    generator_def_id,
+                    substs,
+                    nested,
                 })
             }),
             traits::VtableClosure(traits::VtableClosureData { closure_def_id, substs, nested }) => {
