@@ -2,48 +2,32 @@ import * as lc from "vscode-languageclient";
 import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
-import { Ctx } from './ctx';
-import { sendRequestWithRetry, assert } from './util';
+import { Ctx, Disposable } from './ctx';
+import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor, log } from './util';
+
 
 export function activateInlayHints(ctx: Ctx) {
-    const hintsUpdater = new HintsUpdater(ctx.client);
-
-    vscode.window.onDidChangeVisibleTextEditors(
-        () => hintsUpdater.refreshVisibleRustEditors(),
-        null,
-        ctx.subscriptions
-    );
-
-    vscode.workspace.onDidChangeTextDocument(
-        ({ contentChanges, document }) => {
-            if (contentChanges.length === 0) return;
-            if (!isRustTextDocument(document)) return;
-
-            hintsUpdater.forceRefreshVisibleRustEditors();
+    const maybeUpdater = {
+        updater: null as null | HintsUpdater,
+        onConfigChange() {
+            if (!ctx.config.displayInlayHints) {
+                return this.dispose();
+            }
+            if (!this.updater) this.updater = HintsUpdater.create(ctx);
         },
-        null,
-        ctx.subscriptions
-    );
+        dispose() {
+            this.updater?.dispose();
+            this.updater = null;
+        }
+    };
+
+    ctx.pushCleanup(maybeUpdater);
 
     vscode.workspace.onDidChangeConfiguration(
-        async _ => {
-            // FIXME: ctx.config may have not been refreshed at this point of time, i.e.
-            // it's on onDidChangeConfiguration() handler may've not executed yet
-            // (order of invokation is unspecified)
-            // To fix this we should expose an event emitter from our `Config` itself.
-            await hintsUpdater.setEnabled(ctx.config.displayInlayHints);
-        },
-        null,
-        ctx.subscriptions
+        maybeUpdater.onConfigChange, maybeUpdater, ctx.subscriptions
     );
 
-    ctx.pushCleanup({
-        dispose() {
-            hintsUpdater.clearHints();
-        }
-    });
-
-    hintsUpdater.setEnabled(ctx.config.displayInlayHints);
+    maybeUpdater.onConfigChange();
 }
 
 
@@ -79,239 +63,169 @@ const paramHints = {
     }
 };
 
-class HintsUpdater {
-    private sourceFiles = new RustSourceFiles();
-    private enabled = false;
+class HintsUpdater implements Disposable {
+    private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
+    private readonly disposables: Disposable[] = [];
 
-    constructor(readonly client: lc.LanguageClient) { }
+    private constructor(readonly ctx: Ctx) { }
 
-    setEnabled(enabled: boolean) {
-        if (this.enabled === enabled) return;
-        this.enabled = enabled;
+    static create(ctx: Ctx) {
+        const self = new HintsUpdater(ctx);
 
-        if (this.enabled) {
-            this.refreshVisibleRustEditors();
-        } else {
-            this.clearHints();
-        }
-    }
-
-    clearHints() {
-        for (const file of this.sourceFiles) {
-            file.inlaysRequest?.cancel();
-            file.renderHints([], this.client.protocol2CodeConverter);
-        }
-    }
-
-    forceRefreshVisibleRustEditors() {
-        if (!this.enabled) return;
-
-        for (const file of this.sourceFiles) {
-            void file.fetchAndRenderHints(this.client);
-        }
-    }
-
-    refreshVisibleRustEditors() {
-        if (!this.enabled) return;
-
-        const visibleSourceFiles = this.sourceFiles.drainEditors(
-            vscode.window.visibleTextEditors.filter(isRustTextEditor)
+        vscode.window.onDidChangeVisibleTextEditors(
+            self.onDidChangeVisibleTextEditors,
+            self,
+            self.disposables
         );
 
-        // Cancel requests for source files whose editors were disposed (leftovers after drain).
-        for (const { inlaysRequest } of this.sourceFiles) inlaysRequest?.cancel();
+        vscode.workspace.onDidChangeTextDocument(
+            self.onDidChangeTextDocument,
+            self,
+            self.disposables
+        );
 
-        this.sourceFiles = visibleSourceFiles;
-
-        for (const file of this.sourceFiles) {
-            if (!file.rerenderHints()) {
-                void file.fetchAndRenderHints(this.client);
+        // Set up initial cache shape
+        ctx.visibleRustEditors.forEach(editor => self.sourceFiles.set(
+            editor.document.uri.toString(), {
+                document: editor.document,
+                inlaysRequest: null,
+                cachedDecorations: null
             }
-        }
-    }
-}
+        ));
 
+        self.syncCacheAndRenderHints();
 
-/**
- * This class encapsulates a map of file uris to respective inlay hints
- * request cancellation token source (cts) and an array of editors.
- * E.g.
- * ```
- * {
- *    file1.rs -> (cts, (typeDecor, paramDecor), [editor1, editor2])
- *                  ^-- there is a cts to cancel the in-flight request
- *    file2.rs -> (cts, null, [editor3])
- *                       ^-- no decorations are applied to this source file yet
- *    file3.rs -> (null, (typeDecor, paramDecor), [editor4])
- * }                ^-- there is no inflight request
- * ```
- *
- * Invariants: each stored source file has at least 1 editor.
- */
-class RustSourceFiles {
-    private files = new Map<string, RustSourceFile>();
-
-    /**
-     * Removes `editors` from `this` source files and puts them into a returned
-     * source files object. cts and decorations are moved to the returned source files.
-     */
-    drainEditors(editors: RustTextEditor[]): RustSourceFiles {
-        const result = new RustSourceFiles;
-
-        for (const editor of editors) {
-            const oldFile = this.removeEditor(editor);
-            const newFile = result.addEditor(editor);
-
-            if (oldFile) newFile.stealCacheFrom(oldFile);
-        }
-
-        return result;
+        return self;
     }
 
-    /**
-     * Remove the editor and if it was the only editor for a source file,
-     * the source file is removed altogether.
-     *
-     * @returns A reference to the source file for this editor or
-     *          null if no such source file was not found.
-     */
-    private removeEditor(editor: RustTextEditor): null | RustSourceFile {
-        const uri = editor.document.uri.toString();
-
-        const file = this.files.get(uri);
-        if (!file) return null;
-
-        const editorIndex = file.editors.findIndex(suspect => areEditorsEqual(suspect, editor));
-
-        if (editorIndex >= 0) {
-            file.editors.splice(editorIndex, 1);
-
-            if (file.editors.length === 0) this.files.delete(uri);
-        }
-
-        return file;
+    dispose() {
+        this.sourceFiles.forEach(file => file.inlaysRequest?.cancel());
+        this.ctx.visibleRustEditors.forEach(editor => this.renderDecorations(editor, { param: [], type: [] }));
+        this.disposables.forEach(d => d.dispose());
     }
 
-    /**
-     * @returns A reference to an existing source file or newly created one for the editor.
-     */
-    private addEditor(editor: RustTextEditor): RustSourceFile {
-        const uri = editor.document.uri.toString();
-        const file = this.files.get(uri);
-
-        if (!file) {
-            const newFile = new RustSourceFile([editor]);
-            this.files.set(uri, newFile);
-            return newFile;
-        }
-
-        if (!file.editors.find(suspect => areEditorsEqual(suspect, editor))) {
-            file.editors.push(editor);
-        }
-        return file;
+    onDidChangeTextDocument({contentChanges, document}: vscode.TextDocumentChangeEvent) {
+        if (contentChanges.length === 0 || !isRustDocument(document)) return;
+        log.debug(`[inlays]: changed text doc!`);
+        this.syncCacheAndRenderHints();
     }
 
-    getSourceFile(uri: string): undefined | RustSourceFile {
-        return this.files.get(uri);
+    private syncCacheAndRenderHints() {
+        // FIXME: make inlayHints request pass an array of files?
+        this.sourceFiles.forEach((file, uri) => this.fetchHints(file).then(hints => {
+            if (!hints) return;
+
+            file.cachedDecorations = this.hintsToDecorations(hints);
+
+            for (const editor of this.ctx.visibleRustEditors) {
+                if (editor.document.uri.toString() === uri) {
+                    this.renderDecorations(editor, file.cachedDecorations);
+                }
+            }
+        }));
     }
 
-    [Symbol.iterator](): IterableIterator<RustSourceFile> {
-        return this.files.values();
-    }
-}
-class RustSourceFile {
-    constructor(
-        /**
-         * Editors for this source file (one text document may be opened in multiple editors).
-         * We keep this just an array, because most of the time we have 1 editor for 1 source file.
-         */
-        readonly editors: RustTextEditor[],
-        /**
-         * Source of the token to cancel in-flight inlay hints request if any.
-         */
-        public inlaysRequest: null | vscode.CancellationTokenSource = null,
+    onDidChangeVisibleTextEditors() {
+        log.debug(`[inlays]: changed visible text editors`);
+        const newSourceFiles = new Map<string, RustSourceFile>();
 
-        public decorations: null | {
-            type: vscode.DecorationOptions[];
-            param: vscode.DecorationOptions[];
-        } = null
-    ) { }
+        // Rerendering all, even up-to-date editors for simplicity
+        this.ctx.visibleRustEditors.forEach(async editor => {
+            const uri = editor.document.uri.toString();
+            const file = this.sourceFiles.get(uri) ?? {
+                document: editor.document,
+                inlaysRequest: null,
+                cachedDecorations: null
+            };
+            newSourceFiles.set(uri, file);
 
-    stealCacheFrom(other: RustSourceFile) {
-        if (other.inlaysRequest) this.inlaysRequest = other.inlaysRequest;
-        if (other.decorations) this.decorations = other.decorations;
+            // No text documents changed, so we may try to use the cache
+            if (!file.cachedDecorations) {
+                file.inlaysRequest?.cancel();
 
-        other.inlaysRequest = null;
-        other.decorations = null;
-    }
+                const hints = await this.fetchHints(file);
+                if (!hints) return;
 
-    rerenderHints(): boolean {
-        if (!this.decorations) return false;
+                file.cachedDecorations = this.hintsToDecorations(hints);
+            }
 
-        for (const editor of this.editors) {
-            editor.setDecorations(typeHints.decorationType, this.decorations.type);
-            editor.setDecorations(paramHints.decorationType, this.decorations.param);
-        }
-        return true;
+            this.renderDecorations(editor, file.cachedDecorations);
+        });
+
+        // Cancel requests for no longer visible (disposed) source files
+        this.sourceFiles.forEach((file, uri) => {
+            if (!newSourceFiles.has(uri)) file.inlaysRequest?.cancel();
+        });
+
+        this.sourceFiles = newSourceFiles;
     }
 
-    renderHints(hints: ra.InlayHint[], conv: lc.Protocol2CodeConverter) {
-        this.decorations = { type: [], param: [] };
+    private renderDecorations(editor: RustEditor, decorations: InlaysDecorations) {
+        editor.setDecorations(typeHints.decorationType, decorations.type);
+        editor.setDecorations(paramHints.decorationType, decorations.param);
+    }
+
+    private hintsToDecorations(hints: ra.InlayHint[]): InlaysDecorations {
+        const decorations: InlaysDecorations = { type: [], param: [] };
+        const conv = this.ctx.client.protocol2CodeConverter;
 
         for (const hint of hints) {
             switch (hint.kind) {
                 case ra.InlayHint.Kind.TypeHint: {
-                    this.decorations.type.push(typeHints.toDecoration(hint, conv));
+                    decorations.type.push(typeHints.toDecoration(hint, conv));
                     continue;
                 }
                 case ra.InlayHint.Kind.ParamHint: {
-                    this.decorations.param.push(paramHints.toDecoration(hint, conv));
+                    decorations.param.push(paramHints.toDecoration(hint, conv));
                     continue;
                 }
             }
         }
-        this.rerenderHints();
+        return decorations;
     }
 
-    async fetchAndRenderHints(client: lc.LanguageClient): Promise<void> {
-        this.inlaysRequest?.cancel();
+    lastReqId = 0;
+    private async fetchHints(file: RustSourceFile): Promise<null | ra.InlayHint[]> {
+        const reqId = ++this.lastReqId;
+
+        log.debug(`[inlays]: ${reqId} requesting`);
+        file.inlaysRequest?.cancel();
 
         const tokenSource = new vscode.CancellationTokenSource();
-        this.inlaysRequest = tokenSource;
+        file.inlaysRequest = tokenSource;
 
-        const request = { textDocument: { uri: this.editors[0].document.uri.toString() } };
+        const request = { textDocument: { uri: file.document.uri.toString() } };
 
-        try {
-            const hints = await sendRequestWithRetry(client, ra.inlayHints, request, tokenSource.token);
-            this.renderHints(hints, client.protocol2CodeConverter);
-        } catch {
-            /* ignore */
-        } finally {
-            if (this.inlaysRequest === tokenSource) {
-                this.inlaysRequest = null;
-            }
-        }
+        return sendRequestWithRetry(this.ctx.client, ra.inlayHints, request, tokenSource.token)
+            .catch(_ => {
+                log.debug(`[inlays]: ${reqId} err`);
+                return null;
+            })
+            .finally(() => {
+                if (file.inlaysRequest === tokenSource) {
+                    file.inlaysRequest = null;
+                    log.debug(`[inlays]: ${reqId} got response!`);
+                } else {
+                    log.debug(`[inlays]: ${reqId} cancelled!`);
+                }
+            })
     }
 }
 
-type RustTextDocument = vscode.TextDocument & { languageId: "rust" };
-type RustTextEditor = vscode.TextEditor & { document: RustTextDocument; id: string };
-
-function areEditorsEqual(a: RustTextEditor, b: RustTextEditor): boolean {
-    return a.id === b.id;
+interface InlaysDecorations {
+    type: vscode.DecorationOptions[];
+    param: vscode.DecorationOptions[];
 }
 
-function isRustTextEditor(suspect: vscode.TextEditor & { id?: unknown }): suspect is RustTextEditor {
-    // Dirty hack, we need to access private vscode editor id,
-    // see https://github.com/microsoft/vscode/issues/91788
-    assert(
-        typeof suspect.id === "string",
-        "Private text editor id is no longer available, please update the workaround!"
-    );
+interface RustSourceFile {
+    /*
+    * Source of the token to cancel in-flight inlay hints request if any.
+    */
+    inlaysRequest: null | vscode.CancellationTokenSource;
+    /**
+    * Last applied decorations.
+    */
+    cachedDecorations: null | InlaysDecorations;
 
-    return isRustTextDocument(suspect.document);
-}
-
-function isRustTextDocument(suspect: vscode.TextDocument): suspect is RustTextDocument {
-    return suspect.languageId === "rust";
+    document: RustDocument
 }
