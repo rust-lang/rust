@@ -842,55 +842,6 @@ macro_rules! define_queries_inner {
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
-        impl<$tcx> Queries<$tcx> {
-            pub fn new(
-                providers: IndexVec<CrateNum, Providers<$tcx>>,
-                fallback_extern_providers: Providers<$tcx>,
-                on_disk_cache: OnDiskCache<'tcx>,
-            ) -> Self {
-                Queries {
-                    providers,
-                    fallback_extern_providers: Box::new(fallback_extern_providers),
-                    on_disk_cache,
-                    $($name: Default::default()),*
-                }
-            }
-
-            pub fn try_collect_active_jobs(
-                &self
-            ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<'tcx>>> {
-                let mut jobs = FxHashMap::default();
-
-                $(
-                    // We use try_lock_shards here since we are called from the
-                    // deadlock handler, and this shouldn't be locked.
-                    let shards = self.$name.shards.try_lock_shards()?;
-                    let shards = shards.iter().enumerate();
-                    jobs.extend(shards.flat_map(|(shard_id, shard)| {
-                        shard.active.iter().filter_map(move |(k, v)| {
-                        if let QueryResult::Started(ref job) = *v {
-                                let id = QueryJobId {
-                                    job: job.id,
-                                    shard:  u16::try_from(shard_id).unwrap(),
-                                    kind:
-                                        <queries::$name<'tcx> as QueryAccessors<'tcx>>::DEP_KIND,
-                                };
-                                let info = QueryInfo {
-                                    span: job.span,
-                                    query: Query::$name(k.clone())
-                                };
-                                Some((id, QueryJobInfo { info,  job: job.clone() }))
-                        } else {
-                            None
-                        }
-                        })
-                    }));
-                )*
-
-                Some(jobs)
-            }
-        }
-
         #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
@@ -1119,6 +1070,55 @@ macro_rules! define_queries_struct {
             fallback_extern_providers: Box<Providers<$tcx>>,
 
             $($(#[$attr])*  $name: QueryState<$tcx, queries::$name<$tcx>>,)*
+        }
+
+        impl<$tcx> Queries<$tcx> {
+            pub fn new(
+                providers: IndexVec<CrateNum, Providers<$tcx>>,
+                fallback_extern_providers: Providers<$tcx>,
+                on_disk_cache: OnDiskCache<'tcx>,
+            ) -> Self {
+                Queries {
+                    providers,
+                    fallback_extern_providers: Box::new(fallback_extern_providers),
+                    on_disk_cache,
+                    $($name: Default::default()),*
+                }
+            }
+
+            pub fn try_collect_active_jobs(
+                &self
+            ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<'tcx>>> {
+                let mut jobs = FxHashMap::default();
+
+                $(
+                    // We use try_lock_shards here since we are called from the
+                    // deadlock handler, and this shouldn't be locked.
+                    let shards = self.$name.shards.try_lock_shards()?;
+                    let shards = shards.iter().enumerate();
+                    jobs.extend(shards.flat_map(|(shard_id, shard)| {
+                        shard.active.iter().filter_map(move |(k, v)| {
+                        if let QueryResult::Started(ref job) = *v {
+                                let id = QueryJobId {
+                                    job: job.id,
+                                    shard:  u16::try_from(shard_id).unwrap(),
+                                    kind:
+                                        <queries::$name<'tcx> as QueryAccessors<'tcx>>::DEP_KIND,
+                                };
+                                let info = QueryInfo {
+                                    span: job.span,
+                                    query: Query::$name(k.clone())
+                                };
+                                Some((id, QueryJobInfo { info,  job: job.clone() }))
+                        } else {
+                            None
+                        }
+                        })
+                    }));
+                )*
+
+                Some(jobs)
+            }
         }
     };
 }
