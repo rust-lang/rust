@@ -38,7 +38,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if ctx.module.map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
+            if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
                 // Skip private field. FIXME: If the definition location of the
                 // field is editable, we should show the completion
                 continue;
@@ -53,7 +53,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
 }
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
-    if let Some(krate) = ctx.module.map(|it| it.krate()) {
+    if let Some(krate) = ctx.krate {
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope().traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {

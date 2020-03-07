@@ -24,7 +24,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
-    pub(super) module: Option<hir::Module>,
+    pub(super) krate: Option<hir::Crate>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
@@ -73,8 +73,7 @@ impl<'a> CompletionContext<'a> {
         let fake_ident_token =
             file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
 
-        // TODO: shouldn't this take the position into account? (in case we're inside a mod {})
-        let module = sema.to_module_def(position.file_id);
+        let krate = sema.to_module_def(position.file_id).map(|m| m.krate());
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let token = sema.descend_into_macros(original_token.clone());
@@ -84,7 +83,7 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             offset: position.offset,
-            module,
+            krate,
             name_ref_syntax: None,
             function_syntax: None,
             use_item_syntax: None,
@@ -132,7 +131,6 @@ impl<'a> CompletionContext<'a> {
                 if new_offset >= actual_expansion.text_range().end() {
                     break;
                 }
-                // TODO check that the expansions 'look the same' up to the inserted token?
                 original_file = actual_expansion;
                 hypothetical_file = hypothetical_expansion.0;
                 fake_ident_token = hypothetical_expansion.1;

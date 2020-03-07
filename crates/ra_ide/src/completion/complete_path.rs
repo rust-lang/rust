@@ -47,7 +47,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             };
             // Iterate assoc types separately
             // FIXME: complete T::AssocType
-            let krate = ctx.module.map(|m| m.krate());
+            let krate = ctx.krate;
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope().traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
