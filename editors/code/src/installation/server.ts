@@ -3,12 +3,12 @@ import * as path from "path";
 import { promises as dns } from "dns";
 import { spawnSync } from "child_process";
 
-import { BinarySource } from "./interfaces";
+import { ArtifactSource } from "./interfaces";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 import { downloadArtifact } from "./download_artifact";
 import { log, assert } from "../util";
 
-export async function ensureServerBinary(source: null | BinarySource): Promise<null | string> {
+export async function ensureServerBinary(source: null | ArtifactSource): Promise<null | string> {
     if (!source) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
@@ -22,7 +22,7 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
     }
 
     switch (source.type) {
-        case BinarySource.Type.ExplicitPath: {
+        case ArtifactSource.Type.ExplicitPath: {
             if (isBinaryAvailable(source.path)) {
                 return source.path;
             }
@@ -34,11 +34,11 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
             );
             return null;
         }
-        case BinarySource.Type.GithubRelease: {
+        case ArtifactSource.Type.GithubRelease: {
             const prebuiltBinaryPath = path.join(source.dir, source.file);
 
             const installedVersion: null | string = getServerVersion(source.storage);
-            const requiredVersion: string = source.version;
+            const requiredVersion: string = source.tag;
 
             log.debug("Installed version:", installedVersion, "required:", requiredVersion);
 
@@ -46,12 +46,14 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
                 return prebuiltBinaryPath;
             }
 
-            const userResponse = await vscode.window.showInformationMessage(
-                `Language server version ${source.version} for rust-analyzer is not installed. ` +
-                "Do you want to download it now?",
-                "Download now", "Cancel"
-            );
-            if (userResponse !== "Download now") return null;
+            if (source.askBeforeDownload) {
+                const userResponse = await vscode.window.showInformationMessage(
+                    `Language server version ${source.tag} for rust-analyzer is not installed. ` +
+                    "Do you want to download it now?",
+                    "Download now", "Cancel"
+                );
+                if (userResponse !== "Download now") return null;
+            }
 
             if (!await downloadServer(source)) return null;
 
@@ -60,9 +62,9 @@ export async function ensureServerBinary(source: null | BinarySource): Promise<n
     }
 }
 
-async function downloadServer(source: BinarySource.GithubRelease): Promise<boolean> {
+async function downloadServer(source: ArtifactSource.GithubRelease): Promise<boolean> {
     try {
-        const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.version);
+        const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.tag);
 
         await downloadArtifact(releaseInfo, source.file, source.dir, "language server");
         await setServerVersion(source.storage, releaseInfo.releaseName);

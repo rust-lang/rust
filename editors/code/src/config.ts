@@ -1,6 +1,6 @@
 import * as os from "os";
 import * as vscode from 'vscode';
-import { BinarySource } from "./installation/interfaces";
+import { ArtifactSource } from "./installation/interfaces";
 import { log } from "./util";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
@@ -114,12 +114,12 @@ export class Config {
         }
     }
 
-    get serverSource(): null | BinarySource {
+    get serverSource(): null | ArtifactSource {
         const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("serverPath");
 
         if (serverPath) {
             return {
-                type: BinarySource.Type.ExplicitPath,
+                type: ArtifactSource.Type.ExplicitPath,
                 path: Config.replaceTildeWithHomeDir(serverPath)
             };
         }
@@ -129,11 +129,12 @@ export class Config {
         if (!prebuiltBinaryName) return null;
 
         return {
-            type: BinarySource.Type.GithubRelease,
+            type: ArtifactSource.Type.GithubRelease,
             dir: this.ctx.globalStoragePath,
             file: prebuiltBinaryName,
             storage: this.ctx.globalState,
-            version: Config.extensionVersion,
+            tag: Config.extensionVersion,
+            askBeforeDownload: !(this.cfg.get("alwaysDownloadServer") as boolean),
             repo: {
                 name: "rust-analyzer",
                 owner: "rust-analyzer",
