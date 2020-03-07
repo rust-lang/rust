@@ -618,9 +618,6 @@ fn trans_stmt<'tcx>(
 
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
-                _ if fx.tcx.symbol_name(fx.instance).name.as_str() == "__rust_probestack" => {
-                    crate::trap::trap_unimplemented(fx, "__rust_probestack is not supported");
-                }
                 _ => unimpl!("Inline assembly is not supported"),
             }
         }
