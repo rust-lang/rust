@@ -991,12 +991,30 @@ fn insert_panic_block<'tcx>(
     assert_block
 }
 
+fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+    // Returning from a function with an uninhabited return type is undefined behavior.
+    if body.return_ty().conservative_is_privately_uninhabited(tcx) {
+        return false;
+    }
+
+    // If there's no return terminator the function also won't return.
+    for block in body.basic_blocks() {
+        if let TerminatorKind::Return = block.terminator().kind {
+            return true;
+        }
+    }
+
+    // Otherwise we assume that the function may return.
+    false
+}
+
 fn create_generator_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
     body: &mut BodyAndCache<'tcx>,
+    can_return: bool,
 ) {
     // Poison the generator when it unwinds
     for block in body.basic_blocks_mut() {
@@ -1015,7 +1033,14 @@ fn create_generator_resume_function<'tcx>(
 
     // Panic when resumed on the returned or poisoned state
     let generator_kind = body.generator_kind.unwrap();
-    cases.insert(1, (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))));
+
+    if can_return {
+        cases.insert(
+            1,
+            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))),
+        );
+    }
+
     cases.insert(2, (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))));
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
@@ -1200,6 +1225,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let (remap, layout, storage_liveness) =
             compute_layout(tcx, source, &upvars, interior, movable, body);
 
+        let can_return = can_return(tcx, body);
+
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new generator state and returning
@@ -1243,6 +1270,6 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         body.generator_drop = Some(box drop_shim);
 
         // Create the Generator::resume function
-        create_generator_resume_function(tcx, transform, def_id, source, body);
+        create_generator_resume_function(tcx, transform, def_id, source, body, can_return);
     }
 }
