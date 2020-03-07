@@ -157,14 +157,14 @@ where
 /// Allocate the self-profiling query strings for a single query cache. This
 /// method is called from `alloc_self_profile_query_strings` which knows all
 /// the queries via macro magic.
-pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, K, V, C>(
+pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
-    query_state: &QueryStateImpl<'tcx, K, V, C>,
+    query_state: &QueryStateImpl<'tcx, C>,
     string_cache: &mut QueryKeyStringCache,
 ) where
-    K: Debug + Clone,
-    C: QueryCache<K, V>,
+    C: QueryCache,
+    C::Key: Debug + Clone,
 {
     tcx.prof.with_profiler(|profiler| {
         let event_id_builder = profiler.event_id_builder();

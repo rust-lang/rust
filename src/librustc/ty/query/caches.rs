@@ -6,12 +6,15 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use std::default::Default;
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 pub(crate) trait CacheSelector<K, V> {
-    type Cache: QueryCache<K, V>;
+    type Cache: QueryCache<Key = K, Value = V>;
 }
 
-pub(crate) trait QueryCache<K, V>: Default {
+pub(crate) trait QueryCache: Default {
+    type Key;
+    type Value;
     type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
@@ -20,25 +23,26 @@ pub(crate) trait QueryCache<K, V>: Default {
     /// to compute it.
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryStateImpl<'tcx, K, V, Self>,
+        state: &'tcx QueryStateImpl<'tcx, Self>,
         get_cache: GetCache,
-        key: K,
+        key: Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache:
-            for<'a> Fn(&'a mut QueryStateShard<'tcx, K, Self::Sharded>) -> &'a mut Self::Sharded,
-        OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'tcx, K, Self::Sharded>) -> R;
+        GetCache: for<'a> Fn(
+            &'a mut QueryStateShard<'tcx, Self::Key, Self::Sharded>,
+        ) -> &'a mut Self::Sharded,
+        OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
+        OnMiss: FnOnce(Self::Key, QueryLookup<'tcx, Self::Key, Self::Sharded>) -> R;
 
     fn complete(
         &self,
         tcx: TyCtxt<'tcx>,
         lock_sharded_storage: &mut Self::Sharded,
-        key: K,
-        value: V,
+        key: Self::Key,
+        value: Self::Value,
         index: DepNodeIndex,
     );
 
@@ -46,26 +50,35 @@ pub(crate) trait QueryCache<K, V>: Default {
         &self,
         shards: &Sharded<L>,
         get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+        f: impl for<'a> FnOnce(
+            Box<dyn Iterator<Item = (&'a Self::Key, &'a Self::Value, DepNodeIndex)> + 'a>,
+        ) -> R,
     ) -> R;
 }
 
 pub struct DefaultCacheSelector;
 
 impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
-    type Cache = DefaultCache;
+    type Cache = DefaultCache<K, V>;
 }
 
-#[derive(Default)]
-pub struct DefaultCache;
+pub struct DefaultCache<K, V>(PhantomData<(K, V)>);
 
-impl<K: Eq + Hash, V: Clone> QueryCache<K, V> for DefaultCache {
+impl<K, V> Default for DefaultCache<K, V> {
+    fn default() -> Self {
+        DefaultCache(PhantomData)
+    }
+}
+
+impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
+    type Key = K;
+    type Value = V;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryStateImpl<'tcx, K, V, Self>,
+        state: &'tcx QueryStateImpl<'tcx, Self>,
         get_cache: GetCache,
         key: K,
         on_hit: OnHit,

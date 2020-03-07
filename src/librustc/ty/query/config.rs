@@ -30,7 +30,7 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     const EVAL_ALWAYS: bool;
     const DEP_KIND: DepKind;
 
-    type Cache: QueryCache<Self::Key, Self::Value>;
+    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self>;
@@ -59,10 +59,7 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M
-where
-    <M as QueryAccessors<'tcx>>::Cache: QueryCache<DefId, <M as QueryConfig<'tcx>>::Value>,
-{
+impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt<'_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
