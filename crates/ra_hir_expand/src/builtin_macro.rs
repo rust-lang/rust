@@ -142,7 +142,10 @@ fn env_expand(
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
-    let expanded = quote! { "" };
+    // we cannot use an empty string here, because for
+    // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
+    // `include!("foo.rs"), which maybe infinite loop
+    let expanded = quote! { "__RA_UNIMPLEMENTATED__" };
 
     Ok(expanded)
 }
@@ -394,7 +397,7 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, "\"\"");
+        assert_eq!(expanded, "\"__RA_UNIMPLEMENTATED__\"");
     }
 
     #[test]

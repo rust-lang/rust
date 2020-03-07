@@ -484,6 +484,33 @@ fn bar() -> u32 {0}
 }
 
 #[test]
+fn infer_builtin_macros_include_concat_with_bad_env_should_failed() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs 
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+#[rustc_builtin_macro]
+macro_rules! concat {() => {}}
+
+#[rustc_builtin_macro]
+macro_rules! env {() => {}}
+
+include!(concat!(env!("OUT_DIR"), "/foo.rs"));
+
+fn main() {
+    bar()<|>;
+}
+
+//- /foo.rs
+fn bar() -> u32 {0}
+"#,
+    );
+    assert_eq!("{unknown}", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_builtin_macros_concat_with_lazy() {
     assert_snapshot!(
         infer(r#"
