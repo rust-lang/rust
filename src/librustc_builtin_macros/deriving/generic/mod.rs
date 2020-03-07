@@ -360,7 +360,7 @@ fn find_type_parameters(
             visit::walk_ty(self, ty)
         }
 
-        fn visit_mac(&mut self, mac: &ast::Mac) {
+        fn visit_mac(&mut self, mac: &ast::MacCall) {
             self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
         }
     }
