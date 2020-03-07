@@ -229,7 +229,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Implementing [`Into`] for conversions to external types in old versions of Rust
 ///
-/// Prior to Rust 1.40, if the destination type was not part of the current crate
+/// Prior to Rust 1.41, if the destination type was not part of the current crate
 /// then you couldn't implement [`From`] directly.
 /// For example, take this code:
 ///
