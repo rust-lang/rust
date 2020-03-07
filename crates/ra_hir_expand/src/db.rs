@@ -133,7 +133,6 @@ pub(crate) fn macro_expand(
     macro_expand_with_arg(db, id, None)
 }
 
-// TODO hack
 pub fn expander(
     db: &dyn AstDatabase,
     id: MacroCallId,
@@ -141,8 +140,7 @@ pub fn expander(
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(_id) => {
-            // TODO
-            unimplemented!()
+            return None;
         }
     };
 
@@ -159,8 +157,11 @@ pub(crate) fn macro_expand_with_arg(
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(id) => {
-            // TODO
-            return Ok(db.lookup_intern_eager_expansion(id).subtree);
+            if arg.is_some() {
+                return Err("hypothetical macro expansion not implemented for eager macro".to_owned());
+            } else {
+                return Ok(db.lookup_intern_eager_expansion(id).subtree);
+            }
         }
     };
 
