@@ -1514,13 +1514,16 @@ impl<'a> Parser<'a> {
         let thn = if self.eat_keyword(kw::Else) || !cond.returns() {
             self.error_missing_if_cond(lo, cond.span)
         } else {
+            let attrs = self.parse_outer_attributes()?; // For recovery.
             let not_block = self.token != token::OpenDelim(token::Brace);
-            self.parse_block().map_err(|mut err| {
+            let block = self.parse_block().map_err(|mut err| {
                 if not_block {
                     err.span_label(lo, "this `if` expression has a condition, but no block");
                 }
                 err
-            })?
+            })?;
+            self.error_on_if_block_attrs(lo, false, block.span, &attrs);
+            block
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els), attrs))
@@ -1562,12 +1565,40 @@ impl<'a> Parser<'a> {
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
-        if self.eat_keyword(kw::If) {
-            self.parse_if_expr(AttrVec::new())
+        let ctx_span = self.prev_token.span; // `else`
+        let attrs = self.parse_outer_attributes()?; // For recovery.
+        let expr = if self.eat_keyword(kw::If) {
+            self.parse_if_expr(AttrVec::new())?
         } else {
             let blk = self.parse_block()?;
-            Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
-        }
+            self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new())
+        };
+        self.error_on_if_block_attrs(ctx_span, true, expr.span, &attrs);
+        Ok(expr)
+    }
+
+    fn error_on_if_block_attrs(
+        &self,
+        ctx_span: Span,
+        is_ctx_else: bool,
+        branch_span: Span,
+        attrs: &[ast::Attribute],
+    ) {
+        let (span, last) = match attrs {
+            [] => return,
+            [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),
+        };
+        let ctx = if is_ctx_else { "else" } else { "if" };
+        self.struct_span_err(last, "outer attributes are not allowed on `if` and `else` branches")
+            .span_label(branch_span, "the attributes are attached to this branch")
+            .span_label(ctx_span, format!("the branch belongs to this `{}`", ctx))
+            .span_suggestion(
+                span,
+                "remove the attributes",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
