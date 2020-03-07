@@ -4,7 +4,7 @@ use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, TokenStream};
+use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
@@ -116,6 +116,31 @@ impl Annotatable {
             Annotatable::StructField(sf) => visitor.visit_struct_field(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
         }
+    }
+
+    crate fn into_tokens(self) -> TokenStream {
+        // `Annotatable` can be converted into tokens directly, but we
+        // are packing it into a nonterminal as a piece of AST to make
+        // the produced token stream look nicer in pretty-printed form.
+        let nt = match self {
+            Annotatable::Item(item) => token::NtItem(item),
+            Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
+                token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
+            }
+            Annotatable::ForeignItem(item) => {
+                token::NtItem(P(item.and_then(ast::ForeignItem::into_item)))
+            }
+            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+            Annotatable::Expr(expr) => token::NtExpr(expr),
+            Annotatable::Arm(..)
+            | Annotatable::Field(..)
+            | Annotatable::FieldPat(..)
+            | Annotatable::GenericParam(..)
+            | Annotatable::Param(..)
+            | Annotatable::StructField(..)
+            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
+        };
+        TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
