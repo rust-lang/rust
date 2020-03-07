@@ -45,14 +45,13 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let in_cfg = crate::config::process_configure_mod(self.sess, self.cfg_mods, attrs);
 
-        let id_span = self.token.span;
         let id = self.parse_ident()?;
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership } =
-                    self.submod_path(id, &attrs, id_span)?;
-                self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?
+                    self.submod_path(id, &attrs)?;
+                self.eval_src_mod(path, directory_ownership, id.to_string(), id.span)?
             } else {
                 (ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false }, Vec::new())
             }
@@ -99,7 +98,6 @@ impl<'a> Parser<'a> {
         &mut self,
         id: ast::Ident,
         outer_attrs: &[Attribute],
-        id_sp: Span,
     ) -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
             let directory_ownership = match path.file_name().and_then(|s| s.to_str()) {
@@ -125,10 +123,10 @@ impl<'a> Parser<'a> {
 
         match self.directory.ownership {
             DirectoryOwnership::Owned { .. } => {
-                paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
+                paths.result.map_err(|err| self.span_fatal_err(id.span, err))
             }
-            DirectoryOwnership::UnownedViaBlock => self.error_decl_mod_in_block(id_sp, paths),
-            DirectoryOwnership::UnownedViaMod => self.error_cannot_declare_mod_here(id_sp, paths),
+            DirectoryOwnership::UnownedViaBlock => self.error_decl_mod_in_block(id.span, paths),
+            DirectoryOwnership::UnownedViaMod => self.error_cannot_declare_mod_here(id.span, paths),
         }
     }
 
