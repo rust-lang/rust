@@ -56,7 +56,7 @@ use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
-use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
+use imports::{Import, ImportKind, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
 
@@ -456,8 +456,8 @@ pub struct ModuleData<'a> {
 
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
-    globs: RefCell<Vec<&'a ImportDirective<'a>>>,
+    glob_importers: RefCell<Vec<&'a Import<'a>>>,
+    globs: RefCell<Vec<&'a Import<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
@@ -584,7 +584,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res, /* is_macro_export */ bool),
     Module(Module<'a>),
-    Import { binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>, used: Cell<bool> },
+    Import { binding: &'a NameBinding<'a>, directive: &'a Import<'a>, used: Cell<bool> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -713,8 +713,7 @@ impl<'a> NameBinding<'a> {
     fn is_extern_crate(&self) -> bool {
         match self.kind {
             NameBindingKind::Import {
-                directive:
-                    &ImportDirective { subclass: ImportDirectiveSubclass::ExternCrate { .. }, .. },
+                directive: &Import { kind: ImportKind::ExternCrate { .. }, .. },
                 ..
             } => true,
             NameBindingKind::Module(&ModuleData {
@@ -839,10 +838,10 @@ pub struct Resolver<'a> {
     field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
 
     /// All imports known to succeed or fail.
-    determined_imports: Vec<&'a ImportDirective<'a>>,
+    determined_imports: Vec<&'a Import<'a>>,
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<&'a ImportDirective<'a>>,
+    indeterminate_imports: Vec<&'a Import<'a>>,
 
     /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
     /// We are resolving a last import segment during import validation.
@@ -947,7 +946,7 @@ pub struct Resolver<'a> {
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
 
-    potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
+    potentially_unused_imports: Vec<&'a Import<'a>>,
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
@@ -971,7 +970,7 @@ pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
-    import_directives: arena::TypedArena<ImportDirective<'a>>,
+    import_directives: arena::TypedArena<Import<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
     legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
     ast_paths: arena::TypedArena<ast::Path>,
@@ -991,10 +990,7 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
     }
-    fn alloc_import_directive(
-        &'a self,
-        import_directive: ImportDirective<'a>,
-    ) -> &'a ImportDirective<'_> {
+    fn alloc_import_directive(&'a self, import_directive: Import<'a>) -> &'a Import<'_> {
         self.import_directives.alloc(import_directive)
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
@@ -1431,7 +1427,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[inline]
-    fn add_to_glob_map(&mut self, directive: &ImportDirective<'_>, ident: Ident) {
+    fn add_to_glob_map(&mut self, directive: &Import<'_>, ident: Ident) {
         if directive.is_glob() {
             self.glob_map.entry(directive.id).or_default().insert(ident.name);
         }
@@ -2261,7 +2257,7 @@ impl<'a> Resolver<'a> {
             if let NameBindingKind::Import { directive: d, .. } = binding.kind {
                 // Careful: we still want to rewrite paths from
                 // renamed extern crates.
-                if let ImportDirectiveSubclass::ExternCrate { source: None, .. } = d.subclass {
+                if let ImportKind::ExternCrate { source: None, .. } = d.kind {
                     return;
                 }
             }
@@ -2639,7 +2635,7 @@ impl<'a> Resolver<'a> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         name: Name,
-        directive: &ImportDirective<'_>,
+        directive: &Import<'_>,
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
@@ -2649,11 +2645,11 @@ impl<'a> Resolver<'a> {
         };
 
         let mut suggestion = None;
-        match directive.subclass {
-            ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } => {
+        match directive.kind {
+            ImportKind::Single { type_ns_only: true, .. } => {
                 suggestion = Some(format!("self as {}", suggested_name))
             }
-            ImportDirectiveSubclass::SingleImport { source, .. } => {
+            ImportKind::Single { source, .. } => {
                 if let Some(pos) =
                     source.span.hi().0.checked_sub(binding_span.lo().0).map(|pos| pos as usize)
                 {
@@ -2669,7 +2665,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ImportDirectiveSubclass::ExternCrate { source, target, .. } => {
+            ImportKind::ExternCrate { source, target, .. } => {
                 suggestion = Some(format!(
                     "extern crate {} as {};",
                     source.unwrap_or(target.name),
@@ -2717,7 +2713,7 @@ impl<'a> Resolver<'a> {
     fn add_suggestion_for_duplicate_nested_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        directive: &ImportDirective<'_>,
+        directive: &Import<'_>,
         binding_span: Span,
     ) {
         assert!(directive.is_nested());

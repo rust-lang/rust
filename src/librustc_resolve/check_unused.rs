@@ -23,7 +23,7 @@
 //  - `check_crate` finally emits the diagnostics based on the data generated
 //    in the last step
 
-use crate::imports::ImportDirectiveSubclass;
+use crate::imports::ImportKind;
 use crate::Resolver;
 
 use rustc::{lint, ty};
@@ -224,12 +224,12 @@ fn calc_unused_spans(
 impl Resolver<'_> {
     crate fn check_unused(&mut self, krate: &ast::Crate) {
         for directive in self.potentially_unused_imports.iter() {
-            match directive.subclass {
+            match directive.kind {
                 _ if directive.used.get()
                     || directive.vis.get() == ty::Visibility::Public
                     || directive.span.is_dummy() =>
                 {
-                    if let ImportDirectiveSubclass::MacroUse = directive.subclass {
+                    if let ImportKind::MacroUse = directive.kind {
                         if !directive.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
                                 lint::builtin::MACRO_USE_EXTERN_CRATE,
@@ -243,10 +243,10 @@ impl Resolver<'_> {
                         }
                     }
                 }
-                ImportDirectiveSubclass::ExternCrate { .. } => {
+                ImportKind::ExternCrate { .. } => {
                     self.maybe_unused_extern_crates.push((directive.id, directive.span));
                 }
-                ImportDirectiveSubclass::MacroUse => {
+                ImportKind::MacroUse => {
                     let lint = lint::builtin::UNUSED_IMPORTS;
                     let msg = "unused `#[macro_use]` import";
                     self.lint_buffer.buffer_lint(lint, directive.id, directive.span, msg);

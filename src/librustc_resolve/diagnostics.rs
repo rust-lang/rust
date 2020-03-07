@@ -18,7 +18,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 
-use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
+use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
@@ -1126,7 +1126,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        directive: &'b ImportDirective<'b>,
+        directive: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Vec<String>)> {
@@ -1151,10 +1151,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
-            let import = match directive.subclass {
-                ImportDirectiveSubclass::SingleImport { source, target, .. }
-                    if source != target =>
-                {
+            let import = match directive.kind {
+                ImportKind::Single { source, target, .. } if source != target => {
                     format!("{} as {}", source, target)
                 }
                 _ => format!("{}", ident),

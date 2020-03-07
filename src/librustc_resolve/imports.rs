@@ -1,7 +1,5 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use ImportDirectiveSubclass::*;
-
 use crate::diagnostics::Suggestion;
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, MacroNS, TypeNS};
@@ -38,8 +36,8 @@ type Res = def::Res<NodeId>;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
-pub enum ImportDirectiveSubclass<'a> {
-    SingleImport {
+pub enum ImportKind<'a> {
+    Single {
         /// `source` in `use prefix::source as target`.
         source: Ident,
         /// `target` in `use prefix::source as target`.
@@ -53,7 +51,7 @@ pub enum ImportDirectiveSubclass<'a> {
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
         nested: bool,
     },
-    GlobImport {
+    Glob {
         is_prelude: bool,
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest re-export.
                                        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
@@ -67,10 +65,12 @@ pub enum ImportDirectiveSubclass<'a> {
 
 /// One import directive.
 #[derive(Debug, Clone)]
-crate struct ImportDirective<'a> {
-    /// The ID of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
+crate struct Import<'a> {
+    pub kind: ImportKind<'a>,
+
+    /// The ID of the `extern crate`, `UseTree` etc that imported this `Import`.
     ///
-    /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
+    /// In the case where the `Import` was expanded from a "nested" use tree,
     /// this id is the ID of the leaf tree. For example:
     ///
     /// ```ignore (pacify the mercilous tidy)
@@ -107,22 +107,21 @@ crate struct ImportDirective<'a> {
     pub module_path: Vec<Segment>,
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
-    pub subclass: ImportDirectiveSubclass<'a>,
     pub vis: Cell<ty::Visibility>,
     pub used: Cell<bool>,
 }
 
-impl<'a> ImportDirective<'a> {
+impl<'a> Import<'a> {
     pub fn is_glob(&self) -> bool {
-        match self.subclass {
-            ImportDirectiveSubclass::GlobImport { .. } => true,
+        match self.kind {
+            ImportKind::Glob { .. } => true,
             _ => false,
         }
     }
 
     pub fn is_nested(&self) -> bool {
-        match self.subclass {
-            ImportDirectiveSubclass::SingleImport { nested, .. } => nested,
+        match self.kind {
+            ImportKind::Single { nested, .. } => nested,
             _ => false,
         }
     }
@@ -137,7 +136,7 @@ impl<'a> ImportDirective<'a> {
 pub struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Import directives are arena-allocated, so it's ok to use pointers as keys.
-    single_imports: FxHashSet<PtrKey<'a, ImportDirective<'a>>>,
+    single_imports: FxHashSet<PtrKey<'a, Import<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     shadowed_glob: Option<&'a NameBinding<'a>>,
@@ -155,7 +154,7 @@ impl<'a> NameResolution<'a> {
         })
     }
 
-    crate fn add_single_import(&mut self, directive: &'a ImportDirective<'a>) {
+    crate fn add_single_import(&mut self, directive: &'a Import<'a>) {
         self.single_imports.insert(PtrKey(directive));
     }
 }
@@ -348,8 +347,8 @@ impl<'a> Resolver<'a> {
                 single_import.imported_module.get(),
                 return Err((Undetermined, Weak::No))
             );
-            let ident = match single_import.subclass {
-                SingleImport { source, .. } => source,
+            let ident = match single_import.kind {
+                ImportKind::Single { source, .. } => source,
                 _ => unreachable!(),
             };
             match self.resolve_ident_in_module(
@@ -456,7 +455,7 @@ impl<'a> Resolver<'a> {
     crate fn import(
         &self,
         binding: &'a NameBinding<'a>,
-        directive: &'a ImportDirective<'a>,
+        directive: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      // cf. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
@@ -467,7 +466,7 @@ impl<'a> Resolver<'a> {
             binding.pseudo_vis()
         };
 
-        if let GlobImport { ref max_vis, .. } = directive.subclass {
+        if let ImportKind::Glob { ref max_vis, .. } = directive.kind {
             if vis == directive.vis.get() || vis.is_at_least(max_vis.get(), self) {
                 max_vis.set(vis)
             }
@@ -596,8 +595,8 @@ impl<'a> Resolver<'a> {
 
     // Define a "dummy" resolution containing a Res::Err as a placeholder for a
     // failed resolution
-    fn import_dummy_binding(&mut self, directive: &'a ImportDirective<'a>) {
-        if let SingleImport { target, .. } = directive.subclass {
+    fn import_dummy_binding(&mut self, directive: &'a Import<'a>) {
+        if let ImportKind::Single { target, .. } = directive.kind {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
             self.per_ns(|this, ns| {
@@ -671,7 +670,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             .chain(indeterminate_imports.into_iter().map(|i| (true, i)))
         {
             if let Some(err) = self.finalize_import(import) {
-                if let SingleImport { source, ref source_bindings, .. } = import.subclass {
+                if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
                     if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
                         if let Err(Determined) = source_bindings.value_ns.get() {
@@ -695,7 +694,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if seen_spans.insert(err.span) {
                     let path = import_path_to_string(
                         &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                        &import.subclass,
+                        &import.kind,
                         err.span,
                     );
                     errors.push((path, err));
@@ -706,7 +705,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 self.r.used_imports.insert((import.id, TypeNS));
                 let path = import_path_to_string(
                     &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                    &import.subclass,
+                    &import.kind,
                     import.span,
                 );
                 let err = UnresolvedImportError {
@@ -767,7 +766,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Attempts to resolve the given import, returning true if its resolution is determined.
     /// If successful, the resolved bindings are written into the module.
-    fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
+    fn resolve_import(&mut self, directive: &'b Import<'b>) -> bool {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&directive.module_path),
@@ -798,22 +797,22 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         };
 
         directive.imported_module.set(Some(module));
-        let (source, target, source_bindings, target_bindings, type_ns_only) =
-            match directive.subclass {
-                SingleImport {
-                    source,
-                    target,
-                    ref source_bindings,
-                    ref target_bindings,
-                    type_ns_only,
-                    ..
-                } => (source, target, source_bindings, target_bindings, type_ns_only),
-                GlobImport { .. } => {
-                    self.resolve_glob_import(directive);
-                    return true;
-                }
-                _ => unreachable!(),
-            };
+        let (source, target, source_bindings, target_bindings, type_ns_only) = match directive.kind
+        {
+            ImportKind::Single {
+                source,
+                target,
+                ref source_bindings,
+                ref target_bindings,
+                type_ns_only,
+                ..
+            } => (source, target, source_bindings, target_bindings, type_ns_only),
+            ImportKind::Glob { .. } => {
+                self.resolve_glob_import(directive);
+                return true;
+            }
+            _ => unreachable!(),
+        };
 
         let mut indeterminate = false;
         self.r.per_ns(|this, ns| {
@@ -873,10 +872,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ///
     /// Optionally returns an unresolved import error. This error is buffered and used to
     /// consolidate multiple unresolved import errors into a single diagnostic.
-    fn finalize_import(
-        &mut self,
-        directive: &'b ImportDirective<'b>,
-    ) -> Option<UnresolvedImportError> {
+    fn finalize_import(&mut self, directive: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
         let path_res = self.r.resolve_path(
@@ -957,10 +953,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),
         };
 
-        let (ident, target, source_bindings, target_bindings, type_ns_only) = match directive
-            .subclass
-        {
-            SingleImport {
+        let (ident, target, source_bindings, target_bindings, type_ns_only) = match directive.kind {
+            ImportKind::Single {
                 source,
                 target,
                 ref source_bindings,
@@ -968,7 +962,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 type_ns_only,
                 ..
             } => (source, target, source_bindings, target_bindings, type_ns_only),
-            GlobImport { is_prelude, ref max_vis } => {
+            ImportKind::Glob { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
@@ -1272,7 +1266,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     fn check_for_redundant_imports(
         &mut self,
         ident: Ident,
-        directive: &'b ImportDirective<'b>,
+        directive: &'b Import<'b>,
         source_bindings: &PerNS<Cell<Result<&'b NameBinding<'b>, Determinacy>>>,
         target_bindings: &PerNS<Cell<Option<&'b NameBinding<'b>>>>,
         target: Ident,
@@ -1337,7 +1331,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
     }
 
-    fn resolve_glob_import(&mut self, directive: &'b ImportDirective<'b>) {
+    fn resolve_glob_import(&mut self, directive: &'b Import<'b>) {
         let module = match directive.imported_module.get().unwrap() {
             ModuleOrUniformRoot::Module(module) => module,
             _ => {
@@ -1351,7 +1345,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             return;
         } else if module.def_id() == directive.parent_scope.module.def_id() {
             return;
-        } else if let GlobImport { is_prelude: true, .. } = directive.subclass {
+        } else if let ImportKind::Glob { is_prelude: true, .. } = directive.kind {
             self.r.prelude = Some(module);
             return;
         }
@@ -1412,11 +1406,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     && orig_binding.is_variant()
                     && !orig_binding.vis.is_at_least(binding.vis, &*this)
                 {
-                    let msg = match directive.subclass {
-                        ImportDirectiveSubclass::SingleImport { .. } => {
+                    let msg = match directive.kind {
+                        ImportKind::Single { .. } => {
                             format!("variant `{}` is private and cannot be re-exported", ident)
                         }
-                        ImportDirectiveSubclass::GlobImport { .. } => {
+                        ImportKind::Glob { .. } => {
                             let msg = "enum is private and its variants \
                                            cannot be re-exported"
                                 .to_owned();
@@ -1432,7 +1426,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             }
                             msg
                         }
-                        ref s => bug!("unexpected import subclass {:?}", s),
+                        ref s => bug!("unexpected import kind {:?}", s),
                     };
                     let mut err = this.session.struct_span_err(binding.span, &msg);
 
@@ -1481,11 +1475,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     }
 }
 
-fn import_path_to_string(
-    names: &[Ident],
-    subclass: &ImportDirectiveSubclass<'_>,
-    span: Span,
-) -> String {
+fn import_path_to_string(names: &[Ident], import_kind: &ImportKind<'_>, span: Span) -> String {
     let pos = names.iter().position(|p| span == p.span && p.name != kw::PathRoot);
     let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {
@@ -1494,22 +1484,22 @@ fn import_path_to_string(
     } else {
         let names = if global { &names[1..] } else { names };
         if names.is_empty() {
-            import_directive_subclass_to_string(subclass)
+            import_directive_subclass_to_string(import_kind)
         } else {
             format!(
                 "{}::{}",
                 names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>()),
-                import_directive_subclass_to_string(subclass),
+                import_directive_subclass_to_string(import_kind),
             )
         }
     }
 }
 
-fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass<'_>) -> String {
-    match *subclass {
-        SingleImport { source, .. } => source.to_string(),
-        GlobImport { .. } => "*".to_string(),
-        ExternCrate { .. } => "<extern crate>".to_string(),
-        MacroUse => "#[macro_use]".to_string(),
+fn import_directive_subclass_to_string(import_kind: &ImportKind<'_>) -> String {
+    match import_kind {
+        ImportKind::Single { source, .. } => source.to_string(),
+        ImportKind::Glob { .. } => "*".to_string(),
+        ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
+        ImportKind::MacroUse => "#[macro_use]".to_string(),
     }
 }
