@@ -571,6 +571,14 @@ impl Function {
     }
 }
 
+impl HasVisibility for Function {
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility {
+        let function_data = db.function_data(self.id);
+        let visibility = &function_data.visibility;
+        visibility.resolve(db, &self.id.resolver(db))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const {
     pub(crate) id: ConstId,

@@ -7,13 +7,16 @@ use hir_expand::{
     AstId, InFile,
 };
 use ra_prof::profile;
-use ra_syntax::ast::{self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner};
+use ra_syntax::ast::{
+    self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, VisibilityOwner,
+};
 
 use crate::{
     db::DefDatabase,
     path::{path, GenericArgs, Path},
     src::HasSource,
     type_ref::{Mutability, TypeBound, TypeRef},
+    visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, Expander, FunctionId, FunctionLoc, HasModule,
     ImplId, Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
@@ -26,6 +29,7 @@ pub struct FunctionData {
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub has_self_param: bool,
+    pub visibility: RawVisibility,
 }
 
 impl FunctionData {
@@ -72,7 +76,9 @@ impl FunctionData {
             ret_type
         };
 
-        let sig = FunctionData { name, params, ret_type, has_self_param };
+        let visibility = RawVisibility::from_ast(db, src.map(|s| s.visibility()));
+
+        let sig = FunctionData { name, params, ret_type, has_self_param, visibility };
         Arc::new(sig)
     }
 }
@@ -230,7 +236,7 @@ impl ConstData {
         Arc::new(ConstData::new(&node))
     }
 
-    fn new<N: NameOwner + TypeAscriptionOwner>(node: &N) -> ConstData {
+    fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(node: &N) -> ConstData {
         let name = node.name().map(|n| n.as_name());
         let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
         ConstData { name, type_ref }
