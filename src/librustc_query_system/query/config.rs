@@ -33,6 +33,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub compute: fn(CTX, K) -> V,
 
     pub hash_result: fn(&mut CTX::StableHashingContext, &V) -> Option<Fingerprint>,
+    pub handle_cycle_error: fn(CTX, CycleError<CTX::Query>) -> V,
     pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
     pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
 }
@@ -48,6 +49,10 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         value: &V,
     ) -> Option<Fingerprint> {
         (self.hash_result)(hcx, value)
+    }
+
+    pub(crate) fn handle_cycle_error(&self, tcx: CTX, error: CycleError<CTX::Query>) -> V {
+        (self.handle_cycle_error)(tcx, error)
     }
 
     pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
@@ -110,6 +115,7 @@ where
         eval_always: Q::EVAL_ALWAYS,
         compute: Q::compute,
         hash_result: Q::hash_result,
+        handle_cycle_error: Q::handle_cycle_error,
         cache_on_disk: Q::cache_on_disk,
         try_load_from_disk: Q::try_load_from_disk,
     };
