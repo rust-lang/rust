@@ -261,11 +261,7 @@ fn data_id_for_static(
         }
 
         let mut data_ctx = DataContext::new();
-        let zero_bytes = std::iter::repeat(0)
-            .take(pointer_ty(tcx).bytes() as usize)
-            .collect::<Vec<u8>>()
-            .into_boxed_slice();
-        data_ctx.define(zero_bytes);
+        data_ctx.define_zeroinit(pointer_ty(tcx).bytes() as usize);
         match module.define_data(data_id, &data_ctx) {
             // Everytime a weak static is referenced, there will be a zero pointer definition,
             // so duplicate definitions are expected and allowed.

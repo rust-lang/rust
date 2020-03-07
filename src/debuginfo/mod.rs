@@ -67,8 +67,8 @@ impl<'tcx> DebugContext<'tcx> {
         dwarf.unit.line_program = line_program;
 
         {
-            let name = dwarf.strings.add(&*name);
-            let comp_dir = dwarf.strings.add(&*comp_dir);
+            let name = dwarf.strings.add(name);
+            let comp_dir = dwarf.strings.add(comp_dir);
 
             let root = dwarf.unit.root();
             let root = dwarf.unit.get_mut(root);
