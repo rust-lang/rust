@@ -1024,7 +1024,7 @@ fn codegen_gnu_try(
         // Codegens the shims described above:
         //
         //   bx:
-        //      invoke %func(%data) normal %normal unwind %catch
+        //      invoke %try_func(%data) normal %normal unwind %catch
         //
         //   normal:
         //      ret 0

@@ -237,7 +237,7 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 macro_rules! define_cleanup {
     ($abi:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
-            if let Some(b) = e.read().data {
+            if let Exception { data: Some(b) } = e.read() {
                 drop(b);
                 super::__rust_drop_panic();
             }
