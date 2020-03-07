@@ -9,21 +9,19 @@ created in the [`rustc_traits::lowering`][lowering] module.
 ## The `program_clauses_for` query
 
 The main entry point is the `program_clauses_for` [query], which –
-given a def-id – produces a set of Chalk program clauses. These
-queries are tested using a
-[dedicated unit-testing mechanism, described below](#unit-tests).  The
+given a `DefId` – produces a set of Chalk program clauses. The
 query is invoked on a `DefId` that identifies something like a trait,
 an impl, or an associated item definition. It then produces and
 returns a vector of program clauses.
 
 [query]: ../query.html
 
-<a name="unit-tests"></a>
-
 ## Unit tests
 
-Unit tests are located in [`src/test/ui/chalkify`][chalkify]. A good
-example test is [the `lower_impl` test][lower_impl]. At the time of
+**Note: We've removed the Chalk unit tests in [rust-lang/rust#69247].
+They will come back once we're ready to integrate next Chalk into rustc.**
+
+Here's a good example test. At the time of
 this writing, it looked like this:
 
 ```rust,ignore
@@ -40,14 +38,10 @@ fn main() {
 ```
 
 The `#[rustc_dump_program_clauses]` annotation can be attached to
-anything with a def-id.  (It requires the `rustc_attrs` feature.) The
+anything with a `DefId` (It requires the `rustc_attrs` feature). The
 compiler will then invoke the `program_clauses_for` query on that
 item, and emit compiler errors that dump the clauses produced. These
-errors just exist for unit-testing, as we can then leverage the
-standard [ui test] mechanisms to check them. In this case, there is a
-`//~ ERROR program clause dump` annotation which is always the same for
-`#[rustc_dump_program_clauses]`, but [the stderr file] contains
-the full details:
+errors just exist for unit-testing. The stderr will be:
 
 ```text
 error: program clause dump
@@ -59,7 +53,4 @@ LL | #[rustc_dump_program_clauses]
    = note: forall<T> { Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T: 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized). }
 ```
 
-[chalkify]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify
-[lower_impl]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify/lower_impl.rs
-[the stderr file]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify/lower_impl.stderr
-[ui test]: ../tests/adding.html#guide-to-the-ui-tests
+[rust-lang/rust#69247]: https://github.com/rust-lang/rust/pull/69247
