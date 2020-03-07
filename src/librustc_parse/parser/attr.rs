@@ -130,10 +130,9 @@ impl<'a> Parser<'a> {
             }
 
             diag.note(
-                "inner attributes, like `#![no_std]`, annotate the item \
-                       enclosing them, and are usually found at the beginning of \
-                       source files. Outer attributes, like `#[test]`, annotate the \
-                       item following them.",
+                "inner attributes, like `#![no_std]`, annotate the item enclosing them, \
+                and are usually found at the beginning of source files. \
+                Outer attributes, like `#[test]`, annotate the item following them.",
             )
             .emit();
         }
@@ -202,9 +201,8 @@ impl<'a> Parser<'a> {
         if !lit.kind.is_unsuffixed() {
             self.struct_span_err(lit.span, "suffixed literals are not allowed in attributes")
                 .help(
-                    "instead of using a suffixed literal \
-                                    (`1u8`, `1.0f32`, etc.), use an unsuffixed version \
-                                    (`1`, `1.0`, etc.)",
+                    "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
+                    use an unsuffixed version (`1`, `1.0`, etc.)",
                 )
                 .emit();
         }
