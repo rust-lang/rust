@@ -606,20 +606,11 @@ pub unsafe trait GlobalAlloc {
 ///   method (`dealloc`) or by being passed to a reallocation method
 ///  (see above) that returns `Ok`.
 ///
-/// A note regarding zero-sized types and zero-sized layouts: many
-/// methods in the `AllocRef` trait state that allocation requests
-/// must be non-zero size, or else undefined behavior can result.
-///
-/// * If an `AllocRef` implementation chooses to return `Ok` in this
-///   case (i.e., the pointer denotes a zero-sized inaccessible block)
-///   then that returned pointer must be considered "currently
-///   allocated". On such an allocator, *all* methods that take
-///   currently-allocated pointers as inputs must accept these
-///   zero-sized pointers, *without* causing undefined behavior.
-///
-/// * In other words, if a zero-sized pointer can flow out of an
-///   allocator, then that allocator must likewise accept that pointer
-///   flowing back into its deallocation and reallocation methods.
+/// Unlike [`GlobalAlloc`], zero-sized allocations are allowed in
+/// `AllocRef`. If an underlying allocator does not support this (like
+/// jemalloc) or return a null pointer (such as `libc::malloc`), this case
+/// must be caught. In this case [`Layout::dangling()`] can be used to
+/// create a dangling, but aligned `NonNull<u8>`.
 ///
 /// Some of the methods require that a layout *fit* a memory block.
 /// What it means for a layout to "fit" a memory block means (or
@@ -649,6 +640,9 @@ pub unsafe trait GlobalAlloc {
 ///  * if an allocator does not support overallocating, it is fine to
 ///    simply return `layout.size()` as the allocated size.
 ///
+/// [`GlobalAlloc`]: self::GlobalAlloc
+/// [`Layout::dangling()`]: self::Layout::dangling
+///
 /// # Safety
 ///
 /// The `AllocRef` trait is an `unsafe` trait for a number of reasons, and
@@ -669,14 +663,6 @@ pub unsafe trait GlobalAlloc {
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocRef {
-    // (Note: some existing allocators have unspecified but well-defined
-    // behavior in response to a zero size allocation request ;
-    // e.g., in C, `malloc` of 0 will either return a null pointer or a
-    // unique pointer, but will not have arbitrary undefined
-    // behavior.
-    // However in jemalloc for example,
-    // `mallocx(0)` is documented as undefined behavior.)
-
     /// On success, returns a pointer meeting the size and alignment
     /// guarantees of `layout` and the actual size of the allocated block,
     /// which must be greater than or equal to `layout.size()`.
@@ -689,15 +675,6 @@ pub unsafe trait AllocRef {
     /// initialized. (Extension subtraits might restrict this
     /// behavior, e.g., to ensure initialization to particular sets of
     /// bit patterns.)
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because undefined behavior can result
-    /// if the caller does not ensure that `layout` has non-zero size.
-    ///
-    /// (Extension subtraits might provide more specific bounds on
-    /// behavior, e.g., guarantee a sentinel address or a null pointer
-    /// in response to a zero-size allocation request.)
     ///
     /// # Errors
     ///
@@ -716,7 +693,7 @@ pub unsafe trait AllocRef {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr>;
+    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
@@ -738,10 +715,6 @@ pub unsafe trait AllocRef {
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
     ///
-    /// # Safety
-    ///
-    /// This function is unsafe for the same reasons that `alloc` is.
-    ///
     /// # Errors
     ///
     /// Returning `Err` indicates that either memory is exhausted or
@@ -753,17 +726,17 @@ pub unsafe trait AllocRef {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
         let size = layout.size();
         let result = self.alloc(layout);
         if let Ok((p, _)) = result {
-            ptr::write_bytes(p.as_ptr(), 0, size);
+            unsafe { ptr::write_bytes(p.as_ptr(), 0, size) }
         }
         result
     }
 
     // == METHODS FOR MEMORY REUSE ==
-    // realloc. alloc_excess, realloc_excess
+    // realloc, realloc_zeroed, grow_in_place, grow_in_place_zeroed, shrink_in_place
 
     /// Returns a pointer suitable for holding data described by
     /// a new layout with `layout`’s alignment and a size given
@@ -792,8 +765,6 @@ pub unsafe trait AllocRef {
     ///
     /// * `layout` must *fit* the `ptr` (see above). (The `new_size`
     ///   argument need not fit it.)
-    ///
-    /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
     ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
@@ -1009,8 +980,7 @@ pub unsafe trait AllocRef {
     /// * `layout` must *fit* the `ptr` (see above); note the
     ///   `new_size` argument need not fit it,
     ///
-    /// * `new_size` must not be greater than `layout.size()`
-    ///   (and must be greater than zero),
+    /// * `new_size` must not be greater than `layout.size()`,
     ///
     /// # Errors
     ///
