@@ -231,6 +231,14 @@ fn run_aot(
     });
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
 
+    let modules = vec![emit_module(
+        tcx,
+        "some_file".to_string(),
+        ModuleKind::Regular,
+        module,
+        debug,
+    )];
+
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module("allocator_shim".to_string());
@@ -277,13 +285,7 @@ fn run_aot(
 
     Box::new(CodegenResults {
         crate_name: tcx.crate_name(LOCAL_CRATE),
-        modules: vec![emit_module(
-            tcx,
-            "some_file".to_string(),
-            ModuleKind::Regular,
-            module,
-            debug,
-        )],
+        modules,
         allocator_module: if created_alloc_shim {
             Some(emit_module(
                 tcx,
