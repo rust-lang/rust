@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
         } else if vis.node.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
-        } else if macros_allowed && self.token.is_path_start() {
+        } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
             (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
         } else {

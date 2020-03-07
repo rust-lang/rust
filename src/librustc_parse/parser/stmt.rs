@@ -48,10 +48,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `var`
             let msg = "write `let` instead of `var` to introduce a new variable";
             self.recover_stmt_local(lo, attrs.into(), msg, "let")?
-        } else if self.token.is_path_start()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.

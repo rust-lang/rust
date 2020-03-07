@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_lt() {
             let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
             Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
-        } else if self.token.is_path_start() {
+        } else if self.check_path() {
             self.parse_path_start_expr(attrs)
         } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
             self.parse_closure_expr(attrs)

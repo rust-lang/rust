@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
             // Qualified path
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
-        } else if self.token.is_path_start() {
+        } else if self.check_path() {
             self.parse_path_start_ty(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
             if allow_c_variadic == AllowCVariadic::Yes {
