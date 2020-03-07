@@ -1,1 +1,8 @@
 # Monomorphization
+
+TODO
+
+
+## Polymorphization
+
+TODO
