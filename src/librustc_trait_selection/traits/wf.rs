@@ -8,6 +8,7 @@ use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use std::rc::Rc;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -315,6 +316,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let implied_obligations = traits::util::elaborate_obligations(tcx, obligations.clone());
             let implied_obligations = implied_obligations.map(|obligation| {
                 let mut cause = cause.clone();
+                let parent_trait_ref = obligation
+                    .predicate
+                    .to_opt_poly_trait_ref()
+                    .unwrap_or_else(|| ty::Binder::dummy(*trait_ref));
+                let derived_cause = traits::DerivedObligationCause {
+                    parent_trait_ref,
+                    parent_code: Rc::new(obligation.cause.code.clone()),
+                };
+                cause.code = traits::ObligationCauseCode::ImplDerivedObligation(derived_cause);
                 extend_cause_with_original_assoc_item_obligation(
                     tcx,
                     trait_ref,

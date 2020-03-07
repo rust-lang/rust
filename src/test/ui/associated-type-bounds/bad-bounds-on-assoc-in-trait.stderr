@@ -1,10 +1,17 @@
 error[E0277]: `<L1 as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:31:6
    |
+LL | trait Case1 {
+   |       -----
+...
+LL |                 Debug
+   |                 ----- required by this bound in `Case1`
+...
 LL | impl Case1 for S1 {
    |      ^^^^^ `<L1 as Lam<&'a u8>>::App` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = help: the trait `for<'a> std::fmt::Debug` is not implemented for `<L1 as Lam<&'a u8>>::App`
+   = note: required because of the requirements on the impl of `for<'a> std::fmt::Debug` for `<<<<S1 as Case1>::C as std::iter::Iterator>::Item as std::iter::Iterator>::Item as Lam<&'a u8>>::App`
 
 error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` is not an iterator
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20

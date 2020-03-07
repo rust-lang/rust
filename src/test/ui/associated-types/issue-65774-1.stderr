@@ -9,8 +9,15 @@ LL |     type MpuConfig: MyDisplay = T;
 error[E0277]: the trait bound `T: MyDisplay` is not satisfied
   --> $DIR/issue-65774-1.rs:16:6
    |
+LL | trait MPU {
+   |       ---
+LL |     type MpuConfig: MyDisplay = T;
+   |                     --------- required by this bound in `MPU`
+...
 LL | impl MPU for S { }
    |      ^^^ the trait `MyDisplay` is not implemented for `T`
+   |
+   = note: required because of the requirements on the impl of `MyDisplay` for `<S as MPU>::MpuConfig`
 
 error: aborting due to 2 previous errors
 

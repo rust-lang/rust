@@ -4,6 +4,7 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL | impl<T> Complete for T {}
    |         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
+   = note: required because of the requirements on the impl of `std::marker::Copy` for `T`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> Complete for T {}
