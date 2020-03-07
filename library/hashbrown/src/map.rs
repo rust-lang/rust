@@ -758,6 +758,44 @@ where
             })
     }
 
+    /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but
+    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// let (k, v) = map.get_key_value_mut(&1).unwrap();
+    /// assert_eq!(k, &1);
+    /// assert_eq!(v, &mut "a");
+    /// *v = "b";
+    /// assert_eq!(map.get_key_value_mut(&1), Some((&1, &mut "b")));
+    /// assert_eq!(map.get_key_value_mut(&2), None);
+    /// ```
+    #[inline]
+    pub fn get_key_value_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<(&K, &mut V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = make_hash(&self.hash_builder, k);
+        self.table
+            .find(hash, |x| k.eq(x.0.borrow()))
+            .map(|item| unsafe {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                (key, value)
+            })
+    }
+
     /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
