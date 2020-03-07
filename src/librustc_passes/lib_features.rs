@@ -8,12 +8,12 @@ use rustc::hir::map::Map;
 use rustc::middle::lib_features::LibFeatures;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::{Attribute, MetaItem, MetaItemKind};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
-use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 
 fn new_lib_features() -> LibFeatures {
     LibFeatures { stable: Default::default(), unstable: Default::default() }

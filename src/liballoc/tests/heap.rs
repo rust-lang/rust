@@ -20,7 +20,7 @@ fn check_overalign_requests<T: AllocRef>(mut allocator: T) {
             unsafe {
                 let pointers: Vec<_> = (0..iterations)
                     .map(|_| {
-                        allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
+                        allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap().0
                     })
                     .collect();
                 for &ptr in &pointers {

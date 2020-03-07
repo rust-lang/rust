@@ -7,6 +7,7 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
+use rustc_ast::ast::Ident;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -22,7 +23,6 @@ use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
-use syntax::ast::Ident;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -92,7 +92,7 @@ struct AbsoluteBytePos(u32);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= ::std::u32::MAX as usize);
+        debug_assert!(pos <= u32::MAX as usize);
         AbsoluteBytePos(pos as u32)
     }
 
@@ -997,7 +997,7 @@ impl SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder {
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
         let start_pos = self.position();
         for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((x.0 >> i * 8) as u8).encode(self)?;
+            ((x.0 >> (i * 8)) as u8).encode(self)?;
         }
         let end_pos = self.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);

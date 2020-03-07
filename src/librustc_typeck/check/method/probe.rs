@@ -14,9 +14,10 @@ use rustc::session::config::nightly_options;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
-    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    WithConstness,
+    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
@@ -36,8 +37,6 @@ use std::cmp::max;
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use syntax::ast;
-use syntax::util::lev_distance::{find_best_match_for_name, lev_distance};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -78,7 +77,7 @@ struct ProbeContext<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+    unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
 }
@@ -1224,7 +1223,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probes: ProbesIter,
-        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
         unstable_candidates: Option<&mut Vec<(&'b Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>>
     where
@@ -1343,7 +1345,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probe: &Candidate<'tcx>,
-        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
     ) -> ProbeResult {
         debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
 
@@ -1398,21 +1403,44 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
-                        if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
+                        result = ProbeResult::NoMatch;
+                        if self.probe(|_| {
+                            match self.select_trait_candidate(trait_ref) {
+                                Err(_) => return true,
+                                Ok(Some(vtable))
+                                    if !vtable.borrow_nested_obligations().is_empty() =>
+                                {
+                                    for obligation in vtable.borrow_nested_obligations() {
+                                        // Determine exactly which obligation wasn't met, so
+                                        // that we can give more context in the error.
+                                        if !self.predicate_may_hold(&obligation) {
+                                            let o = self.resolve_vars_if_possible(obligation);
+                                            let predicate =
+                                                self.resolve_vars_if_possible(&predicate);
+                                            let p = if predicate == o.predicate {
+                                                // Avoid "`MyStruct: Foo` which is required by
+                                                // `MyStruct: Foo`" in E0599.
+                                                None
+                                            } else {
+                                                Some(predicate)
+                                            };
+                                            possibly_unsatisfied_predicates.push((o.predicate, p));
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    // Some nested subobligation of this predicate
+                                    // failed.
+                                    let predicate = self.resolve_vars_if_possible(&predicate);
+                                    possibly_unsatisfied_predicates.push((predicate, None));
+                                }
+                            }
+                            false
+                        }) {
                             // This candidate's primary obligation doesn't even
                             // select - don't bother registering anything in
                             // `potentially_unsatisfied_predicates`.
                             return ProbeResult::NoMatch;
-                        } else {
-                            // Some nested subobligation of this predicate
-                            // failed.
-                            //
-                            // FIXME: try to find the exact nested subobligation
-                            // and point at it rather than reporting the entire
-                            // trait-ref?
-                            result = ProbeResult::NoMatch;
-                            let trait_ref = self.resolve_vars_if_possible(&trait_ref);
-                            possibly_unsatisfied_predicates.push(trait_ref);
                         }
                     }
                     vec![]
@@ -1429,9 +1457,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    if let &ty::Predicate::Trait(ref pred, _) = &o.predicate {
-                        possibly_unsatisfied_predicates.push(pred.skip_binder().trait_ref);
-                    }
+                    possibly_unsatisfied_predicates.push((o.predicate, None));
                 }
             }
 
@@ -1524,21 +1550,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
-            let applicable_close_candidates: Vec<ty::AssocItem> =
-                method_names
-                    .iter()
-                    .filter_map(|&method_name| {
-                        pcx.reset();
-                        pcx.method_name = Some(method_name);
-                        pcx.assemble_inherent_candidates();
-                        pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
-                            .map_or(None, |_| {
-                                pcx.pick_core()
-                                    .and_then(|pick| pick.ok())
-                                    .and_then(|pick| Some(pick.item))
-                            })
-                    })
-                    .collect();
+            let applicable_close_candidates: Vec<ty::AssocItem> = method_names
+                .iter()
+                .filter_map(|&method_name| {
+                    pcx.reset();
+                    pcx.method_name = Some(method_name);
+                    pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
+                        .map_or(None, |_| {
+                            pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
+                        })
+                })
+                .collect();
 
             if applicable_close_candidates.is_empty() {
                 Ok(None)

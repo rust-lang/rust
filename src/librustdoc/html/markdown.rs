@@ -296,7 +296,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         ""
                     }
                 )),
-                playground_button.as_ref().map(String::as_str),
+                playground_button.as_deref(),
                 Some((s1.as_str(), s2)),
             ));
             Some(Event::Html(s.into()))
@@ -315,7 +315,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         ""
                     }
                 )),
-                playground_button.as_ref().map(String::as_str),
+                playground_button.as_deref(),
                 None,
             ));
             Some(Event::Html(s.into()))
@@ -465,7 +465,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 _ => true,
             };
-            return if is_allowed_tag == false {
+            return if !is_allowed_tag {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
                 } else {
@@ -671,7 +671,7 @@ impl LangString {
                 "" => {}
                 "should_panic" => {
                     data.should_panic = true;
-                    seen_rust_tags = seen_other_tags == false;
+                    seen_rust_tags = !seen_other_tags;
                 }
                 "no_run" => {
                     data.no_run = true;
@@ -707,7 +707,7 @@ impl LangString {
                 x if x.starts_with("edition") => {
                     data.edition = x[7..].parse::<Edition>().ok();
                 }
-                x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
+                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
                     if x[1..].parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
@@ -738,7 +738,7 @@ impl Markdown<'_> {
             return String::new();
         }
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
             } else {
                 None
@@ -816,7 +816,7 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
             } else {
                 None
@@ -869,12 +869,8 @@ pub fn plain_summary_line(md: &str) -> String {
         }
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
-    let mut p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
-    while let Some(t) = p.next() {
-        if !t.is_empty() {
-            s.push_str(&t);
-        }
-    }
+    let p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
+    p.into_iter().filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
     s
 }
 

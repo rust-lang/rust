@@ -60,7 +60,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             .chain(ia.inputs.iter().map(|s| s.to_string()))
             .chain(ext_constraints)
             .chain(clobbers)
-            .chain(arch_clobbers.iter().map(|s| s.to_string()))
+            .chain(arch_clobbers.iter().map(|s| (*s).to_string()))
             .collect::<Vec<String>>()
             .join(",");
 
@@ -134,7 +134,7 @@ fn inline_asm_call(
     output: &'ll llvm::Type,
     volatile: bool,
     alignstack: bool,
-    dia: ::syntax::ast::AsmDialect,
+    dia: ::rustc_ast::ast::AsmDialect,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };

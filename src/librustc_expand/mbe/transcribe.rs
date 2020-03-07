@@ -2,15 +2,15 @@ use crate::base::ExtCtxt;
 use crate::mbe;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
+use rustc_ast::ast::{Ident, Mac};
+use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::token::{self, NtTT, Token};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::pluralize;
 use rustc_span::hygiene::{ExpnId, Transparency};
 use rustc_span::Span;
-use syntax::ast::{Ident, Mac};
-use syntax::mut_visit::{self, MutVisitor};
-use syntax::token::{self, NtTT, Token};
-use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -119,9 +119,9 @@ pub(super) fn transcribe(
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
             // If it still has a TokenTree we have not looked at yet, use that tree.
             tree
-        }
-        // The else-case never produces a value for `tree` (it `continue`s or `return`s).
-        else {
+        } else {
+            // This else-case never produces a value for `tree` (it `continue`s or `return`s).
+
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
             // go back to the beginning of the sequence.
             if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
@@ -155,8 +155,7 @@ pub(super) fn transcribe(
                     }
 
                     // Step back into the parent Delimited.
-                    let tree =
-                        TokenTree::Delimited(span, forest.delim, TokenStream::new(result).into());
+                    let tree = TokenTree::Delimited(span, forest.delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }

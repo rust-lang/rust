@@ -3,6 +3,7 @@
 
 use rustc::middle::privacy::AccessLevel;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -12,7 +13,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Span};
-use syntax::ast;
 
 use std::mem;
 

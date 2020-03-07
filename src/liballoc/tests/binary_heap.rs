@@ -1,6 +1,8 @@
 use std::collections::binary_heap::{Drain, PeekMut};
 use std::collections::BinaryHeap;
 use std::iter::TrustedLen;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[test]
 fn test_iterator() {
@@ -273,6 +275,37 @@ fn test_drain_sorted() {
     assert_eq!(q.drain_sorted().take(5).collect::<Vec<_>>(), vec![9, 8, 7, 6, 5]);
 
     assert!(q.is_empty());
+}
+
+#[test]
+fn test_drain_sorted_leak() {
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    struct D(u32, bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            DROPS.fetch_add(1, Ordering::SeqCst);
+
+            if self.1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = BinaryHeap::from(vec![
+        D(0, false),
+        D(1, false),
+        D(2, false),
+        D(3, true),
+        D(4, false),
+        D(5, false),
+    ]);
+
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).ok();
+
+    assert_eq!(DROPS.load(Ordering::SeqCst), 6);
 }
 
 #[test]

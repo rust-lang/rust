@@ -895,6 +895,15 @@ mod mod_keyword {}
 /// // x is no longer available
 /// ```
 ///
+/// `move` is also valid before an async block.
+///
+/// ```rust
+/// let capture = "hello";
+/// let block = async move {
+///     println!("rust says {} from async block", capture);
+/// };
+/// ```
+///
 /// For more information on the `move` keyword, see the [closure]'s section
 /// of the Rust book or the [threads] section
 ///

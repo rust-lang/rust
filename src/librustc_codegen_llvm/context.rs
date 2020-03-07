@@ -174,7 +174,6 @@ pub unsafe fn create_module(
 
         let llvm_data_layout = llvm::LLVMGetDataLayout(llmod);
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
-            .ok()
             .expect("got a non-UTF8 data-layout from LLVM");
 
         // Unfortunately LLVM target specs change over time, and right now we

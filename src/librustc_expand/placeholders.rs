@@ -1,10 +1,10 @@
 use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
+use rustc_ast::ast;
+use rustc_ast::mut_visit::*;
+use rustc_ast::ptr::P;
 use rustc_span::source_map::{dummy_spanned, DUMMY_SP};
-use syntax::ast;
-use syntax::mut_visit::*;
-use syntax::ptr::P;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -57,7 +57,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
@@ -67,7 +66,6 @@ pub fn placeholder(
             vis,
             attrs,
             kind: ast::AssocItemKind::Macro(mac_placeholder()),
-            defaultness: ast::Defaultness::Final,
             tokens: None,
         })]),
         AstFragmentKind::ForeignItems => {

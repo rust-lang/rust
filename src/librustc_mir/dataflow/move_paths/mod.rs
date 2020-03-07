@@ -58,19 +58,32 @@ pub struct MovePath<'tcx> {
 }
 
 impl<'tcx> MovePath<'tcx> {
-    pub fn parents(
+    /// Returns an iterator over the parents of `self`.
+    pub fn parents<'a>(
         &self,
-        move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
-    ) -> Vec<MovePathIndex> {
-        let mut parents = Vec::new();
-
-        let mut curr_parent = self.parent;
-        while let Some(parent_mpi) = curr_parent {
-            parents.push(parent_mpi);
-            curr_parent = move_paths[parent_mpi].parent;
+        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+    ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
+        let first = self.parent.map(|mpi| (mpi, &move_paths[mpi]));
+        MovePathLinearIter {
+            next: first,
+            fetch_next: move |_, parent: &MovePath<'_>| {
+                parent.parent.map(|mpi| (mpi, &move_paths[mpi]))
+            },
         }
+    }
 
-        parents
+    /// Returns an iterator over the immediate children of `self`.
+    pub fn children<'a>(
+        &self,
+        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+    ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
+        let first = self.first_child.map(|mpi| (mpi, &move_paths[mpi]));
+        MovePathLinearIter {
+            next: first,
+            fetch_next: move |_, child: &MovePath<'_>| {
+                child.next_sibling.map(|mpi| (mpi, &move_paths[mpi]))
+            },
+        }
     }
 
     /// Finds the closest descendant of `self` for which `f` returns `true` using a breadth-first
@@ -128,6 +141,25 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
 impl<'tcx> fmt::Display for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(w, "{:?}", self.place)
+    }
+}
+
+#[allow(unused)]
+struct MovePathLinearIter<'a, 'tcx, F> {
+    next: Option<(MovePathIndex, &'a MovePath<'tcx>)>,
+    fetch_next: F,
+}
+
+impl<'a, 'tcx, F> Iterator for MovePathLinearIter<'a, 'tcx, F>
+where
+    F: FnMut(MovePathIndex, &'a MovePath<'tcx>) -> Option<(MovePathIndex, &'a MovePath<'tcx>)>,
+{
+    type Item = (MovePathIndex, &'a MovePath<'tcx>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ret = self.next.take()?;
+        self.next = (self.fetch_next)(ret.0, ret.1);
+        Some(ret)
     }
 }
 

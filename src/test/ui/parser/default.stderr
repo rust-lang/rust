@@ -1,8 +1,21 @@
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/default.rs:22:12
+error: `default` is not followed by an item
+  --> $DIR/default.rs:22:5
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }
-   |            ^ missing `fn`, `type`, `const`, or `static`
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: non-item in item list
+  --> $DIR/default.rs:22:13
+   |
+LL | impl Foo for u32 {
+   |                  - item list starts here
+LL |     default pub fn foo<T: Default>() -> T { T::default() }
+   |             ^^^ non-item starts here
+...
+LL | }
+   | - item list ends here
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/default.rs:16:5
@@ -19,7 +32,7 @@ LL |     fn foo<T: Default>() -> T;
 LL | impl Foo for u32 {
    | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0046, E0449.
 For more information about an error, try `rustc --explain E0046`.

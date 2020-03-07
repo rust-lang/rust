@@ -84,7 +84,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // to avoids duplicate errors that otherwise show up.
         fulfill_cx.register_predicate_obligations(
             infcx,
-            obligations.iter().filter(|o| o.predicate.has_infer_types()).cloned(),
+            obligations.iter().filter(|o| o.predicate.has_infer_types_or_consts()).cloned(),
         );
 
         // From the full set of obligations, just filter down to the

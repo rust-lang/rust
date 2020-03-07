@@ -107,6 +107,7 @@ use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
@@ -117,7 +118,6 @@ use std::fmt;
 use std::io;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
-use syntax::ast::LitKind;
 
 /// Uniquely identifies one of the following:
 /// - A constant

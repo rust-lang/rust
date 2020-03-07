@@ -206,7 +206,7 @@ impl SourceMap {
         &self,
         stable_id: StableSourceFileId,
     ) -> Option<Lrc<SourceFile>> {
-        self.files.borrow().stable_id_to_source_file.get(&stable_id).map(|sf| sf.clone())
+        self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
     fn allocate_address_space(&self, size: usize) -> Result<usize, OffsetOverflowError> {
@@ -395,7 +395,7 @@ impl SourceMap {
                         .unwrap_or_else(|x| x);
                     let special_chars = end_width_idx - start_width_idx;
                     let non_narrow: usize = f.non_narrow_chars[start_width_idx..end_width_idx]
-                        .into_iter()
+                        .iter()
                         .map(|x| x.width())
                         .sum();
                     col.0 - special_chars + non_narrow
@@ -413,7 +413,7 @@ impl SourceMap {
                         .binary_search_by_key(&pos, |x| x.pos())
                         .unwrap_or_else(|x| x);
                     let non_narrow: usize =
-                        f.non_narrow_chars[0..end_width_idx].into_iter().map(|x| x.width()).sum();
+                        f.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
                     chpos.0 - end_width_idx + non_narrow
                 };
                 Loc { file: f, line: 0, col: chpos, col_display }
@@ -620,7 +620,7 @@ impl SourceMap {
     /// if no character could be found or if an error occurred while retrieving the code snippet.
     pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
         if let Ok(prev_source) = self.span_to_prev_source(sp) {
-            let prev_source = prev_source.rsplit(c).nth(0).unwrap_or("").trim_start();
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("").trim_start();
             if !prev_source.is_empty() && !prev_source.contains('\n') {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
             }
@@ -640,7 +640,7 @@ impl SourceMap {
         for ws in &[" ", "\t", "\n"] {
             let pat = pat.to_owned() + ws;
             if let Ok(prev_source) = self.span_to_prev_source(sp) {
-                let prev_source = prev_source.rsplit(&pat).nth(0).unwrap_or("").trim_start();
+                let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
                 if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
@@ -655,7 +655,7 @@ impl SourceMap {
     pub fn span_until_char(&self, sp: Span, c: char) -> Span {
         match self.span_to_snippet(sp) {
             Ok(snippet) => {
-                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_end();
+                let snippet = snippet.split(c).next().unwrap_or("").trim_end();
                 if !snippet.is_empty() && !snippet.contains('\n') {
                     sp.with_hi(BytePos(sp.lo().0 + snippet.len() as u32))
                 } else {
@@ -689,7 +689,7 @@ impl SourceMap {
                 whitespace_found = true;
             }
 
-            if whitespace_found && !c.is_whitespace() { false } else { true }
+            !whitespace_found || c.is_whitespace()
         })
     }
 

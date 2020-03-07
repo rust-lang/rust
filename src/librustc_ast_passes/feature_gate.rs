@@ -1,3 +1,7 @@
+use rustc_ast::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use rustc_ast::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use rustc_ast::attr;
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_errors::{struct_span_err, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
@@ -5,10 +9,6 @@ use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use syntax::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
-use syntax::attr;
-use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 
 use log::debug;
 
@@ -349,7 +349,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
 
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
@@ -372,7 +372,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(ref ty, ..) => self.check_impl_trait(&ty),
+            ast::ItemKind::TyAlias(_, _, _, Some(ref ty)) => self.check_impl_trait(&ty),
 
             _ => {}
         }
@@ -400,7 +400,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ForeignItemKind::TyAlias(..) => {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
-            ast::ForeignItemKind::Macro(..) | ast::ForeignItemKind::Const(..) => {}
+            ast::ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, i)
@@ -543,17 +543,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        if i.defaultness == ast::Defaultness::Default {
+        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
             gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
         }
 
         match i.kind {
-            ast::AssocItemKind::Fn(ref sig, _, _) => {
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }
-            ast::AssocItemKind::TyAlias(ref generics, _, ref ty) => {
+            ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,

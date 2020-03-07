@@ -2,7 +2,9 @@
 
 //! String manipulation.
 //!
-//! For more details, see the `std::str` module.
+//! For more details, see the [`std::str`] module.
+//!
+//! [`std::str`]: ../../std/str/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -2486,7 +2488,7 @@ impl str {
     /// Callers of this function are responsible that these preconditions are
     /// satisfied:
     ///
-    /// * The starting index must come before the ending index;
+    /// * The starting index must not exceed the ending index;
     /// * Indexes must be within bounds of the original slice;
     /// * Indexes must lie on UTF-8 sequence boundaries.
     ///
@@ -2518,7 +2520,7 @@ impl str {
     /// Callers of this function are responsible that these preconditions are
     /// satisfied:
     ///
-    /// * The starting index must come before the ending index;
+    /// * The starting index must not exceed the ending index;
     /// * Indexes must be within bounds of the original slice;
     /// * Indexes must lie on UTF-8 sequence boundaries.
     ///
@@ -2563,7 +2565,7 @@ impl str {
     /// Callers of this function are responsible that three preconditions are
     /// satisfied:
     ///
-    /// * `begin` must come before `end`.
+    /// * `begin` must not exceed `end`.
     /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     ///
@@ -2612,7 +2614,7 @@ impl str {
     /// Callers of this function are responsible that three preconditions are
     /// satisfied:
     ///
-    /// * `begin` must come before `end`.
+    /// * `begin` must not exceed `end`.
     /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     #[stable(feature = "str_slice_mut", since = "1.5.0")]

@@ -2,8 +2,8 @@ use rustc::mir::interpret::{
     truncate, Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };
 use rustc::ty::{self, layout::Size, ParamEnv, TyCtxt, TyS};
+use rustc_ast::ast;
 use rustc_span::symbol::Symbol;
-use syntax::ast;
 
 crate fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -1,4 +1,6 @@
 // edition:2018
+// compile-flags: -Zsave-analysis
+// ~^ Also regression test for #69588
 
 #![feature(register_attr)]
 #![feature(register_tool)]

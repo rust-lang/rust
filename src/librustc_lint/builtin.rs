@@ -25,6 +25,10 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc::hir::map::Map;
 use rustc::lint::LintDiagnosticBuilder;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
+use rustc_ast::ast::{self, Expr};
+use rustc_ast::attr::{self, HasAttrs};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -41,10 +45,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-use syntax::ast::{self, Expr};
-use syntax::attr::{self, HasAttrs};
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::{FnCtxt, FnKind};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -640,7 +640,7 @@ declare_lint_pass!(
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         match it.kind {
-            ast::AssocItemKind::Fn(ref sig, _, _) => {
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.kind {
                         ast::PatKind::Ident(_, ident, None) => {
@@ -738,87 +738,59 @@ impl EarlyLintPass for DeprecatedAttr {
     }
 }
 
-declare_lint! {
-    pub UNUSED_DOC_COMMENTS,
-    Warn,
-    "detects doc comments that aren't used by rustdoc"
-}
+fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &[ast::Attribute]) {
+    let mut attrs = attrs.iter().peekable();
 
-declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
+    // Accumulate a single span for sugared doc comments.
+    let mut sugared_span: Option<Span> = None;
 
-impl UnusedDocComment {
-    fn warn_if_doc(
-        &self,
-        cx: &EarlyContext<'_>,
-        node_span: Span,
-        node_kind: &str,
-        is_macro_expansion: bool,
-        attrs: &[ast::Attribute],
-    ) {
-        let mut attrs = attrs.into_iter().peekable();
+    while let Some(attr) = attrs.next() {
+        if attr.is_doc_comment() {
+            sugared_span =
+                Some(sugared_span.map_or_else(|| attr.span, |span| span.with_hi(attr.span.hi())));
+        }
 
-        // Accumulate a single span for sugared doc comments.
-        let mut sugared_span: Option<Span> = None;
+        if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
+            continue;
+        }
 
-        while let Some(attr) = attrs.next() {
-            if attr.is_doc_comment() {
-                sugared_span = Some(
-                    sugared_span.map_or_else(|| attr.span, |span| span.with_hi(attr.span.hi())),
+        let span = sugared_span.take().unwrap_or_else(|| attr.span);
+
+        if attr.is_doc_comment() || attr.check_name(sym::doc) {
+            cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
+                let mut err = lint.build("unused doc comment");
+                err.span_label(
+                    node_span,
+                    format!("rustdoc does not generate documentation for {}", node_kind),
                 );
-            }
-
-            if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
-                continue;
-            }
-
-            let span = sugared_span.take().unwrap_or_else(|| attr.span);
-
-            if attr.is_doc_comment() || attr.check_name(sym::doc) {
-                cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
-                    let mut err = lint.build("unused doc comment");
-                    err.span_label(
-                        node_span,
-                        format!("rustdoc does not generate documentation for {}", node_kind),
-                    );
-                    if is_macro_expansion {
-                        err.help(
-                            "to document an item produced by a macro, \
-                                  the macro must produce the documentation as part of its expansion",
-                        );
-                    }
-                    err.emit();
-                });
-            }
+                err.emit();
+            });
         }
     }
 }
 
 impl EarlyLintPass for UnusedDocComment {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Mac(..) = item.kind {
-            self.warn_if_doc(cx, item.span, "macro expansions", true, &item.attrs);
-        }
-    }
-
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        let (kind, is_macro_expansion) = match stmt.kind {
-            ast::StmtKind::Local(..) => ("statements", false),
-            ast::StmtKind::Item(..) => ("inner items", false),
-            ast::StmtKind::Mac(..) => ("macro expansions", true),
+        let kind = match stmt.kind {
+            ast::StmtKind::Local(..) => "statements",
+            ast::StmtKind::Item(..) => "inner items",
             // expressions will be reported by `check_expr`.
-            ast::StmtKind::Semi(..) | ast::StmtKind::Expr(..) => return,
+            ast::StmtKind::Empty
+            | ast::StmtKind::Semi(_)
+            | ast::StmtKind::Expr(_)
+            | ast::StmtKind::Mac(_) => return,
         };
 
-        self.warn_if_doc(cx, stmt.span, kind, is_macro_expansion, stmt.kind.attrs());
+        warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
-        self.warn_if_doc(cx, arm_span, "match arms", false, &arm.attrs);
+        warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        self.warn_if_doc(cx, expr.span, "expressions", false, &expr.attrs);
+        warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
     }
 }
 
@@ -1878,7 +1850,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         /// Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
             use hir::ExprKind::*;
-            use syntax::ast::LitKind::*;
+            use rustc_ast::ast::LitKind::*;
             match &expr.kind {
                 Lit(lit) => {
                     if let Int(i, _) = lit.node {
@@ -1950,21 +1922,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             use rustc::ty::TyKind::*;
             match ty.kind {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some((format!("references must be non-null"), None)),
-                Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
-                FnPtr(..) => Some((format!("function pointers must be non-null"), None)),
-                Never => Some((format!("the `!` type has no valid value"), None)),
+                Ref(..) => Some(("references must be non-null".to_string(), None)),
+                Adt(..) if ty.is_box() => Some(("`Box` must be non-null".to_string(), None)),
+                FnPtr(..) => Some(("function pointers must be non-null".to_string(), None)),
+                Never => Some(("the `!` type has no valid value".to_string(), None)),
                 RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some((format!("the vtable of a wide raw pointer must be non-null"), None))
+                    Some(("the vtable of a wide raw pointer must be non-null".to_string(), None))
                 }
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit => {
-                    Some((format!("booleans must be either `true` or `false`"), None))
+                    Some(("booleans must be either `true` or `false`".to_string(), None))
                 }
                 Char if init == InitKind::Uninit => {
-                    Some((format!("characters must be a valid Unicode codepoint"), None))
+                    Some(("characters must be a valid Unicode codepoint".to_string(), None))
                 }
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
@@ -1992,7 +1964,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     }
                     // Now, recurse.
                     match adt_def.variants.len() {
-                        0 => Some((format!("enums with no variants have no valid value"), None)),
+                        0 => Some(("enums with no variants have no valid value".to_string(), None)),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.

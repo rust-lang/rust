@@ -17,6 +17,7 @@
 extern crate env_logger;
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
@@ -38,7 +39,6 @@ extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;
-extern crate syntax;
 extern crate test as testing;
 #[macro_use]
 extern crate log;

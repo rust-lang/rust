@@ -13,4 +13,4 @@ doctest = false
 log = "0.4"
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }

@@ -395,6 +395,7 @@ E0714: include_str!("./error_codes/E0714.md"),
 E0715: include_str!("./error_codes/E0715.md"),
 E0716: include_str!("./error_codes/E0716.md"),
 E0718: include_str!("./error_codes/E0718.md"),
+E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
 E0723: include_str!("./error_codes/E0723.md"),
 E0725: include_str!("./error_codes/E0725.md"),
@@ -417,6 +418,8 @@ E0743: include_str!("./error_codes/E0743.md"),
 E0744: include_str!("./error_codes/E0744.md"),
 E0745: include_str!("./error_codes/E0745.md"),
 E0746: include_str!("./error_codes/E0746.md"),
+E0747: include_str!("./error_codes/E0747.md"),
+E0748: include_str!("./error_codes/E0748.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -603,7 +606,6 @@ E0746: include_str!("./error_codes/E0746.md"),
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
-    E0719, // duplicate values for associated type binding
 //  E0721, // `await` keyword
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions

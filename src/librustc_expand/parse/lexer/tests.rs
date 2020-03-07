@@ -1,3 +1,6 @@
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::util::comments::is_doc_comment;
+use rustc_ast::with_default_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{emitter::EmitterWriter, Handler};
 use rustc_parse::lexer::StringReader;
@@ -5,9 +8,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
-use syntax::token::{self, Token, TokenKind};
-use syntax::util::comments::is_doc_comment;
-use syntax::with_default_globals;
 
 use std::io;
 use std::path::PathBuf;

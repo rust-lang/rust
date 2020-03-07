@@ -8,8 +8,11 @@ LL |     f1.foo(1usize);
    |        ^^^ method not found in `Bar`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `foo`, perhaps you need to implement it:
-           candidate #1: `Foo`
+note: `Foo` defines an item `foo`, perhaps you need to implement it
+  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:1:1
+   |
+LL | trait Foo<A> {
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

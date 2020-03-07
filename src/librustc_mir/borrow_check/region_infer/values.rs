@@ -140,7 +140,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     crate fn new(elements: Rc<RegionValueElements>) -> Self {
-        Self { points: SparseBitMatrix::new(elements.num_points), elements: elements }
+        Self { points: SparseBitMatrix::new(elements.num_points), elements }
     }
 
     /// Iterate through each region that has a value in this set.

@@ -2,13 +2,13 @@
 
 use crate::parse_in;
 
+use rustc_ast::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Symbol};
-use syntax::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
-use syntax::tokenstream::DelimSpan;
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {

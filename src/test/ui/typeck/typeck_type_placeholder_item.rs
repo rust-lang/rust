@@ -1,4 +1,5 @@
-#![feature(type_alias_impl_trait)] // Needed for single test `type Y = impl Trait<_>`
+// Needed for `type Y = impl Trait<_>` and `type B = _;`
+#![feature(type_alias_impl_trait, associated_type_defaults)]
 // This test checks that it is not possible to enable global type
 // inference by using the `_` type placeholder.
 
@@ -157,9 +158,12 @@ trait BadTrait<_> {}
 //~^ ERROR expected identifier, found reserved identifier `_`
 impl BadTrait<_> for BadStruct<_> {}
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 fn impl_trait() -> impl BadTrait<_> {
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
     unimplemented!()
 }
 
@@ -174,12 +178,36 @@ struct BadStruct2<_, T>(_, T);
 
 type X = Box<_>;
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 struct Struct;
 trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 fn foo() -> Y {
     Struct
+}
+
+trait Qux {
+    type A;
+    type B = _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    const C: _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    const D: _ = 42;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    // type E: _; // FIXME: make the parser propagate the existence of `B`
+}
+impl Qux for Struct {
+    type A = _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    type B = _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    const C: _;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    //~| ERROR associated constant in `impl` without body
+    const D: _ = 42;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }

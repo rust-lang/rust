@@ -1,8 +1,8 @@
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_ast::ast::FloatTy;
 use rustc_span::symbol::sym;
-use syntax::ast::FloatTy;
 
 use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::mir::CastKind;
@@ -202,7 +202,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Char => {
                 // `u8` to `char` cast
-                debug_assert_eq!(v as u8 as u128, v);
+                assert_eq!(v as u8 as u128, v);
                 Ok(Scalar::from_uint(v, Size::from_bytes(4)))
             }
 

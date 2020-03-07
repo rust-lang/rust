@@ -421,7 +421,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         for _ in num_universes_in_query..num_universes_in_response {
             universe_map.push(self.create_next_universe());
         }
-        assert!(universe_map.len() >= 1); // always have the root universe
+        assert!(!universe_map.is_empty()); // always have the root universe
         assert_eq!(universe_map[ty::UniverseIndex::ROOT.as_usize()], ty::UniverseIndex::ROOT);
 
         // Every canonical query result includes values for each of
@@ -630,7 +630,7 @@ pub fn make_query_region_constraints<'tcx>(
     assert!(givens.is_empty());
 
     let outlives: Vec<_> = constraints
-        .into_iter()
+        .iter()
         .map(|(k, _)| match *k {
             // Swap regions because we are going from sub (<=) to outlives
             // (>=).

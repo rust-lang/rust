@@ -230,7 +230,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         let first_succ = {
-            if let Some(&first_succ) = terminator.successors().nth(0) {
+            if let Some(&first_succ) = terminator.successors().next() {
                 if terminator.successors().all(|s| *s == first_succ) {
                     let count = terminator.successors().count();
                     self.pred_count[first_succ] -= (count - 1) as u32;

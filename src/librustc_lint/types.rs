@@ -5,6 +5,7 @@ use rustc::mir::interpret::{sign_extend, truncate};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -16,7 +17,6 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 
 use log::debug;
 use std::cmp;
@@ -83,9 +83,9 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
                     // We need to preserve the literal's suffix,
                     // as it may determine typing information.
                     let suffix = match lit.node {
-                        LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
-                        LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
-                        LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str().to_string(),
+                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str().to_string(),
+                        LitKind::Int(_, LitIntType::Unsuffixed) => "".to_string(),
                         _ => bug!(),
                     };
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
@@ -194,8 +194,8 @@ fn report_bin_hex_error(
 //
 // No suggestion for: `isize`, `usize`.
 fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
-    use syntax::ast::IntTy::*;
-    use syntax::ast::UintTy::*;
+    use rustc_ast::ast::IntTy::*;
+    use rustc_ast::ast::UintTy::*;
     macro_rules! find_fit {
         ($ty:expr, $val:expr, $negative:expr,
          $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {

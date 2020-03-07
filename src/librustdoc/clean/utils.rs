@@ -38,7 +38,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-    // Clean the crate, translating the entire libsyntax AST to one that is
+    // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
     let mut masked_crates = FxHashSet::default();
@@ -121,9 +121,7 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => {
-                lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
-            }
+            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(|lt| GenericArg::Lifetime(lt)),
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None

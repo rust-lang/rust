@@ -1,13 +1,13 @@
 use log::debug;
 use rustc::hir::map::definitions::*;
+use rustc_ast::ast::*;
+use rustc_ast::token::{self, Token};
+use rustc_ast::visit;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::DefIndex;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
-use syntax::ast::*;
-use syntax::token::{self, Token};
-use syntax::visit;
 
 crate fn collect_definitions(
     definitions: &mut Definitions,
@@ -117,7 +117,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.is_async() => {
+            ItemKind::Fn(_, sig, generics, body) if sig.header.asyncness.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -215,7 +215,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
-            AssocItemKind::Fn(FnSig { header, decl }, generics, body)
+            AssocItemKind::Fn(_, FnSig { header, decl }, generics, body)
                 if header.asyncness.is_async() =>
             {
                 return self.visit_async_fn(
@@ -228,9 +228,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     body.as_deref(),
                 );
             }
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) | AssocItemKind::Static(..) => {
-                DefPathData::ValueNs(i.ident.name)
-            }
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
         };

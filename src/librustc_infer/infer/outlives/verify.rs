@@ -140,7 +140,6 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // Extend with bounds that we can find from the trait.
         let trait_bounds = self
             .projection_declared_bounds_from_trait(projection_ty)
-            .into_iter()
             .map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive

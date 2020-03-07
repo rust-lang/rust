@@ -3,15 +3,15 @@ use Position::*;
 
 use fmt_macros as parse;
 
+use rustc_ast::ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
-use syntax::ast;
-use syntax::ptr::P;
-use syntax::token;
-use syntax::tokenstream::TokenStream;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -158,7 +158,7 @@ fn parse_args<'a>(
         } // accept trailing commas
         if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             named = true;
-            let name = if let token::Ident(name, _) = p.token.kind {
+            let name = if let token::Ident(name, _) = p.normalized_token.kind {
                 p.bump();
                 name
             } else {
@@ -188,7 +188,7 @@ fn parse_args<'a>(
                 let mut err = ecx
                     .struct_span_err(e.span, "positional arguments cannot follow named arguments");
                 err.span_label(e.span, "positional arguments must be before named arguments");
-                for (_, pos) in &names {
+                for pos in names.values() {
                     err.span_label(args[*pos].span, "named argument");
                 }
                 err.emit();
@@ -284,7 +284,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
-                                    fmt.to_string(),
+                                    (*fmt).to_string(),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -359,7 +359,7 @@ impl<'a, 'b> Context<'a, 'b> {
             refs.sort();
             refs.dedup();
             let (arg_list, mut sp) = if refs.len() == 1 {
-                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.map(|sp| *sp)).collect();
+                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.copied()).collect();
                 (
                     format!("argument {}", refs[0]),
                     if spans.is_empty() {
@@ -476,7 +476,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 match ty {
                     Placeholder(_) => {
                         // record every (position, type) combination only once
-                        let ref mut seen_ty = self.arg_unique_types[arg];
+                        let seen_ty = &mut self.arg_unique_types[arg];
                         let i = seen_ty.iter().position(|x| *x == ty).unwrap_or_else(|| {
                             let i = seen_ty.len();
                             seen_ty.push(ty);
@@ -526,7 +526,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // Map the arguments
         for i in 0..args_len {
-            let ref arg_types = self.arg_types[i];
+            let arg_types = &self.arg_types[i];
             let arg_offsets = arg_types.iter().map(|offset| sofar + *offset).collect::<Vec<_>>();
             self.arg_index_map.push(arg_offsets);
             sofar += self.arg_unique_types[i].len();
@@ -597,7 +597,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             let arg_idx = match arg_index_consumed.get_mut(i) {
                                 None => 0, // error already emitted elsewhere
                                 Some(offset) => {
-                                    let ref idx_map = self.arg_index_map[i];
+                                    let idx_map = &self.arg_index_map[i];
                                     // unwrap_or branch: error already emitted elsewhere
                                     let arg_idx = *idx_map.get(*offset).unwrap_or(&0);
                                     *offset += 1;
@@ -721,7 +721,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let name = names_pos[i];
             let span = self.ecx.with_def_site_ctxt(e.span);
             pats.push(self.ecx.pat_ident(span, name));
-            for ref arg_ty in self.arg_unique_types[i].iter() {
+            for arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));
@@ -894,7 +894,7 @@ pub fn expand_preparsed_format_args(
     };
 
     let (is_literal, fmt_snippet) = match ecx.source_map().span_to_snippet(fmt_sp) {
-        Ok(s) => (s.starts_with("\"") || s.starts_with("r#"), Some(s)),
+        Ok(s) => (s.starts_with('"') || s.starts_with("r#"), Some(s)),
         _ => (false, None),
     };
 
@@ -1096,7 +1096,7 @@ pub fn expand_preparsed_format_args(
         cx.str_pieces.push(s);
     }
 
-    if cx.invalid_refs.len() >= 1 {
+    if !cx.invalid_refs.is_empty() {
         cx.report_invalid_references(numbered_position_args);
     }
 

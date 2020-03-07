@@ -69,8 +69,10 @@
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
-    /// Returns the exact number of times the iterator will iterate.
+    /// Returns the exact length of the iterator.
     ///
+    /// The implementation ensures that the iterator will return exactly `len()`
+    /// more times a `Some(T)` value, before returning `None`.
     /// This method has a default implementation, so you usually should not
     /// implement it directly. However, if you can provide a more efficient
     /// implementation, you can do so. See the [trait-level] docs for an

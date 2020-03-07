@@ -14,8 +14,8 @@
 //[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
 //
 // MSAN-NOT:         @__msan_keep_going
-// MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}} constant i32 1
-// MSAN-RECOVER-LTO: @__msan_keep_going = weak_odr {{.*}} constant i32 1
+// MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1
+// MSAN-RECOVER-LTO: @__msan_keep_going = weak_odr {{.*}}constant i32 1
 
 // ASAN-LABEL: define i32 @penguin(
 // ASAN:         call void @__asan_report_load4(i64 %0)

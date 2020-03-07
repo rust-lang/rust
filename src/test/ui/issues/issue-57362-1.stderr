@@ -6,8 +6,11 @@ LL |     a.f();
    |
    = note: `a` is a function, perhaps you wish to call it
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `f`, perhaps you need to implement it:
-           candidate #1: `Trait`
+note: `Trait` defines an item `f`, perhaps you need to implement it
+  --> $DIR/issue-57362-1.rs:8:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
 
 error: aborting due to previous error
 

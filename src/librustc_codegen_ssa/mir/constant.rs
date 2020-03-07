@@ -31,7 +31,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => {
                 let val = self.eval_mir_constant(constant)?;
                 let ty = self.monomorphize(&constant.literal.ty);
-                Ok(OperandRef::from_const(bx, val.clone(), ty))
+                Ok(OperandRef::from_const(bx, val, ty))
             }
         }
     }

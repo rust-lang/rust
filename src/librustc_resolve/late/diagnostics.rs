@@ -1,12 +1,16 @@
 use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
+use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::late::{LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
 use rustc::session::config::nightly_options;
+use rustc_ast::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -14,8 +18,6 @@ use rustc_hir::PrimTy;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
-use syntax::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use log::debug;
 
@@ -26,6 +28,40 @@ enum AssocSuggestion {
     Field,
     MethodWithSelf,
     AssocItem,
+}
+
+crate enum MissingLifetimeSpot<'tcx> {
+    Generics(&'tcx hir::Generics<'tcx>),
+    HigherRanked { span: Span, span_type: ForLifetimeSpanType },
+}
+
+crate enum ForLifetimeSpanType {
+    BoundEmpty,
+    BoundTail,
+    TypeEmpty,
+    TypeTail,
+}
+
+impl ForLifetimeSpanType {
+    crate fn descr(&self) -> &'static str {
+        match self {
+            Self::BoundEmpty | Self::BoundTail => "bound",
+            Self::TypeEmpty | Self::TypeTail => "type",
+        }
+    }
+
+    crate fn suggestion(&self, sugg: &str) -> String {
+        match self {
+            Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
+            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
+        }
+    }
+}
+
+impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
+    fn into(self) -> MissingLifetimeSpot<'tcx> {
+        MissingLifetimeSpot::Generics(self)
+    }
 }
 
 fn is_self_type(path: &[Segment], namespace: Namespace) -> bool {
@@ -141,7 +177,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             err.code(rustc_errors::error_code!(E0411));
             err.span_label(
                 span,
-                format!("`Self` is only available in impls, traits, and type definitions"),
+                "`Self` is only available in impls, traits, and type definitions".to_string(),
             );
             return (err, Vec::new());
         }
@@ -150,12 +186,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
             err.code(rustc_errors::error_code!(E0424));
             err.span_label(span, match source {
-                PathSource::Pat => format!(
-                    "`self` value is a keyword and may not be bound to variables or shadowed",
-                ),
-                _ => format!(
-                    "`self` value is a keyword only available in methods with a `self` parameter",
-                ),
+                PathSource::Pat => "`self` value is a keyword and may not be bound to variables or shadowed"
+                                   .to_string(),
+                _ => "`self` value is a keyword only available in methods with a `self` parameter"
+                     .to_string(),
             });
             if let Some(span) = &self.diagnostic_metadata.current_function {
                 err.span_label(*span, "this function doesn't have a `self` parameter");
@@ -318,7 +352,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let mut has_self_arg = None;
         if let PathSource::Expr(parent) = source {
             match &parent?.kind {
-                ExprKind::Call(_, args) if args.len() > 0 => {
+                ExprKind::Call(_, args) if !args.is_empty() => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
@@ -444,7 +478,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 PathSource::Expr(Some(parent)) => {
                     suggested = path_sep(err, &parent);
                 }
-                PathSource::Expr(None) if followed_by_brace == true => {
+                PathSource::Expr(None) if followed_by_brace => {
                     if let Some((sp, snippet)) = closing_brace {
                         err.span_suggestion(
                             sp,
@@ -522,7 +556,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     if is_expected(ctor_def) && !accessible_ctor {
                         err.span_label(
                             span,
-                            format!("constructor is not visible here due to private fields"),
+                            "constructor is not visible here due to private fields".to_string(),
                         );
                     }
                 } else {
@@ -725,21 +759,21 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
     /// Only used in a specific case of type ascription suggestions
     fn get_colon_suggestion_span(&self, start: Span) -> Span {
-        let cm = self.r.session.source_map();
-        start.to(cm.next_point(start))
+        let sm = self.r.session.source_map();
+        start.to(sm.next_point(start))
     }
 
     fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) {
-        let cm = self.r.session.source_map();
-        let base_snippet = cm.span_to_snippet(base_span);
+        let sm = self.r.session.source_map();
+        let base_snippet = sm.span_to_snippet(base_span);
         if let Some(sp) = self.diagnostic_metadata.current_type_ascription.last() {
             let mut sp = *sp;
             loop {
                 // Try to find the `:`; bail on first non-':' / non-whitespace.
-                sp = cm.next_point(sp);
-                if let Ok(snippet) = cm.span_to_snippet(sp.to(cm.next_point(sp))) {
-                    let line_sp = cm.lookup_char_pos(sp.hi()).line;
-                    let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
+                sp = sm.next_point(sp);
+                if let Ok(snippet) = sm.span_to_snippet(sp.to(sm.next_point(sp))) {
+                    let line_sp = sm.lookup_char_pos(sp.hi()).line;
+                    let line_base_sp = sm.lookup_char_pos(base_span.lo()).line;
                     if snippet == ":" {
                         let mut show_label = true;
                         if line_sp != line_base_sp {
@@ -753,7 +787,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             let colon_sp = self.get_colon_suggestion_span(sp);
                             let after_colon_sp =
                                 self.get_colon_suggestion_span(colon_sp.shrink_to_hi());
-                            if !cm
+                            if !sm
                                 .span_to_snippet(after_colon_sp)
                                 .map(|s| s == " ")
                                 .unwrap_or(false)
@@ -770,8 +804,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                                 let mut sp = after_colon_sp;
                                 for _ in 0..100 {
                                     // Try to find an assignment
-                                    sp = cm.next_point(sp);
-                                    let snippet = cm.span_to_snippet(sp.to(cm.next_point(sp)));
+                                    sp = sm.next_point(sp);
+                                    let snippet = sm.span_to_snippet(sp.to(sm.next_point(sp)));
                                     match snippet {
                                         Ok(ref x) if x.as_str() == "=" => {
                                             err.span_suggestion(
@@ -902,5 +936,204 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             _ => {}
         }
         None
+    }
+}
+
+impl<'tcx> LifetimeContext<'_, 'tcx> {
+    crate fn report_missing_lifetime_specifiers(
+        &self,
+        span: Span,
+        count: usize,
+    ) -> DiagnosticBuilder<'tcx> {
+        struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0106,
+            "missing lifetime specifier{}",
+            pluralize!(count)
+        )
+    }
+
+    crate fn emit_undeclared_lifetime_error(&self, lifetime_ref: &hir::Lifetime) {
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            lifetime_ref.span,
+            E0261,
+            "use of undeclared lifetime name `{}`",
+            lifetime_ref
+        );
+        err.span_label(lifetime_ref.span, "undeclared lifetime");
+        for missing in &self.missing_named_lifetime_spots {
+            match missing {
+                MissingLifetimeSpot::Generics(generics) => {
+                    let (span, sugg) = if let Some(param) =
+                        generics.params.iter().find(|p| match p.kind {
+                            hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            } => false,
+                            _ => true,
+                        }) {
+                        (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
+                    } else {
+                        (generics.span, format!("<{}>", lifetime_ref))
+                    };
+                    err.span_suggestion(
+                        span,
+                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                    err.span_suggestion(
+                        *span,
+                        &format!(
+                            "consider making the {} lifetime-generic with a new `{}` lifetime",
+                            span_type.descr(),
+                            lifetime_ref
+                        ),
+                        span_type.suggestion(&lifetime_ref.to_string()),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.note(
+                        "for more information on higher-ranked polymorphism, visit \
+                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                    );
+                }
+            }
+        }
+        err.emit();
+    }
+
+    crate fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
+        if let def::Res::Def(_, did) = trait_ref.trait_ref.path.res {
+            if [
+                self.tcx.lang_items().fn_once_trait(),
+                self.tcx.lang_items().fn_trait(),
+                self.tcx.lang_items().fn_mut_trait(),
+            ]
+            .contains(&Some(did))
+            {
+                let (span, span_type) = match &trait_ref.bound_generic_params {
+                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
+                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
+                return true;
+            }
+        };
+        false
+    }
+
+    crate fn add_missing_lifetime_specifiers_label(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        count: usize,
+        lifetime_names: &FxHashSet<ast::Ident>,
+        params: &[ElisionFailureInfo],
+    ) {
+        if count > 1 {
+            err.span_label(span, format!("expected {} lifetime parameters", count));
+        } else {
+            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
+            let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+                err.span_suggestion(
+                    span,
+                    "consider using the named lifetime",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+            };
+            let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
+                err.span_label(span, "expected named lifetime parameter");
+
+                for missing in self.missing_named_lifetime_spots.iter().rev() {
+                    let mut introduce_suggestion = vec![];
+                    let msg;
+                    let should_break;
+                    introduce_suggestion.push(match missing {
+                        MissingLifetimeSpot::Generics(generics) => {
+                            msg = "consider introducing a named lifetime parameter".to_string();
+                            should_break = true;
+                            if let Some(param) = generics.params.iter().find(|p| match p.kind {
+                                hir::GenericParamKind::Type {
+                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                    ..
+                                } => false,
+                                _ => true,
+                            }) {
+                                (param.span.shrink_to_lo(), "'a, ".to_string())
+                            } else {
+                                (generics.span, "<'a>".to_string())
+                            }
+                        }
+                        MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                            msg = format!(
+                                "consider making the {} lifetime-generic with a new `'a` lifetime",
+                                span_type.descr(),
+                            );
+                            should_break = false;
+                            err.note(
+                                "for more information on higher-ranked polymorphism, visit \
+                             https://doc.rust-lang.org/nomicon/hrtb.html",
+                            );
+                            (*span, span_type.suggestion("'a"))
+                        }
+                    });
+                    for param in params {
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
+                        {
+                            if snippet.starts_with('&') && !snippet.starts_with("&'") {
+                                introduce_suggestion
+                                    .push((param.span, format!("&'a {}", &snippet[1..])));
+                            } else if snippet.starts_with("&'_ ") {
+                                introduce_suggestion
+                                    .push((param.span, format!("&'a {}", &snippet[4..])));
+                            }
+                        }
+                    }
+                    introduce_suggestion.push((span, sugg.to_string()));
+                    err.multipart_suggestion(
+                        &msg,
+                        introduce_suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
+                    if should_break {
+                        break;
+                    }
+                }
+            };
+
+            match (
+                lifetime_names.len(),
+                lifetime_names.iter().next(),
+                snippet.as_ref().map(|s| s.as_str()),
+            ) {
+                (1, Some(name), Some("&")) => {
+                    suggest_existing(err, format!("&{} ", name));
+                }
+                (1, Some(name), Some("'_")) => {
+                    suggest_existing(err, name.to_string());
+                }
+                (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
+                    suggest_existing(err, format!("{}<{}>", snippet, name));
+                }
+                (0, _, Some("&")) => {
+                    suggest_new(err, "&'a ");
+                }
+                (0, _, Some("'_")) => {
+                    suggest_new(err, "'a");
+                }
+                (0, _, Some(snippet)) if !snippet.ends_with('>') => {
+                    suggest_new(err, &format!("{}<'a>", snippet));
+                }
+                _ => {
+                    err.span_label(span, "expected lifetime parameter");
+                }
+            }
+        }
     }
 }

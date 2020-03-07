@@ -18,7 +18,7 @@ impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
         fields: &'combine mut CombineFields<'infcx, 'tcx>,
         a_is_expected: bool,
     ) -> Glb<'combine, 'infcx, 'tcx> {
-        Glb { fields: fields, a_is_expected: a_is_expected }
+        Glb { fields, a_is_expected }
     }
 }
 

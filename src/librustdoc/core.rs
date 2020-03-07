@@ -14,13 +14,13 @@ use rustc_interface::interface;
 use rustc_resolve as resolve;
 use rustc_session::lint;
 
+use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
-use syntax::ast::CRATE_NODE_ID;
 
 use rustc_data_structures::sync::{self, Lrc};
 use std::cell::RefCell;
@@ -177,7 +177,7 @@ pub fn new_handler(
             Box::new(
                 EmitterWriter::stderr(
                     color_config,
-                    source_map.map(|cm| cm as _),
+                    source_map.map(|sm| sm as _),
                     short,
                     debugging_opts.teach,
                     debugging_opts.terminal_width,
@@ -283,7 +283,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         .filter_map(|lint| {
             // We don't want to whitelist *all* lints so let's
             // ignore those ones.
-            if whitelisted_lints.iter().any(|l| &lint.name == l) {
+            if whitelisted_lints.iter().any(|l| lint.name == l) {
                 None
             } else {
                 Some((lint::LintId::of(lint), lint::Allow))

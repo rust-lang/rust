@@ -131,6 +131,29 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::FnDef(..) | DefiningTy::Const(..) => 0,
         }
     }
+
+    pub fn is_fn_def(&self) -> bool {
+        match *self {
+            DefiningTy::FnDef(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_const(&self) -> bool {
+        match *self {
+            DefiningTy::Const(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        match *self {
+            DefiningTy::Closure(def_id, ..)
+            | DefiningTy::Generator(def_id, ..)
+            | DefiningTy::FnDef(def_id, ..)
+            | DefiningTy::Const(def_id, ..) => def_id,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -463,7 +486,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             defining_ty,
             unnormalized_output_ty,
             unnormalized_input_tys,
-            yield_ty: yield_ty,
+            yield_ty,
         }
     }
 

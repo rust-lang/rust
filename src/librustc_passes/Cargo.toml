@@ -20,5 +20,5 @@ rustc_index = { path = "../librustc_index" }
 rustc_infer = { path = "../librustc_infer" }
 rustc_session = { path = "../librustc_session" }
 rustc_target = { path = "../librustc_target" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }

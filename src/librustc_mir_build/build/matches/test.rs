@@ -64,10 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() { BinOp::Ge } else { BinOp::Eq };
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Len { len: len as u64, op: op },
-                }
+                Test { span: match_pair.pattern.span, kind: TestKind::Len { len: len as u64, op } }
             }
 
             PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
@@ -222,7 +219,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if switch_ty.kind == ty::Bool {
-                    assert!(options.len() > 0 && options.len() <= 2);
+                    assert!(!options.is_empty() && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
                         let (true_bb, false_bb) = match options[0] {
                             1 => (first_bb, second_bb),

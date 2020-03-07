@@ -8,8 +8,8 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    |                   ^^^^^^^^^ associated item not found in `Foo<A, B>`
    |
    = note: the method `HOST_SIZE` exists but the following trait bounds were not satisfied:
-           `A : std::marker::Sized`
-           `B : std::marker::Sized`
+           `A: std::marker::Sized`
+           `B: std::marker::Sized`
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/too_generic_eval_ice.rs:7:13

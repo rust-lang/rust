@@ -1245,6 +1245,38 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         let borrow = orig.borrow.clone();
         (Ref { value: a, borrow }, Ref { value: b, borrow: orig.borrow })
     }
+
+    /// Convert into a reference to the underlying data.
+    ///
+    /// The underlying `RefCell` can never be mutably borrowed from again and will always appear
+    /// already immutably borrowed. It is not a good idea to leak more than a constant number of
+    /// references. The `RefCell` can be immutably borrowed again if only a smaller number of leaks
+    /// have occurred in total.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::leak(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_leak)]
+    /// use std::cell::{RefCell, Ref};
+    /// let cell = RefCell::new(0);
+    ///
+    /// let value = Ref::leak(cell.borrow());
+    /// assert_eq!(*value, 0);
+    ///
+    /// assert!(cell.try_borrow().is_ok());
+    /// assert!(cell.try_borrow_mut().is_err());
+    /// ```
+    #[unstable(feature = "cell_leak", issue = "69099")]
+    pub fn leak(orig: Ref<'b, T>) -> &'b T {
+        // By forgetting this Ref we ensure that the borrow counter in the RefCell never goes back
+        // to UNUSED again. No further mutable references can be created from the original cell.
+        mem::forget(orig.borrow);
+        orig.value
+    }
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
@@ -1329,6 +1361,37 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         let (a, b) = f(orig.value);
         let borrow = orig.borrow.clone();
         (RefMut { value: a, borrow }, RefMut { value: b, borrow: orig.borrow })
+    }
+
+    /// Convert into a mutable reference to the underlying data.
+    ///
+    /// The underlying `RefCell` can not be borrowed from again and will always appear already
+    /// mutably borrowed, making the returned reference the only to the interior.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::leak(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_leak)]
+    /// use std::cell::{RefCell, RefMut};
+    /// let cell = RefCell::new(0);
+    ///
+    /// let value = RefMut::leak(cell.borrow_mut());
+    /// assert_eq!(*value, 0);
+    /// *value = 1;
+    ///
+    /// assert!(cell.try_borrow_mut().is_err());
+    /// ```
+    #[unstable(feature = "cell_leak", issue = "69099")]
+    pub fn leak(orig: RefMut<'b, T>) -> &'b mut T {
+        // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell never
+        // goes back to UNUSED again. No further references can be created from the original cell,
+        // making the current borrow the only reference for the remaining lifetime.
+        mem::forget(orig.borrow);
+        orig.value
     }
 }
 

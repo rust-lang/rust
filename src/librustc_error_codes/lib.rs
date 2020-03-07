@@ -3,8 +3,9 @@
 
 macro_rules! register_diagnostics {
     ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
-        pub static DIAGNOSTICS: &[(&str, &str)] = &[
-            $( (stringify!($ecode), $message), )*
+        pub static DIAGNOSTICS: &[(&str, Option<&str>)] = &[
+            $( (stringify!($ecode), Some($message)), )*
+            $( (stringify!($code), None), )*
         ];
     )
 }

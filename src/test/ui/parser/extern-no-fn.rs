@@ -1,6 +1,5 @@
 extern {
-//~^ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
-    f();
+    f(); //~ ERROR expected one of `!` or `::`, found `(`
 }
 
 fn main() {

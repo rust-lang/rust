@@ -1,10 +1,10 @@
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use rustc_ast::ast;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use syntax::ast;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -341,7 +341,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     db.note("distinct uses of `impl Trait` result in different opaque types");
                     let e_str = values.expected.to_string();
                     let f_str = values.found.to_string();
-                    if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                    if e_str == f_str && &e_str == "impl std::future::Future" {
                         // FIXME: use non-string based check.
                         db.help(
                             "if both `Future`s have the same `Output` type, consider \

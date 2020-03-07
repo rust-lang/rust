@@ -31,6 +31,8 @@ use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_ast::ast;
+use rustc_ast::ast::{Ident, MetaItemKind};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -43,8 +45,6 @@ use rustc_hir::{GenericParamKind, Node, Unsafety};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use syntax::ast;
-use syntax::ast::{Ident, MetaItemKind};
 
 mod type_of;
 
@@ -76,6 +76,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         impl_polarity,
         is_foreign_item,
         static_mutability,
+        generator_kind,
         codegen_fn_attrs,
         collect_mod_item_types,
         ..*providers
@@ -150,7 +151,7 @@ crate fn placeholder_type_error(
         .unwrap_or(&"ParamName");
 
     let mut sugg: Vec<_> =
-        placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
+        placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
     if generics.is_empty() {
         sugg.push((span, format!("<{}>", type_name)));
     } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
@@ -159,7 +160,7 @@ crate fn placeholder_type_error(
     }) {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-        sugg.push((arg.span, format!("{}", type_name)));
+        sugg.push((arg.span, (*type_name).to_string()));
     } else {
         sugg.push((
             generics.iter().last().unwrap().span.shrink_to_hi(),
@@ -474,7 +475,7 @@ fn get_new_lifetime_name<'tcx>(
 
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
-            let mut s = format!("'");
+            let mut s = '\''.to_string();
             s.extend(std::iter::repeat(char::from(c)).take(n));
             s
         })
@@ -714,13 +715,21 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
     tcx.generics_of(def_id);
 
     match trait_item.kind {
-        hir::TraitItemKind::Const(..)
-        | hir::TraitItemKind::Type(_, Some(_))
-        | hir::TraitItemKind::Method(..) => {
+        hir::TraitItemKind::Method(..) => {
             tcx.type_of(def_id);
-            if let hir::TraitItemKind::Method(..) = trait_item.kind {
-                tcx.fn_sig(def_id);
-            }
+            tcx.fn_sig(def_id);
+        }
+
+        hir::TraitItemKind::Const(.., Some(_)) => {
+            tcx.type_of(def_id);
+        }
+
+        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(_, Some(_)) => {
+            tcx.type_of(def_id);
+            // Account for `const C: _;` and `type T = _;`.
+            let mut visitor = PlaceholderHirTyCollector::default();
+            visitor.visit_trait_item(trait_item);
+            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
         }
 
         hir::TraitItemKind::Type(_, None) => {}
@@ -734,8 +743,18 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
-    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).kind {
-        tcx.fn_sig(def_id);
+    let impl_item = tcx.hir().expect_impl_item(impl_item_id);
+    match impl_item.kind {
+        hir::ImplItemKind::Method(..) => {
+            tcx.fn_sig(def_id);
+        }
+        hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => {
+            // Account for `type T = _;`
+            let mut visitor = PlaceholderHirTyCollector::default();
+            visitor.visit_impl_item(impl_item);
+            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
+        }
+        hir::ImplItemKind::Const(..) => {}
     }
 }
 
@@ -1006,7 +1025,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
             .struct_span_err(
                 item.span,
                 "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
-             which traits can use parenthetical notation",
+                 which traits can use parenthetical notation",
             )
             .help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")
             .emit();
@@ -1269,7 +1288,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
     let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id);
 
-    // Now create the real type parameters.
+    // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
     params.extend(ast_generics.params.iter().filter_map(|param| {
@@ -1282,10 +1301,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                             param.hir_id,
                             param.span,
                             |lint| {
-                                lint.build(&format!(
+                                lint.build(
                                     "defaults for type parameters are only allowed in \
-                                        `struct`, `enum`, `type`, or `trait` definitions."
-                                ))
+                                            `struct`, `enum`, `type`, or `trait` definitions.",
+                                )
                                 .emit();
                             },
                         );
@@ -2106,7 +2125,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                         ast_ty.span,
                         &format!(
                             "use of SIMD type `{}` in FFI is highly experimental and \
-                            may result in invalid code",
+                             may result in invalid code",
                             tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
                         ),
                     )
@@ -2142,6 +2161,17 @@ fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> 
         })) => Some(mutbl),
         Some(_) => None,
         _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
+    }
+}
+
+fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
+    match tcx.hir().get_if_local(def_id) {
+        Some(Node::Expr(&rustc_hir::Expr {
+            kind: rustc_hir::ExprKind::Closure(_, _, body_id, _, _),
+            ..
+        })) => tcx.hir().body(body_id).generator_kind(),
+        Some(_) => None,
+        _ => bug!("generator_kind applied to non-local def-id {:?}", def_id),
     }
 }
 
@@ -2194,7 +2224,7 @@ fn from_target_feature(
                         item.span(),
                         format!("`{}` is not valid for this target", feature),
                     );
-                    if feature.starts_with("+") {
+                    if feature.starts_with('+') {
                         let valid = whitelist.contains_key(&feature[1..]);
                         if valid {
                             err.help("consider removing the leading `+` in the feature name");
@@ -2206,7 +2236,7 @@ fn from_target_feature(
             };
 
             // Only allow features whose feature gates have been enabled.
-            let allowed = match feature_gate.as_ref().map(|s| *s) {
+            let allowed = match feature_gate.as_ref().copied() {
                 Some(sym::arm_target_feature) => rust_features.arm_target_feature,
                 Some(sym::aarch64_target_feature) => rust_features.aarch64_target_feature,
                 Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
@@ -2325,7 +2355,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
         } else if attr.check_name(sym::export_name) {
             if let Some(s) = attr.value_str() {
-                if s.as_str().contains("\0") {
+                if s.as_str().contains('\0') {
                     // `#[export_name = ...]` will be converted to a null-terminated string,
                     // so it may not contain any null characters.
                     struct_span_err!(
@@ -2469,7 +2499,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if codegen_fn_attrs.target_features.len() > 0 {
+    if !codegen_fn_attrs.target_features.is_empty() {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
                 tcx.sess.span_err(
@@ -2524,7 +2554,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
-    use syntax::ast::{Lit, LitIntType, LitKind};
+    use rustc_ast::ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
     let sole_meta_list = match meta_item_list {

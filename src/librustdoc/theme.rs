@@ -191,7 +191,7 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
             .replace("{", "")
             .replace("}", "")
             .split(' ')
-            .filter(|s| s.len() > 0)
+            .filter(|s| !s.is_empty())
             .collect::<Vec<&str>>()
             .join(" "),
     )
@@ -253,9 +253,9 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
                     break;
                 }
             }
-            if found == false {
+            if !found {
                 v.push(format!("  Missing \"{}\" rule", child.name));
-            } else if found_working == false {
+            } else if !found_working {
                 v.extend(tmp.iter().cloned());
             }
         }

@@ -7,24 +7,17 @@ LL | trait T {
 LL | fn main() {}
    |                                                                 ^
 
-error: missing `fn`, `type`, `const`, or `static` for item declaration
-  --> $DIR/missing-close-brace-in-trait.rs:5:11
+error: struct is not supported in `trait`s or `impl`s
+  --> $DIR/missing-close-brace-in-trait.rs:4:1
    |
 LL | pub(crate) struct Bar<T>();
-   |           ^ missing `fn`, `type`, `const`, or `static`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0601]: `main` function not found in crate `missing_close_brace_in_trait`
-  --> $DIR/missing-close-brace-in-trait.rs:1:1
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/missing-close-brace-in-trait.rs:7:1
    |
-LL | / trait T {
-LL | |
-LL | |     fn foo(&self);
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |________________________________________________________________^ consider adding a `main` function to `$DIR/missing-close-brace-in-trait.rs`
+LL | impl T for Bar<usize> {
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0601`.

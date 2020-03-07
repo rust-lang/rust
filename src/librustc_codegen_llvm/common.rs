@@ -18,8 +18,8 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_char, c_uint};
 
+use rustc_ast::ast::Mutability;
 use rustc_span::symbol::Symbol;
-use syntax::ast::Mutability;
 
 pub use crate::context::CodegenCx;
 

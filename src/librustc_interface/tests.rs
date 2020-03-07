@@ -18,7 +18,6 @@ use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
-use syntax;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
@@ -64,7 +63,7 @@ fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
 // When the user supplies --test we should implicitly supply --cfg test
 #[test]
 fn test_switch_implies_cfg_test() {
-    syntax::with_default_globals(|| {
+    rustc_ast::with_default_globals(|| {
         let matches = optgroups().parse(&["--test".to_string()]).unwrap();
         let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
@@ -75,7 +74,7 @@ fn test_switch_implies_cfg_test() {
 // When the user supplies --test and --cfg test, don't implicitly add another --cfg test
 #[test]
 fn test_switch_implies_cfg_test_unless_cfg_test() {
-    syntax::with_default_globals(|| {
+    rustc_ast::with_default_globals(|| {
         let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
         let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
@@ -87,20 +86,20 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 
 #[test]
 fn test_can_print_warnings() {
-    syntax::with_default_globals(|| {
+    rustc_ast::with_default_globals(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
         assert!(!sess.diagnostic().can_emit_warnings());
     });
 
-    syntax::with_default_globals(|| {
+    rustc_ast::with_default_globals(|| {
         let matches =
             optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 
-    syntax::with_default_globals(|| {
+    rustc_ast::with_default_globals(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());

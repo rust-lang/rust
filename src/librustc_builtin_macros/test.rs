@@ -2,13 +2,13 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::attr;
 
 use std::iter;
 
@@ -184,6 +184,7 @@ pub fn expand_test_or_bench(
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
+            ast::Defaultness::Final,
             cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
             // test::TestDescAndFn {
             Some(
@@ -312,7 +313,7 @@ fn should_fail(i: &ast::Item) -> bool {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let ref sd = cx.parse_sess.span_diagnostic;
+            let sd = &cx.parse_sess.span_diagnostic;
 
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
@@ -377,8 +378,8 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let ref sd = cx.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(ref sig, ref generics, _) = i.kind {
+    let sd = &cx.parse_sess.span_diagnostic;
+    if let ast::ItemKind::Fn(_, ref sig, ref generics, _) = i.kind {
         if let ast::Unsafe::Yes(span) = sig.header.unsafety {
             sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
                 .span_label(span, "`unsafe` because of this")
@@ -427,7 +428,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(ref sig, _, _) = i.kind {
+    let has_sig = if let ast::ItemKind::Fn(_, ref sig, _, _) = i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
         sig.decl.inputs.len() == 1

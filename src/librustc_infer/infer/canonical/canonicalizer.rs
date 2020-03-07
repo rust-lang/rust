@@ -357,10 +357,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
                     // result.
                     Err(mut ui) => {
-                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
-                            // FIXME: perf problem described in #55921.
-                            ui = ty::UniverseIndex::ROOT;
-                        }
+                        // FIXME: perf problem described in #55921.
+                        ui = ty::UniverseIndex::ROOT;
                         self.canonicalize_ty_var(
                             CanonicalVarInfo {
                                 kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
@@ -447,10 +445,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `ConstVar(vid)` is unresolved, track its universe index in the
                     // canonicalized result
                     Err(mut ui) => {
-                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
-                            // FIXME: perf problem described in #55921.
-                            ui = ty::UniverseIndex::ROOT;
-                        }
+                        // FIXME: perf problem described in #55921.
+                        ui = ty::UniverseIndex::ROOT;
                         return self.canonicalize_const_var(
                             CanonicalVarInfo { kind: CanonicalVarKind::Const(ui) },
                             ct,
@@ -669,7 +665,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         } else {
             let var = self.canonical_var(info, const_var.into());
             self.tcx().mk_const(ty::Const {
-                val: ty::ConstKind::Bound(self.binder_index, var.into()),
+                val: ty::ConstKind::Bound(self.binder_index, var),
                 ty: self.fold_ty(const_var.ty),
             })
         }

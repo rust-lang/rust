@@ -37,7 +37,7 @@ impl<'tcx> MirPatch<'tcx> {
         let mut resume_stmt_block = None;
         for (bb, block) in body.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Resume = block.terminator().kind {
-                if block.statements.len() > 0 {
+                if !block.statements.is_empty() {
                     assert!(resume_stmt_block.is_none());
                     resume_stmt_block = Some(bb);
                 } else {

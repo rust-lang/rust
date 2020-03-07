@@ -200,7 +200,7 @@ impl<T> Box<T> {
             let ptr = if layout.size() == 0 {
                 NonNull::dangling()
             } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
             };
             Box::from_raw(ptr.as_ptr())
         }
@@ -270,7 +270,7 @@ impl<T> Box<[T]> {
             let ptr = if layout.size() == 0 {
                 NonNull::dangling()
             } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
             };
             Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
         }
@@ -825,7 +825,7 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "none")]
+#[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
 where
     [T; N]: LengthAtMost32,

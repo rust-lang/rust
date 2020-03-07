@@ -34,10 +34,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if !value.has_projections() {
             value
         } else {
-            value.fold_with(&mut NormalizeAfterErasingRegionsFolder {
-                tcx: self,
-                param_env: param_env,
-            })
+            value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
         }
     }
 

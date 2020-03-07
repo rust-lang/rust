@@ -39,9 +39,9 @@ use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, InferConst, Ty, TyCtxt};
 use rustc::ty::{IntType, UintType};
+use rustc_ast::ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {

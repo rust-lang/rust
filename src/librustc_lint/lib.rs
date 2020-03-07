@@ -55,6 +55,7 @@ mod unused;
 
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::{
@@ -62,7 +63,6 @@ use rustc_session::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
 };
 use rustc_span::Span;
-use syntax::ast;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
@@ -94,7 +94,7 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
 
 macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => {
-        $macro!($args, [KeywordIdents: KeywordIdents, UnusedDocComment: UnusedDocComment,]);
+        $macro!($args, [KeywordIdents: KeywordIdents,]);
     };
 }
 
@@ -113,7 +113,8 @@ macro_rules! early_lint_passes {
                 WhileTrue: WhileTrue,
                 NonAsciiIdents: NonAsciiIdents,
                 IncompleteFeatures: IncompleteFeatures,
-                RedundantSemicolon: RedundantSemicolon,
+                RedundantSemicolons: RedundantSemicolons,
+                UnusedDocComment: UnusedDocComment,
             ]
         );
     };
@@ -273,7 +274,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_EXTERN_CRATES,
         UNUSED_FEATURES,
         UNUSED_LABELS,
-        UNUSED_PARENS
+        UNUSED_PARENS,
+        REDUNDANT_SEMICOLONS
     );
 
     add_lint_group!(
@@ -306,6 +308,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
     store.register_renamed("async_idents", "keyword_idents");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
+    store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");

@@ -314,7 +314,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             return Ok(());
         }
 
-        match self.active_cache.entry(obligation.as_cache_key().clone()) {
+        match self.active_cache.entry(obligation.as_cache_key()) {
             Entry::Occupied(o) => {
                 let node = &mut self.nodes[*o.get()];
                 if let Some(parent_index) = parent {
@@ -385,7 +385,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.error_cache
             .entry(node.obligation_tree_id)
             .or_default()
-            .insert(node.obligation.as_cache_key().clone());
+            .insert(node.obligation.as_cache_key());
     }
 
     /// Performs a pass through the obligation list. This must

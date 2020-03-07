@@ -25,6 +25,8 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
@@ -34,8 +36,6 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
-use syntax::ast;
-use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::slice;
 
@@ -335,7 +335,7 @@ impl LintStore {
             lint_name.to_string()
         };
         // If the lint was scoped with `tool::` check if the tool lint exists
-        if let Some(_) = tool_name {
+        if tool_name.is_some() {
             match self.by_name.get(&complete_name) {
                 None => match self.lint_groups.get(&*complete_name) {
                     None => return CheckLintNameResult::Tool(Err((None, String::new()))),
@@ -369,7 +369,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Ok(&lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
                         };
                     }
                     CheckLintNameResult::Ok(&lint_ids)
@@ -404,7 +404,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), name.to_string())))
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
                         };
                     }
                     CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
@@ -564,6 +564,11 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
                     stability::deprecation_suggestion(&mut db, suggestion, span)
+                }
+                BuiltinLintDiagnostics::UnusedDocComment(span) => {
+                    db.span_label(span, "rustdoc does not generate documentation for macros");
+                    db.help("to document an item produced by a macro, \
+                                  the macro must produce the documentation as part of its expansion");
                 }
             }
             // Rewrap `db`, and pass control to the user.

@@ -14,7 +14,7 @@ log = "0.4"
 punycode = "0.4.0"
 rustc-demangle = "0.1.16"
 
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc = { path = "../librustc" }
 rustc_hir = { path = "../librustc_hir" }

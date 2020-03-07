@@ -18,10 +18,10 @@ use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, List, TyCtxt, TypeFoldable};
+use rustc_ast::ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::LitKind;
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
@@ -920,7 +920,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (
                             _,
@@ -971,7 +971,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     }
                 }
                 Candidate::Repeat(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);

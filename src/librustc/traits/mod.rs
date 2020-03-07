@@ -7,25 +7,21 @@ pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
 
-use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
-use crate::ty::fold::{TypeFolder, TypeVisitor};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt};
 
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
-use syntax::ast;
 
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
-
-pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
 
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
@@ -581,6 +577,20 @@ impl<'tcx, N> Vtable<'tcx, N> {
         }
     }
 
+    pub fn borrow_nested_obligations(&self) -> &[N] {
+        match &self {
+            VtableImpl(i) => &i.nested[..],
+            VtableParam(n) => &n[..],
+            VtableBuiltin(i) => &i.nested[..],
+            VtableAutoImpl(d) => &d.nested[..],
+            VtableClosure(c) => &c.nested[..],
+            VtableGenerator(c) => &c.nested[..],
+            VtableObject(d) => &d.nested[..],
+            VtableFnPointer(d) => &d.nested[..],
+            VtableTraitAlias(d) => &d.nested[..],
+        }
+    }
+
     pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M>
     where
         F: FnMut(N) -> M,
@@ -701,45 +711,6 @@ pub struct VtableTraitAliasData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-pub trait ExClauseFold<'tcx>
-where
-    Self: chalk_engine::context::Context + Clone,
-{
-    fn fold_ex_clause_with<F: TypeFolder<'tcx>>(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        folder: &mut F,
-    ) -> chalk_engine::ExClause<Self>;
-
-    fn visit_ex_clause_with<V: TypeVisitor<'tcx>>(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        visitor: &mut V,
-    ) -> bool;
-}
-
-pub trait ChalkContextLift<'tcx>
-where
-    Self: chalk_engine::context::Context + Clone,
-{
-    type LiftedExClause: Debug + 'tcx;
-    type LiftedDelayedLiteral: Debug + 'tcx;
-    type LiftedLiteral: Debug + 'tcx;
-
-    fn lift_ex_clause_to_tcx(
-        ex_clause: &chalk_engine::ExClause<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedExClause>;
-
-    fn lift_delayed_literal_to_tcx(
-        ex_clause: &chalk_engine::DelayedLiteral<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedDelayedLiteral>;
-
-    fn lift_literal_to_tcx(
-        ex_clause: &chalk_engine::Literal<Self>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<Self::LiftedLiteral>;
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
@@ -820,8 +791,7 @@ impl ObjectSafetyViolation {
                 MethodViolationCode::UndispatchableReceiver,
                 span,
             ) => (
-                format!("consider changing method `{}`'s `self` parameter to be `&self`", name)
-                    .into(),
+                format!("consider changing method `{}`'s `self` parameter to be `&self`", name),
                 Some(("&Self".to_string(), span)),
             ),
             ObjectSafetyViolation::AssocConst(name, _)

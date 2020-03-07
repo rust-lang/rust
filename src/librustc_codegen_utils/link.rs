@@ -1,9 +1,9 @@
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::Session;
+use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::path::{Path, PathBuf};
-use syntax::{ast, attr};
 
 pub fn out_filename(
     sess: &Session,
@@ -78,7 +78,7 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
     }
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
-            if s.starts_with("-") {
+            if s.starts_with('-') {
                 let msg = format!(
                     "crate names cannot start with a `-`, but \
                                    `{}` has a leading hyphen",

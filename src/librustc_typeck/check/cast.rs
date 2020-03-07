@@ -41,12 +41,12 @@ use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_ast::ast;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::traits;
 use rustc_infer::traits::error_reporting::report_object_safety_error;
 use rustc_span::Span;
-use syntax::ast;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.

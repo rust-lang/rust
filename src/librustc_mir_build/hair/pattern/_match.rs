@@ -411,7 +411,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
-        self.0.iter().map(|p| *p)
+        self.0.iter().copied()
     }
 
     // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
@@ -1000,7 +1000,7 @@ impl<'tcx> Constructor<'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => PatKind::Wild,
             },
@@ -1396,21 +1396,19 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            let val = if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, size })) =
-                value.val
-            {
-                // For this specific pattern we can skip a lot of effort and go
-                // straight to the result, after doing a bit of checking. (We
-                // could remove this branch and just use the next branch, which
-                // is more general but much slower.)
-                Scalar::<()>::check_raw(data, size, target_size);
-                data
-            } else if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
-                // This is a more general form of the previous branch.
-                val
-            } else {
-                return None;
-            };
+            let val = (|| {
+                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
+                    // For this specific pattern we can skip a lot of effort and go
+                    // straight to the result, after doing a bit of checking. (We
+                    // could remove this branch and just fall through, which
+                    // is more general but much slower.)
+                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size, &tcx) {
+                        return Some(bits);
+                    }
+                }
+                // This is a more general form of the previous case.
+                value.try_eval_bits(tcx, param_env, ty)
+            })()?;
             let val = val ^ bias;
             Some(IntRange { range: val..=val, ty, span })
         } else {
@@ -2333,7 +2331,7 @@ fn specialize_one_pattern<'p, 'tcx>(
         PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
-            let ref variant = adt_def.variants[variant_index];
+            let variant = &adt_def.variants[variant_index];
             let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)

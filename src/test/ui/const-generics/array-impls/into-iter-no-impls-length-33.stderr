@@ -1,8 +1,8 @@
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:12:5
+  --> $DIR/into-iter-no-impls-length-33.rs:12:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -19,10 +19,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:18:5
+  --> $DIR/into-iter-no-impls-length-33.rs:18:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -39,10 +39,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:24:5
+  --> $DIR/into-iter-no-impls-length-33.rs:24:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -59,10 +59,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:30:5
+  --> $DIR/into-iter-no-impls-length-33.rs:30:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -79,10 +79,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:36:5
+  --> $DIR/into-iter-no-impls-length-33.rs:36:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -99,10 +99,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:42:5
+  --> $DIR/into-iter-no-impls-length-33.rs:42:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 
@@ -119,10 +119,10 @@ LL |     IntoIter::new([0i32; 33])
    = note: the return type of a function must have a statically known size
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/into-iter-no-impls-length-33.rs:48:5
+  --> $DIR/into-iter-no-impls-length-33.rs:48:19
    |
 LL |     IntoIter::new([0i32; 33])
-   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |                   ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
    |
    = note: required by `std::array::IntoIter::<T, N>::new`
 

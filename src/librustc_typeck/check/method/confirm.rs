@@ -299,7 +299,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
-        AstConv::check_generic_arg_count_for_call(
+        let arg_count_correct = AstConv::check_generic_arg_count_for_call(
             self.tcx, self.span, &generics, &seg, true, // `is_method_call`
         );
 
@@ -313,10 +313,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             parent_substs,
             false,
             None,
+            arg_count_correct.is_ok(),
             // Provide the generic args, and whether types should be inferred.
-            |_| {
-                // The last argument of the returned tuple here is unimportant.
-                if let Some(ref data) = seg.args { (Some(data), false) } else { (None, false) }
+            |def_id| {
+                // The last component of the returned tuple here is unimportant.
+                if def_id == pick.item.def_id {
+                    if let Some(ref data) = seg.args {
+                        return (Some(data), false);
+                    }
+                }
+                (None, false)
             },
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| match (&param.kind, arg) {

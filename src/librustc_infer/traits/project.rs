@@ -17,11 +17,11 @@ use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_ast::ast::Ident;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
-use syntax::ast::Ident;
 
 pub use rustc::traits::Reveal;
 
@@ -403,7 +403,7 @@ pub type NormalizedTy<'tcx> = Normalized<'tcx, Ty<'tcx>>;
 
 impl<'tcx, T> Normalized<'tcx, T> {
     pub fn with<U>(self, value: U) -> Normalized<'tcx, U> {
-        Normalized { value: value, obligations: self.obligations }
+        Normalized { value, obligations: self.obligations }
     }
 }
 
@@ -490,22 +490,14 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     match cache_result {
         Ok(()) => {}
         Err(ProjectionCacheEntry::Ambiguous) => {
-            // If we found ambiguity the last time, that generally
-            // means we will continue to do so until some type in the
-            // key changes (and we know it hasn't, because we just
-            // fully resolved it). One exception though is closure
-            // types, which can transition from having a fixed kind to
-            // no kind with no visible change in the key.
-            //
-            // FIXME(#32286) refactor this so that closure type
-            // changes
+            // If we found ambiguity the last time, that means we will continue
+            // to do so until some type in the key changes (and we know it
+            // hasn't, because we just fully resolved it).
             debug!(
                 "opt_normalize_projection_type: \
                  found cache entry: ambiguous"
             );
-            if !projection_ty.has_closure_types() {
-                return None;
-            }
+            return None;
         }
         Err(ProjectionCacheEntry::InProgress) => {
             // If while normalized A::B, we are asked to normalize
@@ -1054,25 +1046,40 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // an error when we confirm the candidate
                     // (which will ultimately lead to `normalize_to_error`
                     // being invoked).
-                    node_item.item.defaultness.has_value()
+                    false
                 } else {
+                    // If we're looking at a trait *impl*, the item is
+                    // specializable if the impl or the item are marked
+                    // `default`.
                     node_item.item.defaultness.is_default()
                         || super::util::impl_is_default(selcx.tcx(), node_item.node.def_id())
                 };
 
-                // Only reveal a specializable default if we're past type-checking
-                // and the obligations is monomorphic, otherwise passes such as
-                // transmute checking and polymorphic MIR optimizations could
-                // get a result which isn't correct for all monomorphizations.
-                if !is_default {
-                    true
-                } else if obligation.param_env.reveal == Reveal::All {
-                    // NOTE(eddyb) inference variables can resolve to parameters, so
-                    // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                    let poly_trait_ref = selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
-                    !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
-                } else {
-                    false
+                match is_default {
+                    // Non-specializable items are always projectable
+                    false => true,
+
+                    // Only reveal a specializable default if we're past type-checking
+                    // and the obligation is monomorphic, otherwise passes such as
+                    // transmute checking and polymorphic MIR optimizations could
+                    // get a result which isn't correct for all monomorphizations.
+                    true if obligation.param_env.reveal == Reveal::All => {
+                        // NOTE(eddyb) inference variables can resolve to parameters, so
+                        // assume `poly_trait_ref` isn't monomorphic, if it contains any.
+                        let poly_trait_ref =
+                            selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
+                        !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
+                    }
+
+                    true => {
+                        debug!(
+                            "assemble_candidates_from_impls: not eligible due to default: \
+                             assoc_ty={} predicate={}",
+                            selcx.tcx().def_path_str(node_item.item.def_id),
+                            obligation.predicate,
+                        );
+                        false
+                    }
                 }
             }
             super::VtableParam(..) => {
@@ -1284,7 +1291,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
                 substs: trait_ref.substs,
                 item_def_id: obligation.predicate.item_def_id,
             },
-            ty: ty,
+            ty,
         }
     });
 

@@ -7,9 +7,9 @@ use rustc::session::{config, Session};
 use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_span::symbol::Symbol;
-use syntax::expand::allocator::AllocatorKind;
 
 use std::sync::Arc;
 

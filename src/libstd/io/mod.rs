@@ -371,7 +371,7 @@ where
     F: FnMut(&R) -> usize,
 {
     let start_len = buf.len();
-    let mut g = Guard { len: buf.len(), buf: buf };
+    let mut g = Guard { len: buf.len(), buf };
     let ret;
     loop {
         if g.len == g.buf.len() {
@@ -939,7 +939,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, limit: limit }
+        Take { inner: self, limit }
     }
 }
 
@@ -2396,9 +2396,9 @@ impl<B: BufRead> Iterator for Lines<B> {
         match self.buf.read_line(&mut buf) {
             Ok(0) => None,
             Ok(_n) => {
-                if buf.ends_with("\n") {
+                if buf.ends_with('\n') {
                     buf.pop();
-                    if buf.ends_with("\r") {
+                    if buf.ends_with('\r') {
                         buf.pop();
                     }
                 }

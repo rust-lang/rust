@@ -32,6 +32,7 @@ use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -45,7 +46,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};
 use rustc_target::abi::HasDataLayout;
-use syntax::ast;
 
 use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;
@@ -2135,7 +2135,7 @@ fn set_members_of_composite_type(
 /// Computes the type parameters for a type, if any, for the given metadata.
 fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
     if let ty::Adt(def, substs) = ty.kind {
-        if !substs.types().next().is_none() {
+        if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
             let template_params: Vec<_> = substs

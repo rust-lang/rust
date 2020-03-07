@@ -17,6 +17,8 @@
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc::hir::map::Map;
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::walk_list;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -24,8 +26,6 @@ use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_session::lint::LintPass;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::walk_list;
 
 use log::debug;
 use std::any::Any;

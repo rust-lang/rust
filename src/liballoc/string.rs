@@ -407,7 +407,7 @@ impl String {
     ///
     /// assert_eq!(s.capacity(), cap);
     ///
-    /// // ...but this may make the vector reallocate
+    /// // ...but this may make the string reallocate
     /// s.push('a');
     /// ```
     #[inline]

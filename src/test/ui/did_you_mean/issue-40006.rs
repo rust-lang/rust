@@ -1,28 +1,28 @@
-impl dyn A { //~ ERROR missing
+impl dyn A {
     Y
-}
+} //~ ERROR expected one of `!` or `::`, found `}`
 
 struct S;
 
-trait X { //~ ERROR missing
-    X() {}
+trait X {
+    X() {} //~ ERROR expected one of `!` or `::`, found `(`
     fn xxx() { ### }
     L = M;
     Z = { 2 + 3 };
     ::Y ();
 }
 
-trait A { //~ ERROR missing
-    X() {}
+trait A {
+    X() {} //~ ERROR expected one of `!` or `::`, found `(`
 }
 trait B {
     fn xxx() { ### } //~ ERROR expected
 }
-trait C { //~ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
-    L = M;
+trait C {
+    L = M; //~ ERROR expected one of `!` or `::`, found `=`
 }
-trait D { //~ ERROR missing `fn`, `type`, `const`, or `static` for item declaration
-    Z = { 2 + 3 };
+trait D {
+    Z = { 2 + 3 }; //~ ERROR expected one of `!` or `::`, found `=`
 }
 trait E {
     ::Y (); //~ ERROR expected one of

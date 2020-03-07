@@ -17,6 +17,7 @@ use std::process::Command;
 
 use build_helper::{output, t};
 
+use crate::config::Target;
 use crate::Build;
 
 struct Finder {
@@ -192,13 +193,9 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
+        build.config.target_config.entry(target.clone()).or_insert(Target::from_triple(target));
+
         if target.contains("-none-") || target.contains("nvptx") {
-            if build.no_std(*target).is_none() {
-                let target = build.config.target_config.entry(target.clone()).or_default();
-
-                target.no_std = true;
-            }
-
             if build.no_std(*target) == Some(false) {
                 panic!("All the *-none-* and nvptx* targets are no-std targets")
             }

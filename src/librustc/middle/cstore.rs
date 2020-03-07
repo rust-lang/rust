@@ -8,6 +8,8 @@ use crate::session::search_paths::PathKind;
 use crate::session::CrateDisambiguator;
 use crate::ty::TyCtxt;
 
+use rustc_ast::ast;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -17,8 +19,6 @@ use rustc_span::Span;
 use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::{Path, PathBuf};
-use syntax::ast;
-use syntax::expand::allocator::AllocatorKind;
 
 pub use self::NativeLibraryKind::*;
 pub use rustc_session::utils::NativeLibraryKind;
@@ -53,9 +53,6 @@ impl CrateSource {
     HashStable
 )]
 pub enum DepKind {
-    /// A dependency that is only used for its macros, none of which are visible from other crates.
-    /// These are included in the metadata only as placeholders and are ignored when decoding.
-    UnexportedMacrosOnly,
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
@@ -69,7 +66,7 @@ pub enum DepKind {
 impl DepKind {
     pub fn macros_only(self) -> bool {
         match self {
-            DepKind::UnexportedMacrosOnly | DepKind::MacrosOnly => true,
+            DepKind::MacrosOnly => true,
             DepKind::Implicit | DepKind::Explicit => false,
         }
     }

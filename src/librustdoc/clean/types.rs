@@ -11,6 +11,9 @@ use std::{slice, vec};
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
+use rustc_ast::ast::{self, AttrStyle, Ident};
+use rustc_ast::attr;
+use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -22,9 +25,6 @@ use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AttrStyle, Ident};
-use syntax::attr;
-use syntax::util::comments::strip_doc_comment_decoration;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -201,7 +201,7 @@ impl Item {
                 classes.push("deprecated");
             }
 
-            if classes.len() != 0 { Some(classes.join(" ")) } else { None }
+            if !classes.is_empty() { Some(classes.join(" ")) } else { None }
         })
     }
 
@@ -421,7 +421,7 @@ pub struct Attributes {
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use syntax::ast::NestedMetaItem::MetaItem;
+        use rustc_ast::ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {
@@ -565,8 +565,7 @@ impl Attributes {
 
         let inner_docs = attrs
             .iter()
-            .filter(|a| a.doc_str().is_some())
-            .next()
+            .find(|a| a.doc_str().is_some())
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {

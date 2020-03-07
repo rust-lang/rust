@@ -150,7 +150,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // SelectionContext to return it back to us.
 
             let (new_env, user_env) = match self.evaluate_predicates(
-                &mut infcx,
+                &infcx,
                 trait_did,
                 ty,
                 orig_env,

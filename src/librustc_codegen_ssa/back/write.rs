@@ -19,6 +19,7 @@ use rustc::session::config::{
 };
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
@@ -37,7 +38,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::MergeFunctions;
-use syntax::attr;
 
 use std::any::Any;
 use std::fs;
@@ -1244,11 +1244,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         while !codegen_done
             || running > 0
             || (!codegen_aborted
-                && (work_items.len() > 0
-                    || needs_fat_lto.len() > 0
-                    || needs_thin_lto.len() > 0
-                    || lto_import_only_modules.len() > 0
-                    || main_thread_worker_state != MainThreadWorkerState::Idle))
+                && !(work_items.is_empty()
+                    && needs_fat_lto.is_empty()
+                    && needs_thin_lto.is_empty()
+                    && lto_import_only_modules.is_empty()
+                    && main_thread_worker_state == MainThreadWorkerState::Idle))
         {
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
@@ -1257,7 +1257,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
                     if !queue_full_enough(work_items.len(), running, max_workers) {
                         // The queue is not full enough, codegen more items:
-                        if let Err(_) = codegen_worker_send.send(Message::CodegenItem) {
+                        if codegen_worker_send.send(Message::CodegenItem).is_err() {
                             panic!("Could not send Message::CodegenItem to main thread")
                         }
                         main_thread_worker_state = MainThreadWorkerState::Codegenning;
@@ -1289,7 +1289,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // Perform the serial work here of figuring out what we're
                 // going to LTO and then push a bunch of work items onto our
                 // queue to do LTO
-                if work_items.len() == 0
+                if work_items.is_empty()
                     && running == 0
                     && main_thread_worker_state == MainThreadWorkerState::Idle
                 {
@@ -1354,7 +1354,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while !codegen_aborted && work_items.len() > 0 && running < tokens.len() {
+            while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);

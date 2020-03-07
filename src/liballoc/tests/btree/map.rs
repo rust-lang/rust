@@ -5,7 +5,9 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
+use std::panic::catch_unwind;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::DeterministicRng;
 
@@ -1016,4 +1018,30 @@ fn test_split_off_large_random_sorted() {
 
     assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x.0 < key)));
     assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
+}
+
+#[test]
+fn test_into_iter_drop_leak() {
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    struct D;
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            if DROPS.fetch_add(1, Ordering::SeqCst) == 3 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut map = BTreeMap::new();
+    map.insert("a", D);
+    map.insert("b", D);
+    map.insert("c", D);
+    map.insert("d", D);
+    map.insert("e", D);
+
+    catch_unwind(move || drop(map.into_iter())).ok();
+
+    assert_eq!(DROPS.load(Ordering::SeqCst), 5);
 }

@@ -237,7 +237,7 @@ fn fat_lto(
     let module: ModuleCodegen<ModuleLlvm> = match costliest_module {
         Some((_cost, i)) => in_memory.remove(i),
         None => {
-            assert!(serialized_modules.len() > 0, "must have at least one serialized module");
+            assert!(!serialized_modules.is_empty(), "must have at least one serialized module");
             let (buffer, name) = serialized_modules.remove(0);
             info!("no in-memory regular modules to choose from, parsing {:?}", name);
             ModuleCodegen {
@@ -917,7 +917,7 @@ impl ThinLTOImports {
             if line.is_empty() {
                 let importing_module = current_module.take().expect("Importing module not set");
                 imports.insert(importing_module, mem::replace(&mut current_imports, vec![]));
-            } else if line.starts_with(" ") {
+            } else if line.starts_with(' ') {
                 // Space marks an imported module
                 assert_ne!(current_module, None);
                 current_imports.push(line.trim().to_string());

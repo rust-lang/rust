@@ -10,6 +10,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use crate::util::common::ErrorReported;
 use rustc_apfloat::Float as _;
+use rustc_ast::ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -21,7 +22,6 @@ use rustc_span::Span;
 use rustc_target::abi::TargetDataLayout;
 use smallvec::SmallVec;
 use std::{cmp, fmt};
-use syntax::ast;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -50,11 +50,11 @@ fn signed_min(size: Size) -> i128 {
 }
 
 fn signed_max(size: Size) -> i128 {
-    i128::max_value() >> (128 - size.bits())
+    i128::MAX >> (128 - size.bits())
 }
 
 fn unsigned_max(size: Size) -> u128 {
-    u128::max_value() >> (128 - size.bits())
+    u128::MAX >> (128 - size.bits())
 }
 
 fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
@@ -77,7 +77,7 @@ impl<'tcx> Discr<'tcx> {
             let min = signed_min(size);
             let max = signed_max(size);
             let val = sign_extend(self.val, size) as i128;
-            assert!(n < (i128::max_value() as u128));
+            assert!(n < (i128::MAX as u128));
             let n = n as i128;
             let oflo = val > max - n;
             let val = if oflo { min + (n - (max - val) - 1) } else { val + n };
@@ -357,7 +357,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
-            if let Some(item) = self.associated_items(impl_did).in_definition_order().nth(0) {
+            if let Some(item) = self.associated_items(impl_did).in_definition_order().next() {
                 if validate(self, impl_did).is_ok() {
                     dtor_did = Some(item.def_id);
                 }

@@ -2,11 +2,11 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_ast::ast::{self, Expr, GenericArg, Ident, MetaItem};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::{self, Expr, GenericArg, Ident, MetaItem};
-use syntax::ptr::P;
 
 pub fn expand_deriving_eq(
     cx: &mut ExtCtxt<'_>,
@@ -16,8 +16,8 @@ pub fn expand_deriving_eq(
     push: &mut dyn FnMut(Annotatable),
 ) {
     let inline = cx.meta_word(span, sym::inline);
-    let hidden = syntax::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
-    let doc = syntax::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
+    let hidden = rustc_ast::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
+    let doc = rustc_ast::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
     let attrs = vec![cx.attribute(inline), cx.attribute(doc)];
     let trait_def = TraitDef {
         span,

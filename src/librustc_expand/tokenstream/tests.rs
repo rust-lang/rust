@@ -1,11 +1,11 @@
 use crate::tests::string_to_stream;
 
+use rustc_ast::ast::Name;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
+use rustc_ast::with_default_globals;
 use rustc_span::{BytePos, Span};
 use smallvec::smallvec;
-use syntax::ast::Name;
-use syntax::token;
-use syntax::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
-use syntax::with_default_globals;
 
 fn string_to_ts(string: &str) -> TokenStream {
     string_to_stream(string.to_owned())

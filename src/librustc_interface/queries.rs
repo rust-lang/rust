@@ -8,6 +8,7 @@ use rustc::session::Session;
 use rustc::ty::steal::Steal;
 use rustc::ty::{GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
+use rustc_ast::{self, ast};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -18,7 +19,6 @@ use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
 use std::rc::Rc;
-use syntax::{self, ast};
 
 /// Represent the result of a query.
 /// This result can be stolen with the `take` method and generated with the `compute` method.

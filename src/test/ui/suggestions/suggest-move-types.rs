@@ -33,7 +33,7 @@ struct A<T, M: One<A=(), T>> { //~ ERROR associated type bindings must be declar
 
 struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
 //~^ ERROR associated type bindings must be declared after generic parameters
-//~^^ ERROR lifetime arguments must be declared prior to type arguments
+//~^^ ERROR type provided when a lifetime was expected
     m: M,
     t: &'a T,
 }
@@ -47,7 +47,7 @@ struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> { //~ ERROR associated ty
 
 struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
 //~^ ERROR associated type bindings must be declared after generic parameters
-//~^^ ERROR lifetime arguments must be declared prior to type arguments
+//~^^ ERROR type provided when a lifetime was expected
     m: M,
     t: &'a T,
     u: &'b U,
@@ -63,7 +63,7 @@ struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> { //~ ERROR associated ty
 
 struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
 //~^ ERROR associated type bindings must be declared after generic parameters
-//~^^ ERROR lifetime arguments must be declared prior to type arguments
+//~^^ ERROR lifetime provided when a type was expected
     m: M,
     t: &'a T,
     u: &'b U,
@@ -79,7 +79,7 @@ struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> { //~ ERROR associated ty
 
 struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
 //~^ ERROR associated type bindings must be declared after generic parameters
-//~^^ ERROR lifetime arguments must be declared prior to type arguments
+//~^^ ERROR lifetime provided when a type was expected
     m: M,
     t: &'a T,
     u: &'b U,

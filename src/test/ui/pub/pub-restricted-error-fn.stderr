@@ -1,8 +1,8 @@
-error: unmatched visibility `pub(crate)`
+error: visibility `pub(crate)` is not followed by an item
   --> $DIR/pub-restricted-error-fn.rs:1:1
    |
 LL | pub(crate) () fn foo() {}
-   | ^^^^^^^^^^ the unmatched visibility
+   | ^^^^^^^^^^ the visibility
    |
    = help: you likely meant to define an item, e.g., `pub(crate) fn foo() {}`
 

@@ -21,6 +21,7 @@ use rustc::ty::SubtypePredicate;
 use rustc::ty::{
     self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -29,7 +30,6 @@ use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
-use syntax::ast;
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
@@ -440,7 +440,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// going to help).
     pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
         let cycle = self.resolve_vars_if_possible(&cycle.to_owned());
-        assert!(cycle.len() > 0);
+        assert!(!cycle.is_empty());
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
@@ -647,7 +647,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
 
                         // Try to report a help message
-                        if !trait_ref.has_infer_types()
+                        if !trait_ref.has_infer_types_or_consts()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
                         {
                             // If a where-clause may be useful, remind the
@@ -812,21 +812,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::WellFormed(ty) => {
-                        if !self.tcx.sess.opts.debugging_opts.chalk {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
-                        } else {
-                            // FIXME: we'll need a better message which takes into account
-                            // which bounds actually failed to hold.
-                            self.tcx.sess.struct_span_err(
-                                span,
-                                &format!("the type `{}` is not well-formed (chalk)", ty),
-                            )
-                        }
+                        // WF predicates cannot themselves make
+                        // errors. They can only block due to
+                        // ambiguity; otherwise, they always
+                        // degenerate into other obligations
+                        // (which may fail).
+                        span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
 
                     ty::Predicate::ConstEvaluatable(..) => {
@@ -935,9 +926,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             // Already reported in the query.
             ConstEvalFailure(ErrorHandled::Reported) => {
-                self.tcx
-                    .sess
-                    .delay_span_bug(span, &format!("constant in type had an ignored error"));
+                self.tcx.sess.delay_span_bug(span, "constant in type had an ignored error");
                 return;
             }
 
@@ -1442,7 +1431,7 @@ pub fn suggest_constraining_type_param(
     const MSG_RESTRICT_TYPE: &str = "consider restricting this type parameter with";
     const MSG_RESTRICT_TYPE_FURTHER: &str = "consider further restricting this type parameter with";
 
-    let param = generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next();
+    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     let param = if let Some(param) = param {
         param

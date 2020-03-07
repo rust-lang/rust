@@ -4,12 +4,12 @@ use rustc_infer::traits::{self, ObligationCause};
 
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, print, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::util::parser::PREC_POSTFIX;
 
 use super::method::probe;
 
@@ -43,7 +43,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = &self.misc(sp);
+        self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
+    }
+
+    pub fn demand_suptype_with_origin(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -228,8 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     //
                     // FIXME? Other potential candidate methods: `as_ref` and
                     // `as_mut`?
-                    .find(|a| a.check_name(sym::rustc_conversion_suggestion))
-                    .is_some()
+                    .any(|a| a.check_name(sym::rustc_conversion_suggestion))
         });
 
         methods
@@ -324,13 +331,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         sp: Span,
     ) -> bool {
-        let cm = self.sess().source_map();
+        let sm = self.sess().source_map();
         let parent_id = self.tcx.hir().get_parent_node(hir_id);
         if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Account for fields
             if let Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(_, fields, ..), .. }) = parent
             {
-                if let Ok(src) = cm.span_to_snippet(sp) {
+                if let Ok(src) = sm.span_to_snippet(sp) {
                     for field in *fields {
                         if field.ident.as_str() == src && field.is_shorthand {
                             return true;
@@ -364,9 +371,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> Option<(Span, &'static str, String)> {
-        let cm = self.sess().source_map();
+        let sm = self.sess().source_map();
         let sp = expr.span;
-        if !cm.span_to_filename(sp).is_real() {
+        if !sm.span_to_filename(sp).is_real() {
             // Ignore if span is from within a macro #41858, #58298. We previously used the macro
             // call span, but that breaks down when the type error comes from multiple calls down.
             return None;
@@ -388,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if arr == self.tcx.types.u8 =>
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
-                        if let Ok(src) = cm.span_to_snippet(sp) {
+                        if let Ok(src) = sm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
                                 return Some((
                                     sp,
@@ -403,8 +410,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if arr == self.tcx.types.u8 =>
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
-                        if let Ok(src) = cm.span_to_snippet(sp) {
-                            if src.starts_with("\"") {
+                        if let Ok(src) = sm.span_to_snippet(sp) {
+                            if src.starts_with('"') {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -450,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sugg_sp = arg.span;
                         }
                     }
-                    if let Ok(src) = cm.span_to_snippet(sugg_sp) {
+                    if let Ok(src) = sm.span_to_snippet(sugg_sp) {
                         let needs_parens = match expr.kind {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
@@ -480,7 +487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 //                                   |     |
                                 //    consider dereferencing here: `*opt`  |
                                 // expected mutable reference, found enum `Option`
-                                if let Ok(src) = cm.span_to_snippet(left_expr.span) {
+                                if let Ok(src) = sm.span_to_snippet(left_expr.span) {
                                     return Some((
                                         left_expr.span,
                                         "consider dereferencing here to assign to the mutable \
@@ -516,9 +523,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
-                if !cm.span_to_filename(expr.span).is_real() {
-                    if let Ok(code) = cm.span_to_snippet(sp) {
-                        if code.chars().next() == Some('&') {
+                if !sm.span_to_filename(expr.span).is_real() {
+                    if let Ok(code) = sm.span_to_snippet(sp) {
+                        if code.starts_with('&') {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
@@ -528,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     return None;
                 }
-                if let Ok(code) = cm.span_to_snippet(expr.span) {
+                if let Ok(code) = sm.span_to_snippet(expr.span) {
                     return Some((sp, "consider removing the borrow", code));
                 }
             }
@@ -562,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let is_copy = self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp);
 
                 if is_copy && impls_deref {
-                    if let Ok(code) = cm.span_to_snippet(sp) {
+                    if let Ok(code) = sm.span_to_snippet(sp) {
                         let message = if checked_ty.is_region_ptr() {
                             "consider dereferencing the borrow"
                         } else {
@@ -701,7 +708,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Remove fractional part from literal, for example `42.0f32` into `42`
                     let src = src.trim_end_matches(&checked_ty.to_string());
-                    src.split(".").next().unwrap()
+                    src.split('.').next().unwrap()
                 } else {
                     src.trim_end_matches(&checked_ty.to_string())
                 },

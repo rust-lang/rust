@@ -152,7 +152,7 @@ pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     let directory_name = session_dir.file_name().unwrap().to_string_lossy();
     assert_no_characters_lost(&directory_name);
 
-    let dash_indices: Vec<_> = directory_name.match_indices("-").map(|(idx, _)| idx).collect();
+    let dash_indices: Vec<_> = directory_name.match_indices('-').map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
         bug!(
             "Encountered incremental compilation session directory with \
@@ -342,7 +342,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 
     // Keep the 's-{timestamp}-{random-number}' prefix, but replace the
     // '-working' part with the SVH of the crate
-    let dash_indices: Vec<_> = old_sub_dir_name.match_indices("-").map(|(idx, _)| idx).collect();
+    let dash_indices: Vec<_> = old_sub_dir_name.match_indices('-').map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
         bug!(
             "Encountered incremental compilation session directory with \
@@ -594,7 +594,7 @@ fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime
         return Err(());
     }
 
-    let dash_indices: Vec<_> = directory_name.match_indices("-").map(|(idx, _)| idx).collect();
+    let dash_indices: Vec<_> = directory_name.match_indices('-').map(|(idx, _)| idx).collect();
     if dash_indices.len() != 3 {
         return Err(());
     }

@@ -8,6 +8,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
+use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_codegen_utils::symbol_names;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -15,7 +16,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
-use syntax::expand::allocator::ALLOCATOR_METHODS;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())

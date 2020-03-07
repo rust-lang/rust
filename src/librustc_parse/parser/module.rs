@@ -4,12 +4,12 @@ use super::Parser;
 
 use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
+use rustc_ast::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
+use rustc_ast::attr;
+use rustc_ast::token::{self, TokenKind};
 use rustc_errors::PResult;
 use rustc_span::source_map::{FileName, SourceMap, Span, DUMMY_SP};
 use rustc_span::symbol::sym;
-use syntax::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
-use syntax::attr;
-use syntax::token::{self, TokenKind};
 
 use std::path::{self, Path, PathBuf};
 
@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_span };
+        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
 
         Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
     }

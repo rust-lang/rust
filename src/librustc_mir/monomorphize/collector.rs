@@ -401,10 +401,8 @@ fn record_accesses<'tcx>(
     // We collect this into a `SmallVec` to avoid calling `is_inlining_candidate` in the lock.
     // FIXME: Call `is_inlining_candidate` when pushing to `neighbors` in `collect_items_rec`
     // instead to avoid creating this `SmallVec`.
-    let accesses: SmallVec<[_; 128]> = callees
-        .into_iter()
-        .map(|mono_item| (*mono_item, is_inlining_candidate(mono_item)))
-        .collect();
+    let accesses: SmallVec<[_; 128]> =
+        callees.iter().map(|mono_item| (*mono_item, is_inlining_candidate(mono_item))).collect();
 
     inlining_map.lock_mut().record_accesses(caller, &accesses);
 }
@@ -826,11 +824,8 @@ fn find_vtable_types_for_unsizing<'tcx>(
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
-            let kind = monomorphize::custom_coerce_unsize_info(tcx, source_ty, target_ty);
-
-            let coerce_index = match kind {
-                CustomCoerceUnsized::Struct(i) => i,
-            };
+            let CustomCoerceUnsized::Struct(coerce_index) =
+                monomorphize::custom_coerce_unsize_info(tcx, source_ty, target_ty);
 
             let source_fields = &source_adt_def.non_enum_variant().fields;
             let target_fields = &target_adt_def.non_enum_variant().fields;

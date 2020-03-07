@@ -76,7 +76,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/tools",
     "src/librustc",
     "src/librustdoc",
-    "src/libsyntax",
+    "src/librustc_ast",
     "src/bootstrap",
 ];
 

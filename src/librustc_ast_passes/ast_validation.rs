@@ -6,9 +6,14 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::expand::is_proc_macro_attr;
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, struct_span_err, Applicability, FatalError};
+use rustc_errors::{error_code, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
@@ -16,11 +21,6 @@ use rustc_session::Session;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::mem;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::expand::is_proc_macro_attr;
-use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use syntax::walk_list;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -400,9 +400,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
-        if let Defaultness::Default = defaultness {
+        if let Defaultness::Default(def_span) = defaultness {
+            let span = self.session.source_map().def_span(span);
             self.err_handler()
                 .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .span_label(def_span, "`default` because of this")
                 .emit();
         }
     }
@@ -594,23 +596,15 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-enum GenericPosition {
-    Param,
-    Arg,
-}
-
-fn validate_generics_order<'a>(
+fn validate_generic_param_order<'a>(
     sess: &Session,
     handler: &rustc_errors::Handler,
     generics: impl Iterator<Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>)>,
-    pos: GenericPosition,
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
-    let mut found_type = false;
-    let mut found_const = false;
 
     for (kind, bounds, span, ident) in generics {
         if let Some(ident) = ident {
@@ -624,11 +618,6 @@ fn validate_generics_order<'a>(
             }
             Some(_) | None => *max_param = Some(kind),
         };
-        match kind {
-            ParamKindOrd::Type => found_type = true,
-            ParamKindOrd::Const => found_const = true,
-            _ => {}
-        }
     }
 
     let mut ordered_params = "<".to_string();
@@ -651,41 +640,25 @@ fn validate_generics_order<'a>(
     }
     ordered_params += ">";
 
-    let pos_str = match pos {
-        GenericPosition::Param => "parameter",
-        GenericPosition::Arg => "argument",
-    };
-
     for (param_ord, (max_param, spans)) in &out_of_order {
-        let mut err = handler.struct_span_err(
-            spans.clone(),
-            &format!(
-                "{} {pos}s must be declared prior to {} {pos}s",
-                param_ord,
-                max_param,
-                pos = pos_str,
-            ),
-        );
-        if let GenericPosition::Param = pos {
-            err.span_suggestion(
-                span,
+        let mut err =
+            handler.struct_span_err(
+                spans.clone(),
                 &format!(
-                    "reorder the {}s: lifetimes, then types{}",
-                    pos_str,
-                    if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                    "{} parameters must be declared prior to {} parameters",
+                    param_ord, max_param,
                 ),
-                ordered_params.clone(),
-                Applicability::MachineApplicable,
             );
-        }
+        err.span_suggestion(
+            span,
+            &format!(
+                "reorder the parameters: lifetimes, then types{}",
+                if sess.features_untracked().const_generics { ", then consts" } else { "" },
+            ),
+            ordered_params.clone(),
+            Applicability::MachineApplicable,
+        );
         err.emit();
-    }
-
-    // FIXME(const_generics): we shouldn't have to abort here at all, but we currently get ICEs
-    // if we don't. Const parameters and type parameters can currently conflict if they
-    // are out-of-order.
-    if !out_of_order.is_empty() && found_type && found_const {
-        FatalError.raise();
     }
 }
 
@@ -863,10 +836,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if polarity == ImplPolarity::Negative {
                     self.err_handler().span_err(item.span, "inherent impls cannot be negative");
                 }
-                if defaultness == Defaultness::Default {
+                if let Defaultness::Default(def_span) = defaultness {
+                    let span = self.session.source_map().def_span(item.span);
                     self.err_handler()
-                        .struct_span_err(item.span, "inherent impls cannot be default")
-                        .note("only trait implementations may be annotated with default")
+                        .struct_span_err(span, "inherent impls cannot be `default`")
+                        .span_label(def_span, "`default` because of this")
+                        .note("only trait implementations may be annotated with `default`")
                         .emit();
                 }
                 if let Const::Yes(span) = constness {
@@ -877,7 +852,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(ref sig, ref generics, ref body) => {
+            ItemKind::Fn(def, ref sig, ref generics, ref body) => {
+                self.check_defaultness(item.span, def);
                 self.check_const_fn_const_generic(item.span, sig, generics);
 
                 if body.is_none() {
@@ -961,13 +937,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
-            ItemKind::Const(.., None) => {
+            ItemKind::Const(def, .., None) => {
+                self.check_defaultness(item.span, def);
                 let msg = "free constant item without body";
                 self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
             }
             ItemKind::Static(.., None) => {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
+            }
+            ItemKind::TyAlias(def, _, ref bounds, ref body) => {
+                self.check_defaultness(item.span, def);
+                if body.is_none() {
+                    let msg = "free type alias without body";
+                    self.error_item_without_body(item.span, "type", msg, " = <type>;");
+                }
+                self.check_type_no_bounds(bounds, "this context");
             }
             _ => {}
         }
@@ -977,11 +962,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
-            ForeignItemKind::Fn(sig, _, body) => {
+            ForeignItemKind::Fn(def, sig, _, body) => {
+                self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
-            ForeignItemKind::TyAlias(generics, bounds, body) => {
+            ForeignItemKind::TyAlias(def, generics, bounds, body) => {
+                self.check_defaultness(fi.span, *def);
                 self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
@@ -989,7 +976,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ForeignItemKind::Static(_, _, body) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
             }
-            ForeignItemKind::Const(..) | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)
@@ -1000,24 +987,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 walk_list!(self, visit_generic_arg, &data.args);
-                validate_generics_order(
-                    self.session,
-                    self.err_handler(),
-                    data.args.iter().map(|arg| {
-                        (
-                            match arg {
-                                GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
-                                GenericArg::Type(..) => ParamKindOrd::Type,
-                                GenericArg::Const(..) => ParamKindOrd::Const,
-                            },
-                            None,
-                            arg.span(),
-                            None,
-                        )
-                    }),
-                    GenericPosition::Arg,
-                    generic_args.span(),
-                );
 
                 // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
@@ -1054,7 +1023,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        validate_generics_order(
+        validate_generic_param_order(
             self.session,
             self.err_handler(),
             generics.params.iter().map(|param| {
@@ -1069,7 +1038,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 };
                 (kind, Some(&*param.bounds), param.ident.span, ident)
             }),
-            GenericPosition::Param,
             generics.span,
         );
 
@@ -1222,19 +1190,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if ctxt == AssocCtxt::Trait {
-            self.check_defaultness(item.span, item.defaultness);
+        if ctxt == AssocCtxt::Trait || !self.in_trait_impl {
+            self.check_defaultness(item.span, item.kind.defaultness());
         }
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(_, body) => {
+                AssocItemKind::Const(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
-                AssocItemKind::Fn(_, _, body) => {
+                AssocItemKind::Fn(_, _, _, body) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(_, bounds, body) => {
+                AssocItemKind::TyAlias(_, _, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
                     self.check_type_no_bounds(bounds, "`impl`s");
                 }
@@ -1244,7 +1212,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(sig, _, _) = &item.kind {
+            if let AssocItemKind::Fn(_, sig, _, _) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }

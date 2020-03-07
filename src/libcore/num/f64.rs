@@ -4,6 +4,9 @@
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -14,17 +17,21 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f64`.
+/// Use [`f64::RADIX`](../../std/primitive.f64.html#associatedconstant.RADIX) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = f64::RADIX;
 
 /// Number of significant digits in base 2.
+/// Use [`f64::MANTISSA_DIGITS`](../../std/primitive.f64.html#associatedconstant.MANTISSA_DIGITS) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 /// Approximate number of significant digits in base 10.
+/// Use [`f64::DIGITS`](../../std/primitive.f64.html#associatedconstant.DIGITS) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = f64::DIGITS;
 
 /// [Machine epsilon] value for `f64`.
+/// Use [`f64::EPSILON`](../../std/primitive.f64.html#associatedconstant.EPSILON) instead.
 ///
 /// This is the difference between `1.0` and the next larger representable number.
 ///
@@ -33,36 +40,46 @@ pub const DIGITS: u32 = f64::DIGITS;
 pub const EPSILON: f64 = f64::EPSILON;
 
 /// Smallest finite `f64` value.
+/// Use [`f64::MIN`](../../std/primitive.f64.html#associatedconstant.MIN) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: f64 = f64::MIN;
 /// Smallest positive normal `f64` value.
+/// Use [`f64::MIN_POSITIVE`](../../std/primitive.f64.html#associatedconstant.MIN_POSITIVE) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 /// Largest finite `f64` value.
+/// Use [`f64::MAX`](../../std/primitive.f64.html#associatedconstant.MAX) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f64 = f64::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
+/// Use [`f64::MIN_EXP`](../../std/primitive.f64.html#associatedconstant.MIN_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
 /// Maximum possible power of 2 exponent.
+/// Use [`f64::MAX_EXP`](../../std/primitive.f64.html#associatedconstant.MAX_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
+/// Use [`f64::MIN_10_EXP`](../../std/primitive.f64.html#associatedconstant.MIN_10_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 /// Maximum possible power of 10 exponent.
+/// Use [`f64::MAX_10_EXP`](../../std/primitive.f64.html#associatedconstant.MAX_10_EXP) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
 /// Not a Number (NaN).
+/// Use [`f64::NAN`](../../std/primitive.f64.html#associatedconstant.NAN) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f64 = f64::NAN;
 /// Infinity (∞).
+/// Use [`f64::INFINITY`](../../std/primitive.f64.html#associatedconstant.INFINITY) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f64 = f64::INFINITY;
 /// Negative infinity (−∞).
+/// Use [`f64::NEG_INFINITY`](../../std/primitive.f64.html#associatedconstant.NEG_INFINITY) instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
@@ -154,14 +171,14 @@ pub mod consts {
 #[cfg(not(test))]
 impl f64 {
     /// The radix or base of the internal representation of `f64`.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const RADIX: u32 = 2;
 
     /// Number of significant digits in base 2.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 53;
     /// Approximate number of significant digits in base 10.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const DIGITS: u32 = 15;
 
     /// [Machine epsilon] value for `f64`.
@@ -169,48 +186,46 @@ impl f64 {
     /// This is the difference between `1.0` and the next larger representable number.
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
     /// Smallest finite `f64` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN: f64 = -1.7976931348623157e+308_f64;
     /// Smallest positive normal `f64` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
     /// Largest finite `f64` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
     /// One greater than the minimum possible normal power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -1021;
     /// Maximum possible power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 1024;
 
     /// Minimum possible normal power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_10_EXP: i32 = -307;
     /// Maximum possible power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 308;
 
     /// Not a Number (NaN).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f64 = 0.0_f64 / 0.0_f64;
     /// Infinity (∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
     /// Negative infinity (-∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
     /// Returns `true` if this value is `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let nan = f64::NAN;
     /// let f = 7.0_f64;
     ///
@@ -235,8 +250,6 @@ impl f64 {
     /// `false` otherwise.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 7.0f64;
     /// let inf = f64::INFINITY;
     /// let neg_inf = f64::NEG_INFINITY;
@@ -257,8 +270,6 @@ impl f64 {
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 7.0f64;
     /// let inf: f64 = f64::INFINITY;
     /// let neg_inf: f64 = f64::NEG_INFINITY;
@@ -282,8 +293,6 @@ impl f64 {
     /// [subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
@@ -311,7 +320,6 @@ impl f64 {
     ///
     /// ```
     /// use std::num::FpCategory;
-    /// use std::f64;
     ///
     /// let num = 12.4_f64;
     /// let inf = f64::INFINITY;

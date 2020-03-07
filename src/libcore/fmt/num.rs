@@ -369,11 +369,11 @@ macro_rules! impl_Exp {
                 flt2dec::Part::Copy(exp_slice)
             ];
             let sign = if !is_nonnegative {
-                &b"-"[..]
+                "-"
             } else if f.sign_plus() {
-                &b"+"[..]
+                "+"
             } else {
-                &b""[..]
+                ""
             };
             let formatted = flt2dec::Formatted{sign, parts};
             f.pad_formatted_parts(&formatted)

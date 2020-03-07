@@ -186,7 +186,7 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     if flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
-            if let Some(ref root_lib_path) = original_path.ancestors().skip(4).next() {
+            if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
                     "x86_64" => Some("x64".to_string()),
                     "x86" => Some("x86".to_string()),
@@ -1519,17 +1519,25 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // for the current implementation of the standard library.
     let mut group_end = None;
     let mut group_start = None;
-    let mut end_with = FxHashSet::default();
+    // Crates available for linking thus far.
+    let mut available = FxHashSet::default();
+    // Crates required to satisfy dependencies discovered so far.
+    let mut required = FxHashSet::default();
+
     let info = &codegen_results.crate_info;
     for &(cnum, _) in deps.iter().rev() {
         if let Some(missing) = info.missing_lang_items.get(&cnum) {
-            end_with.extend(missing.iter().cloned());
-            if end_with.len() > 0 && group_end.is_none() {
-                group_end = Some(cnum);
-            }
+            let missing_crates = missing.iter().map(|i| info.lang_item_to_crate.get(i).copied());
+            required.extend(missing_crates);
         }
-        end_with.retain(|item| info.lang_item_to_crate.get(item) != Some(&cnum));
-        if end_with.len() == 0 && group_end.is_some() {
+
+        required.insert(Some(cnum));
+        available.insert(Some(cnum));
+
+        if required.len() > available.len() && group_end.is_none() {
+            group_end = Some(cnum);
+        }
+        if required.len() == available.len() && group_end.is_some() {
             group_start = Some(cnum);
             break;
         }

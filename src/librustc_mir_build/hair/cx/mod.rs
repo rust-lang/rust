@@ -11,14 +11,14 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{GenericArg, InternalSubsts};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
-use syntax::attr;
 
 #[derive(Clone)]
 crate struct Cx<'a, 'tcx> {

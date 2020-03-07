@@ -11,10 +11,8 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 
-mod chalk_context;
 mod dropck_outlives;
 mod evaluate_obligation;
-mod generic_types;
 mod implied_outlives_bounds;
 pub mod lowering;
 mod normalize_erasing_regions;
@@ -28,7 +26,6 @@ pub fn provide(p: &mut Providers<'_>) {
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);
     lowering::provide(p);
-    chalk_context::provide(p);
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
     type_op::provide(p);

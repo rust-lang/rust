@@ -2,9 +2,9 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_ast::ast::MetaItem;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::Span;
-use syntax::ast::MetaItem;
 
 pub fn expand_deriving_copy(
     cx: &mut ExtCtxt<'_>,
