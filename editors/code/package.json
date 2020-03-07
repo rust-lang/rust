@@ -219,6 +219,11 @@
                         }
                     }
                 },
+                "rust-analyzer.alwaysDownloadServer": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Whether to ask before downloading the language server binary"
+                },
                 "rust-analyzer.serverPath": {
                     "type": [
                         "null",
