@@ -1055,11 +1055,37 @@ fn create_generator_resume_function<'tcx>(
     body: &mut BodyAndCache<'tcx>,
     can_return: bool,
 ) {
+    let can_unwind = can_unwind(tcx, body);
+
     // Poison the generator when it unwinds
-    for block in body.basic_blocks_mut() {
-        let source_info = block.terminator().source_info;
-        if let &TerminatorKind::Resume = &block.terminator().kind {
-            block.statements.push(transform.set_discr(VariantIdx::new(POISONED), source_info));
+    if can_unwind {
+        let poison_block = BasicBlock::new(body.basic_blocks().len());
+        let source_info = source_info(body);
+        body.basic_blocks_mut().push(BasicBlockData {
+            statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
+            terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
+            is_cleanup: true,
+        });
+
+        for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
+            let source_info = block.terminator().source_info;
+
+            if let TerminatorKind::Resume = block.terminator().kind {
+                // An existing `Resume` terminator is redirected to jump to our dedicated
+                // "poisoning block" above.
+                if idx != poison_block {
+                    *block.terminator_mut() = Terminator {
+                        source_info,
+                        kind: TerminatorKind::Goto { target: poison_block },
+                    };
+                }
+            } else if !block.is_cleanup {
+                // Any terminators that *can* unwind but don't have an unwind target set are also
+                // pointed at our poisoning block (unless they're part of the cleanup path).
+                if let Some(unwind @ None) = block.terminator_mut().unwind_mut() {
+                    *unwind = Some(poison_block);
+                }
+            }
         }
     }
 
@@ -1080,7 +1106,7 @@ fn create_generator_resume_function<'tcx>(
         );
     }
 
-    if can_unwind(tcx, body) {
+    if can_unwind {
         cases.insert(
             2,
             (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))),
