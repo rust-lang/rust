@@ -1126,7 +1126,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        directive: &'b Import<'b>,
+        import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Vec<String>)> {
@@ -1151,7 +1151,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
-            let import = match directive.kind {
+            let import_snippet = match import.kind {
                 ImportKind::Single { source, target, .. } if source != target => {
                     format!("{} as {}", source, target)
                 }
@@ -1159,18 +1159,18 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             };
 
             let mut corrections: Vec<(Span, String)> = Vec::new();
-            if !directive.is_nested() {
+            if !import.is_nested() {
                 // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
                 // intermediate segments.
-                corrections.push((directive.span, format!("{}::{}", module_name, import)));
+                corrections.push((import.span, format!("{}::{}", module_name, import_snippet)));
             } else {
                 // Find the binding span (and any trailing commas and spaces).
                 //   ie. `use a::b::{c, d, e};`
                 //                      ^^^
                 let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
                     self.r.session,
-                    directive.span,
-                    directive.use_span,
+                    import.span,
+                    import.use_span,
                 );
                 debug!(
                     "check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
@@ -1207,7 +1207,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
                     self.r.session,
                     module_name,
-                    directive.use_span,
+                    import.use_span,
                 );
                 debug!(
                     "check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
@@ -1223,11 +1223,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         start_point,
                         if has_nested {
                             // In this case, `start_snippet` must equal '{'.
-                            format!("{}{}, ", start_snippet, import)
+                            format!("{}{}, ", start_snippet, import_snippet)
                         } else {
                             // In this case, add a `{`, then the moved import, then whatever
                             // was there before.
-                            format!("{{{}, {}", import, start_snippet)
+                            format!("{{{}, {}", import_snippet, start_snippet)
                         },
                     ));
                 }
