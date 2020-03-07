@@ -2,10 +2,10 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::config::{QueryAccessors, QueryConfig, QueryDescription};
-use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryShardJobId};
+use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
 use crate::ty::query::Query;
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
@@ -20,6 +20,7 @@ use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, H
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -109,6 +110,35 @@ impl<'tcx, K, V, C: QueryCache<K, V>> QueryStateImpl<'tcx, K, V, C> {
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
         shards.iter().all(|shard| shard.active.is_empty())
+    }
+
+    pub(super) fn try_collect_active_jobs(
+        &self,
+        kind: DepKind,
+        make_query: fn(K) -> Query<'tcx>,
+        jobs: &mut FxHashMap<QueryJobId, QueryJobInfo<'tcx>>,
+    ) -> Option<()>
+    where
+        K: Clone,
+    {
+        // We use try_lock_shards here since we are called from the
+        // deadlock handler, and this shouldn't be locked.
+        let shards = self.shards.try_lock_shards()?;
+        let shards = shards.iter().enumerate();
+        jobs.extend(shards.flat_map(|(shard_id, shard)| {
+            shard.active.iter().filter_map(move |(k, v)| {
+                if let QueryResult::Started(ref job) = *v {
+                    let id =
+                        QueryJobId { job: job.id, shard: u16::try_from(shard_id).unwrap(), kind };
+                    let info = QueryInfo { span: job.span, query: make_query(k.clone()) };
+                    Some((id, QueryJobInfo { info, job: job.clone() }))
+                } else {
+                    None
+                }
+            })
+        }));
+
+        Some(())
     }
 }
 
@@ -1135,29 +1165,11 @@ macro_rules! define_queries_struct {
                 let mut jobs = FxHashMap::default();
 
                 $(
-                    // We use try_lock_shards here since we are called from the
-                    // deadlock handler, and this shouldn't be locked.
-                    let shards = self.$name.shards.try_lock_shards()?;
-                    let shards = shards.iter().enumerate();
-                    jobs.extend(shards.flat_map(|(shard_id, shard)| {
-                        shard.active.iter().filter_map(move |(k, v)| {
-                        if let QueryResult::Started(ref job) = *v {
-                                let id = QueryJobId {
-                                    job: job.id,
-                                    shard:  u16::try_from(shard_id).unwrap(),
-                                    kind:
-                                        <queries::$name<'tcx> as QueryAccessors<'tcx>>::DEP_KIND,
-                                };
-                                let info = QueryInfo {
-                                    span: job.span,
-                                    query: Query::$name(k.clone())
-                                };
-                                Some((id, QueryJobInfo { info,  job: job.clone() }))
-                        } else {
-                            None
-                        }
-                        })
-                    }));
+                    self.$name.try_collect_active_jobs(
+                        <queries::$name<'tcx> as QueryAccessors<'tcx>>::DEP_KIND,
+                        Query::$name,
+                        &mut jobs,
+                    )?;
                 )*
 
                 Some(jobs)
