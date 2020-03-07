@@ -129,21 +129,20 @@ impl<'a> Parser<'a> {
             DirectoryOwnership::Owned { .. } => {
                 paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
             }
-            DirectoryOwnership::UnownedViaBlock => {
-                let msg = "Cannot declare a non-inline module inside a block \
-                    unless it has a path attribute";
-                let mut err = self.struct_span_err(id_sp, msg);
-                if paths.path_exists {
-                    let msg = format!(
-                        "Maybe `use` the module `{}` instead of redeclaring it",
-                        paths.name
-                    );
-                    err.span_note(id_sp, &msg);
-                }
-                Err(err)
-            }
+            DirectoryOwnership::UnownedViaBlock => self.error_decl_mod_in_block(id_sp, paths),
             DirectoryOwnership::UnownedViaMod => self.error_cannot_declare_mod_here(id_sp, paths),
         }
+    }
+
+    fn error_decl_mod_in_block<T>(&self, id_sp: Span, paths: ModulePath) -> PResult<'a, T> {
+        let msg =
+            "Cannot declare a non-inline module inside a block unless it has a path attribute";
+        let mut err = self.struct_span_err(id_sp, msg);
+        if paths.path_exists {
+            let msg = format!("Maybe `use` the module `{}` instead of redeclaring it", paths.name);
+            err.span_note(id_sp, &msg);
+        }
+        Err(err)
     }
 
     fn error_cannot_declare_mod_here<T>(&self, id_sp: Span, paths: ModulePath) -> PResult<'a, T> {
