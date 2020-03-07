@@ -41,7 +41,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.macos_fstat(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
+            // Environment related shims
+            "_NSGetEnviron" => {
+                this.write_scalar(this.memory.extra.environ.unwrap().ptr, dest)?;
+            }
             // The only reason this is not in the `posix` module is because the `linux` item has a
             // different name.
             "opendir$INODE64" => {

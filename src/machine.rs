@@ -110,19 +110,21 @@ impl<'tcx> MemoryExtra<'tcx> {
     pub fn init_extern_statics<'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
-        match this.tcx.sess.target.target.target_os.as_str() {
-            "linux" => {
-                // "__cxa_thread_atexit_impl"
-                // This should be all-zero, pointer-sized.
-                let layout = this.layout_of(this.tcx.types.usize)?;
-                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-                this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
-                this.memory
-                    .extra
-                    .extern_statics
-                    .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
-                    .unwrap_none();
-
+        let target_os = this.tcx.sess.target.target.target_os.as_str();
+        match target_os {
+            "linux" | "macos" => {
+                if target_os == "linux" {
+                    // "__cxa_thread_atexit_impl"
+                    // This should be all-zero, pointer-sized.
+                    let layout = this.layout_of(this.tcx.types.usize)?;
+                    let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                    this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
+                    this.memory
+                        .extra
+                        .extern_statics
+                        .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
+                        .unwrap_none();
+                }
                 // "environ"
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
