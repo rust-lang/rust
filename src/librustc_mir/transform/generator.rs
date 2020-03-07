@@ -1008,6 +1008,45 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     false
 }
 
+fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+    // Nothing can unwind when landing pads are off.
+    if tcx.sess.no_landing_pads() {
+        return false;
+    }
+
+    // Unwinds can only start at certain terminators.
+    for block in body.basic_blocks() {
+        match block.terminator().kind {
+            // These never unwind.
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. } => {}
+
+            // Resume will *continue* unwinding, but if there's no other unwinding terminator it
+            // will never be reached.
+            TerminatorKind::Resume => {}
+
+            TerminatorKind::Yield { .. } => {
+                unreachable!("`can_unwind` called before generator transform")
+            }
+
+            // These may unwind.
+            TerminatorKind::Drop { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::Assert { .. } => return true,
+        }
+    }
+
+    // If we didn't find an unwinding terminator, the function cannot unwind.
+    false
+}
+
 fn create_generator_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
@@ -1041,7 +1080,12 @@ fn create_generator_resume_function<'tcx>(
         );
     }
 
-    cases.insert(2, (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))));
+    if can_unwind(tcx, body) {
+        cases.insert(
+            2,
+            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))),
+        );
+    }
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
