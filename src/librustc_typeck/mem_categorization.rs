@@ -425,7 +425,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | Res::Def(DefKind::ConstParam, _)
             | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::Method, _)
+            | Res::Def(DefKind::AssocFn, _)
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
             Res::Def(DefKind::Static, _) => Ok(Place {

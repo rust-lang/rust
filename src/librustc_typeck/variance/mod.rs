@@ -54,7 +54,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         },
 
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Method(..) => {}
+            hir::TraitItemKind::Fn(..) => {}
 
             _ => unsupported(),
         },

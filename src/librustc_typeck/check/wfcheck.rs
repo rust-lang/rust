@@ -173,7 +173,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.kind {
-        hir::TraitItemKind::Method(ref sig, _) => Some(sig),
+        hir::TraitItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
@@ -207,7 +207,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         {
             trait_should_be_self.push(ty.span)
         }
-        hir::TraitItemKind::Method(sig, _) => {
+        hir::TraitItemKind::Fn(sig, _) => {
             for ty in sig.decl.inputs {
                 if could_be_self(trait_def_id, ty) {
                     trait_should_be_self.push(ty.span);

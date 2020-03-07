@@ -761,13 +761,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) =
                     self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
-                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
+                (generics, hir::TraitItemKind::Fn(sig, hir::TraitMethod::Required(names)))
             }
             AssocItemKind::Fn(_, ref sig, ref generics, Some(ref body)) => {
                 let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) =
                     self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
-                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
+                (generics, hir::TraitItemKind::Fn(sig, hir::TraitMethod::Provided(body_id)))
             }
             AssocItemKind::TyAlias(_, ref generics, ref bounds, ref default) => {
                 let ty = default.as_ref().map(|x| self.lower_ty(x, ImplTraitContext::disallowed()));

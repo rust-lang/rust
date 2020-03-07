@@ -105,7 +105,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Method(..) = trait_item.kind {
+        if let hir::TraitItemKind::Fn(..) = trait_item.kind {
             self.visit_node_helper(trait_item.hir_id);
         }
     }
