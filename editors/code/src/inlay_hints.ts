@@ -67,7 +67,7 @@ class HintsUpdater implements Disposable {
     private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
     private readonly disposables: Disposable[] = [];
 
-    private constructor(readonly ctx: Ctx) { }
+    private constructor(private readonly ctx: Ctx) { }
 
     static create(ctx: Ctx) {
         const self = new HintsUpdater(ctx);
