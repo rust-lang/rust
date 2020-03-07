@@ -74,7 +74,9 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .flatten()
         .collect::<FxHashMap<_, (_, _)>>();
 
-    codegen_mono_items(tcx, &mut jit_module, None, mono_items);
+    time(tcx.sess, "codegen mono items", || {
+        codegen_mono_items(tcx, &mut jit_module, None, mono_items);
+    });
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module);
     crate::allocator::codegen(tcx, &mut jit_module);
 
@@ -224,7 +226,9 @@ fn run_aot(
         None
     };
 
-    codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+    time(tcx.sess, "codegen mono items", || {
+        codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+    });
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
 
     tcx.sess.abort_if_errors();
@@ -308,30 +312,28 @@ fn codegen_mono_items<'tcx>(
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
 
-    time(tcx.sess, "codegen mono items", move || {
-        tcx.sess.time("predefine functions", || {
-            for (&mono_item, &(linkage, visibility)) in &mono_items {
-                match mono_item {
-                    MonoItem::Fn(instance) => {
-                        let (name, sig) =
-                            get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
-                        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-                        cx.module.declare_function(&name, linkage, &sig).unwrap();
-                    }
-                    MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
+    tcx.sess.time("predefine functions", || {
+        for (&mono_item, &(linkage, visibility)) in &mono_items {
+            match mono_item {
+                MonoItem::Fn(instance) => {
+                    let (name, sig) =
+                        get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+                    let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+                    cx.module.declare_function(&name, linkage, &sig).unwrap();
                 }
+                MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }
-        });
-
-        for (mono_item, (linkage, visibility)) in mono_items {
-            crate::unimpl::try_unimpl(tcx, || {
-                let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-                trans_mono_item(&mut cx, mono_item, linkage);
-            });
         }
-
-        tcx.sess.time("finalize CodegenCx", || cx.finalize());
     });
+
+    for (mono_item, (linkage, visibility)) in mono_items {
+        crate::unimpl::try_unimpl(tcx, || {
+            let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+            trans_mono_item(&mut cx, mono_item, linkage);
+        });
+    }
+
+    tcx.sess.time("finalize CodegenCx", || cx.finalize());
 }
 
 fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
