@@ -4,10 +4,10 @@ set -e
 
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo build --release
+    CARGO_INCREMENTAL=1 cargo rustc --release -- -Zrun_dsymutil=no
 else
     export CHANNEL='debug'
-    cargo build
+    cargo rustc -- -Zrun_dsymutil=no
 fi
 
 source config.sh
