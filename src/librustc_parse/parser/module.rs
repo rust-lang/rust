@@ -142,41 +142,41 @@ impl<'a> Parser<'a> {
                 }
                 Err(err)
             }
-            DirectoryOwnership::UnownedViaMod => {
-                let mut err =
-                    self.struct_span_err(id_sp, "cannot declare a new module at this location");
-                if !id_sp.is_dummy() {
-                    let src_path = self.sess.source_map().span_to_filename(id_sp);
-                    if let FileName::Real(src_path) = src_path {
-                        if let Some(stem) = src_path.file_stem() {
-                            let mut dest_path = src_path.clone();
-                            dest_path.set_file_name(stem);
-                            dest_path.push("mod.rs");
-                            err.span_note(
-                                id_sp,
-                                &format!(
-                                    "maybe move this module `{}` to its own \
-                                                directory via `{}`",
-                                    src_path.display(),
-                                    dest_path.display()
-                                ),
-                            );
-                        }
-                    }
-                }
-                if paths.path_exists {
+            DirectoryOwnership::UnownedViaMod => self.error_cannot_declare_mod_here(id_sp, paths),
+        }
+    }
+
+    fn error_cannot_declare_mod_here<T>(&self, id_sp: Span, paths: ModulePath) -> PResult<'a, T> {
+        let mut err = self.struct_span_err(id_sp, "cannot declare a new module at this location");
+        if !id_sp.is_dummy() {
+            if let FileName::Real(src_path) = self.sess.source_map().span_to_filename(id_sp) {
+                if let Some(stem) = src_path.file_stem() {
+                    let mut dest_path = src_path.clone();
+                    dest_path.set_file_name(stem);
+                    dest_path.push("mod.rs");
                     err.span_note(
                         id_sp,
                         &format!(
-                            "... or maybe `use` the module `{}` instead \
-                                            of possibly redeclaring it",
-                            paths.name
+                            "maybe move this module `{}` to its own \
+                                    directory via `{}`",
+                            src_path.display(),
+                            dest_path.display()
                         ),
                     );
                 }
-                Err(err)
             }
         }
+        if paths.path_exists {
+            err.span_note(
+                id_sp,
+                &format!(
+                    "... or maybe `use` the module `{}` instead \
+                                of possibly redeclaring it",
+                    paths.name
+                ),
+            );
+        }
+        Err(err)
     }
 
     /// Derive a submodule path from the first found `#[path = "path_string"]`.
