@@ -179,21 +179,22 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Derive a submodule path from the first found `#[path = "path_string"]`.
+    /// The provided `dir_path` is joined with the `path_string`.
     // Public for rustfmt usage.
     pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
-        if let Some(s) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-            let s = s.as_str();
+        // Extract path string from first `#[path = "path_string"]` attribute.
+        let path_string = attr::first_attr_value_str_by_name(attrs, sym::path)?;
+        let path_string = path_string.as_str();
 
-            // On windows, the base path might have the form
-            // `\\?\foo\bar` in which case it does not tolerate
-            // mixed `/` and `\` separators, so canonicalize
-            // `/` to `\`.
-            #[cfg(windows)]
-            let s = s.replace("/", "\\");
-            Some(dir_path.join(&*s))
-        } else {
-            None
-        }
+        // On windows, the base path might have the form
+        // `\\?\foo\bar` in which case it does not tolerate
+        // mixed `/` and `\` separators, so canonicalize
+        // `/` to `\`.
+        #[cfg(windows)]
+        let path_string = path_string.replace("/", "\\");
+
+        Some(dir_path.join(&*path_string))
     }
 
     /// Returns a path to a module.
