@@ -5244,7 +5244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .associated_items(future_trait)
                     .in_definition_order()
-                    .nth(0)
+                    .next()
                     .unwrap()
                     .def_id;
                 let predicate =
