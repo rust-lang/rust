@@ -1897,7 +1897,7 @@ pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
     Const(&'hir Ty<'hir>, BodyId),
-    /// A method implementation with the given signature and body.
+    /// An associated function implementation with the given signature and body.
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty<'hir>),
