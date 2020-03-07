@@ -35,7 +35,7 @@ pub trait Qualif {
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
         per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'_, 'tcx>,
+        place: PlaceRef<'tcx>,
     ) -> bool {
         if let [proj_base @ .., elem] = place.projection {
             let base_qualif = Self::in_place(
@@ -67,7 +67,7 @@ pub trait Qualif {
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
         per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'_, 'tcx>,
+        place: PlaceRef<'tcx>,
     ) -> bool {
         Self::in_projection_structurally(cx, per_local, place)
     }
@@ -75,7 +75,7 @@ pub trait Qualif {
     fn in_place(
         cx: &ConstCx<'_, 'tcx>,
         per_local: &mut impl FnMut(Local) -> bool,
-        place: PlaceRef<'_, 'tcx>,
+        place: PlaceRef<'tcx>,
     ) -> bool {
         match place {
             PlaceRef { local, projection: [] } => per_local(local),
