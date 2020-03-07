@@ -1,0 +1,14 @@
+error: `?` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-68890-2.rs:1:11
+   |
+LL | type X = (?'a) +;
+   |           ^
+
+error: expected trait bound, not lifetime bound
+  --> $DIR/issue-68890-2.rs:1:11
+   |
+LL | type X = (?'a) +;
+   |           ^^^
+
+error: aborting due to 2 previous errors
+
