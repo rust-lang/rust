@@ -72,7 +72,9 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
         .flatten()
-        .collect::<FxHashMap<_, (_, _)>>();
+        .collect::<FxHashMap<_, (_, _)>>()
+        .into_iter()
+        .collect::<Vec<(_, (_, _))>>();
 
     time(tcx.sess, "codegen mono items", || {
         codegen_mono_items(tcx, &mut jit_module, None, mono_items);
@@ -208,36 +210,35 @@ fn run_aot(
         };
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-    let mono_items = cgus
-        .iter()
-        .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
-        .flatten()
-        .collect::<FxHashMap<_, (_, _)>>();
 
-    let mut module = new_module("some_file".to_string());
+    let modules = time(tcx.sess, "codegen mono items", move || {
+        cgus.iter().map(|cgu| {
+            let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let debug = DebugContext::new(
-            tcx,
-            module.target_config().pointer_type().bytes() as u8,
-        );
-        Some(debug)
-    } else {
-        None
-    };
+            let mut module = new_module(cgu.name().as_str().to_string());
 
-    time(tcx.sess, "codegen mono items", || {
-        codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+            let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
+                let debug = DebugContext::new(
+                    tcx,
+                    module.target_config().pointer_type().bytes() as u8,
+                );
+                Some(debug)
+            } else {
+                None
+            };
+
+            codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+            crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
+
+            emit_module(
+                tcx,
+                cgu.name().as_str().to_string(),
+                ModuleKind::Regular,
+                module,
+                debug,
+            )
+        }).collect::<Vec<_>>()
     });
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
-
-    let modules = vec![emit_module(
-        tcx,
-        "some_file".to_string(),
-        ModuleKind::Regular,
-        module,
-        debug,
-    )];
 
     tcx.sess.abort_if_errors();
 
@@ -310,12 +311,12 @@ fn codegen_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug_context: Option<&mut DebugContext<'tcx>>,
-    mono_items: FxHashMap<MonoItem<'tcx>, (RLinkage, Visibility)>,
+    mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
 
     tcx.sess.time("predefine functions", || {
-        for (&mono_item, &(linkage, visibility)) in &mono_items {
+        for &(mono_item, (linkage, visibility)) in &mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
                     let (name, sig) =
