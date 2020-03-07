@@ -6,6 +6,8 @@ LL |     'l0 while false {}
    |     |  |
    |     |  help: add `:` after the label
    |     the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:5:5
@@ -15,6 +17,8 @@ LL |     'l1 for _ in 0..1 {}
    |     |  |
    |     |  help: add `:` after the label
    |     the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:6:5
@@ -24,6 +28,8 @@ LL |     'l2 loop {}
    |     |  |
    |     |  help: add `:` after the label
    |     the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:7:5
@@ -33,6 +39,8 @@ LL |     'l3 {}
    |     |  |
    |     |  help: add `:` after the label
    |     the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/labeled-no-colon-expr.rs:8:9
@@ -48,6 +56,8 @@ LL |     'l4 0;
    |     |  |
    |     |  help: add `:` after the label
    |     the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: cannot use a `block` macro fragment here
   --> $DIR/labeled-no-colon-expr.rs:13:17
@@ -72,6 +82,8 @@ LL |             'l5 $b;
 ...
 LL |     m!({});
    |        ^^
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: aborting due to 8 previous errors
 

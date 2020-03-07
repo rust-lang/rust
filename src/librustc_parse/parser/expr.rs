@@ -1121,6 +1121,7 @@ impl<'a> Parser<'a> {
                 ": ".to_string(),
                 Applicability::MachineApplicable,
             )
+            .note("labels are used before loops and blocks, allowing e.g., `break 'label` to them")
             .emit();
     }
 
