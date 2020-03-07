@@ -142,8 +142,8 @@ impl Layout {
 
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
     ///
-    /// Note that the pointer value may potentially represent a valid pointer to
-    /// a `T`, which means this must not be used as a "not yet initialized"
+    /// Note that the pointer value may potentially represent a valid pointer,
+    /// which means this must not be used as a "not yet initialized"
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
