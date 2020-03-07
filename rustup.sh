@@ -4,8 +4,7 @@ set -e
 
 case $1 in
     "prepare")
-        # FIXME Automatically detect latest nightly
-        read -p "Date of nightly to use: " TOOLCHAIN
+        TOOLCHAIN=$(date +%Y-%m-%d)
 
         echo "=> Installing new nightly"
         rustup toolchain install --profile minimal nightly-${TOOLCHAIN} # Sanity check to see if the nightly exists
