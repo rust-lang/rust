@@ -153,4 +153,29 @@ mod tests {
         ]
         "###);
     }
+
+    #[test]
+    fn test_record_literal_field_in_simple_macro() {
+        let completions = complete(
+            r"
+            macro_rules! m { ($e:expr) => { $e } }
+            struct A { the_field: u32 }
+            fn foo() {
+               m!(A { the<|> })
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [137; 140),
+                delete: [137; 140),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+    }
 }

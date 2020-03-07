@@ -165,7 +165,7 @@ impl<'a> CompletionContext<'a> {
                 self.is_param = true;
                 return;
             }
-            self.classify_name_ref(original_file, name_ref);
+            self.classify_name_ref(original_file, name_ref, offset);
         }
 
         // Otherwise, see if this is a declaration. We can use heuristics to
@@ -190,13 +190,18 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
+    fn classify_name_ref(
+        &mut self,
+        original_file: &SyntaxNode,
+        name_ref: ast::NameRef,
+        offset: TextUnit,
+    ) {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
         if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
             self.record_lit_syntax =
-                self.sema.find_node_at_offset_with_macros(&original_file, self.offset);
+                self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
 
         self.impl_def = self
