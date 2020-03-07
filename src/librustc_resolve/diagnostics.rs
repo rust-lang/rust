@@ -1,4 +1,5 @@
 use std::cmp::Reverse;
+use std::ptr;
 
 use log::debug;
 use rustc::bug;
@@ -937,15 +938,17 @@ impl<'a> Resolver<'a> {
     crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
         let PrivacyError { ident, binding, .. } = *privacy_error;
 
+        let res = binding.res();
         let ctor_fields_span = self.ctor_fields_span(binding);
-        let mut descr = binding.res().descr().to_string();
-        if ctor_fields_span.is_some() {
-            descr += " constructor";
-        }
-        if binding.is_import() {
-            descr += " import";
-        }
+        let plain_descr = res.descr().to_string();
+        let nonimport_descr =
+            if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
+        let import_descr = nonimport_descr.clone() + " import";
+        let get_descr =
+            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
+        // Print the primary message.
+        let descr = get_descr(binding);
         let mut err =
             struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
         err.span_label(ident.span, &format!("this {} is private", descr));
@@ -953,10 +956,45 @@ impl<'a> Resolver<'a> {
             err.span_label(span, "a constructor is private if any of the fields is private");
         }
 
-        err.span_note(
-            self.session.source_map().def_span(binding.span),
-            &format!("the {} `{}` is defined here", descr, ident),
-        );
+        // Print the whole import chain to make it easier to see what happens.
+        let first_binding = binding;
+        let mut next_binding = Some(binding);
+        let mut next_ident = ident;
+        while let Some(binding) = next_binding {
+            let name = next_ident;
+            next_binding = match binding.kind {
+                _ if res == Res::Err => None,
+                NameBindingKind::Import { binding, directive, .. } => match directive.subclass {
+                    _ if binding.span.is_dummy() => None,
+                    ImportDirectiveSubclass::SingleImport { source, .. } => {
+                        next_ident = source;
+                        Some(binding)
+                    }
+                    ImportDirectiveSubclass::GlobImport { .. }
+                    | ImportDirectiveSubclass::MacroUse => Some(binding),
+                    ImportDirectiveSubclass::ExternCrate { .. } => None,
+                },
+                _ => None,
+            };
+
+            let first = ptr::eq(binding, first_binding);
+            let descr = get_descr(binding);
+            let msg = format!(
+                "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
+                and_refers_to = if first { "" } else { "...and refers to " },
+                item = descr,
+                name = name,
+                which = if first { "" } else { " which" },
+                dots = if next_binding.is_some() { "..." } else { "" },
+            );
+            let def_span = self.session.source_map().def_span(binding.span);
+            let mut note_span = MultiSpan::from_span(def_span);
+            if !first && next_binding.is_none() && binding.vis == ty::Visibility::Public {
+                note_span.push_span_label(def_span, "consider importing it directly".into());
+            }
+            err.span_note(note_span, &msg);
+        }
+
         err.emit();
     }
 }
