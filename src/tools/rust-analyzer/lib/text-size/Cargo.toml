@@ -1,12 +1,25 @@
 [package]
-name = "text_unit"
-version = "0.1.10"
-authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+name = "text-size"
+version = "0.99.0-dev.1"
+edition = "2018"
+
+authors = [
+    "Aleksey Kladov <aleksey.kladov@gmail.com>",
+    "Christopher Durham (CAD97) <cad97@cad97.com>"
+]
 description = "Newtypes for text offsets"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/matklad/text_unit"
 documentation = "https://docs.rs/text_unit"
 
 [dependencies]
-serde = { version = "1", optional = true, default_features = false }
+serde = { version = "1.0", optional = true, default_features = false }
 deepsize = { version = "0.1", optional = true, default_features = false }
+
+[dev-dependencies]
+serde_test = "1.0"
+
+[[test]]
+name = "serde"
+path = "tests/serde.rs"
+required-features = ["serde"]
