@@ -17,6 +17,11 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
         None => return,
     };
 
+    let instance = Instance::mono(tcx, main_def_id);
+    if module.get_name(&*tcx.symbol_name(instance).name.as_str()).is_none() {
+        return;
+    }
+
     create_entry_fn(tcx, module, main_def_id, use_start_lang_item);
 
     fn create_entry_fn(
