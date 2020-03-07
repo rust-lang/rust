@@ -1,6 +1,6 @@
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::config::QueryAccessors;
-use crate::ty::query::plumbing::QueryStateImpl;
+use crate::ty::query::plumbing::QueryState;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -38,7 +38,7 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<'tcx, C: QueryCache>(name: &'static str, map: &QueryStateImpl<'tcx, C>) -> QueryStats {
+fn stats<'tcx, C: QueryCache>(name: &'static str, map: &QueryState<'tcx, C>) -> QueryStats {
     let mut stats = QueryStats {
         name,
         #[cfg(debug_assertions)]

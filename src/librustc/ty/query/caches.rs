@@ -1,5 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::ty::query::plumbing::{QueryLookup, QueryStateImpl, QueryStateShard};
+use crate::ty::query::plumbing::{QueryLookup, QueryState, QueryStateShard};
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -23,7 +23,7 @@ pub(crate) trait QueryCache: Default {
     /// to compute it.
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryStateImpl<'tcx, Self>,
+        state: &'tcx QueryState<'tcx, Self>,
         get_cache: GetCache,
         key: Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
@@ -78,7 +78,7 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     #[inline(always)]
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryStateImpl<'tcx, Self>,
+        state: &'tcx QueryState<'tcx, Self>,
         get_cache: GetCache,
         key: K,
         on_hit: OnHit,

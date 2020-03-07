@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::caches::QueryCache;
-use crate::ty::query::config::{QueryAccessors, QueryDescription};
+use crate::ty::query::config::QueryDescription;
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
 use crate::ty::query::Query;
 use crate::ty::tls;
@@ -49,16 +49,14 @@ impl<'tcx, K, C: Default> Default for QueryStateShard<'tcx, K, C> {
     }
 }
 
-pub(crate) type QueryState<'tcx, Q> = QueryStateImpl<'tcx, <Q as QueryAccessors<'tcx>>::Cache>;
-
-pub(crate) struct QueryStateImpl<'tcx, C: QueryCache> {
+pub(crate) struct QueryState<'tcx, C: QueryCache> {
     pub(super) cache: C,
     pub(super) shards: Sharded<QueryStateShard<'tcx, C::Key, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: AtomicUsize,
 }
 
-impl<'tcx, C: QueryCache> QueryStateImpl<'tcx, C> {
+impl<'tcx, C: QueryCache> QueryState<'tcx, C> {
     pub(super) fn get_lookup<K2: Hash>(
         &'tcx self,
         key: &K2,
@@ -86,7 +84,7 @@ pub(super) enum QueryResult<'tcx> {
     Poisoned,
 }
 
-impl<'tcx, C: QueryCache> QueryStateImpl<'tcx, C> {
+impl<'tcx, C: QueryCache> QueryState<'tcx, C> {
     pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
@@ -130,9 +128,9 @@ impl<'tcx, C: QueryCache> QueryStateImpl<'tcx, C> {
     }
 }
 
-impl<'tcx, C: QueryCache> Default for QueryStateImpl<'tcx, C> {
-    fn default() -> QueryStateImpl<'tcx, C> {
-        QueryStateImpl {
+impl<'tcx, C: QueryCache> Default for QueryState<'tcx, C> {
+    fn default() -> QueryState<'tcx, C> {
+        QueryState {
             cache: C::default(),
             shards: Default::default(),
             #[cfg(debug_assertions)]
@@ -156,7 +154,7 @@ where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
-    state: &'tcx QueryStateImpl<'tcx, C>,
+    state: &'tcx QueryState<'tcx, C>,
     key: C::Key,
     id: QueryJobId,
 }
@@ -482,7 +480,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn try_get_cached<C, R, OnHit, OnMiss>(
         self,
-        state: &'tcx QueryStateImpl<'tcx, C>,
+        state: &'tcx QueryState<'tcx, C>,
         key: C::Key,
         // `on_hit` can be called while holding a lock to the query cache
         on_hit: OnHit,
@@ -979,7 +977,7 @@ macro_rules! define_queries_inner {
             type Cache = query_storage!([$($modifiers)*][$K, $V]);
 
             #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<$tcx, Self> {
+            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<$tcx, Self::Cache> {
                 &tcx.queries.$name
             }
 
@@ -1131,7 +1129,10 @@ macro_rules! define_queries_struct {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             fallback_extern_providers: Box<Providers<$tcx>>,
 
-            $($(#[$attr])*  $name: QueryState<$tcx, queries::$name<$tcx>>,)*
+            $($(#[$attr])*  $name: QueryState<
+                $tcx,
+                <queries::$name<$tcx> as QueryAccessors<'tcx>>::Cache,
+            >,)*
         }
 
         impl<$tcx> Queries<$tcx> {
