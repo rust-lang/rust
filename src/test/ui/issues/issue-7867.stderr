@@ -1,6 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/issue-7867.rs:7:9
    |
+LL | enum A { B, C }
+   |          - unit variant defined here
+...
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
 LL |         A::B => (),
