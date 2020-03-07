@@ -142,7 +142,7 @@ fn env_expand(
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // dummy implementation for type-checking purposes
-    let expanded = quote! { "" };
+    let expanded = quote! { "__RA_UNIMPLEMENTATED__" };
 
     Ok(expanded)
 }
