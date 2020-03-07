@@ -20,6 +20,7 @@ use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, H
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
@@ -132,13 +133,28 @@ pub(crate) struct QueryLookupImpl<'tcx, QSS> {
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-pub(super) struct JobOwner<'tcx, Q: QueryDescription<'tcx>> {
-    tcx: TyCtxt<'tcx>,
-    key: Q::Key,
+pub(super) type JobOwner<'tcx, Q> = JobOwnerImpl<
+    'tcx,
+    <Q as QueryConfig<'tcx>>::Key,
+    <Q as QueryConfig<'tcx>>::Value,
+    <Q as QueryAccessors<'tcx>>::Cache,
+>;
+
+pub(super) struct JobOwnerImpl<'tcx, K, V, C: QueryCache<K, V>>
+where
+    K: Eq + Hash + Clone + Debug,
+    V: Clone,
+{
+    state: &'tcx QueryStateImpl<'tcx, K, V, C>,
+    key: K,
     id: QueryJobId,
 }
 
-impl<'tcx, Q: QueryDescription<'tcx> + 'tcx> JobOwner<'tcx, Q> {
+impl<'tcx, K, V, C: QueryCache<K, V>> JobOwnerImpl<'tcx, K, V, C>
+where
+    K: Eq + Hash + Clone + Debug,
+    V: Clone,
+{
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
     /// This function assumes that `try_get_cached` is already called and returned `lookup`.
@@ -148,12 +164,17 @@ impl<'tcx, Q: QueryDescription<'tcx> + 'tcx> JobOwner<'tcx, Q> {
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    pub(super) fn try_start(
+    pub(super) fn try_start<Q>(
         tcx: TyCtxt<'tcx>,
         span: Span,
-        key: &Q::Key,
+        key: &K,
         mut lookup: QueryLookup<'tcx, Q>,
-    ) -> TryGetJob<'tcx, Q> {
+    ) -> TryGetJob<'tcx, Q>
+    where
+        K: Eq + Hash + Clone + Debug,
+        V: Clone,
+        Q: QueryDescription<'tcx, Key = K, Value = V, Cache = C> + 'tcx,
+    {
         let lock = &mut *lookup.lock;
 
         let (latch, mut _query_blocked_prof_timer) = match lock.active.entry((*key).clone()) {
@@ -191,7 +212,8 @@ impl<'tcx, Q: QueryDescription<'tcx> + 'tcx> JobOwner<'tcx, Q> {
 
                 entry.insert(QueryResult::Started(job));
 
-                let owner = JobOwner { tcx, id: global_id, key: (*key).clone() };
+                let owner =
+                    JobOwnerImpl { state: Q::query_state(tcx), id: global_id, key: (*key).clone() };
                 return TryGetJob::NotYetStarted(owner);
             }
         };
@@ -231,16 +253,15 @@ impl<'tcx, Q: QueryDescription<'tcx> + 'tcx> JobOwner<'tcx, Q> {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
+    pub(super) fn complete(self, tcx: TyCtxt<'tcx>, result: &V, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
-        let tcx = self.tcx;
+        let state = self.state;
 
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
         let job = {
-            let state = Q::query_state(tcx);
             let result = result.clone();
             let mut lock = state.shards.get_shard_by_value(&key).lock();
             let job = match lock.active.remove(&key).unwrap() {
@@ -265,12 +286,16 @@ where
     (result, diagnostics.into_inner())
 }
 
-impl<'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'tcx, Q> {
+impl<'tcx, K, V, C: QueryCache<K, V>> Drop for JobOwnerImpl<'tcx, K, V, C>
+where
+    K: Eq + Hash + Clone + Debug,
+    V: Clone,
+{
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let state = Q::query_state(self.tcx);
+        let state = self.state;
         let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
             let mut shard = shard.lock();
@@ -492,7 +517,7 @@ impl<'tcx> TyCtxt<'tcx> {
         key: Q::Key,
         lookup: QueryLookup<'tcx, Q>,
     ) -> Q::Value {
-        let job = match JobOwner::try_start(self, span, &key, lookup) {
+        let job = match JobOwnerImpl::try_start::<Q>(self, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
             #[cfg(parallel_compiler)]
@@ -528,7 +553,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
             }
 
-            job.complete(&result, dep_node_index);
+            job.complete(self, &result, dep_node_index);
 
             return result;
         }
@@ -554,7 +579,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             });
             if let Some((result, dep_node_index)) = loaded {
-                job.complete(&result, dep_node_index);
+                job.complete(self, &result, dep_node_index);
                 return result;
             }
         }
@@ -696,7 +721,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        job.complete(&result, dep_node_index);
+        job.complete(self, &result, dep_node_index);
 
         (result, dep_node_index)
     }
@@ -751,7 +776,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // Cache hit, do nothing
             },
             |key, lookup| {
-                let job = match JobOwner::try_start(self, span, &key, lookup) {
+                let job = match JobOwnerImpl::try_start::<Q>(self, span, &key, lookup) {
                     TryGetJob::NotYetStarted(job) => job,
                     TryGetJob::Cycle(_) => return,
                     #[cfg(parallel_compiler)]
