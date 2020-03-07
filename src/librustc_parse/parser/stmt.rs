@@ -259,16 +259,14 @@ impl<'a> Parser<'a> {
         //
         // which is valid in other languages, but not Rust.
         match self.parse_stmt_without_recovery() {
-            Ok(Some(stmt)) => {
+            // If the next token is an open brace (e.g., `if a b {`), the place-
+            // inside-a-block suggestion would be more likely wrong than right.
+            Ok(Some(_))
                 if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
-                    || do_not_suggest_help
-                {
-                    // If the next token is an open brace (e.g., `if a b {`), the place-
-                    // inside-a-block suggestion would be more likely wrong than right.
-                    e.span_label(sp, "expected `{`");
-                    return Err(e);
-                }
-                let stmt_span = if self.eat(&token::Semi) {
+                    || do_not_suggest_help => {}
+            Ok(Some(stmt)) => {
+                let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
+                let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
                     // Expand the span to include the semicolon.
                     stmt.span.with_hi(self.prev_token.span.hi())
                 } else {
