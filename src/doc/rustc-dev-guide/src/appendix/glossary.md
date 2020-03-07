@@ -52,7 +52,9 @@ newtype                 |  a "newtype" is a wrapper around some other type (e.g.
 NLL                     | [non-lexical lifetimes](../borrow_check/region_inference.html), an extension to Rust's borrowing system to make it be based on the control-flow graph.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](../traits/resolution.html))
+placeholder             |  **NOTE: skolemization is deprecated by placeholder** a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on placeholder and universes](../borrow_check/region_inference/placeholders_and_universes.md) for more details.
 point                   |  used in the NLL analysis to refer to some particular location in the MIR; typically used to refer to a node in the control-flow graph.
+polymorphize            |  An optimization that avoids unnecessary monomorphisation ([see more](../backend/monomorph.md#polymorphization))
 projection              |  a general term for a "relative path", e.g. `x.f` is a "field projection", and `T::Item` is an ["associated type projection"](../traits/goals-and-clauses.html#trait-ref)
 promoted constants      |  constants extracted from a function and lifted to static scope; see [this section](../mir/index.html#promoted) for more details.
 provider                |  the function that executes a query ([see more](../query.html))
@@ -63,7 +65,6 @@ rib                     |  a data structure in the name resolver that keeps trac
 sess                    |  the compiler session, which stores global data used throughout compilation
 side tables             |  because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 sigil                   |  like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
-placeholder           |  **NOTE: skolemization is deprecated by placeholder** a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on placeholder and universes](../borrow_check/region_inference/placeholders_and_universes.md) for more details.
 soundness               |  soundness is a technical term in type theory. Roughly, if a type system is sound, then if a program type-checks, it is type-safe; i.e. I can never (in safe rust) force a value into a variable of the wrong type. (see "completeness").
 span                    |  a location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
 substs                  |  the substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`)
