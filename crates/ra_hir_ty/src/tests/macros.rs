@@ -511,6 +511,24 @@ fn bar() -> u32 {0}
 }
 
 #[test]
+fn infer_builtin_macros_include_itself_should_failed() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs 
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+include!("main.rs");
+
+fn main() {
+    0<|>
+}
+"#,
+    );
+    assert_eq!("i32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_builtin_macros_concat_with_lazy() {
     assert_snapshot!(
         infer(r#"
