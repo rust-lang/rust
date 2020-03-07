@@ -279,7 +279,12 @@ fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Opti
     let call_site = call_id.as_file().original_file(db);
     let path = RelativePath::new(&path);
 
-    db.resolve_relative_path(call_site, &path)
+    let res = db.resolve_relative_path(call_site, &path)?;
+    // Prevent include itself
+    if res == call_site {
+        return None;
+    }
+    Some(res)
 }
 
 fn include_expand(
