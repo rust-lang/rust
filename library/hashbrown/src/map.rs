@@ -181,14 +181,12 @@ pub enum DefaultHashBuilder {}
 /// ```
 /// use hashbrown::HashMap;
 ///
-/// fn main() {
-///     let timber_resources: HashMap<&str, i32> =
-///     [("Norway", 100),
-///      ("Denmark", 50),
-///      ("Iceland", 10)]
-///      .iter().cloned().collect();
-///     // use the values stored in map
-/// }
+/// let timber_resources: HashMap<&str, i32> =
+/// [("Norway", 100),
+///  ("Denmark", 50),
+///  ("Iceland", 10)]
+///  .iter().cloned().collect();
+/// // use the values stored in map
 /// ```
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
@@ -903,12 +901,10 @@ where
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// # fn main() {
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove(&1), None);
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
@@ -2283,14 +2279,12 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
     /// map.entry("poneyland").or_default();
     ///
     /// assert_eq!(map["poneyland"], None);
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_default(self) -> &'a mut V

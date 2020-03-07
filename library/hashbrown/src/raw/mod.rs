@@ -74,20 +74,18 @@ impl Fallibility {
     /// Error to return on capacity overflow.
     #[cfg_attr(feature = "inline-more", inline)]
     fn capacity_overflow(self) -> CollectionAllocErr {
-        use Fallibility::*;
         match self {
-            Fallible => CollectionAllocErr::CapacityOverflow,
-            Infallible => panic!("Hash table capacity overflow"),
+            Fallibility::Fallible => CollectionAllocErr::CapacityOverflow,
+            Fallibility::Infallible => panic!("Hash table capacity overflow"),
         }
     }
 
     /// Error to return on allocation error.
     #[cfg_attr(feature = "inline-more", inline)]
     fn alloc_err(self, layout: Layout) -> CollectionAllocErr {
-        use Fallibility::*;
         match self {
-            Fallible => CollectionAllocErr::AllocErr { layout },
-            Infallible => handle_alloc_error(layout),
+            Fallibility::Fallible => CollectionAllocErr::AllocErr { layout },
+            Fallibility::Infallible => handle_alloc_error(layout),
         }
     }
 }
