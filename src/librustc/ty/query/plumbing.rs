@@ -29,16 +29,7 @@ use std::ptr;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub(crate) type QueryStateShard<'tcx, Q> = QueryStateShardImpl<
-    'tcx,
-    <Q as QueryConfig<'tcx>>::Key,
-    <<Q as QueryAccessors<'tcx>>::Cache as QueryCache<
-        <Q as QueryConfig<'tcx>>::Key,
-        <Q as QueryConfig<'tcx>>::Value,
-    >>::Sharded,
->;
-
-pub(crate) struct QueryStateShardImpl<'tcx, K, C> {
+pub(crate) struct QueryStateShard<'tcx, K, C> {
     pub(super) cache: C,
     pub(super) active: FxHashMap<K, QueryResult<'tcx>>,
 
@@ -46,15 +37,15 @@ pub(crate) struct QueryStateShardImpl<'tcx, K, C> {
     pub(super) jobs: u32,
 }
 
-impl<'tcx, K, C> QueryStateShardImpl<'tcx, K, C> {
+impl<'tcx, K, C> QueryStateShard<'tcx, K, C> {
     fn get_cache(&mut self) -> &mut C {
         &mut self.cache
     }
 }
 
-impl<'tcx, K, C: Default> Default for QueryStateShardImpl<'tcx, K, C> {
-    fn default() -> QueryStateShardImpl<'tcx, K, C> {
-        QueryStateShardImpl { cache: Default::default(), active: Default::default(), jobs: 0 }
+impl<'tcx, K, C: Default> Default for QueryStateShard<'tcx, K, C> {
+    fn default() -> QueryStateShard<'tcx, K, C> {
+        QueryStateShard { cache: Default::default(), active: Default::default(), jobs: 0 }
     }
 }
 
@@ -67,16 +58,13 @@ pub(crate) type QueryState<'tcx, Q> = QueryStateImpl<
 
 pub(crate) struct QueryStateImpl<'tcx, K, V, C: QueryCache<K, V>> {
     pub(super) cache: C,
-    pub(super) shards: Sharded<QueryStateShardImpl<'tcx, K, C::Sharded>>,
+    pub(super) shards: Sharded<QueryStateShard<'tcx, K, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: AtomicUsize,
 }
 
 impl<'tcx, K, V, C: QueryCache<K, V>> QueryStateImpl<'tcx, K, V, C> {
-    pub(super) fn get_lookup<K2: Hash>(
-        &'tcx self,
-        key: &K2,
-    ) -> QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, C::Sharded>> {
+    pub(super) fn get_lookup<K2: Hash>(&'tcx self, key: &K2) -> QueryLookup<'tcx, K, C::Sharded> {
         // We compute the key's hash once and then use it for both the
         // shard lookup and the hashmap lookup. This relies on the fact
         // that both of them use `FxHasher`.
@@ -86,7 +74,7 @@ impl<'tcx, K, V, C: QueryCache<K, V>> QueryStateImpl<'tcx, K, V, C> {
 
         let shard = self.shards.get_shard_index_by_hash(key_hash);
         let lock = self.shards.get_shard_by_index(shard).lock();
-        QueryLookupImpl { key_hash, shard, lock }
+        QueryLookup { key_hash, shard, lock }
     }
 }
 
@@ -154,11 +142,10 @@ impl<'tcx, K, V, C: QueryCache<K, V>> Default for QueryStateImpl<'tcx, K, V, C> 
 }
 
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub(crate) type QueryLookup<'tcx, Q> = QueryLookupImpl<'tcx, QueryStateShard<'tcx, Q>>;
-pub(crate) struct QueryLookupImpl<'tcx, QSS> {
+pub(crate) struct QueryLookup<'tcx, K, C> {
     pub(super) key_hash: u64,
     pub(super) shard: usize,
-    pub(super) lock: LockGuard<'tcx, QSS>,
+    pub(super) lock: LockGuard<'tcx, QueryStateShard<'tcx, K, C>>,
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
@@ -198,7 +185,7 @@ where
         tcx: TyCtxt<'tcx>,
         span: Span,
         key: &K,
-        mut lookup: QueryLookup<'tcx, Q>,
+        mut lookup: QueryLookup<'tcx, K, C::Sharded>,
     ) -> TryGetJob<'tcx, Q>
     where
         K: Eq + Hash + Clone + Debug,
@@ -502,11 +489,11 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         C: QueryCache<K, V>,
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, C::Sharded>>) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'tcx, K, C::Sharded>) -> R,
     {
         state.cache.lookup(
             state,
-            QueryStateShardImpl::<K, C::Sharded>::get_cache,
+            QueryStateShard::<K, C::Sharded>::get_cache,
             key,
             |value, index| {
                 if unlikely!(self.prof.enabled()) {
@@ -546,7 +533,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         span: Span,
         key: Q::Key,
-        lookup: QueryLookup<'tcx, Q>,
+        lookup: QueryLookup<'tcx, Q::Key, <Q::Cache as QueryCache<Q::Key, Q::Value>>::Sharded>,
     ) -> Q::Value {
         let job = match JobOwnerImpl::try_start::<Q>(self, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,

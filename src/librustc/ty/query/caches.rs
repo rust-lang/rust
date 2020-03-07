@@ -1,5 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::ty::query::plumbing::{QueryLookupImpl, QueryStateImpl, QueryStateShardImpl};
+use crate::ty::query::plumbing::{QueryLookup, QueryStateImpl, QueryStateShard};
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -28,11 +28,10 @@ pub(crate) trait QueryCache<K, V>: Default {
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache: for<'a> Fn(
-            &'a mut QueryStateShardImpl<'tcx, K, Self::Sharded>,
-        ) -> &'a mut Self::Sharded,
+        GetCache:
+            for<'a> Fn(&'a mut QueryStateShard<'tcx, K, Self::Sharded>) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, Self::Sharded>>) -> R;
+        OnMiss: FnOnce(K, QueryLookup<'tcx, K, Self::Sharded>) -> R;
 
     fn complete(
         &self,
@@ -73,11 +72,10 @@ impl<K: Eq + Hash, V: Clone> QueryCache<K, V> for DefaultCache {
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache: for<'a> Fn(
-            &'a mut QueryStateShardImpl<'tcx, K, Self::Sharded>,
-        ) -> &'a mut Self::Sharded,
+        GetCache:
+            for<'a> Fn(&'a mut QueryStateShard<'tcx, K, Self::Sharded>) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookupImpl<'tcx, QueryStateShardImpl<'tcx, K, Self::Sharded>>) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'tcx, K, Self::Sharded>) -> R,
     {
         let mut lookup = state.get_lookup(&key);
         let lock = &mut *lookup.lock;
