@@ -1776,7 +1776,9 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateEnumerator(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
-        Val: u64,
+        NameLen: size_t,
+        Value: i64,
+        IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 
     pub fn LLVMRustDIBuilderCreateEnumerationType(
