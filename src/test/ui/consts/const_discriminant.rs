@@ -1,5 +1,6 @@
 // run-pass
 #![feature(const_discriminant)]
+#![allow(dead_code)]
 
 use std::mem::{discriminant, Discriminant};
 
