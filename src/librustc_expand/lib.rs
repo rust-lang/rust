@@ -1,3 +1,4 @@
+#![feature(bool_to_option)]
 #![feature(cow_is_borrowed)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
@@ -34,9 +35,10 @@ pub use mbe::macro_rules::compile_declarative_macro;
 crate use rustc_span::hygiene;
 pub mod base;
 pub mod build;
+#[macro_use]
+pub mod config;
 pub mod expand;
 pub mod module;
-pub use rustc_parse::config;
 pub mod proc_macro;
 
 crate mod mbe;
