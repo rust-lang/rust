@@ -264,8 +264,18 @@ pub struct ArgumentV1<'a> {
 // could have been miscompiled. In practice, we never call as_usize on non-usize
 // containing data (as a matter of static generation of the formatting
 // arguments), so this is merely an additional check.
+//
+// We primarily want to ensure that the function pointer at `USIZE_MARKER` has
+// an address corresponding *only* to functions that also take `&usize` as their
+// first argument. The read_volatile here ensures that we can safely ready out a
+// usize from the passed reference and that this address does not point at a
+// non-usize taking function.
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |_, _| loop {};
+static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
+    // SAFETY: ptr is a reference
+    let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
+    loop {}
+};
 
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
