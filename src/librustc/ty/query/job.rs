@@ -1,5 +1,6 @@
 use crate::dep_graph::DepKind;
 use crate::ty::context::TyCtxt;
+use crate::ty::query::config::QueryContext;
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::Query;
 use crate::ty::tls;
@@ -27,13 +28,13 @@ use {
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
-pub struct QueryInfo<'tcx> {
+pub struct QueryInfo<CTX: QueryContext> {
     /// The span corresponding to the reason for which this query was required.
     pub span: Span,
-    pub query: Query<'tcx>,
+    pub query: CTX::Query,
 }
 
-type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<'tcx>>;
+type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<TyCtxt<'tcx>>>;
 
 /// A value uniquely identifiying an active query job within a shard in the query cache.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -72,19 +73,19 @@ impl QueryJobId {
     }
 
     #[cfg(parallel_compiler)]
-    fn latch<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> Option<&'a QueryLatch<'tcx>> {
+    fn latch<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> Option<&'a QueryLatch<TyCtxt<'tcx>>> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
 }
 
-pub struct QueryJobInfo<'tcx> {
-    pub info: QueryInfo<'tcx>,
-    pub job: QueryJob<'tcx>,
+pub struct QueryJobInfo<CTX: QueryContext> {
+    pub info: QueryInfo<CTX>,
+    pub job: QueryJob<CTX>,
 }
 
 /// Represents an active query job.
 #[derive(Clone)]
-pub struct QueryJob<'tcx> {
+pub struct QueryJob<CTX: QueryContext> {
     pub id: QueryShardJobId,
 
     /// The span corresponding to the reason for which this query was required.
@@ -95,12 +96,12 @@ pub struct QueryJob<'tcx> {
 
     /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
-    latch: Option<QueryLatch<'tcx>>,
+    latch: Option<QueryLatch<CTX>>,
 
-    dummy: PhantomData<QueryLatch<'tcx>>,
+    dummy: PhantomData<QueryLatch<CTX>>,
 }
 
-impl<'tcx> QueryJob<'tcx> {
+impl<CTX: QueryContext> QueryJob<CTX> {
     /// Creates a new query job.
     pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob {
@@ -114,7 +115,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     #[cfg(parallel_compiler)]
-    pub(super) fn latch(&mut self, _id: QueryJobId) -> QueryLatch<'tcx> {
+    pub(super) fn latch(&mut self, _id: QueryJobId) -> QueryLatch<CTX> {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
         }
@@ -122,7 +123,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     #[cfg(not(parallel_compiler))]
-    pub(super) fn latch(&mut self, id: QueryJobId) -> QueryLatch<'tcx> {
+    pub(super) fn latch(&mut self, id: QueryJobId) -> QueryLatch<CTX> {
         QueryLatch { id, dummy: PhantomData }
     }
 
@@ -138,14 +139,18 @@ impl<'tcx> QueryJob<'tcx> {
 
 #[cfg(not(parallel_compiler))]
 #[derive(Clone)]
-pub(super) struct QueryLatch<'tcx> {
+pub(super) struct QueryLatch<CTX> {
     id: QueryJobId,
-    dummy: PhantomData<&'tcx ()>,
+    dummy: PhantomData<CTX>,
 }
 
 #[cfg(not(parallel_compiler))]
-impl<'tcx> QueryLatch<'tcx> {
-    pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
+impl<'tcx> QueryLatch<TyCtxt<'tcx>> {
+    pub(super) fn find_cycle_in_stack(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> CycleError<TyCtxt<'tcx>> {
         let query_map = tcx.queries.try_collect_active_jobs().unwrap();
 
         // Get the current executing query (waiter) and find the waitee amongst its parents
@@ -181,15 +186,15 @@ impl<'tcx> QueryLatch<'tcx> {
 }
 
 #[cfg(parallel_compiler)]
-struct QueryWaiter<'tcx> {
+struct QueryWaiter<CTX: QueryContext> {
     query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
-    cycle: Lock<Option<CycleError<'tcx>>>,
+    cycle: Lock<Option<CycleError<CTX>>>,
 }
 
 #[cfg(parallel_compiler)]
-impl<'tcx> QueryWaiter<'tcx> {
+impl<CTX: QueryContext> QueryWaiter<CTX> {
     fn notify(&self, registry: &rayon_core::Registry) {
         rayon_core::mark_unblocked(registry);
         self.condvar.notify_one();
@@ -197,28 +202,34 @@ impl<'tcx> QueryWaiter<'tcx> {
 }
 
 #[cfg(parallel_compiler)]
-struct QueryLatchInfo<'tcx> {
+struct QueryLatchInfo<CTX: QueryContext> {
     complete: bool,
-    waiters: Vec<Lrc<QueryWaiter<'tcx>>>,
+    waiters: Vec<Lrc<QueryWaiter<CTX>>>,
 }
 
 #[cfg(parallel_compiler)]
 #[derive(Clone)]
-pub(super) struct QueryLatch<'tcx> {
-    info: Lrc<Mutex<QueryLatchInfo<'tcx>>>,
+pub(super) struct QueryLatch<CTX: QueryContext> {
+    info: Lrc<Mutex<QueryLatchInfo<CTX>>>,
 }
 
 #[cfg(parallel_compiler)]
-impl<'tcx> QueryLatch<'tcx> {
+impl<CTX: QueryContext> QueryLatch<CTX> {
     fn new() -> Self {
         QueryLatch {
             info: Lrc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
         }
     }
+}
 
+#[cfg(parallel_compiler)]
+impl<'tcx> QueryLatch<TyCtxt<'tcx>> {
     /// Awaits for the query job to complete.
-    #[cfg(parallel_compiler)]
-    pub(super) fn wait_on(&self, tcx: TyCtxt<'tcx>, span: Span) -> Result<(), CycleError<'tcx>> {
+    pub(super) fn wait_on(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> Result<(), CycleError<TyCtxt<'tcx>>> {
         tls::with_related_context(tcx, move |icx| {
             let waiter = Lrc::new(QueryWaiter {
                 query: icx.query,
@@ -237,9 +248,12 @@ impl<'tcx> QueryLatch<'tcx> {
             }
         })
     }
+}
 
+#[cfg(parallel_compiler)]
+impl<CTX: QueryContext> QueryLatch<CTX> {
     /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
+    fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter<CTX>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -273,7 +287,7 @@ impl<'tcx> QueryLatch<'tcx> {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
-    fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter<'tcx>> {
+    fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter<CTX>> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         // Remove the waiter from the list of waiters
@@ -427,7 +441,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId)>(
 fn remove_cycle<'tcx>(
     query_map: &QueryMap<'tcx>,
     jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
+    wakelist: &mut Vec<Lrc<QueryWaiter<TyCtxt<'tcx>>>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut visited = FxHashSet::default();

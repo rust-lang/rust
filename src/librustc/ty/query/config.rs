@@ -23,7 +23,11 @@ pub trait QueryConfig<CTX> {
     type Value: Clone;
 }
 
-pub(crate) trait QueryAccessors<'tcx>: QueryConfig<TyCtxt<'tcx>> {
+pub trait QueryContext: Copy {
+    type Query;
+}
+
+pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
     const DEP_KIND: DepKind;
@@ -31,20 +35,20 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<TyCtxt<'tcx>> {
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Cache>;
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;
 
-    fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
+    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
+    fn compute(tcx: CTX, key: Self::Key) -> Self::Value;
 
     fn hash_result(hcx: &mut StableHashingContext<'_>, result: &Self::Value)
     -> Option<Fingerprint>;
 
-    fn handle_cycle_error(tcx: TyCtxt<'tcx>, error: CycleError<'tcx>) -> Self::Value;
+    fn handle_cycle_error(tcx: CTX, error: CycleError<CTX>) -> Self::Value;
 }
 
-pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
+pub(crate) trait QueryDescription<'tcx>: QueryAccessors<TyCtxt<'tcx>> {
     fn describe(tcx: TyCtxt<'_>, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
@@ -57,7 +61,11 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
+impl<'tcx, M> QueryDescription<'tcx> for M
+where
+    M: QueryAccessors<TyCtxt<'tcx>, Key = DefId>,
+    //M::Cache: QueryCache<DefId, M::Value>,
+{
     default fn describe(tcx: TyCtxt<'_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()

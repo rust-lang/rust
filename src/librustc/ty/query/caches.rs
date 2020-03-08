@@ -23,7 +23,7 @@ pub(crate) trait QueryCache: Default {
     /// to compute it.
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryState<'tcx, Self>,
+        state: &'tcx QueryState<TyCtxt<'tcx>, Self>,
         get_cache: GetCache,
         key: Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
@@ -32,10 +32,10 @@ pub(crate) trait QueryCache: Default {
     ) -> R
     where
         GetCache: for<'a> Fn(
-            &'a mut QueryStateShard<'tcx, Self::Key, Self::Sharded>,
+            &'a mut QueryStateShard<TyCtxt<'tcx>, Self::Key, Self::Sharded>,
         ) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
-        OnMiss: FnOnce(Self::Key, QueryLookup<'tcx, Self::Key, Self::Sharded>) -> R;
+        OnMiss: FnOnce(Self::Key, QueryLookup<'tcx, TyCtxt<'tcx>, Self::Key, Self::Sharded>) -> R;
 
     fn complete(
         &self,
@@ -78,17 +78,18 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     #[inline(always)]
     fn lookup<'tcx, R, GetCache, OnHit, OnMiss>(
         &self,
-        state: &'tcx QueryState<'tcx, Self>,
+        state: &'tcx QueryState<TyCtxt<'tcx>, Self>,
         get_cache: GetCache,
         key: K,
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache:
-            for<'a> Fn(&'a mut QueryStateShard<'tcx, K, Self::Sharded>) -> &'a mut Self::Sharded,
+        GetCache: for<'a> Fn(
+            &'a mut QueryStateShard<TyCtxt<'tcx>, K, Self::Sharded>,
+        ) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'tcx, K, Self::Sharded>) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'tcx, TyCtxt<'tcx>, K, Self::Sharded>) -> R,
     {
         let mut lookup = state.get_lookup(&key);
         let lock = &mut *lookup.lock;

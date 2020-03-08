@@ -1,5 +1,5 @@
 use crate::ty::query::caches::QueryCache;
-use crate::ty::query::config::QueryAccessors;
+use crate::ty::query::config::{QueryAccessors, QueryContext};
 use crate::ty::query::plumbing::QueryState;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
@@ -38,7 +38,10 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<'tcx, C: QueryCache>(name: &'static str, map: &QueryState<'tcx, C>) -> QueryStats {
+fn stats<CTX: QueryContext, C: QueryCache>(
+    name: &'static str,
+    map: &QueryState<CTX, C>,
+) -> QueryStats {
     let mut stats = QueryStats {
         name,
         #[cfg(debug_assertions)]
@@ -124,7 +127,8 @@ macro_rules! print_stats {
 
             $($(
                 queries.push(stats::<
-                    <queries::$name<'_> as QueryAccessors<'_>>::Cache,
+                    TyCtxt<'_>,
+                    <queries::$name<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
                 >(
                     stringify!($name),
                     &tcx.queries.$name,
