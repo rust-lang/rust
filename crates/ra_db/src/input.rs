@@ -86,7 +86,7 @@ pub struct CrateId(pub u32);
 pub struct CrateName(SmolStr);
 
 impl CrateName {
-    /// Crates a crate name, checking for dashes in the string provided.
+    /// Creates a crate name, checking for dashes in the string provided.
     /// Dashes are not allowed in the crate names,
     /// hence the input string is returned as `Err` for those cases.
     pub fn new(name: &str) -> Result<CrateName, &str> {
@@ -97,7 +97,7 @@ impl CrateName {
         }
     }
 
-    /// Crates a crate name, unconditionally replacing the dashes with underscores.
+    /// Creates a crate name, unconditionally replacing the dashes with underscores.
     pub fn normalize_dashes(name: &str) -> CrateName {
         Self(SmolStr::new(name.replace('-', "_")))
     }
@@ -107,6 +107,7 @@ impl CrateName {
 struct CrateData {
     file_id: FileId,
     edition: Edition,
+    declaration_name: Option<String>,
     cfg_options: CfgOptions,
     env: Env,
     dependencies: Vec<Dependency>,
@@ -134,10 +135,11 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
+        declaration_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
     ) -> CrateId {
-        let data = CrateData::new(file_id, edition, cfg_options, env);
+        let data = CrateData::new(file_id, edition, declaration_name, cfg_options, env);
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
@@ -175,6 +177,15 @@ impl CrateGraph {
 
     pub fn edition(&self, crate_id: CrateId) -> Edition {
         self.arena[&crate_id].edition
+    }
+
+    /// Returns a name of a crate, declared in the root project.
+    /// May be missing for some cases, such as when the crate definition was created for a code snippet.
+    ///
+    /// This should not be considered as a normal crate name, since the actual name can be different in
+    /// a particular dependent crate, where it is specified.
+    pub fn declaration_name(&self, crate_id: &CrateId) -> Option<&String> {
+        self.arena[crate_id].declaration_name.as_ref()
     }
 
     // FIXME: this only finds one crate with the given root; we could have multiple
@@ -230,8 +241,14 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
+    fn new(
+        file_id: FileId,
+        edition: Edition,
+        declaration_name: Option<String>,
+        cfg_options: CfgOptions,
+        env: Env,
+    ) -> CrateData {
+        CrateData { file_id, edition, declaration_name, dependencies: Vec::new(), cfg_options, env }
     }
 
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
@@ -290,12 +307,27 @@ mod tests {
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate3 =
-            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate3 = graph.add_crate_root(
+            FileId(3u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
         assert!(graph.add_dep(crate3, CrateName::new("crate1").unwrap(), crate1).is_err());
@@ -304,12 +336,27 @@ mod tests {
     #[test]
     fn it_works() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate3 =
-            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate3 = graph.add_crate_root(
+            FileId(3u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
     }
@@ -317,10 +364,20 @@ mod tests {
     #[test]
     fn dashes_are_normalized() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph
             .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
             .is_ok());

@@ -99,13 +99,19 @@ impl MockAnalysis {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
                     Edition2018,
+                    None,
                     cfg_options,
                     Env::default(),
                 ));
             } else if path.ends_with("/lib.rs") {
-                let other_crate =
-                    crate_graph.add_crate_root(file_id, Edition2018, cfg_options, Env::default());
                 let crate_name = path.parent().unwrap().file_name().unwrap();
+                let other_crate = crate_graph.add_crate_root(
+                    file_id,
+                    Edition2018,
+                    Some(crate_name.to_owned()),
+                    cfg_options,
+                    Env::default(),
+                );
                 if let Some(root_crate) = root_crate {
                     crate_graph
                         .add_dep(root_crate, CrateName::new(crate_name).unwrap(), other_crate)

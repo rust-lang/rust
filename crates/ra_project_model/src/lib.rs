@@ -14,7 +14,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
+use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -163,9 +163,8 @@ impl ProjectWorkspace {
         &self,
         default_cfg_options: &CfgOptions,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
-    ) -> (CrateGraph, FxHashMap<CrateId, String>) {
+    ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
-        let mut names = FxHashMap::default();
         match self {
             ProjectWorkspace::Json { project } => {
                 let mut crates = FxHashMap::default();
@@ -191,6 +190,8 @@ impl ProjectWorkspace {
                             crate_graph.add_crate_root(
                                 file_id,
                                 edition,
+                                // FIXME json definitions can store the crate name
+                                None,
                                 cfg_options,
                                 Env::default(),
                             ),
@@ -233,11 +234,11 @@ impl ProjectWorkspace {
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
+                            Some(krate.name(&sysroot).to_string()),
                             cfg_options,
                             Env::default(),
                         );
                         sysroot_crates.insert(krate, crate_id);
-                        names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
                 }
                 for from in sysroot.crates() {
@@ -277,10 +278,10 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
+                                Some(pkg.name(&cargo).to_string()),
                                 cfg_options,
                                 Env::default(),
                             );
-                            names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
                                 pkg_to_lib_crate.insert(pkg, crate_id);
@@ -381,7 +382,7 @@ impl ProjectWorkspace {
                 }
             }
         }
-        (crate_graph, names)
+        crate_graph
     }
 
     pub fn workspace_root_for(&self, path: &Path) -> Option<&Path> {

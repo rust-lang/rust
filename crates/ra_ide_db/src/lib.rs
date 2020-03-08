@@ -104,10 +104,6 @@ impl RootDatabase {
         db.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
         db
     }
-
-    pub fn get_crate_original_name(&self, crate_id: &CrateId) -> Option<String> {
-        self.debug_data.crate_names.get(crate_id).cloned()
-    }
 }
 
 impl salsa::ParallelDatabase for RootDatabase {
@@ -135,12 +131,10 @@ fn line_index(db: &impl LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DebugData {
     pub(crate) root_paths: FxHashMap<SourceRootId, String>,
-    pub(crate) crate_names: FxHashMap<CrateId, String>,
 }
 
 impl DebugData {
     pub(crate) fn merge(&mut self, other: DebugData) {
         self.root_paths.extend(other.root_paths.into_iter());
-        self.crate_names.extend(other.crate_names.into_iter());
     }
 }

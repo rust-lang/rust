@@ -1,8 +1,10 @@
 //! FIXME: write short doc here
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, HasSource, HirDisplay, ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
+    ModuleSource, Semantics,
 };
+use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
@@ -119,7 +121,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     let mod_path = def.module(db).map(|module| {
-        once(db.get_crate_original_name(&module.krate().into()))
+        once(db.crate_graph().declaration_name(&module.krate().into()).cloned())
             .chain(
                 module
                     .path_to_root(db)
@@ -144,7 +146,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         Definition::StructField(it) => {
             let src = it.source(db);
             match src.value {
-                hir::FieldSource::Named(it) => {
+                FieldSource::Named(it) => {
                     hover_text(it.doc_comment_text(), it.short_label(), mod_path)
                 }
                 _ => None,
@@ -576,21 +578,23 @@ fn func(foo: i32) { if true { <|>foo; }; }
     fn test_hover_infer_associated_method_exact() {
         let (analysis, position) = single_file_with_position(
             "
-            struct Thing { x: u32 }
+            mod wrapper {
+                struct Thing { x: u32 }
 
-            impl Thing {
-                fn new() -> Thing {
-                    Thing { x: 0 }
+                impl Thing {
+                    fn new() -> Thing {
+                        Thing { x: 0 }
+                    }
                 }
             }
 
             fn main() {
-                let foo_test = Thing::new<|>();
+                let foo_test = wrapper::Thing::new<|>();
             }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("fn new() -> Thing"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("wrapper::Thing\nfn new() -> Thing"));
         assert_eq!(hover.info.is_exact(), true);
     }
 
@@ -861,27 +865,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
             }
             ",
             &["fn foo()\n```\n\n<- `\u{3000}` here"],
-        );
-    }
-
-    #[test]
-    fn zzz() {
-        check_hover_result(
-            "
-            //- /main.rs
-            mod vvv {
-                pub struct Test;
-
-                impl Test {
-                    pub fn whatever() {}
-                }
-            }
-
-            fn main() {
-                vvv::Test::what<|>ever();
-            }
-            ",
-            &["vvv::Test\npub fn whatever()"],
         );
     }
 }

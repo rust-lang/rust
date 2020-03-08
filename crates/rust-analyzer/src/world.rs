@@ -123,13 +123,12 @@ impl WorldState {
             let vfs_file = vfs.load(path);
             vfs_file.map(|f| FileId(f.0))
         };
-        for ws in workspaces.iter() {
-            let (graph, crate_names) = ws.to_crate_graph(&default_cfg_options, &mut load);
-            let shift = crate_graph.extend(graph);
-            for (crate_id, name) in crate_names {
-                change.set_debug_crate_name(crate_id.shift(shift), name)
-            }
-        }
+
+        workspaces.iter().map(|ws| ws.to_crate_graph(&default_cfg_options, &mut load)).for_each(
+            |graph| {
+                crate_graph.extend(graph);
+            },
+        );
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation

@@ -211,7 +211,13 @@ impl Analysis {
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
         cfg_options.insert_atom("test".into());
-        crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options, Env::default());
+        crate_graph.add_crate_root(
+            file_id,
+            Edition::Edition2018,
+            None,
+            cfg_options,
+            Env::default(),
+        );
         change.add_file(source_root, file_id, "main.rs".into(), Arc::new(text));
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
