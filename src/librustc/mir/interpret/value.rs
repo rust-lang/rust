@@ -613,6 +613,11 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
+    pub fn to_u16(self) -> InterpResult<'tcx, u16> {
+        self.not_undef()?.to_u16()
+    }
+
+    #[inline(always)]
     pub fn to_u32(self) -> InterpResult<'tcx, u32> {
         self.not_undef()?.to_u32()
     }
@@ -630,6 +635,11 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     #[inline(always)]
     pub fn to_i8(self) -> InterpResult<'tcx, i8> {
         self.not_undef()?.to_i8()
+    }
+
+    #[inline(always)]
+    pub fn to_i16(self) -> InterpResult<'tcx, i16> {
+        self.not_undef()?.to_i16()
     }
 
     #[inline(always)]
