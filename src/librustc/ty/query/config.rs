@@ -1,3 +1,5 @@
+//! Query configuration and description traits.
+
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::caches::QueryCache;
@@ -13,11 +15,7 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-// Query configuration and description traits.
-
-// FIXME(eddyb) false positive, the lifetime parameter is used for `Key`/`Value`.
-#[allow(unused_lifetimes)]
-pub trait QueryConfig<'tcx> {
+pub trait QueryConfig<CTX> {
     const NAME: &'static str;
     const CATEGORY: ProfileCategory;
 
@@ -25,7 +23,7 @@ pub trait QueryConfig<'tcx> {
     type Value: Clone;
 }
 
-pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
+pub(crate) trait QueryAccessors<'tcx>: QueryConfig<TyCtxt<'tcx>> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
     const DEP_KIND: DepKind;

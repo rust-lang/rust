@@ -37,7 +37,7 @@ macro_rules! provide {
             $(fn $name<$lt: $lt, T: IntoArgs>(
                 $tcx: TyCtxt<$lt>,
                 def_id_arg: T,
-            ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
+            ) -> <ty::queries::$name<$lt> as QueryConfig<TyCtxt<$lt>>>::Value {
                 let _prof_timer =
                     $tcx.prof.generic_activity("metadata_decode_entry");
 

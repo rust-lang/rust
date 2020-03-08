@@ -956,7 +956,7 @@ macro_rules! define_queries_inner {
             })*
         }
 
-        $(impl<$tcx> QueryConfig<$tcx> for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
             const NAME: &'static str = stringify!($name);
