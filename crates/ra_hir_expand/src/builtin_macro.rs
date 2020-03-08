@@ -7,6 +7,7 @@ use crate::{
 
 use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
 use either::Either;
+use mbe::parse_to_token_tree;
 use ra_db::{FileId, RelativePath};
 use ra_parser::FragmentKind;
 
@@ -306,10 +307,9 @@ fn include_expand(
 
     // FIXME:
     // Handle include as expression
-    let node =
-        db.parse_or_expand(file_id.into()).ok_or_else(|| mbe::ExpandError::ConversionError)?;
-    let res =
-        mbe::syntax_node_to_token_tree(&node).ok_or_else(|| mbe::ExpandError::ConversionError)?.0;
+    let res = parse_to_token_tree(&db.file_text(file_id.into()))
+        .ok_or_else(|| mbe::ExpandError::ConversionError)?
+        .0;
 
     Ok((res, FragmentKind::Items))
 }

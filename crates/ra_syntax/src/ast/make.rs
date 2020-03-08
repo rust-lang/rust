@@ -267,6 +267,12 @@ pub mod tokens {
         sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
+    pub fn doc_comment(text: &str) -> SyntaxToken {
+        assert!(!text.trim().is_empty());
+        let sf = SourceFile::parse(text).ok().unwrap();
+        sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
+    }
+
     pub fn literal(text: &str) -> SyntaxToken {
         assert_eq!(text.trim(), text);
         let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {}; }}", text));

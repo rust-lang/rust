@@ -1499,12 +1499,20 @@ impl MacroFixture {
     }
 }
 
-pub(crate) fn parse_macro(macro_definition: &str) -> MacroFixture {
-    let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
+pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
+    let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
     let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
+
+    let parsed = parse_to_token_tree(
+        &ra_fixture[macro_definition.token_tree().unwrap().syntax().text_range()],
+    )
+    .unwrap()
+    .0;
+    assert_eq!(definition_tt, parsed);
+
     let rules = MacroRules::parse(&definition_tt).unwrap();
     MacroFixture { rules }
 }

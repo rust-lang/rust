@@ -2,8 +2,10 @@
 
 use ra_parser::{FragmentKind, ParseError, TreeSink};
 use ra_syntax::{
-    ast, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
-    SyntaxTreeBuilder, TextRange, TextUnit, T,
+    ast::{self, make::tokens::doc_comment},
+    tokenize, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxTreeBuilder, TextRange, TextUnit, Token, T,
 };
 use rustc_hash::FxHashMap;
 use std::iter::successors;
@@ -48,9 +50,11 @@ pub fn ast_to_token_tree(ast: &impl ast::AstNode) -> Option<(tt::Subtree, TokenM
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, TokenMap)> {
     let global_offset = node.text_range().start();
-    let mut c = Convertor { map: TokenMap::default(), global_offset, next_id: 0 };
+    let mut c = Convertor {
+        id_alloc: { TokenIdAlloc { map: TokenMap::default(), global_offset, next_id: 0 } },
+    };
     let subtree = c.go(node)?;
-    Some((subtree, c.map))
+    Some((subtree, c.id_alloc.map))
 }
 
 // The following items are what `rustc` macro can be parsed into :
@@ -89,6 +93,28 @@ pub fn token_tree_to_syntax_node(
     Ok((parse, range_map))
 }
 
+/// Convert a string to a `TokenTree`
+pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
+    let (tokens, errors) = tokenize(text);
+    if !errors.is_empty() {
+        return None;
+    }
+
+    let mut conv = RawConvertor {
+        text,
+        offset: TextUnit::default(),
+        inner: tokens.iter(),
+        id_alloc: TokenIdAlloc {
+            map: Default::default(),
+            global_offset: TextUnit::default(),
+            next_id: 0,
+        },
+    };
+
+    let subtree = conv.go()?;
+    Some((subtree, conv.id_alloc.map))
+}
+
 impl TokenMap {
     pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
         let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
@@ -117,6 +143,14 @@ impl TokenMap {
     ) {
         self.entries
             .push((token_id, TokenTextRange::Delimiter(open_relative_range, close_relative_range)));
+    }
+
+    fn update_close_delim(&mut self, token_id: tt::TokenId, close_relative_range: TextRange) {
+        if let Some(entry) = self.entries.iter_mut().find(|(tid, _)| *tid == token_id) {
+            if let TokenTextRange::Delimiter(dim, _) = entry.1 {
+                entry.1 = TokenTextRange::Delimiter(dim, close_relative_range);
+            }
+        }
     }
 }
 
@@ -188,10 +222,159 @@ fn convert_doc_comment(token: &ra_syntax::SyntaxToken) -> Option<Vec<tt::TokenTr
     }
 }
 
-struct Convertor {
+struct TokenIdAlloc {
     map: TokenMap,
     global_offset: TextUnit,
     next_id: u32,
+}
+
+impl TokenIdAlloc {
+    fn alloc(&mut self, absolute_range: TextRange) -> tt::TokenId {
+        let relative_range = absolute_range - self.global_offset;
+        let token_id = tt::TokenId(self.next_id);
+        self.next_id += 1;
+        self.map.insert(token_id, relative_range);
+        token_id
+    }
+
+    fn delim(&mut self, open_abs_range: TextRange, close_abs_range: TextRange) -> tt::TokenId {
+        let open_relative_range = open_abs_range - self.global_offset;
+        let close_relative_range = close_abs_range - self.global_offset;
+        let token_id = tt::TokenId(self.next_id);
+        self.next_id += 1;
+
+        self.map.insert_delim(token_id, open_relative_range, close_relative_range);
+        token_id
+    }
+
+    fn open_delim(&mut self, open_abs_range: TextRange) -> tt::TokenId {
+        let token_id = tt::TokenId(self.next_id);
+        self.next_id += 1;
+        self.map.insert_delim(token_id, open_abs_range, open_abs_range);
+        token_id
+    }
+
+    fn close_delim(&mut self, id: tt::TokenId, close_abs_range: TextRange) {
+        self.map.update_close_delim(id, close_abs_range);
+    }
+}
+
+/// A Raw Token (straightly from lexer) convertor
+struct RawConvertor<'a> {
+    text: &'a str,
+    offset: TextUnit,
+    id_alloc: TokenIdAlloc,
+    inner: std::slice::Iter<'a, Token>,
+}
+
+impl RawConvertor<'_> {
+    fn go(&mut self) -> Option<tt::Subtree> {
+        let mut subtree = tt::Subtree::default();
+        subtree.delimiter = None;
+        while self.peek().is_some() {
+            self.collect_leaf(&mut subtree.token_trees);
+        }
+        if subtree.token_trees.is_empty() {
+            return None;
+        }
+        if subtree.token_trees.len() == 1 {
+            if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
+                return Some(first.clone());
+            }
+        }
+        Some(subtree)
+    }
+
+    fn bump(&mut self) -> Option<(Token, TextRange)> {
+        let token = self.inner.next()?;
+        let range = TextRange::offset_len(self.offset, token.len);
+        self.offset += token.len;
+        Some((*token, range))
+    }
+
+    fn peek(&self) -> Option<Token> {
+        self.inner.as_slice().get(0).cloned()
+    }
+
+    fn collect_leaf(&mut self, result: &mut Vec<tt::TokenTree>) {
+        let (token, range) = match self.bump() {
+            None => return,
+            Some(it) => it,
+        };
+
+        let k: SyntaxKind = token.kind;
+        if k == COMMENT {
+            let node = doc_comment(&self.text[range]);
+            if let Some(tokens) = convert_doc_comment(&node) {
+                result.extend(tokens);
+            }
+            return;
+        }
+
+        result.push(if k.is_punct() {
+            let delim = match k {
+                T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
+                T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
+                T!['['] => Some((tt::DelimiterKind::Bracket, T![']'])),
+                _ => None,
+            };
+
+            if let Some((kind, closed)) = delim {
+                let mut subtree = tt::Subtree::default();
+                let id = self.id_alloc.open_delim(range);
+                subtree.delimiter = Some(tt::Delimiter { kind, id });
+
+                while self.peek().map(|it| it.kind != closed).unwrap_or(false) {
+                    self.collect_leaf(&mut subtree.token_trees);
+                }
+                let last_range = match self.bump() {
+                    None => return,
+                    Some(it) => it.1,
+                };
+                self.id_alloc.close_delim(id, last_range);
+                subtree.into()
+            } else {
+                let spacing = match self.peek() {
+                    Some(next)
+                        if next.kind.is_trivia()
+                            || next.kind == T!['[']
+                            || next.kind == T!['{']
+                            || next.kind == T!['('] =>
+                    {
+                        tt::Spacing::Alone
+                    }
+                    Some(next) if next.kind.is_punct() => tt::Spacing::Joint,
+                    _ => tt::Spacing::Alone,
+                };
+                let char =
+                    self.text[range].chars().next().expect("Token from lexer must be single char");
+
+                tt::Leaf::from(tt::Punct { char, spacing, id: self.id_alloc.alloc(range) }).into()
+            }
+        } else {
+            macro_rules! make_leaf {
+                ($i:ident) => {
+                    tt::$i { id: self.id_alloc.alloc(range), text: self.text[range].into() }.into()
+                };
+            }
+            let leaf: tt::Leaf = match k {
+                T![true] | T![false] => make_leaf!(Literal),
+                IDENT | LIFETIME => make_leaf!(Ident),
+                k if k.is_keyword() => make_leaf!(Ident),
+                k if k.is_literal() => make_leaf!(Literal),
+                _ => return,
+            };
+
+            leaf.into()
+        });
+    }
+}
+
+// FIXME: There are some duplicate logic between RawConvertor and Convertor
+// It would be nice to refactor to converting SyntaxNode to ra_parser::Token and thus
+// use RawConvertor directly. But performance-wise it may not be a good idea ?
+struct Convertor {
+    id_alloc: TokenIdAlloc,
 }
 
 impl Convertor {
@@ -236,7 +419,7 @@ impl Convertor {
         };
         let delimiter = delimiter_kind.map(|kind| tt::Delimiter {
             kind,
-            id: self.alloc_delim(first_child.text_range(), last_child.text_range()),
+            id: self.id_alloc.delim(first_child.text_range(), last_child.text_range()),
         });
 
         let mut token_trees = Vec::new();
@@ -273,7 +456,7 @@ impl Convertor {
                                 tt::Leaf::from(tt::Punct {
                                     char,
                                     spacing,
-                                    id: self.alloc(token.text_range()),
+                                    id: self.id_alloc.alloc(token.text_range()),
                                 })
                                 .into(),
                             );
@@ -282,7 +465,7 @@ impl Convertor {
                         macro_rules! make_leaf {
                             ($i:ident) => {
                                 tt::$i {
-                                    id: self.alloc(token.text_range()),
+                                    id: self.id_alloc.alloc(token.text_range()),
                                     text: token.text().clone(),
                                 }
                                 .into()
@@ -312,28 +495,6 @@ impl Convertor {
 
         let res = tt::Subtree { delimiter, token_trees };
         Some(res)
-    }
-
-    fn alloc(&mut self, absolute_range: TextRange) -> tt::TokenId {
-        let relative_range = absolute_range - self.global_offset;
-        let token_id = tt::TokenId(self.next_id);
-        self.next_id += 1;
-        self.map.insert(token_id, relative_range);
-        token_id
-    }
-
-    fn alloc_delim(
-        &mut self,
-        open_abs_range: TextRange,
-        close_abs_range: TextRange,
-    ) -> tt::TokenId {
-        let open_relative_range = open_abs_range - self.global_offset;
-        let close_relative_range = close_abs_range - self.global_offset;
-        let token_id = tt::TokenId(self.next_id);
-        self.next_id += 1;
-
-        self.map.insert_delim(token_id, open_relative_range, close_relative_range);
-        token_id
     }
 }
 
