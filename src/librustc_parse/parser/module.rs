@@ -1,14 +1,29 @@
-use crate::{new_sub_parser_from_file, Directory, DirectoryOwnership};
+use crate::new_sub_parser_from_file;
 
 use rustc_ast::ast::{self, Attribute, Ident, Mod};
-use rustc_ast::attr;
-use rustc_ast::token;
+use rustc_ast::{attr, token};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FileName, Span};
 use rustc_span::symbol::sym;
 
 use std::path::{self, Path, PathBuf};
+
+#[derive(Clone)]
+pub struct Directory {
+    pub path: PathBuf,
+    pub ownership: DirectoryOwnership,
+}
+
+#[derive(Copy, Clone)]
+pub enum DirectoryOwnership {
+    Owned {
+        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
+        relative: Option<ast::Ident>,
+    },
+    UnownedViaBlock,
+    UnownedViaMod,
+}
 
 /// Information about the path to a module.
 // Public for rustfmt usage.
