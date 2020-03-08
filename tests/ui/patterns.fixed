@@ -17,4 +17,20 @@ fn main() {
         [x, inside @ .., y] => (), // no error
         [..] => (),
     }
+
+    let mut mutv = vec![1, 2, 3];
+
+    // required "ref" left out in suggestion: #5271
+    match mutv {
+        ref mut x => {
+            x.push(4);
+            println!("vec: {:?}", x);
+        },
+        ref y if y == &vec![0] => (),
+    }
+
+    match mutv {
+        ref x => println!("vec: {:?}", x),
+        ref y if y == &vec![0] => (),
+    }
 }
