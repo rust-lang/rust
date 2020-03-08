@@ -18,6 +18,7 @@ use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::configure;
+use rustc_parse::parser::module;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
@@ -1448,13 +1449,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 module.mod_path.push(item.ident);
 
                 if inline {
-                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
-                        self.cx.current_expansion.directory_ownership =
-                            DirectoryOwnership::Owned { relative: None };
-                        module.directory.push(&*path.as_str());
-                    } else {
-                        module.directory.push(&*item.ident.as_str());
-                    }
+                    module::push_directory(
+                        item.ident,
+                        &item.attrs,
+                        &mut self.cx.current_expansion.directory_ownership,
+                        &mut module.directory,
+                    );
                 } else {
                     let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
                     let mut path = match path {
