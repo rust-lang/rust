@@ -1,6 +1,6 @@
 //! Completion of paths, including when writing a single name.
 
-use hir::{Adt, PathResolution, ScopeDef, HasVisibility};
+use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -52,9 +52,12 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope().traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
+                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                        return None;
+                    }
                     match item {
                         hir::AssocItem::Function(func) => {
-                            if !func.has_self_param(ctx.db) && context_module.map_or(true, |m| func.is_visible_from(ctx.db, m)) {
+                            if !func.has_self_param(ctx.db) {
                                 acc.add_function(ctx, func);
                             }
                         }
@@ -65,6 +68,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 });
 
                 ty.iterate_impl_items(ctx.db, krate, |item| {
+                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                        return None;
+                    }
                     match item {
                         hir::AssocItem::Function(_) | hir::AssocItem::Const(_) => {}
                         hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
@@ -75,6 +81,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         }
         hir::ModuleDef::Trait(t) => {
             for item in t.items(ctx.db) {
+                if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                    continue;
+                }
                 match item {
                     hir::AssocItem::Function(func) => {
                         if !func.has_self_param(ctx.db) {
@@ -531,6 +540,60 @@ mod tests {
                 documentation: Documentation(
                     "An associated type",
                 ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn associated_item_visibility() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                struct S;
+
+                mod m {
+                    impl super::S {
+                        pub(super) fn public_method() { }
+                        fn private_method() { }
+                        pub(super) type PublicType = u32;
+                        type PrivateType = u32;
+                        pub(super) const PUBLIC_CONST: u32 = 1;
+                        const PRIVATE_CONST: u32 = 1;
+                    }
+                }
+
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "PUBLIC_CONST",
+                source_range: [302; 302),
+                delete: [302; 302),
+                insert: "PUBLIC_CONST",
+                kind: Const,
+                detail: "pub(super) const PUBLIC_CONST: u32 = 1;",
+            },
+            CompletionItem {
+                label: "PublicType",
+                source_range: [302; 302),
+                delete: [302; 302),
+                insert: "PublicType",
+                kind: TypeAlias,
+                detail: "pub(super) type PublicType = u32;",
+            },
+            CompletionItem {
+                label: "public_method()",
+                source_range: [302; 302),
+                delete: [302; 302),
+                insert: "public_method()$0",
+                kind: Function,
+                lookup: "public_method",
+                detail: "pub(super) fn public_method()",
             },
         ]
         "###

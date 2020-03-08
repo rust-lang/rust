@@ -97,6 +97,7 @@ fn desugar_future_path(orig: TypeRef) -> Path {
 pub struct TypeAliasData {
     pub name: Name,
     pub type_ref: Option<TypeRef>,
+    pub visibility: RawVisibility,
 }
 
 impl TypeAliasData {
@@ -104,10 +105,11 @@ impl TypeAliasData {
         db: &impl DefDatabase,
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
-        let node = typ.lookup(db).source(db).value;
-        let name = node.name().map_or_else(Name::missing, |n| n.as_name());
-        let type_ref = node.type_ref().map(TypeRef::from_ast);
-        Arc::new(TypeAliasData { name, type_ref })
+        let node = typ.lookup(db).source(db);
+        let name = node.value.name().map_or_else(Name::missing, |n| n.as_name());
+        let type_ref = node.value.type_ref().map(TypeRef::from_ast);
+        let visibility = RawVisibility::from_ast(db, node.map(|n| n.visibility()));
+        Arc::new(TypeAliasData { name, type_ref, visibility })
     }
 }
 
@@ -223,23 +225,28 @@ pub struct ConstData {
     /// const _: () = ();
     pub name: Option<Name>,
     pub type_ref: TypeRef,
+    pub visibility: RawVisibility,
 }
 
 impl ConstData {
     pub(crate) fn const_data_query(db: &impl DefDatabase, konst: ConstId) -> Arc<ConstData> {
-        let node = konst.lookup(db).source(db).value;
-        Arc::new(ConstData::new(&node))
+        let node = konst.lookup(db).source(db);
+        Arc::new(ConstData::new(db, node))
     }
 
     pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
-        let node = konst.lookup(db).source(db).value;
-        Arc::new(ConstData::new(&node))
+        let node = konst.lookup(db).source(db);
+        Arc::new(ConstData::new(db, node))
     }
 
-    fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(node: &N) -> ConstData {
-        let name = node.name().map(|n| n.as_name());
-        let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
-        ConstData { name, type_ref }
+    fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(
+        db: &impl DefDatabase,
+        node: InFile<N>,
+    ) -> ConstData {
+        let name = node.value.name().map(|n| n.as_name());
+        let type_ref = TypeRef::from_ast_opt(node.value.ascribed_type());
+        let visibility = RawVisibility::from_ast(db, node.map(|n| n.visibility()));
+        ConstData { name, type_ref, visibility }
     }
 }
 

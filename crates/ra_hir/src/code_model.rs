@@ -204,19 +204,25 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(self, db: &impl HirDatabase, visible_from: Option<Module>) -> Vec<(Name, ScopeDef)> {
+    pub fn scope(
+        self,
+        db: &impl HirDatabase,
+        visible_from: Option<Module>,
+    ) -> Vec<(Name, ScopeDef)> {
         db.crate_def_map(self.id.krate)[self.id.local_id]
             .scope
             .entries()
-            .filter_map(|(name, def)| if let Some(m) = visible_from {
-                let filtered = def.filter_visibility(|vis| vis.is_visible_from(db, m.id));
-                if filtered.is_none() && !def.is_none() {
-                    None
+            .filter_map(|(name, def)| {
+                if let Some(m) = visible_from {
+                    let filtered = def.filter_visibility(|vis| vis.is_visible_from(db, m.id));
+                    if filtered.is_none() && !def.is_none() {
+                        None
+                    } else {
+                        Some((name, filtered))
+                    }
                 } else {
-                    Some((name, filtered))
+                    Some((name, def))
                 }
-            } else {
-                Some((name, def))
             })
             .map(|(name, def)| (name.clone(), def.into()))
             .collect()
@@ -608,6 +614,14 @@ impl Const {
     }
 }
 
+impl HasVisibility for Const {
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility {
+        let function_data = db.const_data(self.id);
+        let visibility = &function_data.visibility;
+        visibility.resolve(db, &self.id.resolver(db))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Static {
     pub(crate) id: StaticId,
@@ -679,6 +693,14 @@ impl TypeAlias {
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
         db.type_alias_data(self.id).name.clone()
+    }
+}
+
+impl HasVisibility for TypeAlias {
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility {
+        let function_data = db.type_alias_data(self.id);
+        let visibility = &function_data.visibility;
+        visibility.resolve(db, &self.id.resolver(db))
     }
 }
 
@@ -765,6 +787,16 @@ impl AssocItem {
             AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
             AssocContainerId::ImplId(id) => AssocItemContainer::ImplDef(id.into()),
             AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
+        }
+    }
+}
+
+impl HasVisibility for AssocItem {
+    fn visibility(&self, db: &impl HirDatabase) -> Visibility {
+        match self {
+            AssocItem::Function(f) => f.visibility(db),
+            AssocItem::Const(c) => c.visibility(db),
+            AssocItem::TypeAlias(t) => t.visibility(db),
         }
     }
 }
