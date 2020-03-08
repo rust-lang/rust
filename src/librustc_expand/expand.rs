@@ -1,5 +1,6 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
+use crate::configure;
 use crate::hygiene::{ExpnData, ExpnId, ExpnKind, SyntaxContext};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
@@ -18,7 +19,6 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
-use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
