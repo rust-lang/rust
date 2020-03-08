@@ -1,6 +1,8 @@
 use rustc::hir::map::Map;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
+use rustc_ast::ast;
+use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -17,8 +19,6 @@ use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use syntax::ast;
-use syntax::with_globals;
 use tempfile::Builder as TempFileBuilder;
 
 use crate::clean::Attributes;
@@ -387,7 +387,7 @@ pub fn make_test(
     prog.push_str(&crate_attrs);
     prog.push_str(&crates);
 
-    // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
+    // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         with_globals(edition, || {
@@ -398,16 +398,16 @@ pub fn make_test(
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(s);
-            let source = crates + &everything_else;
+            let source = crates + everything_else;
 
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let emitter =
                 EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(false, None, box emitter);
-            let sess = ParseSess::with_span_handler(handler, cm);
+            let sess = ParseSess::with_span_handler(handler, sm);
 
             let mut found_main = false;
             let mut found_extern_crate = cratename.is_none();

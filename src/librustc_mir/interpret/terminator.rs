@@ -172,7 +172,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         let caller_arg = caller_arg.next().ok_or_else(|| err_unsup!(FunctionArgCountMismatch))?;
         if rust_abi {
-            debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
+            assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
@@ -293,7 +293,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 let (&untuple_arg, args) = args.split_last().unwrap();
                                 trace!("eval_fn_call: Will pass last argument by untupling");
                                 Cow::from(args.iter().map(|&a| Ok(a))
-                                .chain((0..untuple_arg.layout.fields.count()).into_iter()
+                                .chain((0..untuple_arg.layout.fields.count())
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
                                 )
                                 .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
@@ -305,15 +305,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let mut caller_iter = caller_args
                             .iter()
                             .filter(|op| !rust_abi || !op.layout.is_zst())
-                            .map(|op| *op);
+                            .copied();
 
                         // Now we have to spread them out across the callee's locals,
                         // taking into account the `spread_arg`.  If we could write
                         // this is a single iterator (that handles `spread_arg`), then
                         // `pass_argument` would be the loop body. It takes care to
-                        // not advance `caller_iter` for ZSTs.
-                        let mut locals_iter = body.args_iter();
-                        while let Some(local) = locals_iter.next() {
+                        // not advance `caller_iter` for ZSTs
+                        for local in body.args_iter() {
                             let dest = self.eval_place(&mir::Place::from(local))?;
                             if Some(local) == body.spread_arg {
                                 // Must be a tuple

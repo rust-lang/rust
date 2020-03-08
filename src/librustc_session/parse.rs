@@ -2,6 +2,7 @@
 //! It also serves as an input to the parser itself.
 
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
+use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc, Once};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
@@ -11,7 +12,6 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{MultiSpan, Span, Symbol};
-use syntax::node_id::NodeId;
 
 use std::path::PathBuf;
 use std::str;
@@ -124,9 +124,9 @@ pub struct ParseSess {
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(cm.clone()));
-        ParseSess::with_span_handler(handler, cm)
+        let sm = Lrc::new(SourceMap::new(file_path_mapping));
+        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(sm.clone()));
+        ParseSess::with_span_handler(handler, sm)
     }
 
     pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
@@ -148,9 +148,9 @@ impl ParseSess {
     }
 
     pub fn with_silent_emitter() -> Self {
-        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
-        ParseSess::with_span_handler(handler, cm)
+        ParseSess::with_span_handler(handler, sm)
     }
 
     #[inline]
@@ -172,6 +172,25 @@ impl ParseSess {
                 msg: msg.into(),
                 lint_id: LintId::of(lint),
                 diagnostic: BuiltinLintDiagnostics::Normal,
+            });
+        });
+    }
+
+    pub fn buffer_lint_with_diagnostic(
+        &self,
+        lint: &'static Lint,
+        span: impl Into<MultiSpan>,
+        node_id: NodeId,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        self.buffered_lints.with_lock(|buffered_lints| {
+            buffered_lints.push(BufferedEarlyLint {
+                span: span.into(),
+                node_id,
+                msg: msg.into(),
+                lint_id: LintId::of(lint),
+                diagnostic,
             });
         });
     }

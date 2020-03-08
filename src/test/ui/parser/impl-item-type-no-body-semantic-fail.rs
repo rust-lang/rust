@@ -11,11 +11,11 @@ impl X {
     //~| ERROR associated types are not yet supported in inherent impls
     type Z: Ord;
     //~^ ERROR associated type in `impl` without body
-    //~| ERROR bounds on associated `type`s in `impl`s have no effect
+    //~| ERROR bounds on `type`s in `impl`s have no effect
     //~| ERROR associated types are not yet supported in inherent impls
     type W: Ord where Self: Eq;
     //~^ ERROR associated type in `impl` without body
-    //~| ERROR bounds on associated `type`s in `impl`s have no effect
+    //~| ERROR bounds on `type`s in `impl`s have no effect
     //~| ERROR associated types are not yet supported in inherent impls
     type W where Self: Eq;
     //~^ ERROR associated type in `impl` without body

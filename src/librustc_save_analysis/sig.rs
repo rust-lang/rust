@@ -29,9 +29,9 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
+use rustc_ast::ast::{self, Extern, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_hir::def::{DefKind, Res};
-use syntax::ast::{self, Extern, NodeId};
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
@@ -241,7 +241,7 @@ impl Sig for ast::Ty {
                     refs.extend(nested.refs.into_iter());
                 }
                 text.push(')');
-                if let ast::FunctionRetTy::Ty(ref t) = f.decl.output {
+                if let ast::FnRetTy::Ty(ref t) = f.decl.output {
                     text.push_str(" -> ");
                     let nested = t.make(offset + text.len(), None, scx)?;
                     text.push_str(&nested.text);
@@ -334,15 +334,18 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Const(ref ty, ref expr) => {
+            ast::ItemKind::Const(_, ref ty, ref expr) => {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -355,15 +358,18 @@ impl Sig for ast::Item {
 
                 let ty = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty.text);
-                text.push_str(" = ");
 
-                let expr = pprust::expr_to_string(expr).replace('\n', " ");
-                text.push_str(&expr);
+                if let Some(expr) = expr {
+                    text.push_str(" = ");
+                    let expr = pprust::expr_to_string(expr).replace('\n', " ");
+                    text.push_str(&expr);
+                }
+
                 text.push(';');
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
+            ast::ItemKind::Fn(_, ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
                 if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
@@ -392,7 +398,7 @@ impl Sig for ast::Item {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -417,12 +423,15 @@ impl Sig for ast::Item {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
-            ast::ItemKind::TyAlias(ref ty, ref generics) => {
+            ast::ItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");
-                let ty = ty.make(offset + sig.text.len(), id, scx)?;
+                let ty = match ty {
+                    Some(ty) => ty.make(offset + sig.text.len(), id, scx)?,
+                    None => return Err("Ty"),
+                };
                 sig.text.push_str(&ty.text);
                 sig.text.push(';');
 
@@ -493,7 +502,7 @@ impl Sig for ast::Item {
                 items: _,
             } => {
                 let mut text = String::new();
-                if let ast::Defaultness::Default = defaultness {
+                if let ast::Defaultness::Default(_) = defaultness {
                     text.push_str("default ");
                 }
                 if let ast::Unsafe::Yes(_) = unsafety {
@@ -723,7 +732,7 @@ impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.kind {
-            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                 let decl = &sig.decl;
                 let mut text = String::new();
                 text.push_str("fn ");
@@ -743,7 +752,7 @@ impl Sig for ast::ForeignItem {
                 }
                 sig.text.push(')');
 
-                if let ast::FunctionRetTy::Ty(ref t) = decl.output {
+                if let ast::FnRetTy::Ty(ref t) = decl.output {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
@@ -754,7 +763,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(sig)
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
+            ast::ForeignItemKind::Static(ref ty, m, _) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mut {
                     text.push_str("mut ");
@@ -773,7 +782,7 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
@@ -784,7 +793,7 @@ impl Sig for ast::ForeignItem {
                 text.push_str(&name);
                 text.push(';');
 
-                Ok(Signature { text: text, defs: defs, refs: vec![] })
+                Ok(Signature { text, defs, refs: vec![] })
             }
             ast::ForeignItemKind::Macro(..) => Err("macro"),
         }
@@ -911,7 +920,7 @@ fn make_method_signature(
     }
     sig.text.push(')');
 
-    if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {
+    if let ast::FnRetTy::Ty(ref t) = m.decl.output {
         sig.text.push_str(" -> ");
         let nested = t.make(sig.text.len(), None, scx)?;
         sig.text.push_str(&nested.text);

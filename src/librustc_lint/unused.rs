@@ -1,6 +1,9 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty::adjustment;
 use rustc::ty::{self, Ty};
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::util::parser;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Applicability};
@@ -12,9 +15,6 @@ use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
-use syntax::ast;
-use syntax::attr;
-use syntax::util::parser;
 
 use log::debug;
 
@@ -124,8 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             descr_post: &str,
             plural_len: usize,
         ) -> bool {
-            if ty.is_unit()
-                || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.hir_id), ty)
+            if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(cx.tcx.parent_module(expr.hir_id), ty)
             {
                 return true;
             }
@@ -469,7 +468,7 @@ impl UnusedParens {
 
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        use syntax::ast::ExprKind::*;
+        use rustc_ast::ast::ExprKind::*;
         let (value, msg, followed_by_block, left_pos, right_pos) = match e.kind {
             Let(ref pat, ..) => {
                 self.check_unused_parens_pat(cx, pat, false, false);
@@ -603,7 +602,7 @@ impl EarlyLintPass for UnusedParens {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(.., ref expr) | Static(.., ref expr) = item.kind {
+        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
             self.check_unused_parens_expr(cx, expr, "assigned value", false, None, None);
         }
     }

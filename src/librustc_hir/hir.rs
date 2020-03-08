@@ -1,13 +1,20 @@
-use crate::def::{DefKind, Res};
+use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
 use crate::print;
 
 crate use BlockCheckMode::*;
-crate use FunctionRetTy::*;
+crate use FnRetTy::*;
 crate use UnsafeSource::*;
 
+use rustc_ast::ast::{self, AsmDialect, CrateSugar, Ident, Name};
+use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
+pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
+pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_errors::FatalError;
@@ -16,13 +23,6 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name};
-use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
-pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
-pub use syntax::ast::{CaptureBy, Movability, Mutability};
-use syntax::node_id::NodeMap;
-use syntax::tokenstream::TokenStream;
-use syntax::util::parser::ExprPrecedence;
 
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
@@ -296,6 +296,14 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Const(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn descr(&self) -> &'static str {
+        match self {
+            GenericArg::Lifetime(_) => "lifetime",
+            GenericArg::Type(_) => "type",
+            GenericArg::Const(_) => "constant",
         }
     }
 }
@@ -671,15 +679,15 @@ impl Crate<'_> {
     where
         V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
-        for (_, item) in &self.items {
+        for item in self.items.values() {
             visitor.visit_item(item);
         }
 
-        for (_, trait_item) in &self.trait_items {
+        for trait_item in self.trait_items.values() {
             visitor.visit_trait_item(trait_item);
         }
 
-        for (_, impl_item) in &self.impl_items {
+        for impl_item in self.impl_items.values() {
             visitor.visit_impl_item(impl_item);
         }
     }
@@ -1496,7 +1504,7 @@ pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
         let end_point = sm.end_point(*span);
 
         if let Ok(end_string) = sm.span_to_snippet(end_point) {
-            !(end_string.ends_with("}") || end_string.ends_with(")"))
+            !(end_string.ends_with('}') || end_string.ends_with(')'))
         } else {
             false
         }
@@ -1897,6 +1905,15 @@ pub enum ImplItemKind<'hir> {
     OpaqueTy(GenericBounds<'hir>),
 }
 
+impl ImplItemKind<'_> {
+    pub fn namespace(&self) -> Namespace {
+        match self {
+            ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
+            ImplItemKind::Const(..) | ImplItemKind::Method(..) => Namespace::ValueNS,
+        }
+    }
+}
+
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -2082,7 +2099,7 @@ pub struct FnDecl<'hir> {
     ///
     /// Additional argument data is stored in the function's [body](Body::parameters).
     pub inputs: &'hir [Ty<'hir>],
-    pub output: FunctionRetTy<'hir>,
+    pub output: FnRetTy<'hir>,
     pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
@@ -2148,7 +2165,7 @@ impl Defaultness {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum FunctionRetTy<'hir> {
+pub enum FnRetTy<'hir> {
     /// Return type is not specified.
     ///
     /// Functions default to `()` and
@@ -2159,7 +2176,7 @@ pub enum FunctionRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl fmt::Display for FunctionRetTy<'_> {
+impl fmt::Display for FnRetTy<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
@@ -2168,7 +2185,7 @@ impl fmt::Display for FunctionRetTy<'_> {
     }
 }
 
-impl FunctionRetTy<'_> {
+impl FnRetTy<'_> {
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,
@@ -2491,16 +2508,16 @@ pub enum ItemKind<'hir> {
 }
 
 impl ItemKind<'_> {
-    pub fn descriptive_variant(&self) -> &str {
+    pub fn descr(&self) -> &str {
         match *self {
             ItemKind::ExternCrate(..) => "extern crate",
-            ItemKind::Use(..) => "use",
+            ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
-            ItemKind::ForeignMod(..) => "foreign module",
-            ItemKind::GlobalAsm(..) => "global asm",
+            ItemKind::ForeignMod(..) => "extern block",
+            ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
@@ -2508,7 +2525,7 @@ impl ItemKind<'_> {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl { .. } => "impl",
+            ItemKind::Impl { .. } => "implementation",
         }
     }
 

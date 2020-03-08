@@ -1,9 +1,9 @@
 use super::*;
 
+use rustc_ast::ast;
+use rustc_ast::with_default_globals;
 use rustc_span;
-use rustc_span::source_map::{dummy_spanned, respan};
-use syntax::ast;
-use syntax::with_default_globals;
+use rustc_span::source_map::respan;
 
 fn fun_to_string(
     decl: &ast::FnDecl,
@@ -13,13 +13,7 @@ fn fun_to_string(
 ) -> String {
     to_string(|s| {
         s.head("");
-        s.print_fn(
-            decl,
-            header,
-            Some(name),
-            generics,
-            &dummy_spanned(ast::VisibilityKind::Inherited),
-        );
+        s.print_fn(decl, header, Some(name), generics);
         s.end(); // Close the head box.
         s.end(); // Close the outer box.
     })
@@ -34,10 +28,8 @@ fn test_fun_to_string() {
     with_default_globals(|| {
         let abba_ident = ast::Ident::from_str("abba");
 
-        let decl = ast::FnDecl {
-            inputs: Vec::new(),
-            output: ast::FunctionRetTy::Default(rustc_span::DUMMY_SP),
-        };
+        let decl =
+            ast::FnDecl { inputs: Vec::new(), output: ast::FnRetTy::Default(rustc_span::DUMMY_SP) };
         let generics = ast::Generics::default();
         assert_eq!(
             fun_to_string(&decl, ast::FnHeader::default(), abba_ident, &generics),

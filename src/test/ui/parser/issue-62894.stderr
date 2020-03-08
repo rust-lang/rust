@@ -1,0 +1,47 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62894.rs:7:14
+   |
+LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
+   |        -           -                   - unclosed delimiter
+   |        |           |
+   |        |           unclosed delimiter
+   |        unclosed delimiter
+LL | 
+LL | fn main() {}
+   |              ^
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62894.rs:7:14
+   |
+LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
+   |        -           -                   - unclosed delimiter
+   |        |           |
+   |        |           unclosed delimiter
+   |        unclosed delimiter
+LL | 
+LL | fn main() {}
+   |              ^
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62894.rs:7:14
+   |
+LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
+   |        -           -                   - unclosed delimiter
+   |        |           |
+   |        |           unclosed delimiter
+   |        unclosed delimiter
+LL | 
+LL | fn main() {}
+   |              ^
+
+error: expected one of `(`, `[`, or `{`, found keyword `fn`
+  --> $DIR/issue-62894.rs:7:1
+   |
+LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
+   |                                                   - expected one of `(`, `[`, or `{`
+LL | 
+LL | fn main() {}
+   | ^^ unexpected token
+
+error: aborting due to 4 previous errors
+

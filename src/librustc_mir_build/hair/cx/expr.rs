@@ -187,13 +187,12 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 if let Some((adt_def, index)) = adt_data {
                     let substs = cx.tables().node_substs(fun.hir_id);
                     let user_provided_types = cx.tables().user_provided_types();
-                    let user_ty =
-                        user_provided_types.get(fun.hir_id).map(|u_ty| *u_ty).map(|mut u_ty| {
-                            if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
-                                *did = adt_def.did;
-                            }
-                            u_ty
-                        });
+                    let user_ty = user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
+                        if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
+                            *did = adt_def.did;
+                        }
+                        u_ty
+                    });
                     debug!("make_mirror_unadjusted: (call) user_ty={:?}", user_ty);
 
                     let field_refs = args
@@ -329,7 +328,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             ty::Adt(adt, substs) => match adt.adt_kind() {
                 AdtKind::Struct | AdtKind::Union => {
                     let user_provided_types = cx.tables().user_provided_types();
-                    let user_ty = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
+                    let user_ty = user_provided_types.get(expr.hir_id).copied();
                     debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
                     ExprKind::Adt {
                         adt_def: adt,
@@ -351,7 +350,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
                             let index = adt.variant_index_with_id(variant_id);
                             let user_provided_types = cx.tables().user_provided_types();
-                            let user_ty = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
+                            let user_ty = user_provided_types.get(expr.hir_id).copied();
                             debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
                             ExprKind::Adt {
                                 adt_def: adt,
@@ -418,7 +417,17 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 None,
                 Some(span),
             ) {
-                Ok(cv) => cv.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()),
+                Ok(cv) => {
+                    if let Some(count) = cv.try_to_bits_for_ty(
+                        cx.tcx,
+                        ty::ParamEnv::reveal_all(),
+                        cx.tcx.types.usize,
+                    ) {
+                        count as u64
+                    } else {
+                        bug!("repeat count constant value can't be converted to usize");
+                    }
+                }
                 Err(ErrorHandled::Reported) => 0,
                 Err(ErrorHandled::TooGeneric) => {
                     let span = cx.tcx.def_span(def_id);
@@ -560,7 +569,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         }
         hir::ExprKind::Type(ref source, ref ty) => {
             let user_provided_types = cx.tables.user_provided_types();
-            let user_ty = user_provided_types.get(ty.hir_id).map(|u_ty| *u_ty);
+            let user_ty = user_provided_types.get(ty.hir_id).copied();
             debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
             if source.is_syntactic_place_expr() {
                 ExprKind::PlaceTypeAscription { source: source.to_ref(), user_ty }
@@ -595,7 +604,7 @@ fn user_substs_applied_to_res<'tcx>(
         | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
         | Res::Def(DefKind::Const, _)
         | Res::Def(DefKind::AssocConst, _) => {
-            cx.tables().user_provided_types().get(hir_id).map(|u_ty| *u_ty)
+            cx.tables().user_provided_types().get(hir_id).copied()
         }
 
         // A unit struct/variant which is used as a value (e.g.,
@@ -734,7 +743,7 @@ fn convert_path_expr<'a, 'tcx>(
 
         Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
             let user_provided_types = cx.tables.user_provided_types();
-            let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
+            let user_provided_type = user_provided_types.get(expr.hir_id).copied();
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
             let ty = cx.tables().node_type(expr.hir_id);
             match ty.kind {

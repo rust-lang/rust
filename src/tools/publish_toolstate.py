@@ -131,7 +131,6 @@ def issue(
     assignees,
     relevant_pr_number,
     relevant_pr_user,
-    pr_reviewer,
 ):
     # Open an issue about the toolstate failure.
     if status == 'test-fail':
@@ -147,11 +146,11 @@ def issue(
         cc @{}, do you think you would have time to do the follow-up work?
         If so, that would be great!
 
-        cc @{}, the PR reviewer, and nominating for compiler team prioritization.
+        And nominating for compiler team prioritization.
 
         ''').format(
             relevant_pr_number, tool, status_description,
-            REPOS.get(tool), relevant_pr_user, pr_reviewer
+            REPOS.get(tool), relevant_pr_user
         )),
         'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
         'assignees': list(assignees),
@@ -211,14 +210,14 @@ def update_latest(
                 if new > old:
                     # things got fixed or at least the status quo improved
                     changed = True
-                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                    message += '🎉 {} on {}: {} → {} (cc {}).\n' \
                         .format(tool, os, old, new, maintainers)
                 elif new < old:
                     # tests or builds are failing and were not failing before
                     changed = True
                     title = '💔 {} on {}: {} → {}' \
                         .format(tool, os, old, new)
-                    message += '{} (cc {}, @rust-lang/infra).\n' \
+                    message += '{} (cc {}).\n' \
                         .format(title, maintainers)
                     # See if we need to create an issue.
                     if tool == 'miri':
@@ -236,7 +235,7 @@ def update_latest(
                 try:
                     issue(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
-                        relevant_pr_number, relevant_pr_user, pr_reviewer,
+                        relevant_pr_number, relevant_pr_user,
                     )
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better

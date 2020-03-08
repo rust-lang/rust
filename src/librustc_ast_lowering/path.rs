@@ -3,6 +3,7 @@ use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
 use rustc::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc::span_bug;
+use rustc_ast::ast::{self, *};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
@@ -10,7 +11,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::Span;
-use syntax::ast::{self, *};
 
 use log::debug;
 use smallvec::smallvec;
@@ -229,7 +229,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
                             // Do not suggest going from `Trait()` to `Trait<>`
-                            if data.inputs.len() > 0 {
+                            if !data.inputs.is_empty() {
                                 if let Some(split) = snippet.find('(') {
                                     let trait_name = &snippet[0..split];
                                     let args = &snippet[split + 1..snippet.len() - 1];
@@ -397,8 +397,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 inputs.iter().map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed())),
             );
             let output_ty = match output {
-                FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
-                FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
+                FnRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
+                FnRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
             };
             let args = smallvec![GenericArg::Type(this.ty_tup(span, inputs))];
             let binding = this.output_ty_binding(output_ty.span, output_ty);

@@ -669,7 +669,7 @@ impl<T> MaybeUninit<T> {
     /// // Now we can use `buf` as a normal slice:
     /// buf.sort_unstable();
     /// assert!(
-    ///     buf.chunks(2).all(|chunk| chunk[0] <= chunk[1]),
+    ///     buf.windows(2).all(|pair| pair[0] <= pair[1]),
     ///     "buffer is sorted",
     /// );
     /// ```

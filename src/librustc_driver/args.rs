@@ -4,7 +4,7 @@ use std::fs;
 use std::io;
 
 pub fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
-    if arg.starts_with("@") {
+    if arg.starts_with('@') {
         let path = &arg[1..];
         let file = match fs::read_to_string(path) {
             Ok(file) => file,

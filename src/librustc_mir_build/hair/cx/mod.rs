@@ -5,20 +5,20 @@
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
 
-use rustc::infer::InferCtxt;
 use rustc::middle::region;
 use rustc::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{GenericArg, InternalSubsts};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
+use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
-use syntax::attr;
 
 #[derive(Clone)]
 crate struct Cx<'a, 'tcx> {
@@ -148,6 +148,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                 // create a dummy value and continue compiling
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             }
+            Err(LitToConstError::TypeError) => bug!("const_eval_literal: had type error"),
         }
     }
 
@@ -167,17 +168,19 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         params: &[GenericArg<'tcx>],
     ) -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
-        for item in self.tcx.associated_items(trait_def_id) {
-            // The unhygienic comparison here is acceptable because this is only
-            // used on known traits.
-            if item.kind == ty::AssocKind::Method && item.ident.name == method_name {
-                let method_ty = self.tcx.type_of(item.def_id);
-                let method_ty = method_ty.subst(self.tcx, substs);
-                return ty::Const::zero_sized(self.tcx, method_ty);
-            }
-        }
 
-        bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
+        // The unhygienic comparison here is acceptable because this is only
+        // used on known traits.
+        let item = self
+            .tcx
+            .associated_items(trait_def_id)
+            .filter_by_name_unhygienic(method_name)
+            .find(|item| item.kind == ty::AssocKind::Method)
+            .expect("trait method not found");
+
+        let method_ty = self.tcx.type_of(item.def_id);
+        let method_ty = method_ty.subst(self.tcx, substs);
+        ty::Const::zero_sized(self.tcx, method_ty)
     }
 
     crate fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: VariantIdx) -> Vec<Field> {

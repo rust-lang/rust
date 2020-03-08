@@ -7,7 +7,7 @@ use crate::rmeta::{self, encoder};
 use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
-use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
+use rustc::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::session::{CrateDisambiguator, Session};
@@ -25,15 +25,15 @@ use smallvec::SmallVec;
 use std::any::Any;
 use std::sync::Arc;
 
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::ptr::P;
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_span::source_map;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{FileName, Span};
-use syntax::ast;
-use syntax::attr;
-use syntax::expand::allocator::AllocatorKind;
-use syntax::ptr::P;
-use syntax::tokenstream::DelimSpan;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -134,6 +134,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     asyncness => { cdata.asyncness(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
+    generator_kind => { cdata.generator_kind(def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
@@ -392,14 +393,6 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 impl CStore {
-    pub fn export_macros_untracked(&self, cnum: CrateNum) {
-        let data = self.get_crate_data(cnum);
-        let mut dep_kind = data.dep_kind.lock();
-        if *dep_kind == DepKind::UnexportedMacrosOnly {
-            *dep_kind = DepKind::MacrosOnly;
-        }
-    }
-
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }

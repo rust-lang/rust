@@ -2,12 +2,12 @@ use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ty::print::{Print, Printer};
 use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_ast::ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use std::fmt::Write;
 use std::ops::Range;

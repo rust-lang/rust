@@ -72,7 +72,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics;
+use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -119,9 +119,12 @@ mod mut_ptr;
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `to_drop` must be [valid] for reads.
+/// * `to_drop` must be [valid] for both reads and writes.
 ///
 /// * `to_drop` must be properly aligned.
+///
+/// * The value `to_drop` points to must be valid for dropping, which may mean it must uphold
+///   additional invariants - this is type-dependent.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
@@ -289,7 +292,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid] for reads and writes.
+/// * Both `x` and `y` must be [valid] for both reads and writes.
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
@@ -355,7 +358,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid] for reads and writes of `count *
+/// * Both `x` and `y` must be [valid] for both reads and writes of `count *
 ///   size_of::<T>()` bytes.
 ///
 /// * Both `x` and `y` must be properly aligned.
@@ -389,6 +392,10 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
+    debug_assert!(is_aligned_and_not_null(x), "attempt to swap unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(y), "attempt to swap unaligned or null pointer");
+    debug_assert!(is_nonoverlapping(x, y, count), "attempt to swap overlapping memory");
+
     let x = x as *mut u8;
     let y = y as *mut u8;
     let len = mem::size_of::<T>() * count;
@@ -471,9 +478,11 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for writes.
+/// * `dst` must be [valid] for both reads and writes.
 ///
 /// * `dst` must be properly aligned.
+///
+/// * `dst` must point to a properly initialized value of type `T`.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
@@ -513,6 +522,8 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
+///
+/// * `src` must point to a properly initialized value of type `T`.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
@@ -612,6 +623,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
+    // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
     copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
     tmp.assume_init()
@@ -627,6 +639,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `src` must be [valid] for reads.
+///
+/// * `src` must point to a properly initialized value of type `T`.
 ///
 /// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
@@ -703,6 +717,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
+    // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
     copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
     tmp.assume_init()
@@ -795,6 +810,9 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
+    // FIXME: the debug assertion here causes codegen test failures on some architectures.
+    // See <https://github.com/rust-lang/rust/pull/69208#issuecomment-591326757>.
+    // debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
     intrinsics::move_val_init(&mut *dst, src)
 }
 
@@ -887,6 +905,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
+    // `copy_nonoverlapping` takes care of debug_assert.
     copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
     mem::forget(src);
 }
@@ -922,6 +941,8 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// * `src` must be properly aligned.
 ///
+/// * `src` must point to a properly initialized value of type `T`.
+///
 /// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
@@ -956,6 +977,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
+    debug_assert!(is_aligned_and_not_null(src), "attempt to read from unaligned or null pointer");
     intrinsics::volatile_load(src)
 }
 
@@ -1024,6 +1046,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
     intrinsics::volatile_store(dst, src);
 }
 

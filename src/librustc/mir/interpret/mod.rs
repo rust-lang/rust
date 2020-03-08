@@ -107,6 +107,7 @@ use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
@@ -117,7 +118,6 @@ use std::fmt;
 use std::io;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
-use syntax::ast::LitKind;
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -148,6 +148,10 @@ pub struct LitToConstInput<'tcx> {
 /// Error type for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
+    /// The literal's inferred type did not match the expected `ty` in the input.
+    /// This is used for graceful error handling (`delay_span_bug`) in
+    /// type checking (`AstConv::ast_const_to_const`).
+    TypeError,
     UnparseableFloat,
     Reported,
 }

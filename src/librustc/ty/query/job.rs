@@ -173,7 +173,7 @@ impl<'tcx> QueryLatch<'tcx> {
                 return CycleError { usage, cycle };
             }
 
-            current_job = info.job.parent.clone();
+            current_job = info.job.parent;
         }
 
         panic!("did not find a cycle")
@@ -535,11 +535,11 @@ pub unsafe fn handle_deadlock() {
     let rustc_span_globals =
         rustc_span::GLOBALS.with(|rustc_span_globals| rustc_span_globals as *const _);
     let rustc_span_globals = &*rustc_span_globals;
-    let syntax_globals = syntax::attr::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
+    let syntax_globals = rustc_ast::attr::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
     let syntax_globals = &*syntax_globals;
     thread::spawn(move || {
         tls::GCX_PTR.set(gcx_ptr, || {
-            syntax::attr::GLOBALS.set(syntax_globals, || {
+            rustc_ast::attr::GLOBALS.set(syntax_globals, || {
                 rustc_span::GLOBALS
                     .set(rustc_span_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
             });

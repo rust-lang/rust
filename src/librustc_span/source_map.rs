@@ -12,10 +12,12 @@ pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lock, LockGuard, Lrc, MappedLockGuard};
+use rustc_data_structures::sync::{AtomicU32, Lock, LockGuard, Lrc, MappedLockGuard};
 use std::cmp;
+use std::convert::TryFrom;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 
 use log::debug;
 use std::env;
@@ -131,6 +133,9 @@ pub(super) struct SourceMapFiles {
 }
 
 pub struct SourceMap {
+    /// The address space below this value is currently used by the files in the source map.
+    used_address_space: AtomicU32,
+
     files: Lock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
@@ -140,14 +145,24 @@ pub struct SourceMap {
 
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
-        SourceMap { files: Default::default(), file_loader: Box::new(RealFileLoader), path_mapping }
+        SourceMap {
+            used_address_space: AtomicU32::new(0),
+            files: Default::default(),
+            file_loader: Box::new(RealFileLoader),
+            path_mapping,
+        }
     }
 
     pub fn with_file_loader(
         file_loader: Box<dyn FileLoader + Sync + Send>,
         path_mapping: FilePathMapping,
     ) -> SourceMap {
-        SourceMap { files: Default::default(), file_loader, path_mapping }
+        SourceMap {
+            used_address_space: AtomicU32::new(0),
+            files: Default::default(),
+            file_loader,
+            path_mapping,
+        }
     }
 
     pub fn path_mapping(&self) -> &FilePathMapping {
@@ -191,15 +206,28 @@ impl SourceMap {
         &self,
         stable_id: StableSourceFileId,
     ) -> Option<Lrc<SourceFile>> {
-        self.files.borrow().stable_id_to_source_file.get(&stable_id).map(|sf| sf.clone())
+        self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
-    fn next_start_pos(&self) -> usize {
-        match self.files.borrow().source_files.last() {
-            None => 0,
-            // Add one so there is some space between files. This lets us distinguish
-            // positions in the `SourceMap`, even in the presence of zero-length files.
-            Some(last) => last.end_pos.to_usize() + 1,
+    fn allocate_address_space(&self, size: usize) -> Result<usize, OffsetOverflowError> {
+        let size = u32::try_from(size).map_err(|_| OffsetOverflowError)?;
+
+        loop {
+            let current = self.used_address_space.load(Ordering::Relaxed);
+            let next = current
+                .checked_add(size)
+                // Add one so there is some space between files. This lets us distinguish
+                // positions in the `SourceMap`, even in the presence of zero-length files.
+                .and_then(|next| next.checked_add(1))
+                .ok_or(OffsetOverflowError)?;
+
+            if self
+                .used_address_space
+                .compare_exchange(current, next, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+            {
+                return Ok(usize::try_from(current).unwrap());
+            }
         }
     }
 
@@ -218,8 +246,6 @@ impl SourceMap {
         filename: FileName,
         src: String,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
-        let start_pos = self.next_start_pos();
-
         // The path is used to determine the directory for loading submodules and
         // include files, so it must be before remapping.
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
@@ -241,13 +267,15 @@ impl SourceMap {
         let lrc_sf = match self.source_file_by_stable_id(file_id) {
             Some(lrc_sf) => lrc_sf,
             None => {
+                let start_pos = self.allocate_address_space(src.len())?;
+
                 let source_file = Lrc::new(SourceFile::new(
                     filename,
                     was_remapped,
                     unmapped_path,
                     src,
                     Pos::from_usize(start_pos),
-                )?);
+                ));
 
                 let mut files = self.files.borrow_mut();
 
@@ -277,7 +305,9 @@ impl SourceMap {
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
         mut file_local_normalized_pos: Vec<NormalizedPos>,
     ) -> Lrc<SourceFile> {
-        let start_pos = self.next_start_pos();
+        let start_pos = self
+            .allocate_address_space(source_len)
+            .expect("not enough address space for imported source file");
 
         let end_pos = Pos::from_usize(start_pos + source_len);
         let start_pos = Pos::from_usize(start_pos);
@@ -365,7 +395,7 @@ impl SourceMap {
                         .unwrap_or_else(|x| x);
                     let special_chars = end_width_idx - start_width_idx;
                     let non_narrow: usize = f.non_narrow_chars[start_width_idx..end_width_idx]
-                        .into_iter()
+                        .iter()
                         .map(|x| x.width())
                         .sum();
                     col.0 - special_chars + non_narrow
@@ -383,7 +413,7 @@ impl SourceMap {
                         .binary_search_by_key(&pos, |x| x.pos())
                         .unwrap_or_else(|x| x);
                     let non_narrow: usize =
-                        f.non_narrow_chars[0..end_width_idx].into_iter().map(|x| x.width()).sum();
+                        f.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
                     chpos.0 - end_width_idx + non_narrow
                 };
                 Loc { file: f, line: 0, col: chpos, col_display }
@@ -590,7 +620,7 @@ impl SourceMap {
     /// if no character could be found or if an error occurred while retrieving the code snippet.
     pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
         if let Ok(prev_source) = self.span_to_prev_source(sp) {
-            let prev_source = prev_source.rsplit(c).nth(0).unwrap_or("").trim_start();
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("").trim_start();
             if !prev_source.is_empty() && !prev_source.contains('\n') {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
             }
@@ -610,7 +640,7 @@ impl SourceMap {
         for ws in &[" ", "\t", "\n"] {
             let pat = pat.to_owned() + ws;
             if let Ok(prev_source) = self.span_to_prev_source(sp) {
-                let prev_source = prev_source.rsplit(&pat).nth(0).unwrap_or("").trim_start();
+                let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
                 if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
@@ -625,7 +655,7 @@ impl SourceMap {
     pub fn span_until_char(&self, sp: Span, c: char) -> Span {
         match self.span_to_snippet(sp) {
             Ok(snippet) => {
-                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_end();
+                let snippet = snippet.split(c).next().unwrap_or("").trim_end();
                 if !snippet.is_empty() && !snippet.contains('\n') {
                     sp.with_hi(BytePos(sp.lo().0 + snippet.len() as u32))
                 } else {
@@ -659,7 +689,7 @@ impl SourceMap {
                 whitespace_found = true;
             }
 
-            if whitespace_found && !c.is_whitespace() { false } else { true }
+            !whitespace_found || c.is_whitespace()
         })
     }
 

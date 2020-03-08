@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
-        format!("top-level module")
+        "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id))
     }
@@ -97,6 +97,10 @@ rustc_queries! {
         query lint_levels(_: CrateNum) -> &'tcx LintLevelMap {
             eval_always
             desc { "computing the lint levels for items in this crate" }
+        }
+
+        query parent_module_from_def_id(_: DefId) -> DefId {
+            eval_always
         }
     }
 
@@ -279,6 +283,14 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
+        /// Returns `true` if this is a const `impl`. **Do not call this function manually.**
+        ///
+        /// This query caches the base data for the `is_const_impl` helper function, which also
+        /// takes into account stability attributes (e.g., `#[rustc_const_unstable]`).
+        query is_const_impl_raw(key: DefId) -> bool {
+            desc { |tcx| "checking if item is const impl: `{}`", tcx.def_path_str(key) }
+        }
+
         query asyncness(key: DefId) -> hir::IsAsync {
             desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         }
@@ -299,6 +311,9 @@ rustc_queries! {
 
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
+
+        /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
+        query generator_kind(_: DefId) -> Option<hir::GeneratorKind> {}
 
         /// Gets a map with the variance of every item; use `item_variance` instead.
         query crate_variances(_: CrateNum) -> &'tcx ty::CrateVariancesMap<'tcx> {
@@ -325,7 +340,7 @@ rustc_queries! {
         query associated_item(_: DefId) -> ty::AssocItem {}
 
         /// Collects the associated items defined on a trait or impl.
-        query associated_items(key: DefId) -> &'tcx [ty::AssocItem] {
+        query associated_items(key: DefId) -> &'tcx ty::AssociatedItems {
             desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
         }
 
@@ -502,7 +517,7 @@ rustc_queries! {
         /// returns a proper constant that is usable by the rest of the compiler.
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
-        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
         query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
             no_force
@@ -519,7 +534,7 @@ rustc_queries! {
         /// Extracts a field of a (variant of a) const.
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
-        ) -> &'tcx ty::Const<'tcx> {
+        ) -> ConstValue<'tcx> {
             no_force
             desc { "extract field of const" }
         }
@@ -533,7 +548,7 @@ rustc_queries! {
             desc { "destructure constant" }
         }
 
-        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }
@@ -635,7 +650,7 @@ rustc_queries! {
     Codegen {
         query codegen_fulfill_obligation(
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Vtable<'tcx, ()> {
+        ) -> Option<Vtable<'tcx, ()>> {
             no_force
             cache_on_disk_if { true }
             desc { |tcx|
@@ -653,7 +668,7 @@ rustc_queries! {
             desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query is_object_safe(key: DefId) -> bool {
+        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 
@@ -1113,16 +1128,6 @@ rustc_queries! {
         ) -> Result<traits::EvaluationResult, traits::OverflowError> {
             no_force
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
-        }
-
-        query evaluate_goal(
-            goal: traits::ChalkCanonicalGoal<'tcx>
-        ) -> Result<
-            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-            NoSolution
-        > {
-            no_force
-            desc { "evaluating trait selection obligation `{}`", goal.value.goal }
         }
 
         /// Do not call this query directly: part of the `Eq` type-op

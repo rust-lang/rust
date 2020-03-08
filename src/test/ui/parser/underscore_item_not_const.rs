@@ -1,18 +1,4 @@
-// Test that various non-const items and associated consts do not permit `_` as a name.
-
-// Associated `const`s:
-
-pub trait A {
-    const _: () = (); //~ ERROR expected identifier, found reserved identifier `_`
-}
-impl A for () {
-    const _: () = (); //~ ERROR expected identifier, found reserved identifier `_`
-}
-impl dyn A {
-    const _: () = (); //~ ERROR expected identifier, found reserved identifier `_`
-}
-
-// Other kinds of items:
+// Test that various non-const items do not syntactically permit `_` as a name.
 
 static _: () = (); //~ ERROR expected identifier, found reserved identifier `_`
 struct _(); //~ ERROR expected identifier, found reserved identifier `_`

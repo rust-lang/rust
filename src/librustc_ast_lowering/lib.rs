@@ -39,6 +39,14 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
 use rustc::{bug, span_bug};
+use rustc_ast::ast;
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::token::{self, Nonterminal, Token};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -58,14 +66,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::node_id::NodeMap;
-use syntax::token::{self, Nonterminal, Token};
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::{self, AssocCtxt, Visitor};
-use syntax::walk_list;
 
 use log::{debug, trace};
 use smallvec::{smallvec, SmallVec};
@@ -462,7 +462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::TyAlias(_, ref generics)
+                    | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -490,7 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lctx.allocate_hir_id_counter(item.id);
                 let owner = match (&item.kind, ctxt) {
                     // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, None), AssocCtxt::Trait) => None,
+                    (AssocItemKind::Fn(_, _, _, None), AssocCtxt::Trait) => None,
                     _ => Some(item.id),
                 };
                 self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));
@@ -1725,16 +1725,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         } else {
             match decl.output {
-                FunctionRetTy::Ty(ref ty) => {
+                FnRetTy::Ty(ref ty) => {
                     let context = match in_band_ty_params {
                         Some((def_id, _)) if impl_trait_return_allow => {
                             ImplTraitContext::OpaqueTy(Some(def_id), hir::OpaqueTyOrigin::FnReturn)
                         }
                         _ => ImplTraitContext::disallowed(),
                     };
-                    hir::FunctionRetTy::Return(self.lower_ty(ty, context))
+                    hir::FnRetTy::Return(self.lower_ty(ty, context))
                 }
-                FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
+                FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(span),
             }
         };
 
@@ -1781,10 +1781,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `elided_lt_replacement`: replacement for elided lifetimes in the return type
     fn lower_async_fn_ret_ty(
         &mut self,
-        output: &FunctionRetTy,
+        output: &FnRetTy,
         fn_def_id: DefId,
         opaque_ty_node_id: NodeId,
-    ) -> hir::FunctionRetTy<'hir> {
+    ) -> hir::FnRetTy<'hir> {
         debug!(
             "lower_async_fn_ret_ty(\
              output={:?}, \
@@ -1949,19 +1949,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
-        hir::FunctionRetTy::Return(self.arena.alloc(opaque_ty))
+        hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
     /// Transforms `-> T` into `Future<Output = T>`
     fn lower_async_fn_output_type_to_future_bound(
         &mut self,
-        output: &FunctionRetTy,
+        output: &FnRetTy,
         fn_def_id: DefId,
         span: Span,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => {
+            FnRetTy::Ty(ty) => {
                 // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
                 // `impl Future` opaque type that `async fn` implicitly
                 // generates.
@@ -1969,7 +1969,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::OpaqueTy(Some(fn_def_id), hir::OpaqueTyOrigin::FnReturn);
                 self.lower_ty(ty, context)
             }
-            FunctionRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
+            FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
         // "<Output = T>"
@@ -2281,6 +2281,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.lower_expr(e)),
             StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.lower_expr(e)),
+            StmtKind::Empty => return smallvec![],
             StmtKind::Mac(..) => panic!("shouldn't exist here"),
         };
         smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]

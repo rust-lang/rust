@@ -1,4 +1,4 @@
-use crate::dep_graph::{self, DepNode};
+use crate::dep_graph::{self, DepConstructor, DepNode};
 use crate::hir::exports::Export;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
@@ -14,19 +14,19 @@ use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLife
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult, ConstValue};
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use crate::session::CrateDisambiguator;
-use crate::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
-use crate::traits::query::method_autoderef::MethodAutoderefStepsResult;
-use crate::traits::query::normalize::NormalizationResult;
-use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
+use crate::traits::query::{
+    DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,
+    OutlivesBound,
 };
 use crate::traits::specialization_graph;
 use crate::traits::Clauses;
@@ -49,20 +49,22 @@ use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use std::any::type_name;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::sync::Arc;
-use syntax::ast;
 
 #[macro_use]
 mod plumbing;
 use self::plumbing::*;
 pub use self::plumbing::{force_from_dep_node, CycleError};
+
+mod stats;
+pub use self::stats::print_stats;
 
 mod job;
 #[cfg(parallel_compiler)]
@@ -75,6 +77,9 @@ use self::keys::Key;
 
 mod values;
 use self::values::Value;
+
+mod caches;
+use self::caches::CacheSelector;
 
 mod config;
 use self::config::QueryAccessors;

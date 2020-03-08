@@ -258,7 +258,7 @@ pub enum Visibility {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name: name, items: Default::default(), size_estimate: None }
+        CodegenUnit { name, items: Default::default(), size_estimate: None }
     }
 
     pub fn name(&self) -> Symbol {
@@ -362,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
-        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name()))
+        DepConstructor::CompileCodegenUnit(tcx, self.name())
     }
 }
 

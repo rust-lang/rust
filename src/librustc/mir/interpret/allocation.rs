@@ -6,12 +6,12 @@ use super::{
 
 use crate::ty::layout::{Align, Size};
 
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
 use std::iter;
 use std::ops::{Deref, DerefMut, Range};
-use syntax::ast::Mutability;
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.
@@ -472,7 +472,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: ScalarMaybeUndef<Tag>,
     ) -> InterpResult<'tcx> {
         let ptr_size = cx.data_layout().pointer_size;
-        self.write_scalar(cx, ptr.into(), val, ptr_size)
+        self.write_scalar(cx, ptr, val, ptr_size)
     }
 }
 
@@ -598,7 +598,7 @@ impl AllocationDefinedness {
     pub fn all_bytes_undef(&self) -> bool {
         // The `ranges` are run-length encoded and of alternating definedness.
         // So if `ranges.len() > 1` then the second block is a range of defined.
-        self.initial == false && self.ranges.len() == 1
+        !self.initial && self.ranges.len() == 1
     }
 }
 
@@ -818,9 +818,9 @@ impl UndefMask {
             // First set all bits except the first `bita`,
             // then unset the last `64 - bitb` bits.
             let range = if bitb == 0 {
-                u64::max_value() << bita
+                u64::MAX << bita
             } else {
-                (u64::max_value() << bita) & (u64::max_value() >> (64 - bitb))
+                (u64::MAX << bita) & (u64::MAX >> (64 - bitb))
             };
             if new_state {
                 self.blocks[blocka] |= range;
@@ -832,21 +832,21 @@ impl UndefMask {
         // across block boundaries
         if new_state {
             // Set `bita..64` to `1`.
-            self.blocks[blocka] |= u64::max_value() << bita;
+            self.blocks[blocka] |= u64::MAX << bita;
             // Set `0..bitb` to `1`.
             if bitb != 0 {
-                self.blocks[blockb] |= u64::max_value() >> (64 - bitb);
+                self.blocks[blockb] |= u64::MAX >> (64 - bitb);
             }
             // Fill in all the other blocks (much faster than one bit at a time).
             for block in (blocka + 1)..blockb {
-                self.blocks[block] = u64::max_value();
+                self.blocks[block] = u64::MAX;
             }
         } else {
             // Set `bita..64` to `0`.
-            self.blocks[blocka] &= !(u64::max_value() << bita);
+            self.blocks[blocka] &= !(u64::MAX << bita);
             // Set `0..bitb` to `0`.
             if bitb != 0 {
-                self.blocks[blockb] &= !(u64::max_value() >> (64 - bitb));
+                self.blocks[blockb] &= !(u64::MAX >> (64 - bitb));
             }
             // Fill in all the other blocks (much faster than one bit at a time).
             for block in (blocka + 1)..blockb {

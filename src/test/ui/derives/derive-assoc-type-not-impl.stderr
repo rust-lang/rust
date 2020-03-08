@@ -2,13 +2,20 @@ error[E0599]: no method named `clone` found for struct `Bar<NotClone>` in the cu
   --> $DIR/derive-assoc-type-not-impl.rs:18:30
    |
 LL | struct Bar<T: Foo> {
-   | ------------------ method `clone` not found for this
+   | ------------------
+   | |
+   | method `clone` not found for this
+   | doesn't satisfy `Bar<NotClone>: std::clone::Clone`
+...
+LL | struct NotClone;
+   | ---------------- doesn't satisfy `NotClone: std::clone::Clone`
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method not found in `Bar<NotClone>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `Bar<NotClone> : std::clone::Clone`
+           `NotClone: std::clone::Clone`
+           which is required by `Bar<NotClone>: std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

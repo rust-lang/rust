@@ -33,6 +33,9 @@ enum QueryModifier {
     /// The description of the query.
     Desc(Option<Ident>, Punctuated<Expr, Token![,]>),
 
+    /// Use this type for the in-memory cache.
+    Storage(Type),
+
     /// Cache the query to disk if the `Expr` returns true.
     Cache(Option<(IdentOrWild, IdentOrWild)>, Block),
 
@@ -106,6 +109,9 @@ impl Parse for QueryModifier {
             let id = args.parse()?;
             let block = input.parse()?;
             Ok(QueryModifier::LoadCached(tcx, id, block))
+        } else if modifier == "storage" {
+            let ty = input.parse()?;
+            Ok(QueryModifier::Storage(ty))
         } else if modifier == "fatal_cycle" {
             Ok(QueryModifier::FatalCycle)
         } else if modifier == "cycle_delay_bug" {
@@ -198,6 +204,9 @@ struct QueryModifiers {
     /// The description of the query.
     desc: Option<(Option<Ident>, Punctuated<Expr, Token![,]>)>,
 
+    /// Use this type for the in-memory cache.
+    storage: Option<Type>,
+
     /// Cache the query to disk if the `Block` returns true.
     cache: Option<(Option<(IdentOrWild, IdentOrWild)>, Block)>,
 
@@ -226,6 +235,7 @@ struct QueryModifiers {
 /// Process query modifiers into a struct, erroring on duplicates
 fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut load_cached = None;
+    let mut storage = None;
     let mut cache = None;
     let mut desc = None;
     let mut fatal_cycle = false;
@@ -241,6 +251,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                     panic!("duplicate modifier `load_cached` for query `{}`", query.name);
                 }
                 load_cached = Some((tcx, id, block));
+            }
+            QueryModifier::Storage(ty) => {
+                if storage.is_some() {
+                    panic!("duplicate modifier `storage` for query `{}`", query.name);
+                }
+                storage = Some(ty);
             }
             QueryModifier::Cache(args, expr) => {
                 if cache.is_some() {
@@ -294,6 +310,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     }
     QueryModifiers {
         load_cached,
+        storage,
         cache,
         desc,
         fatal_cycle,
@@ -450,6 +467,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Pass on the fatal_cycle modifier
             if modifiers.fatal_cycle {
                 attributes.push(quote! { fatal_cycle });
+            };
+            // Pass on the storage modifier
+            if let Some(ref ty) = modifiers.storage {
+                attributes.push(quote! { storage(#ty) });
             };
             // Pass on the cycle_delay_bug modifier
             if modifiers.cycle_delay_bug {

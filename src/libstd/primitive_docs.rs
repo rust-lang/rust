@@ -771,7 +771,7 @@ mod prim_tuple {}
 #[doc(primitive = "f32")]
 /// The 32-bit floating point type.
 ///
-/// *[See also the `std::f32` module](f32/index.html).*
+/// *[See also the `std::f32::consts` module](f32/consts/index.html).*
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
@@ -780,7 +780,7 @@ mod prim_f32 {}
 //
 /// The 64-bit floating point type.
 ///
-/// *[See also the `std::f64` module](f64/index.html).*
+/// *[See also the `std::f64::consts` module](f64/consts/index.html).*
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
@@ -788,88 +788,66 @@ mod prim_f64 {}
 #[doc(primitive = "i8")]
 //
 /// The 8-bit signed integer type.
-///
-/// *[See also the `std::i8` module](i8/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 {}
 
 #[doc(primitive = "i16")]
 //
 /// The 16-bit signed integer type.
-///
-/// *[See also the `std::i16` module](i16/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 {}
 
 #[doc(primitive = "i32")]
 //
 /// The 32-bit signed integer type.
-///
-/// *[See also the `std::i32` module](i32/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 {}
 
 #[doc(primitive = "i64")]
 //
 /// The 64-bit signed integer type.
-///
-/// *[See also the `std::i64` module](i64/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 {}
 
 #[doc(primitive = "i128")]
 //
 /// The 128-bit signed integer type.
-///
-/// *[See also the `std::i128` module](i128/index.html).*
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_i128 {}
 
 #[doc(primitive = "u8")]
 //
 /// The 8-bit unsigned integer type.
-///
-/// *[See also the `std::u8` module](u8/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 {}
 
 #[doc(primitive = "u16")]
 //
 /// The 16-bit unsigned integer type.
-///
-/// *[See also the `std::u16` module](u16/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 {}
 
 #[doc(primitive = "u32")]
 //
 /// The 32-bit unsigned integer type.
-///
-/// *[See also the `std::u32` module](u32/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 {}
 
 #[doc(primitive = "u64")]
 //
 /// The 64-bit unsigned integer type.
-///
-/// *[See also the `std::u64` module](u64/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 {}
 
 #[doc(primitive = "u128")]
 //
 /// The 128-bit unsigned integer type.
-///
-/// *[See also the `std::u128` module](u128/index.html).*
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_u128 {}
 
 #[doc(primitive = "isize")]
 //
 /// The pointer-sized signed integer type.
-///
-/// *[See also the `std::isize` module](isize/index.html).*
 ///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
@@ -880,8 +858,6 @@ mod prim_isize {}
 #[doc(primitive = "usize")]
 //
 /// The pointer-sized unsigned integer type.
-///
-/// *[See also the `std::usize` module](usize/index.html).*
 ///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes

@@ -48,22 +48,23 @@ macro_rules! arena_types {
             [] item_local_set: rustc_hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
+            [] associated_items: rustc::ty::AssociatedItems,
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::dropck_outlives::DropckOutlivesResult<'tcx>
+                        rustc::traits::query::DropckOutlivesResult<'tcx>
                     >
                 >,
             [] normalize_projection_ty:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::normalize::NormalizationResult<'tcx>
+                        rustc::traits::query::NormalizationResult<'tcx>
                     >
                 >,
             [] implied_outlives_bounds:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
+                        Vec<rustc::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
             [] type_op_subtype:
@@ -130,7 +131,7 @@ macro_rules! arena_types {
             // HIR types
             [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
-            [] attribute: syntax::ast::Attribute,
+            [] attribute: rustc_ast::ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,
             [] bare_fn_ty: rustc_hir::BareFnTy<$tcx>,
             [few] global_asm: rustc_hir::GlobalAsm,
@@ -249,7 +250,7 @@ impl<'tcx> Arena<'tcx> {
 
     #[inline]
     pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
-        if value.len() == 0 {
+        if value.is_empty() {
             return &mut [];
         }
         self.dropless.alloc_slice(value)

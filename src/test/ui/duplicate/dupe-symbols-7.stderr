@@ -1,4 +1,4 @@
-error: entry symbol `main` defined multiple times
+error: entry symbol `main` declared multiple times
   --> $DIR/dupe-symbols-7.rs:12:1
    |
 LL | fn main(){}

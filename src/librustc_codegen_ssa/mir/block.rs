@@ -515,12 +515,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        // For normal codegen, this Miri-specific intrinsic is just a NOP.
+        // For normal codegen, this Miri-specific intrinsic should never occur.
         if intrinsic == Some("miri_start_panic") {
-            let target = destination.as_ref().unwrap().1;
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            bug!("`miri_start_panic` should never end up in compiled code");
         }
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
@@ -991,7 +988,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 caller.line as u32,
                 caller.col_display as u32 + 1,
             ));
-            OperandRef::from_const(bx, const_loc)
+            OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
         })
     }
 

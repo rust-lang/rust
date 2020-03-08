@@ -28,7 +28,7 @@ fn get_switched_on_type<'tcx>(
 
     // Only bother checking blocks which terminate by switching on a local.
     if let Some(local) = get_discriminant_local(&terminator.kind) {
-        let stmt_before_term = (block_data.statements.len() > 0)
+        let stmt_before_term = (!block_data.statements.is_empty())
             .then(|| &block_data.statements[block_data.statements.len() - 1].kind);
 
         if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
@@ -100,7 +100,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
                 let vals = &*values;
-                let zipped = vals.iter().zip(targets.into_iter());
+                let zipped = vals.iter().zip(targets.iter());
 
                 let mut matched_values = Vec::with_capacity(allowed_variants.len());
                 let mut matched_targets = Vec::with_capacity(allowed_variants.len() + 1);

@@ -50,6 +50,9 @@ pub fn opts() -> TargetOptions {
         // until we figure a way to add the pretty printers without requiring a volatile load cf.
         // rust-lang/rust#44993.
         emit_debug_gdb_scripts: false,
+        // LLVM is eager to trash the link register when calling `noreturn` functions, which
+        // breaks debugging. Preserve LR by default to prevent that from happening.
+        eliminate_frame_pointer: false,
         ..Default::default()
     }
 }

@@ -45,4 +45,8 @@ type I = ty!()::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR ambiguous associated type
 
+trait K<A, B> {}
+fn foo<X: K<_, _>>(x: X) {}
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
 fn main() {}

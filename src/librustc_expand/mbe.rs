@@ -9,9 +9,9 @@ crate mod macro_rules;
 crate mod quoted;
 crate mod transcribe;
 
-use syntax::ast;
-use syntax::token::{self, Token, TokenKind};
-use syntax::tokenstream::DelimSpan;
+use rustc_ast::ast;
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::tokenstream::DelimSpan;
 
 use rustc_span::Span;
 

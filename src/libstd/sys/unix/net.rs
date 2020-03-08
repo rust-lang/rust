@@ -280,7 +280,7 @@ impl Socket {
                 };
                 let mut timeout = libc::timeval {
                     tv_sec: secs,
-                    tv_usec: (dur.subsec_nanos() / 1000) as libc::suseconds_t,
+                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
                 };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;

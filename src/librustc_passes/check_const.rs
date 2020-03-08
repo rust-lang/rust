@@ -13,12 +13,12 @@ use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::Mutability;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::{sym, Span, Symbol};
-use syntax::ast::Mutability;
 
 use std::fmt;
 
@@ -35,7 +35,7 @@ impl NonConstExpr {
         match self {
             Self::Loop(src) => format!("`{}`", src.name()),
             Self::Match(src) => format!("`{}`", src.name()),
-            Self::OrPattern => format!("or-pattern"),
+            Self::OrPattern => "or-pattern".to_string(),
         }
     }
 

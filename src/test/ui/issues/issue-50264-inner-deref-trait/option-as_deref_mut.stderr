@@ -5,7 +5,8 @@ LL |     let _result = &mut Some(42).as_deref_mut();
    |                                 ^^^^^^^^^^^^ method not found in `std::option::Option<{integer}>`
    |
    = note: the method `as_deref_mut` exists but the following trait bounds were not satisfied:
-           `{integer} : std::ops::DerefMut`
+           `{integer}: std::ops::DerefMut`
+           `<{integer} as std::ops::Deref>::Target = _`
 
 error: aborting due to previous error
 

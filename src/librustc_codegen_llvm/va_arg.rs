@@ -117,8 +117,7 @@ pub(super) fn emit_va_arg(
         // Windows x86_64
         ("x86_64", true) => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
-            let indirect =
-                if target_ty_size > 8 || !target_ty_size.is_power_of_two() { true } else { false };
+            let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
             emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)
         }
         // For all other architecture/OS combinations fall back to using

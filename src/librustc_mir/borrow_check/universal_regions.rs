@@ -13,7 +13,6 @@
 //! just returns them for other code to use.
 
 use either::Either;
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
@@ -24,6 +23,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 use std::iter;
 
 use crate::borrow_check::nll::ToRegionVid;
@@ -129,6 +129,29 @@ impl<'tcx> DefiningTy<'tcx> {
         match self {
             DefiningTy::Closure(..) | DefiningTy::Generator(..) => 1,
             DefiningTy::FnDef(..) | DefiningTy::Const(..) => 0,
+        }
+    }
+
+    pub fn is_fn_def(&self) -> bool {
+        match *self {
+            DefiningTy::FnDef(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_const(&self) -> bool {
+        match *self {
+            DefiningTy::Const(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        match *self {
+            DefiningTy::Closure(def_id, ..)
+            | DefiningTy::Generator(def_id, ..)
+            | DefiningTy::FnDef(def_id, ..)
+            | DefiningTy::Const(def_id, ..) => def_id,
         }
     }
 }
@@ -463,7 +486,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             defining_ty,
             unnormalized_output_ty,
             unnormalized_input_tys,
-            yield_ty: yield_ty,
+            yield_ty,
         }
     }
 

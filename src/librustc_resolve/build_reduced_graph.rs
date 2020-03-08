@@ -20,6 +20,11 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
+use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
+use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
+use rustc_ast::ast::{Ident, Name};
+use rustc_ast::token::{self, Token};
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
@@ -32,11 +37,6 @@ use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use syntax::ast::{Ident, Name};
-use syntax::token::{self, Token};
-use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
 use std::cell::Cell;
@@ -718,8 +718,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(ref ty, _) => {
-                let def_kind = match ty.kind.opaque_top_hack() {
+            ItemKind::TyAlias(_, _, _, ref ty) => {
+                let def_kind = match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
                     None => DefKind::TyAlias,
                     Some(_) => DefKind::OpaqueTy,
                 };
@@ -829,7 +829,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ForeignItemKind::Static(..) => {
                 (Res::Def(DefKind::Static, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Ty => {
+            ForeignItemKind::TyAlias(..) => {
                 (Res::Def(DefKind::ForeignTy, self.r.definitions.local_def_id(item.id)), TypeNS)
             }
             ForeignItemKind::Macro(_) => unreachable!(),
@@ -1103,7 +1103,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
     fn insert_unused_macro(&mut self, ident: Ident, node_id: NodeId, span: Span) {
-        if !ident.as_str().starts_with("_") {
+        if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(node_id, span);
         }
     }
@@ -1252,7 +1252,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let item_def_id = self.r.definitions.local_def_id(item.id);
         let (res, ns) = match item.kind {
             AssocItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
-            AssocItemKind::Fn(ref sig, _) => {
+            AssocItemKind::Fn(_, ref sig, _, _) => {
                 if sig.decl.has_self() {
                     self.r.has_self.insert(item_def_id);
                 }

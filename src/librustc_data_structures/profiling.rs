@@ -81,6 +81,7 @@
 //!
 //! [mm]: https://github.com/rust-lang/measureme/
 
+use crate::cold_path;
 use crate::fx::FxHashMap;
 
 use std::borrow::Borrow;
@@ -424,7 +425,7 @@ impl SelfProfiler {
             }
 
             // Warn about any unknown event names
-            if unknown_events.len() > 0 {
+            if !unknown_events.is_empty() {
                 unknown_events.sort();
                 unknown_events.dedup();
 
@@ -531,9 +532,11 @@ impl<'a> TimingGuard<'a> {
     #[inline]
     pub fn finish_with_query_invocation_id(self, query_invocation_id: QueryInvocationId) {
         if let Some(guard) = self.0 {
-            let event_id = StringId::new_virtual(query_invocation_id.0);
-            let event_id = EventId::from_virtual(event_id);
-            guard.finish_with_override_event_id(event_id);
+            cold_path(|| {
+                let event_id = StringId::new_virtual(query_invocation_id.0);
+                let event_id = EventId::from_virtual(event_id);
+                guard.finish_with_override_event_id(event_id);
+            });
         }
     }
 

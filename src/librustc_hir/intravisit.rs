@@ -34,9 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::walk_list;
 use rustc_span::Span;
-use syntax::ast::{Attribute, Ident, Label, Name};
-use syntax::walk_list;
 
 pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,
@@ -865,8 +865,8 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
     }
 }
 
-pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy<'v>) {
-    if let FunctionRetTy::Return(ref output_ty) = *ret_ty {
+pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FnRetTy<'v>) {
+    if let FnRetTy::Return(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }

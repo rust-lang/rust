@@ -4,12 +4,12 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
+use rustc_ast::ast;
+use rustc_ast::ast::{Expr, MetaItem, Mutability};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::ast::{Expr, MetaItem, Mutability};
-use syntax::ptr::P;
 
 pub fn expand_deriving_rustc_decodable(
     cx: &mut ExtCtxt<'_>,

@@ -264,7 +264,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_frame(&self) -> usize {
-        assert!(self.stack.len() > 0);
+        assert!(!self.stack.is_empty());
         self.stack.len() - 1
     }
 
@@ -505,7 +505,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
@@ -698,7 +698,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!(
                 "CONTINUING({}) {} (unwinding = {})",
                 self.cur_frame(),
@@ -756,6 +756,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn const_eval(
         &self,
         gid: GlobalId<'tcx>,
+        ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -767,17 +768,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = if let Some(promoted) = gid.promoted {
-            self.tcx.const_eval_promoted(param_env, gid.instance, promoted)?
-        } else {
-            self.tcx.const_eval_instance(param_env, gid.instance, Some(self.tcx.span))?
-        };
+        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
 
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
         // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
         // `ecx.const_eval`.
-        self.eval_const_to_op(val, None)
+        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
+        self.eval_const_to_op(&const_, None)
     }
 
     pub fn const_eval_raw(

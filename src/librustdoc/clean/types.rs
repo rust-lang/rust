@@ -11,6 +11,9 @@ use std::{slice, vec};
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
+use rustc_ast::ast::{self, AttrStyle, Ident};
+use rustc_ast::attr;
+use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -22,9 +25,6 @@ use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AttrStyle, Ident};
-use syntax::attr;
-use syntax::util::comments::strip_doc_comment_decoration;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -35,7 +35,7 @@ use crate::doctree;
 use crate::html::item_type::ItemType;
 use crate::html::render::{cache, ExternalLocation};
 
-use self::FunctionRetTy::*;
+use self::FnRetTy::*;
 use self::ItemEnum::*;
 use self::SelfTy::*;
 use self::Type::*;
@@ -201,7 +201,7 @@ impl Item {
                 classes.push("deprecated");
             }
 
-            if classes.len() != 0 { Some(classes.join(" ")) } else { None }
+            if !classes.is_empty() { Some(classes.join(" ")) } else { None }
         })
     }
 
@@ -421,7 +421,7 @@ pub struct Attributes {
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use syntax::ast::NestedMetaItem::MetaItem;
+        use rustc_ast::ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {
@@ -565,8 +565,7 @@ impl Attributes {
 
         let inner_docs = attrs
             .iter()
-            .filter(|a| a.doc_str().is_some())
-            .next()
+            .find(|a| a.doc_str().is_some())
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {
@@ -862,7 +861,7 @@ pub struct Function {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct FnDecl {
     pub inputs: Arguments,
-    pub output: FunctionRetTy,
+    pub output: FnRetTy,
     pub c_variadic: bool,
     pub attrs: Attributes,
 }
@@ -881,12 +880,12 @@ impl FnDecl {
     ///
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
-    pub fn sugared_async_return_type(&self) -> FunctionRetTy {
+    pub fn sugared_async_return_type(&self) -> FnRetTy {
         match &self.output {
-            FunctionRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
+            FnRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
                 GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                     let bindings = trait_.bindings().unwrap();
-                    FunctionRetTy::Return(bindings[0].ty().clone())
+                    FnRetTy::Return(bindings[0].ty().clone())
                 }
                 _ => panic!("unexpected desugaring of async function"),
             },
@@ -931,12 +930,12 @@ impl Argument {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum FunctionRetTy {
+pub enum FnRetTy {
     Return(Type),
     DefaultReturn,
 }
 
-impl GetDefId for FunctionRetTy {
+impl GetDefId for FnRetTy {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             Return(ref ty) => ty.def_id(),

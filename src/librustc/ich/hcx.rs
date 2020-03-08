@@ -5,6 +5,7 @@ use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lrc;
@@ -13,14 +14,13 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
-use syntax::ast;
 
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
+    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
+    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -149,7 +149,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => cm,
+            Some(ref mut sm) => sm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
@@ -220,27 +220,8 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match hcx.node_id_hashing_mode {
-            NodeIdHashingMode::Ignore => {
-                // Don't do anything.
-            }
-            NodeIdHashingMode::HashDefPath => {
-                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 

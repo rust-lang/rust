@@ -17,7 +17,7 @@ rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_session = { path = "../librustc_session" }

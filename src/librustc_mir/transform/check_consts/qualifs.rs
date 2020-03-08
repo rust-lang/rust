@@ -94,32 +94,23 @@ pub trait Qualif {
             }
 
             Operand::Constant(ref constant) => {
-                if constant.check_static_ptr(cx.tcx).is_some() {
-                    // `mir_const_qualif` does return the qualifs in the final value of a `static`,
-                    // so we could use value-based qualification here, but we shouldn't do this
-                    // without a good reason.
-                    //
-                    // Note: this uses `constant.literal.ty` which is a reference or pointer to the
-                    // type of the actual `static` item.
-                    Self::in_any_value_of_ty(cx, constant.literal.ty)
-                } else if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val
-                {
+                // Check the qualifs of the value of `const` items.
+                if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val {
                     assert!(promoted.is_none());
                     // Don't peek inside trait associated constants.
-                    if cx.tcx.trait_of_item(def_id).is_some() {
-                        Self::in_any_value_of_ty(cx, constant.literal.ty)
-                    } else {
+                    if cx.tcx.trait_of_item(def_id).is_none() {
                         let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def_id);
-                        let qualif = Self::in_qualifs(&qualifs);
+                        if !Self::in_qualifs(&qualifs) {
+                            return false;
+                        }
 
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
                         // with type parameters, take it into account.
-                        qualif && Self::in_any_value_of_ty(cx, constant.literal.ty)
                     }
-                } else {
-                    false
                 }
+                // Otherwise use the qualifs of the type.
+                Self::in_any_value_of_ty(cx, constant.literal.ty)
             }
         }
     }

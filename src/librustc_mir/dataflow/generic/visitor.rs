@@ -22,20 +22,20 @@ pub fn visit_results<F>(
             let loc = Location { block, statement_index };
 
             results.reconstruct_before_statement_effect(&mut state, stmt, loc);
-            vis.visit_statement(&mut state, stmt, loc);
+            vis.visit_statement(&state, stmt, loc);
 
             results.reconstruct_statement_effect(&mut state, stmt, loc);
-            vis.visit_statement_exit(&mut state, stmt, loc);
+            vis.visit_statement_exit(&state, stmt, loc);
         }
 
         let loc = body.terminator_loc(block);
         let term = block_data.terminator();
 
         results.reconstruct_before_terminator_effect(&mut state, term, loc);
-        vis.visit_terminator(&mut state, term, loc);
+        vis.visit_terminator(&state, term, loc);
 
         results.reconstruct_terminator_effect(&mut state, term, loc);
-        vis.visit_terminator_exit(&mut state, term, loc);
+        vis.visit_terminator_exit(&state, term, loc);
     }
 }
 

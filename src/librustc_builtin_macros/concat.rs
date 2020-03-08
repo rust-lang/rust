@@ -1,7 +1,7 @@
+use rustc_ast::ast;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{self, DummyResult};
 use rustc_span::symbol::Symbol;
-use syntax::ast;
-use syntax::tokenstream::TokenStream;
 
 use std::string::String;
 
@@ -49,7 +49,7 @@ pub fn expand_concat(
             }
         }
     }
-    if missing_literal.len() > 0 {
+    if !missing_literal.is_empty() {
         let mut err = cx.struct_span_err(missing_literal, "expected a literal");
         err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
         err.emit();

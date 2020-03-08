@@ -1,6 +1,5 @@
 //! The entry point of the NLL borrow checker.
 
-use rustc::infer::InferCtxt;
 use rustc::mir::{
     BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
     Location, Promoted, ReadOnlyBodyAndCache,
@@ -10,6 +9,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -86,14 +86,17 @@ fn populate_polonius_move_facts(
     body: &Body<'_>,
 ) {
     all_facts
-        .path_belongs_to_var
+        .path_is_var
         .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
-        all_facts
-            .child
-            .extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (child, parent)));
+        if let Some(parent) = move_path.parent {
+            all_facts.child_path.push((child, parent));
+        }
     }
+
+    let fn_entry_start = location_table
+        .start_index(Location { block: BasicBlock::from_u32(0u32), statement_index: 0 });
 
     // initialized_at
     for init in move_data.inits.iter() {
@@ -115,28 +118,37 @@ fn populate_polonius_move_facts(
                         // the successors, but not in the unwind block.
                         let first_statement = Location { block: successor, statement_index: 0 };
                         all_facts
-                            .initialized_at
+                            .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));
                     }
                 } else {
                     // In all other cases, the initialization just happens at the
                     // midpoint, like any other effect.
-                    all_facts.initialized_at.push((init.path, location_table.mid_index(location)));
+                    all_facts
+                        .path_assigned_at_base
+                        .push((init.path, location_table.mid_index(location)));
                 }
             }
             // Arguments are initialized on function entry
             InitLocation::Argument(local) => {
                 assert!(body.local_kind(local) == LocalKind::Arg);
-                let fn_entry = Location { block: BasicBlock::from_u32(0u32), statement_index: 0 };
-                all_facts.initialized_at.push((init.path, location_table.start_index(fn_entry)));
+                all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
             }
+        }
+    }
+
+    for (local, &path) in move_data.rev_lookup.iter_locals_enumerated() {
+        if body.local_kind(local) != LocalKind::Arg {
+            // Non-arguments start out deinitialised; we simulate this with an
+            // initial move:
+            all_facts.path_moved_at_base.push((path, fn_entry_start));
         }
     }
 
     // moved_out_at
     // deinitialisation is assumed to always happen!
     all_facts
-        .moved_out_at
+        .path_moved_at_base
         .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 

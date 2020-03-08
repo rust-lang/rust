@@ -2,13 +2,13 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::attr;
 
 use std::iter;
 
@@ -184,83 +184,88 @@ pub fn expand_test_or_bench(
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
+            ast::Defaultness::Final,
             cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
             // test::TestDescAndFn {
-            cx.expr_struct(
-                sp,
-                test_path("TestDescAndFn"),
-                vec![
-                    // desc: test::TestDesc {
-                    field(
-                        "desc",
-                        cx.expr_struct(
-                            sp,
-                            test_path("TestDesc"),
-                            vec![
-                                // name: "path::to::test"
-                                field(
-                                    "name",
-                                    cx.expr_call(
-                                        sp,
-                                        cx.expr_path(test_path("StaticTestName")),
-                                        vec![cx.expr_str(
+            Some(
+                cx.expr_struct(
+                    sp,
+                    test_path("TestDescAndFn"),
+                    vec![
+                        // desc: test::TestDesc {
+                        field(
+                            "desc",
+                            cx.expr_struct(
+                                sp,
+                                test_path("TestDesc"),
+                                vec![
+                                    // name: "path::to::test"
+                                    field(
+                                        "name",
+                                        cx.expr_call(
                                             sp,
-                                            Symbol::intern(&item_path(
-                                                // skip the name of the root module
-                                                &cx.current_expansion.module.mod_path[1..],
-                                                &item.ident,
-                                            )),
-                                        )],
-                                    ),
-                                ),
-                                // ignore: true | false
-                                field("ignore", cx.expr_bool(sp, should_ignore(&item))),
-                                // allow_fail: true | false
-                                field("allow_fail", cx.expr_bool(sp, should_fail(&item))),
-                                // should_panic: ...
-                                field(
-                                    "should_panic",
-                                    match should_panic(cx, &item) {
-                                        // test::ShouldPanic::No
-                                        ShouldPanic::No => cx.expr_path(should_panic_path("No")),
-                                        // test::ShouldPanic::Yes
-                                        ShouldPanic::Yes(None) => {
-                                            cx.expr_path(should_panic_path("Yes"))
-                                        }
-                                        // test::ShouldPanic::YesWithMessage("...")
-                                        ShouldPanic::Yes(Some(sym)) => cx.expr_call(
-                                            sp,
-                                            cx.expr_path(should_panic_path("YesWithMessage")),
-                                            vec![cx.expr_str(sp, sym)],
+                                            cx.expr_path(test_path("StaticTestName")),
+                                            vec![cx.expr_str(
+                                                sp,
+                                                Symbol::intern(&item_path(
+                                                    // skip the name of the root module
+                                                    &cx.current_expansion.module.mod_path[1..],
+                                                    &item.ident,
+                                                )),
+                                            )],
                                         ),
-                                    },
-                                ),
-                                // test_type: ...
-                                field(
-                                    "test_type",
-                                    match test_type(cx) {
-                                        // test::TestType::UnitTest
-                                        TestType::UnitTest => {
-                                            cx.expr_path(test_type_path("UnitTest"))
-                                        }
-                                        // test::TestType::IntegrationTest
-                                        TestType::IntegrationTest => {
-                                            cx.expr_path(test_type_path("IntegrationTest"))
-                                        }
-                                        // test::TestPath::Unknown
-                                        TestType::Unknown => {
-                                            cx.expr_path(test_type_path("Unknown"))
-                                        }
-                                    },
-                                ),
-                                // },
-                            ],
+                                    ),
+                                    // ignore: true | false
+                                    field("ignore", cx.expr_bool(sp, should_ignore(&item))),
+                                    // allow_fail: true | false
+                                    field("allow_fail", cx.expr_bool(sp, should_fail(&item))),
+                                    // should_panic: ...
+                                    field(
+                                        "should_panic",
+                                        match should_panic(cx, &item) {
+                                            // test::ShouldPanic::No
+                                            ShouldPanic::No => {
+                                                cx.expr_path(should_panic_path("No"))
+                                            }
+                                            // test::ShouldPanic::Yes
+                                            ShouldPanic::Yes(None) => {
+                                                cx.expr_path(should_panic_path("Yes"))
+                                            }
+                                            // test::ShouldPanic::YesWithMessage("...")
+                                            ShouldPanic::Yes(Some(sym)) => cx.expr_call(
+                                                sp,
+                                                cx.expr_path(should_panic_path("YesWithMessage")),
+                                                vec![cx.expr_str(sp, sym)],
+                                            ),
+                                        },
+                                    ),
+                                    // test_type: ...
+                                    field(
+                                        "test_type",
+                                        match test_type(cx) {
+                                            // test::TestType::UnitTest
+                                            TestType::UnitTest => {
+                                                cx.expr_path(test_type_path("UnitTest"))
+                                            }
+                                            // test::TestType::IntegrationTest
+                                            TestType::IntegrationTest => {
+                                                cx.expr_path(test_type_path("IntegrationTest"))
+                                            }
+                                            // test::TestPath::Unknown
+                                            TestType::Unknown => {
+                                                cx.expr_path(test_type_path("Unknown"))
+                                            }
+                                        },
+                                    ),
+                                    // },
+                                ],
+                            ),
                         ),
-                    ),
-                    // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
-                    field("testfn", test_fn), // }
-                ],
-            ), // }
+                        // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
+                        field("testfn", test_fn), // }
+                    ],
+                ), // }
+            ),
         ),
     );
     test_const = test_const.map(|mut tc| {
@@ -308,7 +313,7 @@ fn should_fail(i: &ast::Item) -> bool {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let ref sd = cx.parse_sess.span_diagnostic;
+            let sd = &cx.parse_sess.span_diagnostic;
 
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
@@ -373,8 +378,8 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let ref sd = cx.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(ref sig, ref generics, _) = i.kind {
+    let sd = &cx.parse_sess.span_diagnostic;
+    if let ast::ItemKind::Fn(_, ref sig, ref generics, _) = i.kind {
         if let ast::Unsafe::Yes(span) = sig.header.unsafety {
             sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
                 .span_label(span, "`unsafe` because of this")
@@ -391,8 +396,8 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
         // If the termination trait is active, the compiler will check that the output
         // type implements the `Termination` trait as `libtest` enforces that.
         let has_output = match sig.decl.output {
-            ast::FunctionRetTy::Default(..) => false,
-            ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
+            ast::FnRetTy::Default(..) => false,
+            ast::FnRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true,
         };
 
@@ -423,7 +428,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(ref sig, _, _) = i.kind {
+    let has_sig = if let ast::ItemKind::Fn(_, ref sig, _, _) = i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
         sig.decl.inputs.len() == 1

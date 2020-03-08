@@ -18,6 +18,6 @@ rustc_index = { path = "../librustc_index" }
 rustc_span = { path = "../librustc_span" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 lazy_static = "1"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

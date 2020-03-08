@@ -7,7 +7,7 @@ use std::fmt;
 
 use crate::ty::{
     layout::{HasDataLayout, Size},
-    Ty,
+    ParamEnv, Ty, TyCtxt,
 };
 
 use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
@@ -65,6 +65,32 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::ByRef { .. } | ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
+    }
+
+    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
+        self.try_to_scalar()?.to_bits(size).ok()
+    }
+
+    pub fn try_to_bits_for_ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        self.try_to_bits(size)
+    }
+
+    pub fn from_bool(b: bool) -> Self {
+        ConstValue::Scalar(Scalar::from_bool(b))
+    }
+
+    pub fn from_u64(i: u64) -> Self {
+        ConstValue::Scalar(Scalar::from_u64(i))
+    }
+
+    pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
+        ConstValue::Scalar(Scalar::from_machine_usize(i, cx))
     }
 }
 
@@ -144,6 +170,10 @@ impl<Tag> From<Double> for Scalar<Tag> {
 }
 
 impl Scalar<()> {
+    /// Make sure the `data` fits in `size`.
+    /// This is guaranteed by all constructors here, but since the enum variants are public,
+    /// it could still be violated (even though no code outside this file should
+    /// construct `Scalar`s).
     #[inline(always)]
     fn check_data(data: u128, size: u8) {
         debug_assert_eq!(
@@ -288,6 +318,11 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
+        Self::from_uint(i, cx.data_layout().pointer_size)
+    }
+
+    #[inline]
     pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
@@ -304,6 +339,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         Self::try_from_int(i, size)
             .unwrap_or_else(|| bug!("Signed value {:#x} does not fit in {} bits", i, size.bits()))
+    }
+
+    #[inline]
+    pub fn from_machine_isize(i: i64, cx: &impl HasDataLayout) -> Self {
+        Self::from_int(i, cx.data_layout().pointer_size)
     }
 
     #[inline]
@@ -328,10 +368,10 @@ impl<'tcx, Tag> Scalar<Tag> {
         target_size: Size,
         cx: &impl HasDataLayout,
     ) -> Result<u128, Pointer<Tag>> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -342,19 +382,15 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    #[inline(always)]
-    pub fn check_raw(data: u128, size: u8, target_size: Size) {
-        assert_eq!(target_size.bytes(), size as u64);
-        assert_ne!(size, 0, "you should never look at the bits of a ZST");
-        Scalar::check_data(data, size);
-    }
-
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
+    /// This method is intentionally private!
+    /// It is just a helper for other methods in this file.
     #[inline]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+    fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                Self::check_raw(data, size, target_size);
+                assert_eq!(target_size.bytes(), size as u64);
+                Scalar::check_data(data, size);
                 Ok(data)
             }
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
@@ -366,20 +402,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
     }
 
-    /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
-    /// This method is intentionally private, do not make it public.
     #[inline]
-    fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
-        match self {
-            Scalar::Raw { data: 0, .. } => throw_unsup!(InvalidNullPointerUsage),
-            Scalar::Raw { .. } => throw_unsup!(ReadBytesAsPointer),
-            Scalar::Ptr(p) => Ok(p),
-        }
-    }
-
-    #[inline(always)]
     pub fn assert_ptr(self) -> Pointer<Tag> {
-        self.to_ptr().expect("expected a Pointer but got Raw bits")
+        match self {
+            Scalar::Ptr(p) => p,
+            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits"),
+        }
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
@@ -557,12 +585,6 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
         }
-    }
-
-    /// Do not call this method!  Use either `assert_bits` or `force_bits`.
-    #[inline(always)]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
-        self.not_undef()?.to_bits(target_size)
     }
 
     #[inline(always)]

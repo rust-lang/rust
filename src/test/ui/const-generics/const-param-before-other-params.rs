@@ -1,3 +1,4 @@
+#![allow(incomplete_features)]
 #![feature(const_generics)]
 
 fn bar<const X: (), 'a>(_: &'a ()) {

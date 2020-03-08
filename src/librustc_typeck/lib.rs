@@ -83,17 +83,14 @@ mod collect;
 mod constrained_generic_params;
 mod impl_wf_check;
 mod mem_categorization;
-mod namespace;
 mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
 use rustc::session;
 use rustc::session::config::EntryFnType;
-use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -103,6 +100,8 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 

@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -417,7 +418,7 @@ struct GuardFrameLocal {
 
 impl GuardFrameLocal {
     fn new(id: hir::HirId, _binding_mode: BindingMode) -> Self {
-        GuardFrameLocal { id: id }
+        GuardFrameLocal { id }
     }
 }
 
@@ -881,7 +882,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: tcx_hir.span(var_id),
                         },
                         place: Place {
-                            local: closure_env_arg.into(),
+                            local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
                         },
                     });
@@ -926,7 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
                         } else {
-                            let binding_mode = ty::BindingMode::BindByValue(mutability.into());
+                            let binding_mode = ty::BindingMode::BindByValue(mutability);
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,

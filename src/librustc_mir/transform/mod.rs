@@ -4,13 +4,13 @@ use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::ast;
 
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
@@ -122,7 +122,7 @@ impl<'tcx> MirSource<'tcx> {
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
     let name = ::std::any::type_name::<T>();
-    if let Some(tail) = name.rfind(":") { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
+    if let Some(tail) = name.rfind(':') { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -209,7 +209,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 
     // We return the qualifs in the return place for every MIR body, even though it is only used
     // when deciding to promote a reference to a `const` for now.
-    validator.qualifs_in_return_place().into()
+    validator.qualifs_in_return_place()
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {

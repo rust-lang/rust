@@ -552,6 +552,9 @@ declare_features! (
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
 
+    // Allows limiting the evaluation steps of const expressions
+    (active, const_eval_limit, "1.43.0", Some(67217), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

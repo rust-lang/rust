@@ -7,12 +7,12 @@ use rustc::ty::layout::TyLayout;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
 use rustc_span::symbol::sym;
-use syntax::ast::Attribute;
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {

@@ -23,7 +23,7 @@ mechanics of defining and loading a plugin.
 
 In the vast majority of cases, a plugin should *only* be used through
 `#![plugin]` and not through an `extern crate` item.  Linking a plugin would
-pull in all of libsyntax and librustc as dependencies of your crate.  This is
+pull in all of librustc_ast and librustc as dependencies of your crate.  This is
 generally unwanted unless you are building another plugin.
 
 The usual practice is to put compiler plugins in their own crate, separate from
@@ -42,7 +42,7 @@ that warns about any item named `lintme`.
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate syntax;
+extern crate rustc_ast;
 
 // Load rustc as a plugin to get macros
 #[macro_use]
@@ -52,7 +52,7 @@ extern crate rustc_driver;
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
                   EarlyLintPassObject, LintArray};
 use rustc_driver::plugin::Registry;
-use syntax::ast;
+use rustc_ast::ast;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 

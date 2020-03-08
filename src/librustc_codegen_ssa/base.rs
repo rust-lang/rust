@@ -437,10 +437,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // listing.
         let main_ret_ty = cx.tcx().erase_regions(&main_ret_ty.no_bound_vars().unwrap());
 
-        if cx.get_defined_value("main").is_some() {
+        if cx.get_declared_value("main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess()
-                .struct_span_err(sp, "entry symbol `main` defined multiple times")
+                .struct_span_err(sp, "entry symbol `main` declared multiple times")
                 .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
                 .emit();
             cx.sess().abort_if_errors();

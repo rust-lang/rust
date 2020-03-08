@@ -1,11 +1,11 @@
-use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
-use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
-use rustc::traits::query::type_op::outlives::DropckOutlives;
-use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc_infer::traits::query::type_op::outlives::DropckOutlives;
+use rustc_infer::traits::query::type_op::TypeOp;
 use std::rc::Rc;
 
 use crate::dataflow::generic::ResultsCursor;
@@ -484,7 +484,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(self.elements, &mut self.typeck, kind, live_at);
 
-            polonius::add_var_drops_regions(&mut self.typeck, dropped_local, &kind);
+            polonius::add_drop_of_var_derefs_origin(&mut self.typeck, dropped_local, &kind);
         }
     }
 

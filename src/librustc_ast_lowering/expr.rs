@@ -1,15 +1,15 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc::bug;
+use rustc_ast::ast::*;
+use rustc_ast::attr;
+use rustc_ast::ptr::P as AstP;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast::*;
-use syntax::attr;
-use syntax::ptr::P as AstP;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -480,8 +480,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
-            Some(ty) => FunctionRetTy::Ty(ty),
-            None => FunctionRetTy::Default(span),
+            Some(ty) => FnRetTy::Ty(ty),
+            None => FnRetTy::Default(span),
         };
         let ast_decl = FnDecl { inputs: vec![], output };
         let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
@@ -721,7 +721,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
         let outer_decl =
-            FnDecl { inputs: decl.inputs.clone(), output: FunctionRetTy::Default(fn_decl_span) };
+            FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
@@ -747,7 +747,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `|x: u8| future_from_generator(|| -> X { ... })`.
             let body_id = this.lower_fn_body(&outer_decl, |this| {
                 let async_ret_ty =
-                    if let FunctionRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
+                    if let FnRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
                 let async_body = this.make_async_expr(
                     capture_clause,
                     closure_id,
@@ -783,7 +783,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         e2: Option<&Expr>,
         lims: RangeLimits,
     ) -> hir::ExprKind<'hir> {
-        use syntax::ast::RangeLimits::*;
+        use rustc_ast::ast::RangeLimits::*;
 
         let path = match (e1, e2, lims) {
             (None, None, HalfOpen) => sym::RangeFull,
@@ -831,8 +831,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .last()
                 .cloned()
                 .map(|id| Ok(self.lower_node_id(id)))
-                .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                .into(),
+                .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)),
         };
         hir::Destination { label: destination.map(|(_, label)| label), target_id }
     }
@@ -841,7 +840,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if self.is_in_loop_condition && opt_label.is_none() {
             hir::Destination {
                 label: None,
-                target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition),
             }
         } else {
             self.lower_loop_destination(opt_label.map(|label| (id, label)))
@@ -912,7 +911,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .collect(),
             asm: asm.asm,
             asm_str_style: asm.asm_str_style,
-            clobbers: asm.clobbers.clone().into(),
+            clobbers: asm.clobbers.clone(),
             volatile: asm.volatile,
             alignstack: asm.alignstack,
             dialect: asm.dialect,
@@ -1180,7 +1179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let from_err_expr =
                 self.wrap_in_try_constructor(sym::from_error, unstable_span, from_expr, try_span);
             let thin_attrs = ThinVec::from(attrs);
-            let catch_scope = self.catch_scopes.last().map(|x| *x);
+            let catch_scope = self.catch_scopes.last().copied();
             let ret_expr = if let Some(catch_node) = catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
                 self.arena.alloc(self.expr(

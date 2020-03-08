@@ -2,7 +2,7 @@ error[E0310]: the parameter type `U` may not live long enough
   --> $DIR/feature-gate-infer_static_outlives_requirements.rs:5:5
    |
 LL | struct Foo<U> {
-   |            - help: consider adding an explicit lifetime bound `U: 'static`...
+   |            - help: consider adding an explicit lifetime bound...: `U: 'static`
 LL |     bar: Bar<U>
    |     ^^^^^^^^^^^
    |

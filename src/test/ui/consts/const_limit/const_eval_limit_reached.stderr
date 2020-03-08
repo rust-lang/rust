@@ -1,0 +1,16 @@
+warning: Constant evaluating a complex constant, this might take some time
+  --> $DIR/const_eval_limit_reached.rs:17:1
+   |
+LL | / const fn limit() -> usize {
+LL | |     let x = 42;
+LL | |
+LL | |     x * 42
+LL | | }
+   | |_^
+
+warning: Constant evaluating a complex constant, this might take some time
+  --> $DIR/const_eval_limit_reached.rs:10:1
+   |
+LL | const CONSTANT: usize = limit();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

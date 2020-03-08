@@ -16,6 +16,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{GenericArg, SubstsRef};
 use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
+use rustc_ast::ast;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -23,7 +24,6 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -769,7 +769,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     Some(span),
                 ) {
                     Ok(value) => {
-                        let pattern = self.const_to_pat(value, id, span);
+                        let const_ =
+                            ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
+
+                        let pattern = self.const_to_pat(&const_, id, span);
                         if !is_associated_const {
                             return pattern;
                         }
@@ -789,7 +792,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                         user_ty_span: span,
                                     },
                                 }),
-                                ty: value.ty,
+                                ty: const_.ty,
                             }
                         } else {
                             pattern
@@ -843,6 +846,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     PatKind::Wild
                 }
                 Err(LitToConstError::Reported) => PatKind::Wild,
+                Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
             }
         }
     }

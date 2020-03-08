@@ -8,15 +8,15 @@
 //! LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 //! therefore apply.
 
+use rustc_ast::ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::DiagnosticBuilder;
 use rustc_expand::base::{self, *};
 use rustc_span::source_map::respan;
 use rustc_span::Span;
 use smallvec::smallvec;
-use syntax::ast;
-use syntax::ptr::P;
-use syntax::token;
-use syntax::tokenstream::TokenStream;
 
 pub fn expand_global_asm<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

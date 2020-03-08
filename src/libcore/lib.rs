@@ -73,11 +73,14 @@
 #![feature(const_ascii_ctype_on_intrinsics)]
 #![feature(const_alloc_layout)]
 #![feature(const_if_match)]
+#![feature(const_loop)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]
 #![feature(const_saturating_int_methods)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_int_pow)]
+#![feature(constctlz)]
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
@@ -138,7 +141,6 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![feature(assoc_int_consts)]
 #![cfg_attr(not(bootstrap), feature(no_niche))] // rust-lang/rust#68303
 
 #[prelude_import]
@@ -155,10 +157,6 @@ mod internal_macros;
 #[path = "num/int_macros.rs"]
 #[macro_use]
 mod int_macros;
-
-#[path = "num/uint_macros.rs"]
-#[macro_use]
-mod uint_macros;
 
 #[path = "num/i128.rs"]
 pub mod i128;
@@ -263,6 +261,9 @@ pub mod alloc;
 mod bool;
 mod tuple;
 mod unit;
+
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub mod primitive;
 
 // Pull in the `core_arch` crate directly into libcore. The contents of
 // `core_arch` are in a different repository: rust-lang/stdarch.

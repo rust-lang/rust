@@ -1,0 +1,31 @@
+error: any use of this value will cause an error
+  --> $DIR/defaults-not-assumed-fail.rs:8:19
+   |
+LL |     const B: u8 = Self::A + 1;
+   |     --------------^^^^^^^^^^^-
+   |                   |
+   |                   attempt to add with overflow
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error[E0080]: evaluation of constant expression failed
+  --> $DIR/defaults-not-assumed-fail.rs:33:5
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |     ^^^^^^^^^^^-------------^^^^^
+   |                |
+   |                referenced constant has errors
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: erroneous constant used
+  --> $DIR/defaults-not-assumed-fail.rs:33:5
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -13,10 +13,11 @@ use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType
 use rustc::session::config::{PpMode, PpSourceMode};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc::traits;
 use rustc::ty::steal::Steal;
 use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
@@ -26,6 +27,7 @@ use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Crate;
+use rustc_infer::traits;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -36,8 +38,6 @@ use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_typeck as typeck;
-use syntax::mut_visit::MutVisitor;
-use syntax::{self, ast, visit};
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
@@ -189,7 +189,7 @@ pub fn register_plugins<'a>(
     }
 
     sess.time("recursion_limit", || {
-        middle::recursion_limit::update_limits(sess, &krate);
+        middle::limits::update_limits(sess, &krate);
     });
 
     let mut lint_store = rustc_lint::new_lint_store(
@@ -696,8 +696,8 @@ impl<'tcx> QueryContext<'tcx> {
         ty::tls::enter_global(self.0, |tcx| f(tcx))
     }
 
-    pub fn print_stats(&self) {
-        self.0.queries.print_stats()
+    pub fn print_stats(&mut self) {
+        self.enter(|tcx| ty::query::print_stats(tcx))
     }
 }
 

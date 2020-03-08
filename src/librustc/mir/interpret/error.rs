@@ -2,6 +2,7 @@ use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
+use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, Ty};
@@ -40,7 +41,7 @@ CloneTypeFoldableImpls! {
 }
 
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
-pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
+pub type ConstEvalResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
 #[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
@@ -170,7 +171,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             // Skip the last, which is just the environment of the constant.  The stacktrace
             // is sometimes empty because we create "fake" eval contexts in CTFE to do work
             // on constant values.
-            if self.stacktrace.len() > 0 {
+            if !self.stacktrace.is_empty() {
                 for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
                     err.span_label(frame_info.call_site, frame_info.to_string());
                 }

@@ -22,6 +22,11 @@ use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
+#[stable(feature = "drain", since = "1.6.0")]
+pub use self::drain::Drain;
+
+mod drain;
+
 #[cfg(test)]
 mod tests;
 
@@ -866,6 +871,18 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
+        /// Runs the destructor for all items in the slice when it gets dropped (normally or
+        /// during unwinding).
+        struct Dropper<'a, T>(&'a mut [T]);
+
+        impl<'a, T> Drop for Dropper<'a, T> {
+            fn drop(&mut self) {
+                unsafe {
+                    ptr::drop_in_place(self.0);
+                }
+            }
+        }
+
         // Safe because:
         //
         // * Any slice passed to `drop_in_place` is valid; the second case has
@@ -888,8 +905,11 @@ impl<T> VecDeque<T> {
                 let drop_back = back as *mut _;
                 let drop_front = front.get_unchecked_mut(len..) as *mut _;
                 self.head = self.wrap_sub(self.head, num_dropped);
+
+                // Make sure the second half is dropped even when a destructor
+                // in the first one panics.
+                let _back_dropper = Dropper(&mut *drop_back);
                 ptr::drop_in_place(drop_front);
-                ptr::drop_in_place(drop_back);
             }
         }
     }
@@ -2525,113 +2545,6 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
-
-/// A draining iterator over the elements of a `VecDeque`.
-///
-/// This `struct` is created by the [`drain`] method on [`VecDeque`]. See its
-/// documentation for more.
-///
-/// [`drain`]: struct.VecDeque.html#method.drain
-/// [`VecDeque`]: struct.VecDeque.html
-#[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a, T: 'a> {
-    after_tail: usize,
-    after_head: usize,
-    iter: Iter<'a, T>,
-    deque: NonNull<VecDeque<T>>,
-}
-
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Drain")
-            .field(&self.after_tail)
-            .field(&self.after_head)
-            .field(&self.iter)
-            .finish()
-    }
-}
-
-#[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync> Sync for Drain<'_, T> {}
-#[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send> Send for Drain<'_, T> {}
-
-#[stable(feature = "drain", since = "1.6.0")]
-impl<T> Drop for Drain<'_, T> {
-    fn drop(&mut self) {
-        self.for_each(drop);
-
-        let source_deque = unsafe { self.deque.as_mut() };
-
-        // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
-        //
-        //        T   t   h   H
-        // [. . . o o x x o o . . .]
-        //
-        let orig_tail = source_deque.tail;
-        let drain_tail = source_deque.head;
-        let drain_head = self.after_tail;
-        let orig_head = self.after_head;
-
-        let tail_len = count(orig_tail, drain_tail, source_deque.cap());
-        let head_len = count(drain_head, orig_head, source_deque.cap());
-
-        // Restore the original head value
-        source_deque.head = orig_head;
-
-        match (tail_len, head_len) {
-            (0, 0) => {
-                source_deque.head = 0;
-                source_deque.tail = 0;
-            }
-            (0, _) => {
-                source_deque.tail = drain_head;
-            }
-            (_, 0) => {
-                source_deque.head = drain_tail;
-            }
-            _ => unsafe {
-                if tail_len <= head_len {
-                    source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
-                    source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
-                } else {
-                    source_deque.head = source_deque.wrap_add(drain_tail, head_len);
-                    source_deque.wrap_copy(drain_tail, drain_head, head_len);
-                }
-            },
-        }
-    }
-}
-
-#[stable(feature = "drain", since = "1.6.0")]
-impl<T> Iterator for Drain<'_, T> {
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|elt| unsafe { ptr::read(elt) })
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-#[stable(feature = "drain", since = "1.6.0")]
-impl<T> DoubleEndedIterator for Drain<'_, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|elt| unsafe { ptr::read(elt) })
-    }
-}
-
-#[stable(feature = "drain", since = "1.6.0")]
-impl<T> ExactSizeIterator for Drain<'_, T> {}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for Drain<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for VecDeque<A> {

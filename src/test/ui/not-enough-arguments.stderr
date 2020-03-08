@@ -1,11 +1,13 @@
-error[E0061]: this function takes 4 parameters but 3 parameters were supplied
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
   --> $DIR/not-enough-arguments.rs:10:3
    |
 LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
    | --------------------------------------------- defined here
 ...
 LL |   foo(1, 2, 3);
-   |   ^^^^^^^^^^^^ expected 4 parameters
+   |   ^^^ -  -  - supplied 3 arguments
+   |   |
+   |   expected 4 arguments
 
 error: aborting due to previous error
 

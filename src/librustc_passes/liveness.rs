@@ -100,6 +100,7 @@ use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -109,7 +110,6 @@ use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use std::collections::VecDeque;
 use std::io;
@@ -144,11 +144,11 @@ enum LiveNodeKind {
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
-    let cm = tcx.sess.source_map();
+    let sm = tcx.sess.source_map();
     match lnk {
-        UpvarNode(s) => format!("Upvar node [{}]", cm.span_to_string(s)),
-        ExprNode(s) => format!("Expr node [{}]", cm.span_to_string(s)),
-        VarDefNode(s) => format!("Var def node [{}]", cm.span_to_string(s)),
+        UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_string(s)),
+        ExprNode(s) => format!("Expr node [{}]", sm.span_to_string(s)),
+        VarDefNode(s) => format!("Var def node [{}]", sm.span_to_string(s)),
         ExitNode => "Exit node".to_owned(),
     }
 }
@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
+                let m = self.ir.tcx.parent_module(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1136,7 +1136,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::MethodCall(.., ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
+                let m = self.ir.tcx.parent_module(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {

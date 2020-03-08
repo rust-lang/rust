@@ -560,8 +560,6 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
    |
 LL |     if -let 0 = 0 {}
    |        ^^^^^^^^^^ cannot apply unary operator `-`
-   |
-   = note: an implementation of `std::ops::Neg` might be missing for `bool`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/disallowed-positions.rs:46:8
@@ -748,8 +746,6 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
    |
 LL |     while -let 0 = 0 {}
    |           ^^^^^^^^^^ cannot apply unary operator `-`
-   |
-   = note: an implementation of `std::ops::Neg` might be missing for `bool`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/disallowed-positions.rs:110:11
@@ -927,8 +923,6 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
    |
 LL |     -let 0 = 0;
    |     ^^^^^^^^^^ cannot apply unary operator `-`
-   |
-   = note: an implementation of `std::ops::Neg` might be missing for `bool`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/disallowed-positions.rs:183:5

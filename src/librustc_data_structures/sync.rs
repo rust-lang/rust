@@ -203,11 +203,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub fn par_for_each_in<T: IntoIterator>(
-            t: T,
-            for_each:
-                impl Fn(<<T as IntoIterator>::IntoIter as Iterator>::Item) + Sync + Send
-        ) {
+        pub fn par_for_each_in<T: IntoIterator>(t: T, for_each: impl Fn(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
             let mut panic = None;
@@ -397,9 +393,7 @@ cfg_if! {
 
         pub fn par_for_each_in<T: IntoParallelIterator>(
             t: T,
-            for_each: impl Fn(
-                <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
-            ) + Sync + Send
+            for_each: impl Fn(T::Item) + Sync + Send,
         ) {
             t.into_par_iter().for_each(for_each)
         }

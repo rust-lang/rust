@@ -12,6 +12,11 @@ use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResul
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc::{bug, lint, span_bug};
+use rustc_ast::ast::*;
+use rustc_ast::ptr::P;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::{unwrap_or, walk_list};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
@@ -21,17 +26,13 @@ use rustc_hir::TraitCandidate;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use syntax::ast::*;
-use syntax::ptr::P;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use syntax::{unwrap_or, walk_list};
 
 use log::debug;
 use std::collections::BTreeSet;
 use std::mem::replace;
 
 mod diagnostics;
+crate mod lifetimes;
 
 type Res = def::Res<NodeId>;
 
@@ -437,7 +438,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(_, ref generics, _) => {
+            ForeignItemKind::Fn(_, _, ref generics, _)
+            | ForeignItemKind::TyAlias(_, ref generics, ..) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -447,15 +449,16 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {
+            ForeignItemKind::Macro(..) => {
                 visit::walk_foreign_item(self, foreign_item);
             }
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, _: NodeId) {
         let rib_kind = match fn_kind {
-            FnKind::Fn(FnCtxt::Foreign, ..) => return visit::walk_fn(self, fn_kind, sp),
-            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
+            // Bail if there's no body.
+            FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
+            FnKind::Fn(FnCtxt::Free, ..) | FnKind::Fn(FnCtxt::Foreign, ..) => FnItemRibKind,
             FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
         };
         let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
@@ -796,7 +799,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
         match item.kind {
-            ItemKind::TyAlias(_, ref generics) | ItemKind::Fn(_, ref generics, _) => {
+            ItemKind::TyAlias(_, ref generics, _, _) | ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
                 });
@@ -826,41 +829,33 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
 
-                        for trait_item in trait_items {
-                            this.with_trait_items(trait_items, |this| {
-                                this.with_generic_param_rib(
-                                    &trait_item.generics,
-                                    AssocItemRibKind,
-                                    |this| {
-                                        match trait_item.kind {
-                                            AssocItemKind::Const(ref ty, ref default) => {
-                                                this.visit_ty(ty);
+                        let walk_assoc_item = |this: &mut Self, generics, item| {
+                            this.with_generic_param_rib(generics, AssocItemRibKind, |this| {
+                                visit::walk_assoc_item(this, item, AssocCtxt::Trait)
+                            });
+                        };
 
-                                                // Only impose the restrictions of
-                                                // ConstRibKind for an actual constant
-                                                // expression in a provided default.
-                                                if let Some(ref expr) = *default {
-                                                    this.with_constant_rib(|this| {
-                                                        this.visit_expr(expr);
-                                                    });
-                                                }
-                                            }
-                                            AssocItemKind::Fn(_, _) => visit::walk_assoc_item(
-                                                this,
-                                                trait_item,
-                                                AssocCtxt::Trait,
-                                            ),
-                                            AssocItemKind::TyAlias(..) => visit::walk_assoc_item(
-                                                this,
-                                                trait_item,
-                                                AssocCtxt::Trait,
-                                            ),
-                                            AssocItemKind::Macro(_) => {
-                                                panic!("unexpanded macro in resolve!")
-                                            }
-                                        };
-                                    },
-                                );
+                        for item in trait_items {
+                            this.with_trait_items(trait_items, |this| {
+                                match &item.kind {
+                                    AssocItemKind::Const(_, ty, default) => {
+                                        this.visit_ty(ty);
+                                        // Only impose the restrictions of `ConstRibKind` for an
+                                        // actual constant expression in a provided default.
+                                        if let Some(expr) = default {
+                                            this.with_constant_rib(|this| this.visit_expr(expr));
+                                        }
+                                    }
+                                    AssocItemKind::Fn(_, _, generics, _) => {
+                                        walk_assoc_item(this, generics, item);
+                                    }
+                                    AssocItemKind::TyAlias(_, generics, _, _) => {
+                                        walk_assoc_item(this, generics, item);
+                                    }
+                                    AssocItemKind::Macro(_) => {
+                                        panic!("unexpanded macro in resolve!")
+                                    }
+                                };
                             });
                         }
                     });
@@ -884,13 +879,13 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(ref ty, ref expr) => {
+            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
                 debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
-                    this.with_constant_rib(|this| {
-                        this.visit_expr(expr);
-                    });
+                    if let Some(expr) = expr {
+                        this.with_constant_rib(|this| this.visit_expr(expr));
+                    }
                 });
             }
 
@@ -1021,7 +1016,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             trait_items
                 .iter()
                 .filter_map(|item| match &item.kind {
-                    AssocItemKind::TyAlias(bounds, _) if bounds.len() == 0 => Some(item.ident),
+                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.is_empty() => {
+                        Some(item.ident)
+                    }
                     _ => None,
                 })
                 .collect(),
@@ -1113,66 +1110,74 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         this.with_current_self_type(self_type, |this| {
                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
-                                for impl_item in impl_items {
-                                    // We also need a new scope for the impl item type parameters.
-                                    this.with_generic_param_rib(&impl_item.generics,
-                                                                AssocItemRibKind,
-                                                                |this| {
-                                        use crate::ResolutionError::*;
-                                        match impl_item.kind {
-                                            AssocItemKind::Const(..) => {
-                                                debug!(
-                                                    "resolve_implementation AssocItemKind::Const",
-                                                );
-                                                // If this is a trait impl, ensure the const
-                                                // exists in trait
-                                                this.check_trait_item(
-                                                    impl_item.ident,
-                                                    ValueNS,
-                                                    impl_item.span,
-                                                    |n, s| ConstNotMemberOfTrait(n, s),
-                                                );
+                                for item in impl_items {
+                                    use crate::ResolutionError::*;
+                                    match &item.kind {
+                                        AssocItemKind::Const(..) => {
+                                            debug!("resolve_implementation AssocItemKind::Const",);
+                                            // If this is a trait impl, ensure the const
+                                            // exists in trait
+                                            this.check_trait_item(
+                                                item.ident,
+                                                ValueNS,
+                                                item.span,
+                                                |n, s| ConstNotMemberOfTrait(n, s),
+                                            );
 
-                                                this.with_constant_rib(|this| {
+                                            this.with_constant_rib(|this| {
+                                                visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                                            });
+                                        }
+                                        AssocItemKind::Fn(_, _, generics, _) => {
+                                            // We also need a new scope for the impl item type parameters.
+                                            this.with_generic_param_rib(
+                                                generics,
+                                                AssocItemRibKind,
+                                                |this| {
+                                                    // If this is a trait impl, ensure the method
+                                                    // exists in trait
+                                                    this.check_trait_item(
+                                                        item.ident,
+                                                        ValueNS,
+                                                        item.span,
+                                                        |n, s| MethodNotMemberOfTrait(n, s),
+                                                    );
+
                                                     visit::walk_assoc_item(
                                                         this,
-                                                        impl_item,
+                                                        item,
                                                         AssocCtxt::Impl,
                                                     )
-                                                });
-                                            }
-                                            AssocItemKind::Fn(..) => {
-                                                // If this is a trait impl, ensure the method
-                                                // exists in trait
-                                                this.check_trait_item(impl_item.ident,
-                                                                      ValueNS,
-                                                                      impl_item.span,
-                                                    |n, s| MethodNotMemberOfTrait(n, s));
-
-                                                visit::walk_assoc_item(
-                                                    this,
-                                                    impl_item,
-                                                    AssocCtxt::Impl,
-                                                )
-                                            }
-                                            AssocItemKind::TyAlias(_, _) => {
-                                                // If this is a trait impl, ensure the type
-                                                // exists in trait
-                                                this.check_trait_item(impl_item.ident,
-                                                                      TypeNS,
-                                                                      impl_item.span,
-                                                    |n, s| TypeNotMemberOfTrait(n, s));
-
-                                                visit::walk_assoc_item(
-                                                    this,
-                                                    impl_item,
-                                                    AssocCtxt::Impl,
-                                                )
-                                            }
-                                            AssocItemKind::Macro(_) =>
-                                                panic!("unexpanded macro in resolve!"),
+                                                },
+                                            );
                                         }
-                                    });
+                                        AssocItemKind::TyAlias(_, generics, _, _) => {
+                                            // We also need a new scope for the impl item type parameters.
+                                            this.with_generic_param_rib(
+                                                generics,
+                                                AssocItemRibKind,
+                                                |this| {
+                                                    // If this is a trait impl, ensure the type
+                                                    // exists in trait
+                                                    this.check_trait_item(
+                                                        item.ident,
+                                                        TypeNS,
+                                                        item.span,
+                                                        |n, s| TypeNotMemberOfTrait(n, s),
+                                                    );
+
+                                                    visit::walk_assoc_item(
+                                                        this,
+                                                        item,
+                                                        AssocCtxt::Impl,
+                                                    )
+                                                },
+                                            );
+                                        }
+                                        AssocItemKind::Macro(_) => {
+                                            panic!("unexpanded macro in resolve!")
+                                        }
+                                    }
                                 }
                             });
                         });
@@ -2035,7 +2040,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // Resolve arguments:
                     this.resolve_params(&fn_decl.inputs);
                     // No need to resolve return type --
-                    // the outer closure return type is `FunctionRetTy::Default`.
+                    // the outer closure return type is `FnRetTy::Default`.
 
                     // Now resolve the inner closure
                     {
@@ -2097,7 +2102,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .is_ok()
             {
                 let def_id = module.def_id().unwrap();
-                found_traits.push(TraitCandidate { def_id: def_id, import_ids: smallvec![] });
+                found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
             }
         }
 

@@ -18,6 +18,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self, GeneratorKind};
 
 use polonius_engine::Atom;
+pub use rustc_ast::ast::Mutability;
+use rustc_ast::ast::Name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, GraphSuccessors};
@@ -32,8 +34,6 @@ use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::Index;
 use std::slice;
 use std::{iter, mem, option, u32};
-pub use syntax::ast::Mutability;
-use syntax::ast::Name;
 
 pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
 pub use self::query::*;
@@ -189,7 +189,7 @@ impl<'tcx> Body<'tcx> {
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
-            local_decls.len() >= arg_count + 1,
+            local_decls.len() > arg_count,
             "expected at least {} locals, got {}",
             arg_count + 1,
             local_decls.len()
@@ -1198,7 +1198,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         t: BasicBlock,
         f: BasicBlock,
     ) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [u128] = &[0];
+        static BOOL_SWITCH_FALSE: &[u128] = &[0];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
@@ -1446,7 +1446,7 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
         match successor_count {
             0 => Ok(()),
 
-            1 => write!(fmt, " -> {:?}", self.successors().nth(0).unwrap()),
+            1 => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
 
             _ => {
                 write!(fmt, " -> [")?;
@@ -1468,21 +1468,21 @@ impl<'tcx> TerminatorKind<'tcx> {
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
         use self::TerminatorKind::*;
-        match *self {
+        match self {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr: ref place, .. } => write!(fmt, "switchInt({:?})", place),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Abort => write!(fmt, "abort"),
-            Yield { ref value, .. } => write!(fmt, "_1 = suspend({:?})", value),
+            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { ref location, ref value, .. } => {
+            Drop { location, .. } => write!(fmt, "drop({:?})", location),
+            DropAndReplace { location, value, .. } => {
                 write!(fmt, "replace({:?} <- {:?})", location, value)
             }
-            Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref destination, _)) = *destination {
+            Call { func, args, destination, .. } => {
+                if let Some((destination, _)) = destination {
                     write!(fmt, "{:?} = ", destination)?;
                 }
                 write!(fmt, "{:?}(", func)?;
@@ -1494,7 +1494,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
-            Assert { ref cond, expected, ref msg, .. } => {
+            Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
                     write!(fmt, "!")?;
@@ -1519,7 +1519,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 values
                     .iter()
                     .map(|&u| {
-                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size).into(), switch_ty)
+                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)
                             .to_string()
                             .into()
                     })
@@ -2046,6 +2046,15 @@ impl<'tcx> Operand<'tcx> {
             Operand::Move(place) => Operand::Copy(place),
         }
     }
+
+    /// Returns the `Place` that is the target of this `Operand`, or `None` if this `Operand` is a
+    /// constant.
+    pub fn place(&self) -> Option<&Place<'tcx>> {
+        match self {
+            Operand::Copy(place) | Operand::Move(place) => Some(place),
+            Operand::Constant(_) => None,
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2210,7 +2219,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
-                    if region.len() > 0 {
+                    if !region.is_empty() {
                         region.push(' ');
                     }
                     region

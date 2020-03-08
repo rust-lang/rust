@@ -273,7 +273,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     Ok(test_opts)
 }
 
-// FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
+// FIXME: Copied from librustc_ast until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
     // Whether this is a feature-staged build, i.e., on the beta or stable channel
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();

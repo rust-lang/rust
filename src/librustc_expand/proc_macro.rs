@@ -1,13 +1,13 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
+use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::token;
+use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, FatalError};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
-use syntax::token;
-use syntax::tokenstream::{self, TokenStream};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 

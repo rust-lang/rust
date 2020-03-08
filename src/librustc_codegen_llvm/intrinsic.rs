@@ -10,6 +10,7 @@ use crate::value::Value;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
 use rustc::ty::{self, Ty};
 use rustc::{bug, span_bug};
+use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::glue;
@@ -18,7 +19,6 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
 use rustc_target::abi::HasDataLayout;
-use syntax::ast;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
@@ -193,7 +193,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
-                OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
+                OperandRef::from_const(self, ty_name, ret_ty).immediate_or_packed_pair(self)
             }
             "init" => {
                 let ty = substs.type_at(0);

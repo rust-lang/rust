@@ -1,10 +1,8 @@
-error: const trait impls are not yet implemented
-  --> $DIR/feature-gate.rs:9:1
+error: fatal error triggered by #[rustc_error]
+  --> $DIR/feature-gate.rs:14:1
    |
-LL | impl const T for S {}
-   | ^^^^^-----^^^^^^^^^^^
-   |      |
-   |      const because of this
+LL | fn main() {}
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

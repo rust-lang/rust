@@ -1,7 +1,7 @@
-use rustc::traits;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_hir::def_id::DefId;
+use rustc_infer::traits;
 use rustc_target::spec::abi::Abi;
 
 use log::debug;
@@ -47,7 +47,7 @@ pub fn resolve_instance<'tcx>(
                 }
             }
         };
-        Some(Instance { def: def, substs: substs })
+        Some(Instance { def, substs })
     };
     debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
     result
@@ -70,7 +70,7 @@ fn resolve_associated_item<'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
+    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)))?;
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:

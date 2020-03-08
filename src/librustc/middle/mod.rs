@@ -28,8 +28,8 @@ pub mod lib_features {
         }
     }
 }
+pub mod limits;
 pub mod privacy;
-pub mod recursion_limit;
 pub mod region;
 pub mod resolve_lifetime;
 pub mod stability;

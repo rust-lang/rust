@@ -49,7 +49,6 @@ pub fn expand_aggregate<'tcx>(
     };
 
     operands
-        .into_iter()
         .enumerate()
         .map(move |(i, (op, ty))| {
             let lhs_field = if let AggregateKind::Array(_) = kind {

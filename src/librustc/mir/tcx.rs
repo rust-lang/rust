@@ -156,7 +156,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                tcx.mk_ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability.into() })
+                tcx.mk_ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability })
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,

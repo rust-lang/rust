@@ -2461,7 +2461,7 @@ impl RandomState {
         KEYS.with(|keys| {
             let (k0, k1) = keys.get();
             keys.set((k0.wrapping_add(1), k1));
-            RandomState { k0: k0, k1: k1 }
+            RandomState { k0, k1 }
         })
     }
 }

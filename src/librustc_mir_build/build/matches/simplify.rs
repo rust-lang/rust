@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // value being matched, taking the variance field into account.
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
-                    user_ty: user_ty,
+                    user_ty,
                     source: match_pair.place,
                     variance,
                 });

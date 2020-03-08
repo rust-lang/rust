@@ -21,6 +21,6 @@ rustc_parse = { path = "../librustc_parse" }
 rustc_target = { path = "../librustc_target" }
 rustc_session = { path = "../librustc_session" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_span = { path = "../librustc_span" }

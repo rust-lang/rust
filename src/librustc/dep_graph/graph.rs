@@ -524,7 +524,7 @@ impl DepGraph {
             edge_list_indices.push((start, end));
         }
 
-        debug_assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
+        debug_assert!(edge_list_data.len() <= u32::MAX as usize);
         debug_assert_eq!(edge_list_data.len(), total_edge_count);
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data }
@@ -809,7 +809,7 @@ impl DepGraph {
             dep_node
         );
 
-        if unlikely!(diagnostics.len() > 0) {
+        if unlikely!(!diagnostics.is_empty()) {
             self.emit_diagnostics(tcx, data, dep_node_index, prev_dep_node_index, diagnostics);
         }
 
@@ -1122,6 +1122,7 @@ impl CurrentDepGraph {
 }
 
 impl DepGraphData {
+    #[inline(never)]
     fn read_index(&self, source: DepNodeIndex) {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };

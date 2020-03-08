@@ -12,7 +12,11 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `({integer}, {integer})`
 LL |         (0, ref y) | (y, 0) => {}
-   |                       ^ expected `&{integer}`, found integer
+   |             -----     ^ expected `&{integer}`, found integer
+   |             |
+   |             first introduced with type `&{integer}` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 2 previous errors
 

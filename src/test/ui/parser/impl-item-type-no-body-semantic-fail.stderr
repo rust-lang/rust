@@ -14,7 +14,7 @@ LL |     type Z: Ord;
    |                |
    |                help: provide a definition for the type: `= <type>;`
 
-error: bounds on associated `type`s in `impl`s have no effect
+error: bounds on `type`s in `impl`s have no effect
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:12:13
    |
 LL |     type Z: Ord;
@@ -28,7 +28,7 @@ LL |     type W: Ord where Self: Eq;
    |                               |
    |                               help: provide a definition for the type: `= <type>;`
 
-error: bounds on associated `type`s in `impl`s have no effect
+error: bounds on `type`s in `impl`s have no effect
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:16:13
    |
 LL |     type W: Ord where Self: Eq;
