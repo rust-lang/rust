@@ -215,7 +215,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         if ptr.offset.bytes() != 0 {
-            throw_ub_format!("reallocating {:?} which does not point to the beginning of an object", ptr);
+            throw_ub_format!(
+                "reallocating {:?} which does not point to the beginning of an object",
+                ptr
+            );
         }
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
@@ -251,7 +254,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         trace!("deallocating: {}", ptr.alloc_id);
 
         if ptr.offset.bytes() != 0 {
-            throw_ub_format!("deallocating {:?} which does not point to the beginning of an object", ptr);
+            throw_ub_format!(
+                "deallocating {:?} which does not point to the beginning of an object",
+                ptr
+            );
         }
 
         let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
@@ -260,8 +266,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Deallocating static memory -- always an error
                 return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
                     Some(GlobalAlloc::Function(..)) => err_ub_format!("deallocating a function"),
-                    Some(GlobalAlloc::Static(..)) | Some(GlobalAlloc::Memory(..)) =>
-                        err_ub_format!("deallocating static memory"),
+                    Some(GlobalAlloc::Static(..)) | Some(GlobalAlloc::Memory(..)) => {
+                        err_ub_format!("deallocating static memory")
+                    }
                     None => err_ub!(PointerUseAfterFree(ptr.alloc_id)),
                 }
                 .into());
@@ -269,13 +276,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         };
 
         if alloc_kind != kind {
-            throw_ub_format!("deallocating `{:?}` memory using `{:?}` deallocation operation", alloc_kind, kind);
+            throw_ub_format!(
+                "deallocating `{:?}` memory using `{:?}` deallocation operation",
+                alloc_kind,
+                kind
+            );
         }
         if let Some((size, align)) = old_size_and_align {
             if size != alloc.size || align != alloc.align {
                 throw_ub_format!(
                     "incorrect layout on deallocation: allocation has size {} and alignment {}, but gave size {} and alignment {}",
-                    alloc.size.bytes(), alloc.align.bytes(), size.bytes(), align.bytes(),
+                    alloc.size.bytes(),
+                    alloc.align.bytes(),
+                    size.bytes(),
+                    align.bytes(),
                 )
             }
         }
@@ -370,7 +384,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
                 let end_ptr = ptr.offset(size, self)?;
-                if end_ptr.offset > allocation_size { // equal is okay!
+                if end_ptr.offset > allocation_size {
+                    // equal is okay!
                     throw_ub!(PointerOutOfBounds { ptr: end_ptr.erase_tag(), msg, allocation_size })
                 }
                 // Test align. Check this last; if both bounds and alignment are violated

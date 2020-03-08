@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{Pos, Span, def_id::DefId};
-use std::{any::Any, env, fmt};
+use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -326,7 +326,10 @@ pub enum UndefinedBehaviorInfo {
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
     /// A slice/array index projection went out-of-bounds.
-    BoundsCheckFailed { len: u64, index: u64 },
+    BoundsCheckFailed {
+        len: u64,
+        index: u64,
+    },
     /// Something was divided by 0 (x / 0).
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
@@ -395,16 +398,14 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 "reading a null-terminated string starting at {:?} with no null found before end of allocation",
                 p,
             ),
-            PointerUseAfterFree(a) => write!(
-                f,
-                "pointer to allocation {:?} was dereferenced after allocation got freed",
-                a
-            ),
+            PointerUseAfterFree(a) => {
+                write!(f, "pointer to {:?} was dereferenced after this allocation got freed", a)
+            }
             InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
             PointerOutOfBounds { ptr, msg, allocation_size } => write!(
                 f,
                 "{} failed: pointer must be in-bounds at offset {}, \
-                           but is outside bounds of allocation {} which has size {}",
+                           but is outside bounds of {} which has size {}",
                 msg,
                 ptr.offset.bytes(),
                 ptr.alloc_id,
@@ -416,16 +417,23 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 has.bytes(),
                 required.bytes()
             ),
-            WriteToReadOnly(a) => write!(f, "writing to read-only allocation {:?}", a),
+            WriteToReadOnly(a) => write!(f, "writing to {:?} which is read-only", a),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {:?} as function pointer but it does not point to a function", p)
             }
-            DerefFunctionPointer(a) => write!(f, "accessing data behind function pointer allocation {:?}", a),
+            DerefFunctionPointer(a) => write!(f, "accessing {:?} which contains a function", a),
             ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
             InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
             InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
-            InvalidUndefBytes(Some(p)) => write!(f, "reading uninitialized memory at {:?}, but this operation requires initialized memory", p),
-            InvalidUndefBytes(None) => write!(f, "using uninitialized data, but this operation requires initialized memory"),
+            InvalidUndefBytes(Some(p)) => write!(
+                f,
+                "reading uninitialized memory at {:?}, but this operation requires initialized memory",
+                p
+            ),
+            InvalidUndefBytes(None) => write!(
+                f,
+                "using uninitialized data, but this operation requires initialized memory"
+            ),
             DeadLocal => write!(f, "accessing a dead local variable"),
             ReadFromReturnPlace => write!(f, "tried to read from the return place"),
         }
@@ -472,7 +480,9 @@ impl fmt::Debug for UnsupportedOpInfo {
             ConstPropUnsupported(ref msg) => {
                 write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
             }
-            ReadForeignStatic(did) => write!(f, "tried to read from foreign (extern) static {:?}", did),
+            ReadForeignStatic(did) => {
+                write!(f, "tried to read from foreign (extern) static {:?}", did)
+            }
             NoMirFor(did) => write!(f, "could not load MIR for {:?}", did),
             ModifiedStatic => write!(
                 f,
@@ -480,13 +490,8 @@ impl fmt::Debug for UnsupportedOpInfo {
                     initializer"
             ),
 
-            ReadPointerAsBytes => write!(
-                f,
-                "unable to turn this pointer into raw bytes",
-            ),
-            ReadBytesAsPointer => {
-                write!(f, "unable to turn these bytes into a pointer")
-            }
+            ReadPointerAsBytes => write!(f, "unable to turn this pointer into raw bytes",),
+            ReadBytesAsPointer => write!(f, "unable to turn these bytes into a pointer"),
         }
     }
 }

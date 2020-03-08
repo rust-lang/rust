@@ -356,18 +356,16 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     err_ub!(InvalidNullPointerUsage) => {
                         throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
                     }
-                    err_ub!(AlignmentCheckFailed { required, has }) => {
-                        throw_validation_failure!(
-                            format_args!(
-                                "an unaligned {} \
+                    err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
+                        format_args!(
+                            "an unaligned {} \
                                     (required {} byte alignment but found {})",
-                                kind,
-                                required.bytes(),
-                                has.bytes()
-                            ),
-                            self.path
-                        )
-                    }
+                            kind,
+                            required.bytes(),
+                            has.bytes()
+                        ),
+                        self.path
+                    ),
                     err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
                         format_args!("a dangling {} (created from integer)", kind),
                         self.path
