@@ -997,14 +997,14 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
         return false;
     }
 
-    // If there's no return terminator the function also won't return.
+    // If there's a return terminator the function may return.
     for block in body.basic_blocks() {
         if let TerminatorKind::Return = block.terminator().kind {
             return true;
         }
     }
 
-    // Otherwise we assume that the function may return.
+    // Otherwise the function can't return.
     false
 }
 
