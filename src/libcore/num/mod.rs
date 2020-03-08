@@ -8,6 +8,7 @@ use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
+use crate::ops::{BitOr, BitOrAssign};
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.
@@ -107,6 +108,57 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     fn from(nonzero: $Ty) -> Self {
                         nonzero.0
                     }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            impl BitOr for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: Self) -> Self::Output {
+                    // Safety: since `self` and `rhs` are both nonzero, the
+                    // result of the bitwise-or will be nonzero.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            impl BitOr<$Int> for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: $Int) -> Self::Output {
+                    // Safety: since `self` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `rhs`.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            impl BitOr<$Ty> for $Int {
+                type Output = $Ty;
+                #[inline]
+                fn bitor(self, rhs: $Ty) -> Self::Output {
+                    // Safety: since `rhs` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `self`.
+                    unsafe { $Ty::new_unchecked(self | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            impl BitOrAssign for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: Self) {
+                    *self = *self | rhs;
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            impl BitOrAssign<$Int> for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: $Int) {
+                    *self = *self | rhs;
                 }
             }
 
