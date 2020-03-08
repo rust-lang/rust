@@ -459,12 +459,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         )?;
         debug!("resolve_ufcs: pick={:?}", pick);
-        for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id(import_id);
-            debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
-                .unwrap()
-                .insert(import_def_id);
+        {
+            let mut tables = self.tables.borrow_mut();
+            let used_trait_imports = Lrc::get_mut(&mut tables.used_trait_imports).unwrap();
+            for import_id in pick.import_ids {
+                let import_def_id = tcx.hir().local_def_id(import_id);
+                debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
+                used_trait_imports.insert(import_def_id);
+            }
         }
 
         let def_kind = pick.item.def_kind();
