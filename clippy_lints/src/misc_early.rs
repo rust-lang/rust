@@ -318,18 +318,6 @@ impl EarlyLintPass for MiscEarlyLints {
                 return;
             }
             if wilds > 0 {
-                let mut normal = vec![];
-
-                for field in pfields {
-                    match field.pat.kind {
-                        PatKind::Wild => {},
-                        _ => {
-                            if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
-                                normal.push(n);
-                            }
-                        },
-                    }
-                }
                 for field in pfields {
                     if let PatKind::Wild = field.pat.kind {
                         wilds -= 1;
@@ -341,6 +329,19 @@ impl EarlyLintPass for MiscEarlyLints {
                                 "You matched a field with a wildcard pattern. Consider using `..` instead",
                             );
                         } else {
+                            let mut normal = vec![];
+
+                            for field in pfields {
+                                match field.pat.kind {
+                                    PatKind::Wild => {},
+                                    _ => {
+                                        if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
+                                            normal.push(n);
+                                        }
+                                    },
+                                }
+                            }
+
                             span_lint_and_help(
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
