@@ -281,7 +281,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
-            err_unsup!(InvalidNullPointerUsage)
+            err_ub!(InvalidNullPointerUsage)
         } else {
             err_unsup!(ReadBytesAsPointer)
         })

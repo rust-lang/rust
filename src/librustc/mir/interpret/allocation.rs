@@ -314,7 +314,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
                 &self.get_bytes(cx, ptr, size_with_null)?[..size]
             }
             // This includes the case where `offset` is out-of-bounds to begin with.
-            None => throw_unsup!(UnterminatedCString(ptr.erase_tag())),
+            None => throw_ub!(UnterminatedCString(ptr.erase_tag())),
         })
     }
 
@@ -573,7 +573,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask
             .is_range_defined(ptr.offset, ptr.offset + size)
-            .or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
+            .or_else(|idx| throw_ub!(InvalidUndefBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
     }
 
     pub fn mark_definedness(&mut self, ptr: Pointer<Tag>, size: Size, new_state: bool) {
