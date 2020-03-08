@@ -67,16 +67,20 @@ steps:
   displayName: "Disable git automatic line ending conversion (on C:/)"
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- bash: src/ci/scripts/install-msys2.sh
-  displayName: Install msys2
-  condition: and(succeeded(), not(variables.SKIP_JOB))
-
-- bash: src/ci/scripts/install-msys2-packages.sh
-  displayName: Install msys2 packages
-  condition: and(succeeded(), not(variables.SKIP_JOB))
-
-- bash: src/ci/scripts/install-mingw.sh
-  displayName: Install MinGW
+# FIXME(69831): workaround for repo.msys2.org being offline
+#- bash: src/ci/scripts/install-msys2.sh
+#  displayName: Install msys2
+#  condition: and(succeeded(), not(variables.SKIP_JOB))
+#
+#- bash: src/ci/scripts/install-msys2-packages.sh
+#  displayName: Install msys2 packages
+#  condition: and(succeeded(), not(variables.SKIP_JOB))
+#
+#- bash: src/ci/scripts/install-mingw.sh
+#  displayName: Install MinGW
+#  condition: and(succeeded(), not(variables.SKIP_JOB))
+- bash: src/ci/scripts/install-msys2-workaround.sh
+  displayName: Install msys2 and MinGW (temporary workaround)
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-ninja.sh
