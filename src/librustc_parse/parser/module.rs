@@ -133,7 +133,7 @@ fn eval_src_mod<'a>(
     Ok(module)
 }
 
-fn push_directory(
+pub fn push_directory(
     id: Ident,
     attrs: &[Attribute],
     dir_ownership: &mut DirectoryOwnership,
