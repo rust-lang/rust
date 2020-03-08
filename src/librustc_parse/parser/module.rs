@@ -8,7 +8,7 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, TokenKind};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{FileName, Span, DUMMY_SP};
+use rustc_span::source_map::{FileName, Span};
 use rustc_span::symbol::sym;
 
 use std::path::{self, Path, PathBuf};
@@ -24,7 +24,7 @@ pub struct ModulePath<'a> {
 // Public for rustfmt usage.
 pub struct ModulePathSuccess {
     pub path: PathBuf,
-    pub directory_ownership: DirectoryOwnership,
+    pub ownership: DirectoryOwnership,
 }
 
 impl<'a> Parser<'a> {
@@ -45,16 +45,13 @@ impl<'a> Parser<'a> {
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
-                let ModulePathSuccess { path, directory_ownership } = submod_path(
-                    self.sess,
-                    id,
-                    &attrs,
-                    self.directory.ownership,
-                    &self.directory.path,
-                )?;
-                eval_src_mod(self.sess, self.cfg_mods, path, directory_ownership, id)?
+                let dir = &self.directory;
+                submod_path(self.sess, id, &attrs, dir.ownership, &dir.path)
+                    .and_then(|r| eval_src_mod(self.sess, self.cfg_mods, r.path, r.ownership, id))
+                    .map_err(|mut err| err.emit())
+                    .unwrap_or_default()
             } else {
-                (ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false }, Vec::new())
+                Default::default()
             }
         } else {
             let old_directory = self.directory.clone();
@@ -162,12 +159,12 @@ pub fn push_directory(
 fn submod_path<'a>(
     sess: &'a ParseSess,
     id: ast::Ident,
-    outer_attrs: &[Attribute],
-    directory_ownership: DirectoryOwnership,
+    attrs: &[Attribute],
+    ownership: DirectoryOwnership,
     dir_path: &Path,
 ) -> PResult<'a, ModulePathSuccess> {
-    if let Some(path) = submod_path_from_attr(outer_attrs, dir_path) {
-        let directory_ownership = match path.file_name().and_then(|s| s.to_str()) {
+    if let Some(path) = submod_path_from_attr(attrs, dir_path) {
+        let ownership = match path.file_name().and_then(|s| s.to_str()) {
             // All `#[path]` files are treated as though they are a `mod.rs` file.
             // This means that `mod foo;` declarations inside `#[path]`-included
             // files are siblings,
@@ -178,16 +175,16 @@ fn submod_path<'a>(
             Some(_) => DirectoryOwnership::Owned { relative: None },
             _ => DirectoryOwnership::UnownedViaMod,
         };
-        return Ok(ModulePathSuccess { directory_ownership, path });
+        return Ok(ModulePathSuccess { ownership, path });
     }
 
-    let relative = match directory_ownership {
+    let relative = match ownership {
         DirectoryOwnership::Owned { relative } => relative,
         DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
     };
     let ModulePath { path_exists, name, result } =
         default_submod_path(sess, id, relative, dir_path);
-    match directory_ownership {
+    match ownership {
         DirectoryOwnership::Owned { .. } => Ok(result?),
         DirectoryOwnership::UnownedViaBlock => {
             let _ = result.map_err(|mut err| err.cancel());
@@ -300,11 +297,11 @@ pub fn default_submod_path<'a>(
     let result = match (default_exists, secondary_exists) {
         (true, false) => Ok(ModulePathSuccess {
             path: default_path,
-            directory_ownership: DirectoryOwnership::Owned { relative: Some(id) },
+            ownership: DirectoryOwnership::Owned { relative: Some(id) },
         }),
         (false, true) => Ok(ModulePathSuccess {
             path: secondary_path,
-            directory_ownership: DirectoryOwnership::Owned { relative: None },
+            ownership: DirectoryOwnership::Owned { relative: None },
         }),
         (false, false) => {
             let mut err = struct_span_err!(
