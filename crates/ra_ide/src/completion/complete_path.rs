@@ -1,6 +1,6 @@
 //! Completion of paths, including when writing a single name.
 
-use hir::{Adt, PathResolution, ScopeDef};
+use hir::{Adt, PathResolution, ScopeDef, HasVisibility};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -15,9 +15,10 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(PathResolution::Def(def)) => def,
         _ => return,
     };
+    let context_module = ctx.scope().module();
     match def {
         hir::ModuleDef::Module(module) => {
-            let module_scope = module.scope(ctx.db);
+            let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if ctx.use_item_syntax.is_some() {
                     if let ScopeDef::Unknown = def {
@@ -53,7 +54,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     match item {
                         hir::AssocItem::Function(func) => {
-                            if !func.has_self_param(ctx.db) {
+                            if !func.has_self_param(ctx.db) && context_module.map_or(true, |m| func.is_visible_from(ctx.db, m)) {
                                 acc.add_function(ctx, func);
                             }
                         }
@@ -170,6 +171,41 @@ mod tests {
     }
 
     #[test]
+    fn path_visibility() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                use self::my::<|>;
+
+                mod my {
+                    struct Bar;
+                    pub struct Foo;
+                    pub use Bar as PublicBar;
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [31; 31),
+                delete: [31; 31),
+                insert: "Foo",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "PublicBar",
+                source_range: [31; 31),
+                delete: [31; 31),
+                insert: "PublicBar",
+                kind: Struct,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn completes_use_item_starting_with_self() {
         assert_debug_snapshot!(
             do_reference_completion(
@@ -177,7 +213,7 @@ mod tests {
                 use self::m::<|>;
 
                 mod m {
-                    struct Bar;
+                    pub struct Bar;
                 }
                 "
             ),

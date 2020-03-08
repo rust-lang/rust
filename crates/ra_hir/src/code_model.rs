@@ -204,10 +204,20 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef)> {
+    pub fn scope(self, db: &impl HirDatabase, visible_from: Option<Module>) -> Vec<(Name, ScopeDef)> {
         db.crate_def_map(self.id.krate)[self.id.local_id]
             .scope
             .entries()
+            .filter_map(|(name, def)| if let Some(m) = visible_from {
+                let filtered = def.filter_visibility(|vis| vis.is_visible_from(db, m.id));
+                if filtered.is_none() && !def.is_none() {
+                    None
+                } else {
+                    Some((name, filtered))
+                }
+            } else {
+                Some((name, def))
+            })
             .map(|(name, def)| (name.clone(), def.into()))
             .collect()
     }
