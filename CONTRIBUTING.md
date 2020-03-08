@@ -28,8 +28,9 @@ High level approach:
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Run `cargo test` in the root directory and wiggle code until it passes
-4. Open a PR (also can be done between 2. and 3. if you run into problems)
+3. Follow the instructions in the [docs for writing lints](doc/adding_lints.md) such as running the `setup-toolchain.sh` script
+4. Run `cargo test` in the root directory and wiggle code until it passes
+5. Open a PR (also can be done after 2. if you run into problems)
 
 ### Finding something to fix/improve
 
