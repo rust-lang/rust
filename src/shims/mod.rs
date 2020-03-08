@@ -24,12 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let (dest, ret) = ret.unwrap();
-            let n = this
-                .align_offset(args[0], args[1])?
-                .unwrap_or_else(|| this.truncate(u128::MAX, dest.layout));
-            this.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
-            this.go_to_block(ret);
+            this.align_offset(args[0], args[1], ret, unwind)?;
             return Ok(None);
         }
 
@@ -52,35 +47,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         ptr_op: OpTy<'tcx, Tag>,
         align_op: OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Option<u128>> {
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        let (dest, ret) = ret.unwrap();
 
         let req_align = this
             .force_bits(this.read_scalar(align_op)?.not_undef()?, this.pointer_size())?
             as usize;
 
-        // FIXME: This should actually panic in the interpreted program
+        // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
-            throw_unsup_format!("Required alignment should always be a power of two")
+            return this.start_panic("align_offset: align is not a power-of-two", unwind);
         }
 
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
+        // Default: no result.
+        let mut result = this.truncate(u128::MAX, dest.layout);
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
+            // Only do anything if we can identify the allocation this goes to.
             let cur_align =
                 this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes()
                     as usize;
             if cur_align >= req_align {
-                // if the allocation alignment is at least the required alignment we use the
+                // If the allocation alignment is at least the required alignment we use the
                 // libcore implementation
-                return Ok(Some(
-                    (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8)
-                        .align_offset(req_align) as u128,
-                ));
+                result = (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8).align_offset(req_align) as u128;
             }
         }
-        // If the allocation alignment is smaller than then required alignment or the pointer was
-        // actually an integer, we return `None`
-        Ok(None)
+
+        // Return result, and jump to caller.
+        this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
+        this.go_to_block(ret);
+        Ok(())
     }
 }

@@ -1,5 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
-// normalize-stderr-test "[^ ]*libcore/macros/mod.rs[0-9:]*" -> "$$LOC"
+// normalize-stderr-test "[^ ]*libcore/(macros|mem)/mod.rs[0-9:]*" -> "$$LOC"
 #![feature(never_type)]
 #![allow(unconditional_panic)]
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -47,24 +47,41 @@ fn main() {
     }));
 
     // Std panics
-    test(|_old_val| std::panic!("Hello from panic: std"));
-    test(|old_val| std::panic!(format!("Hello from panic: {:?}", old_val)));
-    test(|old_val| std::panic!("Hello from panic: {:?}", old_val));
-    test(|_old_val| std::panic!(1337));
+    test(None, |_old_val| std::panic!("Hello from panic: std"));
+    test(None, |old_val| std::panic!(format!("Hello from panic: {:?}", old_val)));
+    test(None, |old_val| std::panic!("Hello from panic: {:?}", old_val));
+    test(None, |_old_val| std::panic!(1337));
 
     // Core panics
-    test(|_old_val| core::panic!("Hello from panic: core"));
-    test(|old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
-    test(|old_val| core::panic!("Hello from panic: {:?}", old_val));
+    test(None, |_old_val| core::panic!("Hello from panic: core"));
+    test(None, |old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
+    test(None, |old_val| core::panic!("Hello from panic: {:?}", old_val));
 
-    // Built-in panics
-    test(|_old_val| { let _val = [0, 1, 2][4]; loop {} });
-    test(|_old_val| { let _val = 1/0; loop {} });
+    // Built-in panics; also make sure the message is right.
+    test(
+        Some("index out of bounds: the len is 3 but the index is 4"),
+        |_old_val| { let _val = [0, 1, 2][4]; loop {} },
+    );
+    test(
+        Some("attempt to divide by zero"),
+        |_old_val| { let _val = 1/0; loop {} },
+    );
+
+    // libcore panics from shims.
+    #[allow(deprecated, invalid_value)]
+    test(
+        Some("Attempted to instantiate uninhabited type !"),
+        |_old_val| unsafe { std::mem::uninitialized::<!>() },
+    );
+    test(
+        Some("align_offset: align is not a power-of-two"),
+        |_old_val| { (0usize as *const u8).align_offset(3); loop {} },
+    );
 
     // Assertion and debug assertion
-    test(|_old_val| { assert!(false); loop {} });
-    test(|_old_val| { debug_assert!(false); loop {} });
-    test(|_old_val| { unsafe { (1 as *const i32).read() }; loop {} }); // trigger debug-assertion in libstd
+    test(None, |_old_val| { assert!(false); loop {} });
+    test(None, |_old_val| { debug_assert!(false); loop {} });
+    test(None, |_old_val| { unsafe { (1 as *const i32).read() }; loop {} }); // trigger debug-assertion in libstd
 
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
@@ -72,7 +89,7 @@ fn main() {
     eprintln!("Success!"); // Make sure we get this in stderr
 }
 
-fn test(do_panic: impl FnOnce(usize) -> !) {
+fn test(expect_msg: Option<&str>, do_panic: impl FnOnce(usize) -> !) {
     // Reset test flags.
     DROPPED.with(|c| c.set(false));
     HOOK_CALLED.with(|c| c.set(false));
@@ -84,16 +101,21 @@ fn test(do_panic: impl FnOnce(usize) -> !) {
     })).expect_err("do_panic() did not panic!");
 
     // See if we can extract the panic message.
-    if let Some(s) = res.downcast_ref::<String>() {
+    let msg = if let Some(s) = res.downcast_ref::<String>() {
         eprintln!("Caught panic message (String): {}", s);
+        Some(s.as_str())
     } else if let Some(s) = res.downcast_ref::<&str>() {
         eprintln!("Caught panic message (&str): {}", s);
+        Some(*s)
     } else {
         eprintln!("Failed get caught panic message.");
+        None
+    };
+    if let Some(expect_msg) = expect_msg {
+        assert_eq!(expect_msg, msg.unwrap());
     }
 
     // Test flags.
     assert!(DROPPED.with(|c| c.get()));
     assert!(HOOK_CALLED.with(|c| c.get()));
 }
-
