@@ -30,7 +30,7 @@ $ rustup component add rust-src
 
 === VS Code
 
-This the best supported editor at the moment.
+This is the best supported editor at the moment.
 rust-analyzer plugin for VS Code is maintained
 https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree].
 
@@ -39,6 +39,13 @@ https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the ma
 By default, the plugin will prompt you to download the matching version of the server as well:
 
 image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
+
+> Note: to disable this notification put the following to `settings.json`
+> ```json
+{
+    "rust-analyzer.alwaysDownloadServer": true
+}
+```
 
 The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
 
