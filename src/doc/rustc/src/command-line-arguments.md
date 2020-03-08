@@ -146,6 +146,7 @@ The valid types of print values are:
 - `crate-name` — The name of the crate.
 - `file-names` — The names of the files created by the `link` emit kind.
 - `sysroot` — Path to the sysroot.
+- `target-libdir` - Path to the target libdir.
 - `cfg` — List of cfg values. See [conditional compilation] for more
   information about cfg values.
 - `target-list` — List of known targets. The target may be selected with the

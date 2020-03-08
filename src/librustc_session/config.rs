@@ -391,6 +391,7 @@ impl ExternEntry {
 pub enum PrintRequest {
     FileNames,
     Sysroot,
+    TargetLibdir,
     CrateName,
     Cfg,
     TargetList,
@@ -912,7 +913,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "print",
             "Compiler information to print on stdout",
-            "[crate-name|file-names|sysroot|cfg|target-list|\
+            "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
              target-cpus|target-features|relocation-models|\
              code-models|tls-models|target-spec-json|native-static-libs]",
         ),
@@ -1344,6 +1345,7 @@ fn collect_print_requests(
         "crate-name" => PrintRequest::CrateName,
         "file-names" => PrintRequest::FileNames,
         "sysroot" => PrintRequest::Sysroot,
+        "target-libdir" => PrintRequest::TargetLibdir,
         "cfg" => PrintRequest::Cfg,
         "target-list" => PrintRequest::TargetList,
         "target-cpus" => PrintRequest::TargetCPUs,

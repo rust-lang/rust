@@ -680,6 +680,10 @@ impl RustcDefaultCalls {
                     println!("{}", targets.join("\n"));
                 }
                 Sysroot => println!("{}", sess.sysroot.display()),
+                TargetLibdir => println!(
+                    "{}",
+                    sess.target_tlib_path.as_ref().unwrap_or(&sess.host_tlib_path).dir.display()
+                ),
                 TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
                 FileNames | CrateName => {
                     let input = input.unwrap_or_else(|| {

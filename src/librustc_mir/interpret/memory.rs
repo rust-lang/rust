@@ -798,6 +798,33 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.get_raw(ptr.alloc_id)?.read_c_str(self, ptr)
     }
 
+    /// Reads a 0x0000-terminated u16-sequence from memory. Returns them as a Vec<u16>.
+    /// Terminator 0x0000 is not included in the returned Vec<u16>.
+    ///
+    /// Performs appropriate bounds checks.
+    pub fn read_wide_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, Vec<u16>> {
+        let size_2bytes = Size::from_bytes(2);
+        let align_2bytes = Align::from_bytes(2).unwrap();
+        // We need to read at least 2 bytes, so we *need* a ptr.
+        let mut ptr = self.force_ptr(ptr)?;
+        let allocation = self.get_raw(ptr.alloc_id)?;
+        let mut u16_seq = Vec::new();
+
+        loop {
+            ptr = self
+                .check_ptr_access(ptr.into(), size_2bytes, align_2bytes)?
+                .expect("cannot be a ZST");
+            let single_u16 = allocation.read_scalar(self, ptr, size_2bytes)?.to_u16()?;
+            if single_u16 != 0x0000 {
+                u16_seq.push(single_u16);
+                ptr = ptr.offset(size_2bytes, self)?;
+            } else {
+                break;
+            }
+        }
+        Ok(u16_seq)
+    }
+
     /// Writes the given stream of bytes into memory.
     ///
     /// Performs appropriate bounds checks.
