@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
                     self.directory.ownership,
                     &self.directory.path,
                 )?;
-                self.eval_src_mod(path, directory_ownership, id.to_string(), id.span)?
+                eval_src_mod(self.sess, self.cfg_mods, path, directory_ownership, id)?
             } else {
                 (ast::Mod { inner: DUMMY_SP, items: Vec::new(), inline: false }, Vec::new())
             }
@@ -100,48 +100,37 @@ impl<'a> Parser<'a> {
 
         Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
     }
+}
 
-    /// Reads a module from a source file.
-    fn eval_src_mod(
-        &mut self,
-        path: PathBuf,
-        directory_ownership: DirectoryOwnership,
-        name: String,
-        id_sp: Span,
-    ) -> PResult<'a, (Mod, Vec<Attribute>)> {
-        let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
-        self.error_on_circular_module(id_sp, &path, &included_mod_stack)?;
-        included_mod_stack.push(path.clone());
-        drop(included_mod_stack);
-
-        let mut p0 =
-            new_sub_parser_from_file(self.sess, &path, directory_ownership, Some(name), id_sp);
-        p0.cfg_mods = self.cfg_mods;
-        let mut module = p0.parse_mod(&token::Eof)?;
-        module.0.inline = false;
-
-        self.sess.included_mod_stack.borrow_mut().pop();
-        Ok(module)
-    }
-
-    fn error_on_circular_module(
-        &self,
-        span: Span,
-        path: &Path,
-        included_mod_stack: &[PathBuf],
-    ) -> PResult<'a, ()> {
-        if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
-            let mut err = String::from("circular modules: ");
-            let len = included_mod_stack.len();
-            for p in &included_mod_stack[i..len] {
-                err.push_str(&p.to_string_lossy());
-                err.push_str(" -> ");
-            }
-            err.push_str(&path.to_string_lossy());
-            return Err(self.struct_span_err(span, &err[..]));
+/// Reads a module from a source file.
+fn eval_src_mod<'a>(
+    sess: &'a ParseSess,
+    cfg_mods: bool,
+    path: PathBuf,
+    dir_ownership: DirectoryOwnership,
+    id: ast::Ident,
+) -> PResult<'a, (Mod, Vec<Attribute>)> {
+    let mut included_mod_stack = sess.included_mod_stack.borrow_mut();
+    if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
+        let mut err = String::from("circular modules: ");
+        for p in &included_mod_stack[i..] {
+            err.push_str(&p.to_string_lossy());
+            err.push_str(" -> ");
         }
-        Ok(())
+        err.push_str(&path.to_string_lossy());
+        return Err(sess.span_diagnostic.struct_span_err(id.span, &err[..]));
     }
+    included_mod_stack.push(path.clone());
+    drop(included_mod_stack);
+
+    let mut p0 =
+        new_sub_parser_from_file(sess, &path, dir_ownership, Some(id.to_string()), id.span);
+    p0.cfg_mods = cfg_mods;
+    let mut module = p0.parse_mod(&token::Eof)?;
+    module.0.inline = false;
+
+    sess.included_mod_stack.borrow_mut().pop();
+    Ok(module)
 }
 
 fn push_directory(
