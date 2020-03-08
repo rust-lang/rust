@@ -4,7 +4,6 @@ error[E0658]: attributes starting with `rustc` are reserved for use by the `rust
 LL | #[derive(Unstable)]
    |          ^^^^^^^^
    |
-   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
