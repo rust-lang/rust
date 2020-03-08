@@ -864,6 +864,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+#[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }
