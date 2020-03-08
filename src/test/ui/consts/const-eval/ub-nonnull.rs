@@ -25,11 +25,11 @@ const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
 #[repr(C)]
-union Transmute {
+union MaybeUninit<T: Copy> {
     uninit: (),
-    out: NonZeroU8,
+    init: T,
 }
-const UNINIT: NonZeroU8 = unsafe { Transmute { uninit: () }.out };
+const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR it is undefined behavior to use this value
 
 // Also test other uses of rustc_layout_scalar_valid_range_start
