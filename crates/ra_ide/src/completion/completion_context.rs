@@ -119,11 +119,15 @@ impl<'a> CompletionContext<'a> {
             {
                 break;
             }
+            let hypothetical_args = match macro_call_with_fake_ident.token_tree() {
+                Some(tt) => tt,
+                None => break,
+            };
             if let (Some(actual_expansion), Some(hypothetical_expansion)) = (
                 ctx.sema.expand(&actual_macro_call),
                 ctx.sema.expand_hypothetical(
                     &actual_macro_call,
-                    &macro_call_with_fake_ident,
+                    &hypothetical_args,
                     fake_ident_token,
                 ),
             ) {

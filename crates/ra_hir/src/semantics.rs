@@ -12,8 +12,7 @@ use hir_expand::ExpansionInfo;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::{self, skip_trivia_token},
-    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    algo::skip_trivia_token, ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -74,7 +73,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn expand_hypothetical(
         &self,
         actual_macro_call: &ast::MacroCall,
-        hypothetical_call: &ast::MacroCall,
+        hypothetical_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
         let macro_call =
@@ -82,24 +81,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
         let macro_call_id = macro_call
             .as_call_id(self.db, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
-        let macro_file = macro_call_id.as_file().macro_file().unwrap();
-        let (tt, tmap_1) =
-            hir_expand::syntax_node_to_token_tree(hypothetical_call.token_tree().unwrap().syntax())
-                .unwrap();
-        let range = token_to_map
-            .text_range()
-            .checked_sub(hypothetical_call.token_tree().unwrap().syntax().text_range().start())?;
-        let token_id = tmap_1.token_by_range(range)?;
-        let macro_def = hir_expand::db::expander(self.db, macro_call_id)?;
-        let (node, tmap_2) = hir_expand::db::parse_macro_with_arg(
-            self.db,
-            macro_file,
-            Some(std::sync::Arc::new((tt, tmap_1))),
-        )?;
-        let token_id = macro_def.0.map_id_down(token_id);
-        let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
-        let token = algo::find_covering_element(&node.syntax_node(), range).into_token()?;
-        Some((node.syntax_node(), token))
+        hir_expand::db::expand_hypothetical(self.db, macro_call_id, hypothetical_args, token_to_map)
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
