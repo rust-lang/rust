@@ -324,8 +324,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
-                    let mut locals_iter = body.args_iter();
-                    while let Some(local) = locals_iter.next() {
+                    for local in body.args_iter() {
                         let dest = self.eval_place(&mir::Place::from(local))?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
@@ -340,9 +339,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
-                        throw_ub_format!(
-                            "calling a function with more arguments than it expected"
-                        )
+                        throw_ub_format!("calling a function with more arguments than it expected")
                     }
                     // Don't forget to check the return type!
                     if let Some((caller_ret, _)) = ret {
