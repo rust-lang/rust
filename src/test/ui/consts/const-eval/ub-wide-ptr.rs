@@ -1,72 +1,18 @@
 // ignore-tidy-linelength
+#![feature(const_transmute)]
 #![allow(unused)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
+
+use std::mem;
 
 // normalize-stderr-test "offset \d+" -> "offset N"
 // normalize-stderr-test "allocation \d+" -> "allocation N"
 // normalize-stderr-test "size \d+" -> "size N"
 
 #[repr(C)]
-union BoolTransmute {
-  val: u8,
-  bl: bool,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct SliceRepr {
-    ptr: *const u8,
-    len: usize,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct BadSliceRepr {
-    ptr: *const u8,
-    len: &'static u8,
-}
-
-#[repr(C)]
-union SliceTransmute {
-    repr: SliceRepr,
-    bad: BadSliceRepr,
-    addr: usize,
-    slice: &'static [u8],
-    raw_slice: *const [u8],
-    str: &'static str,
-    my_str: &'static MyStr,
-    my_slice: &'static MySliceBool,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct DynRepr {
-    ptr: *const u8,
-    vtable: *const u8,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct DynRepr2 {
-    ptr: *const u8,
-    vtable: *const u64,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct BadDynRepr {
-    ptr: *const u8,
-    vtable: usize,
-}
-
-#[repr(C)]
-union DynTransmute {
-    repr: DynRepr,
-    repr2: DynRepr2,
-    bad: BadDynRepr,
-    addr: usize,
-    rust: &'static dyn Trait,
-    raw_rust: *const dyn Trait,
+union MaybeUninit<T: Copy> {
+    uninit: (),
+    init: T,
 }
 
 trait Trait {}
@@ -81,90 +27,99 @@ type MySliceBool = MySlice<[bool]>;
 
 // # str
 // OK
-const STR_VALID: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.str};
+const STR_VALID: &str = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad str
-const STR_TOO_LONG: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
+const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad str
-const STR_LENGTH_PTR: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
+const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad str in user-defined unsized type
-const MY_STR_LENGTH_PTR: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
+const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
 
 // invalid UTF-8
-const STR_NO_UTF8: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
+const STR_NO_UTF8: &str = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
 //~^ ERROR it is undefined behavior to use this value
 // invalid UTF-8 in user-defined str-like
-const MYSTR_NO_UTF8: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
+const MYSTR_NO_UTF8: &MyStr = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
 //~^ ERROR it is undefined behavior to use this value
 
 // # slice
 // OK
-const SLICE_VALID: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.slice};
+const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
-const SLICE_LENGTH_UNINIT: &[u8] = unsafe { SliceTransmute { addr: 42 }.slice};
+const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
+    let uninit_len = MaybeUninit::<usize> { uninit: () };
+    mem::transmute((42, uninit_len))
+};
 // bad slice: length too big
-const SLICE_TOO_LONG: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
+const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad slice: length not an int
-const SLICE_LENGTH_PTR: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
+const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
+//~^ ERROR it is undefined behavior to use this value
+// bad slice box: length too big
+const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
+//~^ ERROR it is undefined behavior to use this value
+// bad slice box: length not an int
+const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the slice
-const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
+const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
 
 // good MySliceBool
 const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
-const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
+const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
 //~^ ERROR it is undefined behavior to use this value
 // bad: unsized part is not okay
-const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
+const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
 //~^ ERROR it is undefined behavior to use this value
 
 // # raw slice
-const RAW_SLICE_VALID: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.raw_slice}; // ok
-const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.raw_slice}; // ok because raw
-const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: usize::max_value() } }.raw_slice}; // ok because raw
-const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe { SliceTransmute { addr: 42 }.raw_slice};
+const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) }; // ok
+const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
+const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::max_value())) }; // ok because raw
+const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
+    let uninit_len = MaybeUninit::<usize> { uninit: () };
+    mem::transmute((42, uninit_len))
+};
 
 // # trait object
 // bad trait object
-const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
+const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { mem::transmute((&92u8, &3u8)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
+const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
+const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, 4usize)) };
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object
-const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl };
+const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
 //~^ ERROR it is undefined behavior to use this value
 
 // # raw trait object
-const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.raw_rust};
+const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
 //~^ ERROR it is undefined behavior to use this value
-const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.raw_rust};
+const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
 //~^ ERROR it is undefined behavior to use this value
-const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl } as *const _; // ok because raw
+const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 
 // Const eval fails for these, so they need to be statics to error.
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
-    DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.rust
+    mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
     //~^ ERROR could not evaluate static initializer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
-    DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust
+    mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
     //~^ ERROR could not evaluate static initializer
 };
 
-fn main() {
-    let _ = RAW_TRAIT_OBJ_VTABLE_NULL;
-    let _ = RAW_TRAIT_OBJ_VTABLE_INVALID;
-}
+fn main() {}

@@ -572,7 +572,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates(&mut self) {
-        let steps = self.steps.clone();
+        let steps = Lrc::clone(&self.steps);
         for step in steps.iter() {
             self.assemble_probe(&step.self_ty);
         }
@@ -635,87 +635,51 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Slice(_) => {
-                let lang_def_id = lang_items.slice_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_u8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_alloc_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_u8_alloc_impl();
+                for &lang_def_id in &[
+                    lang_items.slice_impl(),
+                    lang_items.slice_u8_impl(),
+                    lang_items.slice_alloc_impl(),
+                    lang_items.slice_u8_alloc_impl(),
+                ] {
+                    self.assemble_inherent_impl_for_primitive(lang_def_id);
+                }
+            }
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl }) => {
+                let lang_def_id = match mutbl {
+                    hir::Mutability::Not => lang_items.const_ptr_impl(),
+                    hir::Mutability::Mut => lang_items.mut_ptr_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
-                let lang_def_id = lang_items.const_ptr_impl();
+            ty::Int(i) => {
+                let lang_def_id = match i {
+                    ast::IntTy::I8 => lang_items.i8_impl(),
+                    ast::IntTy::I16 => lang_items.i16_impl(),
+                    ast::IntTy::I32 => lang_items.i32_impl(),
+                    ast::IntTy::I64 => lang_items.i64_impl(),
+                    ast::IntTy::I128 => lang_items.i128_impl(),
+                    ast::IntTy::Isize => lang_items.isize_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
-                let lang_def_id = lang_items.mut_ptr_impl();
+            ty::Uint(i) => {
+                let lang_def_id = match i {
+                    ast::UintTy::U8 => lang_items.u8_impl(),
+                    ast::UintTy::U16 => lang_items.u16_impl(),
+                    ast::UintTy::U32 => lang_items.u32_impl(),
+                    ast::UintTy::U64 => lang_items.u64_impl(),
+                    ast::UintTy::U128 => lang_items.u128_impl(),
+                    ast::UintTy::Usize => lang_items.usize_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::Int(ast::IntTy::I8) => {
-                let lang_def_id = lang_items.i8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I16) => {
-                let lang_def_id = lang_items.i16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I32) => {
-                let lang_def_id = lang_items.i32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I64) => {
-                let lang_def_id = lang_items.i64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I128) => {
-                let lang_def_id = lang_items.i128_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::Isize) => {
-                let lang_def_id = lang_items.isize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U8) => {
-                let lang_def_id = lang_items.u8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U16) => {
-                let lang_def_id = lang_items.u16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U32) => {
-                let lang_def_id = lang_items.u32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U64) => {
-                let lang_def_id = lang_items.u64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U128) => {
-                let lang_def_id = lang_items.u128_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::Usize) => {
-                let lang_def_id = lang_items.usize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Float(ast::FloatTy::F32) => {
-                let lang_def_id = lang_items.f32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.f32_runtime_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Float(ast::FloatTy::F64) => {
-                let lang_def_id = lang_items.f64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.f64_runtime_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+            ty::Float(f) => {
+                let (lang_def_id1, lang_def_id2) = match f {
+                    ast::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                    ast::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                };
+                self.assemble_inherent_impl_for_primitive(lang_def_id1);
+                self.assemble_inherent_impl_for_primitive(lang_def_id2);
             }
             _ => {}
         }

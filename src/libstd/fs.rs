@@ -407,7 +407,7 @@ impl File {
     ///
     /// It is equivalent to `OpenOptions::new()` but allows you to write more
     /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt"). This
+    /// you can write `File::with_options().read(true).open("foo.txt")`. This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.

@@ -1002,8 +1002,6 @@ impl Step for Src {
             "src/tools/rustc-std-workspace-core",
             "src/tools/rustc-std-workspace-alloc",
             "src/tools/rustc-std-workspace-std",
-            "src/librustc",
-            "src/librustc_ast",
         ];
 
         copy_src_dirs(builder, &std_src_dirs[..], &[], &dst_src);
