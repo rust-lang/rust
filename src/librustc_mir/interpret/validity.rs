@@ -353,13 +353,16 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     place.ptr, size, align
                 );
                 match err.kind {
-                    err_ub!(InvalidNullPointerUsage) => {
+                    err_ub!(InvalidIntPointerUsage(0)) => {
                         throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
                     }
+                    err_ub!(InvalidIntPointerUsage(i)) => throw_validation_failure!(
+                        format_args!("a {} to unallocated address {}", kind, i),
+                        self.path
+                    ),
                     err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
                         format_args!(
-                            "an unaligned {} \
-                                    (required {} byte alignment but found {})",
+                            "an unaligned {} (required {} byte alignment but found {})",
                             kind,
                             required.bytes(),
                             has.bytes()
@@ -370,12 +373,17 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         format_args!("a dangling {} (created from integer)", kind),
                         self.path
                     ),
-                    err_ub!(PointerOutOfBounds { .. }) | err_ub!(PointerUseAfterFree(_)) => {
-                        throw_validation_failure!(
-                            format_args!("a dangling {} (not entirely in bounds)", kind),
-                            self.path
-                        )
-                    }
+                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(
+                        format_args!(
+                            "a dangling {} (going beyond the bounds of its allocation)",
+                            kind
+                        ),
+                        self.path
+                    ),
+                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(
+                        format_args!("a dangling {} (use-after-free)", kind),
+                        self.path
+                    ),
                     _ => bug!("Unexpected error during ptr inbounds test: {}", err),
                 }
             }

@@ -342,8 +342,6 @@ pub enum UndefinedBehaviorInfo {
     UnterminatedCString(Pointer),
     /// Dereferencing a dangling pointer after it got freed.
     PointerUseAfterFree(AllocId),
-    /// Using a NULL pointer in the wrong way.
-    InvalidNullPointerUsage,
     /// Used a pointer outside the bounds it is valid for.
     PointerOutOfBounds {
         ptr: Pointer,
@@ -355,6 +353,8 @@ pub enum UndefinedBehaviorInfo {
         required: Align,
         has: Align,
     },
+    /// Using an integer as a pointer in the wrong way.
+    InvalidIntPointerUsage(u64),
     /// Writing to read-only memory.
     WriteToReadOnly(AllocId),
     /// Using a pointer-not-to-a-function as function pointer.
@@ -401,7 +401,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {:?} was dereferenced after this allocation got freed", a)
             }
-            InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
             PointerOutOfBounds { ptr, msg, allocation_size } => write!(
                 f,
                 "{} failed: pointer must be in-bounds at offset {}, \
@@ -411,6 +410,8 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
+            InvalidIntPointerUsage(0) => write!(f, "invalid use of NULL pointer"),
+            InvalidIntPointerUsage(i) => write!(f, "invalid use of {} as a pointer", i),
             AlignmentCheckFailed { required, has } => write!(
                 f,
                 "accessing memory with alignment {}, but alignment {} is required",
@@ -450,24 +451,18 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-
     /// When const-prop encounters a situation it does not support, it raises this error.
     /// This must not allocate for performance reasons (hence `str`, not `String`).
     ConstPropUnsupported(&'static str),
-
     /// Accessing an unsupported foreign static.
     ReadForeignStatic(DefId),
-
     /// Could not find MIR for a function.
     NoMirFor(DefId),
-
     /// Modified a static during const-eval.
     /// FIXME: move this to `ConstEvalErrKind` through a machine hook.
     ModifiedStatic,
-
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
-
     /// Encountered raw bytes where we needed a pointer.
     ReadBytesAsPointer,
 }

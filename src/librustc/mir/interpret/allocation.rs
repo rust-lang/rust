@@ -41,6 +41,7 @@ pub struct Allocation<Tag = (), Extra = ()> {
     /// The size of the allocation. Currently, must always equal `bytes.len()`.
     pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
+    /// (`Align` guarantees that this is a power of two.)
     pub align: Align,
     /// `true` if the allocation is mutable.
     /// Also used by codegen to determine if a static should be put into mutable memory,

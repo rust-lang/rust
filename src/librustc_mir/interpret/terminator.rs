@@ -171,7 +171,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
         let caller_arg = caller_arg.next().ok_or_else(|| {
-            err_ub_format!("calling a function passing fewer arguments than it requires")
+            err_ub_format!("calling a function with fewer arguments than it requires")
         })?;
         if rust_abi {
             assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
@@ -341,7 +341,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
                         throw_ub_format!(
-                            "calling a function passing more arguments than it expected"
+                            "calling a function with more arguments than it expected"
                         )
                     }
                     // Don't forget to check the return type!
