@@ -1,17 +1,25 @@
-use {serde_test::*, text_size::*};
+use {serde_test::*, std::ops, text_size::*};
 
-#[test]
-fn size() {
-    assert_tokens(&TextSize::new(00), &[Token::U32(00)]);
-    assert_tokens(&TextSize::new(10), &[Token::U32(10)]);
-    assert_tokens(&TextSize::new(20), &[Token::U32(20)]);
-    assert_tokens(&TextSize::new(30), &[Token::U32(30)]);
+fn size(x: u32) -> TextSize {
+    TextSize::from(x)
+}
+
+fn range(x: ops::Range<u32>) -> TextRange {
+    TextRange::from(x)
 }
 
 #[test]
-fn range() {
+fn size_serialization() {
+    assert_tokens(&size(00), &[Token::U32(00)]);
+    assert_tokens(&size(10), &[Token::U32(10)]);
+    assert_tokens(&size(20), &[Token::U32(20)]);
+    assert_tokens(&size(30), &[Token::U32(30)]);
+}
+
+#[test]
+fn range_serialization() {
     assert_tokens(
-        &TextRange::from(00..10),
+        &range(00..10),
         &[
             Token::Tuple { len: 2 },
             Token::U32(00),
@@ -20,7 +28,7 @@ fn range() {
         ],
     );
     assert_tokens(
-        &TextRange::from(10..20),
+        &range(10..20),
         &[
             Token::Tuple { len: 2 },
             Token::U32(10),
@@ -29,7 +37,7 @@ fn range() {
         ],
     );
     assert_tokens(
-        &TextRange::from(20..30),
+        &range(20..30),
         &[
             Token::Tuple { len: 2 },
             Token::U32(20),
@@ -38,7 +46,7 @@ fn range() {
         ],
     );
     assert_tokens(
-        &TextRange::from(30..40),
+        &range(30..40),
         &[
             Token::Tuple { len: 2 },
             Token::U32(30),

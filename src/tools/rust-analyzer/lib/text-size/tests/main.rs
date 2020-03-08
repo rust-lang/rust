@@ -1,67 +1,73 @@
-use text_size::*;
+use {std::ops, text_size::*};
 
-fn r(from: u32, to: u32) -> TextRange {
-    TextRange::from(from..to)
+fn size(x: u32) -> TextSize {
+    TextSize::from(x)
+}
+
+fn range(x: ops::Range<u32>) -> TextRange {
+    TextRange::from(x)
 }
 
 #[test]
 fn sum() {
-    let xs: Vec<TextSize> = vec![0.into(), 1.into(), 2.into()];
-    assert_eq!(xs.iter().sum::<TextSize>(), 3.into());
-    assert_eq!(xs.into_iter().sum::<TextSize>(), 3.into());
+    let xs: Vec<TextSize> = vec![size(0), size(1), size(2)];
+    assert_eq!(xs.iter().copied().sum::<TextSize>(), size(3));
+    assert_eq!(xs.into_iter().sum::<TextSize>(), size(3));
 }
 
 #[test]
 fn math() {
-    let range = r(10, 20);
-    assert_eq!(range + 5, r(15, 25));
-    assert_eq!(range - 5, r(5, 15));
+    assert_eq!(size(10) + size(5), size(15));
+    assert_eq!(size(10) - size(5), size(5));
 }
 
 #[test]
 fn checked_math() {
-    let x: TextSize = 1.into();
-    assert_eq!(x.checked_sub(1), Some(0.into()));
-    assert_eq!(x.checked_sub(2), None);
-
-    assert_eq!(r(1, 2).checked_sub(1), Some(r(0, 1)));
-    assert_eq!(x.checked_sub(2), None);
+    assert_eq!(size(1).checked_add(size(1)), Some(size(2)));
+    assert_eq!(size(1).checked_sub(size(1)), Some(size(0)));
+    assert_eq!(size(1).checked_sub(size(2)), None);
+    assert_eq!(TextSize::MAX.checked_add(size(1)), None);
 }
 
 #[test]
+#[rustfmt::skip]
 fn contains() {
-    let r1 = r(2, 4);
-    let r2 = r(2, 3);
-    let r3 = r(1, 3);
-    assert!(r1.contains(r2));
-    assert!(!r1.contains(r3));
+    assert!(   range(2..4).contains(range(2..3)));
+    assert!( ! range(2..4).contains(range(1..3)));
 }
 
 #[test]
 fn intersection() {
-    assert_eq!(TextRange::intersection(r(1, 2), r(2, 3)), Some(r(2, 2)));
-    assert_eq!(TextRange::intersection(r(1, 5), r(2, 3)), Some(r(2, 3)));
-    assert_eq!(TextRange::intersection(r(1, 2), r(3, 4)), None);
+    assert_eq!(
+        TextRange::intersection(range(1..2), range(2..3)),
+        Some(range(2..2))
+    );
+    assert_eq!(
+        TextRange::intersection(range(1..5), range(2..3)),
+        Some(range(2..3))
+    );
+    assert_eq!(TextRange::intersection(range(1..2), range(3..4)), None);
 }
 
 #[test]
 fn covering() {
-    assert_eq!(TextRange::covering(r(1, 2), r(2, 3)), r(1, 3));
-    assert_eq!(TextRange::covering(r(1, 5), r(2, 3)), r(1, 5));
-    assert_eq!(TextRange::covering(r(1, 2), r(4, 5)), r(1, 5));
+    assert_eq!(TextRange::covering(range(1..2), range(2..3)), range(1..3));
+    assert_eq!(TextRange::covering(range(1..5), range(2..3)), range(1..5));
+    assert_eq!(TextRange::covering(range(1..2), range(4..5)), range(1..5));
 }
 
 #[test]
+#[rustfmt::skip]
 fn contains_point() {
-    assert!(!r(1, 3).contains_point(0));
-    assert!(r(1, 3).contains_point(1));
-    assert!(r(1, 3).contains_point(2));
-    assert!(!r(1, 3).contains_point(3));
-    assert!(!r(1, 3).contains_point(4));
+    assert!( ! range(1..3).contains_exclusive(size(0)));
+    assert!(   range(1..3).contains_exclusive(size(1)));
+    assert!(   range(1..3).contains_exclusive(size(2)));
+    assert!( ! range(1..3).contains_exclusive(size(3)));
+    assert!( ! range(1..3).contains_exclusive(size(4)));
 
-    assert!(!r(1, 3).contains_point_inclusive(0));
-    assert!(r(1, 3).contains_point_inclusive(1));
-    assert!(r(1, 3).contains_point_inclusive(2));
-    assert!(r(1, 3).contains_point_inclusive(3));
-    assert!(!r(1, 3).contains_point_inclusive(4));
+    assert!( ! range(1..3).contains_inclusive(size(0)));
+    assert!(   range(1..3).contains_inclusive(size(1)));
+    assert!(   range(1..3).contains_inclusive(size(2)));
+    assert!(   range(1..3).contains_inclusive(size(3)));
+    assert!( ! range(1..3).contains_inclusive(size(4)));
 }

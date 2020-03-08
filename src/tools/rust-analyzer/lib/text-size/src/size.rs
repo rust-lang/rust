@@ -16,10 +16,10 @@ use {
 ///
 /// # Translation from `text_unit`
 ///
-/// - `TextUnit::of_char(c)` ⟹ `TextSize::of(c)`
-/// - `TextUnit::of_str(s)` ⟹ `TextSize:of(s)`
-/// - `TextUnit::from_usize(size)` ⟹ `TextSize::new(size)`
-/// - `unit.to_usize()` ⟹ `size.ix()`
+/// - `TextUnit::of_char(c)`        ⟹ `TextSize::of(c)`
+/// - `TextUnit::of_str(s)`         ⟹ `TextSize:of(s)`
+/// - `TextUnit::from_usize(size)`  ⟹ `TextSize::try_from(size).unwrap_or_else(|| panic!(_))`
+/// - `unit.to_usize()`             ⟹ `usize::try_from(size).unwrap_or_else(|| panic!(_))`
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TextSize {
     pub(crate) raw: u32,
@@ -44,38 +44,16 @@ impl fmt::Display for TextSize {
 
 impl TextSize {
     /// The text size of some text-like object.
-    pub fn of(text: &impl TextSized) -> TextSize {
+    pub fn of(text: impl TextSized) -> TextSize {
         text.text_size()
     }
 
-    /// A text size for some `usize`.
+    /// A size of zero.
     ///
-    /// # Panics
-    ///
-    /// Panics if the size is greater than `u32::MAX` and debug assertions are
-    /// enabled. If debug assertions are not enabled, wraps into `u32` space.
-    pub fn new(size: usize) -> TextSize {
-        if let Ok(size) = size.try_into() {
-            size
-        } else if cfg!(debug_assertions) {
-            panic!("overflow when converting to TextSize");
-        } else {
-            TextSize(size as u32)
-        }
-    }
-
-    /// Convert this text size into the standard indexing type.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the size is greater than `usize::MAX`. This can only
-    /// occur on targets where `size_of::<usize>() < size_of::<u32>()`.
-    pub fn ix(self) -> usize {
-        if let Ok(ix) = self.try_into() {
-            ix
-        } else {
-            panic!("overflow when converting TextSize to usize index")
-        }
+    /// This is equivalent to `TextSize::default()` or [`TextSize::MIN`],
+    /// but is more explicit on intent.
+    pub const fn zero() -> TextSize {
+        TextSize(0)
     }
 }
 
@@ -88,14 +66,12 @@ impl TextSize {
     pub const MAX: TextSize = TextSize(u32::MAX);
 
     #[allow(missing_docs)]
-    pub fn checked_add(self, rhs: impl TryInto<TextSize>) -> Option<TextSize> {
-        let rhs = rhs.try_into().ok()?;
+    pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
         self.raw.checked_add(rhs.raw).map(TextSize)
     }
 
     #[allow(missing_docs)]
-    pub fn checked_sub(self, rhs: impl TryInto<TextSize>) -> Option<TextSize> {
-        let rhs = rhs.try_into().ok()?;
+    pub fn checked_sub(self, rhs: TextSize) -> Option<TextSize> {
         self.raw.checked_sub(rhs.raw).map(TextSize)
     }
 }
@@ -138,11 +114,7 @@ macro_rules! conversions {
         varries [$($var:ident)*]
     } => {
         $(
-            // Not `From` yet because of integer type fallback. We want e.g.
-            // `TextSize::from(0)` and `size + 1` to work, and more `From`
-            // impls means that this will try (and fail) to use i32 rather
-            // than one of the unsigned integer types that actually work.
-            conversions!(TryFrom<$lt> for TextSize);
+            conversions!(From<$lt> for TextSize);
             conversions!(TryFrom<TextSize> for $lt);
         )*
 
@@ -167,53 +139,16 @@ conversions! {
     lt u32  [u8 u16]
     eq u32  [u32]
     gt u32  [u64]
-    varries [usize i32] // i32 so that `checked_add($lit)` (`try_from($lit)`) can work
-    // this will unfortunately have to hang around even if integer literal type fallback improves
+    varries [usize]
 }
 
-impl Into<TextSize> for &'_ TextSize {
-    fn into(self) -> TextSize {
-        *self
+// NB: We do not provide the transparent-ref impls like the stdlib does.
+impl Add for TextSize {
+    type Output = TextSize;
+    fn add(self, rhs: TextSize) -> TextSize {
+        TextSize(self.raw + rhs.raw)
     }
 }
-
-impl Into<TextSize> for &'_ mut TextSize {
-    fn into(self) -> TextSize {
-        *self
-    }
-}
-
-macro_rules! op {
-    (impl $Op:ident for TextSize by fn $f:ident = $op:tt) => {
-        impl<IntoSize: Into<TextSize>> $Op<IntoSize> for TextSize {
-            type Output = TextSize;
-            fn $f(self, rhs: IntoSize) -> TextSize {
-                TextSize(self.raw $op rhs.into().raw)
-            }
-        }
-        impl<IntoSize> $Op<IntoSize> for &'_ TextSize
-        where
-            TextSize: $Op<IntoSize, Output = TextSize>,
-        {
-            type Output = TextSize;
-            fn $f(self, rhs: IntoSize) -> TextSize {
-                *self $op rhs
-            }
-        }
-        impl<IntoSize> $Op<IntoSize> for &'_ mut TextSize
-        where
-            TextSize: $Op<IntoSize, Output = TextSize>,
-        {
-            type Output = TextSize;
-            fn $f(self, rhs: IntoSize) -> TextSize {
-                *self $op rhs
-            }
-        }
-    };
-}
-
-op!(impl Add for TextSize by fn add = +);
-op!(impl Sub for TextSize by fn sub = -);
 
 impl<A> AddAssign<A> for TextSize
 where
@@ -221,6 +156,13 @@ where
 {
     fn add_assign(&mut self, rhs: A) {
         *self = *self + rhs
+    }
+}
+
+impl Sub for TextSize {
+    type Output = TextSize;
+    fn sub(self, rhs: TextSize) -> TextSize {
+        TextSize(self.raw - rhs.raw)
     }
 }
 
@@ -233,14 +175,11 @@ where
     }
 }
 
-impl iter::Sum for TextSize {
-    fn sum<I: Iterator<Item = TextSize>>(iter: I) -> TextSize {
-        iter.fold(TextSize::default(), Add::add)
-    }
-}
-
-impl<'a> iter::Sum<&'a Self> for TextSize {
-    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
-        iter.fold(TextSize::default(), Add::add)
+impl<A> iter::Sum<A> for TextSize
+where
+    TextSize: Add<A, Output = TextSize>,
+{
+    fn sum<I: Iterator<Item = A>>(iter: I) -> TextSize {
+        iter.fold(TextSize::zero(), Add::add)
     }
 }

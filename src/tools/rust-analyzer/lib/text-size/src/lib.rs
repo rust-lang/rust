@@ -11,6 +11,3 @@ mod traits;
 mod serde_impls;
 
 pub use crate::{range::TextRange, size::TextSize, traits::TextSized};
-
-#[cfg(feature = "deepsize")]
-deepsize::known_deep_size!(0, TextSize, TextRange);

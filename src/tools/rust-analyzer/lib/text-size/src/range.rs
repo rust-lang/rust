@@ -1,14 +1,10 @@
 use {
-    crate::{TextSize, TextSized},
+    crate::TextSize,
     std::{
         cmp,
         convert::{TryFrom, TryInto},
         fmt,
-        num::TryFromIntError,
-        ops::{
-            Add, AddAssign, Bound, Index, IndexMut, Range, RangeBounds, RangeInclusive, RangeTo,
-            RangeToInclusive, Sub, SubAssign,
-        },
+        ops::{Bound, Index, IndexMut, Range, RangeBounds},
     },
 };
 
@@ -19,17 +15,17 @@ use {
 ///
 /// # Translation from `text_unit`
 ///
-/// - `TextRange::from_to(from, to)` ⟹ `TextRange::from(from..to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::at(offset).with_len(size)`
-/// - `range.start()` ⟹ `range.start()`
-/// - `range.end()` ⟹ `range.end()`
-/// - `range.len()` ⟹ `range.len()`<sup>†</sup>
-/// - `range.is_empty()` ⟹ `range.is_empty()`
-/// - `a.is_subrange(b)` ⟹ `b.contains(a)`
-/// - `a.intersection(b)` ⟹ `TextRange::intersection(a, b)`
-/// - `a.extend_to(b)` ⟹ `TextRange::covering(a, b)`
-/// - `range.contains(offset)` ⟹ `range.contains_point(point)`
-/// - `range.contains_inclusive(offset)` ⟹ `range.contains_point_inclusive(point)`
+/// - `TextRange::from_to(from, to)`        ⟹ `TextRange::from(from..to)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::from(offset..offset + size)`
+/// - `range.start()`                       ⟹ `range.start()`
+/// - `range.end()`                         ⟹ `range.end()`
+/// - `range.len()`                         ⟹ `range.len()`<sup>†</sup>
+/// - `range.is_empty()`                    ⟹ `range.is_empty()`
+/// - `a.is_subrange(b)`                    ⟹ `b.contains(a)`
+/// - `a.intersection(b)`                   ⟹ `TextRange::intersection(a, b)`
+/// - `a.extend_to(b)`                      ⟹ `TextRange::covering(a, b)`
+/// - `range.contains(offset)`              ⟹ `range.contains_exclusive(point)`
+/// - `range.contains_inclusive(offset)`    ⟹ `range.contains_inclusive(point)`
 ///
 /// † See the note on [`TextRange::len`] for differing behavior for incorrect reverse ranges.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -44,12 +40,6 @@ pub(crate) const fn TextRange(start: TextSize, end: TextSize) -> TextRange {
 }
 
 impl fmt::Debug for TextRange {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for TextRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}..{})", self.start(), self.end())
     }
@@ -91,27 +81,6 @@ impl TextRange {
 
 /// Manipulation methods.
 impl TextRange {
-    /// A range covering the text size of some text-like object.
-    pub fn of(size: impl TextSized) -> TextRange {
-        TextRange(0.into(), size.text_size())
-    }
-
-    /// An empty range at some text size offset.
-    pub fn at(size: impl Into<TextSize>) -> TextRange {
-        let size = size.into();
-        TextRange(size, size)
-    }
-
-    /// Set the length without changing the starting offset.
-    pub fn with_len(self, len: impl Into<TextSize>) -> TextRange {
-        TextRange(self.start(), self.start() + len.into())
-    }
-
-    /// Set the starting offset without changing the length.
-    pub fn with_offset(self, offset: impl Into<TextSize>) -> TextRange {
-        TextRange::at(offset).with_len(self.len())
-    }
-
     /// Check if this range completely contains another range.
     pub fn contains(self, other: TextRange) -> bool {
         self.start() <= other.start() && other.end() <= self.end()
@@ -135,7 +104,7 @@ impl TextRange {
     /// Check if this range contains a point.
     ///
     /// The end index is considered excluded.
-    pub fn contains_point(self, point: impl Into<TextSize>) -> bool {
+    pub fn contains_exclusive(self, point: impl Into<TextSize>) -> bool {
         let point = point.into();
         self.start() <= point && point < self.end()
     }
@@ -143,40 +112,27 @@ impl TextRange {
     /// Check if this range contains a point.
     ///
     /// The end index is considered included.
-    pub fn contains_point_inclusive(self, point: impl Into<TextSize>) -> bool {
+    pub fn contains_inclusive(self, point: impl Into<TextSize>) -> bool {
         let point = point.into();
         self.start() <= point && point <= self.end()
     }
+}
 
-    /// Offset the entire range by some text size.
-    pub fn checked_add(self, rhs: impl TryInto<TextSize>) -> Option<TextRange> {
-        let rhs = rhs.try_into().ok()?;
-        Some(TextRange(
-            self.start().checked_add(rhs)?,
-            self.end().checked_add(rhs)?,
-        ))
-    }
-
-    /// Offset the entire range by some text size.
-    pub fn checked_sub(self, rhs: impl TryInto<TextSize>) -> Option<TextRange> {
-        let rhs = rhs.try_into().ok()?;
-        Some(TextRange(
-            self.start().checked_sub(rhs)?,
-            self.end().checked_sub(rhs)?,
-        ))
-    }
+fn ix(size: TextSize) -> usize {
+    size.try_into()
+        .unwrap_or_else(|_| panic!("overflow when converting TextSize to usize index"))
 }
 
 impl Index<TextRange> for str {
     type Output = str;
     fn index(&self, index: TextRange) -> &Self::Output {
-        &self[index.start().ix()..index.end().ix()]
+        &self[ix(index.start())..ix(index.end())]
     }
 }
 
 impl IndexMut<TextRange> for str {
     fn index_mut(&mut self, index: TextRange) -> &mut Self::Output {
-        &mut self[index.start().ix()..index.end().ix()]
+        &mut self[ix(index.start())..ix(index.end())]
     }
 }
 
@@ -197,29 +153,7 @@ macro_rules! conversions {
                 TextRange(value.start.into(), value.end.into())
             }
         }
-        impl TryFrom<RangeInclusive<$lte>> for TextRange {
-            type Error = TryFromIntError;
-            fn try_from(value: RangeInclusive<$lte>) -> Result<TextRange, Self::Error> {
-                let (start, end) = value.into_inner();
-                let end: TextSize = end.into();
-                // This is the only way to get a TryFromIntError currently.
-                let end = end.checked_add(1).ok_or_else(|| u8::try_from(-1).unwrap_err())?;
-                Ok(TextRange(start.into(), end))
-            }
-        }
-        impl From<RangeTo<$lte>> for TextRange {
-            fn from(value: RangeTo<$lte>) -> TextRange {
-                TextRange(0.into(), value.end.into())
-            }
-        }
-        impl TryFrom<RangeToInclusive<$lte>> for TextRange {
-            type Error = TryFromIntError;
-            fn try_from(value: RangeToInclusive<$lte>) -> Result<TextRange, Self::Error> {
-                let start: TextSize = 0.into();
-                let end: TextSize = value.end.into();
-                TextRange::try_from(start..=end)
-            }
-        }
+        // Just support `start..end` for now, not `..end`, `start..=end`, `..=end`.
     };
     (TryFrom<$gt:ident> for TextRange) => {
         impl TryFrom<Range<$gt>> for TextRange {
@@ -228,30 +162,7 @@ macro_rules! conversions {
                 Ok(TextRange(value.start.try_into()?, value.end.try_into()?))
             }
         }
-        impl TryFrom<RangeInclusive<$gt>> for TextRange {
-            type Error = TryFromIntError;
-            fn try_from(value: RangeInclusive<$gt>) -> Result<TextRange, Self::Error> {
-                let (start, end) = value.into_inner();
-                let end: TextSize = end.try_into()?;
-                // This is the only way to get a TryFromIntError currently.
-                let end = end.checked_add(1).ok_or_else(|| u8::try_from(-1).unwrap_err())?;
-                Ok(TextRange(start.try_into()?, end))
-            }
-        }
-        impl TryFrom<RangeTo<$gt>> for TextRange {
-            type Error = TryFromIntError;
-            fn try_from(value: RangeTo<$gt>) -> Result<TextRange, Self::Error> {
-                Ok(TextRange(0.into(), value.end.try_into()?))
-            }
-        }
-        impl TryFrom<RangeToInclusive<$gt>> for TextRange {
-            type Error = TryFromIntError;
-            fn try_from(value: RangeToInclusive<$gt>) -> Result<TextRange, Self::Error> {
-                let start: TextSize = 0.into();
-                let end: TextSize = value.end.try_into()?;
-                TextRange::try_from(start..=end)
-            }
-        }
+        // Just support `start..end` for now, not `..end`, `start..=end`, `..=end`.
     };
     {
         lt TextSize [$($lt:ident)*]
@@ -260,11 +171,8 @@ macro_rules! conversions {
         varries     [$($var:ident)*]
     } => {
         $(
-            // Not `From` yet because of integer type fallback. We want e.g.
-            // `TextRange::from(0)` and `range + 1` to work, and more `From`
-            // impls means that this will try (and fail) to use i32 rather
-            // than one of the unsigned integer types that actually work.
-            conversions!(TryFrom<$lt> for TextRange);
+            conversions!(From<$lt> for TextRange);
+            // unlike TextSize, we do not provide conversions in the "out" direction.
         )*
 
         $(
@@ -287,69 +195,4 @@ conversions! {
     eq TextSize [u32 TextSize]
     gt TextSize [u64]
     varries     [usize]
-}
-
-impl Into<TextRange> for &'_ TextRange {
-    fn into(self) -> TextRange {
-        *self
-    }
-}
-
-impl Into<TextRange> for &'_ mut TextRange {
-    fn into(self) -> TextRange {
-        *self
-    }
-}
-
-macro_rules! op {
-    (impl $Op:ident for TextRange by fn $f:ident = $op:tt) => {
-        impl<IntoSize: Copy> $Op<IntoSize> for TextRange
-        where
-            TextSize: $Op<IntoSize, Output = TextSize>,
-        {
-            type Output = TextRange;
-            fn $f(self, rhs: IntoSize) -> TextRange {
-                TextRange(self.start() $op rhs, self.end() $op rhs)
-            }
-        }
-        impl<IntoSize> $Op<IntoSize> for &'_ TextRange
-        where
-            TextRange: $Op<IntoSize, Output = TextRange>,
-        {
-            type Output = TextRange;
-            fn $f(self, rhs: IntoSize) -> TextRange {
-                *self $op rhs
-            }
-        }
-        impl<IntoSize> $Op<IntoSize> for &'_ mut TextRange
-        where
-            TextRange: $Op<IntoSize, Output = TextRange>,
-        {
-            type Output = TextRange;
-            fn $f(self, rhs: IntoSize) -> TextRange {
-                *self $op rhs
-            }
-        }
-    };
-}
-
-op!(impl Add for TextRange by fn add = +);
-op!(impl Sub for TextRange by fn sub = -);
-
-impl<A> AddAssign<A> for TextRange
-where
-    TextRange: Add<A, Output = TextRange>,
-{
-    fn add_assign(&mut self, rhs: A) {
-        *self = *self + rhs
-    }
-}
-
-impl<S> SubAssign<S> for TextRange
-where
-    TextRange: Sub<S, Output = TextRange>,
-{
-    fn sub_assign(&mut self, rhs: S) {
-        *self = *self - rhs
-    }
 }
