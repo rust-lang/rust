@@ -1,7 +1,7 @@
 pub mod attr;
 mod expr;
 mod item;
-mod module;
+pub mod module;
 pub use module::{ModulePath, ModulePathSuccess};
 mod pat;
 mod path;
