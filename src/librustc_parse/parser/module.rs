@@ -1,7 +1,7 @@
 use super::item::ItemInfo;
 use super::Parser;
 
-use crate::{new_sub_parser_from_file, DirectoryOwnership};
+use crate::{new_sub_parser_from_file, Directory, DirectoryOwnership};
 
 use rustc_ast::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
 use rustc_ast::attr;
@@ -39,25 +39,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
-        let in_cfg = crate::config::process_configure_mod(self.sess, self.cfg_mods, attrs);
-
         let id = self.parse_ident()?;
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
-            if in_cfg && self.recurse_into_file_modules {
-                let dir = &self.directory;
-                parse_external_module(self.sess, self.cfg_mods, id, dir.ownership, &dir.path, attrs)
-            } else {
-                Default::default()
-            }
+            Default::default()
         } else {
-            let old_directory = self.directory.clone();
-            push_directory(id, &attrs, &mut self.directory.ownership, &mut self.directory.path);
-
             self.expect(&token::OpenDelim(token::Brace))?;
-            let module = self.parse_mod(&token::CloseDelim(token::Brace))?;
-
-            self.directory = old_directory;
-            module
+            self.parse_mod(&token::CloseDelim(token::Brace))?
         };
         attrs.append(&mut inner_attrs);
         Ok((id, ItemKind::Mod(module)))
@@ -95,41 +82,45 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn parse_external_module(
+pub fn parse_external_mod(
     sess: &ParseSess,
-    cfg_mods: bool,
     id: ast::Ident,
-    ownership: DirectoryOwnership,
-    dir_path: &Path,
-    attrs: &[Attribute],
-) -> (Mod, Vec<Attribute>) {
-    submod_path(sess, id, &attrs, ownership, dir_path)
-        .and_then(|r| eval_src_mod(sess, cfg_mods, r.path, r.ownership, id))
-        .map_err(|mut err| err.emit())
-        .unwrap_or_default()
-}
+    Directory { mut ownership, path }: Directory,
+    attrs: &mut Vec<Attribute>,
+    pop_mod_stack: &mut bool,
+) -> (Mod, Directory) {
+    // We bail on the first error, but that error does not cause a fatal error... (1)
+    let result: PResult<'_, _> = try {
+        // Extract the file path and the new ownership.
+        let mp = submod_path(sess, id, &attrs, ownership, &path)?;
+        ownership = mp.ownership;
 
-/// Reads a module from a source file.
-fn eval_src_mod<'a>(
-    sess: &'a ParseSess,
-    cfg_mods: bool,
-    path: PathBuf,
-    dir_ownership: DirectoryOwnership,
-    id: ast::Ident,
-) -> PResult<'a, (Mod, Vec<Attribute>)> {
-    let mut included_mod_stack = sess.included_mod_stack.borrow_mut();
-    error_on_circular_module(sess, id.span, &path, &included_mod_stack)?;
-    included_mod_stack.push(path.clone());
-    drop(included_mod_stack);
+        // Ensure file paths are acyclic.
+        let mut included_mod_stack = sess.included_mod_stack.borrow_mut();
+        error_on_circular_module(sess, id.span, &mp.path, &included_mod_stack)?;
+        included_mod_stack.push(mp.path.clone());
+        *pop_mod_stack = true; // We have pushed, so notify caller.
+        drop(included_mod_stack);
 
-    let mut p0 =
-        new_sub_parser_from_file(sess, &path, dir_ownership, Some(id.to_string()), id.span);
-    p0.cfg_mods = cfg_mods;
-    let mut module = p0.parse_mod(&token::Eof)?;
-    module.0.inline = false;
+        // Actually parse the external file as amodule.
+        let mut p0 = new_sub_parser_from_file(sess, &mp.path, Some(id.to_string()), id.span);
+        let mut module = p0.parse_mod(&token::Eof)?;
+        module.0.inline = false;
+        module
+    };
+    // (1) ...instead, we return a dummy module.
+    let (module, mut new_attrs) = result.map_err(|mut err| err.emit()).unwrap_or_default();
+    attrs.append(&mut new_attrs);
 
-    sess.included_mod_stack.borrow_mut().pop();
-    Ok(module)
+    // Extract the directory path for submodules of `module`.
+    let path = sess.source_map().span_to_unmapped_path(module.inner);
+    let mut path = match path {
+        FileName::Real(path) => path,
+        other => PathBuf::from(other.to_string()),
+    };
+    path.pop();
+
+    (module, Directory { ownership, path })
 }
 
 fn error_on_circular_module<'a>(
@@ -153,12 +144,11 @@ fn error_on_circular_module<'a>(
 pub fn push_directory(
     id: Ident,
     attrs: &[Attribute],
-    dir_ownership: &mut DirectoryOwnership,
-    dir_path: &mut PathBuf,
-) {
-    if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-        dir_path.push(&*path.as_str());
-        *dir_ownership = DirectoryOwnership::Owned { relative: None };
+    Directory { mut ownership, mut path }: Directory,
+) -> Directory {
+    if let Some(filename) = attr::first_attr_value_str_by_name(attrs, sym::path) {
+        path.push(&*filename.as_str());
+        ownership = DirectoryOwnership::Owned { relative: None };
     } else {
         // We have to push on the current module name in the case of relative
         // paths in order to ensure that any additional module paths from inline
@@ -166,14 +156,15 @@ pub fn push_directory(
         //
         // For example, a `mod z { ... }` inside `x/y.rs` should set the current
         // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-        if let DirectoryOwnership::Owned { relative } = dir_ownership {
+        if let DirectoryOwnership::Owned { relative } = &mut ownership {
             if let Some(ident) = relative.take() {
                 // Remove the relative offset.
-                dir_path.push(&*ident.as_str());
+                path.push(&*ident.as_str());
             }
         }
-        dir_path.push(&*id.as_str());
+        path.push(&*id.as_str());
     }
+    Directory { ownership, path }
 }
 
 fn submod_path<'a>(

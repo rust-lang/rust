@@ -538,12 +538,3 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 fn is_cfg(attr: &Attribute) -> bool {
     attr.check_name(sym::cfg)
 }
-
-/// Process the potential `cfg` attributes on a module.
-/// Also determine if the module should be included in this configuration.
-pub fn process_configure_mod(sess: &ParseSess, cfg_mods: bool, attrs: &mut Vec<Attribute>) -> bool {
-    // Don't perform gated feature checking.
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
-    strip_unconfigured.process_cfg_attrs(attrs);
-    !cfg_mods || strip_unconfigured.in_cfg(&attrs)
-}
