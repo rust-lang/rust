@@ -2,7 +2,6 @@
 
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(try_blocks)]
 
 use rustc_ast::ast;
 use rustc_ast::token::{self, Nonterminal, Token};
