@@ -5,12 +5,12 @@ use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::QueryState;
-use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::DefId;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_session::Session;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -25,6 +25,12 @@ pub trait QueryConfig<CTX> {
 
 pub trait QueryContext: Copy {
     type Query;
+
+    /// Access the session.
+    fn session(&self) -> &Session;
+
+    /// Get string representation from DefPath.
+    fn def_path_str(&self, def_id: DefId) -> String;
 }
 
 pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
@@ -48,26 +54,25 @@ pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     fn handle_cycle_error(tcx: CTX, error: CycleError<CTX>) -> Self::Value;
 }
 
-pub(crate) trait QueryDescription<'tcx>: QueryAccessors<TyCtxt<'tcx>> {
-    fn describe(tcx: TyCtxt<'_>, key: Self::Key) -> Cow<'static, str>;
+pub(crate) trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
+    fn describe(tcx: CTX, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
-    fn cache_on_disk(_: TyCtxt<'tcx>, _: Self::Key, _: Option<&Self::Value>) -> bool {
+    fn cache_on_disk(_: CTX, _: Self::Key, _: Option<&Self::Value>) -> bool {
         false
     }
 
-    fn try_load_from_disk(_: TyCtxt<'tcx>, _: SerializedDepNodeIndex) -> Option<Self::Value> {
+    fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
 
-impl<'tcx, M> QueryDescription<'tcx> for M
+impl<CTX: QueryContext, M> QueryDescription<CTX> for M
 where
-    M: QueryAccessors<TyCtxt<'tcx>, Key = DefId>,
-    //M::Cache: QueryCache<DefId, M::Value>,
+    M: QueryAccessors<CTX, Key = DefId>,
 {
-    default fn describe(tcx: TyCtxt<'_>, def_id: DefId) -> Cow<'static, str> {
-        if !tcx.sess.verbose() {
+    default fn describe(tcx: CTX, def_id: DefId) -> Cow<'static, str> {
+        if !tcx.session().verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
         } else {
             let name = ::std::any::type_name::<M>();
@@ -75,14 +80,11 @@ where
         }
     }
 
-    default fn cache_on_disk(_: TyCtxt<'tcx>, _: Self::Key, _: Option<&Self::Value>) -> bool {
+    default fn cache_on_disk(_: CTX, _: Self::Key, _: Option<&Self::Value>) -> bool {
         false
     }
 
-    default fn try_load_from_disk(
-        _: TyCtxt<'tcx>,
-        _: SerializedDepNodeIndex,
-    ) -> Option<Self::Value> {
+    default fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }

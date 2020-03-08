@@ -17,6 +17,8 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
+use rustc_session::Session;
+use rustc_span::def_id::DefId;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
@@ -181,7 +183,7 @@ where
         mut lookup: QueryLookup<'tcx, TyCtxt<'tcx>, C::Key, C::Sharded>,
     ) -> TryGetJob<'tcx, C>
     where
-        Q: QueryDescription<'tcx, Key = C::Key, Value = C::Value, Cache = C>,
+        Q: QueryDescription<TyCtxt<'tcx>, Key = C::Key, Value = C::Value, Cache = C>,
     {
         let lock = &mut *lookup.lock;
 
@@ -356,6 +358,14 @@ where
 
 impl QueryContext for TyCtxt<'tcx> {
     type Query = Query<'tcx>;
+
+    fn session(&self) -> &Session {
+        &self.sess
+    }
+
+    fn def_path_str(&self, def_id: DefId) -> String {
+        TyCtxt::def_path_str(*self, def_id)
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -517,7 +527,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(never)]
-    pub(super) fn get_query<Q: QueryDescription<'tcx> + 'tcx>(
+    pub(super) fn get_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
         span: Span,
         key: Q::Key,
@@ -536,7 +546,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    fn try_execute_query<Q: QueryDescription<'tcx> + 'tcx>(
+    fn try_execute_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
         span: Span,
         key: Q::Key,
@@ -614,7 +624,7 @@ impl<'tcx> TyCtxt<'tcx> {
         result
     }
 
-    fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'tcx>>(
+    fn load_from_disk_and_cache_in_memory<Q: QueryDescription<TyCtxt<'tcx>>>(
         self,
         key: Q::Key,
         prev_dep_node_index: SerializedDepNodeIndex,
@@ -671,7 +681,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(never)]
     #[cold]
-    fn incremental_verify_ich<Q: QueryDescription<'tcx>>(
+    fn incremental_verify_ich<Q: QueryDescription<TyCtxt<'tcx>>>(
         self,
         result: &Q::Value,
         dep_node: &DepNode,
@@ -698,7 +708,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    fn force_query_with_job<Q: QueryDescription<'tcx> + 'tcx>(
+    fn force_query_with_job<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
         key: Q::Key,
         job: JobOwner<'tcx, TyCtxt<'tcx>, Q::Cache>,
@@ -756,7 +766,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// side-effects -- e.g., in order to report errors for erroneous programs.
     ///
     /// Note: The optimization is only available during incr. comp.
-    pub(super) fn ensure_query<Q: QueryDescription<'tcx> + 'tcx>(self, key: Q::Key) {
+    pub(super) fn ensure_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(self, key: Q::Key) {
         if Q::EVAL_ALWAYS {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
             return;
@@ -784,7 +794,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(dead_code)]
-    pub(super) fn force_query<Q: QueryDescription<'tcx> + 'tcx>(
+    pub(super) fn force_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
         key: Q::Key,
         span: Span,
@@ -920,7 +930,7 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
+            pub fn describe(&self, tcx: TyCtxt<$tcx>) -> Cow<'static, str> {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))

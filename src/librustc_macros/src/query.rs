@@ -380,7 +380,7 @@ fn add_query_description_impl(
         quote! {
             #[allow(unused_variables)]
             fn describe(
-                #tcx: TyCtxt<'_>,
+                #tcx: TyCtxt<'tcx>,
                 #key: #arg,
             ) -> Cow<'static, str> {
                 format!(#desc).into()
@@ -393,7 +393,7 @@ fn add_query_description_impl(
         let desc = desc.unwrap_or(quote! {});
 
         impls.extend(quote! {
-            impl<'tcx> QueryDescription<'tcx> for queries::#name<'tcx> {
+            impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
                 #desc
                 #cache
             }
