@@ -31,11 +31,11 @@ features = ["write"] # We don't need read support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/bytecodealliance/wasmtime/"]
-#cranelift-codegen = { path = "../wasmtime/cranelift/cranelift-codegen" }
-#cranelift-frontend = { path = "../wasmtime/cranelift/cranelift-frontend" }
-#cranelift-module = { path = "../wasmtime/cranelift/cranelift-module" }
-#cranelift-simplejit = { path = "../wasmtime/cranelift/cranelift-simplejit" }
-#cranelift-object = { path = "../wasmtime/cranelift/cranelift-object" }
+#cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
+#cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
+#cranelift-module = { path = "../wasmtime/cranelift/module" }
+#cranelift-simplejit = { path = "../wasmtime/cranelift/simplejit" }
+#cranelift-object = { path = "../wasmtime/cranelift/object" }
 
 #[patch.crates-io]
 #gimli = { path = "../" }
