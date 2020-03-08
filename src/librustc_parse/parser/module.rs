@@ -44,12 +44,8 @@ impl<'a> Parser<'a> {
         let id = self.parse_ident()?;
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
-                // This mod is in an external file. Let's go get it!
                 let dir = &self.directory;
-                submod_path(self.sess, id, &attrs, dir.ownership, &dir.path)
-                    .and_then(|r| eval_src_mod(self.sess, self.cfg_mods, r.path, r.ownership, id))
-                    .map_err(|mut err| err.emit())
-                    .unwrap_or_default()
+                parse_external_module(self.sess, self.cfg_mods, id, dir.ownership, &dir.path, attrs)
             } else {
                 Default::default()
             }
@@ -97,6 +93,20 @@ impl<'a> Parser<'a> {
 
         Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
     }
+}
+
+fn parse_external_module(
+    sess: &ParseSess,
+    cfg_mods: bool,
+    id: ast::Ident,
+    ownership: DirectoryOwnership,
+    dir_path: &Path,
+    attrs: &[Attribute],
+) -> (Mod, Vec<Attribute>) {
+    submod_path(sess, id, &attrs, ownership, dir_path)
+        .and_then(|r| eval_src_mod(sess, cfg_mods, r.path, r.ownership, id))
+        .map_err(|mut err| err.emit())
+        .unwrap_or_default()
 }
 
 /// Reads a module from a source file.
