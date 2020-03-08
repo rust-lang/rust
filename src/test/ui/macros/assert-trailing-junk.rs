@@ -13,12 +13,12 @@ fn main() {
     //~^ ERROR no rules expected
 
     assert!(true "whatever" blah);
-    //~^ WARN unexpected string literal
+    //~^ ERROR unexpected string literal
     //~^^ ERROR no rules expected
 
     assert!(true;);
-    //~^ WARN macro requires an expression
+    //~^ ERROR macro requires an expression
 
     assert!(false || true "error message");
-    //~^ WARN unexpected string literal
+    //~^ ERROR unexpected string literal
 }

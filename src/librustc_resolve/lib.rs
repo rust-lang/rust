@@ -56,7 +56,7 @@ use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
-use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
+use imports::{Import, ImportKind, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
 
@@ -456,8 +456,8 @@ pub struct ModuleData<'a> {
 
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
-    globs: RefCell<Vec<&'a ImportDirective<'a>>>,
+    glob_importers: RefCell<Vec<&'a Import<'a>>>,
+    globs: RefCell<Vec<&'a Import<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
@@ -584,7 +584,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res, /* is_macro_export */ bool),
     Module(Module<'a>),
-    Import { binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>, used: Cell<bool> },
+    Import { binding: &'a NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -713,8 +713,7 @@ impl<'a> NameBinding<'a> {
     fn is_extern_crate(&self) -> bool {
         match self.kind {
             NameBindingKind::Import {
-                directive:
-                    &ImportDirective { subclass: ImportDirectiveSubclass::ExternCrate { .. }, .. },
+                import: &Import { kind: ImportKind::ExternCrate { .. }, .. },
                 ..
             } => true,
             NameBindingKind::Module(&ModuleData {
@@ -734,7 +733,7 @@ impl<'a> NameBinding<'a> {
 
     fn is_glob_import(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import { directive, .. } => directive.is_glob(),
+            NameBindingKind::Import { import, .. } => import.is_glob(),
             _ => false,
         }
     }
@@ -839,10 +838,10 @@ pub struct Resolver<'a> {
     field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
 
     /// All imports known to succeed or fail.
-    determined_imports: Vec<&'a ImportDirective<'a>>,
+    determined_imports: Vec<&'a Import<'a>>,
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<&'a ImportDirective<'a>>,
+    indeterminate_imports: Vec<&'a Import<'a>>,
 
     /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
     /// We are resolving a last import segment during import validation.
@@ -947,7 +946,7 @@ pub struct Resolver<'a> {
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
 
-    potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
+    potentially_unused_imports: Vec<&'a Import<'a>>,
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
@@ -971,7 +970,7 @@ pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
-    import_directives: arena::TypedArena<ImportDirective<'a>>,
+    imports: arena::TypedArena<Import<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
     legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
     ast_paths: arena::TypedArena<ast::Path>,
@@ -991,11 +990,8 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
     }
-    fn alloc_import_directive(
-        &'a self,
-        import_directive: ImportDirective<'a>,
-    ) -> &'a ImportDirective<'_> {
-        self.import_directives.alloc(import_directive)
+    fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
+        self.imports.alloc(import)
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
@@ -1410,7 +1406,7 @@ impl<'a> Resolver<'a> {
                 misc2: AmbiguityErrorMisc::None,
             });
         }
-        if let NameBindingKind::Import { directive, binding, ref used } = used_binding.kind {
+        if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
@@ -1423,17 +1419,17 @@ impl<'a> Resolver<'a> {
                 }
             }
             used.set(true);
-            directive.used.set(true);
-            self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(&directive, ident);
+            import.used.set(true);
+            self.used_imports.insert((import.id, ns));
+            self.add_to_glob_map(&import, ident);
             self.record_use(ident, ns, binding, false);
         }
     }
 
     #[inline]
-    fn add_to_glob_map(&mut self, directive: &ImportDirective<'_>, ident: Ident) {
-        if directive.is_glob() {
-            self.glob_map.entry(directive.id).or_default().insert(ident.name);
+    fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
+        if import.is_glob() {
+            self.glob_map.entry(import.id).or_default().insert(ident.name);
         }
     }
 
@@ -2258,10 +2254,9 @@ impl<'a> Resolver<'a> {
         // `ExternCrate` (also used for `crate::...`) then no need to issue a
         // warning, this looks all good!
         if let Some(binding) = second_binding {
-            if let NameBindingKind::Import { directive: d, .. } = binding.kind {
-                // Careful: we still want to rewrite paths from
-                // renamed extern crates.
-                if let ImportDirectiveSubclass::ExternCrate { source: None, .. } = d.subclass {
+            if let NameBindingKind::Import { import, .. } = binding.kind {
+                // Careful: we still want to rewrite paths from renamed extern crates.
+                if let ImportKind::ExternCrate { source: None, .. } = import.kind {
                     return;
                 }
             }
@@ -2564,10 +2559,10 @@ impl<'a> Resolver<'a> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
-        let directive = match (&new_binding.kind, &old_binding.kind) {
+        let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
             // import without attributes.
-            (Import { directive: new, .. }, Import { directive: old, .. })
+            (Import { import: new, .. }, Import { import: old, .. })
                 if {
                     !new_binding.span.is_dummy()
                         && !old_binding.span.is_dummy()
@@ -2581,11 +2576,11 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Otherwise prioritize the new binding.
-            (Import { directive, .. }, other) if !new_binding.span.is_dummy() => {
-                Some((directive, new_binding.span, other.is_import()))
+            (Import { import, .. }, other) if !new_binding.span.is_dummy() => {
+                Some((import, new_binding.span, other.is_import()))
             }
-            (other, Import { directive, .. }) if !old_binding.span.is_dummy() => {
-                Some((directive, old_binding.span, other.is_import()))
+            (other, Import { import, .. }) if !old_binding.span.is_dummy() => {
+                Some((import, old_binding.span, other.is_import()))
             }
             _ => None,
         };
@@ -2602,22 +2597,22 @@ impl<'a> Resolver<'a> {
             && !has_dummy_span
             && ((new_binding.is_extern_crate() || old_binding.is_extern_crate()) || from_item);
 
-        match directive {
-            Some((directive, span, true)) if should_remove_import && directive.is_nested() => {
-                self.add_suggestion_for_duplicate_nested_use(&mut err, directive, span)
+        match import {
+            Some((import, span, true)) if should_remove_import && import.is_nested() => {
+                self.add_suggestion_for_duplicate_nested_use(&mut err, import, span)
             }
-            Some((directive, _, true)) if should_remove_import && !directive.is_glob() => {
+            Some((import, _, true)) if should_remove_import && !import.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
                 err.tool_only_span_suggestion(
-                    directive.use_span_with_attributes,
+                    import.use_span_with_attributes,
                     "remove unnecessary import",
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );
             }
-            Some((directive, span, _)) => {
-                self.add_suggestion_for_rename_of_use(&mut err, name, directive, span)
+            Some((import, span, _)) => {
+                self.add_suggestion_for_rename_of_use(&mut err, name, import, span)
             }
             _ => {}
         }
@@ -2639,7 +2634,7 @@ impl<'a> Resolver<'a> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         name: Name,
-        directive: &ImportDirective<'_>,
+        import: &Import<'_>,
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
@@ -2649,11 +2644,11 @@ impl<'a> Resolver<'a> {
         };
 
         let mut suggestion = None;
-        match directive.subclass {
-            ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } => {
+        match import.kind {
+            ImportKind::Single { type_ns_only: true, .. } => {
                 suggestion = Some(format!("self as {}", suggested_name))
             }
-            ImportDirectiveSubclass::SingleImport { source, .. } => {
+            ImportKind::Single { source, .. } => {
                 if let Some(pos) =
                     source.span.hi().0.checked_sub(binding_span.lo().0).map(|pos| pos as usize)
                 {
@@ -2669,7 +2664,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ImportDirectiveSubclass::ExternCrate { source, target, .. } => {
+            ImportKind::ExternCrate { source, target, .. } => {
                 suggestion = Some(format!(
                     "extern crate {} as {};",
                     source.unwrap_or(target.name),
@@ -2711,27 +2706,27 @@ impl<'a> Resolver<'a> {
     /// If the nested use contains only one import then the suggestion will remove the entire
     /// line.
     ///
-    /// It is expected that the directive provided is a nested import - this isn't checked by the
+    /// It is expected that the provided import is nested - this isn't checked by the
     /// function. If this invariant is not upheld, this function's behaviour will be unexpected
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        directive: &ImportDirective<'_>,
+        import: &Import<'_>,
         binding_span: Span,
     ) {
-        assert!(directive.is_nested());
+        assert!(import.is_nested());
         let message = "remove unnecessary import";
 
         // Two examples will be used to illustrate the span manipulations we're doing:
         //
         // - Given `use issue_52891::{d, a, e};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `directive.use_span` is `issue_52891::{d, a, e};`.
+        //   `a` and `import.use_span` is `issue_52891::{d, a, e};`.
         // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `directive.use_span` is `issue_52891::{d, e, a};`.
+        //   `a` and `import.use_span` is `issue_52891::{d, e, a};`.
 
         let (found_closing_brace, span) =
-            find_span_of_binding_until_next_binding(self.session, binding_span, directive.use_span);
+            find_span_of_binding_until_next_binding(self.session, binding_span, import.use_span);
 
         // If there was a closing brace then identify the span to remove any trailing commas from
         // previous imports.
@@ -2747,7 +2742,7 @@ impl<'a> Resolver<'a> {
                 // Remove the entire line if we cannot extend the span back, this indicates a
                 // `issue_52891::{self}` case.
                 err.span_suggestion(
-                    directive.use_span_with_attributes,
+                    import.use_span_with_attributes,
                     message,
                     String::new(),
                     Applicability::MaybeIncorrect,

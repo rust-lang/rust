@@ -1,4 +1,4 @@
-warning: deprecated `#[macro_use]` directive used to import macros should be replaced at use sites with a `use` statement to import the macro instead
+warning: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
   --> $DIR/macro-use-warned-against.rs:7:1
    |
 LL | #[macro_use]

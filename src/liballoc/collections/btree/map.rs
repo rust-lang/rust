@@ -1477,6 +1477,14 @@ impl<K, V> Drop for IntoIter<K, V> {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
                 while let Some(_) = self.0.next() {}
+
+                // No need to avoid the shared root, because the tree was definitely not empty.
+                unsafe {
+                    let mut node = ptr::read(&self.0.front).into_node().forget_type();
+                    while let Some(parent) = node.deallocate_and_ascend() {
+                        node = parent.into_node().forget_type();
+                    }
+                }
             }
         }
 
@@ -1491,7 +1499,8 @@ impl<K, V> Drop for IntoIter<K, V> {
             if node.is_shared_root() {
                 return;
             }
-
+            // Most of the nodes have been deallocated while traversing
+            // but one pile from a leaf up to the root is left standing.
             while let Some(parent) = node.deallocate_and_ascend() {
                 node = parent.into_node().forget_type();
             }

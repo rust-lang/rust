@@ -4,7 +4,6 @@ error[E0658]: this is an internal attribute that will never be stable
 LL | #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}`"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: aborting due to previous error

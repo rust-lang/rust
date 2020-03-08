@@ -577,8 +577,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let var_ty = self.resolve_vars_with_obligations(var_ty);
             let msg = format!("first introduced with type `{}` here", var_ty);
             err.span_label(hir.span(var_id), msg);
-            let in_arm = hir.parent_iter(var_id).any(|(_, n)| matches!(n, hir::Node::Arm(..)));
-            let pre = if in_arm { "in the same arm, " } else { "" };
+            let in_match = hir.parent_iter(var_id).any(|(_, n)| {
+                matches!(
+                    n,
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Match(.., hir::MatchSource::Normal),
+                        ..
+                    })
+                )
+            });
+            let pre = if in_match { "in the same arm, " } else { "" };
             err.note(&format!("{}a binding must have the same type in all alternatives", pre));
             err.emit();
         }
