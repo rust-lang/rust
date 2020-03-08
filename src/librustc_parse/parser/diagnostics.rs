@@ -18,7 +18,6 @@ use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
 use std::mem;
-use std::path::PathBuf;
 
 const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -41,42 +40,12 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
 }
 
 pub enum Error {
-    FileNotFoundForModule { mod_name: String, default_path: PathBuf },
-    DuplicatePaths { mod_name: String, default_path: String, secondary_path: String },
     UselessDocComment,
 }
 
 impl Error {
     fn span_err(self, sp: impl Into<MultiSpan>, handler: &Handler) -> DiagnosticBuilder<'_> {
         match self {
-            Error::FileNotFoundForModule { ref mod_name, ref default_path } => {
-                let mut err = struct_span_err!(
-                    handler,
-                    sp,
-                    E0583,
-                    "file not found for module `{}`",
-                    mod_name,
-                );
-                err.help(&format!(
-                    "to create the module `{}`, create file \"{}\"",
-                    mod_name,
-                    default_path.display(),
-                ));
-                err
-            }
-            Error::DuplicatePaths { ref mod_name, ref default_path, ref secondary_path } => {
-                let mut err = struct_span_err!(
-                    handler,
-                    sp,
-                    E0584,
-                    "file for module `{}` found at both {} and {}",
-                    mod_name,
-                    default_path,
-                    secondary_path,
-                );
-                err.help("delete or rename one of them to remove the ambiguity");
-                err
-            }
             Error::UselessDocComment => {
                 let mut err = struct_span_err!(
                     handler,
