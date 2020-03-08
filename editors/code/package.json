@@ -191,7 +191,7 @@
                     "properties": {
                         "lsp.diagnostics": {
                             "type": "boolean",
-                            "description": "Whether to show diagnostics from `cargo check`"
+                            "markdownDescription": "Whether to show diagnostics from `cargo check`"
                         },
                         "completion.insertion.add-call-parenthesis": {
                             "type": "boolean",
@@ -203,7 +203,7 @@
                         },
                         "completion.enable-postfix": {
                             "type": "boolean",
-                            "description": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
+                            "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
                         },
                         "call-info.full": {
                             "type": "boolean",
@@ -211,11 +211,11 @@
                         },
                         "notifications.workspace-loaded": {
                             "type": "boolean",
-                            "description": "Whether to show `workspace loaded` message"
+                            "markdownDescription": "Whether to show `workspace loaded` message"
                         },
                         "notifications.cargo-toml-not-found": {
                             "type": "boolean",
-                            "description": "Whether to show `can't find Cargo.toml` error message"
+                            "markdownDescription": "Whether to show `can't find Cargo.toml` error message"
                         }
                     }
                 },
@@ -251,24 +251,24 @@
                 "rust-analyzer.cargo-watch.enable": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Run `cargo check` for diagnostics on save"
+                    "markdownDescription": "Run `cargo check` for diagnostics on save"
                 },
                 "rust-analyzer.cargo-watch.arguments": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
+                    "markdownDescription": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
                     "default": []
                 },
                 "rust-analyzer.cargo-watch.command": {
                     "type": "string",
-                    "description": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
+                    "markdownDescription": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
                     "default": "check"
                 },
                 "rust-analyzer.cargo-watch.allTargets": {
                     "type": "boolean",
-                    "description": "Check all targets and tests (will be passed as `--all-targets`)",
+                    "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)",
                     "default": true
                 },
                 "rust-analyzer.trace.server": {
@@ -320,7 +320,7 @@
                 "rust-analyzer.cargoFeatures.noDefaultFeatures": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Do not activate the `default` feature"
+                    "markdownDescription": "Do not activate the `default` feature"
                 },
                 "rust-analyzer.cargoFeatures.allFeatures": {
                     "type": "boolean",
