@@ -118,15 +118,7 @@ fn eval_src_mod<'a>(
     id: ast::Ident,
 ) -> PResult<'a, (Mod, Vec<Attribute>)> {
     let mut included_mod_stack = sess.included_mod_stack.borrow_mut();
-    if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
-        let mut err = String::from("circular modules: ");
-        for p in &included_mod_stack[i..] {
-            err.push_str(&p.to_string_lossy());
-            err.push_str(" -> ");
-        }
-        err.push_str(&path.to_string_lossy());
-        return Err(sess.span_diagnostic.struct_span_err(id.span, &err[..]));
-    }
+    error_on_circular_module(sess, id.span, &path, &included_mod_stack)?;
     included_mod_stack.push(path.clone());
     drop(included_mod_stack);
 
@@ -138,6 +130,24 @@ fn eval_src_mod<'a>(
 
     sess.included_mod_stack.borrow_mut().pop();
     Ok(module)
+}
+
+fn error_on_circular_module<'a>(
+    sess: &'a ParseSess,
+    span: Span,
+    path: &Path,
+    included_mod_stack: &[PathBuf],
+) -> PResult<'a, ()> {
+    if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
+        let mut err = String::from("circular modules: ");
+        for p in &included_mod_stack[i..] {
+            err.push_str(&p.to_string_lossy());
+            err.push_str(" -> ");
+        }
+        err.push_str(&path.to_string_lossy());
+        return Err(sess.span_diagnostic.struct_span_err(span, &err[..]));
+    }
+    Ok(())
 }
 
 pub fn push_directory(
