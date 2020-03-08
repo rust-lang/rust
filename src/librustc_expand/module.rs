@@ -1,8 +1,7 @@
-use crate::new_sub_parser_from_file;
-
 use rustc_ast::ast::{self, Attribute, Ident, Mod};
 use rustc_ast::{attr, token};
 use rustc_errors::{struct_span_err, PResult};
+use rustc_parse::new_sub_parser_from_file;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FileName, Span};
 use rustc_span::symbol::sym;
@@ -39,7 +38,7 @@ pub struct ModulePathSuccess {
     pub ownership: DirectoryOwnership,
 }
 
-pub fn parse_external_mod(
+crate fn parse_external_mod(
     sess: &ParseSess,
     id: ast::Ident,
     Directory { mut ownership, path }: Directory,
@@ -98,7 +97,7 @@ fn error_on_circular_module<'a>(
     Ok(())
 }
 
-pub fn push_directory(
+crate fn push_directory(
     id: Ident,
     attrs: &[Attribute],
     Directory { mut ownership, mut path }: Directory,

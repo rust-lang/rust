@@ -4,6 +4,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
+#![feature(try_blocks)]
 
 extern crate proc_macro as pm;
 
@@ -34,6 +35,7 @@ crate use rustc_span::hygiene;
 pub mod base;
 pub mod build;
 pub mod expand;
+pub mod module;
 pub use rustc_parse::config;
 pub mod proc_macro;
 
