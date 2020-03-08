@@ -119,6 +119,12 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
         return true;
     }
 
+    if let Some(Adt::Struct(s)) = pat_ty.as_adt() {
+        if s.fields(db).is_empty() && s.name(db).to_string() == bind_pat.syntax().to_string() {
+            return true;
+        }
+    }
+
     for node in bind_pat.syntax().ancestors() {
         match_ast! {
             match node {
@@ -935,6 +941,32 @@ fn main() {
     let test_var: i32 = 55;
     test_processed.no_hints_expected(22, test_var);
     test_processed.no_hints_expected(33, container.test_var);
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
+        []
+        "###
+        );
+    }
+
+    #[test]
+    fn unit_structs_have_no_type_hints() {
+        let (analysis, file_id) = single_file(
+            r#"
+enum CustomResult<T, E> {
+    Ok(T),
+    Err(E),
+}
+use CustomResult::*;
+
+struct SyntheticSyntax;
+
+fn main() {
+    match Ok(()) {
+        Ok(_) => (),
+        Err(SyntheticSyntax) => (),
+    }
 }"#,
         );
 
