@@ -56,6 +56,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            // Environment related shims
+            "_NSGetEnviron" => {
+                this.write_scalar(this.memory.extra.environ.unwrap().ptr, dest)?;
+            }
+
             // Time related shims
             "gettimeofday" => {
                 let result = this.gettimeofday(args[0], args[1])?;

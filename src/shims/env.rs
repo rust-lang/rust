@@ -2,6 +2,7 @@ use std::ffi::{OsString, OsStr};
 use std::env;
 
 use crate::stacked_borrows::Tag;
+use crate::rustc_target::abi::LayoutOf;
 use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -19,7 +20,7 @@ impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         excluded_env_vars: Vec<String>,
-    ) {
+    ) -> InterpResult<'tcx> {
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
@@ -29,6 +30,12 @@ impl EnvVars {
                 }
             }
         }
+        // Initialize the `environ` static
+        let layout = ecx.layout_of(ecx.tcx.types.usize)?;
+        let place = ecx.allocate(layout, MiriMemoryKind::Machine.into());
+        ecx.write_scalar(Scalar::from_machine_usize(0, &*ecx.tcx), place.into())?;
+        ecx.memory.extra.environ = Some(place);
+        ecx.update_environ()
     }
 }
 
@@ -82,6 +89,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.memory
                     .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
+            this.update_environ()?;
             Ok(0)
         } else {
             Ok(-1)
@@ -104,6 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.memory
                     .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
+            this.update_environ()?;
             Ok(0)
         } else {
             Ok(-1)
@@ -149,5 +158,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(-1)
             }
         }
+    }
+
+    /// Updates the `environ` static. It should not be called before
+    /// `EnvVars::init`.
+    fn update_environ(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        // Deallocate the old environ value.
+        let old_vars_ptr = this.read_scalar(this.memory.extra.environ.unwrap().into())?.not_undef()?;
+        // The pointer itself can be null because `EnvVars::init` only
+        // initializes the place for the static but not the static itself.
+        if !this.is_null(old_vars_ptr)? {
+            this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
+        }
+        // Collect all the pointers to each variable in a vector.
+        let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
+        // Add the trailing null pointer.
+        vars.push(Scalar::from_int(0, this.pointer_size()));
+        // Make an array with all these pointers inside Miri.
+        let tcx = this.tcx;
+        let vars_layout =
+            this.layout_of(tcx.mk_array(tcx.types.usize, vars.len() as u64))?;
+        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Machine.into());
+        for (idx, var) in vars.into_iter().enumerate() {
+            let place = this.mplace_field(vars_place, idx as u64)?;
+            this.write_scalar(var, place.into())?;
+        }
+        this.write_scalar(
+            vars_place.ptr,
+            this.memory.extra.environ.unwrap().into(),
+        )?;
+
+        Ok(())
     }
 }
