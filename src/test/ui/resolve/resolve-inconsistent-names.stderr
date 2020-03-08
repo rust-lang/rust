@@ -47,7 +47,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |         |                variable not in all patterns
    |         pattern doesn't bind `c`
 
-error[E0409]: variable `B` is bound in inconsistent ways within the same match arm
+error[E0409]: variable `B` is bound inconsistently across alternatives separated by `|`
   --> $DIR/resolve-inconsistent-names.rs:19:23
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()

@@ -670,7 +670,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         if cur_unwinding {
             // Follow the unwind edge.
-            let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
+            let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
             self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.

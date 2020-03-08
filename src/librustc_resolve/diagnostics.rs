@@ -249,8 +249,7 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0409,
-                    "variable `{}` is bound in inconsistent \
-                                ways within the same match arm",
+                    "variable `{}` is bound inconsistently across alternatives separated by `|`",
                     variable_name
                 );
                 err.span_label(span, "bound in different ways");
@@ -1090,7 +1089,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         // Sort extern crate names in reverse order to get
-        // 1) some consistent ordering for emitted dignostics, and
+        // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.r.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();

@@ -1667,14 +1667,14 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
 
             ty::IntVar(v) => {
                 // If inlined_probe_value returns a value it's always a
-                // `ty::Int(_)` or `ty::UInt(_)`, which nevers matches a
+                // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
                 self.infcx.inner.borrow_mut().int_unification_table.inlined_probe_value(v).is_some()
             }
 
             ty::FloatVar(v) => {
                 // If inlined_probe_value returns a value it's always a
-                // `ty::Float(_)`, which nevers matches a `ty::Infer(_)`.
+                // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
                 self.infcx.inner.borrow_mut().float_unification_table.probe_value(v).is_some()

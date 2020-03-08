@@ -226,7 +226,7 @@ pub fn const_eval_validated_provider<'tcx>(
         match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
-            // dedupliate calls
+            // deduplicate calls
             other => return other,
         }
     }
@@ -267,7 +267,7 @@ pub fn const_eval_raw_provider<'tcx>(
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
-            // dedupliate calls
+            // deduplicate calls
             other => return other,
         }
     }

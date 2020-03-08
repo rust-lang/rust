@@ -837,7 +837,7 @@ impl<'tcx> Constructor<'tcx> {
                             // eliminate it straight away.
                             remaining_ranges = vec![];
                         } else {
-                            // Otherwise explicitely compute the remaining ranges.
+                            // Otherwise explicitly compute the remaining ranges.
                             remaining_ranges = other_range.subtract_from(remaining_ranges);
                         }
 

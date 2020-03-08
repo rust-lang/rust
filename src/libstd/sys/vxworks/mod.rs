@@ -103,7 +103,7 @@ where
 
 // On Unix-like platforms, libc::abort will unregister signal handlers
 // including the SIGABRT handler, preventing the abort from being blocked, and
-// fclose streams, with the side effect of flushing them so libc bufferred
+// fclose streams, with the side effect of flushing them so libc buffered
 // output will be printed.  Additionally the shell will generally print a more
 // understandable error message like "Abort trap" rather than "Illegal
 // instruction" that intrinsics::abort would cause, as intrinsics::abort is

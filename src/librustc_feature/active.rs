@@ -289,9 +289,6 @@ declare_features! (
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (active, unwind_attributes, "1.4.0", Some(58760), None),
 
-    /// Allows `#[no_debug]`.
-    (active, no_debug, "1.5.0", Some(29721), None),
-
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
@@ -387,7 +384,7 @@ declare_features! (
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
 
-    /// Allows infering `'static` outlives requirements (RFC 2093).
+    /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
     /// Allows accessing fields of unions inside `const` functions.

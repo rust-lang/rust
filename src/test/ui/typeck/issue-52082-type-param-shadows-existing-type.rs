@@ -1,4 +1,4 @@
-// Fix issue 52082: Confusing error if accidentially defining a type paramter with the same name as
+// Fix issue 52082: Confusing error if accidentally defining a type parameter with the same name as
 // an existing type
 //
 // To this end, make sure that when trying to retrieve a field of a (reference to) type parameter,

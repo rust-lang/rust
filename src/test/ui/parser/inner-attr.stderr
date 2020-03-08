@@ -5,7 +5,7 @@ LL | #[feature(lang_items)]
    | ---------------------- previous outer attribute
 LL | 
 LL | #![recursion_limit="100"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attibute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attribute
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 

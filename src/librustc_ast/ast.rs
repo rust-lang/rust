@@ -1078,7 +1078,7 @@ impl Expr {
 
             // If binary operator is `Add` and both `lhs` and `rhs` are trait bounds,
             // then type of result is trait object.
-            // Othewise we don't assume the result type.
+            // Otherwise we don't assume the result type.
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
                 if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
                     TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
@@ -2089,7 +2089,7 @@ impl Async {
         if let Async::Yes { .. } = self { true } else { false }
     }
 
-    /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
+    /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
             Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),

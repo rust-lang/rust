@@ -1426,7 +1426,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    /// Parses an optional `move` prefix to a closure lke construct.
+    /// Parses an optional `move` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> CaptureBy {
         if self.eat_keyword(kw::Move) { CaptureBy::Value } else { CaptureBy::Ref }
     }

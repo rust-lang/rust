@@ -455,7 +455,7 @@ impl AutoTraitFinder<'tcx> {
                                     // predicate has some other kind of region. An region
                                     // variable isn't something we can actually display to a user,
                                     // so we choose their new predicate (which doesn't have a region
-                                    // varaible).
+                                    // variable).
                                     //
                                     // In both cases, we want to remove the old predicate,
                                     // from `user_computed_preds`, and replace it with the new
@@ -701,7 +701,7 @@ impl AutoTraitFinder<'tcx> {
                     //  some subobligations. We then process these subobligations
                     //  like any other generated sub-obligations.
                     //
-                    // 3. We receieve an 'ambiguous' result (Ok(None))
+                    // 3. We receive an 'ambiguous' result (Ok(None))
                     // If we were actually trying to compile a crate,
                     // we would need to re-process this obligation later.
                     // However, all we care about is finding out what bounds

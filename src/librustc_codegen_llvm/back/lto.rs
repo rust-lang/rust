@@ -504,7 +504,7 @@ fn thin_lto(
             //
             // This strategy means we can always save the computed imports as
             // canon: when we reuse the post-ThinLTO version, condition (3.)
-            // ensures that the curent import set is the same as the previous
+            // ensures that the current import set is the same as the previous
             // one. (And of course, when we don't reuse the post-ThinLTO
             // version, the current import set *is* the correct one, since we
             // are doing the ThinLTO in this current compilation cycle.)
@@ -538,7 +538,7 @@ fn thin_lto(
             }));
         }
 
-        // Save the curent ThinLTO import information for the next compilation
+        // Save the current ThinLTO import information for the next compilation
         // session, overwriting the previous serialized imports (if any).
         if let Some(path) = import_map_path {
             if let Err(err) = curr_import_map.save_to_file(&path) {

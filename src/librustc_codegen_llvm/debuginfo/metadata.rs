@@ -637,7 +637,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                 unsafe {
                     // The choice of type here is pretty arbitrary -
                     // anything reading the debuginfo for a recursive
-                    // type is going to see *somthing* weird - the only
+                    // type is going to see *something* weird - the only
                     // question is what exactly it will see.
                     let (size, align) = cx.size_and_align_of(t);
                     llvm::LLVMRustDIBuilderCreateBasicType(
@@ -2268,10 +2268,6 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
 
     let tcx = cx.tcx;
     let attrs = tcx.codegen_fn_attrs(def_id);
-
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-        return;
-    }
 
     let no_mangle = attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block (see

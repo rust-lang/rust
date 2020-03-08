@@ -1075,7 +1075,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         // single import (see test `issue-55884-2.rs`). In theory single imports should
                         // always block globs, even if they are not yet resolved, so that this kind of
                         // self-inconsistent resolution never happens.
-                        // Reenable the assert when the issue is fixed.
+                        // Re-enable the assert when the issue is fixed.
                         // assert!(result[ns].get().is_err());
                     }
                 }

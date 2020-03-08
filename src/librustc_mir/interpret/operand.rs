@@ -678,7 +678,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Then computing the absolute variant idx should not overflow any more.
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
-                                .expect("oveflow computing absolute variant idx");
+                                .expect("overflow computing absolute variant idx");
                             let variants_len = rval
                                 .layout
                                 .ty

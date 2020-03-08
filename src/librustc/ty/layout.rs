@@ -2579,7 +2579,7 @@ where
                 if let Some(kind) = pointee.safe {
                     attrs.pointee_align = Some(pointee.align);
 
-                    // `Box` (`UniqueBorrowed`) are not necessarily dereferencable
+                    // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
                     // for the entire duration of the function as they can be deallocated
                     // any time. Set their valid size to 0.
                     attrs.pointee_size = match kind {

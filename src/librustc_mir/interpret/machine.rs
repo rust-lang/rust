@@ -227,7 +227,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// it contains (in relocations) tagged.  The way we construct allocations is
     /// to always first construct it without extra and then add the extra.
     /// This keeps uniform code paths for handling both allocations created by CTFE
-    /// for statics, and allocations ceated by Miri during evaluation.
+    /// for statics, and allocations created by Miri during evaluation.
     ///
     /// `kind` is the kind of the allocation being tagged; it can be `None` when
     /// it's a static and `STATIC_KIND` is `None`.

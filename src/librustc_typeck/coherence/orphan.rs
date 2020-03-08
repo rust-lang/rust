@@ -174,7 +174,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
             // impl !Send for (A, B) { }
             // ```
             //
-            // This final impl is legal according to the orpan
+            // This final impl is legal according to the orphan
             // rules, but it invalidates the reasoning from
             // `two_foos` above.
             debug!(

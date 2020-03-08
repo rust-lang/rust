@@ -257,7 +257,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
     /// that are within each `cfg_attr` that has a true configuration predicate.
     ///
-    /// Gives compiler warnigns if any `cfg_attr` does not contain any
+    /// Gives compiler warnings if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
     pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {

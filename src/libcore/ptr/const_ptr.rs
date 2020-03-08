@@ -53,7 +53,7 @@ impl<T: ?Sized> *const T {
     /// all of the following is true:
     /// - it is properly aligned
     /// - it must point to an initialized instance of T; in particular, the pointer must be
-    ///   "dereferencable" in the sense defined [here].
+    ///   "dereferenceable" in the sense defined [here].
     ///
     /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
@@ -183,7 +183,7 @@ impl<T: ?Sized> *const T {
     /// within the same allocated object: [`offset`] is immediate Undefined Behavior when
     /// crossing object boundaries; `wrapping_offset` produces a pointer but still leads
     /// to Undefined Behavior if that pointer is dereferenced. [`offset`] can be optimized
-    /// better and is thus preferrable in performance-sensitive code.
+    /// better and is thus preferable in performance-sensitive code.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.
@@ -480,7 +480,7 @@ impl<T: ?Sized> *const T {
     /// within the same allocated object: [`add`] is immediate Undefined Behavior when
     /// crossing object boundaries; `wrapping_add` produces a pointer but still leads
     /// to Undefined Behavior if that pointer is dereferenced. [`add`] can be optimized
-    /// better and is thus preferrable in performance-sensitive code.
+    /// better and is thus preferable in performance-sensitive code.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.
@@ -535,7 +535,7 @@ impl<T: ?Sized> *const T {
     /// within the same allocated object: [`sub`] is immediate Undefined Behavior when
     /// crossing object boundaries; `wrapping_sub` produces a pointer but still leads
     /// to Undefined Behavior if that pointer is dereferenced. [`sub`] can be optimized
-    /// better and is thus preferrable in performance-sensitive code.
+    /// better and is thus preferable in performance-sensitive code.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.

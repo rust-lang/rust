@@ -57,7 +57,7 @@ enum QueryModifier {
     /// Generate a dep node based on the dependencies of the query
     Anon,
 
-    /// Always evaluate the query, ignoring its depdendencies
+    /// Always evaluate the query, ignoring its dependencies
     EvalAlways,
 }
 
@@ -228,7 +228,7 @@ struct QueryModifiers {
     /// Generate a dep node based on the dependencies of the query
     anon: bool,
 
-    // Always evaluate the query, ignoring its depdendencies
+    // Always evaluate the query, ignoring its dependencies
     eval_always: bool,
 }
 
