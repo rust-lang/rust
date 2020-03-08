@@ -152,6 +152,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(res)
     }
 
+    /// Starta a panic in the interpreter with the given message as payload.
+    fn start_panic(
+        &mut self,
+        msg: &str,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        // First arg: message.
+        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into());
+
+        // Call the lang item.
+        let panic = this.tcx.lang_items().panic_fn().unwrap();
+        let panic = ty::Instance::mono(this.tcx.tcx, panic);
+        this.call_function(
+            panic,
+            &[msg.to_ref()],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind },
+        )
+    }
+
     fn assert_panic(
         &mut self,
         span: Span,
@@ -184,20 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             _ => {
                 // Forward everything else to `panic` lang item.
-
-                // First arg: Message.
-                let msg = msg.description();
-                let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into());
-
-                // Call the lang item.
-                let panic = this.tcx.lang_items().panic_fn().unwrap();
-                let panic = ty::Instance::mono(this.tcx.tcx, panic);
-                this.call_function(
-                    panic,
-                    &[msg.to_ref()],
-                    None,
-                    StackPopCleanup::Goto { ret: None, unwind },
-                )?;
+                this.start_panic(msg.description(), unwind)?;
             }
         }
         Ok(())

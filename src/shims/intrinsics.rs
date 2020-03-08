@@ -448,8 +448,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
                 if layout.abi.is_uninhabited() {
-                    // FIXME: This should throw a panic in the interpreted program instead.
-                    throw_unsup_format!("Trying to instantiate uninhabited type {}", ty)
+                    // Return here because we paniced instead of returning normally from the intrinsic.
+                    return this.start_panic(&format!("Attempted to instantiate uninhabited type {}", ty), unwind);
                 }
             }
 
