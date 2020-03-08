@@ -114,15 +114,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Unreachable => throw_ub!(Unreachable),
 
             // These should never occur for MIR we actually run.
-            DropAndReplace { .. } | FalseEdges { .. } | FalseUnwind { .. } => {
-                bug!("{:#?} should have been eliminated by MIR pass", terminator.kind)
-            }
-
-            // These are not (yet) supported. It is unclear if they even can occur in
-            // MIR that we actually run.
-            Yield { .. } | GeneratorDrop | Abort => {
-                throw_unsup_format!("Unsupported terminator kind: {:#?}", terminator.kind)
-            }
+            DropAndReplace { .. }
+            | FalseEdges { .. }
+            | FalseUnwind { .. }
+            | Yield { .. }
+            | GeneratorDrop
+            | Abort => bug!("{:#?} should have been eliminated by MIR pass", terminator.kind),
         }
 
         Ok(())
