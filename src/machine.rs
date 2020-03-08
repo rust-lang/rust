@@ -70,7 +70,7 @@ pub struct AllocExtra {
 
 /// Extra global memory data
 #[derive(Clone, Debug)]
-pub struct MemoryExtra<'tcx> {
+pub struct MemoryExtra {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
 
@@ -84,12 +84,9 @@ pub struct MemoryExtra<'tcx> {
     /// An allocation ID to report when it is being allocated
     /// (helps for debugging memory leaks).
     tracked_alloc_id: Option<AllocId>,
-
-    /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
-    pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
 }
 
-impl<'tcx> MemoryExtra<'tcx> {
+impl MemoryExtra {
     pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>, tracked_alloc_id: Option<AllocId>) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
@@ -102,12 +99,11 @@ impl<'tcx> MemoryExtra<'tcx> {
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             tracked_alloc_id,
-            environ: None,
         }
     }
 
     /// Sets up the "extern statics" for this machine.
-    pub fn init_extern_statics<'mir>(
+    pub fn init_extern_statics<'tcx, 'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         let target_os = this.tcx.sess.target.target.target_os.as_str();
@@ -127,7 +123,7 @@ impl<'tcx> MemoryExtra<'tcx> {
                 this.memory
                     .extra
                     .extern_statics
-                    .insert(Symbol::intern("environ"), this.memory.extra.environ.unwrap().ptr.assert_ptr().alloc_id)
+                    .insert(Symbol::intern("environ"), this.machine.env_vars.environ.unwrap().ptr.assert_ptr().alloc_id)
                     .unwrap_none();
             }
             _ => {} // No "extern statics" supported on this platform
@@ -140,7 +136,7 @@ impl<'tcx> MemoryExtra<'tcx> {
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
-    pub(crate) env_vars: EnvVars,
+    pub(crate) env_vars: EnvVars<'tcx>,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -214,7 +210,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     type FrameExtra = FrameData<'tcx>;
-    type MemoryExtra = MemoryExtra<'tcx>;
+    type MemoryExtra = MemoryExtra;
     type AllocExtra = AllocExtra;
     type PointerTag = Tag;
     type ExtraFnVal = Dlsym;
@@ -340,7 +336,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn init_allocation_extra<'b>(
-        memory_extra: &MemoryExtra<'tcx>,
+        memory_extra: &MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
@@ -377,7 +373,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(memory_extra: &MemoryExtra<'tcx>, id: AllocId) -> Self::PointerTag {
+    fn tag_static_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
         if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
             stacked_borrows.borrow_mut().static_base_ptr(id)
         } else {
