@@ -43,7 +43,7 @@ image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-
 > Note: to disable this notification put the following to `settings.json`
 > ```json
 {
-    "rust-analyzer.alwaysDownloadServer": true
+    "rust-analyzer.askBeforeDownload": false
 }
 ```
 
