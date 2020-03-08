@@ -1,159 +1,183 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:86:1
+  --> $DIR/ub-wide-ptr.rs:32:1
    |
-LL | const STR_TOO_LONG: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (not entirely in bounds)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:89:1
-   |
-LL | const STR_LENGTH_PTR: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (not entirely in bounds)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:92:1
+  --> $DIR/ub-wide-ptr.rs:35:1
    |
-LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:96:1
-   |
-LL | const STR_NO_UTF8: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>
+LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:99:1
+  --> $DIR/ub-wide-ptr.rs:38:1
    |
-LL | const MYSTR_NO_UTF8: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>.0
+LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:106:1
+  --> $DIR/ub-wide-ptr.rs:42:1
    |
-LL | const SLICE_LENGTH_UNINIT: &[u8] = unsafe { SliceTransmute { addr: 42 }.slice};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered undefined pointer
+LL | const STR_NO_UTF8: &str = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:45:1
+   |
+LL | const MYSTR_NO_UTF8: &MyStr = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>.0
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:52:1
+   |
+LL | / const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
+LL | |
+LL | |     let uninit_len = MaybeUninit::<usize> { uninit: () };
+LL | |     mem::transmute((42, uninit_len))
+LL | | };
+   | |__^ type validation failed: encountered undefined pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:58:1
+   |
+LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (not entirely in bounds)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:61:1
+   |
+LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:64:1
+   |
+LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (not entirely in bounds)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:67:1
+   |
+LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:71:1
+   |
+LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected a boolean
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:77:1
+   |
+LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.0, but expected a boolean
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:80:1
+   |
+LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.1[0], but expected a boolean
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:87:1
+   |
+LL | / const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
+LL | |
+LL | |     let uninit_len = MaybeUninit::<usize> { uninit: () };
+LL | |     mem::transmute((42, uninit_len))
+LL | | };
+   | |__^ type validation failed: encountered undefined pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:95:1
+   |
+LL | const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { mem::transmute((&92u8, &3u8)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:98:1
+   |
+LL | const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:101:1
+   |
+LL | const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, 4usize)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:105:1
+   |
+LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.<dyn-downcast>, but expected a boolean
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-wide-ptr.rs:109:1
    |
-LL | const SLICE_TOO_LONG: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (not entirely in bounds)
+LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:112:1
+  --> $DIR/ub-wide-ptr.rs:111:1
    |
-LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:116:1
-   |
-LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected a boolean
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:122:1
-   |
-LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.0, but expected a boolean
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:125:1
-   |
-LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.1[0], but expected a boolean
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:132:1
-   |
-LL | const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe { SliceTransmute { addr: 42 }.raw_slice};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered undefined pointer
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:137:1
-   |
-LL | const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:140:1
-   |
-LL | const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:143:1
-   |
-LL | const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:147:1
-   |
-LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.<dyn-downcast>, but expected a boolean
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:151:1
-   |
-LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.raw_rust};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:153:1
-   |
-LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.raw_rust};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
+LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling or unaligned vtable pointer in wide pointer or too small vtable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:159:5
+  --> $DIR/ub-wide-ptr.rs:117:5
    |
-LL |     DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 0 } }.rust
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid use of NULL pointer
+LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid use of NULL pointer
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:163:5
+  --> $DIR/ub-wide-ptr.rs:121:5
    |
-LL |     DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset N, but is outside bounds of allocation N which has size N
+LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset N, but is outside bounds of allocation N which has size N
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
