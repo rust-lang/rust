@@ -42,8 +42,7 @@ fn resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> InterpResult<'tc
             None
         })
         .ok_or_else(|| {
-            let path = path.iter().map(|&s| s.to_owned()).collect();
-            err_unsup!(PathNotFound(path)).into()
+            err_unsup_format!("failed to find required Rust item: {:?}", path).into()
         })
 }
 

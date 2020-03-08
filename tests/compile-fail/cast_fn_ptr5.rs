@@ -5,5 +5,5 @@ fn main() {
         std::mem::transmute::<fn() -> u32, fn()>(f)
     };
 
-    g() //~ ERROR tried to call a function with return type u32 passing return place of type ()
+    g() //~ ERROR calling a function with return type u32 passing return place of type ()
 }

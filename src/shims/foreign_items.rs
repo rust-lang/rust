@@ -222,12 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__rust_alloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                if size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
@@ -238,12 +233,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__rust_alloc_zeroed" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                if size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
@@ -257,12 +247,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                if old_size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                // No need to check old_size/align; we anyway check that they match the allocation.
                 let ptr = this.force_ptr(ptr)?;
                 this.memory.deallocate(
                     ptr,
@@ -274,12 +259,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let new_size = this.read_scalar(args[3])?.to_machine_usize(this)?;
-                if old_size == 0 || new_size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(new_size, align)?;
+                // No need to check old_size; we anyway check that they match the allocation.
                 let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
                 let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory.reallocate(
@@ -460,6 +441,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         Ok(true)
+    }
+
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_alloc_request(size: u64, align: u64) -> InterpResult<'tcx> {
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
+        }
+        if !align.is_power_of_two() {
+            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        }
+        Ok(())
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)

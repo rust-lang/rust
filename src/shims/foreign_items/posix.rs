@@ -138,7 +138,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
                 if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
+                    throw_ub_format!("posix_memalign: alignment must be a power of two, but is {}", align);
                 }
                 if align < this.pointer_size().bytes() {
                     throw_ub_format!(
@@ -185,7 +185,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
 
                 // Figure out how large a pthread TLS key actually is.
-                // This is `libc::pthread_key_t`.
+                // To this end, deref the argument type. This is `libc::pthread_key_t`.
                 let key_type = args[0].layout.ty
                     .builtin_deref(true)
                     .ok_or_else(|| err_ub_format!(
@@ -195,12 +195,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let key_layout = this.layout_of(key_type)?;
 
                 // Create key and write it into the memory where `key_ptr` wants it.
-                let key = this.machine.tls.create_tls_key(dtor) as u128;
-                if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128)
-                {
-                    throw_unsup!(OutOfTls);
-                }
-
+                let key = this.machine.tls.create_tls_key(dtor, key_layout.size)?;
                 this.write_scalar(Scalar::from_uint(key, key_layout.size), key_place.into())?;
 
                 // Return success (`0`).

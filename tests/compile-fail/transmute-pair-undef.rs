@@ -18,5 +18,5 @@ fn main() {
     }
     let v = unsafe { *z.offset(first_undef) };
     if v == 0 {}
-    //~^ ERROR attempted to read undefined bytes
+    //~^ ERROR this operation requires initialized memory
 }

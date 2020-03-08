@@ -8,7 +8,7 @@ fn fill(v: &mut i32) {
 }
 
 fn evil() {
-    unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR dangling pointer was dereferenced
+    unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR dereferenced after this allocation got freed
 }
 
 fn main() {

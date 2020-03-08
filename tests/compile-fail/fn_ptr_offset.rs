@@ -10,5 +10,5 @@ fn main() {
     let y : *mut u8 = unsafe { mem::transmute(x) };
     let y = y.wrapping_offset(1);
     let x : fn() = unsafe { mem::transmute(y) };
-    x(); //~ ERROR tried to use a function pointer after offsetting it
+    x(); //~ ERROR function pointer but it does not point to a function
 }

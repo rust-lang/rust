@@ -43,10 +43,6 @@ impl<'mir, 'tcx> GlobalState {
         int: u64,
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
-        if int == 0 {
-            throw_unsup!(InvalidNullPointerUsage);
-        }
-
         let global_state = memory.extra.intptrcast.borrow();
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr);
 
@@ -57,7 +53,7 @@ impl<'mir, 'tcx> GlobalState {
                 // zero. The pointer is untagged because it was created from a cast
                 Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged)
             }
-            Err(0) => throw_unsup!(DanglingPointerDeref),
+            Err(0) => throw_ub!(InvalidIntPointerUsage(int)),
             Err(pos) => {
                 // This is the largest of the adresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
@@ -69,7 +65,7 @@ impl<'mir, 'tcx> GlobalState {
                     // This pointer is untagged because it was created from a cast
                     Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged)
                 } else {
-                    throw_unsup!(DanglingPointerDeref)
+                    throw_ub!(InvalidIntPointerUsage(int))
                 }
             }
         })

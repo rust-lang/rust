@@ -3,6 +3,6 @@
 fn main() {
     let x = (1, 13);
     let xptr = &x as *const _ as *const (i32, i32, i32);
-    let val = unsafe { (*xptr).1 }; //~ ERROR pointer must be in-bounds at offset 12, but is outside bounds of allocation
+    let val = unsafe { (*xptr).1 }; //~ ERROR pointer must be in-bounds at offset 12, but is outside bounds of alloc
     assert_eq!(val, 13);
 }

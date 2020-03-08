@@ -1,7 +1,7 @@
 // Validation/SB changes why we fail
 // compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
-// error-pattern: tried to deallocate `Stack` memory but gave `Machine(Rust)` as the kind
+// error-pattern: deallocating `Stack` memory using `Machine(Rust)` deallocation operation
 
 fn main() {
     let x = 42;

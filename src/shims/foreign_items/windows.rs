@@ -154,14 +154,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
-                let key = this.machine.tls.create_tls_key(None) as u128;
-
-                // Figure out how large a TLS key actually is. This is `c::DWORD`.
-                if dest.layout.size.bits() < 128
-                    && key >= (1u128 << dest.layout.size.bits() as u128)
-                {
-                    throw_unsup!(OutOfTls);
-                }
+                let key = this.machine.tls.create_tls_key(None, dest.layout.size)?;
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {

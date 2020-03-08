@@ -1,4 +1,4 @@
-//error-pattern: tried to access memory with alignment 1, but alignment 2 is required
+//error-pattern: accessing memory with alignment 1, but alignment 2 is required
 #![feature(intrinsics)]
 
 // Directly call intrinsic to avoid debug assertions in libstd

@@ -1,4 +1,4 @@
-// error-pattern: outside bounds of allocation
+// error-pattern: outside bounds of alloc
 
 fn main() {
     let x = Box::into_raw(Box::new(0u32));

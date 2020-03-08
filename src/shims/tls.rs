@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use rustc::{ty, ty::layout::HasDataLayout};
+use rustc::{ty, ty::layout::{Size, HasDataLayout}};
 use rustc_target::abi::LayoutOf;
 
 use crate::{HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
@@ -37,12 +37,18 @@ impl<'tcx> Default for TlsData<'tcx> {
 }
 
 impl<'tcx> TlsData<'tcx> {
-    pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
+    /// Generate a new TLS key with the given destructor.
+    /// `max_size` determines the integer size the key has to fit in.
+    pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>, max_size: Size) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.insert(new_key, TlsEntry { data: None, dtor }).unwrap_none();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
-        new_key
+
+        if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits() as u128) {
+            throw_unsup_format!("we ran out of TLS key space");
+        }
+        Ok(new_key)
     }
 
     pub fn delete_tls_key(&mut self, key: TlsKey) -> InterpResult<'tcx> {
@@ -51,7 +57,7 @@ impl<'tcx> TlsData<'tcx> {
                 trace!("TLS key {} removed", key);
                 Ok(())
             }
-            None => throw_unsup!(TlsOutOfBounds),
+            None => throw_ub_format!("removing a non-existig TLS key: {}", key),
         }
     }
 
@@ -65,7 +71,7 @@ impl<'tcx> TlsData<'tcx> {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data.unwrap_or_else(|| Scalar::ptr_null(cx).into()))
             }
-            None => throw_unsup!(TlsOutOfBounds),
+            None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
     }
 
@@ -76,7 +82,7 @@ impl<'tcx> TlsData<'tcx> {
                 *data = new_data;
                 Ok(())
             }
-            None => throw_unsup!(TlsOutOfBounds),
+            None => throw_ub_format!("storing to a non-existing TLS key: {}", key),
         }
     }
 

@@ -17,5 +17,5 @@ fn main() {
     drop(strong);
     // But not any more. We can do Weak::as_raw(&weak), but accessing the pointer would lead to
     // undefined behaviour.
-    assert_eq!(42, **unsafe { &*Weak::as_raw(&weak) }); //~ ERROR dangling pointer
+    assert_eq!(42, **unsafe { &*Weak::as_raw(&weak) }); //~ ERROR dereferenced after this allocation got freed
 }
