@@ -58,7 +58,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let old_directory = self.directory.clone();
-            self.push_directory(id, &attrs);
+            push_directory(id, &attrs, &mut self.directory.ownership, &mut self.directory.path);
 
             self.expect(&token::OpenDelim(token::Brace))?;
             let module = self.parse_mod(&token::CloseDelim(token::Brace))?;
@@ -142,26 +142,31 @@ impl<'a> Parser<'a> {
         }
         Ok(())
     }
+}
 
-    fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
-        if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-            self.directory.path.push(&*path.as_str());
-            self.directory.ownership = DirectoryOwnership::Owned { relative: None };
-        } else {
-            // We have to push on the current module name in the case of relative
-            // paths in order to ensure that any additional module paths from inline
-            // `mod x { ... }` come after the relative extension.
-            //
-            // For example, a `mod z { ... }` inside `x/y.rs` should set the current
-            // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-            if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
-                if let Some(ident) = relative.take() {
-                    // remove the relative offset
-                    self.directory.path.push(&*ident.as_str());
-                }
+fn push_directory(
+    id: Ident,
+    attrs: &[Attribute],
+    dir_ownership: &mut DirectoryOwnership,
+    dir_path: &mut PathBuf,
+) {
+    if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
+        dir_path.push(&*path.as_str());
+        *dir_ownership = DirectoryOwnership::Owned { relative: None };
+    } else {
+        // We have to push on the current module name in the case of relative
+        // paths in order to ensure that any additional module paths from inline
+        // `mod x { ... }` come after the relative extension.
+        //
+        // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+        // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+        if let DirectoryOwnership::Owned { relative } = dir_ownership {
+            if let Some(ident) = relative.take() {
+                // Remove the relative offset.
+                dir_path.push(&*ident.as_str());
             }
-            self.directory.path.push(&*id.as_str());
         }
+        dir_path.push(&*id.as_str());
     }
 }
 
