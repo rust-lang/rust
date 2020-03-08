@@ -13,6 +13,10 @@ fn plus_one(value: usize) -> usize {
     value + 1
 }
 
+fn option() -> Option<usize> {
+    Some(10)
+}
+
 struct HasOption {
     field: Option<usize>,
 }
@@ -73,6 +77,8 @@ fn option_map_unit_fn() {
     x.field.map(|value| { { plus_one(value + captured); } });
 
 
-    x.field.map(|ref value| { do_nothing(value + captured) });}
+    x.field.map(|ref value| { do_nothing(value + captured) });
+
+    option().map(do_nothing);}
 
 fn main() {}
