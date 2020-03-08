@@ -18,10 +18,11 @@ use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::configure;
-use rustc_parse::parser::module::{parse_external_mod, push_directory};
+use rustc_parse::parser::module::{
+    parse_external_mod, push_directory, Directory, DirectoryOwnership,
+};
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
-use rustc_parse::{Directory, DirectoryOwnership};
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};

@@ -13,7 +13,7 @@ use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str;
 
 use log::info;
@@ -27,22 +27,6 @@ pub mod lexer;
 pub mod validate_attr;
 #[macro_use]
 pub mod config;
-
-#[derive(Clone)]
-pub struct Directory {
-    pub path: PathBuf,
-    pub ownership: DirectoryOwnership,
-}
-
-#[derive(Copy, Clone)]
-pub enum DirectoryOwnership {
-    Owned {
-        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
-        relative: Option<ast::Ident>,
-    },
-    UnownedViaBlock,
-    UnownedViaMod,
-}
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
