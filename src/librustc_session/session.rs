@@ -556,33 +556,17 @@ impl Session {
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
-        if self.target.target.options.crt_static_default {
-            // `proc-macro` always required to be compiled to dylibs.
-            // We don't use a static crt unless the `+crt-static` feature was passed.
-            if !self.target.target.options.crt_static_allows_dylibs {
-                match crate_type {
-                    Some(config::CrateType::ProcMacro) => found_positive,
-                    Some(_) => !found_negative,
-                    None => {
-                        // FIXME: When crate_type is not available,
-                        // we use compiler options to determine the crate_type.
-                        // We can't check `#![crate_type = "proc-macro"]` here.
-                        if self.opts.crate_types.contains(&config::CrateType::ProcMacro) {
-                            found_positive
-                        } else {
-                            !found_negative
-                        }
-                    }
-                }
-            } else {
-                // If the target we're compiling for requests a static crt by default,
-                // then see if the `-crt-static` feature was passed to disable that.
-                !found_negative
-            }
-        } else {
-            // If the target we're compiling for don't have a static crt by default then see if the
-            // `+crt-static` feature was passed.
+        if found_positive || found_negative {
             found_positive
+        } else if crate_type == Some(config::CrateType::ProcMacro)
+            || self.opts.crate_types.contains(&config::CrateType::ProcMacro)
+        {
+            // FIXME: When crate_type is not available,
+            // we use compiler options to determine the crate_type.
+            // We can't check `#![crate_type = "proc-macro"]` here.
+            false
+        } else {
+            self.target.target.options.crt_static_default
         }
     }
 
