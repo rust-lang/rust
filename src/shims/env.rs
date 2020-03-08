@@ -30,11 +30,6 @@ impl EnvVars {
                 }
             }
         }
-        // Initialize the `environ` static
-        let layout = ecx.layout_of(ecx.tcx.types.usize)?;
-        let place = ecx.allocate(layout, MiriMemoryKind::Machine.into());
-        ecx.write_scalar(Scalar::from_machine_usize(0, &*ecx.tcx), place.into())?;
-        ecx.memory.extra.environ = Some(place);
         ecx.update_environ()
     }
 }
@@ -160,17 +155,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    /// Updates the `environ` static. It should not be called before
-    /// `EnvVars::init`.
+    /// Updates the `environ` static.
+    /// The first time it gets called, also initializes `extra.environ`.
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        // Deallocate the old environ value.
-        let old_vars_ptr = this.read_scalar(this.memory.extra.environ.unwrap().into())?.not_undef()?;
-        // The pointer itself can be null because `EnvVars::init` only
-        // initializes the place for the static but not the static itself.
-        if !this.is_null(old_vars_ptr)? {
+        // Deallocate the old environ value, if any.
+        if let Some(environ) = this.memory.extra.environ {
+            let old_vars_ptr = this.read_scalar(environ.into())?.not_undef()?;
             this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
+        } else {
+            // No `environ` allocated yet, let's do that.
+            let layout = this.layout_of(this.tcx.types.usize)?;
+            let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+            this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
+            this.memory.extra.environ = Some(place);
         }
+
         // Collect all the pointers to each variable in a vector.
         let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
         // Add the trailing null pointer.
