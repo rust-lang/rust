@@ -63,20 +63,6 @@ pub struct CollectedFeatures {
 pub fn collect_lib_features(base_src_path: &Path) -> Features {
     let mut lib_features = Features::new();
 
-    // This library feature is defined in the `compiler_builtins` crate, which
-    // has been moved out-of-tree. Now it can no longer be auto-discovered by
-    // `tidy`, because we need to filter out its (submodule) directory. Manually
-    // add it to the set of known library features so we can still generate docs.
-    lib_features.insert(
-        "compiler_builtins_lib".to_owned(),
-        Feature {
-            level: Status::Unstable,
-            since: None,
-            has_gate_test: false,
-            tracking_issue: None,
-        },
-    );
-
     map_lib_features(base_src_path, &mut |res, _, _| {
         if let Ok((name, feature)) = res {
             lib_features.insert(name.to_owned(), feature);
