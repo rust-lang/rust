@@ -48,23 +48,28 @@ use crate::{
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let mut tokens = ctx.token.ancestors();
-    let trigger = tokens.find(|p| match p.kind() {
-        SyntaxKind::FN_DEF
-        | SyntaxKind::TYPE_ALIAS_DEF
-        | SyntaxKind::CONST_DEF
-        | SyntaxKind::NAME_REF
-        | SyntaxKind::BLOCK_EXPR => true,
-        _ => false,
-    });
-
-    let impl_def = tokens
+    let completion_match = tokens
         .find(|p| match p.kind() {
-            SyntaxKind::IMPL_DEF => true,
+            SyntaxKind::FN_DEF
+            | SyntaxKind::TYPE_ALIAS_DEF
+            | SyntaxKind::CONST_DEF
+            | SyntaxKind::NAME_REF
+            | SyntaxKind::BLOCK_EXPR => true,
             _ => false,
         })
-        .and_then(|n| ast::ImplDef::cast(n));
+        .and_then(|trigger| {
+            for p in tokens {
+                match p.kind() {
+                    // No nested completions
+                    SyntaxKind::FN_DEF | SyntaxKind::BLOCK => return None,
+                    SyntaxKind::IMPL_DEF => return ast::ImplDef::cast(p).map(|p| (trigger, p)),
+                    _ => {}
+                }
+            }
+            None
+        });
 
-    if let (Some(trigger), Some(impl_def)) = (trigger, impl_def) {
+    if let Some((trigger, impl_def)) = completion_match {
         match trigger.kind() {
             SyntaxKind::NAME_REF => {
                 get_missing_impl_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
