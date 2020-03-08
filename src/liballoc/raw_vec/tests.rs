@@ -1,4 +1,5 @@
 use super::*;
+use core::ptr::NonNull;
 
 #[test]
 fn allocator_param() {
