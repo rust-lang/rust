@@ -1108,7 +1108,7 @@ fn create_generator_resume_function<'tcx>(
 
     if can_unwind {
         cases.insert(
-            2,
+            1,
             (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))),
         );
     }
