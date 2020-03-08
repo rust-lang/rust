@@ -10,14 +10,17 @@ use rustc::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
 
 #[derive(Default)]
-pub struct EnvVars {
+pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
     /// null-terminated C strings with the `"{name}={value}"` format.
     map: FxHashMap<OsString, Pointer<Tag>>,
+
+    /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
+    pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
 }
 
-impl EnvVars {
-    pub(crate) fn init<'mir, 'tcx>(
+impl<'tcx> EnvVars<'tcx> {
+    pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
@@ -160,7 +163,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Deallocate the old environ value, if any.
-        if let Some(environ) = this.memory.extra.environ {
+        if let Some(environ) = this.machine.env_vars.environ {
             let old_vars_ptr = this.read_scalar(environ.into())?.not_undef()?;
             this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
         } else {
@@ -168,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let layout = this.layout_of(this.tcx.types.usize)?;
             let place = this.allocate(layout, MiriMemoryKind::Machine.into());
             this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
-            this.memory.extra.environ = Some(place);
+            this.machine.env_vars.environ = Some(place);
         }
 
         // Collect all the pointers to each variable in a vector.
@@ -186,7 +189,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         this.write_scalar(
             vars_place.ptr,
-            this.memory.extra.environ.unwrap().into(),
+            this.machine.env_vars.environ.unwrap().into(),
         )?;
 
         Ok(())

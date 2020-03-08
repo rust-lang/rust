@@ -58,7 +58,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Environment related shims
             "_NSGetEnviron" => {
-                this.write_scalar(this.memory.extra.environ.unwrap().ptr, dest)?;
+                this.write_scalar(this.machine.env_vars.environ.unwrap().ptr, dest)?;
             }
 
             // Time related shims
