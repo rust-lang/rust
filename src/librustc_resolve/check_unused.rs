@@ -3,7 +3,7 @@
 //
 // Although this is mostly a lint pass, it lives in here because it depends on
 // resolve data structures and because it finalises the privacy information for
-// `use` directives.
+// `use` items.
 //
 // Unused trait imports can't be checked until the method resolution. We save
 // candidates here, and do the actual check in librustc_typeck/check_unused.rs.
@@ -23,7 +23,7 @@
 //  - `check_crate` finally emits the diagnostics based on the data generated
 //    in the last step
 
-use crate::imports::ImportDirectiveSubclass;
+use crate::imports::ImportKind;
 use crate::Resolver;
 
 use rustc::{lint, ty};
@@ -58,7 +58,7 @@ struct UnusedImportCheckVisitor<'a, 'b> {
 }
 
 impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
-    // We have information about whether `use` (import) directives are actually
+    // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId) {
         let mut used = false;
@@ -223,33 +223,33 @@ fn calc_unused_spans(
 
 impl Resolver<'_> {
     crate fn check_unused(&mut self, krate: &ast::Crate) {
-        for directive in self.potentially_unused_imports.iter() {
-            match directive.subclass {
-                _ if directive.used.get()
-                    || directive.vis.get() == ty::Visibility::Public
-                    || directive.span.is_dummy() =>
+        for import in self.potentially_unused_imports.iter() {
+            match import.kind {
+                _ if import.used.get()
+                    || import.vis.get() == ty::Visibility::Public
+                    || import.span.is_dummy() =>
                 {
-                    if let ImportDirectiveSubclass::MacroUse = directive.subclass {
-                        if !directive.span.is_dummy() {
+                    if let ImportKind::MacroUse = import.kind {
+                        if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
                                 lint::builtin::MACRO_USE_EXTERN_CRATE,
-                                directive.id,
-                                directive.span,
-                                "deprecated `#[macro_use]` directive used to \
+                                import.id,
+                                import.span,
+                                "deprecated `#[macro_use]` attribute used to \
                                 import macros should be replaced at use sites \
-                                with a `use` statement to import the macro \
+                                with a `use` item to import the macro \
                                 instead",
                             );
                         }
                     }
                 }
-                ImportDirectiveSubclass::ExternCrate { .. } => {
-                    self.maybe_unused_extern_crates.push((directive.id, directive.span));
+                ImportKind::ExternCrate { .. } => {
+                    self.maybe_unused_extern_crates.push((import.id, import.span));
                 }
-                ImportDirectiveSubclass::MacroUse => {
+                ImportKind::MacroUse => {
                     let lint = lint::builtin::UNUSED_IMPORTS;
                     let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(lint, directive.id, directive.span, msg);
+                    self.lint_buffer.buffer_lint(lint, import.id, import.span, msg);
                 }
                 _ => {}
             }

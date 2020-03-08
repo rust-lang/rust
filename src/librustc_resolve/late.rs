@@ -2189,10 +2189,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         trait_name: Ident,
     ) -> SmallVec<[NodeId; 1]> {
         let mut import_ids = smallvec![];
-        while let NameBindingKind::Import { directive, binding, .. } = kind {
-            self.r.maybe_unused_trait_imports.insert(directive.id);
-            self.r.add_to_glob_map(&directive, trait_name);
-            import_ids.push(directive.id);
+        while let NameBindingKind::Import { import, binding, .. } = kind {
+            self.r.maybe_unused_trait_imports.insert(import.id);
+            self.r.add_to_glob_map(&import, trait_name);
+            import_ids.push(import.id);
             kind = &binding.kind;
         }
         import_ids

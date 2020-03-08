@@ -6,8 +6,7 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use crate::def_collector::collect_definitions;
-use crate::imports::ImportDirective;
-use crate::imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
+use crate::imports::{Import, ImportKind};
 use crate::macros::{LegacyBinding, LegacyScope};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
@@ -308,11 +307,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         })
     }
 
-    // Add an import directive to the current module.
-    fn add_import_directive(
+    // Add an import to the current module.
+    fn add_import(
         &mut self,
         module_path: Vec<Segment>,
-        subclass: ImportDirectiveSubclass<'a>,
+        kind: ImportKind<'a>,
         span: Span,
         id: NodeId,
         item: &ast::Item,
@@ -321,11 +320,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         vis: ty::Visibility,
     ) {
         let current_module = self.parent_scope.module;
-        let directive = self.r.arenas.alloc_import_directive(ImportDirective {
+        let import = self.r.arenas.alloc_import(Import {
+            kind,
             parent_scope: self.parent_scope,
             module_path,
             imported_module: Cell::new(None),
-            subclass,
             span,
             id,
             use_span: item.span,
@@ -337,25 +336,25 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             used: Cell::new(false),
         });
 
-        debug!("add_import_directive({:?})", directive);
+        debug!("add_import({:?})", import);
 
-        self.r.indeterminate_imports.push(directive);
-        match directive.subclass {
+        self.r.indeterminate_imports.push(import);
+        match import.kind {
             // Don't add unresolved underscore imports to modules
-            SingleImport { target: Ident { name: kw::Underscore, .. }, .. } => {}
-            SingleImport { target, type_ns_only, .. } => {
+            ImportKind::Single { target: Ident { name: kw::Underscore, .. }, .. } => {}
+            ImportKind::Single { target, type_ns_only, .. } => {
                 self.r.per_ns(|this, ns| {
                     if !type_ns_only || ns == TypeNS {
                         let key = this.new_key(target, ns);
                         let mut resolution = this.resolution(current_module, key).borrow_mut();
-                        resolution.add_single_import(directive);
+                        resolution.add_single_import(import);
                     }
                 });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            GlobImport { is_prelude: true, .. } => {}
-            GlobImport { .. } => current_module.globs.borrow_mut().push(directive),
+            ImportKind::Glob { is_prelude: true, .. } => {}
+            ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
             _ => unreachable!(),
         }
     }
@@ -480,7 +479,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     );
                 }
 
-                let subclass = SingleImport {
+                let kind = ImportKind::Single {
                     source: source.ident,
                     target: ident,
                     source_bindings: PerNS {
@@ -496,9 +495,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     type_ns_only,
                     nested,
                 };
-                self.add_import_directive(
+                self.add_import(
                     module_path,
-                    subclass,
+                    kind,
                     use_tree.span,
                     id,
                     item,
@@ -508,20 +507,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 );
             }
             ast::UseTreeKind::Glob => {
-                let subclass = GlobImport {
+                let kind = ImportKind::Glob {
                     is_prelude: attr::contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
-                self.add_import_directive(
-                    prefix,
-                    subclass,
-                    use_tree.span,
-                    id,
-                    item,
-                    root_span,
-                    item.id,
-                    vis,
-                );
+                self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {
                 // Ensure there is at most one `self` in the list
@@ -637,15 +627,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let used = self.process_legacy_macro_imports(item, module);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
-                let directive = self.r.arenas.alloc_import_directive(ImportDirective {
+                let import = self.r.arenas.alloc_import(Import {
+                    kind: ImportKind::ExternCrate { source: orig_name, target: ident },
                     root_id: item.id,
                     id: item.id,
                     parent_scope: self.parent_scope,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
-                    subclass: ImportDirectiveSubclass::ExternCrate {
-                        source: orig_name,
-                        target: ident,
-                    },
                     has_attributes: !item.attrs.is_empty(),
                     use_span_with_attributes: item.span_with_attributes(),
                     use_span: item.span,
@@ -655,8 +642,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     vis: Cell::new(vis),
                     used: Cell::new(used),
                 });
-                self.r.potentially_unused_imports.push(directive);
-                let imported_binding = self.r.import(binding, directive);
+                self.r.potentially_unused_imports.push(import);
+                let imported_binding = self.r.import(binding, import);
                 if ptr::eq(parent, self.r.graph_root) {
                     if let Some(entry) = self.r.extern_prelude.get(&ident.modern()) {
                         if expansion != ExpnId::root()
@@ -992,13 +979,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
         }
 
-        let macro_use_directive = |this: &Self, span| {
-            this.r.arenas.alloc_import_directive(ImportDirective {
+        let macro_use_import = |this: &Self, span| {
+            this.r.arenas.alloc_import(Import {
+                kind: ImportKind::MacroUse,
                 root_id: item.id,
                 id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
-                subclass: ImportDirectiveSubclass::MacroUse,
                 use_span_with_attributes: item.span_with_attributes(),
                 has_attributes: !item.attrs.is_empty(),
                 use_span: item.span,
@@ -1012,11 +999,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
         let allow_shadowing = self.parent_scope.expansion == ExpnId::root();
         if let Some(span) = import_all {
-            let directive = macro_use_directive(self, span);
-            self.r.potentially_unused_imports.push(directive);
+            let import = macro_use_import(self, span);
+            self.r.potentially_unused_imports.push(import);
             module.for_each_child(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
-                    let imported_binding = this.r.import(binding, directive);
+                    let imported_binding = this.r.import(binding, import);
                     this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
                 }
             });
@@ -1031,9 +1018,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     ident.span,
                 );
                 if let Ok(binding) = result {
-                    let directive = macro_use_directive(self, ident.span);
-                    self.r.potentially_unused_imports.push(directive);
-                    let imported_binding = self.r.import(binding, directive);
+                    let import = macro_use_import(self, ident.span);
+                    self.r.potentially_unused_imports.push(import);
+                    let imported_binding = self.r.import(binding, import);
                     self.legacy_import_macro(
                         ident.name,
                         imported_binding,
