@@ -1,11 +1,8 @@
-use super::item::ItemInfo;
-use super::Parser;
-
 use crate::{new_sub_parser_from_file, Directory, DirectoryOwnership};
 
-use rustc_ast::ast::{self, Attribute, Crate, Ident, ItemKind, Mod};
+use rustc_ast::ast::{self, Attribute, Ident, Mod};
 use rustc_ast::attr;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token;
 use rustc_errors::{struct_span_err, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FileName, Span};
@@ -25,61 +22,6 @@ pub struct ModulePath<'a> {
 pub struct ModulePathSuccess {
     pub path: PathBuf,
     pub ownership: DirectoryOwnership,
-}
-
-impl<'a> Parser<'a> {
-    /// Parses a source module as a crate. This is the main entry point for the parser.
-    pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
-        let lo = self.token.span;
-        let (module, attrs) = self.parse_mod(&token::Eof)?;
-        let span = lo.to(self.token.span);
-        let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
-        Ok(ast::Crate { attrs, module, span, proc_macros })
-    }
-
-    /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
-    pub(super) fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
-        let id = self.parse_ident()?;
-        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
-            Default::default()
-        } else {
-            self.expect(&token::OpenDelim(token::Brace))?;
-            self.parse_mod(&token::CloseDelim(token::Brace))?
-        };
-        attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(module)))
-    }
-
-    /// Parses the contents of a module (inner attributes followed by module items).
-    fn parse_mod(&mut self, term: &TokenKind) -> PResult<'a, (Mod, Vec<Attribute>)> {
-        let lo = self.token.span;
-        let attrs = self.parse_inner_attributes()?;
-        let module = self.parse_mod_items(term, lo)?;
-        Ok((module, attrs))
-    }
-
-    /// Given a termination token, parses all of the items in a module.
-    fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
-        let mut items = vec![];
-        while let Some(item) = self.parse_item()? {
-            items.push(item);
-            self.maybe_consume_incorrect_semicolon(&items);
-        }
-
-        if !self.eat(term) {
-            let token_str = super::token_descr(&self.token);
-            if !self.maybe_consume_incorrect_semicolon(&items) {
-                let msg = &format!("expected item, found {}", token_str);
-                let mut err = self.struct_span_err(self.token.span, msg);
-                err.span_label(self.token.span, "expected item");
-                return Err(err);
-            }
-        }
-
-        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
-
-        Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
-    }
 }
 
 pub fn parse_external_mod(
