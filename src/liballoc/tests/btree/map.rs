@@ -1021,7 +1021,7 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
-fn test_into_iter_drop_leak() {
+fn test_into_iter_drop_leak_1() {
     static DROPS: AtomicU32 = AtomicU32::new(0);
 
     struct D;
@@ -1044,4 +1044,28 @@ fn test_into_iter_drop_leak() {
     catch_unwind(move || drop(map.into_iter())).ok();
 
     assert_eq!(DROPS.load(Ordering::SeqCst), 5);
+}
+
+#[test]
+fn test_into_iter_drop_leak_2() {
+    let size = 12; // to obtain tree with 2 levels (having edges to leaf nodes)
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+    static PANIC_POINT: AtomicU32 = AtomicU32::new(0);
+
+    struct D;
+    impl Drop for D {
+        fn drop(&mut self) {
+            if DROPS.fetch_add(1, Ordering::SeqCst) == PANIC_POINT.load(Ordering::SeqCst) {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    for panic_point in vec![0, 1, size - 2, size - 1] {
+        DROPS.store(0, Ordering::SeqCst);
+        PANIC_POINT.store(panic_point, Ordering::SeqCst);
+        let map: BTreeMap<_, _> = (0..size).map(|i| (i, D)).collect();
+        catch_unwind(move || drop(map.into_iter())).ok();
+        assert_eq!(DROPS.load(Ordering::SeqCst), size);
+    }
 }
