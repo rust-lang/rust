@@ -51,7 +51,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         }
     }
 
-    let cfg_options = crate_graph.cfg_options(def_map.krate);
+    let cfg_options = &crate_graph[def_map.krate].cfg_options;
 
     let mut collector = DefCollector {
         db,

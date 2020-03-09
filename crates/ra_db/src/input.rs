@@ -111,8 +111,8 @@ pub struct CrateData {
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
     pub display_name: Option<String>,
-    cfg_options: CfgOptions,
-    env: Env,
+    pub cfg_options: CfgOptions,
+    pub env: Env,
     pub dependencies: Vec<Dependency>,
 }
 
@@ -147,10 +147,6 @@ impl CrateGraph {
         let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
         crate_id
-    }
-
-    pub fn cfg_options(&self, crate_id: CrateId) -> &CfgOptions {
-        &self.arena[&crate_id].cfg_options
     }
 
     pub fn add_dep(
