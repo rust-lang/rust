@@ -319,6 +319,7 @@ impl From<File> for Stdio {
 /// for the process to terminate.
 pub struct Process {
     handle: Handle,
+    status: Option<ExitStatus>,
 }
 
 impl Process {
@@ -332,6 +333,9 @@ impl Process {
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        if let Some(status) = self.status {
+            return Ok(status);
+        }
         unsafe {
             let res = c::WaitForSingleObject(self.handle.raw(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
@@ -339,11 +343,15 @@ impl Process {
             }
             let mut status = 0;
             cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
+            self.set_status(ExitStatus(status));
             Ok(ExitStatus(status))
         }
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        if let Some(status) = self.status {
+            return Ok(Some(status));
+        }
         unsafe {
             match c::WaitForSingleObject(self.handle.raw(), 0) {
                 c::WAIT_OBJECT_0 => {}
@@ -354,8 +362,13 @@ impl Process {
             }
             let mut status = 0;
             cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
-            Ok(Some(ExitStatus(status)))
+            self.set_status(ExitStatus(status));
+            Ok(self.status)
         }
+    }
+
+    pub fn set_status(&mut self, status: ExitStatus) {
+        self.status = Some(status);
     }
 
     pub fn handle(&self) -> &Handle {

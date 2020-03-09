@@ -146,4 +146,6 @@ impl Process {
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         match self.0 {}
     }
+
+    pub fn set_status(&mut self, _: ExitStatus) {}
 }

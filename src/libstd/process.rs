@@ -1489,6 +1489,46 @@ impl Child {
         let status = self.wait()?;
         Ok(Output { status, stdout, stderr })
     }
+
+    /// Indicates that the process has exited and the exit status is known.
+    ///
+    /// You should only call this function after using `waitpid` on Unix or an
+    /// equivalent function on another platform. It will cause future calls to
+    /// [`wait`] and [`wait_with_output`] to use this exit status.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the process
+    /// exited. If this function is given wrong information, it will continue
+    /// to use that wrong information in potentially unexpected ways.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::process::{Child, ExitStatus};
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("echo")
+    ///     .arg("Hello world")
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("failed to execute child");
+    ///
+    /// # fn external_wait(child: &mut Child) -> ExitStatus {
+    /// #     child.wait().unwrap()
+    /// # }
+    /// let status = external_wait(&mut child);
+    /// unsafe { child.set_status(status) }
+    ///
+    /// assert_eq!(status, child.wait().expect("failed to wait on child"));
+    /// ```
+    ///
+    /// [`wait`]: #method.wait
+    /// [`wait_with_output`]: #method.wait_with_output
+    #[stable(feature = "child_set_status", since = "1.43.0")]
+    pub unsafe fn set_status(&mut self, status: ExitStatus) {
+        self.handle.set_status(status.0);
+    }
 }
 
 /// Terminates the current process with the specified exit code.

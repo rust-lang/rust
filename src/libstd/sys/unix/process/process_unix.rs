@@ -436,8 +436,8 @@ impl Process {
         }
         let mut status = 0 as c_int;
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
-        self.status = Some(ExitStatus::new(status));
-        Ok(ExitStatus::new(status))
+        self.set_status(ExitStatus(status));
+        Ok(ExitStatus(status))
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
@@ -446,12 +446,14 @@ impl Process {
         }
         let mut status = 0 as c_int;
         let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
-        if pid == 0 {
-            Ok(None)
-        } else {
-            self.status = Some(ExitStatus::new(status));
-            Ok(Some(ExitStatus::new(status)))
+        if pid != 0 {
+            self.set_status(ExitStatus(status));
         }
+        Ok(self.status)
+    }
+
+    pub fn set_status(&mut self, status: ExitStatus) {
+        self.status = Some(status);
     }
 }
 
@@ -460,10 +462,6 @@ impl Process {
 pub struct ExitStatus(c_int);
 
 impl ExitStatus {
-    pub fn new(status: c_int) -> ExitStatus {
-        ExitStatus(status)
-    }
-
     fn exited(&self) -> bool {
         unsafe { libc::WIFEXITED(self.0) }
     }

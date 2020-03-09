@@ -139,6 +139,7 @@ impl Command {
 
 pub struct Process {
     handle: Handle,
+    status: Option<ExitStatus>,
 }
 
 impl Process {
@@ -159,6 +160,10 @@ impl Process {
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::default::Default;
         use crate::sys::process::zircon::*;
+
+        if let Some(status) = self.status {
+            return Ok(status);
+        }
 
         let mut proc_info: zx_info_process_t = Default::default();
         let mut actual: size_t = 0;
@@ -186,12 +191,18 @@ impl Process {
                 "Failed to get exit status of process",
             ));
         }
-        Ok(ExitStatus(proc_info.return_code))
+        let status = ExitStatus(proc_info.return_code);
+        self.set_status(status);
+        Ok(status)
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         use crate::default::Default;
         use crate::sys::process::zircon::*;
+
+        if let Some(status) = self.status {
+            return Ok(status);
+        }
 
         let mut proc_info: zx_info_process_t = Default::default();
         let mut actual: size_t = 0;
@@ -224,7 +235,12 @@ impl Process {
                 "Failed to get exit status of process",
             ));
         }
-        Ok(Some(ExitStatus(proc_info.return_code)))
+        self.set_status(ExitStatus(proc_info.return_code));
+        Ok(self.status)
+    }
+
+    pub fn set_status(&mut self, status: ExitStatus) {
+        self.status = Some(status);
     }
 }
 

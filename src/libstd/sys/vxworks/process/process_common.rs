@@ -344,10 +344,6 @@ impl fmt::Debug for Command {
 pub struct ExitStatus(c_int);
 
 impl ExitStatus {
-    pub fn new(status: c_int) -> ExitStatus {
-        ExitStatus(status)
-    }
-
     fn exited(&self) -> bool {
         /*unsafe*/
         { libc::WIFEXITED(self.0) }
