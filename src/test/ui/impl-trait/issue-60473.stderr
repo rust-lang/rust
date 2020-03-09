@@ -1,7 +1,7 @@
 error[E0720]: opaque type expands to a recursive type
   --> $DIR/issue-60473.rs:15:12
    |
-LL |     let x: impl Trait<A> = ();
+LL |     let x: impl Trait<A> = (); // FIXME: The error doesn't seem correct.
    |            ^^^^^^^^^^^^^ expands to a recursive type
    |
    = note: type resolves to itself

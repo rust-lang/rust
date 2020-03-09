@@ -12,5 +12,6 @@ impl<T> Trait<T> for () {
 }
 
 fn main() {
-    let x: impl Trait<A> = (); //~ ERROR: opaque type expands to a recursive type
+    let x: impl Trait<A> = (); // FIXME: The error doesn't seem correct.
+    //~^ ERROR: opaque type expands to a recursive type
 }

@@ -1,4 +1,5 @@
 // Regression test for #57200
+// FIXME: The error is temporary hack, we'll revisit here at some point.
 
 #![feature(impl_trait_in_bindings)]
 #![allow(incomplete_features)]
