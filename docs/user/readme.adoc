@@ -53,7 +53,7 @@ To disable this notification put the following to `settings.json`
 
 [source,json]
 ----
-{ "rust-analyzer.askBeforeDownload": false }
+{ "rust-analyzer.updates.askBeforeDownload": false }
 ----
 ====
 

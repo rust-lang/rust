@@ -134,7 +134,7 @@ export class Config {
             file: prebuiltBinaryName,
             storage: this.ctx.globalState,
             tag: Config.extensionVersion,
-            askBeforeDownload: this.cfg.get("askBeforeDownload") as boolean,
+            askBeforeDownload: this.cfg.get("updates.askBeforeDownload") as boolean,
             repo: {
                 name: "rust-analyzer",
                 owner: "rust-analyzer",
