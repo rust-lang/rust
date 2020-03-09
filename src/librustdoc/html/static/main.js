@@ -879,7 +879,7 @@ function getSearchElement() {
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
                         }
-                        tmp = checkType(r, val, literalSearch);
+                        tmp = checkType(tmp, val, literalSearch);
                         if (literalSearch === true) {
                             if (tmp === true) {
                                 return true;
