@@ -414,9 +414,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let (size, _align) = self
             .get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
             .expect("alloc info with MaybeDead cannot fail");
-        // An inbounds pointer is never null!  And "inbounds" includes one-past-the-end.
-        let inbounds = ptr.offset <= size;
-        !inbounds
+        // If the pointer is out-of-bounds, it may be null.
+        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+        ptr.offset > size
     }
 }
 
