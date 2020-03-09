@@ -238,21 +238,6 @@ pub fn stream_to_parser<'a>(
     Parser::new(sess, stream, false, subparser_name)
 }
 
-/// Given a stream, the `ParseSess` and the base directory, produces a parser.
-///
-/// Use this function when you are creating a parser from the token stream
-/// and also care about the current working directory of the parser (e.g.,
-/// you are trying to resolve modules defined inside a macro invocation).
-///
-/// # Note
-///
-/// The main usage of this function is outside of rustc, for those who uses
-/// librustc_ast as a library. Please do not remove this function while refactoring
-/// just because it is not used in rustc codebase!
-pub fn stream_to_parser_with_base_dir(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
-    Parser::new(sess, stream, false, None)
-}
-
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
 pub fn parse_in<'a, T>(
     sess: &'a ParseSess,
