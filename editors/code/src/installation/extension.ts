@@ -23,7 +23,7 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
 
     if (currentUpdChannel === UpdatesChannel.Stable) {
         // Release date is present only when we are on nightly
-        config.installedNightlyExtensionReleaseDate.set(null);
+        await config.installedNightlyExtensionReleaseDate.set(null);
     }
 
     if (desiredUpdChannel === UpdatesChannel.Stable) {
