@@ -14,8 +14,8 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Pat, PatKind,
-    QPath, RangeEnd,
+    print, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat,
+    PatKind, QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -882,7 +882,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
     }
 }
 
-fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
@@ -914,19 +914,38 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
     let mut applicability = Applicability::MaybeIncorrect;
     match arms[0].pat.kind {
         PatKind::Binding(..) | PatKind::Tuple(_, _) | PatKind::Struct(..) => {
+            // If this match is in a local (`let`) stmt
+            let (target_span, sugg) = if let Some(parent_let_node) = opt_parent_let(cx, ex) {
+                (
+                    parent_let_node.span,
+                    format!(
+                        "let {} = {};\n{}let {} = {};",
+                        snippet_with_applicability(cx, bind_names, "..", &mut applicability),
+                        snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
+                        " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
+                        snippet_with_applicability(cx, parent_let_node.pat.span, "..", &mut applicability),
+                        snippet_body
+                    ),
+                )
+            } else {
+                (
+                    expr.span,
+                    format!(
+                        "let {} = {};\n{}{}",
+                        snippet_with_applicability(cx, bind_names, "..", &mut applicability),
+                        snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
+                        " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
+                        snippet_body
+                    ),
+                )
+            };
             span_lint_and_sugg(
                 cx,
                 MATCH_SINGLE_BINDING,
-                expr.span,
+                target_span,
                 "this match could be written as a `let` statement",
                 "consider using `let` statement",
-                format!(
-                    "let {} = {};\n{}{}",
-                    snippet_with_applicability(cx, bind_names, "..", &mut applicability),
-                    snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
-                    " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                    snippet_body,
-                ),
+                sugg,
                 applicability,
             );
         },
@@ -943,6 +962,19 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
         },
         _ => (),
     }
+}
+
+/// Returns true if the `ex` match expression is in a local (`let`) statement
+fn opt_parent_let<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
+    if_chain! {
+        let map = &cx.tcx.hir();
+        if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id));
+        if let Some(Node::Local(parent_let_expr)) = map.find(map.get_parent_node(parent_arm_expr.hir_id));
+        then {
+            return Some(parent_let_expr);
+        }
+    }
+    None
 }
 
 /// Gets all arms that are unbounded `PatRange`s.

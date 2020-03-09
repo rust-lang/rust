@@ -1,11 +1,15 @@
 // run-rustfix
 
 #![warn(clippy::match_single_binding)]
-#![allow(clippy::many_single_char_names, clippy::toplevel_ref_arg)]
+#![allow(unused_variables, clippy::many_single_char_names, clippy::toplevel_ref_arg)]
 
 struct Point {
     x: i32,
     y: i32,
+}
+
+fn coords() -> Point {
+    Point { x: 1, y: 2 }
 }
 
 fn main() {
@@ -60,4 +64,7 @@ fn main() {
     let mut x = 5;
     let ref mut mr = x;
     println!("Got a mutable reference to {}", mr);
+    // Lint
+    let Point { x, y } = coords();
+    let product = x * y;
 }

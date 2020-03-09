@@ -1,5 +1,5 @@
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:16:5
+  --> $DIR/match_single_binding.rs:20:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => {
@@ -18,7 +18,7 @@ LL |     }
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:22:5
+  --> $DIR/match_single_binding.rs:26:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => println!("{} {} {}", x, y, z),
@@ -32,7 +32,7 @@ LL |     println!("{} {} {}", x, y, z);
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:37:5
+  --> $DIR/match_single_binding.rs:41:5
    |
 LL | /     match a {
 LL | |         _ => println!("whatever"),
@@ -40,7 +40,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("whatever");`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:41:5
+  --> $DIR/match_single_binding.rs:45:5
    |
 LL | /     match a {
 LL | |         _ => {
@@ -59,7 +59,7 @@ LL |     }
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:48:5
+  --> $DIR/match_single_binding.rs:52:5
    |
 LL | /     match a {
 LL | |         _ => {
@@ -81,7 +81,7 @@ LL |     }
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:58:5
+  --> $DIR/match_single_binding.rs:62:5
    |
 LL | /     match p {
 LL | |         Point { x, y } => println!("Coords: ({}, {})", x, y),
@@ -95,7 +95,7 @@ LL |     println!("Coords: ({}, {})", x, y);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:62:5
+  --> $DIR/match_single_binding.rs:66:5
    |
 LL | /     match p {
 LL | |         Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
@@ -109,7 +109,7 @@ LL |     println!("Coords: ({}, {})", x1, y1);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:67:5
+  --> $DIR/match_single_binding.rs:71:5
    |
 LL | /     match x {
 LL | |         ref r => println!("Got a reference to {}", r),
@@ -123,7 +123,7 @@ LL |     println!("Got a reference to {}", r);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:72:5
+  --> $DIR/match_single_binding.rs:76:5
    |
 LL | /     match x {
 LL | |         ref mut mr => println!("Got a mutable reference to {}", mr),
@@ -136,5 +136,19 @@ LL |     let ref mut mr = x;
 LL |     println!("Got a mutable reference to {}", mr);
    |
 
-error: aborting due to 9 previous errors
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:80:5
+   |
+LL | /     let product = match coords() {
+LL | |         Point { x, y } => x * y,
+LL | |     };
+   | |______^
+   |
+help: consider using `let` statement
+   |
+LL |     let Point { x, y } = coords();
+LL |     let product = x * y;
+   |
+
+error: aborting due to 10 previous errors
 
