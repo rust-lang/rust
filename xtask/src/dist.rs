@@ -50,7 +50,9 @@ fn dist_server() -> Result<()> {
         run!(
             "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release
              --target x86_64-unknown-linux-musl
-             --features=jemalloc"
+            "
+            // We'd want to add, but that requires setting the right linker somehow
+            // --features=jemalloc
         )?;
         run!("strip ./target/x86_64-unknown-linux-musl/release/rust-analyzer")?;
     } else {
