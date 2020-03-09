@@ -261,10 +261,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
                 )?;
 
-                // We want to pop this frame again in case there was an error, to put
-                // the blame in the right location.  Until the 2018 edition is used in
-                // the compiler, we have to do this with an immediately invoked function.
-                let res = (|| {
+                // If an error is raised here, pop the frame again to get an accurate backtrace.
+                // To this end, we wrap it all in a `try` block.
+                let res: InterpResult<'tcx> = try {
                     trace!(
                         "caller ABI: {:?}, args: {:#?}",
                         caller_abi,
@@ -363,8 +362,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             throw_ub_format!("calling a returning function without a return place")
                         }
                     }
-                    Ok(())
-                })();
+                };
                 match res {
                     Err(err) => {
                         self.stack.pop();
