@@ -1,0 +1,11 @@
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/issue-67166.rs:7:19
+   |
+LL |     let _foo: Box<impl Copy + '_> = Box::new(()); // FIXME: The error doesn't much make sense.
+   |                   ^^^^^^^^^^^^^^ expands to a recursive type
+   |
+   = note: type resolves to itself
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

@@ -1,0 +1,8 @@
+error: lifetimes in impl Trait types in bindings are not currently supported
+  --> $DIR/issue-57201.rs:11:13
+   |
+LL |     let f: &impl Fn(&'a T) -> &'b T = &|x| x;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
