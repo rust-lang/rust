@@ -21,8 +21,9 @@
 //!    in the *unconstrained* substs for `impl2`. A parameter is constrained if
 //!    its value is completely determined by an associated type projection
 //!    predicate.
-//! 4. Check that all predicates on `impl1` also exist on `impl2` (after
-//!    matching substs).
+//! 4. Check that all predicates on `impl1` either exist on `impl2` (after
+//!    matching substs), or are well-formed predicates for the trait's type
+//!    arguments.
 //!
 //! ## Example
 //!
@@ -129,7 +130,7 @@ fn check_always_applicable(
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
 
-        check_predicates(tcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
     }
 }
 
@@ -282,14 +283,17 @@ fn check_static_lifetimes<'tcx>(
 /// * on the base `impl impl2`
 ///     * Currently this check is done using syntactic equality, which is
 ///       conservative but generally sufficient.
+/// * a well-formed predicate of a type argument of the trait being implemented,
+///   including the `Self`-type.
 fn check_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     impl1_def_id: DefId,
     impl1_substs: SubstsRef<'tcx>,
     impl2_node: Node,
     impl2_substs: SubstsRef<'tcx>,
     span: Span,
 ) {
+    let tcx = infcx.tcx;
     let impl1_predicates = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
     let mut impl2_predicates = if impl2_node.is_from_trait() {
         // Always applicable traits have to be always applicable without any
@@ -329,6 +333,21 @@ fn check_predicates<'tcx>(
         })
         .copied()
         .collect();
+
+    // Include the well-formed predicates of the type parameters of the impl.
+    for ty in tcx.impl_trait_ref(impl1_def_id).unwrap().substs.types() {
+        if let Some(obligations) = wf::obligations(
+            infcx,
+            tcx.param_env(impl1_def_id),
+            tcx.hir().as_local_hir_id(impl1_def_id).unwrap(),
+            ty,
+            span,
+        ) {
+            impl2_predicates
+                .predicates
+                .extend(obligations.into_iter().map(|obligation| obligation.predicate))
+        }
+    }
     impl2_predicates.predicates.extend(traits::elaborate_predicates(tcx, always_applicable_traits));
 
     for predicate in impl1_predicates.predicates {
