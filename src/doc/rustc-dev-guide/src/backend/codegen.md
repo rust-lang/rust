@@ -46,7 +46,7 @@ There are a few benefits to using LLVM:
 ## Running LLVM, linking, and metadata generation
 
 Once LLVM IR for all of the functions and statics, etc is built, it is time to
-start running LLVM and its optimisation passes. LLVM IR is grouped into
+start running LLVM and its optimization passes. LLVM IR is grouped into
 "modules". Multiple "modules" can be codegened at the same time to aid in
 multi-core utilisation. These "modules" are what we refer to as _codegen
 units_. These units were established way back during monomorphisation
