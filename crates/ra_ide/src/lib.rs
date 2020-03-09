@@ -421,12 +421,12 @@ impl Analysis {
 
     /// Returns the edition of the given crate.
     pub fn crate_edition(&self, crate_id: CrateId) -> Cancelable<Edition> {
-        self.with_db(|db| db.crate_graph().crate_data(&crate_id).edition)
+        self.with_db(|db| db.crate_graph()[crate_id].edition)
     }
 
     /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
-        self.with_db(|db| db.crate_graph().crate_data(&crate_id).root_file_id)
+        self.with_db(|db| db.crate_graph()[crate_id].root_file_id)
     }
 
     /// Returns the set of possible targets to run for the current file.

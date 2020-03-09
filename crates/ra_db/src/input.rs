@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, str::FromStr};
+use std::{fmt, ops, str::FromStr};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
@@ -111,8 +111,8 @@ pub struct CrateData {
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
     pub display_name: Option<String>,
-    cfg_options: CfgOptions,
-    env: Env,
+    pub cfg_options: CfgOptions,
+    pub env: Env,
     pub dependencies: Vec<Dependency>,
 }
 
@@ -142,15 +142,18 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         env: Env,
     ) -> CrateId {
-        let data = CrateData::new(file_id, edition, display_name, cfg_options, env);
+        let data = CrateData {
+            root_file_id: file_id,
+            edition,
+            display_name,
+            cfg_options,
+            env,
+            dependencies: Vec::new(),
+        };
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
         crate_id
-    }
-
-    pub fn cfg_options(&self, crate_id: CrateId) -> &CfgOptions {
-        &self.arena[&crate_id].cfg_options
     }
 
     pub fn add_dep(
@@ -172,10 +175,6 @@ impl CrateGraph {
 
     pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
         self.arena.keys().copied()
-    }
-
-    pub fn crate_data(&self, crate_id: &CrateId) -> &CrateData {
-        &self.arena[crate_id]
     }
 
     // FIXME: this only finds one crate with the given root; we could have multiple
@@ -207,8 +206,8 @@ impl CrateGraph {
             return false;
         }
 
-        for dep in &self.crate_data(&from).dependencies {
-            let crate_id = dep.crate_id();
+        for dep in &self[from].dependencies {
+            let crate_id = dep.crate_id;
             if crate_id == target {
                 return true;
             }
@@ -221,6 +220,13 @@ impl CrateGraph {
     }
 }
 
+impl ops::Index<CrateId> for CrateGraph {
+    type Output = CrateData;
+    fn index(&self, crate_id: CrateId) -> &CrateData {
+        &self.arena[&crate_id]
+    }
+}
+
 impl CrateId {
     pub fn shift(self, amount: u32) -> CrateId {
         CrateId(self.0 + amount)
@@ -228,23 +234,6 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn new(
-        root_file_id: FileId,
-        edition: Edition,
-        display_name: Option<String>,
-        cfg_options: CfgOptions,
-        env: Env,
-    ) -> CrateData {
-        CrateData {
-            root_file_id,
-            edition,
-            display_name,
-            dependencies: Vec::new(),
-            cfg_options,
-            env,
-        }
-    }
-
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
         self.dependencies.push(Dependency { name, crate_id })
     }
@@ -269,12 +258,6 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
         })
-    }
-}
-
-impl Dependency {
-    pub fn crate_id(&self) -> CrateId {
-        self.crate_id
     }
 }
 
@@ -376,7 +359,7 @@ mod tests {
             .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
             .is_ok());
         assert_eq!(
-            graph.crate_data(&crate1).dependencies,
+            graph[crate1].dependencies,
             vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
         );
     }

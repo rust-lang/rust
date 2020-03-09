@@ -116,8 +116,7 @@ impl LangItems {
         if let Some(target) = start_crate_target {
             return Some(*target);
         }
-        db.crate_graph()
-            .crate_data(&start_crate)
+        db.crate_graph()[start_crate]
             .dependencies
             .iter()
             .find_map(|dep| db.lang_item(dep.crate_id, item.clone()))
