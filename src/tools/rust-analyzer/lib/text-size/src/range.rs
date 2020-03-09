@@ -41,18 +41,19 @@ impl fmt::Debug for TextRange {
     }
 }
 
+/// Creates a new `TextRange` with given `start` and `end.
+///
+/// # Panics
+///
+/// Panics if `end < start`.
+#[allow(non_snake_case)]
+pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
+    assert!(start <= end);
+    TextRange { start, end }
+}
+
 /// Identity methods.
 impl TextRange {
-    /// Creates a new `TextRange` with given `start` and `end.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `end < start`.
-    pub fn new(start: TextSize, end: TextSize) -> TextRange {
-        assert!(start <= end);
-        TextRange { start, end }
-    }
-
     /// The start point of this range.
     pub const fn start(self) -> TextSize {
         self.start
@@ -94,14 +95,14 @@ impl TextRange {
         if end < start {
             return None;
         }
-        Some(TextRange::new(start, end))
+        Some(TextRange(start, end))
     }
 
     /// The smallest range that completely contains both ranges.
     pub fn covering(lhs: TextRange, rhs: TextRange) -> TextRange {
         let start = cmp::min(lhs.start(), rhs.start());
         let end = cmp::max(lhs.end(), rhs.end());
-        TextRange::new(start, end)
+        TextRange(start, end)
     }
 
     /// Check if this range contains a point.
