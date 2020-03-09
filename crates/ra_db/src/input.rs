@@ -207,7 +207,7 @@ impl CrateGraph {
         }
 
         for dep in &self[from].dependencies {
-            let crate_id = dep.crate_id();
+            let crate_id = dep.crate_id;
             if crate_id == target {
                 return true;
             }
@@ -258,12 +258,6 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
         })
-    }
-}
-
-impl Dependency {
-    pub fn crate_id(&self) -> CrateId {
-        self.crate_id
     }
 }
 

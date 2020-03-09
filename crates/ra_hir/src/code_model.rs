@@ -58,7 +58,7 @@ impl Crate {
             .dependencies
             .iter()
             .map(|dep| {
-                let krate = Crate { id: dep.crate_id() };
+                let krate = Crate { id: dep.crate_id };
                 let name = dep.as_name();
                 CrateDependency { krate, name }
             })
