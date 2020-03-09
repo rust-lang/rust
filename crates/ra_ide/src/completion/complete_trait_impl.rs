@@ -34,7 +34,7 @@
 use hir::{self, Docs, HasSource};
 use ra_assists::utils::get_missing_impl_items;
 use ra_syntax::{
-    ast::{self, edit},
+    ast::{self, edit, ImplDef},
     AstNode, SyntaxKind, SyntaxNode, TextRange,
 };
 use ra_text_edit::TextEdit;
@@ -47,29 +47,7 @@ use crate::{
 };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    let mut tokens = ctx.token.ancestors();
-    let completion_match = tokens
-        .find(|p| match p.kind() {
-            SyntaxKind::FN_DEF
-            | SyntaxKind::TYPE_ALIAS_DEF
-            | SyntaxKind::CONST_DEF
-            | SyntaxKind::NAME_REF
-            | SyntaxKind::BLOCK_EXPR => true,
-            _ => false,
-        })
-        .and_then(|trigger| {
-            for p in tokens {
-                match p.kind() {
-                    // No nested completions
-                    SyntaxKind::FN_DEF | SyntaxKind::BLOCK => return None,
-                    SyntaxKind::IMPL_DEF => return ast::ImplDef::cast(p).map(|p| (trigger, p)),
-                    _ => {}
-                }
-            }
-            None
-        });
-
-    if let Some((trigger, impl_def)) = completion_match {
+    if let Some((trigger, impl_def)) = completion_match(ctx) {
         match trigger.kind() {
             SyntaxKind::NAME_REF => {
                 get_missing_impl_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
@@ -121,6 +99,36 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             _ => {}
         }
     }
+}
+
+fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
+    let (trigger_idx, trigger) =
+        ctx.token.ancestors().enumerate().find(|(_idx, p)| match p.kind() {
+            SyntaxKind::FN_DEF
+            | SyntaxKind::TYPE_ALIAS_DEF
+            | SyntaxKind::CONST_DEF
+            | SyntaxKind::NAME_REF
+            | SyntaxKind::BLOCK_EXPR => true,
+            _ => false,
+        })?;
+    let (impl_def_idx, impl_def) =
+        ctx.token.ancestors().enumerate().skip(trigger_idx + 1).find_map(|(idx, p)| {
+            match p.kind() {
+                SyntaxKind::IMPL_DEF => ast::ImplDef::cast(p).map(|p| (idx, p)),
+                _ => None,
+            }
+        })?;
+    let _is_nested = ctx
+        .token
+        .ancestors()
+        .skip(trigger_idx + 1)
+        .take(impl_def_idx - trigger_idx - 1)
+        .find_map(|p| match p.kind() {
+            SyntaxKind::FN_DEF | SyntaxKind::BLOCK => Some(()),
+            _ => None,
+        })
+        .xor(Some(()))?;
+    Some((trigger, impl_def))
 }
 
 fn add_function_impl(
@@ -276,6 +284,27 @@ mod tests {
             },
         ]
         "###);
+    }
+
+    #[test]
+    fn no_nested_fn_completions() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn test();
+                fn test2();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                fn test() {
+                    t<|>
+                }
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"[]"###);
     }
 
     #[test]
