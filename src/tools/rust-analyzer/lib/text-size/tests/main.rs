@@ -5,7 +5,7 @@ fn size(x: u32) -> TextSize {
 }
 
 fn range(x: ops::Range<u32>) -> TextRange {
-    TextRange::from(x)
+    TextRange::new(x.start.into(), x.end.into())
 }
 
 #[test]
