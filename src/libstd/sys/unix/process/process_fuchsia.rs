@@ -32,7 +32,7 @@ impl Command {
 
         let process_handle = unsafe { self.do_exec(theirs, envp.as_ref())? };
 
-        Ok((Process { handle: Handle::new(process_handle) }, ours))
+        Ok((Process { handle: Handle::new(process_handle), status: None }, ours))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {

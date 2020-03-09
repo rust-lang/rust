@@ -220,7 +220,7 @@ impl Command {
         // around to be able to close it later.
         drop(Handle::new(pi.hThread));
 
-        Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
+        Ok((Process { handle: Handle::new(pi.hProcess), status: None }, pipes))
     }
 }
 
