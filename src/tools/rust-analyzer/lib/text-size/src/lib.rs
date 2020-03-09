@@ -1,4 +1,6 @@
 //! Newtypes for working with text sizes/ranges in a more type-safe manner.
+//!
+//! Minimal Supported Rust Version: latest stable.
 
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations, missing_docs)]
