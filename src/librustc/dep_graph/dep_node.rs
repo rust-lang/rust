@@ -377,6 +377,12 @@ pub(crate) trait DepNodeParams<'tcx>: fmt::Debug + Sized {
         format!("{:?}", self)
     }
 
+    /// This method tries to recover the query key from the given `DepNode`,
+    /// something which is needed when forcing `DepNode`s during red-green
+    /// evaluation. The query system will only call this method if
+    /// `CAN_RECONSTRUCT_QUERY_KEY` is `true`.
+    /// It is always valid to return `None` here, in which case incremental
+    /// compilation will treat the query as having changed instead of forcing it.
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
 }
 
