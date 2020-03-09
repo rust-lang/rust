@@ -38,7 +38,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
-    pub(super) fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+    fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
             Default::default()
