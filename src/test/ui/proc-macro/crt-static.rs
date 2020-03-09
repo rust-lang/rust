@@ -3,7 +3,6 @@
 // override -Ctarget-feature=-crt-static from compiletest
 // compile-flags: -Ctarget-feature=
 // build-pass
-// only-musl
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
