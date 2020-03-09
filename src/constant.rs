@@ -315,7 +315,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     if tcx.is_reachable_non_generic(def_id) {
                         Linkage::Export
                     } else {
-                        Linkage::Local
+                        Linkage::Export // FIXME Set hidden visibility
                     },
                 );
                 (data_id, alloc)
