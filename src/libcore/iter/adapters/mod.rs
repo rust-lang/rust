@@ -2261,11 +2261,11 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
     iter: I,
-    done: bool,
+    done: <I as fuse_flag::FlagType>::Flag,
 }
 impl<I> Fuse<I> {
     pub(super) fn new(iter: I) -> Fuse<I> {
-        Fuse { iter, done: false }
+        Fuse { iter, done: <_>::default() }
     }
 }
 
@@ -2313,6 +2313,7 @@ mod fuse_flag {
         type Flag = False;
     }
 }
+use fuse_flag::Flag;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I>
@@ -2323,39 +2324,43 @@ where
 
     #[inline]
     default fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        if self.done {
+        if self.done.is_set() {
             None
         } else {
             let next = self.iter.next();
-            self.done = next.is_none();
+            if next.is_none() {
+                self.done.set();
+            }
             next
         }
     }
 
     #[inline]
     default fn nth(&mut self, n: usize) -> Option<I::Item> {
-        if self.done {
+        if self.done.is_set() {
             None
         } else {
             let nth = self.iter.nth(n);
-            self.done = nth.is_none();
+            if nth.is_none() {
+                self.done.set();
+            }
             nth
         }
     }
 
     #[inline]
     default fn last(self) -> Option<I::Item> {
-        if self.done { None } else { self.iter.last() }
+        if self.done.is_set() { None } else { self.iter.last() }
     }
 
     #[inline]
     default fn count(self) -> usize {
-        if self.done { 0 } else { self.iter.count() }
+        if self.done.is_set() { 0 } else { self.iter.count() }
     }
 
     #[inline]
     default fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.done { (0, Some(0)) } else { self.iter.size_hint() }
+        if self.done.is_set() { (0, Some(0)) } else { self.iter.size_hint() }
     }
 
     #[inline]
@@ -2365,11 +2370,11 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Ok = Acc>,
     {
-        if self.done {
+        if self.done.is_set() {
             Try::from_ok(init)
         } else {
             let acc = self.iter.try_fold(init, fold)?;
-            self.done = true;
+            self.done.set();
             Try::from_ok(acc)
         }
     }
@@ -2379,7 +2384,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        if self.done { init } else { self.iter.fold(init, fold) }
+        if self.done.is_set() { init } else { self.iter.fold(init, fold) }
     }
 }
 
@@ -2390,22 +2395,26 @@ where
 {
     #[inline]
     default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
-        if self.done {
+        if self.done.is_set() {
             None
         } else {
             let next = self.iter.next_back();
-            self.done = next.is_none();
+            if next.is_none() {
+                self.done.set();
+            }
             next
         }
     }
 
     #[inline]
     default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
-        if self.done {
+        if self.done.is_set() {
             None
         } else {
             let nth = self.iter.nth_back(n);
-            self.done = nth.is_none();
+            if nth.is_none() {
+                self.done.set();
+            }
             nth
         }
     }
@@ -2417,11 +2426,11 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Ok = Acc>,
     {
-        if self.done {
+        if self.done.is_set() {
             Try::from_ok(init)
         } else {
             let acc = self.iter.try_rfold(init, fold)?;
-            self.done = true;
+            self.done.set();
             Try::from_ok(acc)
         }
     }
@@ -2431,7 +2440,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        if self.done { init } else { self.iter.rfold(init, fold) }
+        if self.done.is_set() { init } else { self.iter.rfold(init, fold) }
     }
 }
 
