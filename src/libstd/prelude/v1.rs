@@ -53,6 +53,15 @@ pub use core::prelude::v1::{
     PartialEq, PartialOrd, RustcDecodable, RustcEncodable,
 };
 
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "cfg_accessible",
+    issue = "64797",
+    reason = "`cfg_accessible` is not fully implemented"
+)]
+#[doc(hidden)]
+pub use core::prelude::v1::cfg_accessible;
+
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.
 // Those files are duplicated rather than using glob imports

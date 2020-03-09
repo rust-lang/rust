@@ -181,6 +181,7 @@ symbols! {
         caller_location,
         cdylib,
         cfg,
+        cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
         cfg_doctest,

@@ -897,6 +897,7 @@ pub trait Resolver {
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
     fn add_derive_copy(&mut self, expn_id: ExpnId);
+    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
 #[derive(Clone)]
