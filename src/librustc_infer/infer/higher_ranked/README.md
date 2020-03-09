@@ -4,5 +4,5 @@ solver, see [this chapter][oldhrtb] of the rustc-dev-guide.
 To learn more about how they work in the _new_ trait solver, see [this
 chapter][newhrtb].
 
-[oldhrtb]: https://rust-lang.github.io/rustc-dev-guide/traits/hrtb.html
-[newhrtb]: https://rust-lang.github.io/rustc-dev-guide/borrow_check/region_inference.html#placeholders-and-universes
+[oldhrtb]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+[newhrtb]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference.html#placeholders-and-universes

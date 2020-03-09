@@ -4,7 +4,7 @@
 //! For more information about how MIR-based region-checking works,
 //! see the [rustc dev guide].
 //!
-//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/borrow_check.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use rustc::hir::map::Map;
 use rustc::middle::region::*;

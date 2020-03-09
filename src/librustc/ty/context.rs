@@ -918,7 +918,7 @@ pub struct FreeRegionInfo {
 /// various **compiler queries** that have been performed. See the
 /// [rustc dev guide] for more details.
 ///
-/// [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/ty.html
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 pub struct TyCtxt<'tcx> {

@@ -39,8 +39,8 @@ for larger features an implementation could be broken up into multiple PRs.
 - [ ] Adjust documentation ([see instructions on rustc-dev-guide][doc-guide])
 - [ ] Stabilization PR ([see instructions on rustc-dev-guide][stabilization-guide])
 
-[stabilization-guide]: https://rust-lang.github.io/rustc-dev-guide/stabilization_guide.html#stabilization-pr
-[doc-guide]: https://rust-lang.github.io/rustc-dev-guide/stabilization_guide.html#documentation-prs
+[stabilization-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#stabilization-pr
+[doc-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#documentation-prs
 
 ### Unresolved Questions
 <!--

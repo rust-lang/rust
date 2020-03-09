@@ -3,4 +3,4 @@ specific to different compilation targets and so forth.
 
 For more information about how rustc works, see the [rustc dev guide].
 
-[rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/

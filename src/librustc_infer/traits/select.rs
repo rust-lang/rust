@@ -2,7 +2,7 @@
 
 //! Candidate selection. See the [rustc dev guide] for more information on how this works.
 //!
-//! [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#selection
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
@@ -934,7 +934,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // candidates. See the [rustc dev guide] for more details.
     //
     // [rustc dev guide]:
-    // https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#candidate-assembly
+    // https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 
     fn candidate_from_obligation<'o>(
         &mut self,
@@ -2450,7 +2450,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // type error.  See the [rustc dev guide] for more details.
     //
     // [rustc dev guide]:
-    // https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html#confirmation
+    // https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 
     fn confirm_candidate(
         &mut self,

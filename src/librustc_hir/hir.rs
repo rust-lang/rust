@@ -611,7 +611,7 @@ pub struct ModuleItems {
 ///
 /// For more details, see the [rustc dev guide].
 ///
-/// [rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/hir.html
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate<'hir> {
     pub module: Mod<'hir>,

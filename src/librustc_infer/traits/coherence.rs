@@ -1,8 +1,8 @@
 //! See Rustc Dev Guide chapters on [trait-resolution] and [trait-specialization] for more info on
 //! how this works.
 //!
-//! [trait-resolution]: https://rust-lang.github.io/rustc-dev-guide/traits/resolution.html
-//! [trait-specialization]: https://rust-lang.github.io/rustc-dev-guide/traits/specialization.html
+//! [trait-resolution]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
+//! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;

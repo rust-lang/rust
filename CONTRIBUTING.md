@@ -29,8 +29,8 @@ can give you a good example of how a typical contribution would go.
 [rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
 [coc]: https://www.rust-lang.org/conduct.html
-[rustc-dev-guide]: https://rust-lang.github.io/rustc-dev-guide/
-[walkthrough]: https://rust-lang.github.io/rustc-dev-guide/walkthrough.html
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
+[walkthrough]: https://rustc-dev-guide.rust-lang.org/walkthrough.html
 
 ## Feature Requests
 [feature-requests]: #feature-requests
@@ -108,7 +108,7 @@ contributions to the compiler and the standard library. It also lists some
 really useful commands to the build system (`./x.py`), which could save you a
 lot of time.
 
-[rustcguidebuild]: https://rust-lang.github.io/rustc-dev-guide/building/how-to-build-and-run.html
+[rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
 ## Pull Requests
 [pull-requests]: #pull-requests
@@ -448,7 +448,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc dev guide]: https://rust-lang.github.io/rustc-dev-guide/about-this-guide.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
@@ -456,5 +456,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: https://rust-lang.github.io/rustc-dev-guide/tests/intro.html
+[rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/

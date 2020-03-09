@@ -8,5 +8,5 @@ more, you'll want to check that out.
 If you would like to contribute to _this_ book, you can find its source in the
 rustc source at [src/doc/rustc][rustc_book].
 
-[rustc_dev_guide]: https://rust-lang.github.io/rustc-dev-guide/
+[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
 [rustc_book]: https://github.com/rust-lang/rust/tree/master/src/doc/rustc
