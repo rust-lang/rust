@@ -2272,6 +2272,48 @@ impl<I> Fuse<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
+mod fuse_flag {
+    pub trait Flag: Default {
+        fn is_set(&self) -> bool;
+        fn set(&mut self);
+    }
+
+    impl Flag for bool {
+        fn is_set(&self) -> bool {
+            *self
+        }
+
+        fn set(&mut self) {
+            *self = true
+        }
+    }
+
+    #[derive(Default)]
+    struct False;
+
+    impl Flag for False {
+        fn is_set(&self) -> bool {
+            false
+        }
+
+        fn set(&mut self) {
+            /* intenionally does nothing */
+        }
+    }
+
+    pub trait FlagType: Iterator {
+        type Flag: Flag;
+    }
+
+    impl<I: Iterator> FlagType for I {
+        default type Flag = bool;
+    }
+
+    impl<I: super::FusedIterator> FlagType for I {
+        type Flag = False;
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I>
 where
