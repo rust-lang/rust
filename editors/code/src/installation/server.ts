@@ -1,14 +1,16 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { promises as dns } from "dns";
 import { spawnSync } from "child_process";
 
 import { ArtifactSource } from "./interfaces";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
-import { downloadArtifact } from "./download_artifact";
+import { downloadArtifactWithProgressUi } from "./downloads";
 import { log, assert } from "../util";
+import { Config, NIGHTLY_TAG } from "../config";
 
-export async function ensureServerBinary(source: null | ArtifactSource): Promise<null | string> {
+export async function ensureServerBinary(config: Config): Promise<null | string> {
+    const source = config.serverSource;
+
     if (!source) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
@@ -35,18 +37,11 @@ export async function ensureServerBinary(source: null | ArtifactSource): Promise
             return null;
         }
         case ArtifactSource.Type.GithubRelease: {
-            const prebuiltBinaryPath = path.join(source.dir, source.file);
-
-            const installedVersion: null | string = getServerVersion(source.storage);
-            const requiredVersion: string = source.tag;
-
-            log.debug("Installed version:", installedVersion, "required:", requiredVersion);
-
-            if (isBinaryAvailable(prebuiltBinaryPath) && installedVersion === requiredVersion) {
-                return prebuiltBinaryPath;
+            if (!shouldDownloadServer(source, config)) {
+                return path.join(source.dir, source.file);
             }
 
-            if (source.askBeforeDownload) {
+            if (config.askBeforeDownload) {
                 const userResponse = await vscode.window.showInformationMessage(
                     `Language server version ${source.tag} for rust-analyzer is not installed. ` +
                     "Do you want to download it now?",
@@ -55,38 +50,53 @@ export async function ensureServerBinary(source: null | ArtifactSource): Promise
                 if (userResponse !== "Download now") return null;
             }
 
-            if (!await downloadServer(source)) return null;
-
-            return prebuiltBinaryPath;
+            return await downloadServer(source, config);
         }
     }
 }
 
-async function downloadServer(source: ArtifactSource.GithubRelease): Promise<boolean> {
+function shouldDownloadServer(
+    source: ArtifactSource.GithubRelease,
+    config: Config
+): boolean {
+    if (!isBinaryAvailable(path.join(source.dir, source.file))) return true;
+
+    const installed = {
+        tag: config.serverReleaseTag.get(),
+        date: config.serverReleaseDate.get()
+    };
+    const required = {
+        tag: source.tag,
+        date: config.installedNightlyExtensionReleaseDate.get()
+    };
+
+    log.debug("Installed server:", installed, "required:", required);
+
+    if (required.tag !== NIGHTLY_TAG || installed.tag !== NIGHTLY_TAG) {
+        return required.tag !== installed.tag;
+    }
+
+    assert(required.date !== null, "Extension release date should have been saved during its installation");
+    assert(installed.date !== null, "Server release date should have been saved during its installation");
+
+    return installed.date.getTime() !== required.date.getTime();
+}
+
+async function downloadServer(
+    source: ArtifactSource.GithubRelease,
+    config: Config,
+): Promise<null | string> {
     try {
         const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.tag);
 
-        await downloadArtifact(releaseInfo, source.file, source.dir, "language server");
-        await setServerVersion(source.storage, releaseInfo.releaseName);
+        await downloadArtifactWithProgressUi(releaseInfo, source.file, source.dir, "language server");
+        await Promise.all([
+            config.serverReleaseTag.set(releaseInfo.releaseName),
+            config.serverReleaseDate.set(releaseInfo.releaseDate)
+        ]);
     } catch (err) {
-        vscode.window.showErrorMessage(
-            `Failed to download language server from ${source.repo.name} ` +
-            `GitHub repository: ${err.message}`
-        );
-
-        log.error(err);
-
-        dns.resolve('example.com').then(
-            addrs => log.debug("DNS resolution for example.com was successful", addrs),
-            err => {
-                log.error(
-                    "DNS resolution for example.com failed, " +
-                    "there might be an issue with Internet availability"
-                );
-                log.error(err);
-            }
-        );
-        return false;
+        log.downloadError(err, "language server", source.repo.name);
+        return null;
     }
 
     const binaryPath = path.join(source.dir, source.file);
@@ -101,7 +111,7 @@ async function downloadServer(source: ArtifactSource.GithubRelease): Promise<boo
         "Rust analyzer language server was successfully installed 🦀"
     );
 
-    return true;
+    return binaryPath;
 }
 
 function isBinaryAvailable(binaryPath: string): boolean {
@@ -114,15 +124,4 @@ function isBinaryAvailable(binaryPath: string): boolean {
     log.debug(binaryPath, "--version output:", res.output?.map(String));
 
     return res.status === 0;
-}
-
-function getServerVersion(storage: vscode.Memento): null | string {
-    const version = storage.get<null | string>("server-version", null);
-    log.debug("Get server-version:", version);
-    return version;
-}
-
-async function setServerVersion(storage: vscode.Memento, version: string): Promise<void> {
-    log.debug("Set server-version:", version);
-    await storage.update("server-version", version.toString());
 }
