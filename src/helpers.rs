@@ -359,7 +359,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
         if !self.eval_context_ref().machine.communicate {
             throw_unsup_format!(
-                "`{}` not available when isolation is enabled. Pass the flag `-Zmiri-disable-isolation` to disable it.",
+                "`{}` not available when isolation is enabled (pass the flag `-Zmiri-disable-isolation` to disable isolation)",
                 name,
             )
         }
@@ -415,13 +415,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 AlreadyExists => "EEXIST",
                 WouldBlock => "EWOULDBLOCK",
                 _ => {
-                    throw_unsup_format!("The {} error cannot be transformed into a raw os error", e)
+                    throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
                 }
             })?
         } else {
             // FIXME: we have to implement the Windows equivalent of this.
             throw_unsup_format!(
-                "Setting the last OS error from an io::Error is unsupported for {}.",
+                "setting the last OS error from an io::Error is unsupported for {}.",
                 target.target_os
             )
         };

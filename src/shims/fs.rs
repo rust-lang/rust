@@ -198,7 +198,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
             }
             Err(e) => return match e.raw_os_error() {
                 Some(error) => Ok(error),
-                None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
+                None => throw_unsup_format!("the error {} couldn't be converted to a return value", e),
             }
         }
     }
@@ -261,7 +261,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // windows. We need to check that in fact the access mode flags for the current platform
         // only use these two bits, otherwise we are in an unsupported platform and should error.
         if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
-            throw_unsup_format!("Access mode flags on this platform are unsupported");
+            throw_unsup_format!("access mode flags on this platform are unsupported");
         }
         let mut writable = true;
 
@@ -276,7 +276,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if access_mode == o_rdwr {
             options.read(true).write(true);
         } else {
-            throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
+            throw_unsup_format!("unsupported access mode {:#x}", access_mode);
         }
         // We need to check that there aren't unsupported options in `flag`. For this we try to
         // reproduce the content of `flag` in the `mirror` variable using only the supported
@@ -351,7 +351,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
             if fd < MIN_NORMAL_FILE_FD {
-                throw_unsup_format!("Duplicating file descriptors for stdin, stdout, or stderr is not supported")
+                throw_unsup_format!("duplicating file descriptors for stdin, stdout, or stderr is not supported")
             }
             let start_op = start_op.ok_or_else(|| {
                 err_unsup_format!(
@@ -369,7 +369,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             });
             this.try_unwrap_io_result(fd_result)
         } else {
-            throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
+            throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
         }
     }
 
@@ -913,7 +913,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
-                    throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent64");
+                    throw_unsup_format!("a directory entry had a name too large to fit in libc::dirent64");
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
@@ -953,7 +953,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // return positive error number on error
                 Some(error) => Ok(error),
                 None => {
-                    throw_unsup_format!("The error {} couldn't be converted to a return value", e)
+                    throw_unsup_format!("the error {} couldn't be converted to a return value", e)
                 }
             },
         }
@@ -1001,7 +1001,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
-                    throw_unsup_format!("A directory entry had a name too large to fit in libc::dirent");
+                    throw_unsup_format!("a directory entry had a name too large to fit in libc::dirent");
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
@@ -1042,7 +1042,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // return positive error number on error
                 Some(error) => Ok(error),
                 None => {
-                    throw_unsup_format!("The error {} couldn't be converted to a return value", e)
+                    throw_unsup_format!("the error {} couldn't be converted to a return value", e)
                 }
             },
         }

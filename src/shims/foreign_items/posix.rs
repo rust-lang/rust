@@ -310,7 +310,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if let Some(result) = result {
                     this.write_scalar(result, dest)?;
                 } else {
-                    throw_unsup_format!("Unimplemented sysconf name: {}", name)
+                    throw_unsup_format!("unimplemented sysconf name: {}", name)
                 }
             }
 
