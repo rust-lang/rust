@@ -1,6 +1,10 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, HasSource, HirDisplay, Semantics};
+use hir::{
+    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
+    ModuleSource, Semantics,
+};
+use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
@@ -16,6 +20,8 @@ use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     FilePosition, RangeInfo,
 };
+use itertools::Itertools;
+use std::iter::once;
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Clone)]
@@ -83,44 +89,86 @@ impl HoverResult {
     }
 }
 
-fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
-    match (desc, docs) {
-        (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
-        (None, Some(docs)) => Some(docs),
+fn hover_text(
+    docs: Option<String>,
+    desc: Option<String>,
+    mod_path: Option<String>,
+) -> Option<String> {
+    match (desc, docs, mod_path) {
+        (Some(desc), docs, mod_path) => Some(rust_code_markup_with_doc(desc, docs, mod_path)),
+        (None, Some(docs), _) => Some(docs),
         _ => None,
     }
 }
 
+fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> {
+    match def {
+        Definition::StructField(f) => Some(f.parent_def(db).name(db)),
+        Definition::Local(l) => l.parent(db).name(db),
+        Definition::ModuleDef(md) => match md {
+            ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
+                AssocItemContainer::Trait(t) => Some(t.name(db)),
+                AssocItemContainer::ImplDef(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
+            },
+            ModuleDef::EnumVariant(e) => Some(e.parent_enum(db).name(db)),
+            _ => None,
+        },
+        Definition::SelfType(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
+        _ => None,
+    }
+    .map(|name| name.to_string())
+}
+
+fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
+    let mod_path = def.module(db).map(|module| {
+        once(db.crate_graph().crate_data(&module.krate().into()).display_name.clone())
+            .chain(
+                module
+                    .path_to_root(db)
+                    .into_iter()
+                    .rev()
+                    .map(|it| it.name(db).map(|name| name.to_string())),
+            )
+            .chain(once(definition_owner_name(db, def)))
+            .flatten()
+            .join("::")
+    });
+    mod_path
+}
+
 fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
+    let mod_path = determine_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
-            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)))
+            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)), mod_path)
         }
         Definition::StructField(it) => {
             let src = it.source(db);
             match src.value {
-                hir::FieldSource::Named(it) => hover_text(it.doc_comment_text(), it.short_label()),
+                FieldSource::Named(it) => {
+                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                }
                 _ => None,
             }
         }
         Definition::ModuleDef(it) => match it {
-            hir::ModuleDef::Module(it) => match it.definition_source(db).value {
-                hir::ModuleSource::Module(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label())
+            ModuleDef::Module(it) => match it.definition_source(db).value {
+                ModuleSource::Module(it) => {
+                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
                 }
                 _ => None,
             },
-            hir::ModuleDef::Function(it) => from_def_source(db, it),
-            hir::ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it),
-            hir::ModuleDef::Adt(Adt::Union(it)) => from_def_source(db, it),
-            hir::ModuleDef::Adt(Adt::Enum(it)) => from_def_source(db, it),
-            hir::ModuleDef::EnumVariant(it) => from_def_source(db, it),
-            hir::ModuleDef::Const(it) => from_def_source(db, it),
-            hir::ModuleDef::Static(it) => from_def_source(db, it),
-            hir::ModuleDef::Trait(it) => from_def_source(db, it),
-            hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
-            hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
+            ModuleDef::Function(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it, mod_path),
+            ModuleDef::Adt(Adt::Union(it)) => from_def_source(db, it, mod_path),
+            ModuleDef::Adt(Adt::Enum(it)) => from_def_source(db, it, mod_path),
+            ModuleDef::EnumVariant(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Const(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Static(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
+            ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
+            ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
         Definition::Local(it) => {
             Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string()))
@@ -131,13 +179,13 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         }
     };
 
-    fn from_def_source<A, D>(db: &RootDatabase, def: D) -> Option<String>
+    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
     where
         D: HasSource<Ast = A>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);
-        hover_text(src.value.doc_comment_text(), src.value.short_label())
+        hover_text(src.value.doc_comment_text(), src.value.short_label(), mod_path)
     }
 }
 
@@ -345,7 +393,7 @@ mod tests {
                 };
             }
         "#,
-            &["field_a: u32"],
+            &["Foo\nfield_a: u32"],
         );
 
         // Hovering over the field in the definition
@@ -362,7 +410,7 @@ mod tests {
                 };
             }
         "#,
-            &["field_a: u32"],
+            &["Foo\nfield_a: u32"],
         );
     }
 
@@ -415,7 +463,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Some"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\nSome"));
 
         let (analysis, position) = single_file_with_position(
             "
@@ -442,6 +490,7 @@ fn main() {
             }
         "#,
             &["
+Option
 None
 ```
 
@@ -462,6 +511,7 @@ The None variant
             }
         "#,
             &["
+Option
 Some
 ```
 
@@ -528,21 +578,23 @@ fn func(foo: i32) { if true { <|>foo; }; }
     fn test_hover_infer_associated_method_exact() {
         let (analysis, position) = single_file_with_position(
             "
-            struct Thing { x: u32 }
+            mod wrapper {
+                struct Thing { x: u32 }
 
-            impl Thing {
-                fn new() -> Thing {
-                    Thing { x: 0 }
+                impl Thing {
+                    fn new() -> Thing {
+                        Thing { x: 0 }
+                    }
                 }
             }
 
             fn main() {
-                let foo_test = Thing::new<|>();
+                let foo_test = wrapper::Thing::new<|>();
             }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("fn new() -> Thing"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("wrapper::Thing\nfn new() -> Thing"));
         assert_eq!(hover.info.is_exact(), true);
     }
 

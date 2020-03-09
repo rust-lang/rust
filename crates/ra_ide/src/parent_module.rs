@@ -133,6 +133,7 @@ mod tests {
         let crate_id = crate_graph.add_crate_root(
             root_file,
             Edition2018,
+            None,
             CfgOptions::default(),
             Env::default(),
         );

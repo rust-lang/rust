@@ -52,12 +52,11 @@ pub(crate) fn load_cargo(
         opts
     };
 
-    let (crate_graph, _crate_names) =
-        ws.to_crate_graph(&default_cfg_options, &mut |path: &Path| {
-            let vfs_file = vfs.load(path);
-            log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
-            vfs_file.map(vfs_file_to_id)
-        });
+    let crate_graph = ws.to_crate_graph(&default_cfg_options, &mut |path: &Path| {
+        let vfs_file = vfs.load(path);
+        log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
+        vfs_file.map(vfs_file_to_id)
+    });
     log::debug!("crate graph: {:?}", crate_graph);
 
     let source_roots = roots

@@ -47,7 +47,7 @@ pub(crate) fn impls_for_trait_query(
     // will only ever get called for a few crates near the root of the tree (the
     // ones the user is editing), so this may actually be a waste of memory. I'm
     // doing it like this mainly for simplicity for now.
-    for dep in db.crate_graph().dependencies(krate) {
+    for dep in &db.crate_graph().crate_data(&krate).dependencies {
         impls.extend(db.impls_for_trait(dep.crate_id, trait_).iter());
     }
     let crate_impl_defs = db.impls_in_crate(krate);

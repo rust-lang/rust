@@ -56,6 +56,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, text: &str) -> FileId {
     crate_graph.add_crate_root(
         file_id,
         Edition::Edition2018,
+        None,
         CfgOptions::default(),
         Env::default(),
     );
@@ -98,8 +99,13 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         assert!(meta.path.starts_with(&source_root_prefix));
 
         if let Some(krate) = meta.krate {
-            let crate_id =
-                crate_graph.add_crate_root(file_id, meta.edition, meta.cfg, Env::default());
+            let crate_id = crate_graph.add_crate_root(
+                file_id,
+                meta.edition,
+                Some(krate.clone()),
+                meta.cfg,
+                Env::default(),
+            );
             let prev = crates.insert(krate.clone(), crate_id);
             assert!(prev.is_none());
             for dep in meta.deps {
@@ -132,6 +138,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         crate_graph.add_crate_root(
             crate_root,
             Edition::Edition2018,
+            None,
             CfgOptions::default(),
             Env::default(),
         );

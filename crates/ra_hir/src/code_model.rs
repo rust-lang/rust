@@ -55,7 +55,9 @@ pub struct CrateDependency {
 impl Crate {
     pub fn dependencies(self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         db.crate_graph()
-            .dependencies(self.id)
+            .crate_data(&self.id)
+            .dependencies
+            .iter()
             .map(|dep| {
                 let krate = Crate { id: dep.crate_id() };
                 let name = dep.as_name();
@@ -69,7 +71,9 @@ impl Crate {
         let crate_graph = db.crate_graph();
         crate_graph
             .iter()
-            .filter(|&krate| crate_graph.dependencies(krate).any(|it| it.crate_id == self.id))
+            .filter(|&krate| {
+                crate_graph.crate_data(&krate).dependencies.iter().any(|it| it.crate_id == self.id)
+            })
             .map(|id| Crate { id })
             .collect()
     }
@@ -80,12 +84,11 @@ impl Crate {
     }
 
     pub fn root_file(self, db: &impl DefDatabase) -> FileId {
-        db.crate_graph().crate_root(self.id)
+        db.crate_graph().crate_data(&self.id).root_file_id
     }
 
     pub fn edition(self, db: &impl DefDatabase) -> Edition {
-        let crate_graph = db.crate_graph();
-        crate_graph.edition(self.id)
+        db.crate_graph().crate_data(&self.id).edition
     }
 
     pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
@@ -496,6 +499,14 @@ impl Adt {
     pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
     }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        match self {
+            Adt::Struct(s) => s.name(db),
+            Adt::Union(u) => u.name(db),
+            Adt::Enum(e) => e.name(db),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -520,6 +531,14 @@ impl VariantDef {
             VariantDef::Struct(it) => it.module(db),
             VariantDef::Union(it) => it.module(db),
             VariantDef::EnumVariant(it) => it.module(db),
+        }
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Name {
+        match self {
+            VariantDef::Struct(s) => s.name(db),
+            VariantDef::Union(u) => u.name(db),
+            VariantDef::EnumVariant(e) => e.name(db),
         }
     }
 
@@ -548,6 +567,14 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+        }
+    }
+
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+        match self {
+            DefWithBody::Function(f) => Some(f.name(db)),
+            DefWithBody::Static(s) => s.name(db),
+            DefWithBody::Const(c) => c.name(db),
         }
     }
 }

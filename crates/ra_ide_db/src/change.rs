@@ -5,7 +5,7 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, CrateId, FileId, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot,
+    CrateGraph, FileId, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot,
     SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
@@ -86,10 +86,6 @@ impl AnalysisChange {
 
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.crate_graph = Some(graph);
-    }
-
-    pub fn set_debug_crate_name(&mut self, crate_id: CrateId, name: String) {
-        self.debug_data.crate_names.insert(crate_id, name);
     }
 
     pub fn set_debug_root_path(&mut self, source_root_id: SourceRootId, path: String) {

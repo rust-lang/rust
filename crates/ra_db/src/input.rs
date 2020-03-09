@@ -86,7 +86,7 @@ pub struct CrateId(pub u32);
 pub struct CrateName(SmolStr);
 
 impl CrateName {
-    /// Crates a crate name, checking for dashes in the string provided.
+    /// Creates a crate name, checking for dashes in the string provided.
     /// Dashes are not allowed in the crate names,
     /// hence the input string is returned as `Err` for those cases.
     pub fn new(name: &str) -> Result<CrateName, &str> {
@@ -97,19 +97,23 @@ impl CrateName {
         }
     }
 
-    /// Crates a crate name, unconditionally replacing the dashes with underscores.
+    /// Creates a crate name, unconditionally replacing the dashes with underscores.
     pub fn normalize_dashes(name: &str) -> CrateName {
         Self(SmolStr::new(name.replace('-', "_")))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CrateData {
-    file_id: FileId,
-    edition: Edition,
+pub struct CrateData {
+    pub root_file_id: FileId,
+    pub edition: Edition,
+    /// The name to display to the end user.
+    /// This actual crate name can be different in a particular dependent crate
+    /// or may even be missing for some cases, such as a dummy crate for the code snippet.
+    pub display_name: Option<String>,
     cfg_options: CfgOptions,
     env: Env,
-    dependencies: Vec<Dependency>,
+    pub dependencies: Vec<Dependency>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -134,10 +138,11 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
+        display_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
     ) -> CrateId {
-        let data = CrateData::new(file_id, edition, cfg_options, env);
+        let data = CrateData::new(file_id, edition, display_name, cfg_options, env);
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
@@ -169,22 +174,15 @@ impl CrateGraph {
         self.arena.keys().copied()
     }
 
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.arena[&crate_id].file_id
-    }
-
-    pub fn edition(&self, crate_id: CrateId) -> Edition {
-        self.arena[&crate_id].edition
+    pub fn crate_data(&self, crate_id: &CrateId) -> &CrateData {
+        &self.arena[crate_id]
     }
 
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) = self.arena.iter().find(|(_crate_id, data)| data.file_id == file_id)?;
+        let (&crate_id, _) =
+            self.arena.iter().find(|(_crate_id, data)| data.root_file_id == file_id)?;
         Some(crate_id)
-    }
-
-    pub fn dependencies(&self, crate_id: CrateId) -> impl Iterator<Item = &Dependency> {
-        self.arena[&crate_id].dependencies.iter()
     }
 
     /// Extends this crate graph by adding a complete disjoint second crate
@@ -209,7 +207,7 @@ impl CrateGraph {
             return false;
         }
 
-        for dep in self.dependencies(from) {
+        for dep in &self.crate_data(&from).dependencies {
             let crate_id = dep.crate_id();
             if crate_id == target {
                 return true;
@@ -230,8 +228,21 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
+    fn new(
+        root_file_id: FileId,
+        edition: Edition,
+        display_name: Option<String>,
+        cfg_options: CfgOptions,
+        env: Env,
+    ) -> CrateData {
+        CrateData {
+            root_file_id,
+            edition,
+            display_name,
+            dependencies: Vec::new(),
+            cfg_options,
+            env,
+        }
     }
 
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
@@ -290,12 +301,27 @@ mod tests {
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate3 =
-            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate3 = graph.add_crate_root(
+            FileId(3u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
         assert!(graph.add_dep(crate3, CrateName::new("crate1").unwrap(), crate1).is_err());
@@ -304,12 +330,27 @@ mod tests {
     #[test]
     fn it_works() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate3 =
-            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate3 = graph.add_crate_root(
+            FileId(3u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
     }
@@ -317,16 +358,26 @@ mod tests {
     #[test]
     fn dashes_are_normalized() {
         let mut graph = CrateGraph::default();
-        let crate1 =
-            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
-        let crate2 =
-            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
         assert!(graph
             .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
             .is_ok());
         assert_eq!(
-            graph.dependencies(crate1).collect::<Vec<_>>(),
-            vec![&Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
+            graph.crate_data(&crate1).dependencies,
+            vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
         );
     }
 }

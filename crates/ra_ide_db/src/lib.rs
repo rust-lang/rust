@@ -131,12 +131,10 @@ fn line_index(db: &impl LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DebugData {
     pub(crate) root_paths: FxHashMap<SourceRootId, String>,
-    pub(crate) crate_names: FxHashMap<CrateId, String>,
 }
 
 impl DebugData {
     pub(crate) fn merge(&mut self, other: DebugData) {
         self.root_paths.extend(other.root_paths.into_iter());
-        self.crate_names.extend(other.crate_names.into_iter());
     }
 }

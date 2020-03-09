@@ -68,17 +68,23 @@ pub(crate) fn macro_label(node: &ast::MacroCall) -> String {
 }
 
 pub(crate) fn rust_code_markup<CODE: AsRef<str>>(val: CODE) -> String {
-    rust_code_markup_with_doc::<_, &str>(val, None)
+    rust_code_markup_with_doc::<_, &str>(val, None, None)
 }
 
-pub(crate) fn rust_code_markup_with_doc<CODE, DOC>(val: CODE, doc: Option<DOC>) -> String
+pub(crate) fn rust_code_markup_with_doc<CODE, DOC>(
+    val: CODE,
+    doc: Option<DOC>,
+    mod_path: Option<String>,
+) -> String
 where
     CODE: AsRef<str>,
     DOC: AsRef<str>,
 {
+    let mod_path =
+        mod_path.filter(|path| !path.is_empty()).map(|path| path + "\n").unwrap_or_default();
     if let Some(doc) = doc {
-        format!("```rust\n{}\n```\n\n{}", val.as_ref(), doc.as_ref())
+        format!("```rust\n{}{}\n```\n\n{}", mod_path, val.as_ref(), doc.as_ref())
     } else {
-        format!("```rust\n{}\n```", val.as_ref())
+        format!("```rust\n{}{}\n```", mod_path, val.as_ref())
     }
 }
