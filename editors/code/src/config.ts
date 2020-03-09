@@ -186,8 +186,8 @@ export class Config {
         "rust-analyzer-server-release-date",
         this.ctx.globalState
     );
-    readonly serverReleaseTag = new StringStorage(
-        "rust-analyzer-release-tag", this.ctx.globalState
+    readonly serverReleaseTag = new Storage<null | string>(
+        "rust-analyzer-release-tag", this.ctx.globalState, null
     );
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
@@ -234,37 +234,36 @@ export class Config {
     get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
 }
 
-export class StringStorage {
+export class Storage<T> {
     constructor(
         private readonly key: string,
-        private readonly storage: vscode.Memento
+        private readonly storage: vscode.Memento,
+        private readonly defaultVal: T
     ) { }
 
-    get(): null | string {
-        const tag = this.storage.get(this.key, null);
-        log.debug(this.key, "==", tag);
-        return tag;
+    get(): T {
+        const val = this.storage.get(this.key, this.defaultVal);
+        log.debug(this.key, "==", val);
+        return val;
     }
-    async set(tag: string) {
-        log.debug(this.key, "=", tag);
-        await this.storage.update(this.key, tag);
+    async set(val: T) {
+        log.debug(this.key, "=", val);
+        await this.storage.update(this.key, val);
     }
 }
 export class DateStorage {
+    inner: Storage<null | string>;
 
-    constructor(
-        private readonly key: string,
-        private readonly storage: vscode.Memento
-    ) { }
+    constructor(key: string, storage: vscode.Memento) {
+        this.inner = new Storage(key, storage, null);
+    }
 
     get(): null | Date {
-        const date = this.storage.get(this.key, null);
-        log.debug(this.key, "==", date);
-        return date ? new Date(date) : null;
+        const dateStr = this.inner.get();
+        return dateStr ? new Date(dateStr) : null;
     }
 
     async set(date: null | Date) {
-        log.debug(this.key, "=", date);
-        await this.storage.update(this.key, date);
+        await this.inner.set(date ? date.toString() : null);
     }
 }
