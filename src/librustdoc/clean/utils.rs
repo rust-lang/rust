@@ -184,7 +184,7 @@ pub fn get_real_types(
     arg: &Type,
     cx: &DocContext<'_>,
     recurse: i32,
-) -> FxHashSet<Type> {
+) -> FxHashSet<(Type, TypeKind)> {
     let arg_s = arg.print().to_string();
     let mut res = FxHashSet::default();
     if recurse >= 10 {
@@ -209,7 +209,11 @@ pub fn get_real_types(
                                 if !adds.is_empty() {
                                     res.extend(adds);
                                 } else if !ty.is_full_generic() {
-                                    res.insert(ty);
+                                    if let Some(did) = ty.def_id() {
+                                        if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                                            res.insert((ty, kind));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -225,13 +229,21 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        res.insert(ty.clone());
+                        if let Some(did) = ty.def_id() {
+                            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                                res.insert((ty.clone(), kind));
+                            }
+                        }
                     }
                 }
             }
         }
     } else {
-        res.insert(arg.clone());
+        if let Some(did) = arg.def_id() {
+            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                res.insert((arg.clone(), kind));
+            }
+        }
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
@@ -239,8 +251,10 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else {
-                    res.insert(gen.clone());
+                } else if let Some(did) = gen.def_id() {
+                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                        res.insert((gen.clone(), kind));
+                    }
                 }
             }
         }
@@ -256,7 +270,7 @@ pub fn get_all_types(
     generics: &Generics,
     decl: &FnDecl,
     cx: &DocContext<'_>,
-) -> (Vec<Type>, Vec<Type>) {
+) -> (Vec<(Type, TypeKind)>, Vec<(Type, TypeKind)>) {
     let mut all_types = FxHashSet::default();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
@@ -266,7 +280,11 @@ pub fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            all_types.insert(arg.type_.clone());
+            if let Some(did) = arg.type_.def_id() {
+                if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                    all_types.insert((arg.type_.clone(), kind));
+                }
+            }
         }
     }
 
@@ -274,7 +292,11 @@ pub fn get_all_types(
         FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                ret.insert(return_type.clone());
+                if let Some(did) = return_type.def_id() {
+                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                        ret.insert((return_type.clone(), kind));
+                    }
+                }
             }
             ret.into_iter().collect()
         }
