@@ -1,0 +1,27 @@
+error: expected expression, found keyword `else`
+  --> $DIR/else-attrs.rs:4:15
+   |
+LL |     } #[attr] else if false {
+   |               ^^^^ expected expression
+
+error: expected `{`, found `#`
+  --> $DIR/else-attrs.rs:11:12
+   |
+LL |     } else #[attr] if false {
+   |            ^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |     } else #[attr] { if false {
+LL |     } else {
+LL |     } }
+   |
+
+error: expected expression, found keyword `else`
+  --> $DIR/else-attrs.rs:20:15
+   |
+LL |     } #[attr] else {
+   |               ^^^^ expected expression
+
+error: aborting due to 3 previous errors
+
