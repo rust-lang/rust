@@ -176,7 +176,7 @@ fn find_importable_locations(
     // directly (only through reexports in direct dependencies).
     for krate in Some(from.krate)
         .into_iter()
-        .chain(crate_graph.crate_data(&from.krate).dependencies.iter().map(|dep| dep.crate_id))
+        .chain(crate_graph[from.krate].dependencies.iter().map(|dep| dep.crate_id))
     {
         result.extend(
             importable_locations_in_crate(db, item, krate)

@@ -34,7 +34,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
     let crate_graph = db.crate_graph();
 
     // populate external prelude
-    for dep in &crate_graph.crate_data(&def_map.krate).dependencies {
+    for dep in &crate_graph[def_map.krate].dependencies {
         let dep_def_map = db.crate_def_map(dep.crate_id);
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
         def_map.extern_prelude.insert(
@@ -128,7 +128,7 @@ where
     DB: DefDatabase,
 {
     fn collect(&mut self) {
-        let file_id = self.db.crate_graph().crate_data(&self.def_map.krate).root_file_id;
+        let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let raw_items = self.db.raw_items(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
@@ -954,7 +954,7 @@ mod tests {
         let krate = db.test_crate();
 
         let def_map = {
-            let edition = db.crate_graph().crate_data(&krate).edition;
+            let edition = db.crate_graph()[krate].edition;
             let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {

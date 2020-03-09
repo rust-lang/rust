@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, str::FromStr};
+use std::{fmt, ops, str::FromStr};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
@@ -174,10 +174,6 @@ impl CrateGraph {
         self.arena.keys().copied()
     }
 
-    pub fn crate_data(&self, crate_id: &CrateId) -> &CrateData {
-        &self.arena[crate_id]
-    }
-
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) =
@@ -207,7 +203,7 @@ impl CrateGraph {
             return false;
         }
 
-        for dep in &self.crate_data(&from).dependencies {
+        for dep in &self[from].dependencies {
             let crate_id = dep.crate_id();
             if crate_id == target {
                 return true;
@@ -218,6 +214,13 @@ impl CrateGraph {
             }
         }
         false
+    }
+}
+
+impl ops::Index<CrateId> for CrateGraph {
+    type Output = CrateData;
+    fn index(&self, crate_id: CrateId) -> &CrateData {
+        &self.arena[&crate_id]
     }
 }
 
@@ -376,7 +379,7 @@ mod tests {
             .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
             .is_ok());
         assert_eq!(
-            graph.crate_data(&crate1).dependencies,
+            graph[crate1].dependencies,
             vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
         );
     }

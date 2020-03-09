@@ -121,7 +121,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     let mod_path = def.module(db).map(|module| {
-        once(db.crate_graph().crate_data(&module.krate().into()).display_name.clone())
+        once(db.crate_graph()[module.krate().into()].display_name.clone())
             .chain(
                 module
                     .path_to_root(db)
