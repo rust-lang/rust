@@ -3,6 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
+import { debug } from 'vscode';
 
 export function run(ctx: Ctx): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
@@ -62,6 +63,31 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
+export function debugSingle(ctx: Ctx): Cmd {
+    return async (config: ra.Runnable) => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) return;
+
+        if (config.args[0] === 'run') {
+            config.args[0] = 'build';
+        } else {
+            config.args.push('--no-run');
+        }
+
+        const debugConfig = {
+            type: "lldb",
+            request: "launch",
+            name: config.label,
+            cargo: {
+                args: config.args,
+            },
+            args: config.extraArgs,
+            cwd: config.cwd
+        };
+        return debug.startDebugging(undefined, debugConfig);
+    };
+}
+
 class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
@@ -87,7 +113,7 @@ function createTask(spec: ra.Runnable): vscode.Task {
         type: 'cargo',
         label: spec.label,
         command: spec.bin,
-        args: spec.args,
+        args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
         env: spec.env,
     };
 

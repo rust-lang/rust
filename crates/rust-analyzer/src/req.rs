@@ -169,6 +169,7 @@ pub struct Runnable {
     pub label: String,
     pub bin: String,
     pub args: Vec<String>,
+    pub extra_args: Vec<String>,
     pub env: FxHashMap<String, String>,
     pub cwd: Option<String>,
 }
