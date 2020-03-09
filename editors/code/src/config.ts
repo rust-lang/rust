@@ -169,7 +169,7 @@ export class Config {
             dir: this.ctx.globalStoragePath,
             repo: {
                 name: "rust-analyzer",
-                owner: "rust-analyzer"
+                owner: "rust-analyzer",
             }
         };
     }
