@@ -197,7 +197,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn assert_panic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         _msg: &rustc::mir::AssertMessage<'tcx>,
         _unwind: Option<rustc::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
