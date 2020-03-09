@@ -404,32 +404,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                use rustc::mir::interpret::{
-                    InterpError::*, UndefinedBehaviorInfo, UnsupportedOpInfo,
-                };
-                match error.kind {
-                    MachineStop(_) => bug!("ConstProp does not stop"),
-
-                    // Some error shouldn't come up because creating them causes
-                    // an allocation, which we should avoid. When that happens,
-                    // dedicated error variants should be introduced instead.
-                    // Only test this in debug builds though to avoid disruptions.
-                    Unsupported(UnsupportedOpInfo::Unsupported(_))
-                    | Unsupported(UnsupportedOpInfo::ValidationFailure(_))
-                    | UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
-                    | UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_))
-                        if cfg!(debug_assertions) =>
-                    {
-                        bug!("const-prop encountered allocating error: {:?}", error.kind);
-                    }
-
-                    Unsupported(_)
-                    | UndefinedBehavior(_)
-                    | InvalidProgram(_)
-                    | ResourceExhaustion(_) => {
-                        // Ignore these errors.
-                    }
-                }
+                // Some errors shouldn't come up because creating them causes
+                // an allocation, which we should avoid. When that happens,
+                // dedicated error variants should be introduced instead.
+                // Only test this in debug builds though to avoid disruptions.
+                debug_assert!(
+                    !error.kind.allocates(),
+                    "const-prop encountered allocating error: {}",
+                    error
+                );
                 None
             }
         };
@@ -654,11 +637,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
-        if let Err(e) = self.ecx.validate_operand(
+        if let Err(e) = self.ecx.const_validate_operand(
             value,
             vec![],
             // FIXME: is ref tracking too expensive?
-            Some(&mut interpret::RefTracking::empty()),
+            &mut interpret::RefTracking::empty(),
+            /*may_ref_to_static*/ true,
         ) {
             trace!("validation error, attempt failed: {:?}", e);
             return;
