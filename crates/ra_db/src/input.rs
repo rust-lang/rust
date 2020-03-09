@@ -142,7 +142,14 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         env: Env,
     ) -> CrateId {
-        let data = CrateData::new(file_id, edition, display_name, cfg_options, env);
+        let data = CrateData {
+            root_file_id: file_id,
+            edition,
+            display_name,
+            cfg_options,
+            env,
+            dependencies: Vec::new(),
+        };
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
@@ -227,23 +234,6 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn new(
-        root_file_id: FileId,
-        edition: Edition,
-        display_name: Option<String>,
-        cfg_options: CfgOptions,
-        env: Env,
-    ) -> CrateData {
-        CrateData {
-            root_file_id,
-            edition,
-            display_name,
-            dependencies: Vec::new(),
-            cfg_options,
-            env,
-        }
-    }
-
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
         self.dependencies.push(Dependency { name, crate_id })
     }
