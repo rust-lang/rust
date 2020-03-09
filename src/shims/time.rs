@@ -12,7 +12,7 @@ fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
     time.duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|_| err_unsup_format!("Times before the Unix epoch are not supported").into())
+        .map_err(|_| err_unsup_format!("times before the Unix epoch are not supported").into())
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}

@@ -56,13 +56,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "syscall" => {
                 let sys_getrandom = this
-                    .eval_path_scalar(&["libc", "SYS_getrandom"])?
-                    .expect("Failed to get libc::SYS_getrandom")
+                    .eval_libc("SYS_getrandom")?
                     .to_machine_usize(this)?;
 
                 let sys_statx = this
-                    .eval_path_scalar(&["libc", "SYS_statx"])?
-                    .expect("Failed to get libc::SYS_statx")
+                    .eval_libc("SYS_statx")?
                     .to_machine_usize(this)?;
 
                 match this.read_scalar(args[0])?.to_machine_usize(this)? {

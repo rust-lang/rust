@@ -643,7 +643,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // FIXME: This long path is required because `libc::statx` is an struct and also a
             // function and `resolve_path` is returning the latter.
             let statx_ty = this
-                .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])?
+                .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])
                 .monomorphic_ty(*this.tcx);
             let statxbuf_ty = this.tcx.mk_mut_ptr(statx_ty);
             let statxbuf_layout = this.layout_of(statxbuf_ty)?;
@@ -655,13 +655,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // `flags` should be a `c_int` but the `syscall` function provides an `isize`.
         let flags: i32 =
             this.read_scalar(flags_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
-                err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
+                err_unsup_format!("failed to convert pointer sized operand to integer: {}", e)
             })?;
         let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
         // `dirfd` should be a `c_int` but the `syscall` function provides an `isize`.
         let dirfd: i32 =
             this.read_scalar(dirfd_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
-                err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
+                err_unsup_format!("failed to convert pointer sized operand to integer: {}", e)
             })?;
         // We only support:
         // * interpreting `path` as an absolute directory,
@@ -676,7 +676,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             (path.as_os_str().is_empty() && empty_path_flag)
         ) {
             throw_unsup_format!(
-                "Using statx is only supported with absolute paths, relative paths with the file \
+                "using statx is only supported with absolute paths, relative paths with the file \
                 descriptor `AT_FDCWD`, and empty paths with the `AT_EMPTY_PATH` flag set and any \
                 file descriptor"
             )
@@ -886,7 +886,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
-            err_unsup_format!("The DIR pointer passed to readdir64_r did not come from opendir")
+            err_unsup_format!("the DIR pointer passed to readdir64_r did not come from opendir")
         })?;
         match dir_iter.next() {
             Some(Ok(dir_entry)) => {
@@ -973,7 +973,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
-            err_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
+            err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
         })?;
         match dir_iter.next() {
             Some(Ok(dir_entry)) => {

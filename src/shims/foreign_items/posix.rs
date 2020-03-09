@@ -289,22 +289,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 trace!("sysconf() called with name {}", name);
                 // TODO: Cache the sysconf integers via Miri's global cache.
-                let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
-                    (
-                        &["libc", "_SC_NPROCESSORS_ONLN"],
-                        Scalar::from_int(NUM_CPUS, dest.layout.size),
-                    ),
+                let sysconfs = &[
+                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, dest.layout.size)),
+                    ("_SC_GETPW_R_SIZE_MAX", Scalar::from_int(-1, dest.layout.size)),
+                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, dest.layout.size)),
                 ];
                 let mut result = None;
-                for &(path, path_value) in paths {
-                    if let Some(val) = this.eval_path_scalar(path)? {
-                        let val = val.to_i32()?;
-                        if val == name {
-                            result = Some(path_value);
-                            break;
-                        }
+                for &(sysconf_name, value) in sysconfs {
+                    let sysconf_name = this.eval_libc_i32(sysconf_name)?;
+                    if sysconf_name == name {
+                        result = Some(value);
+                        break;
                     }
                 }
                 if let Some(result) = result {

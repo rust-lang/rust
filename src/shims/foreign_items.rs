@@ -165,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("No panic runtime found!");
                 let panic_runtime = tcx.crate_name(*panic_runtime);
                 let start_panic_instance =
-                    this.resolve_path(&[&*panic_runtime.as_str(), link_name])?;
+                    this.resolve_path(&[&*panic_runtime.as_str(), link_name]);
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
             }
             _ => {}
@@ -453,21 +453,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
         }
         Ok(())
-    }
-
-    /// Evaluates the scalar at the specified path. Returns Some(val)
-    /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(
-        &mut self,
-        path: &[&str],
-    ) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
-        let this = self.eval_context_mut();
-        if let Ok(instance) = this.resolve_path(path) {
-            let cid = GlobalId { instance, promoted: None };
-            let const_val = this.const_eval_raw(cid)?;
-            let const_val = this.read_scalar(const_val.into())?;
-            return Ok(Some(const_val));
-        }
-        return Ok(None);
     }
 }
