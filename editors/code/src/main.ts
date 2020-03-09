@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(() => ensureProperExtensionVersion(config).catch(log.error));
 
     // Don't await the user response here, otherwise we will block the lsp server bootstrap
-    void ensureProperExtensionVersion(config);
+    void ensureProperExtensionVersion(config).catch(log.error);
 
     const serverPath = await ensureServerBinary(config);
 
