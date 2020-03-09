@@ -485,8 +485,8 @@ impl fmt::Debug for UnsupportedOpInfo {
                     initializer"
             ),
 
-            ReadPointerAsBytes => write!(f, "unable to turn this pointer into raw bytes",),
-            ReadBytesAsPointer => write!(f, "unable to turn these bytes into a pointer"),
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
+            ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }
     }
 }

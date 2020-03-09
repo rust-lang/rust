@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
    | ---------------------------^^^^^^^^^---
    |                            |
-   |                            unable to turn these bytes into a pointer
+   |                            unable to turn bytes into a pointer
    |
    = note: `#[deny(const_err)]` on by default
 
