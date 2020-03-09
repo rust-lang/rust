@@ -5,8 +5,8 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
 use rustc_ast::ast::{
-    Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind,
-    StmtKind, UnOp,
+    BindingMode, Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
+    NodeId, Pat, PatKind, StmtKind, UnOp,
 };
 use rustc_ast::visit::{walk_expr, FnKind, Visitor};
 use rustc_data_structures::fx::FxHashMap;
@@ -356,7 +356,13 @@ impl EarlyLintPass for MiscEarlyLints {
             }
         }
 
-        if let PatKind::Ident(_, ident, Some(ref right)) = pat.kind {
+        if let PatKind::Ident(left, ident, Some(ref right)) = pat.kind {
+            let left_binding = match left {
+                BindingMode::ByRef(Mutability::Mut) => "ref mut ",
+                BindingMode::ByRef(Mutability::Not) => "ref ",
+                _ => "",
+            };
+
             if let PatKind::Wild = right.kind {
                 span_lint_and_sugg(
                     cx,
@@ -367,7 +373,7 @@ impl EarlyLintPass for MiscEarlyLints {
                         ident.name, ident.name,
                     ),
                     "try",
-                    format!("{}", ident.name),
+                    format!("{}{}", left_binding, ident.name),
                     Applicability::MachineApplicable,
                 );
             }
