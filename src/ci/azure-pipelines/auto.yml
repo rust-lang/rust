@@ -117,7 +117,7 @@ jobs:
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       x86_64-msvc-2:
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        RUST_BASE_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
         SCRIPT: make ci-subset-2
       i686-msvc-1:
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
@@ -126,7 +126,7 @@ jobs:
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       i686-msvc-2:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        RUST_CONFIGURE_ARGS: --build=i686-pc-wndows-msvc
         SCRIPT: make ci-subset-2
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
