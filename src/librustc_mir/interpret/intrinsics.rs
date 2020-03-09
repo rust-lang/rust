@@ -245,9 +245,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
                     if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
-                        throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                        throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
                     } else {
-                        throw_ub_format!("Overflow executing `{}`", intrinsic_name);
+                        throw_ub_format!("overflow executing `{}`", intrinsic_name);
                     }
                 }
                 self.write_scalar(val, dest)?;
