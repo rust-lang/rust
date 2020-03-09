@@ -380,6 +380,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         ),
                         self.path
                     ),
+                    // This cannot happen during const-eval (because interning already detects
+                    // dangling pointers), but it can happen in Miri.
                     err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(
                         format_args!("a dangling {} (use-after-free)", kind),
                         self.path
