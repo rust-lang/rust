@@ -41,6 +41,7 @@ pub struct ModulePathSuccess {
 crate fn parse_external_mod(
     sess: &ParseSess,
     id: ast::Ident,
+    span: Span, // The span to blame on errors.
     Directory { mut ownership, path }: Directory,
     attrs: &mut Vec<Attribute>,
     pop_mod_stack: &mut bool,
@@ -48,18 +49,18 @@ crate fn parse_external_mod(
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: PResult<'_, _> = try {
         // Extract the file path and the new ownership.
-        let mp = submod_path(sess, id, &attrs, ownership, &path)?;
+        let mp = submod_path(sess, id, span, &attrs, ownership, &path)?;
         ownership = mp.ownership;
 
         // Ensure file paths are acyclic.
         let mut included_mod_stack = sess.included_mod_stack.borrow_mut();
-        error_on_circular_module(sess, id.span, &mp.path, &included_mod_stack)?;
+        error_on_circular_module(sess, span, &mp.path, &included_mod_stack)?;
         included_mod_stack.push(mp.path.clone());
         *pop_mod_stack = true; // We have pushed, so notify caller.
         drop(included_mod_stack);
 
         // Actually parse the external file as amodule.
-        let mut p0 = new_sub_parser_from_file(sess, &mp.path, Some(id.to_string()), id.span);
+        let mut p0 = new_sub_parser_from_file(sess, &mp.path, Some(id.to_string()), span);
         let mut module = p0.parse_mod(&token::Eof)?;
         module.0.inline = false;
         module
@@ -126,6 +127,7 @@ crate fn push_directory(
 fn submod_path<'a>(
     sess: &'a ParseSess,
     id: ast::Ident,
+    span: Span,
     attrs: &[Attribute],
     ownership: DirectoryOwnership,
     dir_path: &Path,
@@ -150,54 +152,53 @@ fn submod_path<'a>(
         DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
     };
     let ModulePath { path_exists, name, result } =
-        default_submod_path(sess, id, relative, dir_path);
+        default_submod_path(sess, id, span, relative, dir_path);
     match ownership {
         DirectoryOwnership::Owned { .. } => Ok(result?),
         DirectoryOwnership::UnownedViaBlock => {
             let _ = result.map_err(|mut err| err.cancel());
-            error_decl_mod_in_block(sess, id.span, path_exists, &name)
+            error_decl_mod_in_block(sess, span, path_exists, &name)
         }
         DirectoryOwnership::UnownedViaMod => {
             let _ = result.map_err(|mut err| err.cancel());
-            error_cannot_declare_mod_here(sess, id.span, path_exists, &name)
+            error_cannot_declare_mod_here(sess, span, path_exists, &name)
         }
     }
 }
 
 fn error_decl_mod_in_block<'a, T>(
     sess: &'a ParseSess,
-    id_sp: Span,
+    span: Span,
     path_exists: bool,
     name: &str,
 ) -> PResult<'a, T> {
     let msg = "Cannot declare a non-inline module inside a block unless it has a path attribute";
-    let mut err = sess.span_diagnostic.struct_span_err(id_sp, msg);
+    let mut err = sess.span_diagnostic.struct_span_err(span, msg);
     if path_exists {
         let msg = format!("Maybe `use` the module `{}` instead of redeclaring it", name);
-        err.span_note(id_sp, &msg);
+        err.span_note(span, &msg);
     }
     Err(err)
 }
 
 fn error_cannot_declare_mod_here<'a, T>(
     sess: &'a ParseSess,
-    id_sp: Span,
+    span: Span,
     path_exists: bool,
     name: &str,
 ) -> PResult<'a, T> {
     let mut err =
-        sess.span_diagnostic.struct_span_err(id_sp, "cannot declare a new module at this location");
-    if !id_sp.is_dummy() {
-        if let FileName::Real(src_path) = sess.source_map().span_to_filename(id_sp) {
+        sess.span_diagnostic.struct_span_err(span, "cannot declare a new module at this location");
+    if !span.is_dummy() {
+        if let FileName::Real(src_path) = sess.source_map().span_to_filename(span) {
             if let Some(stem) = src_path.file_stem() {
                 let mut dest_path = src_path.clone();
                 dest_path.set_file_name(stem);
                 dest_path.push("mod.rs");
                 err.span_note(
-                    id_sp,
+                    span,
                     &format!(
-                        "maybe move this module `{}` to its own \
-                                directory via `{}`",
+                        "maybe move this module `{}` to its own directory via `{}`",
                         src_path.display(),
                         dest_path.display()
                     ),
@@ -207,7 +208,7 @@ fn error_cannot_declare_mod_here<'a, T>(
     }
     if path_exists {
         err.span_note(
-            id_sp,
+            span,
             &format!("... or maybe `use` the module `{}` instead of possibly redeclaring it", name),
         );
     }
@@ -237,6 +238,7 @@ pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<Pat
 pub fn default_submod_path<'a>(
     sess: &'a ParseSess,
     id: ast::Ident,
+    span: Span,
     relative: Option<ast::Ident>,
     dir_path: &Path,
 ) -> ModulePath<'a> {
@@ -273,7 +275,7 @@ pub fn default_submod_path<'a>(
         (false, false) => {
             let mut err = struct_span_err!(
                 sess.span_diagnostic,
-                id.span,
+                span,
                 E0583,
                 "file not found for module `{}`",
                 mod_name,
@@ -289,7 +291,7 @@ pub fn default_submod_path<'a>(
         (true, true) => {
             let mut err = struct_span_err!(
                 sess.span_diagnostic,
-                id.span,
+                span,
                 E0584,
                 "file for module `{}` found at both {} and {}",
                 mod_name,
