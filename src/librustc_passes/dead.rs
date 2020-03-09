@@ -590,7 +590,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
                     if item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().def_span(item.span)
+                        self.tcx.sess.source_map().guess_head_span(item.span)
                     } else {
                         item.ident.span
                     }
@@ -663,7 +663,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
             }
             hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
-                    let span = self.tcx.sess.source_map().def_span(impl_item.span);
+                    let span = self.tcx.sess.source_map().guess_head_span(impl_item.span);
                     self.warn_dead_code(
                         impl_item.hir_id,
                         span,

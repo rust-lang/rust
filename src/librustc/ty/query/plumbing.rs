@@ -388,7 +388,7 @@ impl<'tcx> TyCtxt<'tcx> {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'tcx>| {
-            self.sess.source_map().def_span(query.default_span(self, span))
+            self.sess.source_map().guess_head_span(query.default_span(self, span))
         };
 
         // Disable naming impls with types in this path, since that
@@ -456,7 +456,8 @@ impl<'tcx> TyCtxt<'tcx> {
                             query_info.info.query.describe(icx.tcx)
                         ),
                     );
-                    diag.span = icx.tcx.sess.source_map().def_span(query_info.info.span).into();
+                    diag.span =
+                        icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
                     handler.force_print_diagnostic(diag);
 
                     current_query = query_info.job.parent;

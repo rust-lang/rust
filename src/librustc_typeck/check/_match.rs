@@ -332,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   | |_____^ expected integer, found `()`
                 // ```
                 if outer_sp.is_some() {
-                    outer_sp = Some(self.tcx.sess.source_map().def_span(span));
+                    outer_sp = Some(self.tcx.sess.source_map().guess_head_span(span));
                 }
                 else_expr.span
             }

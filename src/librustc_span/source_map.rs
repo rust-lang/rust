@@ -733,7 +733,14 @@ impl SourceMap {
         }
     }
 
-    pub fn def_span(&self, sp: Span) -> Span {
+    /// Given a `Span`, return a span ending in the closest `{`. This is useful when you have a
+    /// `Span` enclosing a whole item but we need to point at only the head (usually the first
+    /// line) of that item.
+    ///
+    /// *Only suitable for diagnostics.*
+    pub fn guess_head_span(&self, sp: Span) -> Span {
+        // FIXME: extend the AST items to have a head span, or replace callers with pointing at
+        // the item's ident when appropriate.
         self.span_until_char(sp, '{')
     }
 

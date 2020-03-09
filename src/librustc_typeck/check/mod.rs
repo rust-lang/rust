@@ -1479,7 +1479,7 @@ fn check_fn<'a, 'tcx>(
                         }
                     }
                 } else {
-                    let span = sess.source_map().def_span(span);
+                    let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1520,7 +1520,7 @@ fn check_fn<'a, 'tcx>(
                         }
                     }
                 } else {
-                    let span = sess.source_map().def_span(span);
+                    let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1962,7 +1962,7 @@ fn check_impl_items_against_trait<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
-    let impl_span = tcx.sess.source_map().def_span(full_impl_span);
+    let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -2508,7 +2508,7 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     if !adt.repr.transparent() {
         return;
     }
-    let sp = tcx.sess.source_map().def_span(sp);
+    let sp = tcx.sess.source_map().guess_head_span(sp);
 
     if adt.is_union() && !tcx.features().transparent_unions {
         feature_err(
@@ -3875,7 +3875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().def_span(sp)) {
+            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().guess_head_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
@@ -4966,7 +4966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&found.kind, self.suggest_fn_call(err, expr, expected, found))
         {
             if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
-                let sp = self.sess().source_map().def_span(sp);
+                let sp = self.sess().source_map().guess_head_span(sp);
                 err.span_label(sp, &format!("{} defined here", found));
             }
         } else if !self.check_for_cast(err, expr, found, expected) {
