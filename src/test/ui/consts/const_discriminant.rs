@@ -4,6 +4,7 @@
 
 use std::mem::{discriminant, Discriminant};
 
+#[inline(never)]
 fn identity<T>(x: T) -> T { x }
 
 enum Test {
