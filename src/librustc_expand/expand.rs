@@ -1429,6 +1429,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         let mut attrs = mem::take(&mut item.attrs); // We do this to please borrowck.
         let ident = item.ident;
+        let span = item.span;
 
         match item.kind {
             ast::ItemKind::MacCall(..) => {
@@ -1436,10 +1437,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
                     ItemKind::MacCall(mac) => self
-                        .collect(
-                            AstFragmentKind::Items,
-                            InvocationKind::Bang { mac, span: item.span },
-                        )
+                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
                         .make_items(),
                     _ => unreachable!(),
                 })
@@ -1457,7 +1455,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     push_directory(ident, &item.attrs, dir)
                 } else {
                     // We have an outline `mod foo;` so we need to parse the file.
-                    let (new_mod, dir) = parse_external_mod(sess, ident, dir, &mut attrs, pushed);
+                    let (new_mod, dir) =
+                        parse_external_mod(sess, ident, span, dir, &mut attrs, pushed);
                     *old_mod = new_mod;
                     item.attrs = attrs;
                     // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
