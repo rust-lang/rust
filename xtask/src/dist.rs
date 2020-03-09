@@ -47,10 +47,14 @@ fn dist_client(nightly: bool) -> Result<()> {
 fn dist_server() -> Result<()> {
     if cfg!(target_os = "linux") {
         std::env::set_var("CC", "clang");
-        run!("cargo build --package rust-analyzer --bin rust-analyzer --release --target x86_64-unknown-linux-musl")?;
+        run!(
+            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release
+             --target x86_64-unknown-linux-musl
+             --features=jemalloc"
+        )?;
         run!("strip ./target/x86_64-unknown-linux-musl/release/rust-analyzer")?;
     } else {
-        run!("cargo build --package rust-analyzer --bin rust-analyzer --release")?;
+        run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;
     }
 
     let (src, dst) = if cfg!(target_os = "linux") {
