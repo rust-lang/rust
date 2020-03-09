@@ -167,7 +167,9 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: config::CrateType) 
             if !sess.target.target.options.dynamic_linking {
                 return true;
             }
-            if sess.crt_static() && !sess.target.target.options.crt_static_allows_dylibs {
+            if sess.crt_static(Some(crate_type))
+                && !sess.target.target.options.crt_static_allows_dylibs
+            {
                 return true;
             }
         }
