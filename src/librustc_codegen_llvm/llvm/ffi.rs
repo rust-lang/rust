@@ -1607,17 +1607,21 @@ extern "C" {
         Lang: c_uint,
         File: &'a DIFile,
         Producer: *const c_char,
+        ProducerLen: size_t,
         isOptimized: bool,
         Flags: *const c_char,
         RuntimeVer: c_uint,
         SplitName: *const c_char,
+        SplitNameLen: size_t,
         kind: DebugEmissionKind,
     ) -> &'a DIDescriptor;
 
     pub fn LLVMRustDIBuilderCreateFile(
         Builder: &DIBuilder<'a>,
         Filename: *const c_char,
+        FilenameLen: size_t,
         Directory: *const c_char,
+        DirectoryLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(
@@ -1630,7 +1634,9 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
         Name: *const c_char,
+        NameLen: size_t,
         LinkageName: *const c_char,
+        LinkageNameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
         Ty: &'a DIType,
@@ -1645,6 +1651,7 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateBasicType(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
+        NameLen: size_t,
         SizeInBits: u64,
         AlignInBits: u32,
         Encoding: c_uint,
@@ -1655,13 +1662,16 @@ extern "C" {
         PointeeTy: &'a DIType,
         SizeInBits: u64,
         AlignInBits: u32,
+        AddressSpace: c_uint,
         Name: *const c_char,
+        NameLen: size_t,
     ) -> &'a DIDerivedType;
 
     pub fn LLVMRustDIBuilderCreateStructType(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIDescriptor>,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
         SizeInBits: u64,
@@ -1672,12 +1682,14 @@ extern "C" {
         RunTimeLang: c_uint,
         VTableHolder: Option<&'a DIType>,
         UniqueId: *const c_char,
+        UniqueIdLen: size_t,
     ) -> &'a DICompositeType;
 
     pub fn LLVMRustDIBuilderCreateMemberType(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
         SizeInBits: u64,
@@ -1691,6 +1703,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
         SizeInBits: u64,
@@ -1719,7 +1732,9 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Context: Option<&'a DIScope>,
         Name: *const c_char,
+        NameLen: size_t,
         LinkageName: *const c_char,
+        LinkageNameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
         Ty: &'a DIType,
@@ -1734,6 +1749,7 @@ extern "C" {
         Tag: c_uint,
         Scope: &'a DIDescriptor,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
         Ty: &'a DIType,
@@ -1785,6 +1801,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
         SizeInBits: u64,
@@ -1798,6 +1815,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNumber: c_uint,
         SizeInBits: u64,
@@ -1806,12 +1824,14 @@ extern "C" {
         Elements: Option<&'a DIArray>,
         RunTimeLang: c_uint,
         UniqueId: *const c_char,
+        UniqueIdLen: size_t,
     ) -> &'a DIType;
 
     pub fn LLVMRustDIBuilderCreateVariantPart(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
         Name: *const c_char,
+        NameLen: size_t,
         File: &'a DIFile,
         LineNo: c_uint,
         SizeInBits: u64,
@@ -1820,6 +1840,7 @@ extern "C" {
         Discriminator: Option<&'a DIDerivedType>,
         Elements: &'a DIArray,
         UniqueId: *const c_char,
+        UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
     pub fn LLVMSetUnnamedAddr(GlobalVar: &Value, UnnamedAddr: Bool);
@@ -1828,6 +1849,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
         Name: *const c_char,
+        NameLen: size_t,
         Ty: &'a DIType,
         File: &'a DIFile,
         LineNo: c_uint,
@@ -1838,8 +1860,8 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
         Name: *const c_char,
-        File: &'a DIFile,
-        LineNo: c_uint,
+        NameLen: size_t,
+        ExportSymbols: bool,
     ) -> &'a DINameSpace;
 
     pub fn LLVMRustDICompositeTypeReplaceArrays(
