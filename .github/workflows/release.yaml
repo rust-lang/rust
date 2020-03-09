@@ -71,7 +71,7 @@ jobs:
       with:
         node-version: 12.x
 
-    - run: echo "::set-env name=TAG::$(date --iso)"
+    - run: echo "::set-env name=TAG::$(date --iso --utc)"
       if: github.event_name == 'push'
     - run: echo "::set-env name=TAG::nightly"
       if: github.event_name == 'schedule'
@@ -108,4 +108,4 @@ jobs:
       if: github.event_name == 'push'
       working-directory: ./editors/code
       # token from https://dev.azure.com/rust-analyzer/
-      run: npx vsce publish 0.1.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer.vsix
+      run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer.vsix

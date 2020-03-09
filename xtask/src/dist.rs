@@ -27,7 +27,13 @@ fn dist_client(nightly: bool) -> Result<()> {
     let _restore =
         Restore { path: package_json_path.clone(), contents: original_package_json.clone() };
 
-    let mut package_json = original_package_json.replace(r#""enableProposedApi": true,"#, r#""#);
+    let date = run!("date --utc +%Y%m%d")?;
+    let version_suffix = if nightly { "-nightly" } else { "" };
+
+    let mut package_json = original_package_json.replace(
+        r#""version": "0.2.20200211-dev""#,
+        &format!(r#""version": "0.1.{}{}""#, date, version_suffix),
+    );
 
     if nightly {
         package_json = package_json.replace(
@@ -35,7 +41,7 @@ fn dist_client(nightly: bool) -> Result<()> {
             r#""displayName": "rust-analyzer nightly""#,
         );
     } else {
-        package_json = original_package_json.replace(r#""enableProposedApi": true,"#, r#""#);
+        package_json = package_json.replace(r#""enableProposedApi": true,"#, r#""#);
     }
     fs2::write(package_json_path, package_json)?;
 
