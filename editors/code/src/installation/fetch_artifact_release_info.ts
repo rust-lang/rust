@@ -59,12 +59,15 @@ export async function fetchArtifactReleaseInfo(
 
     return {
         releaseName: release.name,
+        releaseDate: new Date(release.published_at),
         downloadUrl: artifact.browser_download_url
     };
 
     // We omit declaration of tremendous amount of fields that we are not using here
     interface GithubRelease {
         name: string;
+        // eslint-disable-next-line camelcase
+        published_at: string;
         assets: Array<{
             name: string;
             // eslint-disable-next-line camelcase

@@ -1,5 +1,3 @@
-import * as vscode from "vscode";
-
 export interface GithubRepo {
     name: string;
     owner: string;
@@ -9,6 +7,7 @@ export interface GithubRepo {
  * Metadata about particular artifact retrieved from GitHub releases.
  */
 export interface ArtifactReleaseInfo {
+    releaseDate: Date;
     releaseName: string;
     downloadUrl: string;
 }
@@ -42,6 +41,9 @@ export namespace ArtifactSource {
          */
         repo: GithubRepo;
 
+
+        // FIXME: add installationPath: string;
+
         /**
          * Directory on the filesystem where the bundled binary is stored.
          */
@@ -57,17 +59,5 @@ export namespace ArtifactSource {
          * Tag of github release that denotes a version required by this extension.
          */
         tag: string;
-
-        /**
-         * Object that provides `get()/update()` operations to store metadata
-         * about the actual binary, e.g. its actual version.
-         */
-        storage: vscode.Memento;
-
-        /**
-         * Ask for the user permission before downloading the artifact.
-         */
-        askBeforeDownload: boolean;
     }
-
 }
