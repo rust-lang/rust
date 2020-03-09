@@ -631,6 +631,9 @@ fn on_notification(
         }
         Err(not) => not,
     };
+    if not.method.starts_with("$/") {
+        return Ok(());
+    }
     log::error!("unhandled notification: {:?}", not);
     Ok(())
 }
