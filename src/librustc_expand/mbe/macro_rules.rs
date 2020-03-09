@@ -258,7 +258,7 @@ fn generic_extension<'cx>(
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
-                let mut p = Parser::new(cx.parse_sess(), tts, false, None);
+                let mut p = Parser::new(sess, tts, false, None);
                 p.root_module_name =
                     cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
@@ -1204,7 +1204,7 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn parser_from_cx<'cx>(sess: &'cx ParseSess, tts: TokenStream) -> Parser<'cx> {
+fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
     Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
 }
 
