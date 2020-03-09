@@ -718,18 +718,9 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
-                self.error_attr_on_if_expr(&expr);
                 expr
             })
         })
-    }
-
-    fn error_attr_on_if_expr(&self, expr: &Expr) {
-        if let (ExprKind::If(..), [a0, ..]) = (&expr.kind, &*expr.attrs) {
-            // Just point to the first attribute in there...
-            self.struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
-                .emit();
-        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
