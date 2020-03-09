@@ -48,8 +48,8 @@ There are a few benefits to using LLVM:
 Once LLVM IR for all of the functions and statics, etc is built, it is time to
 start running LLVM and its optimization passes. LLVM IR is grouped into
 "modules". Multiple "modules" can be codegened at the same time to aid in
-multi-core utilisation. These "modules" are what we refer to as _codegen
-units_. These units were established way back during monomorphisation
+multi-core utilization. These "modules" are what we refer to as _codegen
+units_. These units were established way back during monomorphization
 collection phase.
 
 Once LLVM produces objects from these modules, these objects are passed to the
@@ -57,8 +57,8 @@ linker along with, optionally, the metadata object and an archive or an
 executable is produced.
 
 It is not necessarily the codegen phase described above that runs the
-optimisations. With certain kinds of LTO, the optimisation might happen at the
-linking time instead. It is also possible for some optimisations to happen
+optimizations. With certain kinds of LTO, the optimization might happen at the
+linking time instead. It is also possible for some optimizations to happen
 before objects are passed on to the linker and some to happen during the
 linking.
 

@@ -41,7 +41,7 @@ fn main() {
 }
 ```
 
-The monomorphisation collector will give you a list of `[main, banana,
+The monomorphization collector will give you a list of `[main, banana,
 peach::<u64>]`. These are the functions that will have machine code generated
 for them. Collector will also add things like statics to that list.
 
@@ -49,9 +49,9 @@ See [the collector rustdocs][collect] for more info.
 
 [collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/collector/index.html
 
-The monomorphisation collector is run just before MIR lowering and codegen.
+The monomorphization collector is run just before MIR lowering and codegen.
 [`rustc_codegen_ssa::base::codegen_crate`][codegen1] calls the
-[`collect_and_partition_mono_items`][mono] query, which does monomorphisation
+[`collect_and_partition_mono_items`][mono] query, which does monomorphization
 collection and then partitions them into [codegen
 units](../appendix/glossary.md).
 
@@ -60,7 +60,7 @@ units](../appendix/glossary.md).
 
 ## Polymorphization
 
-As mentioned above, monomorphisation produces fast code, but it comes at the
+As mentioned above, monomorphization produces fast code, but it comes at the
 cost of compile time and binary size. [MIR
 optimizations](../mir/optimizations.md) can help a bit with this. Another
 optimization currently under development is called _polymorphization_.

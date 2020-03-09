@@ -2,7 +2,7 @@
 
 Now that we have a list of symbols to generate from the collector, we need to
 generate some sort of codegen IR. In this chapter, we will assume LLVM IR,
-since that's what rustc usually uses. The actual monomorphisation is performed
+since that's what rustc usually uses. The actual monomorphization is performed
 as we go, while we do the translation.
 
 Recall that the backend is started by
@@ -34,13 +34,13 @@ Before a function is translated a number of simple and primitive analysis
 passes will run to help us generate simpler and more efficient LLVM IR. An
 example of such an analysis pass would be figuring out which variables are
 SSA-like, so that we can translate them to SSA directly rather than relying on
-LLVM's `mem2reg` for those variables. The anayses can be found in
+LLVM's `mem2reg` for those variables. The analysis can be found in
 [`rustc_codegen_ssa::mir::analyze`][mirana].
 
 [mirana]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/analyze/index.html
   
 Usually a single MIR basic block will map to a LLVM basic block, with very few
-exceptions: intrinsic or function calls and less basic MIR statemenets like
+exceptions: intrinsic or function calls and less basic MIR statements like
 `assert` can result in multiple basic blocks. This is a perfect lede into the
 non-portable LLVM-specific part of the code generation. Intrinsic generation is
 fairly easy to understand as it involves very few abstraction levels in between
