@@ -4,7 +4,7 @@
 #![feature(crate_visibility_modifier)]
 
 use rustc_ast::ast;
-use rustc_ast::token::{self, Nonterminal, Token};
+use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -171,8 +171,7 @@ fn maybe_source_file_to_parser(
     let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof {
-        let span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
-        parser.set_token(Token::new(token::Eof, span));
+        parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt());
     }
 
     Ok(parser)

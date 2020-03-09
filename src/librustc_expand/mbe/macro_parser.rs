@@ -750,17 +750,8 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
-    match token.kind {
-        token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
-        token::Interpolated(ref nt) => match **nt {
-            token::NtIdent(ident, is_raw) if ident.name != kw::Underscore => {
-                Some((ident.name, is_raw))
-            }
-            _ => None,
-        },
-        _ => None,
-    }
+fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+    token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
 }
 
 /// Checks whether a non-terminal may begin with a particular token.
@@ -783,7 +774,7 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
             && !token.is_keyword(kw::Let)
         }
         sym::ty => token.can_begin_type(),
-        sym::ident => get_macro_name(token).is_some(),
+        sym::ident => get_macro_ident(token).is_some(),
         sym::literal => token.can_begin_literal_or_bool(),
         sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
@@ -888,9 +879,9 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         sym::ty => token::NtTy(p.parse_ty()?),
         // this could be handled like a token, since it is one
         sym::ident => {
-            if let Some((name, is_raw)) = get_macro_name(&p.token) {
+            if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
                 p.bump();
-                token::NtIdent(Ident::new(name, p.normalized_prev_token.span), is_raw)
+                token::NtIdent(ident, is_raw)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
                 let msg = &format!("expected ident, found {}", &token_str);
