@@ -99,6 +99,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
+            Abort => {
+                M::abort(self)?;
+            }
+
             // When we encounter Resume, we've finished unwinding
             // cleanup for the current stack frame. We pop it in order
             // to continue unwinding the next frame
@@ -118,8 +122,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | FalseEdges { .. }
             | FalseUnwind { .. }
             | Yield { .. }
-            | GeneratorDrop
-            | Abort => bug!("{:#?} should have been eliminated by MIR pass", terminator.kind),
+            | GeneratorDrop => {
+                bug!("{:#?} should have been eliminated by MIR pass", terminator.kind)
+            }
         }
 
         Ok(())
