@@ -121,7 +121,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     let mod_path = def.module(db).map(|module| {
-        once(db.crate_graph().declaration_name(&module.krate().into()).cloned())
+        once(db.crate_graph().crate_data(&module.krate().into()).display_name.clone())
             .chain(
                 module
                     .path_to_root(db)
@@ -130,7 +130,7 @@ fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
                     .map(|it| it.name(db).map(|name| name.to_string())),
             )
             .chain(once(definition_owner_name(db, def)))
-            .filter_map(std::convert::identity)
+            .flatten()
             .join("::")
     });
     mod_path

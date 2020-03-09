@@ -117,7 +117,9 @@ impl LangItems {
             return Some(*target);
         }
         db.crate_graph()
-            .dependencies(start_crate)
+            .crate_data(&start_crate)
+            .dependencies
+            .iter()
             .find_map(|dep| db.lang_item(dep.crate_id, item.clone()))
     }
 
