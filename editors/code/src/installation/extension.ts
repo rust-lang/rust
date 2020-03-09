@@ -89,7 +89,6 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
         `version and reload the window now?`,
         "Download now", "Cancel"
     );
-    log.debug("Response: ", userResponse);
     return userResponse === "Download now";
 }
 
