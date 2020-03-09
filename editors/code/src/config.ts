@@ -173,7 +173,7 @@ export class Config {
                 name: "rust-analyzer",
                 owner: "rust-analyzer"
             }
-        }
+        };
     }
 
     get nightlyVsixSource(): ArtifactSource.GithubRelease {
@@ -240,7 +240,7 @@ export class StringStorage {
     constructor(
         private readonly key: string,
         private readonly storage: vscode.Memento
-    ) {}
+    ) { }
 
     get(): null | string {
         const tag = this.storage.get(this.key, null);
@@ -257,7 +257,7 @@ export class DateStorage {
     constructor(
         private readonly key: string,
         private readonly storage: vscode.Memento
-    ) {}
+    ) { }
 
     get(): null | Date {
         const date = this.storage.get(this.key, null);

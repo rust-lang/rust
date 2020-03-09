@@ -110,7 +110,7 @@ const tryDownloadNightlyExtension = notReentrant(async function tryDownloadNight
 
         const vsixPath = path.join(vsixSource.dir, vsixSource.file);
 
-        await vscodeInstallExtensionFromVsix(vsixPath)
+        await vscodeInstallExtensionFromVsix(vsixPath);
         await config.installedNightlyExtensionReleaseDate.set(releaseInfo.releaseDate);
         await fs.unlink(vsixPath);
 
