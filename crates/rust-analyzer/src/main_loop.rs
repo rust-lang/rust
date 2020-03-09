@@ -44,6 +44,8 @@ pub struct LspError {
 }
 
 impl LspError {
+    pub const UNKNOWN_FILE: i32 = -32900;
+
     pub fn new(code: i32, message: String) -> LspError {
         LspError { code, message }
     }
@@ -805,7 +807,14 @@ where
     let response = match result {
         Ok(resp) => Response::new_ok(id, &resp),
         Err(e) => match e.downcast::<LspError>() {
-            Ok(lsp_error) => Response::new_err(id, lsp_error.code, lsp_error.message),
+            Ok(lsp_error) => {
+                if lsp_error.code == LspError::UNKNOWN_FILE {
+                    // Work-around for https://github.com/rust-analyzer/rust-analyzer/issues/1521
+                    Response::new_ok(id, ())
+                } else {
+                    Response::new_err(id, lsp_error.code, lsp_error.message)
+                }
+            }
             Err(e) => {
                 if is_canceled(&e) {
                     Response::new_err(
