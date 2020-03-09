@@ -9,7 +9,6 @@ use std::{
 };
 
 use crossbeam_channel::{unbounded, Receiver};
-use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher};
@@ -251,8 +250,9 @@ impl WorldSnapshot {
         let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
         let file = self.vfs.read().path2file(&path).ok_or_else(|| {
             // Show warning as this file is outside current workspace
+            // FIXME: just handle such files, and remove `LspError::UNKNOWN_FILE`.
             LspError {
-                code: ErrorCode::InvalidRequest as i32,
+                code: LspError::UNKNOWN_FILE,
                 message: "Rust file outside current workspace is not supported yet.".to_string(),
             }
         })?;
