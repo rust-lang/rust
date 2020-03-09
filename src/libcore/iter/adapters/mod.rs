@@ -2259,11 +2259,17 @@ where
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Fuse<I> {
+pub struct Fuse<I>
+where
+    I: Iterator,
+{
     iter: I,
     done: <I as fuse_flag::FlagType>::Flag,
 }
-impl<I> Fuse<I> {
+impl<I> Fuse<I>
+where
+    I: Iterator,
+{
     pub(super) fn new(iter: I) -> Fuse<I> {
         Fuse { iter, done: <_>::default() }
     }
@@ -2273,7 +2279,7 @@ impl<I> Fuse<I> {
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
 mod fuse_flag {
-    pub trait Flag: Default {
+    pub trait Flag: Clone + crate::fmt::Debug + Default {
         fn is_set(&self) -> bool;
         fn set(&mut self);
     }
@@ -2288,8 +2294,8 @@ mod fuse_flag {
         }
     }
 
-    #[derive(Default)]
-    struct False;
+    #[derive(Clone, Debug, Default)]
+    pub struct False;
 
     impl Flag for False {
         fn is_set(&self) -> bool {
@@ -2323,7 +2329,7 @@ where
     type Item = <I as Iterator>::Item;
 
     #[inline]
-    default fn next(&mut self) -> Option<<I as Iterator>::Item> {
+    fn next(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done.is_set() {
             None
         } else {
@@ -2336,7 +2342,7 @@ where
     }
 
     #[inline]
-    default fn nth(&mut self, n: usize) -> Option<I::Item> {
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
         if self.done.is_set() {
             None
         } else {
@@ -2349,22 +2355,22 @@ where
     }
 
     #[inline]
-    default fn last(self) -> Option<I::Item> {
+    fn last(self) -> Option<I::Item> {
         if self.done.is_set() { None } else { self.iter.last() }
     }
 
     #[inline]
-    default fn count(self) -> usize {
+    fn count(self) -> usize {
         if self.done.is_set() { 0 } else { self.iter.count() }
     }
 
     #[inline]
-    default fn size_hint(&self) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         if self.done.is_set() { (0, Some(0)) } else { self.iter.size_hint() }
     }
 
     #[inline]
-    default fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
@@ -2380,7 +2386,7 @@ where
     }
 
     #[inline]
-    default fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
@@ -2394,7 +2400,7 @@ where
     I: DoubleEndedIterator,
 {
     #[inline]
-    default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done.is_set() {
             None
         } else {
@@ -2407,7 +2413,7 @@ where
     }
 
     #[inline]
-    default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
+    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
         if self.done.is_set() {
             None
         } else {
@@ -2420,7 +2426,7 @@ where
     }
 
     #[inline]
-    default fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
@@ -2436,7 +2442,7 @@ where
     }
 
     #[inline]
-    default fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
@@ -2454,89 +2460,6 @@ where
 
     fn may_have_side_effect() -> bool {
         I::may_have_side_effect()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> Iterator for Fuse<I>
-where
-    I: FusedIterator,
-{
-    #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        self.iter.next()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<I::Item> {
-        self.iter.nth(n)
-    }
-
-    #[inline]
-    fn last(self) -> Option<I::Item> {
-        self.iter.last()
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.iter.count()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-
-    #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
-    {
-        self.iter.try_fold(init, fold)
-    }
-
-    #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        self.iter.fold(init, fold)
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> DoubleEndedIterator for Fuse<I>
-where
-    I: DoubleEndedIterator + FusedIterator,
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
-        self.iter.next_back()
-    }
-
-    #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
-        self.iter.nth_back(n)
-    }
-
-    #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
-    {
-        self.iter.try_rfold(init, fold)
-    }
-
-    #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        self.iter.rfold(init, fold)
     }
 }
 
