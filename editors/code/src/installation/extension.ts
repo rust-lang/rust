@@ -94,6 +94,10 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
 
 /**
  * Shutdowns the process in case of success (i.e. reloads the window) or throws an error.
+ *
+ * ACHTUNG!: this function has a crazy amount of state transitions, handling errors during
+ * each of them would result in a ton of code (especially accounting for cross-process
+ * shared mutable `globalState` access). Enforcing reentrancy for this is best-effort.
  */
 const tryDownloadNightlyExtension = notReentrant(async function tryDownloadNightlyExtension(
     config: Config,
