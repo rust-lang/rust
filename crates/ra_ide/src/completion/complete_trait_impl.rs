@@ -102,32 +102,17 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 }
 
 fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
-    let (trigger_idx, trigger) =
-        ctx.token.ancestors().enumerate().find(|(_idx, p)| match p.kind() {
-            SyntaxKind::FN_DEF
-            | SyntaxKind::TYPE_ALIAS_DEF
-            | SyntaxKind::CONST_DEF
-            | SyntaxKind::NAME_REF
-            | SyntaxKind::BLOCK_EXPR => true,
-            _ => false,
-        })?;
-    let (impl_def_idx, impl_def) =
-        ctx.token.ancestors().enumerate().skip(trigger_idx + 1).find_map(|(idx, p)| {
-            match p.kind() {
-                SyntaxKind::IMPL_DEF => ast::ImplDef::cast(p).map(|p| (idx, p)),
-                _ => None,
-            }
-        })?;
-    let _is_nested = ctx
-        .token
-        .ancestors()
-        .skip(trigger_idx + 1)
-        .take(impl_def_idx - trigger_idx - 1)
-        .find_map(|p| match p.kind() {
-            SyntaxKind::FN_DEF | SyntaxKind::BLOCK => Some(()),
-            _ => None,
-        })
-        .xor(Some(()))?;
+    let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
+        SyntaxKind::FN_DEF
+        | SyntaxKind::TYPE_ALIAS_DEF
+        | SyntaxKind::CONST_DEF
+        | SyntaxKind::BLOCK_EXPR => Some((p, 2)),
+        SyntaxKind::NAME_REF => Some((p, 5)),
+        _ => None,
+    })?;
+    let impl_def = (0..impl_def_offset - 1)
+        .try_fold(trigger.parent()?, |t, _| t.parent())
+        .and_then(ast::ImplDef::cast)?;
     Some((trigger, impl_def))
 }
 
