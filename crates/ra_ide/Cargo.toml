@@ -35,4 +35,4 @@ ra_assists = { path = "../ra_assists" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 
 [dev-dependencies]
-insta = "0.13.1"
+insta = "0.15.0"

@@ -26,4 +26,4 @@ ra_cfg = { path = "../ra_cfg" }
 tt = { path = "../ra_tt", package = "ra_tt" }
 
 [dev-dependencies]
-insta = "0.13.1"
+insta = "0.15.0"
