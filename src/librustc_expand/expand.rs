@@ -435,14 +435,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => unreachable!(),
                     };
                     if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), sym::derive)
-                            .expect("`derive` attribute should exist");
-                        let span = attr.span;
+                        let attr = attr::find_by_name(item.attrs(), sym::derive);
+                        let span = attr.map_or(item.span(), |attr| attr.span);
                         let mut err = self.cx.struct_span_err(
                             span,
                             "`derive` may only be applied to structs, enums and unions",
                         );
-                        if let ast::AttrStyle::Inner = attr.style {
+                        if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
                             let trait_list = derives
                                 .iter()
                                 .map(|t| pprust::path_to_string(t))
