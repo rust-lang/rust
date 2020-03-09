@@ -1,8 +1,11 @@
 import fetch from "node-fetch";
+import * as vscode from "vscode";
+import * as path from "path";
 import * as fs from "fs";
 import * as stream from "stream";
 import * as util from "util";
 import { log, assert } from "../util";
+import { ArtifactReleaseInfo } from "./interfaces";
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -48,4 +51,47 @@ export async function downloadFile(
         // Details on workaround: https://github.com/rust-analyzer/rust-analyzer/pull/3092#discussion_r378191131
         // Issue at nodejs repo: https://github.com/nodejs/node/issues/31776
     });
+}
+
+/**
+ * Downloads artifact from given `downloadUrl`.
+ * Creates `installationDir` if it is not yet created and puts the artifact under
+ * `artifactFileName`.
+ * Displays info about the download progress in an info message printing the name
+ * of the artifact as `displayName`.
+ */
+export async function downloadArtifactWithProgressUi(
+    { downloadUrl, releaseName }: ArtifactReleaseInfo,
+    artifactFileName: string,
+    installationDir: string,
+    displayName: string,
+) {
+    await fs.promises.mkdir(installationDir).catch(err => assert(
+        err?.code === "EEXIST",
+        `Couldn't create directory "${installationDir}" to download ` +
+        `${artifactFileName} artifact: ${err?.message}`
+    ));
+
+    const installationPath = path.join(installationDir, artifactFileName);
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            cancellable: false, // FIXME: add support for canceling download?
+            title: `Downloading rust-analyzer ${displayName} (${releaseName})`
+        },
+        async (progress, _cancellationToken) => {
+            let lastPrecentage = 0;
+            const filePermissions = 0o755; // (rwx, r_x, r_x)
+            await downloadFile(downloadUrl, installationPath, filePermissions, (readBytes, totalBytes) => {
+                const newPercentage = (readBytes / totalBytes) * 100;
+                progress.report({
+                    message: newPercentage.toFixed(0) + "%",
+                    increment: newPercentage - lastPrecentage
+                });
+
+                lastPrecentage = newPercentage;
+            });
+        }
+    );
 }
