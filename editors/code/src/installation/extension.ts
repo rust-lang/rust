@@ -58,11 +58,11 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
 
     await tryDownloadNightlyExtension(config, releaseInfo => {
         assert(
-            currentExtReleaseDate === config.installedNightlyExtensionReleaseDate.get(),
+            currentExtReleaseDate.getTime() === config.installedNightlyExtensionReleaseDate.get()?.getTime(),
             "Other active VSCode instance has reinstalled the extension"
         );
 
-        if (releaseInfo.releaseDate === currentExtReleaseDate) {
+        if (releaseInfo.releaseDate.getTime() === currentExtReleaseDate.getTime()) {
             vscode.window.showInformationMessage(
                 "Whoops, it appears that your nightly version is up-to-date. " +
                 "There might be some problems with the upcomming nightly release " +
