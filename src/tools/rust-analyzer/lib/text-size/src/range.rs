@@ -105,19 +105,18 @@ impl TextRange {
         TextRange(start, end)
     }
 
-    /// Check if this range contains a point.
+    /// Check if this range contains an offset.
     ///
     /// The end index is considered excluded.
-    pub fn contains_exclusive(self, point: impl Into<TextSize>) -> bool {
-        let point = point.into();
-        self.start() <= point && point < self.end()
+    pub fn contains_exclusive(self, offset: TextSize) -> bool {
+        self.start() <= offset && offset < self.end()
     }
 
-    /// Check if this range contains a point.
+    /// Check if this range contains an offset.
     ///
     /// The end index is considered included.
-    pub fn contains_inclusive(self, point: impl Into<TextSize>) -> bool {
-        let point = point.into();
+    pub fn contains_inclusive(self, offset: TextSize) -> bool {
+        let point = offset.into();
         self.start() <= point && point <= self.end()
     }
 }
