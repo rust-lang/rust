@@ -13,6 +13,10 @@ impl Handler {
     pub unsafe fn new() -> Handler {
         make_handler()
     }
+
+    fn null() -> Handler {
+        Handler { _data: crate::ptr::null_mut() }
+    }
 }
 
 impl Drop for Handler {
@@ -108,13 +112,20 @@ mod imp {
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();
+    static mut NEED_ALTSTACK: bool = false;
 
     pub unsafe fn init() {
         let mut action: sigaction = mem::zeroed();
-        action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-        action.sa_sigaction = signal_handler as sighandler_t;
-        sigaction(SIGSEGV, &action, ptr::null_mut());
-        sigaction(SIGBUS, &action, ptr::null_mut());
+        for &signal in &[SIGSEGV, SIGBUS] {
+            sigaction(signal, ptr::null_mut(), &mut action);
+            // Configure our signal handler if one is not already set.
+            if action.sa_sigaction == SIG_DFL {
+                action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+                action.sa_sigaction = signal_handler as sighandler_t;
+                sigaction(signal, &action, ptr::null_mut());
+                NEED_ALTSTACK = true;
+            }
+        }
 
         let handler = make_handler();
         MAIN_ALTSTACK = handler._data;
@@ -152,6 +163,9 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> Handler {
+        if !NEED_ALTSTACK {
+            return Handler::null();
+        }
         let mut stack = mem::zeroed();
         sigaltstack(ptr::null(), &mut stack);
         // Configure alternate signal stack, if one is not already set.
@@ -160,7 +174,7 @@ mod imp {
             sigaltstack(&stack, ptr::null_mut());
             Handler { _data: stack.ss_sp as *mut libc::c_void }
         } else {
-            Handler { _data: ptr::null_mut() }
+            Handler::null()
         }
     }
 
@@ -191,14 +205,12 @@ mod imp {
     target_os = "openbsd"
 )))]
 mod imp {
-    use crate::ptr;
-
     pub unsafe fn init() {}
 
     pub unsafe fn cleanup() {}
 
     pub unsafe fn make_handler() -> super::Handler {
-        super::Handler { _data: ptr::null_mut() }
+        super::Handler::null()
     }
 
     pub unsafe fn drop_handler(_handler: &mut super::Handler) {}
