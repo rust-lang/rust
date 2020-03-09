@@ -116,6 +116,13 @@ impl TokenTree {
     pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
         TokenTree::token(token::CloseDelim(delim), span.close)
     }
+
+    pub fn uninterpolate(self) -> TokenTree {
+        match self {
+            TokenTree::Token(token) => TokenTree::Token(token.uninterpolate().into_owned()),
+            tt => tt,
+        }
+    }
 }
 
 impl<CTX> HashStable<CTX> for TokenStream

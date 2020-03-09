@@ -245,7 +245,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
@@ -291,7 +291,7 @@ pub enum InvalidProgramInfo<'tcx> {
     Layout(layout::LayoutError<'tcx>),
 }
 
-impl fmt::Debug for InvalidProgramInfo<'tcx> {
+impl fmt::Debug for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
@@ -321,6 +321,8 @@ pub enum UndefinedBehaviorInfo {
     RemainderByZero,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
+    InvalidMeta(&'static str),
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -338,6 +340,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
+            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
         }
     }
 }
@@ -354,8 +357,8 @@ pub enum UnsupportedOpInfo<'tcx> {
     Unsupported(String),
 
     /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons.
-    ConstPropUnsupported(&'tcx str),
+    /// This must not allocate for performance reasons (hence `str`, not `String`).
+    ConstPropUnsupported(&'static str),
 
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -609,6 +612,22 @@ impl fmt::Debug for InterpError<'_> {
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
             MachineStop(_) => bug!("unhandled MachineStop"),
+        }
+    }
+}
+
+impl InterpError<'_> {
+    /// Some errors allocate to be created as they contain free-form strings.
+    /// And sometimes we want to be sure that did not happen as it is a
+    /// waste of resources.
+    pub fn allocates(&self) -> bool {
+        match self {
+            InterpError::MachineStop(_)
+            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            | InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
+            _ => false,
         }
     }
 }

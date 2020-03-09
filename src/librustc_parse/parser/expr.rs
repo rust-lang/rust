@@ -50,7 +50,6 @@ macro_rules! maybe_whole_expr {
                         AttrVec::new(),
                     ));
                 }
-                // N.B., `NtIdent(ident)` is normalized to `Ident` in `fn bump`.
                 _ => {}
             };
         }
@@ -97,9 +96,9 @@ impl<'a> Parser<'a> {
     fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
         match self.parse_expr() {
             Ok(expr) => Ok(expr),
-            Err(mut err) => match self.normalized_token.kind {
-                token::Ident(name, false)
-                    if name == kw::Underscore && self.look_ahead(1, |t| t == &token::Comma) =>
+            Err(mut err) => match self.token.ident() {
+                Some((Ident { name: kw::Underscore, .. }, false))
+                    if self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
@@ -331,21 +330,19 @@ impl<'a> Parser<'a> {
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
-        Some(Spanned {
-            node: match (AssocOp::from_token(&self.token), &self.normalized_token.kind) {
-                (Some(op), _) => op,
-                (None, token::Ident(sym::and, false)) => {
-                    self.error_bad_logical_op("and", "&&", "conjunction");
-                    AssocOp::LAnd
-                }
-                (None, token::Ident(sym::or, false)) => {
-                    self.error_bad_logical_op("or", "||", "disjunction");
-                    AssocOp::LOr
-                }
-                _ => return None,
-            },
-            span: self.normalized_token.span,
-        })
+        let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
+            (Some(op), _) => (op, self.token.span),
+            (None, Some((Ident { name: sym::and, span }, false))) => {
+                self.error_bad_logical_op("and", "&&", "conjunction");
+                (AssocOp::LAnd, span)
+            }
+            (None, Some((Ident { name: sym::or, span }, false))) => {
+                self.error_bad_logical_op("or", "||", "disjunction");
+                (AssocOp::LOr, span)
+            }
+            _ => return None,
+        };
+        Some(source_map::respan(span, op))
     }
 
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
@@ -436,7 +433,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        let (hi, ex) = match self.normalized_token.kind {
+        let (hi, ex) = match self.token.uninterpolate().kind {
             token::Not => self.parse_unary_expr(lo, UnOp::Not), // `!expr`
             token::Tilde => self.recover_tilde_expr(lo),        // `~expr`
             token::BinOp(token::Minus) => self.parse_unary_expr(lo, UnOp::Neg), // `-expr`
@@ -483,7 +480,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
-        let token_cannot_continue_expr = |t: &Token| match t.kind {
+        let token_cannot_continue_expr = |t: &Token| match t.uninterpolate().kind {
             // These tokens can start an expression after `!`, but
             // can't continue an expression after an ident
             token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
@@ -718,18 +715,9 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
-                self.error_attr_on_if_expr(&expr);
                 expr
             })
         })
-    }
-
-    fn error_attr_on_if_expr(&self, expr: &Expr) {
-        if let (ExprKind::If(..), [a0, ..]) = (&expr.kind, &*expr.attrs) {
-            // Just point to the first attribute in there...
-            self.struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
-                .emit();
-        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
@@ -756,7 +744,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
-        match self.normalized_token.kind {
+        match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))
@@ -850,7 +838,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        if self.normalized_token.span.rust_2018() && self.eat_keyword(kw::Await) {
+        if self.token.uninterpolated_span().rust_2018() && self.eat_keyword(kw::Await) {
             return self.mk_await_expr(self_arg, lo);
         }
 
@@ -964,7 +952,7 @@ impl<'a> Parser<'a> {
             //       |             ^ expected expression
             self.bump();
             Ok(self.mk_expr_err(self.token.span))
-        } else if self.normalized_token.span.rust_2018() {
+        } else if self.token.uninterpolated_span().rust_2018() {
             // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
             if self.check_keyword(kw::Async) {
                 if self.is_async_block() {
@@ -1397,11 +1385,14 @@ impl<'a> Parser<'a> {
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
-        let asyncness =
-            if self.normalized_token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
-        if asyncness.is_async() {
+        let asyncness = if self.token.uninterpolated_span().rust_2018() {
+            self.parse_asyncness()
+        } else {
+            Async::No
+        };
+        if let Async::Yes { span, .. } = asyncness {
             // Feature-gate `async ||` closures.
-            self.sess.gated_spans.gate(sym::async_closure, self.normalized_prev_token.span);
+            self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
         let capture_clause = self.parse_capture_clause();
@@ -1757,7 +1748,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-        self.normalized_token.span.rust_2018() &&
+        self.token.uninterpolated_span().rust_2018() &&
         // Prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
@@ -1907,20 +1898,23 @@ impl<'a> Parser<'a> {
 
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
     fn find_struct_error_after_field_looking_code(&self) -> Option<Field> {
-        if let token::Ident(name, _) = self.normalized_token.kind {
-            if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
-                return Some(ast::Field {
-                    ident: Ident::new(name, self.normalized_token.span),
+        match self.token.ident() {
+            Some((ident, is_raw))
+                if (is_raw || !ident.is_reserved())
+                    && self.look_ahead(1, |t| *t == token::Colon) =>
+            {
+                Some(ast::Field {
+                    ident,
                     span: self.token.span,
                     expr: self.mk_expr_err(self.token.span),
                     is_shorthand: false,
                     attrs: AttrVec::new(),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
-                });
+                })
             }
+            _ => None,
         }
-        None
     }
 
     fn recover_struct_comma_after_dotdot(&mut self, span: Span) {

@@ -8,7 +8,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-points-to-static.rs:5:1
    |
 LL | const TEST: &u8 = &MY_STATIC;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 

@@ -88,21 +88,10 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
-    /// The current non-normalized token.
+    /// The current token.
     pub token: Token,
-    /// The current normalized token.
-    /// "Normalized" means that some interpolated tokens
-    /// (`$i: ident` and `$l: lifetime` meta-variables) are replaced
-    /// with non-interpolated identifier and lifetime tokens they refer to.
-    /// Use this if you need to check for `token::Ident` or `token::Lifetime` specifically,
-    /// this also includes edition checks for edition-specific keyword identifiers.
-    pub normalized_token: Token,
-    /// The previous non-normalized token.
+    /// The previous token.
     pub prev_token: Token,
-    /// The previous normalized token.
-    /// Use this if you need to check for `token::Ident` or `token::Lifetime` specifically,
-    /// this also includes edition checks for edition-specific keyword identifiers.
-    pub normalized_prev_token: Token,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
     pub(super) directory: Directory,
@@ -374,9 +363,7 @@ impl<'a> Parser<'a> {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
-            normalized_token: Token::dummy(),
             prev_token: Token::dummy(),
-            normalized_prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
@@ -480,9 +467,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
-        match self.normalized_token.kind {
-            token::Ident(name, _) => {
-                if self.token.is_reserved_ident() {
+        match self.token.ident() {
+            Some((ident, is_raw)) => {
+                if !is_raw && ident.is_reserved() {
                     let mut err = self.expected_ident_found();
                     if recover {
                         err.emit();
@@ -491,7 +478,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.bump();
-                Ok(Ident::new(name, self.normalized_prev_token.span))
+                Ok(ident)
             }
             _ => Err(match self.prev_token.kind {
                 TokenKind::DocComment(..) => {
@@ -609,7 +596,7 @@ impl<'a> Parser<'a> {
             Some((first, second)) if first == expected => {
                 let first_span = self.sess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
-                self.set_token(Token::new(first, first_span));
+                self.token = Token::new(first, first_span);
                 self.bump_with(Token::new(second, second_span));
                 true
             }
@@ -817,23 +804,6 @@ impl<'a> Parser<'a> {
         self.parse_delim_comma_seq(token::Paren, f)
     }
 
-    // Interpolated identifier (`$i: ident`) and lifetime (`$l: lifetime`)
-    // tokens are replaced with usual identifier and lifetime tokens,
-    // so the former are never encountered during normal parsing.
-    crate fn set_token(&mut self, token: Token) {
-        self.token = token;
-        self.normalized_token = match &self.token.kind {
-            token::Interpolated(nt) => match **nt {
-                token::NtIdent(ident, is_raw) => {
-                    Token::new(token::Ident(ident.name, is_raw), ident.span)
-                }
-                token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
-                _ => self.token.clone(),
-            },
-            _ => self.token.clone(),
-        }
-    }
-
     /// Advance the parser by one token using provided token as the next one.
     fn bump_with(&mut self, next_token: Token) {
         // Bumping after EOF is a bad sign, usually an infinite loop.
@@ -843,9 +813,7 @@ impl<'a> Parser<'a> {
         }
 
         // Update the current and previous tokens.
-        self.prev_token = self.token.take();
-        self.normalized_prev_token = self.normalized_token.take();
-        self.set_token(next_token);
+        self.prev_token = mem::replace(&mut self.token, next_token);
 
         // Diagnostics.
         self.expected_tokens.clear();
@@ -884,7 +852,7 @@ impl<'a> Parser<'a> {
     /// Parses asyncness: `async` or nothing.
     fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            let span = self.normalized_prev_token.span;
+            let span = self.prev_token.uninterpolated_span();
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
             Async::No
@@ -894,7 +862,7 @@ impl<'a> Parser<'a> {
     /// Parses unsafety: `unsafe` or nothing.
     fn parse_unsafety(&mut self) -> Unsafe {
         if self.eat_keyword(kw::Unsafe) {
-            Unsafe::Yes(self.normalized_prev_token.span)
+            Unsafe::Yes(self.prev_token.uninterpolated_span())
         } else {
             Unsafe::No
         }
@@ -903,7 +871,7 @@ impl<'a> Parser<'a> {
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self) -> Const {
         if self.eat_keyword(kw::Const) {
-            Const::Yes(self.normalized_prev_token.span)
+            Const::Yes(self.prev_token.uninterpolated_span())
         } else {
             Const::No
         }
@@ -1005,7 +973,7 @@ impl<'a> Parser<'a> {
                     &mut self.token_cursor.frame,
                     self.token_cursor.stack.pop().unwrap(),
                 );
-                self.set_token(Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close));
+                self.token = Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close);
                 self.bump();
                 TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream)
             }

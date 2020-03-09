@@ -48,7 +48,7 @@ LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
 LL | |
 LL | | };
-   | |__^ constant accesses static
+   | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
@@ -97,7 +97,7 @@ LL | |     static FOO: usize = 0;
 LL | |     &FOO
 LL | |
 LL | | };
-   | |__^ constant accesses static
+   | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
