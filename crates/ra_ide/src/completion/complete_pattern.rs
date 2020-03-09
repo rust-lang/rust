@@ -86,4 +86,22 @@ mod tests {
         ]
         "###);
     }
+
+    #[test]
+    fn completes_in_simple_macro_call() {
+        // FIXME: doesn't work yet because of missing error recovery in macro expansion
+        let completions = complete(
+            r"
+            macro_rules! m { ($e:expr) => { $e } }
+            enum E { X }
+
+            fn foo() {
+               m!(match E::X {
+                   <|>
+               })
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"[]"###);
+    }
 }

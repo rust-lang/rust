@@ -6,7 +6,7 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    TraitId,
+    AsMacroCall, TraitId,
 };
 use hir_expand::ExpansionInfo;
 use ra_db::{FileId, FileRange};
@@ -70,6 +70,20 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         Some(node)
     }
 
+    pub fn expand_hypothetical(
+        &self,
+        actual_macro_call: &ast::MacroCall,
+        hypothetical_args: &ast::TokenTree,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        let macro_call =
+            self.find_file(actual_macro_call.syntax().clone()).with_value(actual_macro_call);
+        let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
+        let macro_call_id = macro_call
+            .as_call_id(self.db, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
+        hir_expand::db::expand_hypothetical(self.db, macro_call_id, hypothetical_args, token_to_map)
+    }
+
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         let parent = token.parent();
         let parent = self.find_file(parent);
@@ -102,6 +116,25 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         let node = self.find_file(node);
         node.ancestors_with_macros(self.db).map(|it| it.value)
+    }
+
+    pub fn ancestors_at_offset_with_macros(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+        use itertools::Itertools;
+        node.token_at_offset(offset)
+            .map(|token| self.ancestors_with_macros(token.parent()))
+            .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
+    }
+
+    pub fn find_node_at_offset_with_macros<N: AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> Option<N> {
+        self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {

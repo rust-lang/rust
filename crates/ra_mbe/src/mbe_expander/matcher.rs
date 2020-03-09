@@ -247,6 +247,7 @@ impl<'a> TtIter<'a> {
         ra_parser::parse_fragment(&mut src, &mut sink, fragment_kind);
 
         if !sink.cursor.is_root() || sink.error {
+            // FIXME better recovery in this case would help completion inside macros immensely
             return Err(());
         }
 
@@ -375,7 +376,8 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> Result<Option<Fragment>, Ex
             return Ok(Some(Fragment::Tokens(tt)));
         }
     };
-    let tt = input.expect_fragment(fragment).map_err(|()| err!())?;
+    let tt =
+        input.expect_fragment(fragment).map_err(|()| err!("fragment did not parse as {}", kind))?;
     let fragment = if kind == "expr" { Fragment::Ast(tt) } else { Fragment::Tokens(tt) };
     Ok(Some(fragment))
 }

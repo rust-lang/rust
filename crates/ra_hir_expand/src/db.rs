@@ -72,6 +72,30 @@ pub trait AstDatabase: SourceDatabase {
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 }
 
+/// This expands the given macro call, but with different arguments. This is
+/// used for completion, where we want to see what 'would happen' if we insert a
+/// token. The `token_to_map` mapped down into the expansion, with the mapped
+/// token returned.
+pub fn expand_hypothetical(
+    db: &impl AstDatabase,
+    actual_macro_call: MacroCallId,
+    hypothetical_args: &ra_syntax::ast::TokenTree,
+    token_to_map: ra_syntax::SyntaxToken,
+) -> Option<(SyntaxNode, ra_syntax::SyntaxToken)> {
+    let macro_file = MacroFile { macro_call_id: actual_macro_call };
+    let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax()).unwrap();
+    let range =
+        token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
+    let token_id = tmap_1.token_by_range(range)?;
+    let macro_def = expander(db, actual_macro_call)?;
+    let (node, tmap_2) =
+        parse_macro_with_arg(db, macro_file, Some(std::sync::Arc::new((tt, tmap_1))))?;
+    let token_id = macro_def.0.map_id_down(token_id);
+    let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
+    let token = ra_syntax::algo::find_covering_element(&node.syntax_node(), range).into_token()?;
+    Some((node.syntax_node(), token))
+}
+
 pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
     let map =
         db.parse_or_expand(file_id).map_or_else(AstIdMap::default, |it| AstIdMap::from_source(&it));
@@ -130,15 +154,42 @@ pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
+    macro_expand_with_arg(db, id, None)
+}
+
+fn expander(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(id) => {
-            return Ok(db.lookup_intern_eager_expansion(id).subtree);
+        MacroCallId::EagerMacro(_id) => {
+            return None;
         }
     };
 
     let loc = db.lookup_intern_macro(lazy_id);
-    let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
+    let macro_rules = db.macro_def(loc.def)?;
+    Some(macro_rules)
+}
+
+fn macro_expand_with_arg(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
+) -> Result<Arc<tt::Subtree>, String> {
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(id) => {
+            if arg.is_some() {
+                return Err(
+                    "hypothetical macro expansion not implemented for eager macro".to_owned()
+                );
+            } else {
+                return Ok(db.lookup_intern_eager_expansion(id).subtree);
+            }
+        }
+    };
+
+    let loc = db.lookup_intern_macro(lazy_id);
+    let macro_arg = arg.or_else(|| db.macro_arg(id)).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
     let tt = macro_rules.0.expand(db, lazy_id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
@@ -163,11 +214,23 @@ pub(crate) fn parse_macro(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
+    parse_macro_with_arg(db, macro_file, None)
+}
+
+pub fn parse_macro_with_arg(
+    db: &dyn AstDatabase,
+    macro_file: MacroFile,
+    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
+) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
     let _p = profile("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
-    let tt = db
-        .macro_expand(macro_call_id)
+    let expansion = if let Some(arg) = arg {
+        macro_expand_with_arg(db, macro_call_id, Some(arg))
+    } else {
+        db.macro_expand(macro_call_id)
+    };
+    let tt = expansion
         .map_err(|err| {
             // Note:
             // The final goal we would like to make all parse_macro success,

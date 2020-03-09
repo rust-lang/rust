@@ -1,4 +1,4 @@
-//! Completion of paths, including when writing a single name.
+//! Completion of paths, i.e. `some::prefix::<|>`.
 
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
@@ -48,7 +48,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             };
             // Iterate assoc types separately
             // FIXME: complete T::AssocType
-            let krate = ctx.module.map(|m| m.krate());
+            let krate = ctx.krate;
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope().traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
@@ -933,5 +933,38 @@ mod tests {
         ]
         "###
         );
+    }
+
+    #[test]
+    fn completes_in_simple_macro_call() {
+        let completions = do_reference_completion(
+            r#"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn main() { m!(self::f<|>); }
+                fn foo() {}
+            "#,
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo()",
+                source_range: [93; 94),
+                delete: [93; 94),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [93; 94),
+                delete: [93; 94),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###);
     }
 }

@@ -38,7 +38,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if ctx.module.map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
+            if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
                 // Skip private field. FIXME: If the definition location of the
                 // field is editable, we should show the completion
                 continue;
@@ -53,7 +53,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
 }
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
-    if let Some(krate) = ctx.module.map(|it| it.krate()) {
+    if let Some(krate) = ctx.krate {
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope().traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
@@ -615,6 +615,104 @@ mod tests {
                 delete: [217; 217),
                 insert: "b",
                 kind: Module,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_1() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.x<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 157),
+                delete: [156; 157),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_recursive() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.x<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 157),
+                delete: [156; 157),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_2() {
+        // this doesn't work yet because the macro doesn't expand without the token -- maybe it can be fixed with better recovery
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(a.<|>)
+                }
+                ",
+            ),
+            @r###"[]"###
+        );
+    }
+
+    #[test]
+    fn works_in_simple_macro_recursive_1() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! m { ($e:expr) => { $e } }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    m!(m!(m!(a.x<|>)))
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [162; 163),
+                delete: [162; 163),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
             },
         ]
         "###
