@@ -48,7 +48,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
-    access_place: PlaceRef<'_, 'tcx>,
+    access_place: PlaceRef<'tcx>,
     access: AccessDepth,
     bias: PlaceConflictBias,
 ) -> bool {
@@ -73,7 +73,7 @@ fn place_components_conflict<'tcx>(
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
-    access_place: PlaceRef<'_, 'tcx>,
+    access_place: PlaceRef<'tcx>,
     access: AccessDepth,
     bias: PlaceConflictBias,
 ) -> bool {

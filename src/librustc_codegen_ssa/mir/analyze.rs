@@ -97,7 +97,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
     fn process_place(
         &mut self,
-        place_ref: &mir::PlaceRef<'_, 'tcx>,
+        place_ref: &mir::PlaceRef<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {

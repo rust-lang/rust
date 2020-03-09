@@ -1827,9 +1827,9 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PlaceRef<'a, 'tcx> {
+pub struct PlaceRef<'tcx> {
     pub local: Local,
-    pub projection: &'a [PlaceElem<'tcx>],
+    pub projection: &'tcx [PlaceElem<'tcx>],
 }
 
 impl<'tcx> Place<'tcx> {
@@ -1864,7 +1864,7 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().as_local()
     }
 
-    pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
+    pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
 }
@@ -1875,7 +1875,7 @@ impl From<Local> for Place<'_> {
     }
 }
 
-impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
+impl<'tcx> PlaceRef<'tcx> {
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     //
