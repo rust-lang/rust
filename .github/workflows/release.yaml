@@ -42,6 +42,7 @@ jobs:
         override: true
 
     - name: Install Nodejs
+      if: matrix.os == 'ubuntu-latest'
       uses: actions/setup-node@v1
       with:
         node-version: 12.x
