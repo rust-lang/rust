@@ -6,7 +6,8 @@ mod query;
 mod safe;
 mod serialized;
 
-pub use self::dep_node::{label_strs, DepConstructor, DepKind, DepNode, RecoverKey, WorkProductId};
+pub(crate) use self::dep_node::DepNodeParams;
+pub use self::dep_node::{label_strs, DepConstructor, DepKind, DepNode, WorkProductId};
 pub use self::graph::WorkProductFileKind;
 pub use self::graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use self::prev::PreviousDepGraph;
