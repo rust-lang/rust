@@ -14,14 +14,14 @@ export interface ArtifactReleaseInfo {
 }
 
 /**
- * Represents the source of a binary artifact which is either specified by the user
+ * Represents the source of a an artifact which is either specified by the user
  * explicitly, or bundled by this extension from GitHub releases.
  */
-export type BinarySource = BinarySource.ExplicitPath | BinarySource.GithubRelease;
+export type ArtifactSource = ArtifactSource.ExplicitPath | ArtifactSource.GithubRelease;
 
-export namespace BinarySource {
+export namespace ArtifactSource {
     /**
-     * Type tag for `BinarySource` discriminated union.
+     * Type tag for `ArtifactSource` discriminated union.
      */
     export const enum Type { ExplicitPath, GithubRelease }
 
@@ -56,13 +56,18 @@ export namespace BinarySource {
         /**
          * Tag of github release that denotes a version required by this extension.
          */
-        version: string;
+        tag: string;
 
         /**
          * Object that provides `get()/update()` operations to store metadata
          * about the actual binary, e.g. its actual version.
          */
         storage: vscode.Memento;
+
+        /**
+         * Ask for the user permission before downloading the artifact.
+         */
+        askBeforeDownload: boolean;
     }
 
 }

@@ -2,6 +2,13 @@
 :toc: preamble
 :sectanchors:
 :page-layout: post
+// https://gist.github.com/dcode/0cfbf2699a1fe9b46ff04c41721dda74#admonitions
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+
 
 
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
@@ -30,7 +37,7 @@ $ rustup component add rust-src
 
 === VS Code
 
-This the best supported editor at the moment.
+This is the best supported editor at the moment.
 rust-analyzer plugin for VS Code is maintained
 https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree].
 
@@ -39,6 +46,16 @@ https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the ma
 By default, the plugin will prompt you to download the matching version of the server as well:
 
 image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
+
+[NOTE]
+====
+To disable this notification put the following to `settings.json`
+
+[source,json]
+----
+{ "rust-analyzer.updates.askBeforeDownload": false }
+----
+====
 
 The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
 
