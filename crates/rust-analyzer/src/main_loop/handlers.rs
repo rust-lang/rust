@@ -85,11 +85,11 @@ pub fn handle_expand_macro(
 pub fn handle_selection_range(
     world: WorldSnapshot,
     params: req::SelectionRangeParams,
-) -> Result<Vec<req::SelectionRange>> {
+) -> Result<Option<Vec<req::SelectionRange>>> {
     let _p = profile("handle_selection_range");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    params
+    let res: Result<Vec<req::SelectionRange>> = params
         .positions
         .into_iter()
         .map_conv_with(&line_index)
@@ -120,7 +120,9 @@ pub fn handle_selection_range(
             }
             Ok(range)
         })
-        .collect()
+        .collect();
+
+    Ok(Some(res?))
 }
 
 pub fn handle_find_matching_brace(
