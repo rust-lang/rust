@@ -52,6 +52,24 @@ pub fn panic(expr: &str) -> ! {
     panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), Location::caller())
 }
 
+#[cfg(not(bootstrap))]
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
+#[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
+fn panic_bounds_check(index: usize, len: usize) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        unsafe { super::intrinsics::abort() }
+    }
+
+    panic_fmt(
+        format_args!("index out of bounds: the len is {} but the index is {}", len, index),
+        Location::caller(),
+    )
+}
+
+// For bootstrap, we need a variant with the old argument order.
+#[cfg(bootstrap)]
 #[cold]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
