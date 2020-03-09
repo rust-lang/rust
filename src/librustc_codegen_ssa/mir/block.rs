@@ -415,8 +415,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
-                // It's `fn panic_bounds_check(index: usize, len: usize)`, and
-                // `#[track_caller]` adds an implicit third argument.
+                // It's `fn panic_bounds_check(index: usize, len: usize)`,
+                // and `#[track_caller]` adds an implicit third argument.
                 (lang_items::PanicBoundsCheckFnLangItem, vec![index, len, location])
             }
             _ => {
