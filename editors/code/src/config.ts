@@ -45,7 +45,7 @@ export class Config {
     /**
      * Either `nightly` or `YYYY-MM-DD` (i.e. `stable` release)
      */
-    private readonly extensionVersion: string = (() => {
+    readonly extensionReleaseTag: string = (() => {
         const packageJsonVersion = vscode
             .extensions
             .getExtension(this.extensionId)!
@@ -135,10 +135,8 @@ export class Config {
         }
     }
 
-    get installedExtensionUpdateChannel() {
-        if (this.serverPath !== null) return null;
-
-        return this.extensionVersion === NIGHTLY_TAG
+    get installedExtensionUpdateChannel(): UpdatesChannel {
+        return this.extensionReleaseTag === NIGHTLY_TAG
             ? UpdatesChannel.Nightly
             : UpdatesChannel.Stable;
     }
@@ -159,7 +157,7 @@ export class Config {
 
         return this.createGithubReleaseSource(
             prebuiltBinaryName,
-            this.extensionVersion
+            this.extensionReleaseTag
         );
     }
 
@@ -195,7 +193,7 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    private get serverPath() { return this.cfg.get("serverPath") as null | string; }
+    get serverPath() { return this.cfg.get("serverPath") as null | string; }
     get updatesChannel() { return this.cfg.get("updates.channel") as UpdatesChannel; }
     get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
     get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }

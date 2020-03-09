@@ -15,6 +15,9 @@ const HEURISTIC_NIGHTLY_RELEASE_PERIOD_IN_HOURS = 25;
  * extension version is what's needed according to `desiredUpdateChannel`.
  */
 export async function ensureProperExtensionVersion(config: Config): Promise<never | void> {
+    // User has built lsp server from sources, she should manage updates manually
+    if (config.serverPath !== null) return;
+
     const currentUpdChannel = config.installedExtensionUpdateChannel;
     const desiredUpdChannel = config.updatesChannel;
 
@@ -22,9 +25,6 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
         // Release date is present only when we are on nightly
         config.installedNightlyExtensionReleaseDate.set(null);
     }
-
-    // User has built lsp server from sources, she should manage updates manually
-    if (currentUpdChannel === null) return;
 
     if (desiredUpdChannel === UpdatesChannel.Stable) {
         // VSCode should handle updates for stable channel
