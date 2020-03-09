@@ -57,7 +57,10 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope().traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
-            if func.has_self_param(ctx.db) && seen_methods.insert(func.name(ctx.db)) {
+            if func.has_self_param(ctx.db)
+                && ctx.scope().module().map_or(true, |m| func.is_visible_from(ctx.db, m))
+                && seen_methods.insert(func.name(ctx.db))
+            {
                 acc.add_function(ctx, func);
             }
             None::<()>
@@ -301,6 +304,39 @@ mod tests {
                 kind: Method,
                 lookup: "the_method",
                 detail: "fn the_method(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_method_completion_private() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            struct A {}
+            mod m {
+                impl super::A {
+                    fn private_method(&self) {}
+                    pub(super) fn the_method(&self) {}
+                }
+            }
+            fn foo(a: A) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_method()",
+                source_range: [256; 256),
+                delete: [256; 256),
+                insert: "the_method()$0",
+                kind: Method,
+                lookup: "the_method",
+                detail: "pub(super) fn the_method(&self)",
             },
         ]
         "###
