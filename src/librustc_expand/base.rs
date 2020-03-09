@@ -258,8 +258,17 @@ impl Annotatable {
     }
 }
 
-// `meta_item` is the annotation, and `item` is the item being modified.
-// FIXME Decorators should follow the same pattern too.
+/// Result of an expansion that may need to be retried.
+/// Consider using this for non-`MultiItemModifier` expanders as well.
+pub enum ExpandResult<T, U> {
+    /// Expansion produced a result (possibly dummy).
+    Ready(T),
+    /// Expansion could not produce a result and needs to be retried.
+    /// The string is an explanation that will be printed if we are stuck in an infinite retry loop.
+    Retry(U, String),
+}
+
+// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
     fn expand(
         &self,
@@ -267,7 +276,7 @@ pub trait MultiItemModifier {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable>;
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
 impl<F> MultiItemModifier for F
@@ -280,8 +289,8 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
-        self(ecx, span, meta_item, item)
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
 }
 
