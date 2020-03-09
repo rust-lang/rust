@@ -6,7 +6,7 @@ authors = ["rust-analyzer developers"]
 
 [dependencies]
 crossbeam-channel = "0.4.0"
-lsp-types = { version = "0.72.0", features = ["proposed"] }
+lsp-types = { version = "0.73.0", features = ["proposed"] }
 log = "0.4.8"
 cargo_metadata = "0.9.1"
 serde_json = "1.0.48"
