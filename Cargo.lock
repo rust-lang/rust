@@ -2,9 +2,9 @@
 # It is not intended for manual editing.
 [[package]]
 name = "aho-corasick"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5e63fd144e18ba274ae7095c0197a870a7b9468abc801dd62f190d80817d2ec"
+checksum = "8716408b8bc624ed7f65d223ddb9ac2d044c0547b6fa4b0d554f3a9540496ada"
 dependencies = [
  "memchr",
 ]
@@ -213,15 +213,14 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.9.2"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45e0f3986890b3acbc782009e2629dfe2baa430ac091519ce3be26164a2ae6c0"
+checksum = "6728a28023f207181b193262711102bfbaf47cc9d13bc71d0736607ef8efe88c"
 dependencies = [
  "clicolors-control",
  "encode_unicode",
  "lazy_static",
  "libc",
- "regex",
  "termios",
  "winapi 0.3.8",
 ]
@@ -509,9 +508,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "0.13.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8df742abee84dbf27d20869c9adf77b0d8f7ea3eead13c2c9e3998d136a97058"
+checksum = "8de3f029212a3fe78a6090f1f2b993877ca245a9ded863f3fcbd6eae084fc1ed"
 dependencies = [
  "console",
  "difference",
