@@ -71,7 +71,15 @@ Compatibility Notes
 -------------------
 - [`Error::description` has been deprecated, and its use will now produce a
   warning.][66919] It's recommended to use `Display`/`to_string` instead.
+- [`use $crate;` inside macros is now a hard error.][37390] The compiler
+  emitted forward compatibility warnings since Rust 1.14.0.
+- [As previously announced, this release reduces the level of support for
+  32-bit Apple targets to tier 3.][apple-32bit-drop]. This means that the
+  source code is still available to build, but the targets are no longer tested
+  and no release binary is distributed by the Rust project. Please refer to the
+  linked blog post for more information.
 
+[37390]: https://github.com/rust-lang/rust/issues/37390/
 [68253]: https://github.com/rust-lang/rust/pull/68253/
 [68348]: https://github.com/rust-lang/rust/pull/68348/
 [67935]: https://github.com/rust-lang/rust/pull/67935/
