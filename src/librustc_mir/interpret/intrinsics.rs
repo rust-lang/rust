@@ -103,6 +103,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(location.ptr, dest)?;
             }
 
+            sym::abort => {
+                M::abort(self)?;
+            }
+
             sym::min_align_of
             | sym::pref_align_of
             | sym::needs_drop
