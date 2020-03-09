@@ -23,22 +23,36 @@ export interface CargoFeatures {
     allFeatures: boolean;
     features: string[];
 }
+
+export const enum UpdatesChannel {
+    Stable = "stable",
+    Nightly = "nightly"
+}
+
+export const NIGHTLY_TAG = "nightly";
 export class Config {
-    private static readonly rootSection = "rust-analyzer";
-    private static readonly requiresReloadOpts = [
+    readonly extensionId = "matklad.rust-analyzer";
+
+    private readonly rootSection = "rust-analyzer";
+    private readonly requiresReloadOpts = [
         "cargoFeatures",
         "cargo-watch",
         "highlighting.semanticTokens",
         "inlayHints",
     ]
-        .map(opt => `${Config.rootSection}.${opt}`);
+        .map(opt => `${this.rootSection}.${opt}`);
 
-    private static readonly extensionVersion: string = (() => {
+    /**
+     * Either `nightly` or `YYYY-MM-DD` (i.e. `stable` release)
+     */
+    private readonly extensionVersion: string = (() => {
         const packageJsonVersion = vscode
             .extensions
-            .getExtension("matklad.rust-analyzer")!
+            .getExtension(this.extensionId)!
             .packageJSON
-            .version as string; // n.n.YYYYMMDD
+            .version as string;
+
+        if (packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
 
         const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
         const [, yyyy, mm, dd] = packageJsonVersion.match(realVersionRegexp)!;
@@ -54,7 +68,7 @@ export class Config {
     }
 
     private refreshConfig() {
-        this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
+        this.cfg = vscode.workspace.getConfiguration(this.rootSection);
         const enableLogging = this.cfg.get("trace.extension") as boolean;
         log.setEnabled(enableLogging);
         log.debug("Using configuration:", this.cfg);
@@ -63,7 +77,7 @@ export class Config {
     private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
         this.refreshConfig();
 
-        const requiresReloadOpt = Config.requiresReloadOpts.find(
+        const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
 
@@ -121,8 +135,16 @@ export class Config {
         }
     }
 
+    get installedExtensionUpdateChannel() {
+        if (this.serverPath !== null) return null;
+
+        return this.extensionVersion === NIGHTLY_TAG
+            ? UpdatesChannel.Nightly
+            : UpdatesChannel.Stable;
+    }
+
     get serverSource(): null | ArtifactSource {
-        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("serverPath");
+        const serverPath = RA_LSP_DEBUG ?? this.serverPath;
 
         if (serverPath) {
             return {
@@ -135,23 +157,47 @@ export class Config {
 
         if (!prebuiltBinaryName) return null;
 
+        return this.createGithubReleaseSource(
+            prebuiltBinaryName,
+            this.extensionVersion
+        );
+    }
+
+    private createGithubReleaseSource(file: string, tag: string): ArtifactSource.GithubRelease {
         return {
             type: ArtifactSource.Type.GithubRelease,
+            file,
+            tag,
             dir: this.ctx.globalStoragePath,
-            file: prebuiltBinaryName,
-            storage: this.ctx.globalState,
-            tag: Config.extensionVersion,
-            askBeforeDownload: this.cfg.get("updates.askBeforeDownload") as boolean,
             repo: {
                 name: "rust-analyzer",
-                owner: "rust-analyzer",
+                owner: "rust-analyzer"
             }
-        };
+        }
     }
+
+    get nightlyVsixSource(): ArtifactSource.GithubRelease {
+        return this.createGithubReleaseSource("rust-analyzer.vsix", NIGHTLY_TAG);
+    }
+
+    readonly installedNightlyExtensionReleaseDate = new DateStorage(
+        "rust-analyzer-installed-nightly-extension-release-date",
+        this.ctx.globalState
+    );
+    readonly serverReleaseDate = new DateStorage(
+        "rust-analyzer-server-release-date",
+        this.ctx.globalState
+    );
+    readonly serverReleaseTag = new StringStorage(
+        "rust-analyzer-release-tag", this.ctx.globalState
+    );
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
+    private get serverPath() { return this.cfg.get("serverPath") as null | string; }
+    get updatesChannel() { return this.cfg.get("updates.channel") as UpdatesChannel; }
+    get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
     get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
     get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
@@ -188,4 +234,39 @@ export class Config {
 
     // for internal use
     get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
+}
+
+export class StringStorage {
+    constructor(
+        private readonly key: string,
+        private readonly storage: vscode.Memento
+    ) {}
+
+    get(): null | string {
+        const tag = this.storage.get(this.key, null);
+        log.debug(this.key, "==", tag);
+        return tag;
+    }
+    async set(tag: string) {
+        log.debug(this.key, "=", tag);
+        await this.storage.update(this.key, tag);
+    }
+}
+export class DateStorage {
+
+    constructor(
+        private readonly key: string,
+        private readonly storage: vscode.Memento
+    ) {}
+
+    get(): null | Date {
+        const date = this.storage.get(this.key, null);
+        log.debug(this.key, "==", date);
+        return date ? new Date(date) : null;
+    }
+
+    async set(date: null | Date) {
+        log.debug(this.key, "=", date);
+        await this.storage.update(this.key, date);
+    }
 }
