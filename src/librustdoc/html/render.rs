@@ -1559,10 +1559,10 @@ fn compute_path(path: String) -> String {
     }
     let mut new_path = Vec::new();
     for part in path.split('/') {
-        if part == ".." && !new_path.is_empty() {
-            new_path.pop();
-        } else {
+        if part != ".." {
             new_path.push(part);
+        } else if !new_path.is_empty() {
+            new_path.pop();
         }
     }
     new_path.join("/")
@@ -1624,7 +1624,7 @@ impl Context {
             Some(format!(
                 "{path}#{lines}",
                 path = compute_path(format!(
-                    "{root}{krate}/{path}",
+                    "{root}/{path}",
                     root = source_code_external_url,
                     krate = krate,
                     path = path,

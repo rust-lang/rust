@@ -504,15 +504,6 @@ impl Options {
             }
             h.replace("\\", "/")
         });
-        if let Some(ref source_code_external_url) = source_code_external_url {
-            if source_code_external_url.starts_with("/") {
-                diag.struct_err(
-                    "option `--source-code-external-url` argument cannot be an absolute local path",
-                )
-                .emit();
-                return Err(1);
-            }
-        }
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
