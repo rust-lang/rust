@@ -1409,12 +1409,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
         let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
-        // FIXME(eddyb) set the correct vaidity range for the discriminant.
-        let discr_layout = self.layout_of(substs.as_generator().discr_ty(tcx))?;
-        let discr = match &discr_layout.abi {
-            Abi::Scalar(s) => s.clone(),
-            _ => bug!(),
-        };
+
+        // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
+        let max_discr = (info.variant_fields.len() - 1) as u128;
+        let discr_int = Integer::fit_unsigned(max_discr);
+        let discr_int_ty = discr_int.to_ty(tcx, false);
+        let discr = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
+        let discr_layout = self.tcx.intern_layout(LayoutDetails::scalar(self, discr.clone()));
+        let discr_layout = TyLayout { ty: discr_int_ty, details: discr_layout };
+
         let promoted_layouts = ineligible_locals
             .iter()
             .map(|local| subst_field(info.field_tys[local]))
