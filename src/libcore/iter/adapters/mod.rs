@@ -2259,17 +2259,11 @@ where
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Fuse<I>
-where
-    I: Iterator,
-{
+pub struct Fuse<I> {
     iter: I,
     done: <I as fuse_flag::FlagType>::Flag,
 }
-impl<I> Fuse<I>
-where
-    I: Iterator,
-{
+impl<I> Fuse<I> {
     pub(super) fn new(iter: I) -> Fuse<I> {
         Fuse { iter, done: <_>::default() }
     }
@@ -2307,11 +2301,11 @@ mod fuse_flag {
         }
     }
 
-    pub trait FlagType: Iterator {
+    pub trait FlagType {
         type Flag: Flag;
     }
 
-    impl<I: Iterator> FlagType for I {
+    impl<I> FlagType for I {
         default type Flag = bool;
     }
 
