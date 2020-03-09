@@ -48,9 +48,8 @@ and can be found in [`rustc_codegen_llvm::intrinsic`][llvmint].
 
 [llvmint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/intrinsic/index.html
 
-Everything else will use the [builder interface][builder], this is the code that gets
-called in [`librustc_codegen_ssa::mir::*`][ssamir] modules that was discussed
-above.
+Everything else will use the [builder interface][builder]. This is the code that gets
+called in the [`librustc_codegen_ssa::mir::*`][ssamir] modules discussed above.
 
 [builder]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/builder/index.html
 [ssamir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/index.html
