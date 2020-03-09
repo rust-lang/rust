@@ -8,7 +8,7 @@ LL | |             ptr: &42,
 ...  |
 LL | |     .slice
 LL | | };
-   | |__^ invalid slice: total size is bigger than largest supported object
+   | |__^ type validation failed: encountered invalid reference metadata: slice is bigger than largest supported object
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 

@@ -689,7 +689,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
+            self.validate_operand(self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -706,7 +706,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None)?;
+            self.validate_operand(dest.into())?;
         }
 
         Ok(())
@@ -843,7 +843,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
+            self.validate_operand(self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -951,7 +951,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None)?;
+            self.validate_operand(dest.into())?;
         }
 
         Ok(())

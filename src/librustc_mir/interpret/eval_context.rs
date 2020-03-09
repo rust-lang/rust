@@ -457,10 +457,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Check if this brought us over the size limit.
                 if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
-                    throw_ub_format!(
-                        "wide pointer metadata contains invalid information: \
-                        total size is bigger than largest supported object"
-                    );
+                    throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
             }
@@ -476,10 +473,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Make sure the slice is not too big.
                 let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
-                    err_ub_format!(
-                        "invalid slice: \
-                        total size is bigger than largest supported object"
-                    )
+                    err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
             }
@@ -685,7 +679,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // invariant -- that is, unless a function somehow has a ptr to
                     // its return place... but the way MIR is currently generated, the
                     // return place is always a local and then this cannot happen.
-                    self.validate_operand(self.place_to_op(return_place)?, vec![], None)?;
+                    self.validate_operand(self.place_to_op(return_place)?)?;
                 }
             } else {
                 // Uh, that shouldn't happen... the function did not intend to return

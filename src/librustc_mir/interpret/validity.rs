@@ -46,6 +46,8 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr, $details:expr) => {{
         match $e {
             Ok(x) => x,
+            // We re-throw the error, so we are okay with allocation:
+            // this can only slow down builds that fail anyway.
             Err(_) => throw_validation_failure!($what, $where, $details),
         }
     }};
@@ -53,6 +55,8 @@ macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr) => {{
         match $e {
             Ok(x) => x,
+            // We re-throw the error, so we are okay with allocation:
+            // this can only slow down builds that fail anyway.
             Err(_) => throw_validation_failure!($what, $where),
         }
     }};
@@ -167,6 +171,7 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     path: Vec<PathElem>,
     ref_tracking_for_consts:
         Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
+    may_ref_to_static: bool,
     ecx: &'rt InterpCx<'mir, 'tcx, M>,
 }
 
@@ -320,9 +325,17 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             self.check_wide_ptr_meta(place.meta, place.layout)?;
         }
         // Make sure this is dereferenceable and all.
-        let (size, align) = self
-            .ecx
-            .size_and_align_of(place.meta, place.layout)?
+        let size_and_align = match self.ecx.size_and_align_of(place.meta, place.layout) {
+            Ok(res) => res,
+            Err(err) => match err.kind {
+                err_ub!(InvalidMeta(msg)) => throw_validation_failure!(
+                    format_args!("invalid {} metadata: {}", kind, msg),
+                    self.path
+                ),
+                _ => bug!("Unexpected error during ptr size_and_align_of: {}", err),
+            },
+        };
+        let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
@@ -359,10 +372,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         format_args!("a dangling {} (created from integer)", kind),
                         self.path
                     ),
-                    _ => throw_validation_failure!(
-                        format_args!("a dangling {} (not entirely in bounds)", kind),
-                        self.path
-                    ),
+                    err_unsup!(PointerOutOfBounds { .. }) | err_unsup!(DanglingPointerDeref) => {
+                        throw_validation_failure!(
+                            format_args!("a dangling {} (not entirely in bounds)", kind),
+                            self.path
+                        )
+                    }
+                    _ => bug!("Unexpected error during ptr inbounds test: {}", err),
                 }
             }
         };
@@ -379,6 +395,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     // want to avoid recursing too deeply.  This is not sound!
                     if !did.is_local() || self.ecx.tcx.is_foreign_item(did) {
                         return Ok(());
+                    }
+                    if !self.may_ref_to_static && self.ecx.tcx.is_static(did) {
+                        throw_validation_failure!(
+                            format_args!("a {} pointing to a static variable", kind),
+                            self.path
+                        );
                     }
                 }
             }
@@ -638,6 +660,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 err_unsup!(ReadPointerAsBytes) => {
                     throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
                 }
+                // Propagate upwards (that will also check for unexpected errors).
                 _ => return Err(err),
             },
         }
@@ -773,31 +796,59 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
-    /// is an indirect operand.
-    /// It will error if the bits at the destination do not match the ones described by the layout.
-    ///
-    /// `ref_tracking_for_consts` can be `None` to avoid recursive checking below references.
-    /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
-    /// validation (e.g., pointer values are fine in integers at runtime) and various other const
-    /// specific validation checks.
-    pub fn validate_operand(
+    fn validate_operand_internal(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
         ref_tracking_for_consts: Option<
             &mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>,
         >,
+        may_ref_to_static: bool,
     ) -> InterpResult<'tcx> {
-        trace!("validate_operand: {:?}, {:?}", *op, op.layout.ty);
+        trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout.ty);
 
         // Construct a visitor
-        let mut visitor = ValidityVisitor { path, ref_tracking_for_consts, ecx: self };
+        let mut visitor =
+            ValidityVisitor { path, ref_tracking_for_consts, may_ref_to_static, ecx: self };
 
         // Try to cast to ptr *once* instead of all the time.
         let op = self.force_op_ptr(op).unwrap_or(op);
 
-        // Run it
-        visitor.visit_value(op)
+        // Run it.
+        match visitor.visit_value(op) {
+            Ok(()) => Ok(()),
+            Err(err) if matches!(err.kind, err_unsup!(ValidationFailure { .. })) => Err(err),
+            Err(err) if cfg!(debug_assertions) => {
+                bug!("Unexpected error during validation: {}", err)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    /// This function checks the data at `op` to be const-valid.
+    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// It will error if the bits at the destination do not match the ones described by the layout.
+    ///
+    /// `ref_tracking` is used to record references that we encounter so that they
+    /// can be checked recursively by an outside driving loop.
+    ///
+    /// `may_ref_to_static` controls whether references are allowed to point to statics.
+    #[inline(always)]
+    pub fn const_validate_operand(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>,
+        path: Vec<PathElem>,
+        ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>,
+        may_ref_to_static: bool,
+    ) -> InterpResult<'tcx> {
+        self.validate_operand_internal(op, path, Some(ref_tracking), may_ref_to_static)
+    }
+
+    /// This function checks the data at `op` to be runtime-valid.
+    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// It will error if the bits at the destination do not match the ones described by the layout.
+    #[inline(always)]
+    pub fn validate_operand(&self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        self.validate_operand_internal(op, vec![], None, false)
     }
 }

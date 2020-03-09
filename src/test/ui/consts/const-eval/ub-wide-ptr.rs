@@ -31,11 +31,15 @@ const STR_VALID: &str = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad str
 const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR it is undefined behavior to use this value
+const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::MAX)) },);
+//~^ ERROR it is undefined behavior to use this value
 // bad str
 const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad str in user-defined unsized type
 const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
+//~^ ERROR it is undefined behavior to use this value
+const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
 //~^ ERROR it is undefined behavior to use this value
 
 // invalid UTF-8
@@ -83,7 +87,7 @@ const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute
 // # raw slice
 const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) }; // ok
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
-const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::max_value())) }; // ok because raw
+const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
     let uninit_len = MaybeUninit::<usize> { uninit: () };
