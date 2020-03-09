@@ -261,6 +261,16 @@ impl fmt::Display for Edition {
     }
 }
 
+impl Env {
+    pub fn set(&mut self, env: &str, value: String) {
+        self.entries.insert(env.to_owned(), value);
+    }
+
+    pub fn get(&self, env: &str) -> Option<String> {
+        self.entries.get(env).cloned()
+    }
+}
+
 #[derive(Debug)]
 pub struct ParseEditionError {
     invalid_input: String,
