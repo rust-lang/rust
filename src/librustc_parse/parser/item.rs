@@ -751,7 +751,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
         match self.token.ident() {
-            Some((ident, false)) if ident.name == kw::Underscore => {
+            Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
                 Ok(ident)
             }

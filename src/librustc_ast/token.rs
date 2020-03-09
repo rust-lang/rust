@@ -225,8 +225,15 @@ pub enum TokenKind {
     /* Literals */
     Literal(Lit),
 
-    /* Name components */
+    /// Identifier token.
+    /// Do not forget about `NtIdent` when you want to match on identifiers.
+    /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
+    /// treat regular and interpolated identifiers in the same way.
     Ident(ast::Name, /* is_raw */ bool),
+    /// Lifetime identifier token.
+    /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
+    /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
+    /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(ast::Name),
 
     Interpolated(Lrc<Nonterminal>),
@@ -328,11 +335,12 @@ impl Token {
         mem::replace(self, Token::dummy())
     }
 
-    /// For interpolated tokens returns a span of the fragment to which the interpolated
-    /// token refers, for all other tokens this is just a regular span.
+    /// For interpolated tokens, returns a span of the fragment to which the interpolated
+    /// token refers. For all other tokens this is just a regular span.
     /// It is particularly important to use this for identifiers and lifetimes
-    /// for which spans affect name resolution. This also includes edition checks
-    /// for edition-specific keyword identifiers.
+    /// for which spans affect name resolution and edition checks.
+    /// Note that keywords are also identifiers, so they should use this
+    /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
         match &self.kind {
             Interpolated(nt) => nt.span(),
@@ -453,6 +461,7 @@ impl Token {
         }
     }
 
+    // A convenience function for matching on identifiers during parsing.
     // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
     // into the regular identifier or lifetime token it refers to,
     // otherwise returns the original token.

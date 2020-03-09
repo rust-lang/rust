@@ -751,10 +751,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
 fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
-    match token.ident() {
-        Some((ident, is_raw)) if ident.name != kw::Underscore => Some((ident, is_raw)),
-        _ => None,
-    }
+    token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
 }
 
 /// Checks whether a non-terminal may begin with a particular token.

@@ -97,9 +97,8 @@ impl<'a> Parser<'a> {
         match self.parse_expr() {
             Ok(expr) => Ok(expr),
             Err(mut err) => match self.token.ident() {
-                Some((ident, false))
-                    if ident.name == kw::Underscore
-                        && self.look_ahead(1, |t| t == &token::Comma) =>
+                Some((Ident { name: kw::Underscore, .. }, false))
+                    if self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
@@ -333,13 +332,13 @@ impl<'a> Parser<'a> {
     fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
         let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
             (Some(op), _) => (op, self.token.span),
-            (None, Some((ident, false))) if ident.name == sym::and => {
+            (None, Some((Ident { name: sym::and, span }, false))) => {
                 self.error_bad_logical_op("and", "&&", "conjunction");
-                (AssocOp::LAnd, ident.span)
+                (AssocOp::LAnd, span)
             }
-            (None, Some((ident, false))) if ident.name == sym::or => {
+            (None, Some((Ident { name: sym::or, span }, false))) => {
                 self.error_bad_logical_op("or", "||", "disjunction");
-                (AssocOp::LOr, ident.span)
+                (AssocOp::LOr, span)
             }
             _ => return None,
         };
