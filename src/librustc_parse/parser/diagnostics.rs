@@ -459,9 +459,18 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) {
+    ) -> bool /* recover */ {
         if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
-            match (op.node, &outer_op.node) {
+            if let ExprKind::Field(_, ident) = l1.kind {
+                if ident.as_str().parse::<i32>().is_err() && !matches!(r1.kind, ExprKind::Lit(_)) {
+                    // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
+                    // suggestion being the only one to apply is high.
+                    return false;
+                }
+            }
+            return match (op.node, &outer_op.node) {
+                // `x == y == z`
+                (BinOpKind::Eq, AssocOp::Equal) |
                 // `x < y < z` and friends.
                 (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
                 (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
@@ -472,35 +481,65 @@ impl<'a> Parser<'a> {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
                     };
-                    err.span_suggestion(
-                        inner_op.span.to(outer_op.span),
-                        "split the comparison into two...",
-                        format!(
-                            "{} {} {} && {} {}",
-                            expr_to_str(&l1),
-                            op.node.to_string(),
-                            expr_to_str(&r1),
-                            expr_to_str(&r1),
-                            outer_op.node.to_ast_binop().unwrap().to_string(),
-                        ),
+                    err.span_suggestion_verbose(
+                            inner_op.span.shrink_to_hi(),
+                        "split the comparison into two",
+                        format!(" && {}", expr_to_str(&r1)),
                         Applicability::MaybeIncorrect,
                     );
-                    err.span_suggestion(
-                        inner_op.span.to(outer_op.span),
-                        "...or parenthesize one of the comparisons",
-                        format!(
-                            "({} {} {}) {}",
-                            expr_to_str(&l1),
-                            op.node.to_string(),
-                            expr_to_str(&r1),
-                            outer_op.node.to_ast_binop().unwrap().to_string(),
-                        ),
-                        Applicability::MaybeIncorrect,
-                    );
+                    false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
-                _ => {}
-            }
+                // `x == y < z`
+                (BinOpKind::Eq, AssocOp::Less) | (BinOpKind::Eq, AssocOp::LessEqual) |
+                (BinOpKind::Eq, AssocOp::Greater) | (BinOpKind::Eq, AssocOp::GreaterEqual) => {
+                    // Consume `/`z`/outer-op-rhs.
+                    let snapshot = self.clone();
+                    match self.parse_expr() {
+                        Ok(r2) => {
+                            err.multipart_suggestion(
+                                "parenthesize the comparison",
+                                vec![
+                                    (r1.span.shrink_to_lo(), "(".to_string()),
+                                    (r2.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            true
+                        }
+                        Err(mut expr_err) => {
+                            expr_err.cancel();
+                            mem::replace(self, snapshot);
+                            false
+                        }
+                    }
+                }
+                // `x > y == z`
+                (BinOpKind::Lt, AssocOp::Equal) | (BinOpKind::Le, AssocOp::Equal) |
+                (BinOpKind::Gt, AssocOp::Equal) | (BinOpKind::Ge, AssocOp::Equal) => {
+                    let snapshot = self.clone();
+                    err.multipart_suggestion(
+                        "parenthesize the comparison",
+                        vec![
+                            (l1.span.shrink_to_lo(), "(".to_string()),
+                            (r1.span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                    match self.parse_expr() {
+                        Ok(_) => {
+                            true
+                        }
+                        Err(mut expr_err) => {
+                            expr_err.cancel();
+                            mem::replace(self, snapshot);
+                            false
+                        }
+                    }
+                }
+                _ => false,
+            };
         }
+        false
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
@@ -534,31 +573,26 @@ impl<'a> Parser<'a> {
             |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
 
         match inner_op.kind {
-            ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
-                // Respan to include both operators.
-                let op_span = op.span.to(self.prev_token.span);
-                let mut err =
-                    self.struct_span_err(op_span, "comparison operators cannot be chained");
-
-                // If it looks like a genuine attempt to chain operators (as opposed to a
-                // misformatted turbofish, for instance), suggest a correct form.
-                self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
+            ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
+                let mut err = self.struct_span_err(
+                    vec![op.span, self.prev_token.span],
+                    "comparison operators cannot be chained",
+                );
 
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
                     err.span_suggestion_verbose(
-                        op_span.shrink_to_lo(),
+                        op.span.shrink_to_lo(),
                         TURBOFISH,
                         "::".to_string(),
                         Applicability::MaybeIncorrect,
                     );
                 };
 
-                if op.node == BinOpKind::Lt &&
-                    outer_op.node == AssocOp::Less ||  // Include `<` to provide this recommendation
-                    outer_op.node == AssocOp::Greater
-                // even in a case like the following:
+                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Less
+                    || outer_op.node == AssocOp::Greater
                 {
-                    //     Foo<Bar<Baz<Qux, ()>>>
+                    // Include `<` to provide this recommendation
+                    // even in a case like `Foo<Bar<Baz<Qux, ()>>>`
                     if outer_op.node == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
@@ -617,15 +651,33 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else {
-                        // All we know is that this is `foo < bar >` and *nothing* else. Try to
-                        // be helpful, but don't attempt to recover.
-                        err.help(TURBOFISH);
-                        err.help("or use `(...)` if you meant to specify fn arguments");
-                        // These cases cause too many knock-down errors, bail out (#61329).
-                        Err(err)
+                        if !matches!(l1.kind, ExprKind::Lit(_))
+                            && !matches!(r1.kind, ExprKind::Lit(_))
+                        {
+                            // All we know is that this is `foo < bar >` and *nothing* else. Try to
+                            // be helpful, but don't attempt to recover.
+                            err.help(TURBOFISH);
+                            err.help("or use `(...)` if you meant to specify fn arguments");
+                        }
+
+                        // If it looks like a genuine attempt to chain operators (as opposed to a
+                        // misformatted turbofish, for instance), suggest a correct form.
+                        if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
+                        {
+                            err.emit();
+                            mk_err_expr(self, inner_op.span.to(self.prev_token.span))
+                        } else {
+                            // These cases cause too many knock-down errors, bail out (#61329).
+                            Err(err)
+                        }
                     };
                 }
+                let recover =
+                    self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
                 err.emit();
+                if recover {
+                    return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
+                }
             }
             _ => {}
         }
