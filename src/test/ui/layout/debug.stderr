@@ -1,0 +1,120 @@
+error: layout debugging: LayoutDetails {
+    fields: Arbitrary {
+        offsets: [
+            Size {
+                raw: 0,
+            },
+        ],
+        memory_index: [
+            0,
+        ],
+    },
+    variants: Multiple {
+        discr: Scalar {
+            value: Int(
+                I32,
+                false,
+            ),
+            valid_range: 0..=0,
+        },
+        discr_kind: Tag,
+        discr_index: 0,
+        variants: [
+            LayoutDetails {
+                fields: Arbitrary {
+                    offsets: [],
+                    memory_index: [],
+                },
+                variants: Single {
+                    index: 0,
+                },
+                abi: Aggregate {
+                    sized: true,
+                },
+                largest_niche: None,
+                align: AbiAndPrefAlign {
+                    abi: Align {
+                        pow2: 0,
+                    },
+                    pref: Align {
+                        pow2: 3,
+                    },
+                },
+                size: Size {
+                    raw: 4,
+                },
+            },
+            LayoutDetails {
+                fields: Arbitrary {
+                    offsets: [
+                        Size {
+                            raw: 4,
+                        },
+                        Size {
+                            raw: 4,
+                        },
+                        Size {
+                            raw: 8,
+                        },
+                    ],
+                    memory_index: [
+                        0,
+                        1,
+                        2,
+                    ],
+                },
+                variants: Single {
+                    index: 1,
+                },
+                abi: Uninhabited,
+                largest_niche: None,
+                align: AbiAndPrefAlign {
+                    abi: Align {
+                        pow2: 2,
+                    },
+                    pref: Align {
+                        pow2: 3,
+                    },
+                },
+                size: Size {
+                    raw: 12,
+                },
+            },
+        ],
+    },
+    abi: Aggregate {
+        sized: true,
+    },
+    largest_niche: Some(
+        Niche {
+            offset: Size {
+                raw: 0,
+            },
+            scalar: Scalar {
+                value: Int(
+                    I32,
+                    false,
+                ),
+                valid_range: 0..=0,
+            },
+        },
+    ),
+    align: AbiAndPrefAlign {
+        abi: Align {
+            pow2: 2,
+        },
+        pref: Align {
+            pow2: 3,
+        },
+    },
+    size: Size {
+        raw: 12,
+    },
+}
+  --> $DIR/debug.rs:7:1
+   |
+LL | type Test = E;
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
