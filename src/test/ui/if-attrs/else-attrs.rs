@@ -8,7 +8,7 @@ fn if_else_parse_error() {
 #[cfg(FALSE)]
 fn else_attr_ifparse_error() {
     if true {
-    } else #[attr] if false { //~ ERROR expected
+    } else #[attr] if false { //~ ERROR outer attributes are not allowed
     } else {
     }
 }

@@ -1,3 +1,4 @@
+use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
 use super::diagnostics::Error;
 use super::expr::LhsExpr;
 use super::pat::GateOr;
@@ -47,10 +48,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `var`
             let msg = "write `let` instead of `var` to introduce a new variable";
             self.recover_stmt_local(lo, attrs.into(), msg, "let")?
-        } else if self.token.is_path_start()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -238,15 +236,11 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
-        maybe_whole!(self, NtBlock, |x| x);
-
-        let lo = self.token.span;
-
-        if !self.eat(&token::OpenDelim(token::Brace)) {
-            return self.error_block_no_opening_brace();
+        let (attrs, block) = self.parse_inner_attrs_and_block()?;
+        if let [.., last] = &*attrs {
+            self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);
         }
-
-        self.parse_block_tail(lo, BlockCheckMode::Default)
+        Ok(block)
     }
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
@@ -262,16 +256,14 @@ impl<'a> Parser<'a> {
         //
         // which is valid in other languages, but not Rust.
         match self.parse_stmt_without_recovery() {
-            Ok(Some(stmt)) => {
+            // If the next token is an open brace (e.g., `if a b {`), the place-
+            // inside-a-block suggestion would be more likely wrong than right.
+            Ok(Some(_))
                 if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
-                    || do_not_suggest_help
-                {
-                    // If the next token is an open brace (e.g., `if a b {`), the place-
-                    // inside-a-block suggestion would be more likely wrong than right.
-                    e.span_label(sp, "expected `{`");
-                    return Err(e);
-                }
-                let stmt_span = if self.eat(&token::Semi) {
+                    || do_not_suggest_help => {}
+            Ok(Some(stmt)) => {
+                let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
+                let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
                     // Expand the span to include the semicolon.
                     stmt.span.with_hi(self.prev_token.span.hi())
                 } else {
@@ -301,20 +293,27 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_inner_attrs_and_block(
         &mut self,
     ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+        self.parse_block_common(self.token.span, BlockCheckMode::Default)
+    }
+
+    /// Parses a block. Inner attributes are allowed.
+    pub(super) fn parse_block_common(
+        &mut self,
+        lo: Span,
+        blk_mode: BlockCheckMode,
+    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
-        let lo = self.token.span;
-        self.expect(&token::OpenDelim(token::Brace))?;
-        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, BlockCheckMode::Default)?))
+        if !self.eat(&token::OpenDelim(token::Brace)) {
+            return self.error_block_no_opening_brace();
+        }
+
+        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, blk_mode)?))
     }
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    pub(super) fn parse_block_tail(
-        &mut self,
-        lo: Span,
-        s: BlockCheckMode,
-    ) -> PResult<'a, P<Block>> {
+    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
             if self.token == token::Eof {

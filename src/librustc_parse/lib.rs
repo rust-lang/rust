@@ -2,6 +2,7 @@
 
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(bindings_after_at)]
 
 use rustc_ast::ast;
 use rustc_ast::token::{self, Nonterminal};

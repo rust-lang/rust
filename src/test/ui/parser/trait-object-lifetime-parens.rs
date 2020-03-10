@@ -6,9 +6,7 @@ fn f<'a, T: Trait + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not s
 
 fn check<'a>() {
     let _: Box<Trait + ('a)>; //~ ERROR parenthesized lifetime bounds are not supported
-    let _: Box<('a) + Trait>;
-    //~^ ERROR expected type, found `'a`
-    //~| ERROR expected `:`, found `)`
+    let _: Box<('a) + Trait>; //~ ERROR lifetime in trait object type must be followed by `+`
 }
 
 fn main() {}

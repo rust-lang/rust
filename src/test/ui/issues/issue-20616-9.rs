@@ -32,4 +32,4 @@ type Type_5_<'a> = Type_1_<'a, ()>;
 
 
 type Type_9<T,,> = Box<T>;
-//~^ error: expected one of `>`, `const`, identifier, or lifetime, found `,`
+//~^ error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `,`

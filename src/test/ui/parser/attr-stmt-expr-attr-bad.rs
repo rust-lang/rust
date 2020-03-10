@@ -39,35 +39,35 @@ fn main() {}
 #[cfg(FALSE)] fn e() { let _ = #[attr] &mut #![attr] 0; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if 0 {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if 0 {} #[attr] else {}; }
 //~^ ERROR expected one of
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] if 0 {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} #[attr] else {}; }
 //~^ ERROR expected one of
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] if let _ = 0 {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}; }
-//~^ ERROR expected `{`, found `#`
+//~^ ERROR outer attributes are not allowed on `if`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 
