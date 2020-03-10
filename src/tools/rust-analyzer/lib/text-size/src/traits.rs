@@ -1,7 +1,4 @@
-use {
-    crate::{TextRange, TextSize},
-    std::convert::TryInto,
-};
+use {crate::TextSize, std::convert::TryInto};
 
 /// Text-like structures that have a text size.
 pub trait TextSized: Copy {
@@ -25,11 +22,5 @@ impl TextSized for &'_ str {
 impl TextSized for char {
     fn text_size(self) -> TextSize {
         TextSize(self.len_utf8() as u32)
-    }
-}
-
-impl TextSized for TextRange {
-    fn text_size(self) -> TextSize {
-        self.len()
     }
 }
