@@ -1,5 +1,5 @@
 // aux-build:option_helpers.rs
-// compile-flags: --edition 2018
+// edition:2018
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(

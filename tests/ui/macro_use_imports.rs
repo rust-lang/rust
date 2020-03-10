@@ -1,4 +1,4 @@
-// compile-flags: --edition 2018
+// edition:2018
 #![warn(clippy::macro_use_imports)]
 
 use std::collections::HashMap;
