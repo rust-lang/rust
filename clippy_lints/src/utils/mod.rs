@@ -1381,8 +1381,8 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
 ///
 /// `trivial_bounds` feature allows functions with unsatisfiable bounds, for example:
 ///
-/// ```rust
-/// fn foo() i32: Iterator {
+/// ```ignore
+/// fn foo() where i32: Iterator {
 ///     for _ in 2i32 {}
 /// }
 /// ```
