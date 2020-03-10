@@ -425,12 +425,10 @@ pub fn handle_completion(
     }
 
     let options = CompletionOptions {
-        enable_postfix_completions: world.feature_flags().get("completion.enable-postfix"),
-        add_call_parenthesis: world
-            .feature_flags()
-            .get("completion.insertion.add-call-parenthesis"),
+        enable_postfix_completions: world.feature_flags.get("completion.enable-postfix"),
+        add_call_parenthesis: world.feature_flags.get("completion.insertion.add-call-parenthesis"),
         add_call_argument_snippets: world
-            .feature_flags()
+            .feature_flags
             .get("completion.insertion.add-argument-snippets"),
     };
 
@@ -471,7 +469,7 @@ pub fn handle_signature_help(
     let _p = profile("handle_signature_help");
     let position = params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
-        let concise = !world.analysis().feature_flags().get("call-info.full");
+        let concise = !world.feature_flags.get("call-info.full");
         let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
         if concise && call_info.signature.has_self_param {
             active_parameter = active_parameter.map(|it| it.saturating_sub(1));

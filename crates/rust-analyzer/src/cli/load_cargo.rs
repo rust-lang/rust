@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
-use ra_ide::{AnalysisChange, AnalysisHost, FeatureFlags};
+use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -82,7 +82,7 @@ pub(crate) fn load(
     receiver: Receiver<VfsTask>,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
-    let mut host = AnalysisHost::new(lru_cap, FeatureFlags::default());
+    let mut host = AnalysisHost::new(lru_cap);
     let mut analysis_change = AnalysisChange::new();
     analysis_change.set_crate_graph(crate_graph);
 

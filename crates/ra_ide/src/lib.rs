@@ -84,7 +84,6 @@ pub use ra_db::{
 };
 pub use ra_ide_db::{
     change::{AnalysisChange, LibraryData},
-    feature_flags::FeatureFlags,
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     search::SearchScope,
@@ -131,22 +130,18 @@ pub struct AnalysisHost {
 
 impl Default for AnalysisHost {
     fn default() -> AnalysisHost {
-        AnalysisHost::new(None, FeatureFlags::default())
+        AnalysisHost::new(None)
     }
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capcity: Option<usize>, feature_flags: FeatureFlags) -> AnalysisHost {
-        AnalysisHost { db: RootDatabase::new(lru_capcity, feature_flags) }
+    pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
+        AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
         Analysis { db: self.db.snapshot() }
-    }
-
-    pub fn feature_flags(&self) -> &FeatureFlags {
-        &self.db.feature_flags
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -222,11 +217,6 @@ impl Analysis {
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
         (host.analysis(), file_id)
-    }
-
-    /// Features for Analysis.
-    pub fn feature_flags(&self) -> &FeatureFlags {
-        &self.db.feature_flags
     }
 
     /// Debug info about the current state of the analysis.

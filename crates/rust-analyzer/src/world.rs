@@ -13,8 +13,7 @@ use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher};
 use ra_ide::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
-    SourceRootId,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
 use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
@@ -22,6 +21,7 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
+    feature_flags::FeatureFlags,
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
@@ -45,6 +45,7 @@ pub struct Options {
 #[derive(Debug)]
 pub struct WorldState {
     pub options: Options,
+    pub feature_flags: Arc<FeatureFlags>,
     //FIXME: this belongs to `LoopState` rather than to `WorldState`
     pub roots_to_scan: usize,
     pub roots: Vec<PathBuf>,
@@ -60,6 +61,7 @@ pub struct WorldState {
 /// An immutable snapshot of the world's state at a point in time.
 pub struct WorldSnapshot {
     pub options: Options,
+    pub feature_flags: Arc<FeatureFlags>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
@@ -146,10 +148,11 @@ impl WorldState {
                 CheckWatcher::dummy()
             });
 
-        let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
+        let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
         WorldState {
             options,
+            feature_flags: Arc::new(feature_flags),
             roots_to_scan,
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
@@ -216,6 +219,7 @@ impl WorldState {
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
             options: self.options.clone(),
+            feature_flags: Arc::clone(&self.feature_flags),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
@@ -234,10 +238,6 @@ impl WorldState {
 
     pub fn complete_request(&mut self, request: CompletedRequest) {
         self.latest_requests.write().record(request)
-    }
-
-    pub fn feature_flags(&self) -> &FeatureFlags {
-        self.analysis_host.feature_flags()
     }
 }
 
@@ -305,9 +305,5 @@ impl WorldSnapshot {
     pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
         let path = self.vfs.read().file2path(VfsFile(file_id.0));
         self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
-    }
-
-    pub fn feature_flags(&self) -> &FeatureFlags {
-        self.analysis.feature_flags()
     }
 }
