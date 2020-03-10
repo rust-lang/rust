@@ -20,8 +20,8 @@ use lsp_types::{
     TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope,
+    Assist, AssistId, CompletionOptions, FileId, FilePosition, FileRange, Query, RangeInfo,
+    Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -424,7 +424,17 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let items = match world.analysis().completions(position)? {
+    let options = CompletionOptions {
+        enable_postfix_completions: world.feature_flags().get("completion.enable-postfix"),
+        add_call_parenthesis: world
+            .feature_flags()
+            .get("completion.insertion.add-call-parenthesis"),
+        add_call_argument_snippets: world
+            .feature_flags()
+            .get("completion.insertion.add-argument-snippets"),
+    };
+
+    let items = match world.analysis().completions(position, &options)? {
         None => return Ok(None),
         Some(items) => items,
     };

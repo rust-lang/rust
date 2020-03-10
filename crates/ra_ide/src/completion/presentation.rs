@@ -104,10 +104,7 @@ impl Completions {
         };
 
         // Add `<>` for generic types
-        if ctx.is_path_type
-            && !ctx.has_type_args
-            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
-        {
+        if ctx.is_path_type && !ctx.has_type_args && ctx.options.add_call_parenthesis {
             let has_non_default_type_params = match resolution {
                 ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db),
                 ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db),

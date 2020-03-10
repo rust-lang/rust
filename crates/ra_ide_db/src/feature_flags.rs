@@ -2,6 +2,10 @@
 
 use rustc_hash::FxHashMap;
 
+// FIXME: looks like a much better design is to pass options to each call,
+// rather than to have a global ambient feature flags -- that way, the clients
+// can issue two successive calls with different options.
+
 /// Feature flags hold fine-grained toggles for all *user-visible* features of
 /// rust-analyzer.
 ///

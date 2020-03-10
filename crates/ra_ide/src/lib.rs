@@ -450,17 +450,12 @@ impl Analysis {
     }
 
     /// Computes completions at the given position.
-    pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let opts = CompletionOptions {
-            enable_postfix_completions: self.feature_flags().get("completion.enable-postfix"),
-            add_call_parenthesis: self
-                .feature_flags()
-                .get("completion.insertion.add-call-parenthesis"),
-            add_call_argument_snippets: self
-                .feature_flags()
-                .get("completion.insertion.add-argument-snippets"),
-        };
-        self.with_db(|db| completion::completions(db, position, &opts).map(Into::into))
+    pub fn completions(
+        &self,
+        position: FilePosition,
+        options: &CompletionOptions,
+    ) -> Cancelable<Option<Vec<CompletionItem>>> {
+        self.with_db(|db| completion::completions(db, position, options).map(Into::into))
     }
 
     /// Computes assists (aka code actions aka intentions) for the given
