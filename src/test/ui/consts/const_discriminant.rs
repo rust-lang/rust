@@ -4,6 +4,9 @@
 
 use std::mem::{discriminant, Discriminant};
 
+// `discriminant(const_expr)` may get const-propagated.
+// As we want to check that const-eval is equal to ordinary exection,
+// we wrap `const_expr` with a function which is not const to prevent this.
 #[inline(never)]
 fn identity<T>(x: T) -> T { x }
 
