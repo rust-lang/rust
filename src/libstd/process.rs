@@ -1525,7 +1525,7 @@ impl Child {
     ///
     /// [`wait`]: #method.wait
     /// [`wait_with_output`]: #method.wait_with_output
-    #[stable(feature = "child_set_status", since = "1.43.0")]
+    #[stable(feature = "child_set_status", since = "1.44.0")]
     pub unsafe fn set_status(&mut self, status: ExitStatus) {
         self.handle.set_status(status.0);
     }
