@@ -559,7 +559,7 @@ impl Session {
         if found_positive || found_negative {
             found_positive
         } else if crate_type == Some(config::CrateType::ProcMacro)
-            || self.opts.crate_types.contains(&config::CrateType::ProcMacro)
+            || crate_type == None && self.opts.crate_types.contains(&config::CrateType::ProcMacro)
         {
             // FIXME: When crate_type is not available,
             // we use compiler options to determine the crate_type.
