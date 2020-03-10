@@ -5,6 +5,11 @@ import { log } from "./util";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
+export interface InlayHintOptions {
+    displayType: string;
+    maxLength: number;
+}
+
 export interface CargoWatchOptions {
     enable: boolean;
     arguments: string[];
@@ -149,8 +154,12 @@ export class Config {
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
     get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
     get lruCapacity() { return this.cfg.get("lruCapacity") as null | number; }
-    get displayInlayHints() { return this.cfg.get("displayInlayHints") as boolean; }
-    get maxInlayHintLength() { return this.cfg.get("maxInlayHintLength") as number; }
+    get inlayHintOpts(): InlayHintOptions {
+        return {
+            displayType: this.cfg.get("inlayHintOpts.displayType") as string,
+            maxLength: this.cfg.get("inlayHintOpts.maxLength") as number,
+        };
+    }
     get excludeGlobs() { return this.cfg.get("excludeGlobs") as string[]; }
     get useClientWatching() { return this.cfg.get("useClientWatching") as boolean; }
     get featureFlags() { return this.cfg.get("featureFlags") as Record<string, boolean>; }

@@ -1028,6 +1028,7 @@ dependencies = [
  "ra_hir",
  "ra_ide_db",
  "ra_prof",
+ "ra_project_model",
  "ra_syntax",
  "ra_text_edit",
  "rand",

@@ -21,6 +21,7 @@ rustc-hash = "1.1.0"
 rand = { version = "0.7.3", features = ["small_rng"] }
 
 ra_syntax = { path = "../ra_syntax" }
+ra_project_model = { path = "../ra_project_model" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }

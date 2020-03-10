@@ -7,6 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
+use ra_project_model::InlayHintOptions;
 use rustc_hash::FxHashMap;
 
 use ra_project_model::CargoFeatures;
@@ -30,7 +31,7 @@ pub struct ServerConfig {
 
     pub lru_capacity: Option<usize>,
 
-    pub max_inlay_hint_length: Option<usize>,
+    pub inlay_hint_opts: InlayHintOptions,
 
     pub cargo_watch_enable: bool,
     pub cargo_watch_args: Vec<String>,
@@ -57,7 +58,7 @@ impl Default for ServerConfig {
             exclude_globs: Vec::new(),
             use_client_watching: false,
             lru_capacity: None,
-            max_inlay_hint_length: None,
+            inlay_hint_opts: Default::default(),
             cargo_watch_enable: true,
             cargo_watch_args: Vec::new(),
             cargo_watch_command: "check".to_string(),

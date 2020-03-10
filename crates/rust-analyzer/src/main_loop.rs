@@ -177,7 +177,7 @@ pub fn main_loop(
                     .and_then(|it| it.folding_range.as_ref())
                     .and_then(|it| it.line_folding_only)
                     .unwrap_or(false),
-                max_inlay_hint_length: config.max_inlay_hint_length,
+                inlay_hint_opts: config.inlay_hint_opts.clone(),
                 cargo_watch: CheckOptions {
                     enable: config.cargo_watch_enable,
                     args: config.cargo_watch_args,

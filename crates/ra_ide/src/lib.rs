@@ -44,6 +44,7 @@ mod marks;
 #[cfg(test)]
 mod test_utils;
 
+use ra_project_model::InlayHintOptions;
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
@@ -318,9 +319,9 @@ impl Analysis {
     pub fn inlay_hints(
         &self,
         file_id: FileId,
-        max_inlay_hint_length: Option<usize>,
+        inlay_hint_opts: &InlayHintOptions,
     ) -> Cancelable<Vec<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, max_inlay_hint_length))
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, inlay_hint_opts))
     }
 
     /// Returns the set of folding ranges.

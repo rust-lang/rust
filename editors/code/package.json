@@ -307,12 +307,24 @@
                     "exclusiveMinimum": true,
                     "description": "Number of syntax trees rust-analyzer keeps in memory"
                 },
-                "rust-analyzer.displayInlayHints": {
-                    "type": "boolean",
-                    "default": true,
+                "rust-analyzer.inlayHintOpts.displayType": {
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "typeHints",
+                        "parameterHints",
+                        "full"
+                    ],
+                    "enumDescriptions": [
+                        "No type inlay hints",
+                        "Type inlays hints only",
+                        "Parameter inlays hints only",
+                        "All inlay hints types"
+                    ],
+                    "default": "full",
                     "description": "Display additional type and parameter information in the editor"
                 },
-                "rust-analyzer.maxInlayHintLength": {
+                "rust-analyzer.inlayHintOpts.maxLength": {
                     "type": [
                         "null",
                         "integer"

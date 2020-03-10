@@ -15,7 +15,7 @@ use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWa
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
+use ra_project_model::{get_rustc_cfg_options, InlayHintOptions, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 
@@ -32,7 +32,7 @@ pub struct Options {
     pub publish_decorations: bool,
     pub supports_location_link: bool,
     pub line_folding_only: bool,
-    pub max_inlay_hint_length: Option<usize>,
+    pub inlay_hint_opts: InlayHintOptions,
     pub rustfmt_args: Vec<String>,
     pub cargo_watch: CheckOptions,
 }
