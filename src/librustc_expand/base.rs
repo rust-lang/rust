@@ -1,4 +1,5 @@
 use crate::expand::{self, AstFragment, Invocation};
+use crate::module::DirectoryOwnership;
 
 use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
@@ -10,7 +11,7 @@ use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
-use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
+use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};

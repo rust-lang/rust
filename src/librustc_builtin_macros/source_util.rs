@@ -5,7 +5,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
 use rustc_expand::panictry;
-use rustc_parse::{self, new_sub_parser_from_file, parser::Parser, DirectoryOwnership};
+use rustc_parse::{self, new_sub_parser_from_file, parser::Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Pos, Span};
@@ -108,8 +108,7 @@ pub fn expand_include<'cx>(
             return DummyResult::any(sp);
         }
     };
-    let directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let p = new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
+    let p = new_sub_parser_from_file(cx.parse_sess(), &file, None, sp);
 
     struct ExpandResult<'a> {
         p: Parser<'a>,
