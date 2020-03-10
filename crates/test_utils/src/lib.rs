@@ -207,7 +207,12 @@ pub fn parse_single_fixture(fixture: &str) -> Option<FixtureEntry> {
     if !fixture.lines().any(|it| it.trim_start().starts_with("//-")) {
         return None;
     }
-    parse_fixture(fixture).into_iter().nth(0)
+
+    let fixtures = parse_fixture(fixture);
+    if fixtures.len() > 1 {
+        panic!("too many fixtures");
+    }
+    fixtures.into_iter().nth(0)
 }
 
 // Comparison functionality borrowed from cargo:
