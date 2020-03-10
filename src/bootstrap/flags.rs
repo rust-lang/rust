@@ -367,7 +367,7 @@ Arguments:
         ./x.py test src/libstd --stage 0 --no-doc
         ./x.py test src/test/ui --bless
         ./x.py test src/test/ui --compare-mode nll
-    
+
     Note that `test src/test/* --stage N` does NOT depend on `build src/rustc --stage N`;
     just like `build src/libstd --stage N` it tests the compiler produced by the previous
     stage.
