@@ -11,7 +11,8 @@ use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
 pub use crate::{
     cancellation::Canceled,
     input::{
-        CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, SourceRoot, SourceRootId,
+        CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSourceId, FileId,
+        SourceRoot, SourceRootId,
     },
 };
 pub use relative_path::{RelativePath, RelativePathBuf};
@@ -87,6 +88,12 @@ pub trait FileLoader {
     fn resolve_relative_path(&self, anchor: FileId, relative_path: &RelativePath)
         -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>>;
+
+    fn resolve_extern_path(
+        &self,
+        extern_id: ExternSourceId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -163,5 +170,14 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
+    }
+
+    fn resolve_extern_path(
+        &self,
+        extern_id: ExternSourceId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId> {
+        let source_root = self.0.source_root(SourceRootId(extern_id.0));
+        source_root.file_by_relative_path(&relative_path)
     }
 }
