@@ -47,7 +47,16 @@ pub fn get_ptr_and_method_ref<'tcx>(
     arg: CValue<'tcx>,
     idx: usize,
 ) -> (Value, Value) {
-    let (ptr, vtable) = arg.load_scalar_pair(fx);
+    let (ptr, vtable) = if let Abi::ScalarPair(_, _) = arg.layout().abi {
+        arg.load_scalar_pair(fx)
+    } else {
+        let (ptr, vtable) = arg.try_to_ptr().unwrap();
+        (
+            ptr.get_addr(fx),
+            vtable.unwrap()
+        )
+    };
+
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(
         pointer_ty(fx.tcx),

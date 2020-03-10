@@ -355,7 +355,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block
         // not mutated by the current function, this is necessary to support unsized arguments.
         match arg_kind {
             ArgKind::Normal(Some(val)) => {
-                if let Some((addr, meta)) = val.try_to_addr() {
+                if let Some((addr, meta)) = val.try_to_ptr() {
                     let local_decl = &fx.mir.local_decls[local];
                     //                       v this ! is important
                     let internally_mutable = !val.layout().ty.is_freeze(
@@ -368,9 +368,9 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block
                         // of this argument, to prevent a copy.
 
                         let place = if let Some(meta) = meta {
-                            CPlace::for_ptr_with_extra(Pointer::new(addr), meta, val.layout())
+                            CPlace::for_ptr_with_extra(addr, meta, val.layout())
                         } else {
-                            CPlace::for_ptr(Pointer::new(addr), val.layout())
+                            CPlace::for_ptr(addr, val.layout())
                         };
 
                         #[cfg(debug_assertions)]

@@ -105,19 +105,9 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn try_to_addr(self) -> Option<(Value, Option<Value>)> {
+    pub fn try_to_ptr(self) -> Option<(Pointer, Option<Value>)> {
         match self.0 {
-            CValueInner::ByRef(ptr, meta) => {
-                if let Some((base_addr, offset)) = ptr.try_get_addr_and_offset() {
-                    if offset == Offset32::new(0) {
-                        Some((base_addr, meta))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
+            CValueInner::ByRef(ptr, meta) => Some((ptr, meta)),
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => None,
         }
     }
@@ -345,8 +335,11 @@ impl<'tcx> CPlace<'tcx> {
                 CValue::by_val(val, layout)
             }
             CPlaceInner::Addr(ptr, extra) => {
-                assert!(extra.is_none(), "unsized values are not yet supported");
-                CValue::by_ref(ptr, layout)
+                if let Some(extra) = extra {
+                    CValue::by_ref_unsized(ptr, extra, layout)
+                } else {
+                    CValue::by_ref(ptr, layout)
+                }
             }
             CPlaceInner::NoPlace => CValue::by_ref(
                 Pointer::const_addr(fx, i64::try_from(self.layout.align.pref.bytes()).unwrap()),

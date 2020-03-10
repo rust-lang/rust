@@ -353,7 +353,9 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
-        *self.local_map.get(&local).unwrap()
+        *self.local_map.get(&local).unwrap_or_else(|| {
+            panic!("Local {:?} doesn't exist", local);
+        })
     }
 
     pub fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {

@@ -55,13 +55,6 @@ impl Pointer {
         }
     }
 
-    pub fn try_get_addr_and_offset(self) -> Option<(Value, Offset32)> {
-        match self.base {
-            PointerBase::Addr(addr) => Some((addr, self.offset)),
-            PointerBase::Stack(_) => None,
-        }
-    }
-
     pub fn offset<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
