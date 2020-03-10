@@ -1496,12 +1496,6 @@ impl Child {
     /// equivalent function on another platform. It will cause future calls to
     /// [`wait`] and [`wait_with_output`] to use this exit status.
     ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the process
-    /// exited. If this function is given wrong information, it will continue
-    /// to use that wrong information in potentially unexpected ways.
-    ///
     /// # Examples
     ///
     /// ```
@@ -1518,7 +1512,7 @@ impl Child {
     /// #     child.wait().unwrap()
     /// # }
     /// let status = external_wait(&mut child);
-    /// unsafe { child.set_status(status) }
+    /// child.set_status(status);
     ///
     /// assert_eq!(status, child.wait().expect("failed to wait on child"));
     /// ```
@@ -1526,7 +1520,7 @@ impl Child {
     /// [`wait`]: #method.wait
     /// [`wait_with_output`]: #method.wait_with_output
     #[stable(feature = "child_set_status", since = "1.44.0")]
-    pub unsafe fn set_status(&mut self, status: ExitStatus) {
+    pub fn set_status(&mut self, status: ExitStatus) {
         self.handle.set_status(status.0);
     }
 }
