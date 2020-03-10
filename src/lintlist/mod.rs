@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 360] = [
+pub const ALL_LINTS: [Lint; 361] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2400,6 +2400,13 @@ pub const ALL_LINTS: [Lint; 360] = [
         desc: "expressions where a bit mask is less readable than the corresponding method call",
         deprecation: None,
         module: "bit_mask",
+    },
+    Lint {
+        name: "verbose_file_reads",
+        group: "complexity",
+        desc: "use of `File::read_to_end` or `File::read_to_string`",
+        deprecation: None,
+        module: "verbose_file_reads",
     },
     Lint {
         name: "while_immutable_condition",
