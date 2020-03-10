@@ -5,7 +5,6 @@
 pub mod marks;
 pub mod line_index;
 pub mod line_index_utils;
-pub mod feature_flags;
 pub mod symbol_index;
 pub mod change;
 pub mod defs;
@@ -22,7 +21,7 @@ use ra_db::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{feature_flags::FeatureFlags, line_index::LineIndex, symbol_index::SymbolsDatabase};
+use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,
@@ -37,7 +36,6 @@ use crate::{feature_flags::FeatureFlags, line_index::LineIndex, symbol_index::Sy
 #[derive(Debug)]
 pub struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
-    pub feature_flags: Arc<FeatureFlags>,
     pub(crate) debug_data: Arc<DebugData>,
     pub last_gc: crate::wasm_shims::Instant,
     pub last_gc_check: crate::wasm_shims::Instant,
@@ -82,17 +80,16 @@ impl salsa::Database for RootDatabase {
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
-        RootDatabase::new(None, FeatureFlags::default())
+        RootDatabase::new(None)
     }
 }
 
 impl RootDatabase {
-    pub fn new(lru_capacity: Option<usize>, feature_flags: FeatureFlags) -> RootDatabase {
+    pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
             last_gc: crate::wasm_shims::Instant::now(),
             last_gc_check: crate::wasm_shims::Instant::now(),
-            feature_flags: Arc::new(feature_flags),
             debug_data: Default::default(),
         };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
@@ -112,7 +109,6 @@ impl salsa::ParallelDatabase for RootDatabase {
             runtime: self.runtime.snapshot(self),
             last_gc: self.last_gc,
             last_gc_check: self.last_gc_check,
-            feature_flags: Arc::clone(&self.feature_flags),
             debug_data: Arc::clone(&self.debug_data),
         })
     }

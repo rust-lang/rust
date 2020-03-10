@@ -18,7 +18,7 @@ use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
-use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
+use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
@@ -28,6 +28,7 @@ use threadpool::ThreadPool;
 
 use crate::{
     diagnostics::DiagnosticTask,
+    feature_flags::FeatureFlags,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -423,7 +424,7 @@ fn loop_turn(
     {
         loop_state.workspace_loaded = true;
         let n_packages: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
-        if world_state.feature_flags().get("notifications.workspace-loaded") {
+        if world_state.feature_flags.get("notifications.workspace-loaded") {
             let msg = format!("workspace loaded, {} rust packages", n_packages);
             show_message(req::MessageType::Info, msg, &connection.sender);
         }
@@ -839,7 +840,7 @@ fn update_file_notifications_on_threadpool(
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
-    let publish_diagnostics = world.feature_flags().get("lsp.diagnostics");
+    let publish_diagnostics = world.feature_flags.get("lsp.diagnostics");
     pool.execute(move || {
         for file_id in subscriptions {
             if publish_diagnostics {

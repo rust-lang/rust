@@ -37,6 +37,7 @@ mod config;
 mod world;
 mod diagnostics;
 mod semantic_tokens;
+mod feature_flags;
 
 use serde::de::DeserializeOwned;
 

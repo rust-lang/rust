@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::AtomTextEdit;
 
-use crate::FilePosition;
+use crate::{completion::CompletionOptions, FilePosition};
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -19,6 +19,7 @@ use crate::FilePosition;
 pub(crate) struct CompletionContext<'a> {
     pub(super) sema: Semantics<'a, RootDatabase>,
     pub(super) db: &'a RootDatabase,
+    pub(super) options: &'a CompletionOptions,
     pub(super) offset: TextUnit,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
@@ -57,6 +58,7 @@ impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
         position: FilePosition,
+        options: &'a CompletionOptions,
     ) -> Option<CompletionContext<'a>> {
         let sema = Semantics::new(db);
 
@@ -80,6 +82,7 @@ impl<'a> CompletionContext<'a> {
         let mut ctx = CompletionContext {
             sema,
             db,
+            options,
             original_token,
             token,
             offset: position.offset,

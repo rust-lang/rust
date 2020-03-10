@@ -33,6 +33,23 @@ pub use crate::completion::completion_item::{
     CompletionItem, CompletionItemKind, InsertTextFormat,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompletionOptions {
+    pub enable_postfix_completions: bool,
+    pub add_call_parenthesis: bool,
+    pub add_call_argument_snippets: bool,
+}
+
+impl Default for CompletionOptions {
+    fn default() -> Self {
+        CompletionOptions {
+            enable_postfix_completions: true,
+            add_call_parenthesis: true,
+            add_call_argument_snippets: true,
+        }
+    }
+}
+
 /// Main entry point for completion. We run completion as a two-phase process.
 ///
 /// First, we look at the position and collect a so-called `CompletionContext.
@@ -55,8 +72,12 @@ pub use crate::completion::completion_item::{
 /// `foo` *should* be present among the completion variants. Filtering by
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
-pub(crate) fn completions(db: &RootDatabase, position: FilePosition) -> Option<Completions> {
-    let ctx = CompletionContext::new(db, position)?;
+pub(crate) fn completions(
+    db: &RootDatabase,
+    position: FilePosition,
+    opts: &CompletionOptions,
+) -> Option<Completions> {
+    let ctx = CompletionContext::new(db, position, opts)?;
 
     let mut acc = Completions::default();
 

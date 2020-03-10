@@ -12,7 +12,7 @@ use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
+use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionOptions, FilePosition, LineCol};
 
 use crate::cli::{load_cargo::load_cargo, Verbosity};
 
@@ -94,17 +94,19 @@ pub fn analysis_bench(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Res
                 .analysis()
                 .file_line_index(file_id)?
                 .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
-            let file_postion = FilePosition { file_id, offset };
+            let file_position = FilePosition { file_id, offset };
 
             if is_completion {
-                let res =
-                    do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
+                let options = CompletionOptions::default();
+                let res = do_work(&mut host, file_id, |analysis| {
+                    analysis.completions(file_position, &options)
+                });
                 if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
             } else {
                 let res =
-                    do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_postion));
+                    do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_position));
                 if verbosity.is_verbose() {
                     println!("\n{:#?}", res);
                 }
