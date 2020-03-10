@@ -107,12 +107,14 @@ our lint, we need to commit the generated `.stderr` files, too.
 
 If the lint you are working on is making use of structured suggestions, the
 test file should include a `// run-rustfix` comment at the top. This will
-additionally run [rustfix](https://github.com/rust-lang-nursery/rustfix) for
-that test. Rustfix will apply the suggestions from the lint to the code of the
-test file and compare that to the contents of a `.fixed` file.
+additionally run [rustfix] for that test. Rustfix will apply the suggestions
+from the lint to the code of the test file and compare that to the contents of
+a `.fixed` file.
 
 Use `tests/ui/update-all-references.sh` to automatically generate the
 `.fixed` file after running the tests.
+
+[rustfix]: https://github.com/rust-lang/rustfix
 
 ## Edition 2018 tests
 
@@ -167,10 +169,10 @@ declare_clippy_lint! {
 * The section of lines prefixed with `///` constitutes the lint documentation
   section. This is the default documentation style and will be displayed
   [like this][example_lint_page].
-* `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the [lint naming
-  guidelines][lint_naming] here when naming your lint. In short, the name should
-  state the thing that is being checked for and read well when used with
-  `allow`/`warn`/`deny`.
+* `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
+  [lint naming guidelines][lint_naming] here when naming your lint.
+  In short, the name should state the thing that is being checked for and
+  read well when used with `allow`/`warn`/`deny`.
 * `pedantic` sets the lint level to `Allow`.
   The exact mapping can be found [here][category_level_mapping]
 * The last part should be a text that explains what exactly is wrong with the
@@ -200,7 +202,10 @@ automate everything. We will have to register our lint pass manually in the
 store.register_early_pass(|| box foo_functions::FooFunctions);
 ```
 
-[example lint page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
+[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
+[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
+[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
+[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
 
 ## Lint passes
 
@@ -219,6 +224,9 @@ hasn't really been a concern with Clippy so far.
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
 added accordingly.
+
+[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
+[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 
 ## Emitting a lint
 
@@ -265,13 +273,16 @@ impl EarlyLintPass for FooFunctions {
 
 Running our UI test should now produce output that contains the lint message.
 
+[check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
+[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
+
 ## Adding the lint logic
 
 Writing the logic for your lint will most likely be different from our example,
 so this section is kept rather short.
 
 Using the [`check_fn`][check_fn] method gives us access to [`FnKind`][fn_kind]
-that has the `FnKind::Fn` variant. It provides access to the name of the
+that has the [`FnKind::Fn`] variant. It provides access to the name of the
 function/method via an [`Ident`][ident].
 
 With that we can expand our `check_fn` method to:
@@ -323,6 +334,10 @@ implementation is not violating any Clippy lints itself.
 That should be it for the lint implementation. Running `cargo test` should now
 pass.
 
+[fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html
+[`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
+[ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
+
 ## Author lint
 
 If you have trouble implementing your lint, there is also the internal `author`
@@ -339,6 +354,8 @@ see the generated code in the output below.
 
 If the command was executed successfully, you can copy the code over to where
 you are implementing your lint.
+
+[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
 
 ## Documentation
 
@@ -373,11 +390,13 @@ declare_clippy_lint! {
 Once your lint is merged, this documentation will show up in the [lint
 list][lint_list].
 
+[lint_list]: https://rust-lang.github.io/rust-clippy/master/index.html
+
 ## Running rustfmt
 
-[Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust
-code according to style guidelines. Your code has to be formatted by `rustfmt`
-before a PR can be merged. Clippy uses nightly `rustfmt` in the CI.
+[Rustfmt] is a tool for formatting Rust code according to style guidelines.
+Your code has to be formatted by `rustfmt` before a PR can be merged.
+Clippy uses nightly `rustfmt` in the CI.
 
 It can be installed via `rustup`:
 
@@ -388,11 +407,15 @@ rustup component add rustfmt --toolchain=nightly
 Use `cargo dev fmt` to format the whole codebase. Make sure that `rustfmt` is
 installed for the nightly toolchain.
 
+[Rustfmt]: https://github.com/rust-lang/rustfmt
+
 ## Debugging
 
 If you want to debug parts of your lint implementation, you can use the [`dbg!`]
 macro anywhere in your code. Running the tests should then include the debug
 output in the `stdout` part.
+
+[`dbg!`]: https://doc.rust-lang.org/std/macro.dbg.html
 
 ## PR Checklist
 
@@ -437,26 +460,14 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Discord] or in the issue/PR.
 
-[lint_list]: https://rust-lang.github.io/rust-clippy/master/index.html
-[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/bd23cb89ec0ea63403a17d3fc5e50c88e38dd54f/clippy_lints/src/lib.rs#L43
-[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/a71acac1da7eaf667ab90a1d65d10e5cc4b80191/clippy_lints/src/lib.rs#L39
-[check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
-[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
-[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
-[fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html
-[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
 [utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
-[ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
-[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
-[applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/sty/index.html
-[ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/fn.in_external_macro.html
-[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
+[span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
+[applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
 [nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/sty/index.html
 [Discord]: https://discord.gg/rust-lang
-[`dbg`!]: https://doc.rust-lang.org/std/macro.dbg.html
