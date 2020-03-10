@@ -517,7 +517,7 @@ impl CrateStore for CStore {
     }
 
     fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable {
-        &self.get_crate_data(cnum).def_path_table
+        &self.get_crate_data(cnum).cdata.def_path_table
     }
 
     fn crates_untracked(&self) -> Vec<CrateNum> {

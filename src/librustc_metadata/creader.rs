@@ -76,6 +76,21 @@ impl<'a> LoadError<'a> {
     }
 }
 
+/// A reference to `CrateMetadata` that can also give access to whole crate store when necessary.
+#[derive(Clone, Copy)]
+crate struct CrateMetadataRef<'a> {
+    pub cdata: &'a CrateMetadata,
+    pub cstore: &'a CStore,
+}
+
+impl std::ops::Deref for CrateMetadataRef<'_> {
+    type Target = CrateMetadata;
+
+    fn deref(&self) -> &Self::Target {
+        self.cdata
+    }
+}
+
 fn dump_crates(cstore: &CStore) {
     info!("resolved crates:");
     cstore.iter_crate_data(|cnum, data| {
@@ -100,10 +115,11 @@ impl CStore {
         CrateNum::new(self.metas.len() - 1)
     }
 
-    crate fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
-        self.metas[cnum]
+    crate fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
+        let cdata = self.metas[cnum]
             .as_ref()
-            .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
+            .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum));
+        CrateMetadataRef { cdata, cstore: self }
     }
 
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
@@ -217,7 +233,7 @@ impl<'a> CrateLoader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.cstore.get_crate_data(cnum).source();
+            let source = self.cstore.get_crate_data(cnum).cdata.source();
             if let Some(entry) = self.sess.opts.externs.get(&name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
