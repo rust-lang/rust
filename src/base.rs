@@ -57,14 +57,96 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         source_info_set: indexmap::IndexSet::new(),
     };
 
-    if fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited()) {
-        let entry_block = fx.bcx.create_block();
-        fx.bcx.append_block_params_for_function_params(entry_block);
-        fx.bcx.switch_to_block(entry_block);
+    let arg_uninhabited = fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
+    let is_call_once_for_box = name.starts_with("_ZN83_$LT$alloc..boxed..Box$LT$F$GT$$u20$as$u20$core..ops..function..FnOnce$LT$A$GT$$GT$9call_once");
+
+    if arg_uninhabited {
+        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
+    } else if is_call_once_for_box {
+        // HACK implement `<Box<F> as FnOnce>::call_once` without `alloca`.
+        tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block, false));
+        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
+        let bb_data = &fx.mir.basic_blocks()[START_BLOCK];
+        let destination = match &bb_data.terminator().kind {
+            TerminatorKind::Call {
+                func,
+                args,
+                destination,
+                cleanup: _,
+                from_hir_call: _,
+            } => {
+                assert_eq!(args.len(), 2);
+
+                let closure_arg = Local::new(1);
+                let closure_local = args[0].place().unwrap().as_local().unwrap();
+                assert_eq!(fx.mir.local_decls[closure_local].ty, fx.mir.local_decls[closure_arg].ty.builtin_deref(true).unwrap().ty);
+                let closure_deref = fx.local_map[&closure_arg].place_deref(&mut fx);
+                fx.local_map.insert(closure_local, closure_deref);
+
+                let args_arg = Local::new(2);
+                let args_local = args[1].place().unwrap().as_local().unwrap();
+                assert_eq!(fx.mir.local_decls[args_local].ty, fx.mir.local_decls[args_arg].ty);
+                fx.local_map.insert(args_local, fx.local_map[&args_arg]);
+
+                fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
+                    &mut fx,
+                    bb_data.terminator().source_info.span,
+                    func,
+                    args,
+                    destination,
+                ));
+                destination.map(|(_ret_place, ret_block)| ret_block)
+            }
+            _ => unreachable!(),
+        };
+
+        let destination = if let Some(destination) = destination {
+            fx.bcx.switch_to_block(fx.block_map[destination]);
+            let bb_data = &fx.mir.basic_blocks()[destination];
+            match &bb_data.terminator().kind {
+                TerminatorKind::Call {
+                    func,
+                    args,
+                    destination,
+                    cleanup: _,
+                    from_hir_call: _,
+                } => {
+                    match destination {
+                        Some((ret_place, _ret_block)) => {
+                            fx.local_map.insert(ret_place.as_local().unwrap(), CPlace::no_place(fx.layout_of(fx.tcx.mk_unit())));
+                        }
+                        None => {}
+                    }
+
+                    assert_eq!(args.len(), 1);
+                    fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
+                        &mut fx,
+                        bb_data.terminator().source_info.span,
+                        func,
+                        args,
+                        destination,
+                    ));
+                    destination.map(|(_ret_place, ret_block)| ret_block)
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            None
+        };
+
+        if let Some(destination) = destination {
+            fx.bcx.switch_to_block(fx.block_map[destination]);
+            let bb_data = &fx.mir.basic_blocks()[destination];
+            match &bb_data.terminator().kind {
+                TerminatorKind::Return => crate::abi::codegen_return(&mut fx),
+                _ => unreachable!(),
+            }
+        }
     } else {
         tcx.sess.time("codegen clif ir", || {
-            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
+            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block, true));
             codegen_fn_content(&mut fx);
         });
     }
