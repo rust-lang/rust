@@ -553,11 +553,7 @@ impl Error for char::ParseCharError {
 }
 
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-impl Error for alloc::collections::TryReserveError {
-    fn description(&self) -> &str {
-        "memory allocation failed"
-    }
-}
+impl Error for alloc::collections::TryReserveError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
