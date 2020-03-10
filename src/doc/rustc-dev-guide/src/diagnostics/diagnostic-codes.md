@@ -12,7 +12,7 @@ code. This is a bit tricky since the codes are defined in various crates. To do
 it, run this obscure command:
 
 ```
-./x.py test --stage 0 src/tools/tidy
+./x.py test --stage 0 tidy
 ```
 
 This will invoke the tidy script, which generally checks that your code obeys

@@ -63,7 +63,7 @@ Likewise, you can test a single file by passing its path:
 ### Run only the tidy script
 
 ```bash
-./x.py test src/tools/tidy
+./x.py test tidy
 ```
 
 ### Run tests on the standard library
@@ -72,10 +72,10 @@ Likewise, you can test a single file by passing its path:
 ./x.py test src/libstd
 ```
 
-### Run tests on the standard library and run the tidy script
+### Run the tidy script and tests on the standard library
 
 ```bash
-./x.py test src/libstd src/tools/tidy
+./x.py test tidy src/libstd
 ```
 
 ### Run tests on the standard library using a stage 1 compiler

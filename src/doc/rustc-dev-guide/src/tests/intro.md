@@ -61,7 +61,7 @@ including:
   There is more information in the
   [section on coding conventions](../conventions.html#formatting).
 
-  Example: `./x.py test src/tools/tidy`
+  Example: `./x.py test tidy`
 
 - **Formatting** – Rustfmt is integrated with the build system to enforce
   uniform style across the compiler. In the CI, we check that the formatting
@@ -73,7 +73,7 @@ including:
 
   Example: `./x.py fmt` runs rustfmt on the codebase.
 
-  Example: `./x.py test src/tools/tidy --bless` does formatting before doing
+  Example: `./x.py test tidy --bless` does formatting before doing
   other tidy checks.
 
 - **Unit tests** – The Rust standard library and many of the Rust packages
