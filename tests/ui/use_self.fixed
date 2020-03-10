@@ -1,5 +1,5 @@
 // run-rustfix
-// compile-flags: --edition 2018
+// edition:2018
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]

@@ -1,4 +1,4 @@
-// compile-flags: --edition 2018
+// edition:2018
 #![warn(clippy::missing_errors_doc)]
 
 use std::io;
