@@ -34,7 +34,7 @@
 use hir::{self, Docs, HasSource};
 use ra_assists::utils::get_missing_impl_items;
 use ra_syntax::{
-    ast::{self, edit},
+    ast::{self, edit, ImplDef},
     AstNode, SyntaxKind, SyntaxNode, TextRange,
 };
 use ra_text_edit::TextEdit;
@@ -47,22 +47,22 @@ use crate::{
 };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    let trigger = ctx.token.ancestors().find(|p| match p.kind() {
-        SyntaxKind::FN_DEF
-        | SyntaxKind::TYPE_ALIAS_DEF
-        | SyntaxKind::CONST_DEF
-        | SyntaxKind::BLOCK_EXPR => true,
-        _ => false,
-    });
-
-    let impl_def = trigger
-        .as_ref()
-        .and_then(|node| node.parent())
-        .and_then(|node| node.parent())
-        .and_then(ast::ImplDef::cast);
-
-    if let (Some(trigger), Some(impl_def)) = (trigger, impl_def) {
+    if let Some((trigger, impl_def)) = completion_match(ctx) {
         match trigger.kind() {
+            SyntaxKind::NAME_REF => {
+                get_missing_impl_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
+                    hir::AssocItem::Function(fn_item) => {
+                        add_function_impl(&trigger, acc, ctx, &fn_item)
+                    }
+                    hir::AssocItem::TypeAlias(type_item) => {
+                        add_type_alias_impl(&trigger, acc, ctx, &type_item)
+                    }
+                    hir::AssocItem::Const(const_item) => {
+                        add_const_impl(&trigger, acc, ctx, &const_item)
+                    }
+                })
+            }
+
             SyntaxKind::FN_DEF => {
                 for missing_fn in get_missing_impl_items(&ctx.sema, &impl_def).iter().filter_map(
                     |item| match item {
@@ -99,6 +99,21 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             _ => {}
         }
     }
+}
+
+fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
+    let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
+        SyntaxKind::FN_DEF
+        | SyntaxKind::TYPE_ALIAS_DEF
+        | SyntaxKind::CONST_DEF
+        | SyntaxKind::BLOCK_EXPR => Some((p, 2)),
+        SyntaxKind::NAME_REF => Some((p, 5)),
+        _ => None,
+    })?;
+    let impl_def = (0..impl_def_offset - 1)
+        .try_fold(trigger.parent()?, |t, _| t.parent())
+        .and_then(ast::ImplDef::cast)?;
+    Some((trigger, impl_def))
 }
 
 fn add_function_impl(
@@ -207,6 +222,103 @@ mod tests {
 
     fn complete(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Magic)
+    }
+
+    #[test]
+    fn name_ref_function_type_const() {
+        let completions = complete(
+            r"
+            trait Test {
+                type TestType;
+                const TEST_CONST: u16;
+                fn test();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                t<|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "const TEST_CONST: u16 = ",
+                source_range: [209; 210),
+                delete: [209; 210),
+                insert: "const TEST_CONST: u16 = ",
+                kind: Const,
+                lookup: "TEST_CONST",
+            },
+            CompletionItem {
+                label: "fn test()",
+                source_range: [209; 210),
+                delete: [209; 210),
+                insert: "fn test() {}",
+                kind: Function,
+                lookup: "test",
+            },
+            CompletionItem {
+                label: "type TestType = ",
+                source_range: [209; 210),
+                delete: [209; 210),
+                insert: "type TestType = ",
+                kind: TypeAlias,
+                lookup: "TestType",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn no_nested_fn_completions() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn test();
+                fn test2();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                fn test() {
+                    t<|>
+                }
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"[]"###);
+    }
+
+    #[test]
+    fn name_ref_single_function() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn test();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                t<|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "fn test()",
+                source_range: [139; 140),
+                delete: [139; 140),
+                insert: "fn test() {}",
+                kind: Function,
+                lookup: "test",
+            },
+        ]
+        "###);
     }
 
     #[test]
