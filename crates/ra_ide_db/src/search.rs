@@ -17,7 +17,7 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    defs::{classify_name_ref, Definition},
+    defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
 
@@ -30,6 +30,7 @@ pub struct Reference {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReferenceKind {
+    StructFieldShorthand,
     StructLiteral,
     Other,
 }
@@ -237,9 +238,8 @@ impl Definition {
                 // FIXME: reuse sb
                 // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
-                if let Some(d) = classify_name_ref(&sema, &name_ref) {
-                    let d = d.definition();
-                    if &d == self {
+                match (classify_name_ref(&sema, &name_ref), self) {
+                    (Some(NameRefClass::Definition(def)), _) if &def == self => {
                         let kind = if is_record_lit_name_ref(&name_ref)
                             || is_call_expr_name_ref(&name_ref)
                         {
@@ -252,9 +252,21 @@ impl Definition {
                         refs.push(Reference {
                             file_range,
                             kind,
-                            access: reference_access(&d, &name_ref),
+                            access: reference_access(&def, &name_ref),
                         });
                     }
+                    (
+                        Some(NameRefClass::FieldShorthand { local, field: _ }),
+                        Definition::StructField(_),
+                    ) => {
+                        let file_range = sema.original_range(name_ref.syntax());
+                        refs.push(Reference {
+                            file_range: file_range,
+                            kind: ReferenceKind::StructFieldShorthand,
+                            access: reference_access(&Definition::Local(local), &name_ref),
+                        });
+                    }
+                    _ => {} // not a usage
                 }
             }
         }
