@@ -54,6 +54,14 @@ pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
 
 /// Identity methods.
 impl TextRange {
+    /// Creates a zero-length range at the specified offset.
+    pub const fn empty(self, offset: TextSize) -> TextRange {
+        TextRange {
+            start: offset,
+            end: offset,
+        }
+    }
+
     /// The start point of this range.
     pub const fn start(self) -> TextSize {
         self.start
