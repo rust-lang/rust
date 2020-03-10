@@ -60,12 +60,12 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
 
         match def_key.disambiguated_data.data {
             DefPathData::CrateRoot => {
-                name = self.tcx.original_crate_name(def_id.krate).as_str();
+                name = self.tcx.original_crate_name(def_id.krate).as_str().to_string();
                 dis = "";
                 end_index = 3;
             }
             other => {
-                name = other.as_symbol().as_str();
+                name = other.to_string();
                 if def_key.disambiguated_data.disambiguator == 0 {
                     dis = "";
                     end_index = 3;

@@ -45,7 +45,6 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -835,7 +834,7 @@ pub struct Resolver<'a> {
 
     /// Names of fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
+    field_names: FxHashMap<DefId, Vec<Ident>>,
 
     /// All imports known to succeed or fail.
     determined_imports: Vec<&'a Import<'a>>,

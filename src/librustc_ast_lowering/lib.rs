@@ -764,17 +764,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Get the name we'll use to make the def-path. Note
         // that collisions are ok here and this shouldn't
         // really show up for end-user.
-        let (str_name, kind) = match hir_name {
-            ParamName::Plain(ident) => (ident.name, hir::LifetimeParamKind::InBand),
-            ParamName::Fresh(_) => (kw::UnderscoreLifetime, hir::LifetimeParamKind::Elided),
-            ParamName::Error => (kw::UnderscoreLifetime, hir::LifetimeParamKind::Error),
+        let (name, kind) = match hir_name {
+            ParamName::Plain(ident) => (ident, hir::LifetimeParamKind::InBand),
+            ParamName::Fresh(_) => {
+                (Ident::with_dummy_span(kw::UnderscoreLifetime), hir::LifetimeParamKind::Elided)
+            }
+            ParamName::Error => {
+                (Ident::with_dummy_span(kw::UnderscoreLifetime), hir::LifetimeParamKind::Error)
+            }
         };
 
         // Add a definition for the in-band lifetime def.
         self.resolver.definitions().create_def_with_parent(
             parent_index,
             node_id,
-            DefPathData::LifetimeNs(str_name),
+            DefPathData::LifetimeNs(name),
             ExpnId::root(),
             span,
         );
@@ -1560,7 +1564,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
-                        DefPathData::LifetimeNs(name.ident().name),
+                        DefPathData::LifetimeNs(name.ident()),
                         ExpnId::root(),
                         lifetime.span,
                     );

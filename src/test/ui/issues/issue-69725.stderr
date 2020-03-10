@@ -8,6 +8,14 @@ LL |     let _ = Struct::<A>::new().clone();
    |
 LL | pub struct Struct<A>(A);
    | ------------------------ doesn't satisfy `issue_69725::Struct<A>: std::clone::Clone`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `std::sync::Arc<issue_69725::Struct<A>>` here
+   |        the method is available for `std::rc::Rc<issue_69725::Struct<A>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `A: std::clone::Clone`

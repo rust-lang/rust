@@ -13,7 +13,7 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
@@ -402,12 +402,14 @@ pub trait PrettyPrinter<'tcx>:
                     .find(|child| child.res.def_id() == def_id)
                     .map(|child| child.ident.name);
                 if let Some(reexport) = reexport {
-                    *name = reexport;
+                    *name = Ident::with_dummy_span(reexport);
                 }
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::TypeNs(self.tcx().original_crate_name(def_id.krate));
+                data = DefPathData::TypeNs(Ident::with_dummy_span(
+                    self.tcx().original_crate_name(def_id.krate),
+                ));
             }
             _ => {}
         }
@@ -1401,7 +1403,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.as_symbol().as_str();
+        let name = disambiguated_data.data.to_string();
         if !name.is_empty() {
             if !self.empty_path {
                 write!(self, "::")?;

@@ -19,9 +19,9 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
+use rustc_ast::ast::Ident;
 use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::ast::{Ident, Name};
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_attr as attr;
@@ -33,7 +33,6 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_span::hygiene::{ExpnId, MacroKind};
-use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -105,7 +104,7 @@ impl<'a> Resolver<'a> {
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.cstore().crate_name_untracked(def_id.krate), None)
+            (Ident::with_dummy_span(self.cstore().crate_name_untracked(def_id.krate)), None)
         } else {
             let def_key = self.cstore().def_key(def_id);
             (
@@ -114,7 +113,7 @@ impl<'a> Resolver<'a> {
             )
         };
 
-        let kind = ModuleKind::Def(DefKind::Mod, def_id, name);
+        let kind = ModuleKind::Def(DefKind::Mod, def_id, name.name);
         let module = self.arenas.alloc_module(ModuleData::new(
             parent,
             kind,
@@ -288,12 +287,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let field_names = vdata
             .fields()
             .iter()
-            .map(|field| respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name)))
+            .map(|field| field.ident.unwrap_or_else(|| Ident::new(kw::Invalid, field.span)))
             .collect();
         self.insert_field_names(def_id, field_names);
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
+    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Ident>) {
         if !field_names.is_empty() {
             self.r.field_names.insert(def_id, field_names);
         }
@@ -1166,7 +1165,7 @@ macro_rules! method {
                 visit::$walk(self, node);
             }
         }
-    }
+    };
 }
 
 impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {

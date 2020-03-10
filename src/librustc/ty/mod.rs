@@ -2996,9 +2996,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 hir_map::DefPathData::Ctor => {
                     self.item_name(DefId { krate: id.krate, index: def_key.parent.unwrap() })
                 }
-                _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
-                    bug!("item_name: no name for {:?}", self.def_path(id));
-                }),
+                _ => {
+                    def_key
+                        .disambiguated_data
+                        .data
+                        .get_opt_name()
+                        .unwrap_or_else(|| {
+                            bug!("item_name: no name for {:?}", self.def_path(id));
+                        })
+                        .name
+                }
             }
         }
     }

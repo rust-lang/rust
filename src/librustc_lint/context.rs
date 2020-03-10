@@ -793,7 +793,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                     _ => {}
                 }
 
-                path.push(disambiguated_data.data.as_symbol());
+                path.push(disambiguated_data.data.as_ident().name);
                 Ok(path)
             }
 

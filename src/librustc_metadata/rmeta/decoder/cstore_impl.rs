@@ -20,8 +20,8 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_span::source_map::{self, Span, Spanned};
-use rustc_span::symbol::Symbol;
+use rustc_span::source_map::{self, Span};
+use rustc_span::symbol::{Ident, Symbol};
 
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
@@ -386,7 +386,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
+    pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Ident> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
 
@@ -425,7 +425,6 @@ impl CStore {
             .disambiguated_data
             .data
             .get_opt_name()
-            .map(ast::Ident::with_dummy_span) // FIXME: cross-crate hygiene
             .expect("no name in load_macro");
 
         LoadedMacro::MacroDef(

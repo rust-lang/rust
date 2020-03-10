@@ -40,9 +40,11 @@ use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
-use rustc_span::source_map::{self, respan, Spanned};
+use rustc_span::source_map;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
+
+use crate::creader::{ImportedSourceFile, SourceMapImportInfo};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -80,7 +82,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    source_map_import_info: SourceMapImportInfo,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -113,17 +115,6 @@ crate struct CrateMetadata {
     extern_crate: Lock<Option<ExternCrate>>,
 }
 
-/// Holds information about a rustc_span::SourceFile imported from another crate.
-/// See `imported_source_files()` for more information.
-struct ImportedSourceFile {
-    /// This SourceFile's byte-offset within the source_map of its original crate
-    original_start_pos: rustc_span::BytePos,
-    /// The end of this SourceFile within the source_map of its original crate
-    original_end_pos: rustc_span::BytePos,
-    /// The imported SourceFile's representation within the local source_map
-    translated_source_file: Lrc<rustc_span::SourceFile>,
-}
-
 pub(super) struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<CrateMetadataRef<'a>>,
@@ -137,11 +128,28 @@ pub(super) struct DecodeContext<'a, 'tcx> {
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_session: Option<AllocDecodingSession<'a>>,
+
+    meta_blob: Option<&'a MetadataBlob>,
+    crate_root: Option<&'a CrateRoot<'a>>,
+    local_source_map_import_info: Option<&'a SourceMapImportInfo>,
+    crate_num: Option<CrateNum>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
 pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
+    fn metadata_blob(self) -> Option<&'a MetadataBlob> {
+        None
+    }
+    fn crate_root(self) -> Option<&'a CrateRoot<'a>> {
+        None
+    }
+    fn local_source_map_import_info(self) -> Option<&'a SourceMapImportInfo> {
+        None
+    }
+    fn crate_num(self) -> Option<CrateNum> {
+        None
+    }
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         None
     }
@@ -164,7 +172,42 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
             alloc_decoding_session: self
                 .cdata()
                 .map(|cdata| cdata.cdata.alloc_decoding_state.new_decoding_session()),
+
+            meta_blob: self.metadata_blob(),
+            crate_root: self.crate_root(),
+            local_source_map_import_info: self.local_source_map_import_info(),
+            crate_num: self.crate_num(),
         }
+    }
+}
+
+struct InitialMetadataContext<'a, 'tcx> {
+    blob: &'a MetadataBlob,
+    crate_root: &'a CrateRoot<'a>,
+    local_source_map_import_info: &'a SourceMapImportInfo,
+    crate_num: CrateNum,
+    sess: &'tcx Session,
+}
+
+impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a InitialMetadataContext<'a, 'tcx> {
+    fn raw_bytes(self) -> &'a [u8] {
+        &self.blob.0
+    }
+
+    fn metadata_blob(self) -> Option<&'a MetadataBlob> {
+        Some(self.blob)
+    }
+    fn crate_root(self) -> Option<&'a CrateRoot<'a>> {
+        Some(self.crate_root)
+    }
+    fn local_source_map_import_info(self) -> Option<&'a SourceMapImportInfo> {
+        Some(self.local_source_map_import_info)
+    }
+    fn crate_num(self) -> Option<CrateNum> {
+        Some(self.crate_num)
+    }
+    fn sess(self) -> Option<&'tcx Session> {
+        Some(self.sess)
     }
 }
 
@@ -193,6 +236,19 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadataRef<'a> {
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         Some(*self)
     }
+
+    fn metadata_blob(self) -> Option<&'a MetadataBlob> {
+        Some(&self.blob)
+    }
+    fn crate_root(self) -> Option<&'a CrateRoot<'a>> {
+        Some(&self.cdata.root)
+    }
+    fn local_source_map_import_info(self) -> Option<&'a SourceMapImportInfo> {
+        Some(&self.cdata.source_map_import_info)
+    }
+    fn crate_num(self) -> Option<CrateNum> {
+        Some(self.cdata.cnum)
+    }
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, &'tcx Session) {
@@ -201,6 +257,19 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, &'tcx Session) 
     }
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         Some(*self.0)
+    }
+
+    fn metadata_blob(self) -> Option<&'a MetadataBlob> {
+        self.0.metadata_blob()
+    }
+    fn crate_root(self) -> Option<&'a CrateRoot<'a>> {
+        self.0.crate_root()
+    }
+    fn local_source_map_import_info(self) -> Option<&'a SourceMapImportInfo> {
+        self.0.local_source_map_import_info()
+    }
+    fn crate_num(self) -> Option<CrateNum> {
+        self.0.crate_num()
     }
     fn sess(self) -> Option<&'tcx Session> {
         Some(&self.1)
@@ -216,6 +285,18 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
     fn tcx(self) -> Option<TyCtxt<'tcx>> {
         Some(self.1)
+    }
+    fn metadata_blob(self) -> Option<&'a MetadataBlob> {
+        self.0.metadata_blob()
+    }
+    fn crate_root(self) -> Option<&'a CrateRoot<'a>> {
+        self.0.crate_root()
+    }
+    fn local_source_map_import_info(self) -> Option<&'a SourceMapImportInfo> {
+        self.0.local_source_map_import_info()
+    }
+    fn crate_num(self) -> Option<CrateNum> {
+        self.0.crate_num()
     }
 }
 
@@ -264,6 +345,112 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         };
         self.lazy_state = LazyState::Previous(NonZeroUsize::new(position + min_size).unwrap());
         Ok(Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta))
+    }
+
+    /// Imports the source_map from an external crate into the source_map of the crate
+    /// currently being compiled (the "local crate").
+    ///
+    /// The import algorithm works analogous to how AST items are inlined from an
+    /// external crate's metadata:
+    /// For every SourceFile in the external source_map an 'inline' copy is created in the
+    /// local source_map. The correspondence relation between external and local
+    /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
+    /// function. When an item from an external crate is later inlined into this
+    /// crate, this correspondence information is used to translate the span
+    /// information of the inlined item so that it refers the correct positions in
+    /// the local source_map (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
+    ///
+    /// The import algorithm in the function below will reuse SourceFiles already
+    /// existing in the local source_map. For example, even if the SourceFile of some
+    /// source file of libstd gets imported many times, there will only ever be
+    /// one SourceFile object for the corresponding file in the local source_map.
+    ///
+    /// Note that imported SourceFiles do not actually contain the source code of the
+    /// file they represent, just information about length, line breaks, and
+    /// multibyte characters. This information is enough to generate valid debuginfo
+    /// for items inlined from other crates.
+    ///
+    /// Proc macro crates don't currently export spans, so this function does not have
+    /// to work for them.
+    fn imported_source_files(
+        &self,
+        local_source_map: &source_map::SourceMap,
+    ) -> &'a [ImportedSourceFile] {
+        self.local_source_map_import_info.unwrap().init_locking(|| {
+            // If we ever need more than just the metadata blob to decode `source_map`,
+            // we'll have to pass more data into this method
+            let external_source_map =
+                self.crate_root.unwrap().source_map.decode(self.meta_blob.unwrap());
+
+            external_source_map
+                .map(|source_file_to_import| {
+                    // We can't reuse an existing SourceFile, so allocate a new one
+                    // containing the information we need.
+                    let rustc_span::SourceFile {
+                        name,
+                        name_was_remapped,
+                        src_hash,
+                        start_pos,
+                        end_pos,
+                        mut lines,
+                        mut multibyte_chars,
+                        mut non_narrow_chars,
+                        mut normalized_pos,
+                        name_hash,
+                        ..
+                    } = source_file_to_import;
+
+                    let source_length = (end_pos - start_pos).to_usize();
+
+                    // Translate line-start positions and multibyte character
+                    // position into frame of reference local to file.
+                    // `SourceMap::new_imported_source_file()` will then translate those
+                    // coordinates to their new global frame of reference when the
+                    // offset of the SourceFile is known.
+                    for pos in &mut lines {
+                        *pos = *pos - start_pos;
+                    }
+                    for mbc in &mut multibyte_chars {
+                        mbc.pos = mbc.pos - start_pos;
+                    }
+                    for swc in &mut non_narrow_chars {
+                        *swc = *swc - start_pos;
+                    }
+                    for np in &mut normalized_pos {
+                        np.pos = np.pos - start_pos;
+                    }
+
+                    let local_version = local_source_map.new_imported_source_file(
+                        name,
+                        name_was_remapped,
+                        self.crate_num.unwrap().as_u32(),
+                        src_hash,
+                        name_hash,
+                        source_length,
+                        lines,
+                        multibyte_chars,
+                        non_narrow_chars,
+                        normalized_pos,
+                    );
+                    debug!(
+                        "CrateMetaData::imported_source_files alloc \
+                         source_file {:?} original (start_pos {:?} end_pos {:?}) \
+                         translated (start_pos {:?} end_pos {:?})",
+                        local_version.name,
+                        start_pos,
+                        end_pos,
+                        local_version.start_pos,
+                        local_version.end_pos
+                    );
+
+                    ImportedSourceFile {
+                        original_start_pos: start_pos,
+                        original_end_pos: end_pos,
+                        translated_source_file: local_version,
+                    }
+                })
+                .collect()
+        })
     }
 }
 
@@ -399,7 +586,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             bug!("Cannot decode Span without Session.")
         };
 
-        let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
+        let imported_source_files = self.imported_source_files(&sess.source_map());
         let source_file = {
             // Optimize for the case that most spans within a translated item
             // originate from the same source_file.
@@ -430,14 +617,6 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
 
         Ok(Span::with_root_ctxt(lo, hi))
-    }
-}
-
-impl SpecializedDecoder<Ident> for DecodeContext<'_, '_> {
-    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
-        // FIXME(jseyfried): intercrate hygiene
-
-        Ok(Ident::with_dummy_span(Symbol::decode(self)?))
     }
 }
 
@@ -587,7 +766,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
-    fn item_name(&self, item_index: DefIndex) -> Symbol {
+    fn item_name(&self, item_index: DefIndex) -> Ident {
         if !self.is_proc_macro(item_index) {
             self.def_key(item_index)
                 .disambiguated_data
@@ -595,7 +774,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get_opt_name()
                 .expect("no name in item_name")
         } else {
-            Symbol::intern(self.raw_proc_macro(item_index).name())
+            Ident::with_dummy_span(Symbol::intern(self.raw_proc_macro(item_index).name()))
         }
     }
 
@@ -695,7 +874,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         ty::VariantDef::new(
             tcx,
-            Ident::with_dummy_span(self.item_name(index)),
+            self.item_name(index),
             variant_did,
             ctor_did,
             data.discr,
@@ -707,7 +886,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
-                    ident: Ident::with_dummy_span(self.item_name(index)),
+                    ident: self.item_name(index),
                     vis: self.get_visibility(index),
                 })
                 .collect(),
@@ -931,7 +1110,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             if let Some(kind) = self.def_kind(child_index) {
                                 callback(Export {
                                     res: Res::Def(kind, self.local_def_id(child_index)),
-                                    ident: Ident::with_dummy_span(self.item_name(child_index)),
+                                    ident: self.item_name(child_index),
                                     vis: self.get_visibility(child_index),
                                     span: self
                                         .root
@@ -952,10 +1131,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 let def_key = self.def_key(child_index);
                 let span = self.get_span(child_index, sess);
-                if let (Some(kind), Some(name)) =
+                if let (Some(kind), Some(ident)) =
                     (self.def_kind(child_index), def_key.disambiguated_data.data.get_opt_name())
                 {
-                    let ident = Ident::with_dummy_span(name);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
@@ -1079,7 +1257,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         ty::AssocItem {
-            ident: Ident::with_dummy_span(name),
+            ident: name,
             kind,
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
@@ -1136,14 +1314,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<ast::Name>> {
+    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Ident> {
         self.root
             .per_def
             .children
             .get(self, id)
             .unwrap_or(Lazy::empty())
-            .decode(self)
-            .map(|index| respan(self.get_span(index, sess), self.item_name(index)))
+            .decode((self, sess))
+            .map(|index| self.item_name(index))
             .collect()
     }
 
@@ -1342,7 +1520,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let mut key = self.def_path_table.def_key(index);
         if self.is_proc_macro(index) {
             let name = self.raw_proc_macro(index).name();
-            key.disambiguated_data.data = DefPathData::MacroNs(Symbol::intern(name));
+            key.disambiguated_data.data =
+                DefPathData::MacroNs(Ident::with_dummy_span(Symbol::intern(name)));
         }
         key
     }
@@ -1351,109 +1530,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(cnum={:?}, id={:?})", self.cnum, id);
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
-    }
-
-    /// Imports the source_map from an external crate into the source_map of the crate
-    /// currently being compiled (the "local crate").
-    ///
-    /// The import algorithm works analogous to how AST items are inlined from an
-    /// external crate's metadata:
-    /// For every SourceFile in the external source_map an 'inline' copy is created in the
-    /// local source_map. The correspondence relation between external and local
-    /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
-    /// function. When an item from an external crate is later inlined into this
-    /// crate, this correspondence information is used to translate the span
-    /// information of the inlined item so that it refers the correct positions in
-    /// the local source_map (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
-    ///
-    /// The import algorithm in the function below will reuse SourceFiles already
-    /// existing in the local source_map. For example, even if the SourceFile of some
-    /// source file of libstd gets imported many times, there will only ever be
-    /// one SourceFile object for the corresponding file in the local source_map.
-    ///
-    /// Note that imported SourceFiles do not actually contain the source code of the
-    /// file they represent, just information about length, line breaks, and
-    /// multibyte characters. This information is enough to generate valid debuginfo
-    /// for items inlined from other crates.
-    ///
-    /// Proc macro crates don't currently export spans, so this function does not have
-    /// to work for them.
-    fn imported_source_files(
-        &self,
-        local_source_map: &source_map::SourceMap,
-    ) -> &'a [ImportedSourceFile] {
-        self.cdata.source_map_import_info.init_locking(|| {
-            let external_source_map = self.root.source_map.decode(self);
-
-            external_source_map
-                .map(|source_file_to_import| {
-                    // We can't reuse an existing SourceFile, so allocate a new one
-                    // containing the information we need.
-                    let rustc_span::SourceFile {
-                        name,
-                        name_was_remapped,
-                        src_hash,
-                        start_pos,
-                        end_pos,
-                        mut lines,
-                        mut multibyte_chars,
-                        mut non_narrow_chars,
-                        mut normalized_pos,
-                        name_hash,
-                        ..
-                    } = source_file_to_import;
-
-                    let source_length = (end_pos - start_pos).to_usize();
-
-                    // Translate line-start positions and multibyte character
-                    // position into frame of reference local to file.
-                    // `SourceMap::new_imported_source_file()` will then translate those
-                    // coordinates to their new global frame of reference when the
-                    // offset of the SourceFile is known.
-                    for pos in &mut lines {
-                        *pos = *pos - start_pos;
-                    }
-                    for mbc in &mut multibyte_chars {
-                        mbc.pos = mbc.pos - start_pos;
-                    }
-                    for swc in &mut non_narrow_chars {
-                        *swc = *swc - start_pos;
-                    }
-                    for np in &mut normalized_pos {
-                        np.pos = np.pos - start_pos;
-                    }
-
-                    let local_version = local_source_map.new_imported_source_file(
-                        name,
-                        name_was_remapped,
-                        self.cnum.as_u32(),
-                        src_hash,
-                        name_hash,
-                        source_length,
-                        lines,
-                        multibyte_chars,
-                        non_narrow_chars,
-                        normalized_pos,
-                    );
-                    debug!(
-                        "CrateMetaData::imported_source_files alloc \
-                         source_file {:?} original (start_pos {:?} end_pos {:?}) \
-                         translated (start_pos {:?} end_pos {:?})",
-                        local_version.name,
-                        start_pos,
-                        end_pos,
-                        local_version.start_pos,
-                        local_version.end_pos
-                    );
-
-                    ImportedSourceFile {
-                        original_start_pos: start_pos,
-                        original_end_pos: end_pos,
-                        translated_source_file: local_version,
-                    }
-                })
-                .collect()
-        })
     }
 }
 
@@ -1470,8 +1546,15 @@ impl CrateMetadata {
         private_dep: bool,
         host_hash: Option<Svh>,
     ) -> CrateMetadata {
+        let source_map_import_info = Once::new();
         let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
-            root.def_path_table.decode((&blob, sess))
+            root.def_path_table.decode(&InitialMetadataContext {
+                blob: &blob,
+                crate_root: &root,
+                local_source_map_import_info: &source_map_import_info,
+                crate_num: cnum,
+                sess,
+            })
         });
         let trait_impls = root
             .impls
@@ -1487,7 +1570,7 @@ impl CrateMetadata {
             def_path_table,
             trait_impls,
             raw_proc_macros,
-            source_map_import_info: Once::new(),
+            source_map_import_info,
             alloc_decoding_state,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
             cnum,

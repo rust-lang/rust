@@ -50,7 +50,8 @@ impl<'a> DefCollector<'a> {
             self.definitions.set_placeholder_field_index(field.id, index(self));
             self.visit_macro_invoc(field.id);
         } else {
-            let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
+            let name =
+                field.ident.unwrap_or_else(|| Ident::new(sym::integer(index(self)), field.span));
             let def = self.create_def(field.id, DefPathData::ValueNs(name), field.span);
             self.with_parent(def, |this| visit::walk_struct_field(this, field));
         }
@@ -80,11 +81,12 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             | ItemKind::Union(..)
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod(..)
-            | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident),
+
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) => {
-                DefPathData::ValueNs(i.ident.name)
+                DefPathData::ValueNs(i.ident)
             }
-            ItemKind::MacroDef(..) => DefPathData::MacroNs(i.ident.name),
+            ItemKind::MacroDef(..) => DefPathData::MacroNs(i.ident),
             ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(..) => {
@@ -140,7 +142,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         let def = self.create_def(
             foreign_item.id,
-            DefPathData::ValueNs(foreign_item.ident.name),
+            DefPathData::ValueNs(foreign_item.ident),
             foreign_item.span,
         );
 
@@ -153,7 +155,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         if v.is_placeholder {
             return self.visit_macro_invoc(v.id);
         }
-        let def = self.create_def(v.id, DefPathData::TypeNs(v.ident.name), v.span);
+        let def = self.create_def(v.id, DefPathData::TypeNs(v.ident), v.span);
         self.with_parent(def, |this| {
             if let Some(ctor_hir_id) = v.data.ctor_id() {
                 this.create_def(ctor_hir_id, DefPathData::Ctor, v.span);
@@ -176,7 +178,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             self.visit_macro_invoc(param.id);
             return;
         }
-        let name = param.ident.name;
+        let name = param.ident;
         let def_path_data = match param.kind {
             GenericParamKind::Lifetime { .. } => DefPathData::LifetimeNs(name),
             GenericParamKind::Type { .. } => DefPathData::TypeNs(name),
@@ -189,7 +191,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident),
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };

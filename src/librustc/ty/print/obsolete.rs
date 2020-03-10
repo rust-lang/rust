@@ -186,9 +186,9 @@ impl DefPathBasedNames<'tcx> {
         // foo::bar::ItemName::
         for part in self.tcx.def_path(def_id).data {
             if self.omit_disambiguators {
-                write!(output, "{}::", part.data.as_symbol()).unwrap();
+                write!(output, "{}::", part.data.as_ident()).unwrap();
             } else {
-                write!(output, "{}[{}]::", part.data.as_symbol(), part.disambiguator).unwrap();
+                write!(output, "{}[{}]::", part.data.as_ident(), part.disambiguator).unwrap();
             }
         }
 

@@ -14,7 +14,7 @@ use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Once};
 use rustc_errors::struct_span_err;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -28,6 +28,19 @@ use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 use std::path::Path;
 use std::{cmp, fs};
+
+crate type SourceMapImportInfo = Once<Vec<ImportedSourceFile>>;
+
+/// Holds information about a rustc_span::SourceFile imported from another crate.
+/// See `imported_source_files()` for more information.
+crate struct ImportedSourceFile {
+    /// This SourceFile's byte-offset within the source_map of its original crate
+    pub original_start_pos: rustc_span::BytePos,
+    /// The end of this SourceFile within the source_map of its original crate
+    pub original_end_pos: rustc_span::BytePos,
+    /// The imported SourceFile's representation within the local source_map
+    pub translated_source_file: Lrc<rustc_span::SourceFile>,
+}
 
 #[derive(Clone)]
 pub struct CStore {

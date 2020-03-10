@@ -28,7 +28,7 @@ use log::{debug, trace};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{self, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -183,13 +183,6 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         len.encode(self)
 
         // Don't encode the expansion context.
-    }
-}
-
-impl SpecializedEncoder<Ident> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self, ident: &Ident) -> Result<(), Self::Error> {
-        // FIXME(jseyfried): intercrate hygiene
-        ident.name.encode(self)
     }
 }
 

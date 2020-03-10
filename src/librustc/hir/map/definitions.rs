@@ -13,7 +13,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_index::vec::IndexVec;
 use rustc_session::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 use std::fmt::Write;
@@ -90,6 +90,11 @@ pub struct Definitions {
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
     /// Item with a given `DefIndex` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<DefIndex, ExpnId>,
+    // Keeps track of the current disambiguator for a given (DefIndex, DefPathData)
+    // Note that we replace any `Spans` (e.g. in `Ident`) with `DUMMY_SP` before
+    // inserting a `DefPathData`. This ensures that we create a new disambiguator
+    // for definitions that have the same name, but different spans (e.g. definitions
+    // created by a macro invocation).
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
@@ -206,7 +211,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            write!(s, "::{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
         }
 
         s
@@ -225,9 +230,9 @@ impl DefPath {
 
         for component in &self.data {
             if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_symbol()).unwrap();
+                write!(s, "::{}", component.data.as_ident()).unwrap();
             } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+                write!(s, "{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
             }
         }
 
@@ -245,9 +250,9 @@ impl DefPath {
             opt_delimiter.map(|d| s.push(d));
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_symbol()).unwrap();
+                write!(s, "{}", component.data.as_ident()).unwrap();
             } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+                write!(s, "{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
             }
         }
         s
@@ -267,13 +272,13 @@ pub enum DefPathData {
     /// An impl.
     Impl,
     /// Something in the type namespace.
-    TypeNs(Symbol),
+    TypeNs(Ident),
     /// Something in the value namespace.
-    ValueNs(Symbol),
+    ValueNs(Ident),
     /// Something in the macro namespace.
-    MacroNs(Symbol),
+    MacroNs(Ident),
     /// Something in the lifetime namespace.
-    LifetimeNs(Symbol),
+    LifetimeNs(Ident),
     /// A closure expression.
     ClosureExpr,
 
@@ -432,7 +437,10 @@ impl Definitions {
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            // Replace any span with `DUMMY_SP` - two definitions which differ
+            // only in their spans still need to be disambiguated.
+            let data_dummy_span = data.with_dummy_span();
+            let next_disamb = self.next_disambiguator.entry((parent, data_dummy_span)).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -522,7 +530,20 @@ impl Definitions {
 }
 
 impl DefPathData {
-    pub fn get_opt_name(&self) -> Option<Symbol> {
+    /// Replaces any `Spans` contains in this `DefPathData` with `DUMMY_SP`.
+    /// Useful when using a `DefPathData` as a cache key.
+    pub fn with_dummy_span(&self) -> DefPathData {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(name) => TypeNs(Ident::with_dummy_span(name.name)),
+            ValueNs(name) => ValueNs(Ident::with_dummy_span(name.name)),
+            MacroNs(name) => MacroNs(Ident::with_dummy_span(name.name)),
+            LifetimeNs(name) => LifetimeNs(Ident::with_dummy_span(name.name)),
+            _ => *self,
+        }
+    }
+
+    pub fn get_opt_name(&self) -> Option<Ident> {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
@@ -531,22 +552,22 @@ impl DefPathData {
         }
     }
 
-    pub fn as_symbol(&self) -> Symbol {
+    pub fn as_ident(&self) -> Ident {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => name,
             // Note that this does not show up in user print-outs.
-            CrateRoot => sym::double_braced_crate,
-            Impl => sym::double_braced_impl,
-            Misc => sym::double_braced_misc,
-            ClosureExpr => sym::double_braced_closure,
-            Ctor => sym::double_braced_constructor,
-            AnonConst => sym::double_braced_constant,
-            ImplTrait => sym::double_braced_opaque,
+            CrateRoot => Ident::with_dummy_span(sym::double_braced_crate),
+            Impl => Ident::with_dummy_span(sym::double_braced_impl),
+            Misc => Ident::with_dummy_span(sym::double_braced_misc),
+            ClosureExpr => Ident::with_dummy_span(sym::double_braced_closure),
+            Ctor => Ident::with_dummy_span(sym::double_braced_constructor),
+            AnonConst => Ident::with_dummy_span(sym::double_braced_constant),
+            ImplTrait => Ident::with_dummy_span(sym::double_braced_opaque),
         }
     }
 
     pub fn to_string(&self) -> String {
-        self.as_symbol().to_string()
+        self.as_ident().to_string()
     }
 }

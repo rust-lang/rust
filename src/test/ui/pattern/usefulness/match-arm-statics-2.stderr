@@ -11,6 +11,14 @@ error[E0004]: non-exhaustive patterns: `Some(Some(West))` not covered
    |
 LL |     match Some(Some(North)) {
    |           ^^^^^^^^^^^^^^^^^ pattern `Some(Some(West))` not covered
+   | 
+  ::: $SRC_DIR/libcore/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ----
+   |     |
+   |     not covered
+   |     not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

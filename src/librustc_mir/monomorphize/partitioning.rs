@@ -750,7 +750,7 @@ fn compute_codegen_unit_name(
     *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
-        let components = def_path.data.iter().map(|part| part.data.as_symbol());
+        let components = def_path.data.iter().map(|part| part.data.as_ident());
 
         let volatile_suffix = volatile.then_some("volatile");
 
