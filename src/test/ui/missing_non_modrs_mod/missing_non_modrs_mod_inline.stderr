@@ -1,8 +1,8 @@
 error[E0583]: file not found for module `missing`
-  --> $DIR/foo_inline.rs:4:9
+  --> $DIR/foo_inline.rs:4:5
    |
 LL |     mod missing;
-   |         ^^^^^^^
+   |     ^^^^^^^^^^^^
    |
    = help: name the file either missing.rs or missing/mod.rs inside the directory "$DIR/foo_inline/inline"
 

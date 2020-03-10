@@ -6,5 +6,5 @@ pub fn hi_str() -> String {
 }
 
 fn main() {
-    circular_modules_hello::say_hello();
+    circular_modules_hello::say_hello(); //~ ERROR cannot find function `say_hello` in module
 }
