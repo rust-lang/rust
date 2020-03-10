@@ -122,9 +122,16 @@ pub enum Edition {
     Edition2015,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ExternSourceId(pub u32);
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
+
+    // Note: Some env variables (e.g. OUT_DIR) are located outside of the
+    // crate. We store a map to allow remap it to ExternSourceId
+    extern_paths: FxHashMap<String, ExternSourceId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -268,6 +275,26 @@ impl Env {
 
     pub fn get(&self, env: &str) -> Option<String> {
         self.entries.get(env).cloned()
+    }
+
+    pub fn extern_path(&self, path: &str) -> Option<(ExternSourceId, RelativePathBuf)> {
+        self.extern_paths.iter().find_map(|(root_path, id)| {
+            if path.starts_with(root_path) {
+                let mut rel_path = &path[root_path.len()..];
+                if rel_path.starts_with("/") {
+                    rel_path = &rel_path[1..];
+                }
+                let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+                Some((id.clone(), rel_path))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn set_extern_path(&mut self, env: &str, root_path: &str, root: ExternSourceId) {
+        self.entries.insert(env.to_owned(), root_path.to_owned());
+        self.extern_paths.insert(root_path.to_owned(), root);
     }
 }
 
