@@ -142,38 +142,46 @@ conversions! {
     varries [usize]
 }
 
-// NB: We do not provide the transparent-ref impls like the stdlib does.
-impl Add for TextSize {
-    type Output = TextSize;
-    fn add(self, rhs: TextSize) -> TextSize {
-        TextSize(self.raw + rhs.raw)
-    }
+macro_rules! arith {
+    ($Op:ident $op:ident, $OpAssign:ident $op_assign:ident) => {
+        impl $Op<TextSize> for TextSize {
+            type Output = TextSize;
+            fn $op(self, rhs: TextSize) -> TextSize {
+                TextSize($Op::$op(self.raw, rhs.raw))
+            }
+        }
+        impl $Op<TextSize> for &'_ TextSize {
+            type Output = TextSize;
+            fn $op(self, rhs: TextSize) -> TextSize {
+                TextSize($Op::$op(self.raw, rhs.raw))
+            }
+        }
+        impl $Op<&'_ TextSize> for TextSize {
+            type Output = TextSize;
+            fn $op(self, rhs: &TextSize) -> TextSize {
+                TextSize($Op::$op(self.raw, rhs.raw))
+            }
+        }
+        impl $Op<&'_ TextSize> for &'_ TextSize {
+            type Output = TextSize;
+            fn $op(self, rhs: &TextSize) -> TextSize {
+                TextSize($Op::$op(self.raw, rhs.raw))
+            }
+        }
+
+        impl<A> $OpAssign<A> for TextSize
+        where
+            TextSize: $Op<A, Output = TextSize>,
+        {
+            fn $op_assign(&mut self, rhs: A) {
+                *self = $Op::$op(*self, rhs)
+            }
+        }
+    };
 }
 
-impl<A> AddAssign<A> for TextSize
-where
-    TextSize: Add<A, Output = TextSize>,
-{
-    fn add_assign(&mut self, rhs: A) {
-        *self = *self + rhs
-    }
-}
-
-impl Sub for TextSize {
-    type Output = TextSize;
-    fn sub(self, rhs: TextSize) -> TextSize {
-        TextSize(self.raw - rhs.raw)
-    }
-}
-
-impl<S> SubAssign<S> for TextSize
-where
-    TextSize: Sub<S, Output = TextSize>,
-{
-    fn sub_assign(&mut self, rhs: S) {
-        *self = *self - rhs
-    }
-}
+arith!(Add add, AddAssign add_assign);
+arith!(Sub sub, SubAssign sub_assign);
 
 impl<A> iter::Sum<A> for TextSize
 where
