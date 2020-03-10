@@ -1,5 +1,3 @@
-use std::ffi::CString;
-
 use crate::attributes;
 use libc::c_uint;
 use rustc::bug;
@@ -50,8 +48,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
             args.len() as c_uint,
             False,
         );
-        let name = CString::new(format!("__rust_{}", method.name)).unwrap();
-        let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr(), ty);
+        let name = format!("__rust_{}", method.name);
+        let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
 
         if tcx.sess.target.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
@@ -60,8 +58,9 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
             attributes::emit_uwtable(llfn, true);
         }
 
-        let callee = CString::new(kind.fn_name(method.name)).unwrap();
-        let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr(), ty);
+        let callee = kind.fn_name(method.name);
+        let callee =
+            llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
         llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
         let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());
@@ -73,14 +72,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
             .enumerate()
             .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret = llvm::LLVMRustBuildCall(
-            llbuilder,
-            callee,
-            args.as_ptr(),
-            args.len() as c_uint,
-            None,
-            "\0".as_ptr().cast(),
-        );
+        let ret =
+            llvm::LLVMRustBuildCall(llbuilder, callee, args.as_ptr(), args.len() as c_uint, None);
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {
             llvm::LLVMBuildRet(llbuilder, ret);
