@@ -14,7 +14,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
+use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSourceId, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -162,6 +162,7 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         default_cfg_options: &CfgOptions,
+        outdirs: &FxHashMap<String, (ExternSourceId, String)>,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
@@ -185,6 +186,8 @@ impl ProjectWorkspace {
                             }
                             opts
                         };
+
+                        // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         crates.insert(
                             crate_id,
                             crate_graph.add_crate_root(
@@ -231,12 +234,17 @@ impl ProjectWorkspace {
                             opts
                         };
 
+                        let mut env = Env::default();
+                        if let Some((id, path)) = outdirs.get(krate.name(&sysroot)) {
+                            env.set_extern_path("OUT_DIR", &path, *id);
+                        }
+
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
                             Some(krate.name(&sysroot).to_string()),
                             cfg_options,
-                            Env::default(),
+                            env,
                         );
                         sysroot_crates.insert(krate, crate_id);
                     }
@@ -275,12 +283,16 @@ impl ProjectWorkspace {
                                 opts.insert_features(pkg.features(&cargo).iter().map(Into::into));
                                 opts
                             };
+                            let mut env = Env::default();
+                            if let Some((id, path)) = outdirs.get(pkg.name(&cargo)) {
+                                env.set_extern_path("OUT_DIR", &path, *id);
+                            }
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
                                 Some(pkg.name(&cargo).to_string()),
                                 cfg_options,
-                                Env::default(),
+                                env,
                             );
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);

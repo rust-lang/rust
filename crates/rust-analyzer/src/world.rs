@@ -26,6 +26,8 @@ use crate::{
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
 };
+use ra_db::ExternSourceId;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -98,6 +100,19 @@ impl WorldState {
                 RootEntry::new(pkg_root.path().clone(), filter.into_vfs_filter())
             }));
         }
+
+        let extern_dirs: FxHashSet<_> =
+            additional_out_dirs.iter().map(|(_, path)| (PathBuf::from(path))).collect();
+        let mut extern_source_roots = FxHashMap::default();
+
+        roots.extend(additional_out_dirs.iter().map(|(_, path)| {
+            let mut filter = RustPackageFilterBuilder::default().set_member(false);
+            for glob in exclude_globs.iter() {
+                filter = filter.exclude(glob.clone());
+            }
+            RootEntry::new(PathBuf::from(&path), filter.into_vfs_filter())
+        }));
+
         let (task_sender, task_receiver) = unbounded();
         let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
         let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender, watch);
@@ -107,6 +122,11 @@ impl WorldState {
             let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
             change.add_root(SourceRootId(r.0), is_local);
             change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
+
+            // FIXME: add path2root in vfs to simpily this logic
+            if extern_dirs.contains(&vfs_root_path) {
+                extern_source_roots.insert(vfs_root_path, ExternSourceId(r.0));
+            }
         }
 
         // FIXME: Read default cfgs from config
@@ -124,11 +144,20 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
-        workspaces.iter().map(|ws| ws.to_crate_graph(&default_cfg_options, &mut load)).for_each(
-            |graph| {
+        let mut outdirs = FxHashMap::default();
+        for (name, path) in additional_out_dirs {
+            let path = PathBuf::from(&path);
+            if let Some(id) = extern_source_roots.get(&path) {
+                outdirs.insert(name, (id.clone(), path.to_string_lossy().replace("\\", "/")));
+            }
+        }
+
+        workspaces
+            .iter()
+            .map(|ws| ws.to_crate_graph(&default_cfg_options, &outdirs, &mut load))
+            .for_each(|graph| {
                 crate_graph.extend(graph);
-            },
-        );
+            });
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation
