@@ -16,7 +16,7 @@ the result of an LLVM upgrade. The goal here is:
 ## Helpful tips and options
 
 The ["Debugging LLVM"][d] section of the
-rustc-guide gives a step-by-step process for how to help debug bugs
+rustc-dev-guide gives a step-by-step process for how to help debug bugs
 caused by LLVM. In particular, it discusses how to emit LLVM IR, run
 the LLVM IR optimization pipeliness, and so forth. You may also find
 it useful to look at the various codegen options listed under `-Chelp`

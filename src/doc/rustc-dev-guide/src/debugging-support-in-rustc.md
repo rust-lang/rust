@@ -77,13 +77,13 @@ the trait object.
 **TODO**: Figure out if the following should be mentioned in the GDB-Rust document rather than
 this guide page so there is no duplication. This is regarding the following comments:
 
-[This comment by Tom](https://github.com/rust-lang/rustc-guide/pull/316#discussion_r284027340)
+[This comment by Tom](https://github.com/rust-lang/rustc-dev-guide/pull/316#discussion_r284027340)
 > gdb's Rust extensions and limitations are documented in the gdb manual:
 https://sourceware.org/gdb/onlinedocs/gdb/Rust.html -- however, this neglects to mention that
 gdb convenience variables and registers follow the gdb $ convention, and that the Rust parser
 implements the gdb @ extension.
 
-[This question by Aman](https://github.com/rust-lang/rustc-guide/pull/316#discussion_r285401353)
+[This question by Aman](https://github.com/rust-lang/rustc-dev-guide/pull/316#discussion_r285401353)
 > @tromey do you think we should mention this part in the GDB-Rust document rather than this
 document so there is no duplication etc.?
 
@@ -276,7 +276,7 @@ set the breakpoints and what happens when you step it.
 * New demangler in LLVM or LLDB.
 
 **TODO**: Check the location of the demangler source.
-[Question on Github](https://github.com/rust-lang/rustc-guide/pull/316#discussion_r283062536).
+[Question on Github](https://github.com/rust-lang/rustc-dev-guide/pull/316#discussion_r283062536).
 
 #### Reuse Rust compiler for expressions
 

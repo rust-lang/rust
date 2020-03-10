@@ -7,7 +7,7 @@ description = "A guide to developing rustc"
 create-missing = false
 
 [output.html]
-git-repository-url = "https://github.com/rust-lang/rustc-guide"
+git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
 
 [output.html.fold]
 enable = true

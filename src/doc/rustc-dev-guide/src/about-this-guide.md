@@ -25,7 +25,7 @@ You might also find the following sites useful:
 - [compiler-team] -- the home-base for the rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 
-[GitHub repository]: https://github.com/rust-lang/rustc-guide/
+[GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
 [Rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/

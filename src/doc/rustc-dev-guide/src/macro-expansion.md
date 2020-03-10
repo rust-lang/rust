@@ -227,7 +227,7 @@ just have a zulip discussion where you tell us (WG-learning) everything you
 know about macros/expansion/hygiene. We were thinking this could be less formal
 (and less work for you) than compiler lecture series lecture... thoughts?
 
-mark-i-m: The goal is to fill out that long-standing gap in the rustc-guide
+mark-i-m: The goal is to fill out that long-standing gap in the rustc-dev-guide
 
 Vadim Petrochenkov: Ok, I'm at UTC+03:00 and generally available in the
 evenings (or weekends).
@@ -628,7 +628,7 @@ Vadim Petrochenkov: A thread for offline questions-answers would be good too.
     A thread for offline questions-answers would be good too.
 
 I don't mind using this thread, since it already has a lot of info in it. We
-also plan to summarize the info from this thread into the rustc-guide.
+also plan to summarize the info from this thread into the rustc-dev-guide.
 
     Sure, why not.
 
@@ -648,7 +648,7 @@ eager expansion...
 Santiago Pastorino: sorry but I couldn't follow that much today, will read it
 when I have some time later
 
-Santiago Pastorino: btw https://github.com/rust-lang/rustc-guide/issues/398
+Santiago Pastorino: btw https://github.com/rust-lang/rustc-dev-guide/issues/398
 
 mark-i-m: @Vadim Petrochenkov Would 7pm UTC on August 21 work for a followup?
 

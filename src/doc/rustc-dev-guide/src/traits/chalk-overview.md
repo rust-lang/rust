@@ -226,7 +226,7 @@ Likewise, lowering tests use the [`lowering_success!` and
 
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [chalk]: https://github.com/rust-lang/chalk
-[rustc-issues]: https://github.com/rust-lang/rustc-guide/issues
+[rustc-issues]: https://github.com/rust-lang/rustc-dev-guide/issues
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
 
 [`ProgramClause`]: https://rust-lang.github.io/chalk/chalk_ir/enum.ProgramClause.html

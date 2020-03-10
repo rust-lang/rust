@@ -8,8 +8,8 @@ to do, so compilation is faster. Note that since MIR is generic (not
 effective; we can optimize the generic version, so all of the monomorphizations
 are cheaper!
 
-[mir]: https://rust-lang.github.io/rustc-guide/mir/index.html
-[monomorph]: https://rust-lang.github.io/rustc-guide/appendix/glossary.html?highlight=monomorphize#appendix-c-glossary
+[mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
+[monomorph]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html?highlight=monomorphize#appendix-c-glossary
 
 MIR optimizations run after borrow checking. We run a series of optimization
 passes over the MIR to improve it. Some passes are required to run on all code,
@@ -22,9 +22,9 @@ run and that some validation has occurred. Then, it [steals][steal] the MIR
 optimizes it, and returns the improved MIR.
 
 [optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html
-[query]: https://rust-lang.github.io/rustc-guide/query.html
-[defid]: https://rust-lang.github.io/rustc-guide/appendix/glossary.html?highlight=DefId#appendix-c-glossary
-[steal]: https://rust-lang.github.io/rustc-guide/mir/passes.html?highlight=steal#stealing
+[query]: https://rustc-dev-guide.rust-lang.org/query.html
+[defid]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html?highlight=DefId#appendix-c-glossary
+[steal]: https://rustc-dev-guide.rust-lang.org/mir/passes.html?highlight=steal#stealing
 
 ## Defining optimization passes
 
