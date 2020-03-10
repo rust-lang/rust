@@ -12,9 +12,7 @@ impl Struct {
 }
 
 fn main() -> std::io::Result<()> {
-    let mut path = temp_dir();
-    path.push("test.txt");
-    let file = File::create(&path)?;
+    let path = "foo.txt";
     // Lint shouldn't catch this
     let s = Struct;
     s.read_to_end();
