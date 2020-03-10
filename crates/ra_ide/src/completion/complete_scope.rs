@@ -3,7 +3,7 @@
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
+    if !ctx.is_trivial_path && !ctx.is_pat_binding_and_path {
         return;
     }
 
@@ -18,6 +18,111 @@ mod tests {
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn nested_bind_pat_and_path() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum First {
+                    A,
+                    B,
+                }
+                enum Second {
+                    A(First),
+                    B(First),
+                }
+                fn quux(x: Option<Option<Second>>>) {
+                    match x {
+                        None => (),
+                        Some(Some(Second(Fi<|>))) => (),
+                    }
+                }
+                "
+            ),
+            @r###"
+            [
+                CompletionItem {
+                    label: "First",
+                    source_range: [363; 365),
+                    delete: [363; 365),
+                    insert: "First",
+                    kind: Enum,
+                },
+                CompletionItem {
+                    label: "Second",
+                    source_range: [363; 365),
+                    delete: [363; 365),
+                    insert: "Second",
+                    kind: Enum,
+                },
+                CompletionItem {
+                    label: "quux(…)",
+                    source_range: [363; 365),
+                    delete: [363; 365),
+                    insert: "quux(${1:x})$0",
+                    kind: Function,
+                    lookup: "quux",
+                    detail: "fn quux(x: Option<Option<Second>>)",
+                },
+            ]
+            "###
+        );
+    }
+
+    #[test]
+    fn bind_pat_and_path() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Enum {
+                    A,
+                    B,
+                }
+                fn quux(x: Option<Enum>) {
+                    match x {
+                        None => (),
+                        Some(en<|>) => (),
+                    }
+                }
+                "
+            ),
+            @r###"
+            [
+                CompletionItem {
+                    label: "Enum",
+                    source_range: [231; 233),
+                    delete: [231; 233),
+                    insert: "Enum",
+                    kind: Enum,
+                },
+                CompletionItem {
+                    label: "None",
+                    source_range: [231; 233),
+                    delete: [231; 233),
+                    insert: "None",
+                    kind: Binding,
+                },
+                CompletionItem {
+                    label: "quux(…)",
+                    source_range: [231; 233),
+                    delete: [231; 233),
+                    insert: "quux(${1:x})$0",
+                    kind: Function,
+                    lookup: "quux",
+                    detail: "fn quux(x: Option<Enum>)",
+                },
+                CompletionItem {
+                    label: "x",
+                    source_range: [231; 233),
+                    delete: [231; 233),
+                    insert: "x",
+                    kind: Binding,
+                },
+            ]
+            "###
+        );
     }
 
     #[test]
