@@ -1,7 +1,7 @@
 use {
     crate::TextSized,
     std::{
-        convert::{TryFrom, TryInto},
+        convert::TryFrom,
         fmt, iter,
         num::TryFromIntError,
         ops::{Add, AddAssign, Sub, SubAssign},
@@ -76,70 +76,29 @@ impl TextSize {
     }
 }
 
-macro_rules! conversions {
-    (From<TextSize> for $gte:ident) => {
-        impl From<TextSize> for $gte {
-            fn from(value: TextSize) -> $gte {
-                value.raw.into()
-            }
-        }
-    };
-    (From<$lte:ident> for TextSize) => {
-        impl From<$lte> for TextSize {
-            fn from(value: $lte) -> TextSize {
-                TextSize(value.into())
-            }
-        }
-    };
-    (TryFrom<TextSize> for $lt:ident) => {
-        impl TryFrom<TextSize> for $lt {
-            type Error = TryFromIntError;
-            fn try_from(value: TextSize) -> Result<$lt, Self::Error> {
-                value.raw.try_into()
-            }
-        }
-    };
-    (TryFrom<$gt:ident> for TextSize) => {
-        impl TryFrom<$gt> for TextSize {
-            type Error = <$gt as TryInto<u32>>::Error;
-            fn try_from(value: $gt) -> Result<TextSize, Self::Error> {
-                value.try_into().map(TextSize)
-            }
-        }
-    };
-    {
-        lt u32  [$($lt:ident)*]
-        eq u32  [$($eq:ident)*]
-        gt u32  [$($gt:ident)*]
-        varries [$($var:ident)*]
-    } => {
-        $(
-            conversions!(From<$lt> for TextSize);
-            conversions!(TryFrom<TextSize> for $lt);
-        )*
-
-        $(
-            conversions!(From<$eq> for TextSize);
-            conversions!(From<TextSize> for $eq);
-        )*
-
-        $(
-            conversions!(TryFrom<$gt> for TextSize);
-            conversions!(From<TextSize> for $gt);
-        )*
-
-        $(
-            conversions!(TryFrom<$var> for TextSize);
-            conversions!(TryFrom<TextSize> for $var);
-        )*
-    };
+impl From<u32> for TextSize {
+    fn from(raw: u32) -> Self {
+        TextSize { raw }
+    }
 }
 
-conversions! {
-    lt u32  [u8 u16]
-    eq u32  [u32]
-    gt u32  [u64]
-    varries [usize]
+impl From<TextSize> for u32 {
+    fn from(value: TextSize) -> Self {
+        value.raw
+    }
+}
+
+impl TryFrom<usize> for TextSize {
+    type Error = TryFromIntError;
+    fn try_from(value: usize) -> Result<Self, TryFromIntError> {
+        Ok(u32::try_from(value)?.into())
+    }
+}
+
+impl From<TextSize> for usize {
+    fn from(value: TextSize) -> Self {
+        value.raw as usize
+    }
 }
 
 // NB: We do not provide the transparent-ref impls like the stdlib does.
