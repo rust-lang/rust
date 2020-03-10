@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        (moved_place, used_place, span): (PlaceRef<'cx, 'tcx>, PlaceRef<'cx, 'tcx>, Span),
+        (moved_place, used_place, span): (PlaceRef<'tcx>, PlaceRef<'tcx>, Span),
         mpi: MovePathIndex,
     ) {
         debug!(
@@ -647,7 +647,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // borrowed place and look for a access to a different field of the same union.
                 let Place { local, projection } = second_borrowed_place;
 
-                let mut cursor = projection.as_ref();
+                let mut cursor = &projection[..];
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
@@ -1521,7 +1521,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    fn classify_drop_access_kind(&self, place: PlaceRef<'cx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
+    fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place.projection {
             [] => StorageDeadOrDrop::LocalStorageDead,

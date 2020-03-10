@@ -474,7 +474,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_place(&self, place: PlaceRef<'_, 'tcx>) -> Result<(), Unpromotable> {
+    fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
         match place {
             PlaceRef { local, projection: [] } => self.validate_local(local),
             PlaceRef { local: _, projection: [proj_base @ .., elem] } => {

@@ -483,7 +483,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         self.builder.data.loc_map[self.loc].push(move_out);
     }
 
-    fn gather_init(&mut self, place: PlaceRef<'cx, 'tcx>, kind: InitKind) {
+    fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
         let mut place = place;

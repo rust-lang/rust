@@ -23,7 +23,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         access_place: &Place<'tcx>,
         span: Span,
-        the_place_err: PlaceRef<'cx, 'tcx>,
+        the_place_err: PlaceRef<'tcx>,
         error_access: AccessKind,
         location: Location,
     ) {
