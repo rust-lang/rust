@@ -165,13 +165,19 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(alloc(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe { NonNull::new(alloc(layout)).ok_or(AllocErr).map(|p| (p, layout.size())) }
+        }
     }
 
     #[inline]
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        dealloc(ptr.as_ptr(), layout)
+        if layout.size() != 0 {
+            dealloc(ptr.as_ptr(), layout)
+        }
     }
 
     #[inline]
@@ -181,12 +187,28 @@ unsafe impl AllocRef for Global {
         layout: Layout,
         new_size: usize,
     ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr).map(|p| (p, new_size))
+        match (layout.size(), new_size) {
+            (0, 0) => Ok((layout.dangling(), 0)),
+            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
+            (_, 0) => {
+                self.dealloc(ptr, layout);
+                Ok((layout.dangling(), 0))
+            }
+            (_, _) => NonNull::new(realloc(ptr.as_ptr(), layout, new_size))
+                .ok_or(AllocErr)
+                .map(|p| (p, new_size)),
+        }
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe {
+                NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+            }
+        }
     }
 }
 

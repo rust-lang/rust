@@ -73,30 +73,28 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn allocate_in(mut capacity: usize, zeroed: bool, mut a: A) -> Self {
-        unsafe {
-            let elem_size = mem::size_of::<T>();
+        let elem_size = mem::size_of::<T>();
 
-            let alloc_size = capacity.checked_mul(elem_size).unwrap_or_else(|| capacity_overflow());
-            alloc_guard(alloc_size).unwrap_or_else(|_| capacity_overflow());
+        let alloc_size = capacity.checked_mul(elem_size).unwrap_or_else(|| capacity_overflow());
+        alloc_guard(alloc_size).unwrap_or_else(|_| capacity_overflow());
 
-            // Handles ZSTs and `capacity == 0` alike.
-            let ptr = if alloc_size == 0 {
-                NonNull::<T>::dangling()
-            } else {
-                let align = mem::align_of::<T>();
-                let layout = Layout::from_size_align(alloc_size, align).unwrap();
-                let result = if zeroed { a.alloc_zeroed(layout) } else { a.alloc(layout) };
-                match result {
-                    Ok((ptr, size)) => {
-                        capacity = size / elem_size;
-                        ptr.cast()
-                    }
-                    Err(_) => handle_alloc_error(layout),
+        // Handles ZSTs and `capacity == 0` alike.
+        let ptr = if alloc_size == 0 {
+            NonNull::<T>::dangling()
+        } else {
+            let align = mem::align_of::<T>();
+            let layout = Layout::from_size_align(alloc_size, align).unwrap();
+            let result = if zeroed { a.alloc_zeroed(layout) } else { a.alloc(layout) };
+            match result {
+                Ok((ptr, size)) => {
+                    capacity = size / elem_size;
+                    ptr.cast()
                 }
-            };
+                Err(_) => handle_alloc_error(layout),
+            }
+        };
 
-            RawVec { ptr: ptr.into(), cap: capacity, a }
-        }
+        RawVec { ptr: ptr.into(), cap: capacity, a }
     }
 }
 

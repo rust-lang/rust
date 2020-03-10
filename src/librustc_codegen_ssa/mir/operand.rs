@@ -364,7 +364,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,
-        place_ref: mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'tcx>,
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
@@ -408,7 +408,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_consume(
         &mut self,
         bx: &mut Bx,
-        place_ref: mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_consume(place_ref={:?})", place_ref);
 

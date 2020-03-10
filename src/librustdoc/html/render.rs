@@ -2325,7 +2325,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         f.generics.print()
     )
     .len();
-    write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it));
+    write!(w, "<pre class='rust fn'>");
     render_attributes(w, it, false);
     write!(
         w,
@@ -2528,13 +2528,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(
-            w,
-            "<h3 id='{id}' class='method'>{extra}<code id='{ns_id}'>",
-            extra = render_spotlight_traits(m),
-            id = id,
-            ns_id = ns_id
-        );
+        write!(w, "<h3 id='{id}' class='method'><code id='{ns_id}'>", id = id, ns_id = ns_id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -3520,76 +3514,6 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     }
 }
 
-fn render_spotlight_traits(item: &clean::Item) -> String {
-    match item.inner {
-        clean::FunctionItem(clean::Function { ref decl, .. })
-        | clean::TyMethodItem(clean::TyMethod { ref decl, .. })
-        | clean::MethodItem(clean::Method { ref decl, .. })
-        | clean::ForeignFunctionItem(clean::Function { ref decl, .. }) => spotlight_decl(decl),
-        _ => String::new(),
-    }
-}
-
-fn spotlight_decl(decl: &clean::FnDecl) -> String {
-    let mut out = Buffer::html();
-    let mut trait_ = String::new();
-
-    if let Some(did) = decl.output.def_id() {
-        let c = cache();
-        if let Some(impls) = c.impls.get(&did) {
-            for i in impls {
-                let impl_ = i.inner_impl();
-                if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
-                    if out.is_empty() {
-                        out.push_str(&format!(
-                            "<h3 class=\"important\">Important traits for {}</h3>\
-                                      <code class=\"content\">",
-                            impl_.for_.print()
-                        ));
-                        trait_.push_str(&impl_.for_.print().to_string());
-                    }
-
-                    //use the "where" class here to make it small
-                    out.push_str(&format!(
-                        "<span class=\"where fmt-newline\">{}</span>",
-                        impl_.print()
-                    ));
-                    let t_did = impl_.trait_.def_id().unwrap();
-                    for it in &impl_.items {
-                        if let clean::TypedefItem(ref tydef, _) = it.inner {
-                            out.push_str("<span class=\"where fmt-newline\">    ");
-                            assoc_type(
-                                &mut out,
-                                it,
-                                &[],
-                                Some(&tydef.type_),
-                                AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
-                                "",
-                            );
-                            out.push_str(";</span>");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if !out.is_empty() {
-        out.insert_str(
-            0,
-            &format!(
-                "<div class=\"important-traits\"><div class='tooltip'>ⓘ\
-                                    <span class='tooltiptext'>Important traits for {}</span></div>\
-                                    <div class=\"content hidden\">",
-                trait_
-            ),
-        );
-        out.push_str("</code></div></div>");
-    }
-
-    out.into_inner()
-}
-
 fn render_impl(
     w: &mut Buffer,
     cx: &Context,
@@ -3696,14 +3620,13 @@ fn render_impl(
                 (true, " hidden")
             };
         match item.inner {
-            clean::MethodItem(clean::Method { ref decl, .. })
-            | clean::TyMethodItem(clean::TyMethod { ref decl, .. }) => {
+            clean::MethodItem(clean::Method { .. })
+            | clean::TyMethodItem(clean::TyMethod { .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
                     let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                    write!(w, "{}", spotlight_decl(decl));
                     write!(w, "<code id='{}'>", ns_id);
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
