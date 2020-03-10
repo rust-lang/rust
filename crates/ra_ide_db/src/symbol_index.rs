@@ -163,7 +163,7 @@ pub fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymb
 #[derive(Default)]
 pub struct SymbolIndex {
     symbols: Vec<FileSymbol>,
-    map: fst::Map,
+    map: fst::Map<Vec<u8>>,
 }
 
 impl fmt::Debug for SymbolIndex {
@@ -221,7 +221,7 @@ impl SymbolIndex {
             builder.insert(key, value).unwrap();
         }
 
-        let map = fst::Map::from_bytes(builder.into_inner().unwrap()).unwrap();
+        let map = fst::Map::new(builder.into_inner().unwrap()).unwrap();
         SymbolIndex { symbols, map }
     }
 
