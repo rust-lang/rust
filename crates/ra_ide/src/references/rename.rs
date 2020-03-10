@@ -48,17 +48,26 @@ fn find_name_and_module_at_offset(
 }
 
 fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFileEdit {
-    let mut replacement_text = String::from(new_name);
+    let mut replacement_text = String::new();
     let file_id = reference.file_range.file_id;
     let range = match reference.kind {
-        ReferenceKind::StructFieldShorthand => {
+        ReferenceKind::StructFieldShorthandForField => {
+            replacement_text.push_str(new_name);
             replacement_text.push_str(": ");
             TextRange::from_to(
                 reference.file_range.range.start(),
                 reference.file_range.range.start(),
             )
         }
-        _ => reference.file_range.range,
+        ReferenceKind::StructFieldShorthandForLocal => {
+            replacement_text.push_str(": ");
+            replacement_text.push_str(new_name);
+            TextRange::from_to(reference.file_range.range.end(), reference.file_range.range.end())
+        }
+        _ => {
+            replacement_text.push_str(new_name);
+            reference.file_range.range
+        }
     };
     SourceFileEdit { file_id, edit: TextEdit::replace(range, replacement_text) }
 }
@@ -286,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rename_for_struct_field() {
+    fn test_rename_struct_field() {
         test_rename(
             r#"
     struct Foo {
@@ -315,7 +324,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rename_for_struct_field_shorthand() {
+    fn test_rename_struct_field_for_shorthand() {
         test_rename(
             r#"
     struct Foo {
@@ -337,6 +346,35 @@ mod tests {
     impl Foo {
         fn new(i: i32) -> Self {
             Self { j: i }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_local_for_field_shorthand() {
+        test_rename(
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    impl Foo {
+        fn new(i<|>: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    impl Foo {
+        fn new(j: i32) -> Self {
+            Self { i: j }
         }
     }
     "#,
