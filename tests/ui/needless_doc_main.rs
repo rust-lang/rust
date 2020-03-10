@@ -8,7 +8,23 @@
 ///     unimplemented!();
 /// }
 /// ```
-fn bad_doctest() {}
+///
+/// This should, too.
+///
+/// ```rust
+/// fn main() {
+///     unimplemented!();
+/// }
+/// ```
+///
+/// This one too.
+///
+/// ```no_run
+/// fn main() {
+///     unimplemented!();
+/// }
+/// ```
+fn bad_doctests() {}
 
 /// # Examples
 ///
@@ -34,9 +50,25 @@ fn bad_doctest() {}
 ///     assert_eq(1u8, test::black_box(1));
 /// }
 /// ```
+///
+/// We should not lint ignored examples:
+///
+/// ```rust,ignore
+/// fn main() {
+///     unimplemented!();
+/// }
+/// ```
+///
+/// Or even non-rust examples:
+///
+/// ```text
+/// fn main() {
+///     is what starts the program
+/// }
+/// ```
 fn no_false_positives() {}
 
 fn main() {
-    bad_doctest();
+    bad_doctests();
     no_false_positives();
 }

@@ -6,5 +6,17 @@ LL | /// fn main() {
    |
    = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
 
-error: aborting due to previous error
+error: needless `fn main` in doctest
+  --> $DIR/needless_doc_main.rs:15:4
+   |
+LL | /// fn main() {
+   |    ^^^^^^^^^^^^
+
+error: needless `fn main` in doctest
+  --> $DIR/needless_doc_main.rs:23:4
+   |
+LL | /// fn main() {
+   |    ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
