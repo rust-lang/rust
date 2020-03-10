@@ -51,7 +51,7 @@ fn bad_doctests() {}
 /// }
 /// ```
 ///
-/// We should not lint non-rust examples:
+/// We should not lint ignored examples:
 ///
 /// ```rust,ignore
 /// fn main() {
