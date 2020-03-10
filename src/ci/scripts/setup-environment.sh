@@ -8,6 +8,13 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
+# Since matrix variables are readonly in Azure Pipelines, we take
+# INITIAL_RUST_CONFIGURE_ARGS and establish RUST_CONFIGURE_ARGS
+# which downstream steps can alter
+if [[ -n "${INITIAL_RUST_CONFIGURE_ARGS}" ]]; then
+    ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIGURE_ARGS}"
+fi
+
 # Builders starting with `dist-` are dist builders, but if they also end with
 # `-alt` they are alternate dist builders.
 if [[ "${CI_JOB_NAME}" = dist-* ]]; then
