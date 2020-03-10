@@ -2,7 +2,7 @@
 //!
 //! This program runs all of the various tidy checks for style, cleanliness,
 //! etc. This is run by default on `./x.py test` and as part of the auto
-//! builders. The tidy checks can be executed with `./x.py test src/tools/tidy`.
+//! builders. The tidy checks can be executed with `./x.py test tidy`.
 
 #![deny(warnings)]
 
