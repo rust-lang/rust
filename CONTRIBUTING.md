@@ -54,7 +54,8 @@ and resolved paths.
 [`T-AST`] issues will generally need you to match against a predefined syntax structure.
 To figure out how this syntax structure is encoded in the AST, it is recommended to run
 `rustc -Z ast-json` on an example of the structure and compare with the [nodes in the AST docs].
-Usually the lint will end up to be a nested series of matches and ifs, [like so].
+Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
+But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
 [`E-medium`] issues are generally pretty easy too, though it's recommended you work on an E-easy issue first.
 They are mostly classified as [`E-medium`], since they might be somewhat involved code wise,
@@ -71,7 +72,9 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
 [`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty
 [nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
-[like so]: https://github.com/rust-lang/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34
+[deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/mem_forget.rs#L29-L43
+[if_chain]: https://docs.rs/if_chain/*/if_chain
+[nest-less]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/bit_mask.rs#L124-L150
 
 ## Writing code
 
