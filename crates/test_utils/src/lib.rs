@@ -202,6 +202,19 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
     res
 }
 
+/// Same as `parse_fixture`, except it allow empty fixture
+pub fn parse_single_fixture(fixture: &str) -> Option<FixtureEntry> {
+    if !fixture.lines().any(|it| it.trim_start().starts_with("//-")) {
+        return None;
+    }
+
+    let fixtures = parse_fixture(fixture);
+    if fixtures.len() > 1 {
+        panic!("too many fixtures");
+    }
+    fixtures.into_iter().nth(0)
+}
+
 // Comparison functionality borrowed from cargo:
 
 /// Compare a line with an expected pattern.

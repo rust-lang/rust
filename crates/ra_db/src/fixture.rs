@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
+use test_utils::{extract_offset, parse_fixture, parse_single_fixture, CURSOR_MARKER};
 
 use crate::{
     input::CrateName, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, RelativePathBuf,
@@ -45,23 +45,37 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
 
 impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 
-fn with_single_file(db: &mut dyn SourceDatabaseExt, text: &str) -> FileId {
+fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId {
     let file_id = FileId(0);
     let rel_path: RelativePathBuf = "/main.rs".into();
 
     let mut source_root = SourceRoot::new_local();
     source_root.insert_file(rel_path.clone(), file_id);
 
-    let mut crate_graph = CrateGraph::default();
-    crate_graph.add_crate_root(
-        file_id,
-        Edition::Edition2018,
-        None,
-        CfgOptions::default(),
-        Env::default(),
-    );
+    let fixture = parse_single_fixture(ra_fixture);
 
-    db.set_file_text(file_id, Arc::new(text.to_string()));
+    let crate_graph = if let Some(entry) = fixture {
+        let meta = match parse_meta(&entry.meta) {
+            ParsedMeta::File(it) => it,
+            _ => panic!("with_single_file only support file meta"),
+        };
+
+        let mut crate_graph = CrateGraph::default();
+        crate_graph.add_crate_root(file_id, meta.edition, meta.krate, meta.cfg, meta.env);
+        crate_graph
+    } else {
+        let mut crate_graph = CrateGraph::default();
+        crate_graph.add_crate_root(
+            file_id,
+            Edition::Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+        );
+        crate_graph
+    };
+
+    db.set_file_text(file_id, Arc::new(ra_fixture.to_string()));
     db.set_file_relative_path(file_id, rel_path);
     db.set_file_source_root(file_id, WORKSPACE);
     db.set_source_root(WORKSPACE, Arc::new(source_root));
@@ -104,7 +118,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
                 meta.edition,
                 Some(krate.clone()),
                 meta.cfg,
-                Env::default(),
+                meta.env,
             );
             let prev = crates.insert(krate.clone(), crate_id);
             assert!(prev.is_none());
@@ -167,9 +181,10 @@ struct FileMeta {
     deps: Vec<String>,
     cfg: CfgOptions,
     edition: Edition,
+    env: Env,
 }
 
-//- /lib.rs crate:foo deps:bar,baz
+//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo)
 fn parse_meta(meta: &str) -> ParsedMeta {
     let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
@@ -186,6 +201,7 @@ fn parse_meta(meta: &str) -> ParsedMeta {
     let mut deps = Vec::new();
     let mut edition = Edition::Edition2018;
     let mut cfg = CfgOptions::default();
+    let mut env = Env::default();
     for component in components[1..].iter() {
         let (key, value) = split1(component, ':').unwrap();
         match key {
@@ -200,11 +216,18 @@ fn parse_meta(meta: &str) -> ParsedMeta {
                     }
                 }
             }
+            "env" => {
+                for key in value.split(',') {
+                    if let Some((k, v)) = split1(key, '=') {
+                        env.set(k.into(), v.into());
+                    }
+                }
+            }
             _ => panic!("bad component: {:?}", component),
         }
     }
 
-    ParsedMeta::File(FileMeta { path, krate, deps, edition, cfg })
+    ParsedMeta::File(FileMeta { path, krate, deps, edition, cfg, env })
 }
 
 fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
