@@ -32,7 +32,7 @@ jobs:
 #     matrix:
 #       dist-x86_64-apple:
 #         SCRIPT: ./x.py dist
-#         RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+#         INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
 #         DEPLOY: 1
 #         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
 #         MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -42,7 +42,7 @@ jobs:
 #
 #       dist-x86_64-apple-alt:
 #         SCRIPT: ./x.py dist
-#         RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+#         INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
 #         DEPLOY_ALT: 1
 #         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
 #         MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -58,7 +58,7 @@ jobs:
 #   strategy:
 #     matrix:
 #       dist-x86_64-msvc:
-#         RUST_CONFIGURE_ARGS: >
+#         INITIAL_RUST_CONFIGURE_ARGS: >
 #           --build=x86_64-pc-windows-msvc
 #           --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
 #           --enable-full-tools
@@ -68,6 +68,6 @@ jobs:
 #         DEPLOY: 1
 #
 #       dist-x86_64-msvc-alt:
-#         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+#         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
 #         SCRIPT: python x.py dist
 #         DEPLOY_ALT: 1
