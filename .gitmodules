@@ -31,9 +31,9 @@
 [submodule "src/stdarch"]
 	path = src/stdarch
 	url = https://github.com/rust-lang/stdarch.git
-[submodule "src/doc/rustc-guide"]
-	path = src/doc/rustc-guide
-	url = https://github.com/rust-lang/rustc-guide.git
+[submodule "src/doc/rustc-dev-guide"]
+	path = src/doc/rustc-dev-guide
+	url = https://github.com/rust-lang/rustc-dev-guide.git
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
 	url = https://github.com/rust-lang/edition-guide.git
