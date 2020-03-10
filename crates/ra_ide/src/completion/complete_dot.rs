@@ -718,4 +718,35 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn test_method_completion_3547() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            struct HashSet<T> {}
+            impl<T> HashSet<T> {
+                pub fn the_method(&self) {}
+            }
+            fn foo() {
+                let s: HashSet<_>;
+                s.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_method()",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "the_method()$0",
+                kind: Method,
+                lookup: "the_method",
+                detail: "pub fn the_method(&self)",
+            },
+        ]
+        "###
+        );
+    }
 }

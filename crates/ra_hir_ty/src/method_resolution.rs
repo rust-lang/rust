@@ -516,9 +516,31 @@ pub(crate) fn inherent_impl_substs(
     let self_ty_with_vars =
         Canonical { num_vars: vars.len() + self_ty.num_vars, value: self_ty_with_vars };
     let substs = super::infer::unify(&self_ty_with_vars, self_ty);
-    // we only want the substs for the vars we added, not the ones from self_ty
-    let result = substs.map(|s| s.suffix(vars.len()));
-    result
+    // We only want the substs for the vars we added, not the ones from self_ty.
+    // Also, if any of the vars we added are still in there, we replace them by
+    // Unknown. I think this can only really happen if self_ty contained
+    // Unknown, and in that case we want the result to contain Unknown in those
+    // places again.
+    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.num_vars))
+}
+
+/// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
+/// num_vars_to_keep) by `Ty::Unknown`.
+fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
+    s.fold_binders(
+        &mut |ty, binders| {
+            if let Ty::Bound(idx) = &ty {
+                if *idx >= binders as u32 {
+                    Ty::Unknown
+                } else {
+                    ty
+                }
+            } else {
+                ty
+            }
+        },
+        num_vars_to_keep,
+    )
 }
 
 fn transform_receiver_ty(
