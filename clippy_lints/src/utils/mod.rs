@@ -32,7 +32,7 @@ use rustc::ty::{
     self,
     layout::{self, IntegerExt},
     subst::GenericArg,
-    Binder, Ty, TyCtxt,
+    Binder, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
@@ -1375,6 +1375,27 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
     } else {
         false
     }
+}
+
+/// Check if it's even possible to satisfy the `where` clause for the item.
+///
+/// `trivial_bounds` feature allows functions with unsatisfiable bounds, for example:
+///
+/// ```rust
+/// fn foo() i32: Iterator {
+///     for _ in 2i32 {}
+/// }
+/// ```
+pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool {
+    use rustc_infer::traits;
+    let predicates = cx
+        .tcx
+        .predicates_of(did)
+        .predicates
+        .iter()
+        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None })
+        .collect();
+    !traits::normalize_and_test_predicates(cx.tcx, traits::elaborate_predicates(cx.tcx, predicates).collect())
 }
 
 #[cfg(test)]

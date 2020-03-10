@@ -1,4 +1,4 @@
-use crate::utils::{has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
+use crate::utils::{fn_has_unsatisfiable_preds, has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc::lint::in_external_macro;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -85,6 +85,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
 
         if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id) {
+            return;
+        }
+
+        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+        if fn_has_unsatisfiable_preds(cx, def_id) {
             return;
         }
 
