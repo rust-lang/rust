@@ -83,8 +83,6 @@ scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 )]
 pub enum FileName {
     Real(PathBuf),
-    /// A macro. This includes the full name of the macro, so that there are no clashes.
-    Macros(String),
     /// Call to `quote!`.
     QuoteExpansion(u64),
     /// Command line.
@@ -107,7 +105,6 @@ impl std::fmt::Display for FileName {
         use FileName::*;
         match *self {
             Real(ref path) => write!(fmt, "{}", path.display()),
-            Macros(ref name) => write!(fmt, "<{} macros>", name),
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
@@ -132,8 +129,7 @@ impl FileName {
         use FileName::*;
         match *self {
             Real(_) => true,
-            Macros(_)
-            | Anon(_)
+            Anon(_)
             | MacroExpansion(_)
             | ProcMacroSourceCode(_)
             | CfgSpec(_)
@@ -141,22 +137,6 @@ impl FileName {
             | Custom(_)
             | QuoteExpansion(_)
             | DocTest(_, _) => false,
-        }
-    }
-
-    pub fn is_macros(&self) -> bool {
-        use FileName::*;
-        match *self {
-            Real(_)
-            | Anon(_)
-            | MacroExpansion(_)
-            | ProcMacroSourceCode(_)
-            | CfgSpec(_)
-            | CliCrateAttr(_)
-            | Custom(_)
-            | QuoteExpansion(_)
-            | DocTest(_, _) => false,
-            Macros(_) => true,
         }
     }
 

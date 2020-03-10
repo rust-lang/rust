@@ -11,6 +11,7 @@ use rustc::session::config::SymbolManglingVersion;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
 use rustc_ast::ast;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -324,7 +325,7 @@ struct ModData {
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct MacroDef {
-    body: String,
+    body: TokenStream,
     legacy: bool,
 }
 

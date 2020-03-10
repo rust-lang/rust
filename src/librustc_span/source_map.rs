@@ -975,6 +975,12 @@ impl SourceMap {
             _ => None,
         })
     }
+
+    pub fn is_imported(&self, sp: Span) -> bool {
+        let source_file_index = self.lookup_source_file_idx(sp.lo());
+        let source_file = &self.files()[source_file_index];
+        source_file.is_imported()
+    }
 }
 
 #[derive(Clone)]

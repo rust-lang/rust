@@ -196,6 +196,11 @@ impl CodeSuggestion {
                 let lines = sm.span_to_lines(bounding_span).ok()?;
                 assert!(!lines.lines.is_empty());
 
+                // We can't splice anything if the source is unavailable.
+                if !sm.ensure_source_file_source_present(lines.file.clone()) {
+                    return None;
+                }
+
                 // To build up the result, we do this for each span:
                 // - push the line segment trailing the previous span
                 //   (at the beginning a "phantom" span pointing at the start of the line)

@@ -1565,7 +1565,7 @@ impl Context {
 
         let mut path = String::new();
 
-        // We can safely ignore macros from other libraries
+        // We can safely ignore synthetic `SourceFile`s.
         let file = match item.source.filename {
             FileName::Real(ref path) => path,
             _ => return None,

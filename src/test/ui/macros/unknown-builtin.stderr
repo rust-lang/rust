@@ -1,14 +1,18 @@
 error: cannot find a built-in macro with name `unknown`
-  --> $DIR/unknown-builtin.rs:6:1
+  --> $DIR/unknown-builtin.rs:11:1
    |
 LL | macro_rules! unknown { () => () }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot find a built-in macro with name `line`
-  --> <::core::macros::builtin::line macros>:1:1
+  --> $SRC_DIR/libcore/macros/mod.rs:LL:COL
    |
-LL | () => { } ;
-   | ^^^^^^^^^^^
+LL | /     macro_rules! line {
+LL | |         () => {
+LL | |             /* compiler built-in */
+LL | |         };
+LL | |     }
+   | |_____^
 
 error: aborting due to 2 previous errors
 

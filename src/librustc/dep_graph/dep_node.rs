@@ -111,6 +111,7 @@ macro_rules! define_dep_nodes {
     ) => (
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
                  RustcEncodable, RustcDecodable)]
+        #[allow(non_camel_case_types)]
         pub enum DepKind {
             $($variant),*
         }
@@ -173,6 +174,7 @@ macro_rules! define_dep_nodes {
 
         pub struct DepConstructor;
 
+        #[allow(non_camel_case_types)]
         impl DepConstructor {
             $(
                 #[inline(always)]

@@ -7,8 +7,8 @@ LL |     produces_async! {}
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can escape reserved keywords to use them as identifiers
    |
-LL | () => (pub fn r#async () { })
-   |               ^^^^^^^
+LL |     () => (pub fn r#async() {})
+   |                   ^^^^^^^
 
 error: aborting due to previous error
 
