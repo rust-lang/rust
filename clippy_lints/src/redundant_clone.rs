@@ -1,6 +1,6 @@
 use crate::utils::{
-    has_drop, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
-    walk_ptrs_ty_depth,
+    fn_has_unsatisfiable_preds, has_drop, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir,
+    span_lint_hir_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -79,6 +79,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         _: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
+
+        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+        if fn_has_unsatisfiable_preds(cx, def_id) {
+            return;
+        }
+
         let mir = cx.tcx.optimized_mir(def_id);
         let mir_read_only = mir.unwrap_read_only();
 
