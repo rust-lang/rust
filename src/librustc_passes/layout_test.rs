@@ -81,6 +81,13 @@ impl LayoutTest<'tcx> {
                             );
                         }
 
+                        sym::debug => {
+                            self.tcx.sess.span_err(
+                                item.span,
+                                &format!("layout debugging: {:#?}", *ty_layout),
+                            );
+                        }
+
                         name => {
                             self.tcx.sess.span_err(
                                 meta_item.span(),
