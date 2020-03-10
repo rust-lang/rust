@@ -2,11 +2,10 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
-use crate::ty::query::queries;
 use crate::ty::query::{Query, QueryState};
 use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::DefId;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -85,11 +84,5 @@ where
         _: SerializedDepNodeIndex,
     ) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
-    fn describe(_tcx: TyCtxt<'_>, _: CrateNum) -> Cow<'static, str> {
-        "running analysis passes on this crate".into()
     }
 }

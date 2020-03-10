@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::config::{QueryAccessors, QueryDescription};
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryShardJobId};
@@ -720,7 +720,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(dead_code)]
-    fn force_query<Q: QueryDescription<'tcx> + 'tcx>(
+    pub(super) fn force_query<Q: QueryDescription<'tcx> + 'tcx>(
         self,
         key: Q::Key,
         span: Span,
@@ -1161,106 +1161,4 @@ macro_rules! define_provider_struct {
             }
         }
     };
-}
-
-/// The red/green evaluation system will try to mark a specific DepNode in the
-/// dependency graph as green by recursively trying to mark the dependencies of
-/// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
-/// where we don't know if it is red or green and we therefore actually have
-/// to recompute its value in order to find out. Since the only piece of
-/// information that we have at that point is the `DepNode` we are trying to
-/// re-evaluate, we need some way to re-run a query from just that. This is what
-/// `force_from_dep_node()` implements.
-///
-/// In the general case, a `DepNode` consists of a `DepKind` and an opaque
-/// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
-/// is usually constructed by computing a stable hash of the query-key that the
-/// `DepNode` corresponds to. Consequently, it is not in general possible to go
-/// back from hash to query-key (since hash functions are not reversible). For
-/// this reason `force_from_dep_node()` is expected to fail from time to time
-/// because we just cannot find out, from the `DepNode` alone, what the
-/// corresponding query-key is and therefore cannot re-run the query.
-///
-/// The system deals with this case letting `try_mark_green` fail which forces
-/// the root query to be re-evaluated.
-///
-/// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
-/// Fortunately, we can use some contextual information that will allow us to
-/// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
-/// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
-/// valid `DefPathHash`. Since we also always build a huge table that maps every
-/// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
-/// everything we need to re-run the query.
-///
-/// Take the `mir_validated` query as an example. Like many other queries, it
-/// just has a single parameter: the `DefId` of the item it will compute the
-/// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
-/// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
-/// is actually a `DefPathHash`, and can therefore just look up the corresponding
-/// `DefId` in `tcx.def_path_hash_to_def_id`.
-///
-/// When you implement a new query, it will likely have a corresponding new
-/// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-/// a rule of thumb, if your query takes a `DefId` or `DefIndex` as sole parameter,
-/// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
-/// add it to the "We don't have enough information to reconstruct..." group in
-/// the match below.
-pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
-    use crate::dep_graph::RecoverKey;
-
-    // We must avoid ever having to call `force_from_dep_node()` for a
-    // `DepNode::codegen_unit`:
-    // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
-    // would always end up having to evaluate the first caller of the
-    // `codegen_unit` query that *is* reconstructible. This might very well be
-    // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
-    // to re-trigger calling the `codegen_unit` query with the right key. At
-    // that point we would already have re-done all the work we are trying to
-    // avoid doing in the first place.
-    // The solution is simple: Just explicitly call the `codegen_unit` query for
-    // each CGU, right after partitioning. This way `try_mark_green` will always
-    // hit the cache instead of having to go through `force_from_dep_node`.
-    // This assertion makes sure, we actually keep applying the solution above.
-    debug_assert!(
-        dep_node.kind != DepKind::codegen_unit,
-        "calling force_from_dep_node() on DepKind::codegen_unit"
-    );
-
-    if !dep_node.kind.can_reconstruct_query_key() {
-        return false;
-    }
-
-    rustc_dep_node_force!([dep_node, tcx]
-        // These are inputs that are expected to be pre-allocated and that
-        // should therefore always be red or green already.
-        DepKind::AllLocalTraitImpls |
-        DepKind::CrateMetadata |
-        DepKind::HirBody |
-        DepKind::Hir |
-
-        // These are anonymous nodes.
-        DepKind::TraitSelect |
-
-        // We don't have enough information to reconstruct the query key of
-        // these.
-        DepKind::CompileCodegenUnit => {
-            bug!("force_from_dep_node: encountered {:?}", dep_node)
-        }
-
-        DepKind::Analysis => {
-            let def_id = if let Some(def_id) = dep_node.extract_def_id(tcx) {
-                def_id
-            } else {
-                // Return from the whole function.
-                return false
-            };
-            tcx.force_query::<crate::ty::query::queries::analysis<'_>>(
-                def_id.krate,
-                DUMMY_SP,
-                *dep_node
-            );
-        }
-    );
-
-    true
 }
