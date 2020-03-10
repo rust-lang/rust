@@ -951,7 +951,6 @@ pub struct Trait {
     pub items: Vec<Item>,
     pub generics: Generics,
     pub bounds: Vec<GenericBound>,
-    pub is_spotlight: bool,
     pub is_auto: bool,
 }
 
