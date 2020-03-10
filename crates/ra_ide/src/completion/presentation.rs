@@ -212,21 +212,14 @@ impl Completions {
                 .detail(function_signature.to_string());
 
         // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none()
-            && !ctx.is_call
-            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
-        {
+        if ctx.use_item_syntax.is_none() && !ctx.is_call && ctx.options.add_call_parenthesis {
             tested_by!(inserts_parens_for_function_calls);
 
             let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
                 (format!("{}()$0", name), format!("{}()", name))
             } else {
                 builder = builder.trigger_call_info();
-                let snippet = if ctx
-                    .db
-                    .feature_flags
-                    .get("completion.insertion.add-argument-snippets")
-                {
+                let snippet = if ctx.options.add_call_argument_snippets {
                     let to_skip = if has_self_param { 1 } else { 0 };
                     let function_params_snippet = join(
                         function_signature.parameter_names.iter().skip(to_skip).enumerate().map(

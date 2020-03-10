@@ -321,14 +321,18 @@ impl Into<Vec<CompletionItem>> for Completions {
 
 #[cfg(test)]
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    use crate::completion::completions;
-    use crate::mock_analysis::{analysis_and_position, single_file_with_position};
+    use crate::{
+        completion::{completions, CompletionOptions},
+        mock_analysis::{analysis_and_position, single_file_with_position},
+    };
+
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
     } else {
         single_file_with_position(code)
     };
-    let completions = completions(&analysis.db, position).unwrap();
+    let options = CompletionOptions::default();
+    let completions = completions(&analysis.db, position, &options).unwrap();
     let completion_items: Vec<CompletionItem> = completions.into();
     let mut kind_completions: Vec<CompletionItem> =
         completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();

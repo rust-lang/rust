@@ -62,7 +62,7 @@ use crate::display::ToNav;
 pub use crate::{
     assists::{Assist, AssistId},
     call_hierarchy::CallItem,
-    completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
+    completion::{CompletionItem, CompletionItemKind, CompletionOptions, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
@@ -451,7 +451,16 @@ impl Analysis {
 
     /// Computes completions at the given position.
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| completion::completions(db, position).map(Into::into))
+        let opts = CompletionOptions {
+            enable_postfix_completions: self.feature_flags().get("completion.enable-postfix"),
+            add_call_parenthesis: self
+                .feature_flags()
+                .get("completion.insertion.add-call-parenthesis"),
+            add_call_argument_snippets: self
+                .feature_flags()
+                .get("completion.insertion.add-argument-snippets"),
+        };
+        self.with_db(|db| completion::completions(db, position, &opts).map(Into::into))
     }
 
     /// Computes assists (aka code actions aka intentions) for the given
