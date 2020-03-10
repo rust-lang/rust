@@ -367,6 +367,8 @@ fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, a
     check_doc(cx, valid_idents, events, &spans)
 }
 
+const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail", "edition2018"];
+
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_, '_>,
     valid_idents: &FxHashSet<String>,
@@ -374,6 +376,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     spans: &[(usize, Span)],
 ) -> DocHeaders {
     // true if a safety header was found
+    use pulldown_cmark::CodeBlockKind;
     use pulldown_cmark::Event::{
         Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
     };
@@ -386,11 +389,20 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_code = false;
     let mut in_link = None;
     let mut in_heading = false;
-
+    let mut is_rust = false;
     for (event, range) in events {
         match event {
-            Start(CodeBlock(_)) => in_code = true,
-            End(CodeBlock(_)) => in_code = false,
+            Start(CodeBlock(ref kind)) => {
+                in_code = true;
+                if let CodeBlockKind::Fenced(lang) = kind {
+                    is_rust =
+                        lang.is_empty() || !lang.contains("ignore") && lang.split(',').any(|i| RUST_CODE.contains(&i));
+                }
+            },
+            End(CodeBlock(_)) => {
+                in_code = false;
+                is_rust = false;
+            },
             Start(Link(_, url, _)) => in_link = Some(url),
             End(Link(..)) => in_link = None,
             Start(Heading(_)) => in_heading = true,
@@ -413,7 +425,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 };
                 let (begin, span) = spans[index];
                 if in_code {
-                    check_code(cx, &text, span);
+                    if is_rust {
+                        check_code(cx, &text, span);
+                    }
                 } else {
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
