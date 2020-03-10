@@ -195,6 +195,7 @@ pub fn main_loop(
             Watch(!config.use_client_watching),
             options,
             feature_flags,
+            config.additional_out_dirs,
         )
     };
 

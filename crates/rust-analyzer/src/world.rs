@@ -76,6 +76,7 @@ impl WorldState {
         watch: Watch,
         options: Options,
         feature_flags: FeatureFlags,
+        additional_out_dirs: FxHashMap<String, String>,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
