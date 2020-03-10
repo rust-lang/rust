@@ -71,7 +71,7 @@ rustc_data_structures::impl_stable_hash_via_hash!(ItemLocalId);
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
 pub const CRATE_HIR_ID: HirId =
-    HirId { owner: CRATE_DEF_INDEX, local_id: ItemLocalId::from_u32_const(0) };
+    HirId { owner: CRATE_DEF_INDEX, local_id: ItemLocalId::from_u32(0) };
 
 pub const DUMMY_HIR_ID: HirId = HirId { owner: CRATE_DEF_INDEX, local_id: DUMMY_ITEM_LOCAL_ID };
 

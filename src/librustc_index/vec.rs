@@ -482,7 +482,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        $v const $name: $type = $type::from_u32_const($constant);
+        $v const $name: $type = $type::from_u32($constant);
         $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
