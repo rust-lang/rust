@@ -673,10 +673,28 @@ impl<'a> Parser<'a> {
     /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
     fn parse_borrow_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         self.expect_and()?;
+        let has_lifetime = self.token.is_lifetime() && self.look_ahead(1, |t| t != &token::Colon);
+        let lifetime = has_lifetime.then(|| self.expect_lifetime()); // For recovery, see below.
         let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
         let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
-        Ok((lo.to(span), ExprKind::AddrOf(borrow_kind, mutbl, expr)))
+        let (hi, expr) = self.interpolated_or_expr_span(expr)?;
+        let span = lo.to(hi);
+        if let Some(lt) = lifetime {
+            self.error_remove_borrow_lifetime(span, lt.ident.span);
+        }
+        Ok((span, ExprKind::AddrOf(borrow_kind, mutbl, expr)))
+    }
+
+    fn error_remove_borrow_lifetime(&self, span: Span, lt_span: Span) {
+        self.struct_span_err(span, "borrow expressions cannot be annotated with lifetimes")
+            .span_label(lt_span, "annotated with lifetime here")
+            .span_suggestion(
+                lt_span,
+                "remove the lifetime annotation",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Parse `mut?` or `raw [ const | mut ]`.
@@ -901,7 +919,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_lt() {
             let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
             Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
-        } else if self.token.is_path_start() {
+        } else if self.check_path() {
             self.parse_path_start_expr(attrs)
         } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
             self.parse_closure_expr(attrs)
@@ -1067,26 +1085,44 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
+    /// Parse `'label: $expr`. The label is already parsed.
     fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
-        self.expect(&token::Colon)?;
-        if self.eat_keyword(kw::While) {
-            return self.parse_while_expr(Some(label), lo, attrs);
-        }
-        if self.eat_keyword(kw::For) {
-            return self.parse_for_expr(Some(label), lo, attrs);
-        }
-        if self.eat_keyword(kw::Loop) {
-            return self.parse_loop_expr(Some(label), lo, attrs);
-        }
-        if self.token == token::OpenDelim(token::Brace) {
-            return self.parse_block_expr(Some(label), lo, BlockCheckMode::Default, attrs);
+        let label = Some(label);
+        let ate_colon = self.eat(&token::Colon);
+        let expr = if self.eat_keyword(kw::While) {
+            self.parse_while_expr(label, lo, attrs)
+        } else if self.eat_keyword(kw::For) {
+            self.parse_for_expr(label, lo, attrs)
+        } else if self.eat_keyword(kw::Loop) {
+            self.parse_loop_expr(label, lo, attrs)
+        } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
+            self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
+        } else {
+            let msg = "expected `while`, `for`, `loop` or `{` after a label";
+            self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
+            // Continue as an expression in an effort to recover on `'label: non_block_expr`.
+            self.parse_expr()
+        }?;
+
+        if !ate_colon {
+            self.error_labeled_expr_must_be_followed_by_colon(lo, expr.span);
         }
 
-        let msg = "expected `while`, `for`, `loop` or `{` after a label";
-        self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
-        // Continue as an expression in an effort to recover on `'label: non_block_expr`.
-        self.parse_expr()
+        Ok(expr)
+    }
+
+    fn error_labeled_expr_must_be_followed_by_colon(&self, lo: Span, span: Span) {
+        self.struct_span_err(span, "labeled expression must be followed by `:`")
+            .span_label(lo, "the label")
+            .span_suggestion_short(
+                lo.shrink_to_hi(),
+                "add `:` after the label",
+                ": ".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("labels are used before loops and blocks, allowing e.g., `break 'label` to them")
+            .emit();
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
@@ -1363,18 +1399,20 @@ impl<'a> Parser<'a> {
         opt_label: Option<Label>,
         lo: Span,
         blk_mode: BlockCheckMode,
-        outer_attrs: AttrVec,
+        mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         if let Some(label) = opt_label {
             self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
         }
 
-        self.expect(&token::OpenDelim(token::Brace))?;
+        if self.token.is_whole_block() {
+            self.struct_span_err(self.token.span, "cannot use a `block` macro fragment here")
+                .span_label(lo.to(self.token.span), "the `block` fragment is within this context")
+                .emit();
+        }
 
-        let mut attrs = outer_attrs;
-        attrs.extend(self.parse_inner_attributes()?);
-
-        let blk = self.parse_block_tail(lo, blk_mode)?;
+        let (inner_attrs, blk) = self.parse_block_common(lo, blk_mode)?;
+        attrs.extend(inner_attrs);
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 
@@ -1476,13 +1514,16 @@ impl<'a> Parser<'a> {
         let thn = if self.eat_keyword(kw::Else) || !cond.returns() {
             self.error_missing_if_cond(lo, cond.span)
         } else {
+            let attrs = self.parse_outer_attributes()?; // For recovery.
             let not_block = self.token != token::OpenDelim(token::Brace);
-            self.parse_block().map_err(|mut err| {
+            let block = self.parse_block().map_err(|mut err| {
                 if not_block {
                     err.span_label(lo, "this `if` expression has a condition, but no block");
                 }
                 err
-            })?
+            })?;
+            self.error_on_if_block_attrs(lo, false, block.span, &attrs);
+            block
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els), attrs))
@@ -1524,12 +1565,40 @@ impl<'a> Parser<'a> {
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
-        if self.eat_keyword(kw::If) {
-            self.parse_if_expr(AttrVec::new())
+        let ctx_span = self.prev_token.span; // `else`
+        let attrs = self.parse_outer_attributes()?; // For recovery.
+        let expr = if self.eat_keyword(kw::If) {
+            self.parse_if_expr(AttrVec::new())?
         } else {
             let blk = self.parse_block()?;
-            Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
-        }
+            self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new())
+        };
+        self.error_on_if_block_attrs(ctx_span, true, expr.span, &attrs);
+        Ok(expr)
+    }
+
+    fn error_on_if_block_attrs(
+        &self,
+        ctx_span: Span,
+        is_ctx_else: bool,
+        branch_span: Span,
+        attrs: &[ast::Attribute],
+    ) {
+        let (span, last) = match attrs {
+            [] => return,
+            [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),
+        };
+        let ctx = if is_ctx_else { "else" } else { "if" };
+        self.struct_span_err(last, "outer attributes are not allowed on `if` and `else` branches")
+            .span_label(branch_span, "the attributes are attached to this branch")
+            .span_label(ctx_span, format!("the branch belongs to this `{}`", ctx))
+            .span_suggestion(
+                span,
+                "remove the attributes",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).

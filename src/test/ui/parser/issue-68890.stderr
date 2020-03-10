@@ -10,11 +10,11 @@ error: expected one of `)`, `+`, or `,`, found `a`
 LL | enum e{A((?'a a+?+l))}
    |               ^ expected one of `)`, `+`, or `,`
 
-error: expected trait bound, not lifetime bound
-  --> $DIR/issue-68890.rs:1:11
+error: expected item, found `)`
+  --> $DIR/issue-68890.rs:1:21
    |
 LL | enum e{A((?'a a+?+l))}
-   |           ^^^
+   |                     ^ expected item
 
 error: aborting due to 3 previous errors
 

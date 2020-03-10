@@ -1,8 +1,11 @@
-error: expected `:`, found `[`
-  --> $DIR/regions-out-of-scope-slice.rs:7:19
+error: borrow expressions cannot be annotated with lifetimes
+  --> $DIR/regions-out-of-scope-slice.rs:7:13
    |
 LL |         x = &'blk [1,2,3];
-   |                   ^ expected `:`
+   |             ^----^^^^^^^^
+   |              |
+   |              annotated with lifetime here
+   |              help: remove the lifetime annotation
 
 error: aborting due to previous error
 
