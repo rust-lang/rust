@@ -17,15 +17,15 @@ use rustc_span::symbol::sym;
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
-        tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
+        tcx.hir().krate().visit_all_item_likes(&mut LayoutTest { tcx });
     }
 }
 
-struct VarianceTest<'tcx> {
+struct LayoutTest<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
+impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
@@ -42,7 +42,7 @@ impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
-impl VarianceTest<'tcx> {
+impl LayoutTest<'tcx> {
     fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
