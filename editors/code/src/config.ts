@@ -27,7 +27,9 @@ export class Config {
     private static readonly requiresReloadOpts = [
         "cargoFeatures",
         "cargo-watch",
-        "highlighting.semanticTokens"
+        "highlighting.semanticTokens",
+        "inlayHintOpts.maxLength",
+        "inlayHintOpts.displayType",
     ]
         .map(opt => `${Config.rootSection}.${opt}`);
 

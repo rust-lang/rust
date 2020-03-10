@@ -13,9 +13,10 @@ use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher};
 use ra_ide::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayConfig, LibraryData,
+    SourceRootId,
 };
-use ra_project_model::{get_rustc_cfg_options, InlayHintOptions, ProjectWorkspace};
+use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 
@@ -32,7 +33,7 @@ pub struct Options {
     pub publish_decorations: bool,
     pub supports_location_link: bool,
     pub line_folding_only: bool,
-    pub inlay_hint_opts: InlayHintOptions,
+    pub inlay_hint_opts: InlayConfig,
     pub rustfmt_args: Vec<String>,
     pub cargo_watch: CheckOptions,
 }

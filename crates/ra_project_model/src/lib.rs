@@ -41,12 +41,6 @@ pub struct InlayHintOptions {
     pub max_length: Option<usize>,
 }
 
-impl InlayHintOptions {
-    pub fn new(max_length: Option<usize>) -> Self {
-        Self { display_type: InlayHintDisplayType::Full, max_length }
-    }
-}
-
 impl Default for InlayHintOptions {
     fn default() -> Self {
         Self { display_type: InlayHintDisplayType::Full, max_length: None }

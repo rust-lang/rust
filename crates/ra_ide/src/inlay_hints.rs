@@ -3,7 +3,6 @@
 use hir::{Adt, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
-use ra_project_model::{InlayHintDisplayType, InlayHintOptions};
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, TextRange,
@@ -11,7 +10,19 @@ use ra_syntax::{
 
 use crate::{FileId, FunctionSignature};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InlayConfig {
+    pub display_type: Vec<InlayKind>,
+    pub max_length: Option<usize>,
+}
+
+impl Default for InlayConfig {
+    fn default() -> Self {
+        Self { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: None }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     TypeHint,
     ParameterHint,
@@ -27,7 +38,7 @@ pub struct InlayHint {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    inlay_hint_opts: &InlayHintOptions,
+    inlay_hint_opts: &InlayConfig,
 ) -> Vec<InlayHint> {
     let _p = profile("inlay_hints");
     let sema = Semantics::new(db);
@@ -50,12 +61,11 @@ pub(crate) fn inlay_hints(
 fn get_param_name_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    inlay_hint_opts: &InlayHintOptions,
+    inlay_hint_opts: &InlayConfig,
     expr: ast::Expr,
 ) -> Option<()> {
-    match inlay_hint_opts.display_type {
-        InlayHintDisplayType::Off | InlayHintDisplayType::TypeHints => return None,
-        _ => {}
+    if !inlay_hint_opts.display_type.contains(&InlayKind::ParameterHint) {
+        return None;
     }
 
     let args = match &expr {
@@ -91,12 +101,11 @@ fn get_param_name_hints(
 fn get_bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    inlay_hint_opts: &InlayHintOptions,
+    inlay_hint_opts: &InlayConfig,
     pat: ast::BindPat,
 ) -> Option<()> {
-    match inlay_hint_opts.display_type {
-        InlayHintDisplayType::Off | InlayHintDisplayType::ParameterHints => return None,
-        _ => {}
+    if !inlay_hint_opts.display_type.contains(&InlayKind::TypeHint) {
+        return None;
     }
 
     let ty = sema.type_of_pat(&pat.clone().into())?;
@@ -214,10 +223,10 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
 
 #[cfg(test)]
 mod tests {
+    use crate::inlay_hints::{InlayConfig, InlayKind};
     use insta::assert_debug_snapshot;
 
     use crate::mock_analysis::single_file;
-    use ra_project_model::{InlayHintDisplayType, InlayHintOptions};
 
     #[test]
     fn param_hints_only() {
@@ -228,7 +237,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions{ display_type: InlayHintDisplayType::ParameterHints, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![InlayKind::ParameterHint], max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [106; 107),
@@ -252,7 +261,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions{ display_type: InlayHintDisplayType::Off, max_length: None}).unwrap(), @r###"[]"###);
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![], max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
@@ -264,7 +273,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions{ display_type: InlayHintDisplayType::TypeHints, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![InlayKind::TypeHint], max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [97; 99),
@@ -288,7 +297,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [69; 71),
@@ -345,7 +354,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [193; 197),
@@ -425,7 +434,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -489,7 +498,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -539,7 +548,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [188; 192),
@@ -634,7 +643,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [188; 192),
@@ -729,7 +738,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [252; 256),
@@ -801,7 +810,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(Some(8))).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
         [
             InlayHint {
                 range: [74; 75),
@@ -889,7 +898,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(None)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [798; 809),
@@ -1011,7 +1020,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(Some(8))).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
         []
         "###
         );
@@ -1037,7 +1046,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintOptions::new(Some(8))).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
         []
         "###
         );

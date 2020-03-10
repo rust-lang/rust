@@ -7,11 +7,39 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use ra_project_model::InlayHintOptions;
+use ra_ide::{InlayConfig, InlayKind};
 use rustc_hash::FxHashMap;
 
 use ra_project_model::CargoFeatures;
 use serde::{Deserialize, Deserializer};
+
+#[derive(Deserialize)]
+#[serde(remote = "InlayKind")]
+pub enum InlayKindDef {
+    TypeHint,
+    ParameterHint,
+}
+
+// Work-around until better serde support is added
+// https://github.com/serde-rs/serde/issues/723#issuecomment-382501277
+fn vec_inlay_kind<'de, D>(deserializer: D) -> Result<Vec<InlayKind>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(with = "InlayKindDef")] InlayKind);
+
+    let v = Vec::deserialize(deserializer)?;
+    Ok(v.into_iter().map(|Wrapper(a)| a).collect())
+}
+
+#[derive(Deserialize)]
+#[serde(remote = "InlayConfig")]
+pub struct InlayConfigDef {
+    #[serde(deserialize_with = "vec_inlay_kind")]
+    pub display_type: Vec<InlayKind>,
+    pub max_length: Option<usize>,
+}
 
 /// Client provided initialization options
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -31,7 +59,8 @@ pub struct ServerConfig {
 
     pub lru_capacity: Option<usize>,
 
-    pub inlay_hint_opts: InlayHintOptions,
+    #[serde(with = "InlayConfigDef")]
+    pub inlay_hint_opts: InlayConfig,
 
     pub cargo_watch_enable: bool,
     pub cargo_watch_args: Vec<String>,
