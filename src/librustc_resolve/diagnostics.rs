@@ -987,7 +987,7 @@ impl<'a> Resolver<'a> {
             );
             let def_span = self.session.source_map().def_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
-            if !first && next_binding.is_none() && binding.vis == ty::Visibility::Public {
+            if !first && binding.vis == ty::Visibility::Public {
                 note_span.push_span_label(def_span, "consider importing it directly".into());
             }
             err.span_note(note_span, &msg);

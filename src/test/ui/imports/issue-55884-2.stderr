@@ -13,12 +13,12 @@ note: ...and refers to the struct import `ParseOptions` which is defined here...
   --> $DIR/issue-55884-2.rs:12:9
    |
 LL | pub use parser::ParseOptions;
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^ consider importing it directly
 note: ...and refers to the struct import `ParseOptions` which is defined here...
   --> $DIR/issue-55884-2.rs:6:13
    |
 LL |     pub use options::*;
-   |             ^^^^^^^^^^
+   |             ^^^^^^^^^^ consider importing it directly
 note: ...and refers to the struct `ParseOptions` which is defined here
   --> $DIR/issue-55884-2.rs:2:5
    |
