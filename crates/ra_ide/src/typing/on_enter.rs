@@ -32,8 +32,8 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
         return None;
     }
 
-    // Continuing non-doc line comments (like this one :) ) is annoying
-    if prefix == "//" && comment_range.end() == position.offset {
+    // Continuing single-line non-doc comments (like this one :) ) is annoying
+    if prefix == "//" && comment_range.end() == position.offset && !followed_by_comment(&comment) {
         return None;
     }
 
@@ -49,6 +49,17 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
         )
         .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
     )
+}
+
+fn followed_by_comment(comment: &ast::Comment) -> bool {
+    let ws = match comment.syntax().next_token().and_then(ast::Whitespace::cast) {
+        Some(it) => it,
+        None => return false,
+    };
+    if ws.spans_multiple_lines() {
+        return false;
+    }
+    ws.syntax().next_token().and_then(ast::Comment::cast).is_some()
 }
 
 fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
@@ -152,7 +163,7 @@ fn foo() {
     }
 
     #[test]
-    fn continues_code_comment_in_the_middle() {
+    fn continues_code_comment_in_the_middle_of_line() {
         do_check(
             r"
 fn main() {
@@ -164,6 +175,27 @@ fn main() {
 fn main() {
     // Fix
     // <|> me
+    let x = 1 + 1;
+}
+",
+        );
+    }
+
+    #[test]
+    fn continues_code_comment_in_the_middle_several_lines() {
+        do_check(
+            r"
+fn main() {
+    // Fix<|>
+    // me
+    let x = 1 + 1;
+}
+",
+            r"
+fn main() {
+    // Fix
+    // <|>
+    // me
     let x = 1 + 1;
 }
 ",
