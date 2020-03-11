@@ -1016,7 +1016,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
                 bundle,
-                UNNAMED,
             )
         }
     }

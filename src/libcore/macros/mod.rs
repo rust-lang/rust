@@ -1,3 +1,4 @@
+#[cfg(bootstrap)]
 #[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic, track_caller)]
@@ -17,6 +18,26 @@ macro_rules! panic {
             $crate::format_args!($fmt, $($arg)+),
             $crate::panic::Location::caller(),
         )
+    );
+}
+
+#[cfg(not(bootstrap))]
+#[doc(include = "panic.md")]
+#[macro_export]
+#[allow_internal_unstable(core_panic, track_caller)]
+#[stable(feature = "core", since = "1.6.0")]
+macro_rules! panic {
+    () => (
+        $crate::panic!("explicit panic")
+    );
+    ($msg:expr) => (
+        $crate::panicking::panic($msg)
+    );
+    ($msg:expr,) => (
+        $crate::panic!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => (
+        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
     );
 }
 

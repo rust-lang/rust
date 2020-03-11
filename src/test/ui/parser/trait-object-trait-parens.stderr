@@ -1,44 +1,74 @@
 error: `?Trait` is not permitted in trait object types
-  --> $DIR/trait-object-trait-parens.rs:6:25
+  --> $DIR/trait-object-trait-parens.rs:8:24
    |
-LL |     let _: Box<(Copy) + (?Sized) + (for<'a> Trait<'a>)>;
-   |                         ^^^^^^^^
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                        ^^^^^^^^
 
 error: `?Trait` is not permitted in trait object types
-  --> $DIR/trait-object-trait-parens.rs:11:47
+  --> $DIR/trait-object-trait-parens.rs:12:17
    |
-LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
-   |                                               ^^^^^^^^
+LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Obj)>;
+   |                 ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/trait-object-trait-parens.rs:16:46
+   |
+LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
+   |                                              ^^^^^^^^
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/trait-object-trait-parens.rs:6:16
+  --> $DIR/trait-object-trait-parens.rs:8:16
    |
-LL |     let _: Box<(Copy) + (?Sized) + (for<'a> Trait<'a>)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (Copy) + (?Sized) + (for<'a> Trait<'a>)`
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/trait-object-trait-parens.rs:9:16
+  --> $DIR/trait-object-trait-parens.rs:12:16
    |
-LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Copy)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (?Sized) + (for<'a> Trait<'a>) + (Copy)`
+LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Obj)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (?Sized) + (for<'a> Trait<'a>) + (Obj)`
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/trait-object-trait-parens.rs:11:16
+  --> $DIR/trait-object-trait-parens.rs:16:16
    |
-LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (for<'a> Trait<'a>) + (Copy) + (?Sized)`
+LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (for<'a> Trait<'a>) + (Obj) + (?Sized)`
 
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/trait-object-trait-parens.rs:11:31
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:8:35
    |
-LL | fn main() {
-   |        - help: consider introducing lifetime `'a` here: `<'a>`
-...
-LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
-   |                               ^^ undeclared lifetime
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                -----              ^^^^^^^^^^^^^^^^^^^
+   |                |                  |
+   |                |                  additional non-auto trait
+   |                |                  trait alias used in trait object type (additional use)
+   |                first non-auto trait
+   |                trait alias used in trait object type (first use)
 
-error: aborting due to 3 previous errors
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:12:49
+   |
+LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Obj)>;
+   |                           -------------------   ^^^^^
+   |                           |                     |
+   |                           |                     additional non-auto trait
+   |                           |                     trait alias used in trait object type (additional use)
+   |                           first non-auto trait
+   |                           trait alias used in trait object type (first use)
 
-For more information about this error, try `rustc --explain E0261`.
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:16:38
+   |
+LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
+   |                 -----------------    ^^^^^
+   |                 |                    |
+   |                 |                    additional non-auto trait
+   |                 |                    trait alias used in trait object type (additional use)
+   |                 first non-auto trait
+   |                 trait alias used in trait object type (first use)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0225`.

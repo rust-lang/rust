@@ -1,8 +1,8 @@
-error: expected `[`, found `vec`
-  --> $DIR/issue-1655.rs:3:6
+error: expected one of `!` or `[`, found `vec`
+  --> $DIR/issue-1655.rs:2:6
    |
 LL |     #vec[doc(
-   |      ^^^ expected `[`
+   |      ^^^ expected one of `!` or `[`
 
 error: aborting due to previous error
 

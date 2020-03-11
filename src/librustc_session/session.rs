@@ -49,6 +49,18 @@ pub struct OptimizationFuel {
     out_of_fuel: bool,
 }
 
+/// The behavior of the CTFE engine when an error occurs with regards to backtraces.
+#[derive(Clone, Copy)]
+pub enum CtfeBacktrace {
+    /// Do nothing special, return the error as usual without a backtrace.
+    Disabled,
+    /// Capture a backtrace at the point the error is created and return it in the error
+    /// (to be printed later if/when the error ever actually gets shown to the user).
+    Capture,
+    /// Capture a backtrace at the point the error is created and immediately print it out.
+    Immediate,
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
@@ -139,6 +151,11 @@ pub struct Session {
     /// Path for libraries that will take preference over libraries shipped by Rust.
     /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
     pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
+
+    /// Tracks the current behavior of the CTFE engine when an error occurs.
+    /// Options range from returning the error without a backtrace to returning an error
+    /// and immediately printing the backtrace to stderr.
+    pub ctfe_backtrace: Lock<CtfeBacktrace>,
 }
 
 pub struct PerfStats {
@@ -1040,6 +1057,12 @@ fn build_session_(
         sopts.debugging_opts.time_passes,
     );
 
+    let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
+        Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,
+        Ok(ref val) if val != "0" => CtfeBacktrace::Capture,
+        _ => CtfeBacktrace::Disabled,
+    });
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1078,6 +1101,7 @@ fn build_session_(
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
+        ctfe_backtrace,
     };
 
     validate_commandline_args_with_session_available(&sess);

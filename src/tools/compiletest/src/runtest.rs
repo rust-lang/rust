@@ -3204,7 +3204,9 @@ impl<'test> TestCx<'test> {
         let json = cflags.contains("--error-format json")
             || cflags.contains("--error-format pretty-json")
             || cflags.contains("--error-format=json")
-            || cflags.contains("--error-format=pretty-json");
+            || cflags.contains("--error-format=pretty-json")
+            || cflags.contains("--output-format json")
+            || cflags.contains("--output-format=json");
 
         let mut normalized = output.to_string();
 

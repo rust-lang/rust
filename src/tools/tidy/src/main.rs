@@ -1,8 +1,8 @@
 //! Tidy checks source code in this repository.
 //!
 //! This program runs all of the various tidy checks for style, cleanliness,
-//! etc. This is run by default on `make check` and as part of the auto
-//! builders.
+//! etc. This is run by default on `./x.py test` and as part of the auto
+//! builders. The tidy checks can be executed with `./x.py test tidy`.
 
 #![deny(warnings)]
 

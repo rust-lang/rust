@@ -411,6 +411,7 @@ E0735: include_str!("./error_codes/E0735.md"),
 E0736: include_str!("./error_codes/E0736.md"),
 E0737: include_str!("./error_codes/E0737.md"),
 E0738: include_str!("./error_codes/E0738.md"),
+E0739: include_str!("./error_codes/E0739.md"),
 E0740: include_str!("./error_codes/E0740.md"),
 E0741: include_str!("./error_codes/E0741.md"),
 E0742: include_str!("./error_codes/E0742.md"),
@@ -610,5 +611,4 @@ E0748: include_str!("./error_codes/E0748.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
-    E0739, // invalid track_caller application/syntax
 }

@@ -95,7 +95,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {
-                    M::assert_panic(self, terminator.source_info.span, msg, cleanup)?;
+                    M::assert_panic(self, msg, cleanup)?;
                 }
             }
 

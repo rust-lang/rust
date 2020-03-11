@@ -4,18 +4,17 @@ error: expected expression, found keyword `else`
 LL |     } #[attr] else if false {
    |               ^^^^ expected expression
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/else-attrs.rs:11:12
    |
-LL |     } else #[attr] if false {
-   |            ^ expected `{`
-   |
-help: try placing this code inside a block
-   |
-LL |     } else #[attr] { if false {
-LL |     } else {
-LL |     } }
-   |
+LL |       } else #[attr] if false {
+   |  _______----_^^^^^^^_-
+   | |       |    |
+   | |       |    help: remove the attributes
+   | |       the branch belongs to this `else`
+LL | |     } else {
+LL | |     }
+   | |_____- the attributes are attached to this branch
 
 error: expected expression, found keyword `else`
   --> $DIR/else-attrs.rs:20:15

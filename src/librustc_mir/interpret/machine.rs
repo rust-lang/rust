@@ -165,7 +165,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;

@@ -5,15 +5,18 @@ use crate::mir;
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
+use crate::ty::tls;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
+use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
+use rustc_session::CtfeBacktrace;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
-use std::{any::Any, env, fmt};
+use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -257,21 +260,25 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
 
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
-        let backtrace = match env::var("RUSTC_CTFE_BACKTRACE") {
-            // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
-            Ok(ref val) if val != "0" => {
-                let mut backtrace = Backtrace::new_unresolved();
-
-                if val == "immediate" {
-                    // Print it now.
-                    print_backtrace(&mut backtrace);
-                    None
-                } else {
-                    Some(Box::new(backtrace))
-                }
+        let capture_backtrace = tls::with_context_opt(|ctxt| {
+            if let Some(ctxt) = ctxt {
+                *Lock::borrow(&ctxt.tcx.sess.ctfe_backtrace)
+            } else {
+                CtfeBacktrace::Disabled
             }
-            _ => None,
+        });
+
+        let backtrace = match capture_backtrace {
+            CtfeBacktrace::Disabled => None,
+            CtfeBacktrace::Capture => Some(Box::new(Backtrace::new_unresolved())),
+            CtfeBacktrace::Immediate => {
+                // Print it now.
+                let mut backtrace = Backtrace::new_unresolved();
+                print_backtrace(&mut backtrace);
+                None
+            }
         };
+
         InterpErrorInfo { kind, backtrace }
     }
 }

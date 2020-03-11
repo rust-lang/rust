@@ -2626,13 +2626,21 @@ impl<T: Clone> Clone for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
     fn drop(&mut self) {
-        // destroy the remaining elements
-        unsafe {
-            ptr::drop_in_place(self.as_mut_slice());
+        struct DropGuard<'a, T>(&'a mut IntoIter<T>);
+
+        impl<T> Drop for DropGuard<'_, T> {
+            fn drop(&mut self) {
+                // RawVec handles deallocation
+                let _ = unsafe { RawVec::from_raw_parts(self.0.buf.as_ptr(), self.0.cap) };
+            }
         }
 
-        // RawVec handles deallocation
-        let _ = unsafe { RawVec::from_raw_parts(self.buf.as_ptr(), self.cap) };
+        let guard = DropGuard(self);
+        // destroy the remaining elements
+        unsafe {
+            ptr::drop_in_place(guard.0.as_mut_slice());
+        }
+        // now `guard` will be dropped and do the rest
     }
 }
 
