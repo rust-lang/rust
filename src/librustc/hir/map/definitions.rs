@@ -211,7 +211,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
+            write!(s, "::{}[{}]", component.data.as_ident().name, component.disambiguator).unwrap();
         }
 
         s
@@ -230,9 +230,10 @@ impl DefPath {
 
         for component in &self.data {
             if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_ident()).unwrap();
+                write!(s, "::{}", component.data.as_ident().name).unwrap();
             } else {
-                write!(s, "{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
+                write!(s, "{}[{}]", component.data.as_ident().name, component.disambiguator)
+                    .unwrap();
             }
         }
 
@@ -250,9 +251,10 @@ impl DefPath {
             opt_delimiter.map(|d| s.push(d));
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_ident()).unwrap();
+                write!(s, "{}", component.data.as_ident().name).unwrap();
             } else {
-                write!(s, "{}[{}]", component.data.as_ident(), component.disambiguator).unwrap();
+                write!(s, "{}[{}]", component.data.as_ident().name, component.disambiguator)
+                    .unwrap();
             }
         }
         s
@@ -568,6 +570,6 @@ impl DefPathData {
     }
 
     pub fn to_string(&self) -> String {
-        self.as_ident().to_string()
+        self.as_ident().name.to_string()
     }
 }
