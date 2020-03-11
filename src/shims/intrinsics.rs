@@ -449,7 +449,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let layout = this.layout_of(ty)?;
                 if layout.abi.is_uninhabited() {
                     // Return here because we paniced instead of returning normally from the intrinsic.
-                    return this.start_panic(&format!("Attempted to instantiate uninhabited type {}", ty), unwind);
+                    return this.start_panic(&format!("attempted to instantiate uninhabited type {}", ty), unwind);
+                }
+            }
+
+            "panic_if_zero_invalid" => {
+                let ty = substs.type_at(0);
+                let layout = this.layout_of(ty)?;
+                // Check if it permits zeroed raw initialization
+                if !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap() {
+                    // Return here because we paniced instead of returning normally from the intrinsic.
+                    return this.start_panic(&format!("attempted to zero-initialize type `{}`, which is invalid", ty), unwind);
+                }
+            }
+
+            "panic_if_any_invalid" => {
+                let ty = substs.type_at(0);
+                let layout = this.layout_of(ty)?;
+                // rustc handles all these in a single function, but we don't so we need to make sure `mem::uninitialized::<!>()` returns the right error.
+                // So we check for `is_uninhabited` here too.
+                if layout.abi.is_uninhabited() {
+                    return this.start_panic(&format!("attempted to instantiate uninhabited type {}", ty), unwind);
+                }
+                // Check if it permits any raw initialization
+                if !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap() {
+                    // Return here because we paniced instead of returning normally from the intrinsic.
+                    return this.start_panic(&format!("attempted to leave type `{}` uninitialized, which is invalid", ty), unwind);
                 }
             }
 
