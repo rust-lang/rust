@@ -69,10 +69,41 @@ fn main() {
 
     // libcore panics from shims.
     #[allow(deprecated, invalid_value)]
-    test(
-        Some("Attempted to instantiate uninhabited type !"),
-        |_old_val| unsafe { std::mem::uninitialized::<!>() },
-    );
+    {
+        test(
+            Some("attempted to instantiate uninhabited type `!`"),
+            |_old_val| unsafe { std::mem::uninitialized::<!>() },
+        );
+        test(
+            Some("attempted to instantiate uninhabited type `!`"),
+            |_old_val| unsafe { std::mem::zeroed::<!>() },
+        );
+        test(
+            Some("attempted to leave type `fn()` uninitialized, which is invalid"),
+            |_old_val| unsafe { std::mem::uninitialized::<fn()>(); loop {} },
+        );
+        test(
+            Some("attempted to zero-initialize type `fn()`, which is invalid"),
+            |_old_val| unsafe { std::mem::zeroed::<fn()>(); loop {} },
+        );
+        test(
+            Some("attempted to leave type `*const dyn std::marker::Sync` uninitialized, which is invalid"),
+            |_old_val| unsafe { std::mem::uninitialized::<*const dyn Sync>(); loop {} },
+        );
+        test(
+            Some("attempted to zero-initialize type `*mut dyn std::marker::Sync`, which is invalid"),
+            |_old_val| unsafe { std::mem::zeroed::<*mut dyn Sync>(); loop {} },
+        );
+        test(
+            Some("attempted to leave type `&u8` uninitialized, which is invalid"),
+            |_old_val| unsafe { std::mem::uninitialized::<&u8>(); loop {} },
+        );
+        test(
+            Some("attempted to zero-initialize type `&u8`, which is invalid"),
+            |_old_val| unsafe { std::mem::zeroed::<&u8>(); loop {} },
+        );
+    }
+
     test(
         Some("align_offset: align is not a power-of-two"),
         |_old_val| { (0usize as *const u8).align_offset(3); loop {} },
