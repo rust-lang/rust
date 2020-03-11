@@ -480,7 +480,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     crate fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if let Some(rows) = row.expand_or_pat() {
-            self.0.extend(rows);
+            for row in rows {
+                // We recursively expand the or-patterns of the new rows.
+                // This is necessary as we might have `0 | (1 | 2)` or e.g., `x @ 0 | x @ (1 | 2)`.
+                self.push(row)
+            }
         } else {
             self.0.push(row);
         }
