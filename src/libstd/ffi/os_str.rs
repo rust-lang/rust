@@ -774,7 +774,6 @@ impl OsStr {
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
     #[unstable(feature = "osstring_ascii", issue = "none")]
     pub fn to_ascii_lowercase(&self) -> OsString {
-        // OsString::from_inner(Buf::from_inner(self.inner.inner.to_ascii_lowercase()))
         OsString::from_inner(self.inner.to_ascii_lowercase())
     }
 
@@ -799,7 +798,6 @@ impl OsStr {
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
     #[unstable(feature = "osstring_ascii", issue = "none")]
     pub fn to_ascii_uppercase(&self) -> OsString {
-        // OsString::from_inner(Buf::from_inner(self.inner.inner.to_ascii_lowercase()))
         OsString::from_inner(self.inner.to_ascii_uppercase())
     }
 
