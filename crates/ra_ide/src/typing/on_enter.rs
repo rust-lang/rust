@@ -100,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn test_on_enter() {
+    fn continues_doc_comment() {
         do_check(
             r"
 /// Some docs<|>
@@ -114,6 +114,7 @@ fn foo() {
 }
 ",
         );
+
         do_check(
             r"
 impl S {
@@ -129,6 +130,29 @@ impl S {
 }
 ",
         );
+
+        do_check(
+            r"
+///<|> Some docs
+fn foo() {
+}
+",
+            r"
+///
+/// <|> Some docs
+fn foo() {
+}
+",
+        );
+    }
+
+    #[test]
+    fn does_not_continue_before_doc_comment() {
+        do_check_noop(r"<|>//! docz");
+    }
+
+    #[test]
+    fn continues_code_comment_in_the_middle() {
         do_check(
             r"
 fn main() {
@@ -144,19 +168,10 @@ fn main() {
 }
 ",
         );
-        do_check(
-            r"
-///<|> Some docs
-fn foo() {
-}
-",
-            r"
-///
-/// <|> Some docs
-fn foo() {
-}
-",
-        );
+    }
+
+    #[test]
+    fn does_not_continue_end_of_code_comment() {
         do_check_noop(
             r"
 fn main() {
@@ -165,7 +180,5 @@ fn main() {
 }
 ",
         );
-
-        do_check_noop(r"<|>//! docz");
     }
 }
