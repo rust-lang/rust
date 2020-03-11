@@ -19,9 +19,9 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
-use rustc_ast::ast::Ident;
 use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
+use rustc_ast::ast::{Ident, Name};
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_attr as attr;
@@ -37,6 +37,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 
 use log::debug;
+use rustc_span::source_map::{respan, Spanned};
 use std::cell::Cell;
 use std::ptr;
 
@@ -287,12 +288,18 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let field_names = vdata
             .fields()
             .iter()
-            .map(|field| field.ident.unwrap_or_else(|| Ident::new(kw::Invalid, field.span)))
+            .map(|field| {
+                field
+                    .ident
+                    // For unnamed fields, use the span of the field with `kw::Invalid`
+                    // For named fields, just convert the `Ident` to a `Spanned<Name>` directly
+                    .map_or_else(|| respan(field.span, kw::Invalid), |i| respan(i.span, i.name))
+            })
             .collect();
         self.insert_field_names(def_id, field_names);
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Ident>) {
+    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
         if !field_names.is_empty() {
             self.r.field_names.insert(def_id, field_names);
         }

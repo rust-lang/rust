@@ -624,7 +624,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             if let Some(field_names) = self.r.field_names.get(&did) {
                                 if field_names
                                     .iter()
-                                    .any(|&field_name| ident.name == field_name.name)
+                                    .any(|&field_name| ident.name == field_name.node)
                                 {
                                     return Some(AssocSuggestion::Field);
                                 }

@@ -35,7 +35,7 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast::{self, Ident, Name};
 use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
@@ -47,6 +47,7 @@ use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 use crate::creader::{ImportedSourceFile, SourceMapImportInfo};
 
 pub use cstore_impl::{provide, provide_extern};
+use rustc_span::source_map::{respan, Spanned};
 
 mod cstore_impl;
 
@@ -1314,14 +1315,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Ident> {
+    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<Name>> {
         self.root
             .per_def
             .children
             .get(self, id)
             .unwrap_or(Lazy::empty())
             .decode((self, sess))
-            .map(|index| self.item_name(index))
+            .map(|index| {
+                let ident = self.item_name(index);
+                respan(ident.span, ident.name)
+            })
             .collect()
     }
 
