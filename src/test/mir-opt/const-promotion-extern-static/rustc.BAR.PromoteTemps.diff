@@ -1,0 +1,62 @@
+- // MIR for `BAR` before PromoteTemps
++ // MIR for `BAR` after PromoteTemps
+  
+  static mut BAR: *const &i32 = {
+      let mut _0: *const &i32;             // return place in scope 0 at $DIR/const-promotion-extern-static.rs:9:17: 9:28
+      let mut _1: &[&i32];                 // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+      let mut _2: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+      let _3: [&i32; 1];                   // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+      let mut _4: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
+      let _5: &i32;                        // in scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
++     let mut _6: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+-         StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+-         StorageLive(_4);                 // bb0[3]: scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
+-         StorageLive(_5);                 // bb0[4]: scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
+-         _5 = const {alloc0+0: &i32};     // bb0[5]: scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
++         _6 = const BAR::promoted[0];     // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+                                           // ty::Const
+-                                          // + ty: &i32
+-                                          // + val: Value(Scalar(alloc0+0))
++                                          // + ty: &[&i32; 1]
++                                          // + val: Unevaluated(DefId(0:6 ~ const_promotion_extern_static[317d]::BAR[0]), [], Some(promoted[0]))
+                                           // mir::Constant
+-                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
+-                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc0+0)) }
+-         _4 = &(*_5);                     // bb0[6]: scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
+-         _3 = [move _4];                  // bb0[7]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+-         _2 = &_3;                        // bb0[8]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+-         _1 = move _2 as &[&i32] (Pointer(Unsize)); // bb0[9]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+-         _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // bb0[10]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
++                                          // + span: $DIR/const-promotion-extern-static.rs:9:31: 9:35
++                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(DefId(0:6 ~ const_promotion_extern_static[317d]::BAR[0]), [], Some(promoted[0])) }
++         _2 = &(*_6);                     // bb0[3]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
++         _1 = move _2 as &[&i32] (Pointer(Unsize)); // bb0[4]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
++         _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // bb0[5]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
+                                           // ty::Const
+                                           // + ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/const-promotion-extern-static.rs:9:36: 9:42
+                                           // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1 (cleanup): {
+          resume;                          // bb1[0]: scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
+      }
+  
+      bb2: {
+-         StorageDead(_5);                 // bb2[0]: scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
+-         StorageDead(_3);                 // bb2[1]: scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
+-         return;                          // bb2[2]: scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
++         return;                          // bb2[0]: scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
+      }
+- }
+- 
+- alloc0 (static: Y, size: 4, align: 4) {
+-     2a 00 00 00                                     │ *...
+  }
+  
