@@ -1904,36 +1904,6 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
     }
 }
 
-pub trait MaybeResult<T> {
-    type Error;
-
-    fn from(x: Result<T, Self::Error>) -> Self;
-    fn to_result(self) -> Result<T, Self::Error>;
-}
-
-impl<T> MaybeResult<T> for T {
-    type Error = !;
-
-    fn from(x: Result<T, Self::Error>) -> Self {
-        let Ok(x) = x;
-        x
-    }
-    fn to_result(self) -> Result<T, Self::Error> {
-        Ok(self)
-    }
-}
-
-impl<T, E> MaybeResult<T> for Result<T, E> {
-    type Error = E;
-
-    fn from(x: Result<T, Self::Error>) -> Self {
-        x
-    }
-    fn to_result(self) -> Result<T, Self::Error> {
-        self
-    }
-}
-
 pub type TyLayout<'tcx> = ::rustc_target::abi::TyLayout<'tcx, Ty<'tcx>>;
 
 impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
