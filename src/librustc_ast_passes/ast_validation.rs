@@ -13,7 +13,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
+use rustc_errors::{error_code, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
@@ -882,64 +882,43 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     if !generics.params.is_empty() {
-                        let spans: Vec<_> = generics.params.iter().map(|i| i.ident.span).collect();
-                        let last = spans.iter().last().map(|s| *s);
-                        let len = spans.len();
                         let mut err = struct_span_err!(
                             self.session,
-                            spans,
+                            generics.span,
                             E0567,
                             "auto traits cannot have generic parameters"
                         );
-                        if let Some(span) = last {
-                            err.span_label(
-                                span,
-                                &format!(
-                                    "cannot have {these} generic parameter{s}",
-                                    these = if len == 1 { "this" } else { "these" },
-                                    s = pluralize!(len)
-                                ),
-                            );
-                        }
                         err.span_label(
                             item.ident.span,
                             "auto trait cannot have generic parameters",
                         );
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             generics.span,
-                            "remove the parameters for the auto trait to be valid",
+                            "remove the parameters",
                             String::new(),
                             Applicability::MachineApplicable,
                         );
                         err.emit();
                     }
                     if !bounds.is_empty() {
-                        let spans: Vec<_> = bounds.iter().map(|b| b.span()).collect();
-                        let last = spans.iter().last().map(|s| *s);
-                        let len = spans.len();
+                        let span = match &bounds[..] {
+                            [] => unreachable!(),
+                            [single] => single.span(),
+                            [first, .., last] => first.span().to(last.span()),
+                        };
                         let mut err = struct_span_err!(
                             self.session,
-                            spans,
+                            span,
                             E0568,
                             "auto traits cannot have super traits"
                         );
                         err.span_label(item.ident.span, "auto trait cannot have super traits");
-                        if let Some(span) = last {
-                            err.span_label(
-                                span,
-                                &format!(
-                                    "cannot have {these} super trait{s}",
-                                    these = if len == 1 { "this" } else { "these" },
-                                    s = pluralize!(len)
-                                ),
-                            );
-                            err.span_suggestion_verbose(
-                                generics.span.shrink_to_hi().to(span),
-                                "remove the super traits for the auto trait to be valid",
-                                String::new(),
-                                Applicability::MachineApplicable,
-                            );
-                        }
+                        err.span_suggestion(
+                            span,
+                            "remove the super traits",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
                         err.emit();
                     }
                     if !trait_items.is_empty() {

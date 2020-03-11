@@ -1,28 +1,18 @@
 error[E0567]: auto traits cannot have generic parameters
-  --> $DIR/auto-trait-validation.rs:3:20
+  --> $DIR/auto-trait-validation.rs:3:19
    |
 LL | auto trait Generic<T> {}
-   |            ------- ^ cannot have this generic parameter
+   |            -------^^^ help: remove the parameters
    |            |
    |            auto trait cannot have generic parameters
-   |
-help: remove the parameters for the auto trait to be valid
-   |
-LL | auto trait Generic {}
-   |                  --
 
 error[E0568]: auto traits cannot have super traits
   --> $DIR/auto-trait-validation.rs:5:20
    |
 LL | auto trait Bound : Copy {}
-   |            -----   ^^^^ cannot have this super trait
+   |            -----   ^^^^ help: remove the super traits
    |            |
    |            auto trait cannot have super traits
-   |
-help: remove the super traits for the auto trait to be valid
-   |
-LL | auto trait Bound {}
-   |                --
 
 error[E0380]: auto traits cannot have methods or associated items
   --> $DIR/auto-trait-validation.rs:7:25

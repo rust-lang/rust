@@ -2,14 +2,9 @@ error[E0568]: auto traits cannot have super traits
   --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:7:19
    |
 LL | auto trait Magic: Copy {}
-   |            -----  ^^^^ cannot have this super trait
+   |            -----  ^^^^ help: remove the super traits
    |            |
    |            auto trait cannot have super traits
-   |
-help: remove the super traits for the auto trait to be valid
-   |
-LL | auto trait Magic {}
-   |                --
 
 error[E0277]: the trait bound `NoClone: std::marker::Copy` is not satisfied
   --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:15:23
