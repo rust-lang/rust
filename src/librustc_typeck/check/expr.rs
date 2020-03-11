@@ -1350,7 +1350,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         match variant.ctor_kind {
             CtorKind::Fn => {
-                debug!("report_unknown_field: ident span={:?}", variant.ident.span);
                 err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
                 err.span_label(field.ident.span, "field does not exist");
                 err.span_label(
