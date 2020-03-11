@@ -12,7 +12,6 @@ use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
