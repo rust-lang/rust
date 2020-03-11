@@ -940,6 +940,7 @@ dependencies = [
 name = "ra_hir"
 version = "0.1.0"
 dependencies = [
+ "arrayvec",
  "either",
  "itertools",
  "log",

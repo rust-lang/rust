@@ -967,4 +967,43 @@ mod tests {
         ]
         "###);
     }
+
+    #[test]
+    fn function_mod_share_name() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                fn foo() {
+                    self::m::<|>
+                }
+
+                mod m {
+                    pub mod z {}
+                    pub fn z() {}
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "z",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "z",
+                kind: Module,
+            },
+            CompletionItem {
+                label: "z()",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "z()$0",
+                kind: Function,
+                lookup: "z",
+                detail: "pub fn z()",
+            },
+        ]
+        "###
+        );
+    }
+
 }

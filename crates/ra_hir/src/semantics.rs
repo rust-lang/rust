@@ -344,7 +344,13 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 
         resolver.process_all_names(self.db, &mut |name, def| {
             let def = match def {
-                resolver::ScopeDef::PerNs(it) => it.into(),
+                resolver::ScopeDef::PerNs(it) => {
+                    let items = ScopeDef::all_items(it);
+                    for item in items {
+                        f(name.clone(), item);
+                    }
+                    return
+                },
                 resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                 resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                 resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(TypeParam { id }),
