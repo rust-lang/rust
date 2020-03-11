@@ -69,11 +69,11 @@ impl UnsafetyChecker<'tcx> {
                     .emit();
                 }
 
-                (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative) => {
+                (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
                     // Reported in AST validation
                     self.tcx.sess.delay_span_bug(item.span, "unsafe negative impl");
                 }
-                (_, _, Unsafety::Normal, hir::ImplPolarity::Negative)
+                (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
                 | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)
                 | (Unsafety::Normal, Some(_), Unsafety::Unsafe, hir::ImplPolarity::Positive)
                 | (Unsafety::Normal, None, Unsafety::Normal, _) => {

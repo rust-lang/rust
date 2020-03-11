@@ -337,14 +337,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl { polarity, defaultness, .. } => {
-                if polarity == ast::ImplPolarity::Negative {
+            ast::ItemKind::Impl { polarity, defaultness, ref of_trait, .. } => {
+                if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
                         optin_builtin_traits,
-                        i.span,
+                        span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
                         "negative trait bounds are not yet fully implemented; \
-                                        use marker types for now"
+                         use marker types for now"
                     );
                 }
 

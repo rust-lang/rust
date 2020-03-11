@@ -2118,14 +2118,14 @@ pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
     /// `impl !Trait for Type`
-    Negative,
+    Negative(Span),
 }
 
 impl fmt::Debug for ImplPolarity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ImplPolarity::Positive => "positive".fmt(f),
-            ImplPolarity::Negative => "negative".fmt(f),
+            ImplPolarity::Negative(_) => "negative".fmt(f),
         }
     }
 }

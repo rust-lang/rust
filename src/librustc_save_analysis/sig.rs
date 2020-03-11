@@ -519,7 +519,7 @@ impl Sig for ast::Item {
                 text.push(' ');
 
                 let trait_sig = if let Some(ref t) = *of_trait {
-                    if polarity == ast::ImplPolarity::Negative {
+                    if let ast::ImplPolarity::Negative(_) = polarity {
                         text.push('!');
                     }
                     let trait_sig = t.path.make(offset + text.len(), id, scx)?;
