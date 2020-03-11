@@ -1,6 +1,5 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
-use crate::session::config::OptLevel;
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
@@ -9,6 +8,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::HirId;
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use std::fmt;

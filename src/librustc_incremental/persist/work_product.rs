@@ -2,8 +2,8 @@
 
 use crate::persist::fs::*;
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::session::Session;
 use rustc_fs_util::link_or_copy;
+use rustc_session::Session;
 use std::fs as std_fs;
 use std::path::PathBuf;
 

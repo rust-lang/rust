@@ -6,13 +6,10 @@
 // ignore-tidy-filelength
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
-use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc::session::{parse::feature_err, Session};
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
@@ -26,6 +23,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::print;
 use rustc_hir::{Constness, ExprKind, GenericArg, GenericArgs};
+use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -33,8 +33,8 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use smallvec::SmallVec;
 
+use smallvec::SmallVec;
 use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
@@ -340,7 +340,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
                     tcx.struct_span_lint_hir(
-                        lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                        LATE_BOUND_LIFETIME_ARGUMENTS,
                         args.args[0].id(),
                         multispan,
                         |lint| lint.build(msg).emit(),

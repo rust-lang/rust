@@ -28,13 +28,13 @@ use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols;
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::session::config::DebugInfo;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 
 use std::ffi::CString;

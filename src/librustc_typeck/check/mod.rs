@@ -92,7 +92,6 @@ use crate::middle::lang_items;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::mir::interpret::ConstValue;
-use rustc::session::parse::feature_err;
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -123,6 +122,10 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_session::config::{self, EntryFnType};
+use rustc_session::lint;
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -145,10 +148,7 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
 
-use crate::lint;
 use crate::require_c_abi_if_c_variadic;
-use crate::session::config::EntryFnType;
-use crate::session::Session;
 use crate::util::common::{indenter, ErrorReported};
 use crate::TypeAndSubsts;
 
@@ -5787,7 +5787,7 @@ fn fatally_break_rust(sess: &Session) {
     handler.note_without_error(&format!(
         "rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-        crate::session::config::host_triple(),
+        config::host_triple(),
     ));
 }
 

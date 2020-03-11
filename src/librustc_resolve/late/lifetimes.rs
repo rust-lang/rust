@@ -7,7 +7,6 @@
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
@@ -22,6 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
+use rustc_session::lint;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::borrow::Cow;

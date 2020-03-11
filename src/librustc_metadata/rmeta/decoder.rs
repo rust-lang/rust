@@ -14,35 +14,34 @@ use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
 use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::mir::{self, interpret, BodyAndCache, Promoted};
-use rustc::session::Session;
 use rustc::ty::codec::TyDecoder;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::common::record_time;
+use rustc_ast::ast::{self, Ident};
+use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
+use rustc_session::Session;
+use rustc_span::source_map::{self, respan, Spanned};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
+use log::debug;
+use proc_macro::bridge::client::ProcMacro;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::u32;
-
-use log::debug;
-use proc_macro::bridge::client::ProcMacro;
-use rustc_ast::ast::{self, Ident};
-use rustc_attr as attr;
-use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
-use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
-use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
-use rustc_span::source_map::{self, respan, Spanned};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
 pub use cstore_impl::{provide, provide_extern};
 

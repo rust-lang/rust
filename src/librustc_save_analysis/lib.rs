@@ -10,7 +10,6 @@ mod sig;
 
 use rustc::middle::cstore::ExternCrate;
 use rustc::middle::privacy::AccessLevels;
-use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
@@ -22,6 +21,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_span::source_map::Spanned;
 use rustc_span::*;
 

@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc::session::config::{self, Sanitizer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
@@ -16,6 +15,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
+use rustc_session::config::{self, Sanitizer};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())

@@ -12,32 +12,30 @@ use rustc::traits::specialization_graph;
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, SymbolName, Ty, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::{AnonConst, GenericParamKind};
-use rustc_index::vec::Idx;
-
-use rustc::session::config::{self, CrateType};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{AnonConst, GenericParamKind};
+use rustc_index::vec::Idx;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
-
-use log::{debug, trace};
-use rustc_ast::ast;
-use rustc_ast::attr;
+use rustc_session::config::{self, CrateType};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, SourceFile, Span};
+
+use log::{debug, trace};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::u32;
-
-use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,

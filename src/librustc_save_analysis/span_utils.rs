@@ -1,7 +1,7 @@
 use crate::generated_code;
-use rustc::session::Session;
 use rustc_ast::token::{self, TokenKind};
 use rustc_parse::lexer::{self, StringReader};
+use rustc_session::Session;
 use rustc_span::*;
 
 #[derive(Clone)]

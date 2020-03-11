@@ -24,7 +24,6 @@ use rustc::ich::NodeIdHashingMode;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::interpret::truncate;
 use rustc::mir::{self, Field, GeneratorLayout};
-use rustc::session::config::{self, DebugInfo};
 use rustc::ty::layout::{
     self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
 };
@@ -42,6 +41,7 @@ use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};
 use rustc_target::abi::HasDataLayout;
