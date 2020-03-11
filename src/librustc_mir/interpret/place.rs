@@ -648,9 +648,11 @@ where
                         // bail out.
                         None => Place::null(&*self),
                     },
-                    layout: self.layout_of(self.subst_from_frame_and_normalize_erasing_regions(
-                        self.frame().body.return_ty(),
-                    ))?,
+                    layout: self.layout_of(
+                        self.subst_from_current_frame_and_normalize_erasing_regions(
+                            self.frame().body.return_ty(),
+                        ),
+                    )?,
                 }
             }
             local => PlaceTy {

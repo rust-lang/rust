@@ -491,7 +491,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Copy(ref place) | Move(ref place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let val = self.subst_from_frame_and_normalize_erasing_regions(constant.literal);
+                let val =
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
                 self.eval_const_to_op(val, layout)?
             }
         };
