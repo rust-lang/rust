@@ -262,7 +262,8 @@ fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Opti
 
     // Extern paths ?
     let krate = db.relevant_crates(call_site).get(0)?.clone();
-    let (extern_source_id, relative_file) = db.crate_graph()[krate].env.extern_path(path)?;
+    let (extern_source_id, relative_file) =
+        db.crate_graph()[krate].extern_source.extern_path(path)?;
 
     db.resolve_extern_path(extern_source_id, &relative_file)
 }

@@ -11,8 +11,8 @@ use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
 pub use crate::{
     cancellation::Canceled,
     input::{
-        CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSourceId, FileId,
-        SourceRoot, SourceRootId,
+        CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSource, ExternSourceId,
+        FileId, SourceRoot, SourceRootId,
     },
 };
 pub use relative_path::{RelativePath, RelativePathBuf};

@@ -61,7 +61,14 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
         };
 
         let mut crate_graph = CrateGraph::default();
-        crate_graph.add_crate_root(file_id, meta.edition, meta.krate, meta.cfg, meta.env);
+        crate_graph.add_crate_root(
+            file_id,
+            meta.edition,
+            meta.krate,
+            meta.cfg,
+            meta.env,
+            Default::default(),
+        );
         crate_graph
     } else {
         let mut crate_graph = CrateGraph::default();
@@ -71,6 +78,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         crate_graph
     };
@@ -119,6 +127,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
                 Some(krate.clone()),
                 meta.cfg,
                 meta.env,
+                Default::default(),
             );
             let prev = crates.insert(krate.clone(), crate_id);
             assert!(prev.is_none());
@@ -155,6 +164,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
     } else {
         for (from, to) in crate_deps {

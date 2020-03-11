@@ -14,7 +14,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSourceId, FileId};
+use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -197,6 +197,7 @@ impl ProjectWorkspace {
                                 None,
                                 cfg_options,
                                 Env::default(),
+                                Default::default(),
                             ),
                         );
                     }
@@ -235,8 +236,10 @@ impl ProjectWorkspace {
                         };
 
                         let mut env = Env::default();
+                        let mut extern_source = ExternSource::default();
                         if let Some((id, path)) = outdirs.get(krate.name(&sysroot)) {
-                            env.set_extern_path("OUT_DIR", &path, *id);
+                            env.set("OUT_DIR", path.clone());
+                            extern_source.set_extern_path(&path, *id);
                         }
 
                         let crate_id = crate_graph.add_crate_root(
@@ -245,6 +248,7 @@ impl ProjectWorkspace {
                             Some(krate.name(&sysroot).to_string()),
                             cfg_options,
                             env,
+                            extern_source,
                         );
                         sysroot_crates.insert(krate, crate_id);
                     }
@@ -284,8 +288,10 @@ impl ProjectWorkspace {
                                 opts
                             };
                             let mut env = Env::default();
+                            let mut extern_source = ExternSource::default();
                             if let Some((id, path)) = outdirs.get(pkg.name(&cargo)) {
-                                env.set_extern_path("OUT_DIR", &path, *id);
+                                env.set("OUT_DIR", path.clone());
+                                extern_source.set_extern_path(&path, *id);
                             }
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
@@ -293,6 +299,7 @@ impl ProjectWorkspace {
                                 Some(pkg.name(&cargo).to_string()),
                                 cfg_options,
                                 env,
+                                extern_source,
                             );
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);

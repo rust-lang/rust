@@ -113,6 +113,7 @@ pub struct CrateData {
     pub display_name: Option<String>,
     pub cfg_options: CfgOptions,
     pub env: Env,
+    pub extern_source: ExternSource,
     pub dependencies: Vec<Dependency>,
 }
 
@@ -128,9 +129,13 @@ pub struct ExternSourceId(pub u32);
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
+}
 
-    // Note: Some env variables (e.g. OUT_DIR) are located outside of the
-    // crate. We store a map to allow remap it to ExternSourceId
+// FIXME: Redesign vfs for solve the following limitation ?
+// Note: Some env variables (e.g. OUT_DIR) are located outside of the
+// crate. We store a map to allow remap it to ExternSourceId
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct ExternSource {
     extern_paths: FxHashMap<String, ExternSourceId>,
 }
 
@@ -148,6 +153,7 @@ impl CrateGraph {
         display_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
+        extern_source: ExternSource,
     ) -> CrateId {
         let data = CrateData {
             root_file_id: file_id,
@@ -155,6 +161,7 @@ impl CrateGraph {
             display_name,
             cfg_options,
             env,
+            extern_source,
             dependencies: Vec::new(),
         };
         let crate_id = CrateId(self.arena.len() as u32);
@@ -276,7 +283,9 @@ impl Env {
     pub fn get(&self, env: &str) -> Option<String> {
         self.entries.get(env).cloned()
     }
+}
 
+impl ExternSource {
     pub fn extern_path(&self, path: &str) -> Option<(ExternSourceId, RelativePathBuf)> {
         self.extern_paths.iter().find_map(|(root_path, id)| {
             if path.starts_with(root_path) {
@@ -292,8 +301,7 @@ impl Env {
         })
     }
 
-    pub fn set_extern_path(&mut self, env: &str, root_path: &str, root: ExternSourceId) {
-        self.entries.insert(env.to_owned(), root_path.to_owned());
+    pub fn set_extern_path(&mut self, root_path: &str, root: ExternSourceId) {
         self.extern_paths.insert(root_path.to_owned(), root);
     }
 }
@@ -327,6 +335,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -334,6 +343,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -341,6 +351,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
@@ -356,6 +367,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -363,6 +375,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -370,6 +383,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
@@ -384,6 +398,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -391,6 +406,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
         );
         assert!(graph
             .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
