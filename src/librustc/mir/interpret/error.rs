@@ -13,7 +13,7 @@ use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::{Pos, Span, def_id::DefId};
+use rustc_span::{def_id::DefId, Pos, Span};
 use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
