@@ -47,7 +47,7 @@ use rustc_macros::HashStable_Generic;
 pub mod abi;
 mod android_base;
 mod apple_base;
-mod apple_ios_base;
+mod apple_sdk_base;
 mod arm_base;
 mod cloudabi_base;
 mod dragonfly_base;
@@ -434,6 +434,8 @@ supported_targets! {
     ("armv7-apple-ios", armv7_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
+    ("aarch64-apple-tvos", aarch64_apple_tvos),
+    ("x86_64-apple-tvos", x86_64_apple_tvos),
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
