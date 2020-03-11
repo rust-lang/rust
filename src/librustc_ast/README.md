@@ -3,7 +3,7 @@ The `rustc_ast` crate contains those things concerned purely with syntax
 lexer, macro expander, and utilities for traversing ASTs.
 
 For more information about how these things work in rustc, see the
-rustc guide:
+rustc dev guide:
 
-- [Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
-- [Macro Expansion](https://rust-lang.github.io/rustc-guide/macro-expansion.html)
+- [Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
+- [Macro Expansion](https://rustc-dev-guide.rust-lang.org/macro-expansion.html)

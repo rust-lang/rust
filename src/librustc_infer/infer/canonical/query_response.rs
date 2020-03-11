@@ -3,9 +3,9 @@
 //! encode them therein.
 //!
 //! For an overview of what canonicaliation is and how it fits into
-//! rustc, check out the [chapter in the rustc guide][c].
+//! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
@@ -196,9 +196,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// the query before applying this function.)
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,

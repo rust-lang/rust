@@ -3,6 +3,6 @@ This directory contains the source code of the rust project, including:
 - `libstd`
 - Various submodules for tools, like rustdoc, rls, etc.
 
-For more information on how various parts of the compiler work, see the [rustc guide].
+For more information on how various parts of the compiler work, see the [rustc dev guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
