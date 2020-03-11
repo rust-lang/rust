@@ -1297,7 +1297,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
         let def_key = self.def_key(node_id);
-        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
+        let item_id = if matches!(def_key.disambiguated_data.data, DefPathData::Ctor) {
             def_key.parent.unwrap()
         } else {
             node_id

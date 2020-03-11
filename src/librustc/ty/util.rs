@@ -448,7 +448,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+        matches!(self.def_key(def_id).disambiguated_data.data, DefPathData::ClosureExpr)
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
@@ -465,7 +465,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if this `DefId` refers to the implicit constructor for
     /// a tuple struct like `struct Foo(u32)`, and `false` otherwise.
     pub fn is_constructor(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::Ctor
+        matches!(self.def_key(def_id).disambiguated_data.data, DefPathData::Ctor)
     }
 
     /// Given the def-ID of a fn or closure, returns the def-ID of

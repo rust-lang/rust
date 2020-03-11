@@ -90,12 +90,9 @@ pub struct Definitions {
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
     /// Item with a given `DefIndex` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<DefIndex, ExpnId>,
-    // Keeps track of the current disambiguator for a given (DefIndex, DefPathData)
-    // Note that we replace any `Spans` (e.g. in `Ident`) with `DUMMY_SP` before
-    // inserting a `DefPathData`. This ensures that we create a new disambiguator
-    // for definitions that have the same name, but different spans (e.g. definitions
-    // created by a macro invocation).
-    next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
+    // We use a `PlainDefPathData` instead of `DefPathData` so that we don't
+    // consider `Span`s (from `Ident`) when hashing or comparing
+    next_disambiguator: FxHashMap<(DefIndex, PlainDefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table.
@@ -107,7 +104,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
@@ -158,7 +155,7 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32,
@@ -261,7 +258,39 @@ impl DefPath {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+// A copy of `DefPathData`, but with `Symbol` substituted for `Ident`.
+// We want to implement `Hash`, `Eq`, and `PartialEq` for this struct,
+// but not for `DefPathData`. This prevents us from doing something like
+// ```enum BaseDefPathData<T> { ... }, type DefPathData = BaseDefPathData<Ident>```
+//, as `DefPathData` would end up implementing `Hash`, `Eq`, and `PartialEq` due to
+// the `#[derive] macros we would need to place on `BaseDefPathData`.
+//
+// This could be fixed by switching to the `derivative` crate, which allows
+// custom bounds to be applied to parameters in the generated impls.
+// This would allow us to write `trait IsSymbol {}; impl IsSymbol for Symbol {}`.
+// and add a `T: IsSymbol` bound to the `derivative` impls on `PlainDefPathData`.
+//
+// For now, this small amount of duplication (which is invisible outside of this module)
+// isn't worth pulling in an extra dependency.
+#[derive(Eq, PartialEq, Hash, Clone, Copy)]
+enum PlainDefPathData {
+    CrateRoot,
+    Misc,
+    Impl,
+    TypeNs(Symbol),
+    ValueNs(Symbol),
+    MacroNs(Symbol),
+    LifetimeNs(Symbol),
+    ClosureExpr,
+    Ctor,
+    AnonConst,
+    ImplTrait,
+}
+
+// We intentionally do *not* derive `Eq`, `PartialEq`, and `Hash`:
+// this would cause us to hash/compare using the `Span` from the `Ident`,
+// which is almost never correct.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -435,14 +464,12 @@ impl Definitions {
         );
 
         // The root node must be created with `create_root_def()`.
-        assert!(data != DefPathData::CrateRoot);
+        assert!(!(matches!(data, DefPathData::CrateRoot)));
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            // Replace any span with `DUMMY_SP` - two definitions which differ
-            // only in their spans still need to be disambiguated.
-            let data_dummy_span = data.with_dummy_span();
-            let next_disamb = self.next_disambiguator.entry((parent, data_dummy_span)).or_insert(0);
+            let plain_data = data.to_plain();
+            let next_disamb = self.next_disambiguator.entry((parent, plain_data)).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -532,16 +559,20 @@ impl Definitions {
 }
 
 impl DefPathData {
-    /// Replaces any `Spans` contains in this `DefPathData` with `DUMMY_SP`.
-    /// Useful when using a `DefPathData` as a cache key.
-    pub fn with_dummy_span(&self) -> DefPathData {
+    fn to_plain(&self) -> PlainDefPathData {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) => TypeNs(Ident::with_dummy_span(name.name)),
-            ValueNs(name) => ValueNs(Ident::with_dummy_span(name.name)),
-            MacroNs(name) => MacroNs(Ident::with_dummy_span(name.name)),
-            LifetimeNs(name) => LifetimeNs(Ident::with_dummy_span(name.name)),
-            CrateRoot | Misc | Impl | ClosureExpr | Ctor | AnonConst | ImplTrait => *self,
+            TypeNs(name) => PlainDefPathData::TypeNs(name.name),
+            ValueNs(name) => PlainDefPathData::ValueNs(name.name),
+            MacroNs(name) => PlainDefPathData::MacroNs(name.name),
+            LifetimeNs(name) => PlainDefPathData::LifetimeNs(name.name),
+            CrateRoot => PlainDefPathData::CrateRoot,
+            Misc => PlainDefPathData::Misc,
+            Impl => PlainDefPathData::Impl,
+            ClosureExpr => PlainDefPathData::ClosureExpr,
+            Ctor => PlainDefPathData::Ctor,
+            AnonConst => PlainDefPathData::AnonConst,
+            ImplTrait => PlainDefPathData::ImplTrait,
         }
     }
 

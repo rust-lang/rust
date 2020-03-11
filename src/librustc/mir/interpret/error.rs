@@ -64,9 +64,10 @@ pub struct FrameInfo<'tcx> {
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
-                == DefPathData::ClosureExpr
-            {
+            if matches!(
+                tcx.def_key(self.instance.def_id()).disambiguated_data.data,
+                DefPathData::ClosureExpr
+            ) {
                 write!(f, "inside call to closure")?;
             } else {
                 write!(f, "inside call to `{}`", self.instance)?;
