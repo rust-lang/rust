@@ -500,7 +500,7 @@ pub unsafe fn zeroed<T>() -> T {
     intrinsics::panic_if_zero_invalid::<T>();
     #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::init()
+    MaybeUninit::zeroed().assume_init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -536,7 +536,7 @@ pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_any_invalid::<T>();
     #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::uninit()
+    MaybeUninit::uninit().assume_init()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.

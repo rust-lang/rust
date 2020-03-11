@@ -195,26 +195,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     .unwrap();
                 OperandRef::from_const(self, ty_name, ret_ty).immediate_or_packed_pair(self)
             }
-            "init" => {
-                let ty = substs.type_at(0);
-                if !self.layout_of(ty).is_zst() {
-                    // Just zero out the stack slot.
-                    // If we store a zero constant, LLVM will drown in vreg allocation for large
-                    // data structures, and the generated code will be awful. (A telltale sign of
-                    // this is large quantities of `mov [byte ptr foo],0` in the generated code.)
-                    memset_intrinsic(
-                        self,
-                        false,
-                        ty,
-                        llresult,
-                        self.const_u8(0),
-                        self.const_usize(1),
-                    );
-                }
-                return;
-            }
-            // Effectively no-ops
-            "uninit" | "forget" => {
+            // Effectively no-op
+            "forget" => {
                 return;
             }
             "offset" => {
