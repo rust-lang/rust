@@ -55,6 +55,9 @@ The script accepts commands, flags, and arguments to determine what to do:
   # run all unit tests
   ./x.py test
 
+  # execute tool tests
+  ./x.py test tidy
+
   # execute the UI test suite
   ./x.py test src/test/ui
 

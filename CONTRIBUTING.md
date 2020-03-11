@@ -142,7 +142,7 @@ the issue in question.
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
-    $ python x.py test src/tools/tidy
+    $ python x.py test tidy
 
 Make this check before every pull request (and every new commit in a pull
 request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
