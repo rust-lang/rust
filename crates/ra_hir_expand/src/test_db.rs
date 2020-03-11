@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath};
+use ra_db::{salsa, CrateId, ExternSourceId, FileId, FileLoader, FileLoaderDelegate, RelativePath};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -50,5 +50,12 @@ impl FileLoader for TestDB {
     }
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
+    }
+    fn resolve_extern_path(
+        &self,
+        anchor: ExternSourceId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_extern_path(anchor, relative_path)
     }
 }

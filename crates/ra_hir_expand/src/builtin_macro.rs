@@ -90,15 +90,15 @@ register_builtin! {
     (line, Line) => line_expand,
     (stringify, Stringify) => stringify_expand,
     (format_args, FormatArgs) => format_args_expand,
-    (env, Env) => env_expand,
-    (option_env, OptionEnv) => option_env_expand,
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
     (format_args_nl, FormatArgsNl) => format_args_expand,
 
     EAGER:
     (concat, Concat) => concat_expand,
-    (include, Include) => include_expand
+    (include, Include) => include_expand,
+    (env, Env) => env_expand,
+    (option_env, OptionEnv) => option_env_expand
 }
 
 fn line_expand(
@@ -133,31 +133,6 @@ fn stringify_expand(
     let expanded = quote! {
         #macro_content
     };
-
-    Ok(expanded)
-}
-
-fn env_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
-    _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    // dummy implementation for type-checking purposes
-    // we cannot use an empty string here, because for
-    // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
-    // `include!("foo.rs"), which maybe infinite loop
-    let expanded = quote! { "__RA_UNIMPLEMENTATED__" };
-
-    Ok(expanded)
-}
-
-fn option_env_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
-    _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    // dummy implementation for type-checking purposes
-    let expanded = quote! { std::option::Option::None::<&str> };
 
     Ok(expanded)
 }
@@ -278,14 +253,29 @@ fn concat_expand(
 
 fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Option<FileId> {
     let call_site = call_id.as_file().original_file(db);
-    let path = RelativePath::new(&path);
 
-    let res = db.resolve_relative_path(call_site, &path)?;
-    // Prevent include itself
-    if res == call_site {
-        return None;
+    // Handle trivial case
+    if let Some(res) = db.resolve_relative_path(call_site, &RelativePath::new(&path)) {
+        // Prevent include itself
+        return if res == call_site { None } else { Some(res) };
     }
-    Some(res)
+
+    // Extern paths ?
+    let krate = db.relevant_crates(call_site).get(0)?.clone();
+    let (extern_source_id, relative_file) =
+        db.crate_graph()[krate].extern_source.extern_path(path)?;
+
+    db.resolve_extern_path(extern_source_id, &relative_file)
+}
+
+fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
+    tt.token_trees
+        .get(0)
+        .and_then(|tt| match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(&it),
+            _ => None,
+        })
+        .ok_or_else(|| mbe::ExpandError::ConversionError)
 }
 
 fn include_expand(
@@ -293,15 +283,7 @@ fn include_expand(
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
 ) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let path = tt
-        .token_trees
-        .get(0)
-        .and_then(|tt| match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(&it),
-            _ => None,
-        })
-        .ok_or_else(|| mbe::ExpandError::ConversionError)?;
-
+    let path = parse_string(tt)?;
     let file_id =
         relative_file(db, arg_id.into(), &path).ok_or_else(|| mbe::ExpandError::ConversionError)?;
 
@@ -314,12 +296,58 @@ fn include_expand(
     Ok((res, FragmentKind::Items))
 }
 
+fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {
+    let call_id: MacroCallId = arg_id.into();
+    let original_file = call_id.as_file().original_file(db);
+
+    let krate = db.relevant_crates(original_file).get(0)?.clone();
+    db.crate_graph()[krate].env.get(key)
+}
+
+fn env_expand(
+    db: &dyn AstDatabase,
+    arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let key = parse_string(tt)?;
+
+    // FIXME:
+    // If the environment variable is not defined int rustc, then a compilation error will be emitted.
+    // We might do the same if we fully support all other stuffs.
+    // But for now on, we should return some dummy string for better type infer purpose.
+    // However, we cannot use an empty string here, because for
+    // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
+    // `include!("foo.rs"), which might go to infinite loop
+    let s = get_env_inner(db, arg_id, &key).unwrap_or("__RA_UNIMPLEMENTATED__".to_string());
+    let expanded = quote! { #s };
+
+    Ok((expanded, FragmentKind::Expr))
+}
+
+fn option_env_expand(
+    db: &dyn AstDatabase,
+    arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let key = parse_string(tt)?;
+    let expanded = match get_env_inner(db, arg_id, &key) {
+        None => quote! { std::option::Option::None::<&str> },
+        Some(s) => quote! { std::option::Some(#s) },
+    };
+
+    Ok((expanded, FragmentKind::Expr))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{name::AsName, test_db::TestDB, AstNode, MacroCallId, MacroCallKind, MacroCallLoc};
+    use crate::{
+        name::AsName, test_db::TestDB, AstNode, EagerCallLoc, MacroCallId, MacroCallKind,
+        MacroCallLoc,
+    };
     use ra_db::{fixture::WithFixture, SourceDatabase};
     use ra_syntax::ast::NameOwner;
+    use std::sync::Arc;
 
     fn expand_builtin_macro(ra_fixture: &str) -> String {
         let (db, file_id) = TestDB::with_single_file(&ra_fixture);
@@ -330,27 +358,61 @@ mod tests {
         let ast_id_map = db.ast_id_map(file_id.into());
 
         let expander = find_by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
-        let expander = expander.left().unwrap();
 
-        // the first one should be a macro_rules
-        let def = MacroDefId {
-            krate: Some(CrateId(0)),
-            ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
-            kind: MacroDefKind::BuiltIn(expander),
+        let file_id = match expander {
+            Either::Left(expander) => {
+                // the first one should be a macro_rules
+                let def = MacroDefId {
+                    krate: Some(CrateId(0)),
+                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
+                    kind: MacroDefKind::BuiltIn(expander),
+                };
+
+                let loc = MacroCallLoc {
+                    def,
+                    kind: MacroCallKind::FnLike(AstId::new(
+                        file_id.into(),
+                        ast_id_map.ast_id(&macro_calls[1]),
+                    )),
+                };
+
+                let id: MacroCallId = db.intern_macro(loc).into();
+                id.as_file()
+            }
+            Either::Right(expander) => {
+                // the first one should be a macro_rules
+                let def = MacroDefId {
+                    krate: Some(CrateId(0)),
+                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
+                    kind: MacroDefKind::BuiltInEager(expander),
+                };
+
+                let args = macro_calls[1].token_tree().unwrap();
+                let parsed_args = mbe::ast_to_token_tree(&args).unwrap().0;
+
+                let arg_id = db.intern_eager_expansion({
+                    EagerCallLoc {
+                        def,
+                        fragment: FragmentKind::Expr,
+                        subtree: Arc::new(parsed_args.clone()),
+                        file_id: file_id.into(),
+                    }
+                });
+
+                let (subtree, fragment) = expander.expand(&db, arg_id, &parsed_args).unwrap();
+                let eager = EagerCallLoc {
+                    def,
+                    fragment,
+                    subtree: Arc::new(subtree),
+                    file_id: file_id.into(),
+                };
+
+                let id: MacroCallId = db.intern_eager_expansion(eager.into()).into();
+                id.as_file()
+            }
         };
 
-        let loc = MacroCallLoc {
-            def,
-            kind: MacroCallKind::FnLike(AstId::new(
-                file_id.into(),
-                ast_id_map.ast_id(&macro_calls[1]),
-            )),
-        };
-
-        let id: MacroCallId = db.intern_macro(loc).into();
-        let parsed = db.parse_or_expand(id.as_file()).unwrap();
-
-        parsed.text().to_string()
+        db.parse_or_expand(file_id).unwrap().to_string()
     }
 
     #[test]

@@ -550,6 +550,26 @@ fn main() {
 }
 
 #[test]
+fn infer_builtin_macros_env() {
+    assert_snapshot!(
+        infer(r#"
+//- /main.rs env:foo=bar
+#[rustc_builtin_macro]
+macro_rules! env {() => {}}
+
+fn main() {
+    let x = env!("foo");
+}
+"#),
+        @r###"
+    ![0; 5) '"bar"': &str
+    [88; 116) '{     ...o"); }': ()
+    [98; 99) 'x': &str
+    "###
+    );
+}
+
+#[test]
 fn infer_derive_clone_simple() {
     let (db, pos) = TestDB::with_position(
         r#"

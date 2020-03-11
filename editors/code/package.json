@@ -224,6 +224,11 @@
                     "default": true,
                     "description": "Whether to ask for permission before downloading any files from the Internet"
                 },
+                "rust-analyzer.additionalOutDirs": {
+                    "type": "object",
+                    "default": {},
+                    "markdownDescription": "Fine grained controls for OUT_DIR `env!(\"OUT_DIR\")` variable. e.g. `{\"foo\":\"/path/to/foo\"}`, "
+                },
                 "rust-analyzer.serverPath": {
                     "type": [
                         "null",

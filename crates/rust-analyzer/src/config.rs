@@ -44,6 +44,9 @@ pub struct ServerConfig {
     /// Fine grained feature flags to disable specific features.
     pub feature_flags: FxHashMap<String, bool>,
 
+    /// Fine grained controls for additional `OUT_DIR` env variables
+    pub additional_out_dirs: FxHashMap<String, String>,
+
     pub rustfmt_args: Vec<String>,
 
     /// Cargo feature configurations.
@@ -64,6 +67,7 @@ impl Default for ServerConfig {
             cargo_watch_all_targets: true,
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
+            additional_out_dirs: FxHashMap::default(),
             cargo_features: Default::default(),
             rustfmt_args: Vec::new(),
         }

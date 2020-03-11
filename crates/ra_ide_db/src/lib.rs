@@ -55,6 +55,13 @@ impl FileLoader for RootDatabase {
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
+    fn resolve_extern_path(
+        &self,
+        extern_id: ra_db::ExternSourceId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_extern_path(extern_id, relative_path)
+    }
 }
 
 impl salsa::Database for RootDatabase {

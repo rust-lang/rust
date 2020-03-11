@@ -102,6 +102,7 @@ impl MockAnalysis {
                     None,
                     cfg_options,
                     Env::default(),
+                    Default::default(),
                 ));
             } else if path.ends_with("/lib.rs") {
                 let crate_name = path.parent().unwrap().file_name().unwrap();
@@ -111,6 +112,7 @@ impl MockAnalysis {
                     Some(crate_name.to_owned()),
                     cfg_options,
                     Env::default(),
+                    Default::default(),
                 );
                 if let Some(root_crate) = root_crate {
                     crate_graph
