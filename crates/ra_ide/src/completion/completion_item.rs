@@ -321,8 +321,17 @@ impl Into<Vec<CompletionItem>> for Completions {
 
 #[cfg(test)]
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
+    do_completion_with_options(code, kind, &crate::completion::CompletionOptions::default())
+}
+
+#[cfg(test)]
+pub(crate) fn do_completion_with_options(
+    code: &str,
+    kind: CompletionKind,
+    options: &crate::completion::CompletionOptions,
+) -> Vec<CompletionItem> {
     use crate::{
-        completion::{completions, CompletionOptions},
+        completion::completions,
         mock_analysis::{analysis_and_position, single_file_with_position},
     };
 
@@ -331,7 +340,6 @@ pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionI
     } else {
         single_file_with_position(code)
     };
-    let options = CompletionOptions::default();
     let completions = completions(&analysis.db, position, &options).unwrap();
     let completion_items: Vec<CompletionItem> = completions.into();
     let mut kind_completions: Vec<CompletionItem> =

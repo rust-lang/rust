@@ -20,7 +20,7 @@ mod complete_trait_impl;
 use ra_ide_db::RootDatabase;
 
 #[cfg(test)]
-use crate::completion::completion_item::do_completion;
+use crate::completion::completion_item::{do_completion, do_completion_with_options};
 use crate::{
     completion::{
         completion_context::CompletionContext,
