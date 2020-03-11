@@ -1,0 +1,38 @@
+SOURCE_FILE@[0; 28)
+  FN_DEF@[0; 27)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
+    BLOCK_EXPR@[9; 27)
+      BLOCK@[9; 27)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 25)
+          BIN_EXPR@[15; 24)
+            PATH_EXPR@[15; 16)
+              PATH@[15; 16)
+                PATH_SEGMENT@[15; 16)
+                  NAME_REF@[15; 16)
+                    IDENT@[15; 16) "v"
+            WHITESPACE@[16; 17) " "
+            EQ@[17; 18) "="
+            WHITESPACE@[18; 19) " "
+            BIN_EXPR@[19; 24)
+              BLOCK_EXPR@[19; 22)
+                BLOCK@[19; 22)
+                  L_CURLY@[19; 20) "{"
+                  LITERAL@[20; 21)
+                    INT_NUMBER@[20; 21) "1"
+                  R_CURLY@[21; 22) "}"
+              AMP@[22; 23) "&"
+              LITERAL@[23; 24)
+                INT_NUMBER@[23; 24) "2"
+          SEMI@[24; 25) ";"
+        WHITESPACE@[25; 26) "\n"
+        R_CURLY@[26; 27) "}"
+  WHITESPACE@[27; 28) "\n"

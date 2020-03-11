@@ -278,7 +278,7 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
+fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
     let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
             // test stmt_bin_expr_ambiguity
@@ -311,6 +311,12 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
         let m = lhs.precede(p);
         p.bump(op);
 
+        // test binop_resets_statementness
+        // fn foo() {
+        //     v = {1}&2;
+        // }
+        r = Restrictions { prefer_stmt: false, ..r };
+
         if is_range {
             // test postfix_range
             // fn foo() {
@@ -327,7 +333,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
             }
         }
 
-        expr_bp(p, r, op_bp + 1);
+        expr_bp(p, Restrictions { prefer_stmt: false, ..r }, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
     (Some(lhs), BlockLike::NotBlock)
