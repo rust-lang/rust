@@ -449,7 +449,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..)
-            | ty::ReClosureBound(..)
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)

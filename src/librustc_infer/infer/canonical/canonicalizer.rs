@@ -336,10 +336,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::ReEmpty(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
-
-            ty::ReClosureBound(..) => {
-                bug!("closure bound region encountered during canonicalization");
-            }
         }
     }
 

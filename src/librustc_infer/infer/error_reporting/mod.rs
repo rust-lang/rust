@@ -152,11 +152,6 @@ pub(super) fn note_and_explain_region(
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
             (format!("lifetime {:?}", region), None)
         }
-
-        // We shouldn't encounter an error message with ReClosureBound.
-        ty::ReClosureBound(..) => {
-            bug!("encountered unexpected ReClosureBound: {:?}", region,);
-        }
     };
 
     emit_msg_span(err, prefix, description, span, suffix);

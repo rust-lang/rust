@@ -1442,12 +1442,6 @@ pub enum RegionKind {
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
-
-    /// These are regions bound in the "defining type" for a
-    /// closure. They are used ONLY as part of the
-    /// `ClosureRegionRequirements` that are produced by MIR borrowck.
-    /// See `ClosureRegionRequirements` for more details.
-    ReClosureBound(RegionVid),
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1689,7 +1683,6 @@ impl RegionKind {
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
             RegionKind::ReEmpty(_) => false,
             RegionKind::ReErased => false,
-            RegionKind::ReClosureBound(..) => false,
         }
     }
 
@@ -1768,9 +1761,6 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
             ty::ReEmpty(_) | ty::ReStatic => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-            ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
