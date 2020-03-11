@@ -169,6 +169,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
+    /// Called to evaluate `Abort` MIR terminator.
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, !> {
+        throw_unsup_format!("aborting execution is not supported");
+    }
+
     /// Called for all binary operations where the LHS has pointer type.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded

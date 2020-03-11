@@ -120,6 +120,7 @@ symbols! {
         abi_unadjusted,
         abi_vectorcall,
         abi_x86_interrupt,
+        abort,
         aborts,
         address,
         add_with_overflow,
