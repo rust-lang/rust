@@ -130,7 +130,6 @@
 #![feature(rtm_target_feature)]
 #![feature(f16c_target_feature)]
 #![feature(hexagon_target_feature)]
-#![feature(const_int_conversion)]
 #![feature(const_transmute)]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
