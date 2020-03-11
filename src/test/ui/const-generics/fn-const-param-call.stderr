@@ -6,3 +6,5 @@ LL | #![feature(const_generics, const_compare_raw_pointers)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
+warning: 1 warning emitted
+

@@ -27,6 +27,6 @@ note: the lint level is defined here
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0170`.

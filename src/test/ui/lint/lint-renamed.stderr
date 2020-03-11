@@ -19,5 +19,5 @@ LL | #[deny(unused)]
    |        ^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

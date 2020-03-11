@@ -29,3 +29,5 @@ warning: function is never used: `func_complete_span`
 LL | func_complete_span()
    | ^^^^^^^^^^^^^^^^^^
 
+warning: 4 warnings emitted
+

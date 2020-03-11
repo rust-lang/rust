@@ -16,3 +16,5 @@ warning: unused import: `S as _`
 LL |     use S as _;
    |         ^^^^^^
 
+warning: 2 warnings emitted
+

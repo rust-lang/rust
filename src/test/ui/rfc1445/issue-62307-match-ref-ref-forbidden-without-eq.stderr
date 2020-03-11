@@ -21,3 +21,5 @@ LL |         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); 
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
+warning: 2 warnings emitted
+

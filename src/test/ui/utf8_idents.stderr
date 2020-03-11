@@ -42,6 +42,6 @@ LL |     γ
    |
    = note: `#[warn(non_camel_case_types)]` on by default
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

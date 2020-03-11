@@ -122,3 +122,5 @@ LL |     let (mut var, unused_var) = (1, 2);
    |          |
    |          help: remove this `mut`
 
+warning: 16 warnings emitted
+

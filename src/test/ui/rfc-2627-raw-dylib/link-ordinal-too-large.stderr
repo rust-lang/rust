@@ -14,5 +14,5 @@ LL |     #[link_ordinal(18446744073709551616)]
    |
    = note: the value may not exceed `usize::MAX`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

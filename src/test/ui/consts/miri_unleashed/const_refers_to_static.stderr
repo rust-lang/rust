@@ -101,6 +101,6 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 10 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

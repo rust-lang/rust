@@ -14,6 +14,6 @@ LL |     let fut = async {
 LL |         make_unit()?;
    |         ^^^^^^^^^^^^ cannot infer type
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0282`.

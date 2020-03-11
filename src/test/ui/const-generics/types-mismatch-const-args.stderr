@@ -28,6 +28,6 @@ LL |     let _: A<'a, u16, {2u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data
    = note: expected struct `A<'a, u16, _, _>`
               found struct `A<'b, u32, _, _>`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

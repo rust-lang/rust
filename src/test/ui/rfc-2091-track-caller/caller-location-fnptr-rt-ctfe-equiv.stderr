@@ -4,3 +4,5 @@ warning: skipping const checks
 LL |     ptr()
    |     ^^^^^
 
+warning: 1 warning emitted
+

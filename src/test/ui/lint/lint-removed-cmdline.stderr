@@ -27,5 +27,5 @@ LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
 
-error: aborting due to previous error
+error: aborting due to previous error; 4 warnings emitted
 

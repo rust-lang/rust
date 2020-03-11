@@ -10,3 +10,5 @@ help: the bound will not be checked when the type alias is used, and should be r
 LL | pub type T<P> = P;
    |            --
 
+warning: 1 warning emitted
+

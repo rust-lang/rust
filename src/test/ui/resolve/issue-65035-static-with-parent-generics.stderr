@@ -57,7 +57,7 @@ LL |     static a: [u8; N] = [0; N];
    = note: expected array `[u8; _]`
               found array `[u8; _]`
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0308, E0401.
 For more information about an error, try `rustc --explain E0308`.

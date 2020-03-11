@@ -67,6 +67,6 @@ error: could not find defining uses
 LL |     type U = impl Trait;
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0518`.

@@ -16,3 +16,5 @@ warning: skipping const checks
 LL |     x(y)
    |     ^^^^
 
+warning: 3 warnings emitted
+

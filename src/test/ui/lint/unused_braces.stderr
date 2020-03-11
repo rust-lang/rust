@@ -40,3 +40,5 @@ warning: unnecessary braces around function argument
 LL |     consume({ 7 });
    |             ^^^^^ help: remove these braces
 
+warning: 5 warnings emitted
+

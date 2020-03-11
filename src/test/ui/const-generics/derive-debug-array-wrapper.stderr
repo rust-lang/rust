@@ -17,6 +17,6 @@ LL |     a: [u32; N],
    = note: required for the cast to the object type `dyn std::fmt::Debug`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

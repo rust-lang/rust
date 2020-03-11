@@ -726,6 +726,6 @@ error: could not find defining uses
 LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
    |                                           ^^^^^^^^^^^^^
 
-error: aborting due to 96 previous errors
+error: aborting due to 96 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0719`.

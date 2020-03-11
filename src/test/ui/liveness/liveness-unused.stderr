@@ -112,5 +112,5 @@ LL |         x = 0;
    |
    = help: maybe it is overwritten before being read?
 
-error: aborting due to 13 previous errors
+error: aborting due to 13 previous errors; 1 warning emitted
 

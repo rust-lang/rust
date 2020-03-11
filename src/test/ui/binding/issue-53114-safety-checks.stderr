@@ -95,6 +95,6 @@ LL |     match (&u2.a,) { (_,) => { } }
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error: aborting due to 7 previous errors
+error: aborting due to 7 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0133`.

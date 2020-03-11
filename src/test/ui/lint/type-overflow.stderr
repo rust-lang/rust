@@ -61,3 +61,5 @@ LL |     let fail = -0b1111_1111i8;
    |
    = note: the literal `0b1111_1111i8` (decimal `255`) does not fit into the type `i8` and will become `-1i8`
 
+warning: 7 warnings emitted
+

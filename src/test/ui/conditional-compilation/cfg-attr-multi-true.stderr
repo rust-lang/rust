@@ -36,3 +36,5 @@ note: the lint level is defined here
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
+warning: 5 warnings emitted
+

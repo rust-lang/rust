@@ -14,5 +14,5 @@ LL | const TEST: u8 = MY_STATIC;
    |
    = note: `#[deny(const_err)]` on by default
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

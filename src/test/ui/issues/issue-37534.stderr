@@ -23,7 +23,7 @@ LL | struct Foo<T: ?Hash> { }
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0392, E0404.
 For more information about an error, try `rustc --explain E0392`.
