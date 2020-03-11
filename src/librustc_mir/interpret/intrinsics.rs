@@ -216,6 +216,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 self.write_scalar(val, dest)?;
             }
+            sym::discriminant_value => {
+                let place = self.deref_operand(args[0])?;
+                let discr_val = self.read_discriminant(place.into())?.0;
+                self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
+            }
             sym::unchecked_shl
             | sym::unchecked_shr
             | sym::unchecked_add
