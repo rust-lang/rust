@@ -833,6 +833,25 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
+    fn test_hover_through_assert_macro() {
+        let hover_on = check_hover_result(
+            r#"
+            //- /lib.rs
+            #[rustc_builtin_macro]
+            macro_rules! assert {}
+
+            fn bar() -> bool { true }
+            fn foo() {
+                assert!(ba<|>r());
+            }
+            "#,
+            &["fn bar() -> bool"],
+        );
+
+        assert_eq!(hover_on, "bar");
+    }
+
+    #[test]
     fn test_hover_through_literal_string_in_builtin_macro() {
         check_hover_no_result(
             r#"
