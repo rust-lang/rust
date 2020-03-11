@@ -174,7 +174,7 @@ impl DepGraph {
     /// what state they have access to. In particular, we want to
     /// prevent implicit 'leaks' of tracked state into the task (which
     /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [rustc guide] for more details on
+    /// dep-graph -- see the [rustc dev guide] for more details on
     /// the dep-graph). To this end, the task function gets exactly two
     /// pieces of state: the context `cx` and an argument `arg`. Both
     /// of these bits of state must be of some type that implements
@@ -194,7 +194,7 @@ impl DepGraph {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/incremental-compilation.html
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
     pub fn with_task<'a, C, A, R>(
         &self,
         key: DepNode,

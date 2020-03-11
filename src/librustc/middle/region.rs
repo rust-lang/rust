@@ -2,9 +2,9 @@
 //! the parent links in the region hierarchy.
 //!
 //! For more information about how MIR-based region-checking works,
-//! see the [rustc guide].
+//! see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/borrowck.html
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};

@@ -1,6 +1,6 @@
-//! Method lookup: the secret sauce of Rust. See the [rustc guide] for more information.
+//! Method lookup: the secret sauce of Rust. See the [rustc dev guide] for more information.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
 
 mod confirm;
 pub mod probe;

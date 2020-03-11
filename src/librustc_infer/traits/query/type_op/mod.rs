@@ -44,7 +44,7 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
 /// first canonicalize the key and then invoke the query on the tcx,
 /// which produces the resulting query region constraints.
 ///
-/// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+/// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
 pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
     type QueryResponse: TypeFoldable<'tcx>;
 
