@@ -838,14 +838,10 @@ fn func(foo: i32) { if true { <|>foo; }; }
             r#"
             //- /lib.rs
             #[rustc_builtin_macro]
-            macro_rules! assert {
-                ($cond:expr) => {{ /* compiler built-in */ }};
-                ($cond:expr,) => {{ /* compiler built-in */ }};
-                ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
-            }
+            macro_rules! format {}
 
             fn foo() {
-                assert!("hel<|>lo");
+                format!("hel<|>lo {}", 0);
             }
             "#,
         );
