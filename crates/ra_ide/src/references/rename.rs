@@ -382,6 +382,76 @@ mod tests {
     }
 
     #[test]
+    fn test_field_shorthand_correct_struct() {
+        test_rename(
+            r#"
+    struct Foo {
+        i<|>: i32,
+    }
+
+    struct Bar {
+        i: i32,
+    }
+
+    impl Bar {
+        fn new(i: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        j: i32,
+    }
+
+    struct Bar {
+        i: i32,
+    }
+
+    impl Bar {
+        fn new(i: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_shadow_local_for_struct_shorthand() {
+        test_rename(
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    fn baz(i<|>: i32) -> Self {
+         let x = Foo { i };
+         {
+             let i = 0;
+             Foo { i }
+         }
+     }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    fn baz(j: i32) -> Self {
+         let x = Foo { i: j };
+         {
+             let i = 0;
+             Foo { i }
+         }
+     }
+    "#,
+        );
+    }
+
+    #[test]
     fn test_rename_mod() {
         let (analysis, position) = analysis_and_position(
             "

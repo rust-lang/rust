@@ -256,21 +256,21 @@ impl Definition {
                             access: reference_access(&def, &name_ref),
                         });
                     }
-                    Some(NameRefClass::FieldShorthand { local, field: _ }) => {
-                        let kind = match self {
-                            Definition::StructField(_) => {
-                                ReferenceKind::StructFieldShorthandForField
-                            }
-                            Definition::Local(_) => ReferenceKind::StructFieldShorthandForLocal,
-                            _ => continue,
-                        };
+                    Some(NameRefClass::FieldShorthand { local, field }) => {
+                        match self {
+                            Definition::StructField(_) if &field == self => refs.push(Reference {
+                                file_range: sema.original_range(name_ref.syntax()),
+                                kind: ReferenceKind::StructFieldShorthandForField,
+                                access: reference_access(&field, &name_ref),
+                            }),
+                            Definition::Local(l) if &local == l => refs.push(Reference {
+                                file_range: sema.original_range(name_ref.syntax()),
+                                kind: ReferenceKind::StructFieldShorthandForLocal,
+                                access: reference_access(&Definition::Local(local), &name_ref),
+                            }),
 
-                        let file_range = sema.original_range(name_ref.syntax());
-                        refs.push(Reference {
-                            file_range,
-                            kind,
-                            access: reference_access(&Definition::Local(local), &name_ref),
-                        });
+                            _ => {} // not a usage
+                        };
                     }
                     _ => {} // not a usage
                 }
