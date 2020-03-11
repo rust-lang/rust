@@ -5,7 +5,6 @@ use std::path::Path;
 use std::process::Command;
 
 use Arch::*;
-
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Arch {
@@ -15,6 +14,13 @@ pub enum Arch {
     I386,
     X86_64,
     X86_64_macabi,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
+pub enum AppleOS {
+    tvOS,
+    iOS,
 }
 
 impl Arch {
@@ -41,6 +47,17 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
         let p = Path::new(&sdkroot);
         match sdk_name {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
+            "appletvos"
+                if sdkroot.contains("TVSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") =>
+            {
+                ()
+            }
+            "appletvsimulator"
+                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") =>
+            {
+                ()
+            }
             "iphoneos"
                 if sdkroot.contains("iPhoneSimulator.platform")
                     || sdkroot.contains("MacOSX.platform") =>
@@ -82,11 +99,17 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     }
 }
 
-fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
-    let sdk_name = match arch {
-        Armv7 | Armv7s | Arm64 => "iphoneos",
-        I386 | X86_64 => "iphonesimulator",
-        X86_64_macabi => "macosx10.15",
+fn build_pre_link_args(arch: Arch, os: AppleOS) -> Result<LinkArgs, String> {
+    let sdk_name = match (arch, os) {
+        (Arm64, AppleOS::tvOS) => "appletvos",
+        (X86_64, AppleOS::tvOS) => "appletvsimulator",
+        (Armv7, AppleOS::iOS) => "iphoneos",
+        (Armv7s, AppleOS::iOS) => "iphoneos",
+        (Arm64, AppleOS::iOS) => "iphoneos",
+        (I386, AppleOS::iOS) => "iphonesimulator",
+        (X86_64, AppleOS::iOS) => "iphonesimulator",
+        (X86_64_macabi, AppleOS::iOS) => "macosx10.15",
+        _ => unreachable!(),
     };
 
     let arch_name = arch.to_string();
@@ -128,8 +151,8 @@ fn link_env_remove(arch: Arch) -> Vec<String> {
     }
 }
 
-pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
-    let pre_link_args = build_pre_link_args(arch)?;
+pub fn opts(arch: Arch, os: AppleOS) -> Result<TargetOptions, String> {
+    let pre_link_args = build_pre_link_args(arch, os)?;
     Ok(TargetOptions {
         cpu: target_cpu(arch),
         dynamic_linking: false,
