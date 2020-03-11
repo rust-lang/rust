@@ -2225,7 +2225,7 @@ impl From<&str> for String {
     }
 }
 
-#[stable(feature = "???", since = "1.43.0")]
+#[stable(feature = "from_mut_str_for_string", since = "1.44.0")]
 impl From<&mut str> for String {
     #[inline]
     fn from(s: &mut str) -> String {
