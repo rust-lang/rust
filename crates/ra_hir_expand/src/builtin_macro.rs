@@ -158,9 +158,9 @@ fn assert_expand(
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     // A hacky implementation for goto def and hover
-    // We expand `assert!("", arg1, arg2)` to
+    // We expand `assert!(cond, arg1, arg2)` to
     // ```
-    // {(&(arg1), &(arg2));}
+    // {(cond, &(arg1), &(arg2));}
     // ```,
     // which is wrong but useful.
 
@@ -539,8 +539,8 @@ mod tests {
             r#"
             #[rustc_builtin_macro]
             macro_rules! assert {
-                ($fmt:expr) => ({ /* compiler built-in */ });
-                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+                ($cond:expr) => ({ /* compiler built-in */ });
+                ($cond:expr, $($args:tt)*) => ({ /* compiler built-in */ })
             }
             assert!(true, "{} {:?}", arg1(a, b, c), arg2);
             "#,
