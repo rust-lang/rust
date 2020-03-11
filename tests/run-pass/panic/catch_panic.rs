@@ -71,11 +71,11 @@ fn main() {
     #[allow(deprecated, invalid_value)]
     {
         test(
-            Some("attempted to instantiate uninhabited type !"),
+            Some("attempted to instantiate uninhabited type `!`"),
             |_old_val| unsafe { std::mem::uninitialized::<!>() },
         );
         test(
-            Some("attempted to zero-initialize type `!`, which is invalid"),
+            Some("attempted to instantiate uninhabited type `!`"),
             |_old_val| unsafe { std::mem::zeroed::<!>() },
         );
         test(

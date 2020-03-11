@@ -16,10 +16,10 @@ thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4'
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:67:33
 Caught panic message (String): attempt to divide by zero
-thread 'main' panicked at 'attempted to instantiate uninhabited type !', $LOC
-Caught panic message (String): attempted to instantiate uninhabited type !
-thread 'main' panicked at 'attempted to zero-initialize type `!`, which is invalid', $LOC
-Caught panic message (String): attempted to zero-initialize type `!`, which is invalid
+thread 'main' panicked at 'attempted to instantiate uninhabited type `!`', $LOC
+Caught panic message (String): attempted to instantiate uninhabited type `!`
+thread 'main' panicked at 'attempted to instantiate uninhabited type `!`', $LOC
+Caught panic message (String): attempted to instantiate uninhabited type `!`
 thread 'main' panicked at 'attempted to leave type `fn()` uninitialized, which is invalid', $LOC
 Caught panic message (String): attempted to leave type `fn()` uninitialized, which is invalid
 thread 'main' panicked at 'attempted to zero-initialize type `fn()`, which is invalid', $LOC
