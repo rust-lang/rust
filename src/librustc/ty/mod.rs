@@ -554,24 +554,26 @@ bitflags! {
         /// Does this have [ConstKind::Placeholder]?
         const HAS_CT_PLACEHOLDER        = 1 << 8;
 
+        /// `true` if there are "names" of regions and so forth
+        /// that are local to a particular fn/inferctxt
+        const HAS_FREE_LOCAL_REGIONS    = 1 << 9;
+
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
         const HAS_FREE_LOCAL_NAMES      = TypeFlags::HAS_TY_PARAM.bits
-                                        | TypeFlags::HAS_RE_PARAM.bits
                                         | TypeFlags::HAS_CT_PARAM.bits
                                         | TypeFlags::HAS_TY_INFER.bits
-                                        | TypeFlags::HAS_RE_INFER.bits
                                         | TypeFlags::HAS_CT_INFER.bits
                                         | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_RE_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits;
+                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have [Projection] or [UnnormalizedProjection]?
-        const HAS_TY_PROJECTION         = 1 << 9;
+        const HAS_TY_PROJECTION         = 1 << 10;
         /// Does this have [Opaque]?
-        const HAS_TY_OPAQUE             = 1 << 10;
+        const HAS_TY_OPAQUE             = 1 << 11;
         /// Does this have [ConstKind::Unevaluated]?
-        const HAS_CT_PROJECTION         = 1 << 11;
+        const HAS_CT_PROJECTION         = 1 << 12;
 
         /// Could this type be normalized further?
         const HAS_PROJECTION            = TypeFlags::HAS_TY_PROJECTION.bits
@@ -580,21 +582,21 @@ bitflags! {
 
         /// Present if the type belongs in a local type context.
         /// Set for placeholders and inference variables that are not "Fresh".
-        const KEEP_IN_LOCAL_TCX         = 1 << 12;
+        const KEEP_IN_LOCAL_TCX         = 1 << 13;
 
         /// Is an error type reachable?
-        const HAS_TY_ERR                = 1 << 13;
+        const HAS_TY_ERR                = 1 << 14;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but [ReLateBound] and [ReErased].
-        const HAS_FREE_REGIONS          = 1 << 14;
+        const HAS_FREE_REGIONS          = 1 << 15;
 
         /// Does this have any [ReLateBound] regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND         = 1 << 15;
+        const HAS_RE_LATE_BOUND         = 1 << 16;
 
         /// Does this have any [ReErased] regions?
-        const HAS_RE_ERASED             = 1 << 16;
+        const HAS_RE_ERASED             = 1 << 17;
 
         /// Flags representing the nominal content of a type,
         /// computed by FlagsComputation. If you add a new nominal
@@ -608,6 +610,7 @@ bitflags! {
                                         | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                         | TypeFlags::HAS_RE_PLACEHOLDER.bits
                                         | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
                                         | TypeFlags::HAS_TY_PROJECTION.bits
                                         | TypeFlags::HAS_TY_OPAQUE.bits
                                         | TypeFlags::HAS_CT_PROJECTION.bits
