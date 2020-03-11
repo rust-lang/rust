@@ -9,7 +9,8 @@ use ra_syntax::{
 use ra_text_edit::TextEdit;
 
 use crate::{
-    FileId, FilePosition, FileSystemEdit, RangeInfo, SourceChange, SourceFileEdit, TextRange,
+    FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind, SourceChange,
+    SourceFileEdit, TextRange,
 };
 
 use super::find_all_refs;
@@ -46,12 +47,29 @@ fn find_name_and_module_at_offset(
     Some((ast_name, ast_module))
 }
 
-fn source_edit_from_file_id_range(
-    file_id: FileId,
-    range: TextRange,
-    new_name: &str,
-) -> SourceFileEdit {
-    SourceFileEdit { file_id, edit: TextEdit::replace(range, new_name.into()) }
+fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFileEdit {
+    let mut replacement_text = String::new();
+    let file_id = reference.file_range.file_id;
+    let range = match reference.kind {
+        ReferenceKind::StructFieldShorthandForField => {
+            replacement_text.push_str(new_name);
+            replacement_text.push_str(": ");
+            TextRange::from_to(
+                reference.file_range.range.start(),
+                reference.file_range.range.start(),
+            )
+        }
+        ReferenceKind::StructFieldShorthandForLocal => {
+            replacement_text.push_str(": ");
+            replacement_text.push_str(new_name);
+            TextRange::from_to(reference.file_range.range.end(), reference.file_range.range.end())
+        }
+        _ => {
+            replacement_text.push_str(new_name);
+            reference.file_range.range
+        }
+    };
+    SourceFileEdit { file_id, edit: TextEdit::replace(range, replacement_text) }
 }
 
 fn rename_mod(
@@ -99,13 +117,10 @@ fn rename_mod(
     source_file_edits.push(edit);
 
     if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(sema.db, position, None) {
-        let ref_edits = refs.references.into_iter().map(|reference| {
-            source_edit_from_file_id_range(
-                reference.file_range.file_id,
-                reference.file_range.range,
-                new_name,
-            )
-        });
+        let ref_edits = refs
+            .references
+            .into_iter()
+            .map(|reference| source_edit_from_reference(reference, new_name));
         source_file_edits.extend(ref_edits);
     }
 
@@ -121,13 +136,7 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|reference| {
-            source_edit_from_file_id_range(
-                reference.file_range.file_id,
-                reference.file_range.range,
-                new_name,
-            )
-        })
+        .map(|reference| source_edit_from_reference(reference, new_name))
         .collect::<Vec<_>>();
 
     if edit.is_empty() {
@@ -282,6 +291,163 @@ mod tests {
     fn foo(mut new_name : u32) -> u32 {
         new_name
     }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_struct_field() {
+        test_rename(
+            r#"
+    struct Foo {
+        i<|>: i32,
+    }
+
+    impl Foo {
+        fn new(i: i32) -> Self {
+            Self { i: i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        j: i32,
+    }
+
+    impl Foo {
+        fn new(i: i32) -> Self {
+            Self { j: i }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_struct_field_for_shorthand() {
+        test_rename(
+            r#"
+    struct Foo {
+        i<|>: i32,
+    }
+
+    impl Foo {
+        fn new(i: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        j: i32,
+    }
+
+    impl Foo {
+        fn new(i: i32) -> Self {
+            Self { j: i }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_local_for_field_shorthand() {
+        test_rename(
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    impl Foo {
+        fn new(i<|>: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    impl Foo {
+        fn new(j: i32) -> Self {
+            Self { i: j }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_field_shorthand_correct_struct() {
+        test_rename(
+            r#"
+    struct Foo {
+        i<|>: i32,
+    }
+
+    struct Bar {
+        i: i32,
+    }
+
+    impl Bar {
+        fn new(i: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        j: i32,
+    }
+
+    struct Bar {
+        i: i32,
+    }
+
+    impl Bar {
+        fn new(i: i32) -> Self {
+            Self { i }
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_shadow_local_for_struct_shorthand() {
+        test_rename(
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    fn baz(i<|>: i32) -> Self {
+         let x = Foo { i };
+         {
+             let i = 0;
+             Foo { i }
+         }
+     }
+    "#,
+            "j",
+            r#"
+    struct Foo {
+        i: i32,
+    }
+
+    fn baz(j: i32) -> Self {
+         let x = Foo { i: j };
+         {
+             let i = 0;
+             Foo { i }
+         }
+     }
+    "#,
         );
     }
 
