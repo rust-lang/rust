@@ -38,7 +38,7 @@ pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const EVAL_ALWAYS: bool;
     const DEP_KIND: DepKind;
 
-    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
+    type Cache: QueryCache<CTX, Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;

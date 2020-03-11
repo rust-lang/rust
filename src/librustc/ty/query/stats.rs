@@ -38,7 +38,7 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<CTX: QueryContext, C: QueryCache>(
+fn stats<CTX: QueryContext, C: QueryCache<CTX>>(
     name: &'static str,
     map: &QueryState<CTX, C>,
 ) -> QueryStats {

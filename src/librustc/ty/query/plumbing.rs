@@ -51,14 +51,14 @@ impl<CTX: QueryContext, K, C: Default> Default for QueryStateShard<CTX, K, C> {
     }
 }
 
-pub(crate) struct QueryState<CTX: QueryContext, C: QueryCache> {
+pub(crate) struct QueryState<CTX: QueryContext, C: QueryCache<CTX>> {
     cache: C,
     shards: Sharded<QueryStateShard<CTX, C::Key, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: AtomicUsize,
 }
 
-impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
     pub(super) fn get_lookup<K2: Hash>(
         &'tcx self,
         key: &K2,
@@ -86,7 +86,7 @@ enum QueryResult<CTX: QueryContext> {
     Poisoned,
 }
 
-impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
     pub(super) fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
@@ -130,7 +130,7 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     }
 }
 
-impl<CTX: QueryContext, C: QueryCache> Default for QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache<CTX>> Default for QueryState<CTX, C> {
     fn default() -> QueryState<CTX, C> {
         QueryState {
             cache: C::default(),
@@ -152,7 +152,7 @@ pub(crate) struct QueryLookup<'tcx, CTX: QueryContext, K, C> {
 /// This will poison the relevant query if dropped.
 struct JobOwner<'tcx, CTX: QueryContext, C>
 where
-    C: QueryCache,
+    C: QueryCache<CTX>,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
@@ -161,9 +161,9 @@ where
     id: QueryJobId,
 }
 
-impl<'tcx, C: QueryCache> JobOwner<'tcx, TyCtxt<'tcx>, C>
+impl<'tcx, C> JobOwner<'tcx, TyCtxt<'tcx>, C>
 where
-    C: QueryCache,
+    C: QueryCache<TyCtxt<'tcx>> + 'tcx,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
@@ -176,12 +176,12 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<Q>(
+    fn try_start<'a, 'b, Q>(
         tcx: TyCtxt<'tcx>,
         span: Span,
         key: &C::Key,
-        mut lookup: QueryLookup<'tcx, TyCtxt<'tcx>, C::Key, C::Sharded>,
-    ) -> TryGetJob<'tcx, C>
+        mut lookup: QueryLookup<'a, TyCtxt<'tcx>, C::Key, C::Sharded>,
+    ) -> TryGetJob<'b, TyCtxt<'tcx>, C>
     where
         Q: QueryDescription<TyCtxt<'tcx>, Key = C::Key, Value = C::Value, Cache = C>,
     {
@@ -262,16 +262,16 @@ where
     }
 }
 
-impl<'tcx, CTX: QueryContext, C: QueryCache> JobOwner<'tcx, CTX, C>
+impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>
 where
-    C: QueryCache,
+    C: QueryCache<CTX>,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    fn complete(self, tcx: TyCtxt<'tcx>, result: &C::Value, dep_node_index: DepNodeIndex) {
+    fn complete(self, tcx: CTX, result: &C::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let state = self.state;
@@ -304,7 +304,7 @@ where
     (result, diagnostics.into_inner())
 }
 
-impl<'tcx, CTX: QueryContext, C: QueryCache> Drop for JobOwner<'tcx, CTX, C>
+impl<'tcx, CTX: QueryContext, C: QueryCache<CTX>> Drop for JobOwner<'tcx, CTX, C>
 where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
@@ -338,13 +338,13 @@ pub(crate) struct CycleError<CTX: QueryContext> {
 }
 
 /// The result of `try_start`.
-enum TryGetJob<'tcx, C: QueryCache>
+enum TryGetJob<'tcx, CTX: QueryContext, C: QueryCache<CTX>>
 where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'tcx, TyCtxt<'tcx>, C>),
+    NotYetStarted(JobOwner<'tcx, CTX, C>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep-node index
@@ -504,9 +504,9 @@ impl<'tcx> TyCtxt<'tcx> {
         on_miss: OnMiss,
     ) -> R
     where
-        C: QueryCache,
+        C: QueryCache<TyCtxt<'tcx>>,
         OnHit: FnOnce(&C::Value, DepNodeIndex) -> R,
-        OnMiss: FnOnce(C::Key, QueryLookup<'tcx, TyCtxt<'tcx>, C::Key, C::Sharded>) -> R,
+        OnMiss: FnOnce(C::Key, QueryLookup<'_, TyCtxt<'tcx>, C::Key, C::Sharded>) -> R,
     {
         state.cache.lookup(
             state,
@@ -550,7 +550,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         span: Span,
         key: Q::Key,
-        lookup: QueryLookup<'tcx, TyCtxt<'tcx>, Q::Key, <Q::Cache as QueryCache>::Sharded>,
+        lookup: QueryLookup<
+            '_,
+            TyCtxt<'tcx>,
+            Q::Key,
+            <Q::Cache as QueryCache<TyCtxt<'tcx>>>::Sharded,
+        >,
     ) -> Q::Value {
         let job = match JobOwner::try_start::<Q>(self, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,
@@ -866,14 +871,14 @@ macro_rules! is_eval_always {
 }
 
 macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache
+    (<$tcx:tt>[][$K:ty, $V:ty]) => {
+        <<$K as Key>::CacheSelector as CacheSelector<TyCtxt<$tcx>, $K, $V>>::Cache
     };
-    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
+    (<$tcx:tt>[storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
         $ty
     };
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        query_storage!([$($($modifiers)*)*][$($args)*])
+    (<$tcx:tt>[$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        query_storage!(<$tcx>[$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -989,7 +994,7 @@ macro_rules! define_queries_inner {
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
 
-            type Cache = query_storage!([$($modifiers)*][$K, $V]);
+            type Cache = query_storage!(<$tcx>[$($modifiers)*][$K, $V]);
 
             #[inline(always)]
             fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {
