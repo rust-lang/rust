@@ -7,13 +7,10 @@ extern crate log;
 extern crate log_settings;
 extern crate miri;
 extern crate rustc;
-extern crate rustc_codegen_utils;
 extern crate rustc_driver;
-extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_interface;
-extern crate rustc_metadata;
-extern crate rustc_span;
+extern crate rustc_session;
 
 use std::convert::TryFrom;
 use std::env;
@@ -21,9 +18,11 @@ use std::str::FromStr;
 
 use hex::FromHexError;
 
+use rustc_session::CtfeBacktrace;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
+use rustc::ty::TyCtxt;
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -35,10 +34,10 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        init_late_loggers();
         compiler.session().abort_if_errors();
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+            init_late_loggers(tcx);
             let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
             let mut config = self.miri_config.clone();
 
@@ -72,7 +71,7 @@ fn init_early_loggers() {
     }
 }
 
-fn init_late_loggers() {
+fn init_late_loggers(tcx: TyCtxt<'_>) {
     // We initialize loggers right before we start evaluation. We overwrite the `RUSTC_LOG`
     // env var if it is not set, control it based on `MIRI_LOG`.
     if let Ok(var) = env::var("MIRI_LOG") {
@@ -96,10 +95,13 @@ fn init_late_loggers() {
 
     // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.
     // Do this late, so we ideally only apply this to Miri's errors.
-    if let Ok(var) = env::var("MIRI_BACKTRACE") {
-        if env::var("RUSTC_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
-            env::set_var("RUSTC_CTFE_BACKTRACE", &var);
-        }
+    if let Ok(val) = env::var("MIRI_BACKTRACE") {
+        let ctfe_backtrace = match &*val {
+            "immediate" => CtfeBacktrace::Immediate,
+            "0" => CtfeBacktrace::Disabled,
+            _ => CtfeBacktrace::Capture,
+        };
+        *tcx.sess.ctfe_backtrace.borrow_mut() = ctfe_backtrace;
     }
 }
 
