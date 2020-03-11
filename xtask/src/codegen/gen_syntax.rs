@@ -69,8 +69,8 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
             }
 
             impl std::fmt::Display for #name {
-                fn fmt(..) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax())
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(self.syntax(), f)
                 }
             }
 
@@ -119,6 +119,12 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
                 }
             }
             )*
+
+            impl std::fmt::Display for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(self.syntax(), f)
+                }
+            }
 
             impl AstNode for #name {
                 fn can_cast(kind: SyntaxKind) -> bool {
