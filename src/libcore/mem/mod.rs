@@ -496,6 +496,9 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::panic_if_zero_invalid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::init()
 }
@@ -529,6 +532,9 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::panic_if_any_invalid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::uninit()
 }

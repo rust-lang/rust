@@ -196,7 +196,7 @@ macro_rules! newtype_index {
 
             #[inline]
             fn index(self) -> usize {
-                usize::from(self)
+                self.as_usize()
             }
         }
 
