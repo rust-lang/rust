@@ -434,6 +434,89 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
     }
 
+    /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
+    fn codegen_panic_intrinsic(
+        &mut self,
+        helper: &TerminatorCodegenHelper<'tcx>,
+        bx: &mut Bx,
+        intrinsic: Option<&str>,
+        instance: Option<Instance<'tcx>>,
+        span: Span,
+        destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
+        cleanup: Option<mir::BasicBlock>,
+    ) -> bool {
+        // Emit a panic or a no-op for `panic_if_uninhabited`.
+        // These are intrinsics that compile to panics so that we can get a message
+        // which mentions the offending type, even from a const context.
+        #[derive(Debug, PartialEq)]
+        enum PanicIntrinsic {
+            IfUninhabited,
+            IfZeroInvalid,
+            IfAnyInvalid,
+        };
+        let panic_intrinsic = intrinsic.and_then(|i| match i {
+            // FIXME: Move to symbols instead of strings.
+            "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
+            "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
+            "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
+            _ => None,
+        });
+        if let Some(intrinsic) = panic_intrinsic {
+            use PanicIntrinsic::*;
+            let ty = instance.unwrap().substs.type_at(0);
+            let layout = bx.layout_of(ty);
+            let do_panic = match intrinsic {
+                IfUninhabited => layout.abi.is_uninhabited(),
+                // We unwrap as the error type is `!`.
+                IfZeroInvalid => !layout.might_permit_raw_init(bx, /*zero:*/ true).unwrap(),
+                // We unwrap as the error type is `!`.
+                IfAnyInvalid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
+            };
+            if do_panic {
+                let msg_str = if layout.abi.is_uninhabited() {
+                    // Use this error even for the other intrinsics as it is more precise.
+                    format!("attempted to instantiate uninhabited type `{}`", ty)
+                } else if intrinsic == IfZeroInvalid {
+                    format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                } else {
+                    format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
+                };
+                let msg = bx.const_str(Symbol::intern(&msg_str));
+                let location = self.get_caller_location(bx, span).immediate();
+
+                // Obtain the panic entry point.
+                // FIXME: dedup this with `codegen_assert_terminator` above.
+                let def_id =
+                    common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
+                let instance = ty::Instance::mono(bx.tcx(), def_id);
+                let fn_abi = FnAbi::of_instance(bx, instance, &[]);
+                let llfn = bx.get_fn_addr(instance);
+
+                if let Some((_, target)) = destination.as_ref() {
+                    helper.maybe_sideeffect(self.mir, bx, &[*target]);
+                }
+                // Codegen the actual panic invoke/call.
+                helper.do_call(
+                    self,
+                    bx,
+                    fn_abi,
+                    llfn,
+                    &[msg.0, msg.1, location],
+                    destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
+                    cleanup,
+                );
+            } else {
+                // a NOP
+                let target = destination.as_ref().unwrap().1;
+                helper.maybe_sideeffect(self.mir, bx, &[target]);
+                helper.funclet_br(self, bx, target)
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     fn codegen_call_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
@@ -520,41 +603,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bug!("`miri_start_panic` should never end up in compiled code");
         }
 
-        // Emit a panic or a no-op for `panic_if_uninhabited`.
-        if intrinsic == Some("panic_if_uninhabited") {
-            let ty = instance.unwrap().substs.type_at(0);
-            let layout = bx.layout_of(ty);
-            if layout.abi.is_uninhabited() {
-                let msg_str = format!("Attempted to instantiate uninhabited type {}", ty);
-                let msg = bx.const_str(Symbol::intern(&msg_str));
-                let location = self.get_caller_location(&mut bx, span).immediate();
-
-                // Obtain the panic entry point.
-                let def_id =
-                    common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
-                let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = FnAbi::of_instance(&bx, instance, &[]);
-                let llfn = bx.get_fn_addr(instance);
-
-                if let Some((_, target)) = destination.as_ref() {
-                    helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
-                }
-                // Codegen the actual panic invoke/call.
-                helper.do_call(
-                    self,
-                    &mut bx,
-                    fn_abi,
-                    llfn,
-                    &[msg.0, msg.1, location],
-                    destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
-                    cleanup,
-                );
-            } else {
-                // a NOP
-                let target = destination.as_ref().unwrap().1;
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-                helper.funclet_br(self, &mut bx, target)
-            }
+        if self.codegen_panic_intrinsic(
+            &helper,
+            &mut bx,
+            intrinsic,
+            instance,
+            span,
+            destination,
+            cleanup,
+        ) {
             return;
         }
 

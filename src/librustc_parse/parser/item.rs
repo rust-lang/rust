@@ -1544,9 +1544,7 @@ impl<'a> Parser<'a> {
 
         let is_name_required = match self.token.kind {
             token::DotDotDot => false,
-            // FIXME: Consider using interpolated token for this edition check,
-            // it should match the intent of edition hygiene better.
-            _ => req_name(self.token.uninterpolate().span.edition()),
+            _ => req_name(self.token.span.edition()),
         };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);

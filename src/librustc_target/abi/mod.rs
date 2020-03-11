@@ -937,6 +937,7 @@ impl<'a, Ty> Deref for TyLayout<'a, Ty> {
     }
 }
 
+/// Trait for context types that can compute layouts of things.
 pub trait LayoutOf {
     type Ty;
     type TyLayout;
@@ -944,6 +945,38 @@ pub trait LayoutOf {
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
     fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
         self.layout_of(ty)
+    }
+}
+
+/// The `TyLayout` above will always be a `MaybeResult<TyLayout<'_, Self>>`.
+/// We can't add the bound due to the lifetime, but this trait is still useful when
+/// writing code that's generic over the `LayoutOf` impl.
+pub trait MaybeResult<T> {
+    type Error;
+
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
+}
+
+impl<T> MaybeResult<T> for T {
+    type Error = !;
+
+    fn from(Ok(x): Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Error = E;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
     }
 }
 
@@ -987,6 +1020,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::for_variant(self, cx, variant_index)
     }
+
+    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyLayout: MaybeResult<Self>>`
+    /// to allow recursion (see `might_permit_zero_init` below for an example).
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -994,6 +1030,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::field(self, cx, i)
     }
+
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -1016,5 +1053,53 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
+    }
+
+    /// Determines if this type permits "raw" initialization by just transmuting some
+    /// memory into an instance of `T`.
+    /// `zero` indicates if the memory is zero-initialized, or alternatively
+    /// left entirely uninitialized.
+    /// This is conservative: in doubt, it will answer `true`.
+    ///
+    /// FIXME: Once we removed all the conservatism, we could alternatively
+    /// create an all-0/all-undef constant and run the const value validator to see if
+    /// this is a valid value for the given type.
+    pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
+    where
+        Self: Copy,
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
+    {
+        let scalar_allows_raw_init = move |s: &Scalar| -> bool {
+            if zero {
+                let range = &s.valid_range;
+                // The range must contain 0.
+                range.contains(&0) || (*range.start() > *range.end()) // wrap-around allows 0
+            } else {
+                // The range must include all values. `valid_range_exclusive` handles
+                // the wrap-around using target arithmetic; with wrap-around then the full
+                // range is one where `start == end`.
+                let range = s.valid_range_exclusive(cx);
+                range.start == range.end
+            }
+        };
+
+        // Check the ABI.
+        let valid = match &self.abi {
+            Abi::Uninhabited => false, // definitely UB
+            Abi::Scalar(s) => scalar_allows_raw_init(s),
+            Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+            Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
+            Abi::Aggregate { .. } => true, // Cannot be excluded *right now*.
+        };
+        if !valid {
+            // This is definitely not okay.
+            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.details, zero);
+            return Ok(false);
+        }
+
+        // If we have not found an error yet, we need to recursively descend.
+        // FIXME(#66151): For now, we are conservative and do not do this.
+        Ok(true)
     }
 }

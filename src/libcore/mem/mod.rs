@@ -496,6 +496,9 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::panic_if_zero_invalid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::init()
 }
@@ -529,6 +532,9 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::panic_if_any_invalid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::uninit()
 }
@@ -864,6 +870,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+#[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

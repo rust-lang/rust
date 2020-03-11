@@ -1007,6 +1007,16 @@ extern "rust-intrinsic" {
     /// This will statically either panic, or do nothing.
     pub fn panic_if_uninhabited<T>();
 
+    /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
+    /// zero-initialization: This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn panic_if_zero_invalid<T>();
+
+    /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
+    /// bit patterns: This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn panic_if_any_invalid<T>();
+
     /// Gets a reference to a static `Location` indicating where it was called.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
@@ -1852,6 +1862,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
+    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> u64;
 
     /// Rust's "try catch" construct which invokes the function pointer `f` with

@@ -265,6 +265,7 @@ symbols! {
         derive,
         diagnostic,
         direct,
+        discriminant_value,
         doc,
         doc_alias,
         doc_cfg,
