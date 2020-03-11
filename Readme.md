@@ -18,6 +18,7 @@ $ ./test.sh --release
 ### Cargo
 
 ```bash
+$ export CG_CLIF_INCR_CACHE=1 # Enable caching of object files in the incremental cache
 $ CHANNEL="release" $cg_clif_dir/cargo.sh run
 ```
 
@@ -26,6 +27,7 @@ If you compiled cg_clif in debug mode you should use `CHANNEL="debug"` instead o
 ### Rustc
 
 ```bash
+$ export CG_CLIF_INCR_CACHE=1 # Enable caching of object files in the incremental cache
 $ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
 ```
 

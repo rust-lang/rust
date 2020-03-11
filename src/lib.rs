@@ -21,7 +21,7 @@ extern crate rustc_ast;
 
 use std::any::Any;
 
-use rustc::dep_graph::DepGraph;
+use rustc::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::config::OutputFilenames;
 use rustc::ty::query::Providers;
@@ -216,10 +216,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        _sess: &Session,
-        _dep_graph: &DepGraph,
+        sess: &Session,
+        dep_graph: &DepGraph,
     ) -> Result<Box<dyn Any>, ErrorReported> {
-        Ok(ongoing_codegen)
+        let (codegen_results, work_products) = *ongoing_codegen.downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>().unwrap();
+
+        sess.time("serialize_work_products", move || {
+            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
+        });
+
+        Ok(Box::new(codegen_results))
     }
 
     fn link(
@@ -246,6 +252,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 &target_cpu,
             );
         });
+
+        rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
 
         Ok(())
     }
