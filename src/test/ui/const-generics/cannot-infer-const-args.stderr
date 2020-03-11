@@ -12,6 +12,6 @@ error[E0282]: type annotations needed
 LL |     foo();
    |     ^^^ cannot infer type for fn item `fn() -> usize {foo::<{_: usize}>}`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0282`.

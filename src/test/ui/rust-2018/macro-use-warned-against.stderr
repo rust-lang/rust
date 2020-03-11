@@ -23,3 +23,5 @@ LL | #![warn(macro_use_extern_crate, unused)]
    |                                 ^^^^^^
    = note: `#[warn(unused_imports)]` implied by `#[warn(unused)]`
 
+warning: 2 warnings emitted
+

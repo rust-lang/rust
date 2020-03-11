@@ -85,6 +85,6 @@ error: variable `Foo` should have a snake case name
 LL |     fn in_param(Foo: foo::Foo) {}
    |                 ^^^ help: convert the identifier to snake case (notice the capitalization): `foo`
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 6 warnings emitted
 
 For more information about this error, try `rustc --explain E0170`.

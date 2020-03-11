@@ -100,3 +100,5 @@ LL |         fn meth_bad<'bad>(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
+warning: 12 warnings emitted
+

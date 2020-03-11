@@ -75,6 +75,6 @@ LL |     #[derive(generate_mod::CheckDerive)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0412`.

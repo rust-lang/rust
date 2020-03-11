@@ -17,5 +17,5 @@ LL | |     generic::<Option<T>>();
 LL | | }
    | |_^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

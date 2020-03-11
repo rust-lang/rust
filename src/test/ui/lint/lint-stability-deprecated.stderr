@@ -652,3 +652,5 @@ warning: use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeD
 LL |             TypeDeprecated = u16,
    |             ^^^^^^^^^^^^^^^^^^^^
 
+warning: 108 warnings emitted
+

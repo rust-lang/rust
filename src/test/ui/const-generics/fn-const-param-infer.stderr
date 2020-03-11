@@ -43,7 +43,7 @@ LL |     let _: Checked<{generic::<u32>}> = Checked::<{generic::<u16>}>;
    = note: expected struct `Checked<{generic::<u32> as fn(usize) -> bool}>`
               found struct `Checked<{generic::<u16> as fn(usize) -> bool}>`
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0282, E0308.
 For more information about an error, try `rustc --explain E0282`.

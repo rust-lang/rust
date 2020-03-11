@@ -24,3 +24,5 @@ LL |     #[foo]
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
    = note: this warning originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+warning: 2 warnings emitted
+

@@ -17,3 +17,5 @@ warning: `extern crate` is not idiomatic in the new edition
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
 
+warning: 2 warnings emitted
+

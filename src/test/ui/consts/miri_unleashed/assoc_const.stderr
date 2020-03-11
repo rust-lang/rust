@@ -10,6 +10,6 @@ error[E0080]: erroneous constant used
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

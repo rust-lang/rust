@@ -12,5 +12,5 @@ error: cannot use `#[link_name]` with `#[link_ordinal]`
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

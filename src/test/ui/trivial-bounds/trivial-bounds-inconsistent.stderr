@@ -90,3 +90,5 @@ warning: Trait bound i32: std::iter::Iterator does not depend on any type or lif
 LL | fn use_for() where i32: Iterator {
    |                         ^^^^^^^^
 
+warning: 14 warnings emitted
+

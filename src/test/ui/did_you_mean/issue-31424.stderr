@@ -28,6 +28,6 @@ LL |         (&mut self).bar();
    |         cannot borrow as mutable
    |         try removing `&mut` here
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0596`.

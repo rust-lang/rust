@@ -29,6 +29,6 @@ LL |         println!("{}", y);
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |                                                    - value moved here, in previous iteration of loop
 
-error: aborting due to previous error
+error: aborting due to previous error; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0382`.

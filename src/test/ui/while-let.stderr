@@ -34,3 +34,5 @@ LL | |         break;
 LL | |     }
    | |_____^
 
+warning: 3 warnings emitted
+

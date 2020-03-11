@@ -39,6 +39,6 @@ LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
    = note: expected struct `ConstBytes<b"AAA">`
               found struct `ConstBytes<b"BBB">`
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

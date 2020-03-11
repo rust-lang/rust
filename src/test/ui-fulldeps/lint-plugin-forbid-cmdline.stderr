@@ -38,6 +38,6 @@ LL | #[allow(test_lint)]
    |
    = note: `forbid` lint level was set on command line
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0453`.

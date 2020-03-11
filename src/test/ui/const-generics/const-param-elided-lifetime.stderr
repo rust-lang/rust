@@ -36,6 +36,6 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0637`.

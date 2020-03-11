@@ -48,5 +48,5 @@ LL | pub const PUB_FOO: u64 = 1;
    | |
    | help: try a static value: `pub static`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 8 warnings emitted
 
