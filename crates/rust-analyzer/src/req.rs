@@ -2,7 +2,9 @@
 
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+use ra_ide::{InlayConfig, InlayKind};
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
@@ -196,14 +198,37 @@ pub struct InlayHintsParams {
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum InlayKind {
+#[serde(remote = "InlayKind")]
+pub enum InlayKindDef {
     TypeHint,
     ParameterHint,
+}
+
+// Work-around until better serde support is added
+// https://github.com/serde-rs/serde/issues/723#issuecomment-382501277
+fn vec_inlay_kind<'de, D>(deserializer: D) -> Result<Vec<InlayKind>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(with = "InlayKindDef")] InlayKind);
+
+    let v = Vec::deserialize(deserializer)?;
+    Ok(v.into_iter().map(|Wrapper(a)| a).collect())
+}
+
+#[derive(Deserialize)]
+#[serde(remote = "InlayConfig")]
+pub struct InlayConfigDef {
+    #[serde(deserialize_with = "vec_inlay_kind")]
+    pub display_type: Vec<InlayKind>,
+    pub max_length: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InlayHint {
     pub range: Range,
+    #[serde(with = "InlayKindDef")]
     pub kind: InlayKind,
     pub label: String,
 }
