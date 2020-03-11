@@ -40,10 +40,9 @@ pub enum InstanceDef<'tcx> {
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`.
     ///
-    /// NB: the (`fn` pointer) type must be monomorphic for MIR shims to work.
-    // FIXME(eddyb) support generating shims for a "shallow type",
-    // e.g. `fn(_, _) -> _` instead of requiring a fully monomorphic
-    // `fn(Foo, Bar) -> Baz` etc.
+    /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
     /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
@@ -63,18 +62,16 @@ pub enum InstanceDef<'tcx> {
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
     /// glue.
     ///
-    /// NB: the type must be monomorphic for MIR shims to work.
-    // FIXME(eddyb) support generating shims for a "shallow type",
-    // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
-    // `Foo<Bar>` or `[String]` etc.
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     ///`<T as Clone>::clone` shim.
     ///
-    /// NB: the type must be monomorphic for MIR shims to work.
-    // FIXME(eddyb) support generating shims for a "shallow type",
-    // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
-    // `Foo<Bar>` or `[String]` etc.
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     CloneShim(DefId, Ty<'tcx>),
 }
 
