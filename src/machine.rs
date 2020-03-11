@@ -265,11 +265,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        ecx.assert_panic(span, msg, unwind)
+        ecx.assert_panic(msg, unwind)
     }
 
     #[inline(always)]

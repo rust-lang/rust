@@ -14,7 +14,6 @@
 use rustc::mir;
 use rustc::ty::{self, layout::LayoutOf};
 use rustc_target::spec::PanicStrategy;
-use rustc_span::source_map::Span;
 
 use crate::*;
 
@@ -176,7 +175,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn assert_panic(
         &mut self,
-        span: Span,
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -187,11 +185,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             BoundsCheck { ref index, ref len } => {
                 // Forward to `panic_bounds_check` lang item.
 
-                // First arg: Caller location.
-                let location = this.alloc_caller_location_for_span(span);
-                // Second arg: index.
+                // First arg: index.
                 let index = this.read_scalar(this.eval_operand(index, None)?)?;
-                // Third arg: len.
+                // Second arg: len.
                 let len = this.read_scalar(this.eval_operand(len, None)?)?;
 
                 // Call the lang item.
@@ -199,7 +195,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let panic_bounds_check = ty::Instance::mono(this.tcx.tcx, panic_bounds_check);
                 this.call_function(
                     panic_bounds_check,
-                    &[location.ptr.into(), index.into(), len.into()],
+                    &[index.into(), len.into()],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
                 )?;
