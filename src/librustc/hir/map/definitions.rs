@@ -541,7 +541,7 @@ impl DefPathData {
             ValueNs(name) => ValueNs(Ident::with_dummy_span(name.name)),
             MacroNs(name) => MacroNs(Ident::with_dummy_span(name.name)),
             LifetimeNs(name) => LifetimeNs(Ident::with_dummy_span(name.name)),
-            _ => *self,
+            CrateRoot | Misc | Impl | ClosureExpr | Ctor | AnonConst | ImplTrait => *self,
         }
     }
 
