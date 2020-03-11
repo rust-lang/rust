@@ -4,7 +4,6 @@
 
 use crate::check::FnCtxt;
 
-use rustc::hir::map::Map;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -244,7 +243,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

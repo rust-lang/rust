@@ -22,7 +22,6 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::hir::map::Map;
 use rustc::lint::LintDiagnosticBuilder;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_ast::ast::{self, Expr};
@@ -1071,7 +1070,7 @@ impl TypeAliasBounds {
             err: &'a mut DiagnosticBuilder<'db>,
         }
         impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            type Map = Map<'v>;
+            type Map = intravisit::ErasedMap<'v>;
 
             fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None

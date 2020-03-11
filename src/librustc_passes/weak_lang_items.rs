@@ -4,7 +4,6 @@ use rustc::middle::lang_items;
 use rustc::middle::lang_items::whitelisted;
 use rustc::session::config;
 
-use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -85,9 +84,9 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    type Map = Map<'v>;
+    type Map = intravisit::ErasedMap<'v>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Map<'v>> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 

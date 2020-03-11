@@ -1359,7 +1359,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

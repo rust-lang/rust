@@ -127,6 +127,25 @@ pub trait Map<'hir> {
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
 }
 
+/// An erased version of `Map<'hir>`, using dynamic dispatch.
+/// NOTE: This type is effectively only usable with `NestedVisitorMap::None`.
+pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
+
+impl<'hir> Map<'hir> for ErasedMap<'hir> {
+    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
+        self.0.body(id)
+    }
+    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.0.item(id)
+    }
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
+        self.0.trait_item(id)
+    }
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
+        self.0.impl_item(id)
+    }
+}
+
 /// Specifies what nested things a visitor wants to visit. The most
 /// common choice is `OnlyBodies`, which will cause the visitor to
 /// visit fn bodies for fns that it encounters, but skip over nested

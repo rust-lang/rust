@@ -1,4 +1,3 @@
-use rustc::hir::map::Map;
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::ExplicitSelf;
@@ -890,7 +889,7 @@ fn compare_synthetic_generics<'tcx>(
                                     }
                                 }
                             }
-                            type Map = Map<'v>;
+                            type Map = intravisit::ErasedMap<'v>;
                             fn nested_visit_map(
                                 &mut self,
                             ) -> intravisit::NestedVisitorMap<Self::Map>

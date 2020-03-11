@@ -1123,7 +1123,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     gather.visit_body(body);
 
     impl<'v, 'a, 'tcx> Visitor<'v> for GatherLabels<'a, 'tcx> {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -2172,7 +2172,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             impl<'a> Visitor<'a> for SelfVisitor<'a> {
-                type Map = Map<'a>;
+                type Map = intravisit::ErasedMap<'a>;
 
                 fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
                     NestedVisitorMap::None
@@ -2263,7 +2263,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         impl<'v, 'a> Visitor<'v> for GatherLifetimes<'a> {
-            type Map = Map<'v>;
+            type Map = intravisit::ErasedMap<'v>;
 
             fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
                 NestedVisitorMap::None
@@ -2852,7 +2852,7 @@ fn insert_late_bound_lifetimes(
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -2895,7 +2895,7 @@ fn insert_late_bound_lifetimes(
     }
 
     impl<'v> Visitor<'v> for AllCollector {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None

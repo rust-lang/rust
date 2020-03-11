@@ -105,7 +105,7 @@ pub struct ItemCtxt<'tcx> {
 crate struct PlaceholderHirTyCollector(crate Vec<Span>);
 
 impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
-    type Map = Map<'v>;
+    type Map = intravisit::ErasedMap<'v>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -1045,7 +1045,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 
     impl Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
-        type Map = Map<'tcx>;
+        type Map = intravisit::ErasedMap<'tcx>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
