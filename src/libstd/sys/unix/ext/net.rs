@@ -1408,6 +1408,32 @@ impl UnixDatagram {
         self.0.write(buf)
     }
 
+    /// Like `send`, except that it sends from a slice of buffers.
+    ///
+    /// The peer address may be set by the `connect` method, and this method
+    /// will return an error if the socket has not already been connected.
+    ///
+    /// On success, returns the number of bytes written.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixDatagram;
+    /// use std::io::IoSlice;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.connect("/some/sock").expect("Couldn't connect");
+    ///     let bufs = [IoSlice::new(b" "), IoSlice::new(b"hello world")];
+    ///     sock.send_vectored(&bufs).expect("send_vectored function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_send_vectored", issue = "68612")]
+    pub fn send_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
     /// Sets the read timeout for the socket.
     ///
     /// If the provided value is [`None`], then [`recv`] and [`recv_from`] calls will
@@ -1939,6 +1965,30 @@ mod test {
         or_panic!(sock.connect(&path2));
         or_panic!(sock.send(msg));
         or_panic!(bsock2.recv_from(&mut buf));
+    }
+
+    #[test]
+    fn test_unix_datagram_send_vectored() {
+        let dir = tmpdir();
+        let path1 = dir.path().join("sock1");
+
+        let sock1 = or_panic!(UnixDatagram::bind(&path1));
+        let sock2 = or_panic!(UnixDatagram::unbound());
+        or_panic!(sock2.connect(&path1));
+
+        let a = [];
+        let b = [10];
+        let c = [11, 12];
+        or_panic!(sock2.send_vectored(&[IoSlice::new(&a), IoSlice::new(&b), IoSlice::new(&c)]));
+        let mut buf = [0; 4];
+        let len = or_panic!(sock1.recv(&mut buf));
+        // some implementations don't support writev, so we may only write the first buffer
+        if len == 1 {
+            assert_eq!(buf, [10, 0, 0, 0]);
+        } else {
+            assert_eq!(len, 3);
+            assert_eq!(buf, [10, 11, 12, 0]);
+        }
     }
 
     #[test]
