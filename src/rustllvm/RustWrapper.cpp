@@ -112,20 +112,22 @@ extern "C" void LLVMRustPrintPassTimings() {
   TimerGroup::printAll(OS);
 }
 
-extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M,
-                                              const char *Name) {
-  return wrap(unwrap(M)->getNamedValue(Name));
+extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
+                                              size_t NameLen) {
+  return wrap(unwrap(M)->getNamedValue(StringRef(Name, NameLen)));
 }
 
 extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
                                                     const char *Name,
+                                                    size_t NameLen,
                                                     LLVMTypeRef FunctionTy) {
-  return wrap(
-      unwrap(M)->getOrInsertFunction(Name, unwrap<FunctionType>(FunctionTy))
+  return wrap(unwrap(M)
+                  ->getOrInsertFunction(StringRef(Name, NameLen),
+                                        unwrap<FunctionType>(FunctionTy))
 #if LLVM_VERSION_GE(9, 0)
-      .getCallee()
+                  .getCallee()
 #endif
-      );
+  );
 }
 
 extern "C" LLVMValueRef
@@ -395,22 +397,26 @@ static InlineAsm::AsmDialect fromRust(LLVMRustAsmDialect Dialect) {
   }
 }
 
-extern "C" LLVMValueRef LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString,
-                                          char *Constraints,
-                                          LLVMBool HasSideEffects,
-                                          LLVMBool IsAlignStack,
-                                          LLVMRustAsmDialect Dialect) {
-  return wrap(InlineAsm::get(unwrap<FunctionType>(Ty), AsmString, Constraints,
+extern "C" LLVMValueRef
+LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
+                  char *Constraints, size_t ConstraintsLen,
+                  LLVMBool HasSideEffects, LLVMBool IsAlignStack,
+                  LLVMRustAsmDialect Dialect) {
+  return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
+                             StringRef(AsmString, AsmStringLen),
+                             StringRef(Constraints, ConstraintsLen),
                              HasSideEffects, IsAlignStack, fromRust(Dialect)));
 }
 
-extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty,
-                                          char *Constraints) {
-  return InlineAsm::Verify(unwrap<FunctionType>(Ty), Constraints);
+extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
+                                        size_t ConstraintsLen) {
+  return InlineAsm::Verify(unwrap<FunctionType>(Ty),
+                           StringRef(Constraints, ConstraintsLen));
 }
 
-extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) {
-  unwrap(M)->appendModuleInlineAsm(StringRef(Asm));
+extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm,
+                                              size_t AsmLen) {
+  unwrap(M)->appendModuleInlineAsm(StringRef(Asm, AsmLen));
 }
 
 typedef DIBuilder *LLVMRustDIBuilderRef;
@@ -1282,12 +1288,11 @@ extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
 
 extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
-                                          OperandBundleDef *Bundle,
-                                          const char *Name) {
+                                          OperandBundleDef *Bundle) {
   unsigned Len = Bundle ? 1 : 0;
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
   return wrap(unwrap(B)->CreateCall(
-      unwrap(Fn), makeArrayRef(unwrap(Args), NumArgs), Bundles, Name));
+      unwrap(Fn), makeArrayRef(unwrap(Args), NumArgs), Bundles));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,

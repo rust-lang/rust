@@ -732,7 +732,7 @@ extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: &Module, Asm: *const c_char);
-    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char);
+    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
@@ -879,13 +879,18 @@ extern "C" {
     pub fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
-    pub fn LLVMRustGetNamedValue(M: &Module, Name: *const c_char) -> Option<&Value>;
+    pub fn LLVMRustGetNamedValue(
+        M: &Module,
+        Name: *const c_char,
+        NameLen: size_t,
+    ) -> Option<&Value>;
     pub fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction(
         M: &'a Module,
         Name: *const c_char,
+        NameLen: size_t,
         FunctionTy: &'a Type,
     ) -> &'a Value;
     pub fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
@@ -1332,7 +1337,6 @@ extern "C" {
         Args: *const &'a Value,
         NumArgs: c_uint,
         Bundle: Option<&OperandBundleDef<'a>>,
-        Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy(
         B: &Builder<'a>,
@@ -1581,12 +1585,18 @@ extern "C" {
     pub fn LLVMRustInlineAsm(
         Ty: &Type,
         AsmString: *const c_char,
+        AsmStringLen: size_t,
         Constraints: *const c_char,
+        ConstraintsLen: size_t,
         SideEffects: Bool,
         AlignStack: Bool,
         Dialect: AsmDialect,
     ) -> &Value;
-    pub fn LLVMRustInlineAsmVerify(Ty: &Type, Constraints: *const c_char) -> bool;
+    pub fn LLVMRustInlineAsmVerify(
+        Ty: &Type,
+        Constraints: *const c_char,
+        ConstraintsLen: size_t,
+    ) -> bool;
 
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
