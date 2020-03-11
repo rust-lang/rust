@@ -14,10 +14,10 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use insta::assert_debug_snapshot;
 
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
-    fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Reference)
+    fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
+        do_completion(ra_fixture, CompletionKind::Reference)
     }
 
     #[test]

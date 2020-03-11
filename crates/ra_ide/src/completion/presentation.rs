@@ -307,10 +307,20 @@ mod tests {
     use insta::assert_debug_snapshot;
     use test_utils::covers;
 
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{
+        test_utils::{do_completion, do_completion_with_options},
+        CompletionItem, CompletionKind, CompletionOptions,
+    };
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
+    }
+
+    fn do_reference_completion_with_options(
+        ra_fixture: &str,
+        options: CompletionOptions,
+    ) -> Vec<CompletionItem> {
+        do_completion_with_options(ra_fixture, CompletionKind::Reference, &options)
     }
 
     #[test]
@@ -533,7 +543,7 @@ mod tests {
     }
 
     #[test]
-    fn parens_for_method_call() {
+    fn arg_snippets_for_method_call() {
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -553,6 +563,40 @@ mod tests {
                 source_range: [171; 172),
                 delete: [171; 172),
                 insert: "foo(${1:x})$0",
+                kind: Method,
+                lookup: "foo",
+                detail: "fn foo(&self, x: i32)",
+            },
+        ]
+        "###
+        )
+    }
+
+    #[test]
+    fn no_arg_snippets_for_method_call() {
+        assert_debug_snapshot!(
+            do_reference_completion_with_options(
+                r"
+                struct S {}
+                impl S {
+                    fn foo(&self, x: i32) {}
+                }
+                fn bar(s: &S) {
+                    s.f<|>
+                }
+                ",
+                CompletionOptions {
+                    add_call_argument_snippets: false,
+                    .. Default::default()
+                }
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [171; 172),
+                delete: [171; 172),
+                insert: "foo($0)",
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self, x: i32)",

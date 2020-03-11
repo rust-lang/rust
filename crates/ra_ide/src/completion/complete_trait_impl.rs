@@ -217,7 +217,7 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn complete(code: &str) -> Vec<CompletionItem> {

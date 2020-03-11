@@ -15,8 +15,9 @@ pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &Compl
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
+
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)

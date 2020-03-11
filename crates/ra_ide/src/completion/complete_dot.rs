@@ -70,7 +70,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn do_ref_completion(code: &str) -> Vec<CompletionItem> {

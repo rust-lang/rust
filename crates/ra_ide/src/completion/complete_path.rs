@@ -103,7 +103,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use test_utils::covers;
 
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {

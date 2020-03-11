@@ -18,7 +18,7 @@ pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn complete(code: &str) -> Vec<CompletionItem> {
