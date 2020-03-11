@@ -13,7 +13,13 @@ LL |     type MyA: TraitA;
 LL | impl TraitB for B {
    | ^^^^^^^^^^^^^^^^^ missing `MyA` in implementation
 
-error: aborting due to 2 previous errors
+error: array lengths can't depend on generic parameters
+  --> $DIR/issue-69602-type-err-during-codegen-ice.rs:21:17
+   |
+LL |     let _ = [0; B::VALUE];
+   |                 ^^^^^^^^
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0046, E0437.
 For more information about an error, try `rustc --explain E0046`.

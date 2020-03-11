@@ -18,6 +18,7 @@ use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
 use rustc::middle::lang_items;
+use rustc::mir::interpret::ErrorHandled;
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::Ty;
@@ -1039,11 +1040,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if element_ty.references_error() {
-            tcx.types.err
-        } else if let Ok(count) = count {
-            tcx.mk_ty(ty::Array(t, count))
-        } else {
-            tcx.types.err
+            return tcx.types.err;
+        }
+        match count {
+            Ok(count) => tcx.mk_ty(ty::Array(t, count)),
+            Err(ErrorHandled::TooGeneric) => {
+                self.tcx.sess.span_err(
+                    tcx.def_span(count_def_id),
+                    "array lengths can't depend on generic parameters",
+                );
+                tcx.types.err
+            }
+            Err(ErrorHandled::Reported) => tcx.types.err,
         }
     }
 
