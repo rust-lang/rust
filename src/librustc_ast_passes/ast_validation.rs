@@ -9,6 +9,7 @@
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::expand::is_proc_macro_attr;
+use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
@@ -594,6 +595,54 @@ impl<'a> AstValidator<'a> {
             .span_label(ident.span, format!("`_` is not a valid name for this `{}` item", kind))
             .emit();
     }
+
+    fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
+        if !generics.params.is_empty() {
+            struct_span_err!(
+                self.session,
+                generics.span,
+                E0567,
+                "auto traits cannot have generic parameters"
+            )
+            .span_label(ident_span, "auto trait cannot have generic parameters")
+            .span_suggestion(
+                generics.span,
+                "remove the parameters",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        }
+    }
+
+    fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
+        if let [first @ last] | [first, .., last] = &bounds[..] {
+            let span = first.span().to(last.span());
+            struct_span_err!(self.session, span, E0568, "auto traits cannot have super traits")
+                .span_label(ident_span, "auto trait cannot have super traits")
+                .span_suggestion(
+                    span,
+                    "remove the super traits",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
+    }
+
+    fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
+        if !trait_items.is_empty() {
+            let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
+            struct_span_err!(
+                self.session,
+                spans,
+                E0380,
+                "auto traits cannot have methods or associated items"
+            )
+            .span_label(ident_span, "auto trait cannot have items")
+            .emit();
+        }
+    }
 }
 
 fn validate_generic_param_order<'a>(
@@ -881,57 +930,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
-                    if !generics.params.is_empty() {
-                        let mut err = struct_span_err!(
-                            self.session,
-                            generics.span,
-                            E0567,
-                            "auto traits cannot have generic parameters"
-                        );
-                        err.span_label(
-                            item.ident.span,
-                            "auto trait cannot have generic parameters",
-                        );
-                        err.span_suggestion(
-                            generics.span,
-                            "remove the parameters",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
-                    }
-                    if !bounds.is_empty() {
-                        let span = match &bounds[..] {
-                            [] => unreachable!(),
-                            [single] => single.span(),
-                            [first, .., last] => first.span().to(last.span()),
-                        };
-                        let mut err = struct_span_err!(
-                            self.session,
-                            span,
-                            E0568,
-                            "auto traits cannot have super traits"
-                        );
-                        err.span_label(item.ident.span, "auto trait cannot have super traits");
-                        err.span_suggestion(
-                            span,
-                            "remove the super traits",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
-                    }
-                    if !trait_items.is_empty() {
-                        let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
-                        struct_span_err!(
-                            self.session,
-                            spans,
-                            E0380,
-                            "auto traits cannot have methods or associated items"
-                        )
-                        .span_label(item.ident.span, "auto trait cannot have items")
-                        .emit();
-                    }
+                    self.deny_generic_params(generics, item.ident.span);
+                    self.deny_super_traits(bounds, item.ident.span);
+                    self.deny_items(trait_items, item.ident.span);
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
 
