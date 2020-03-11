@@ -106,9 +106,9 @@ pub fn UnsetComdat(val: &'a Value) {
     }
 }
 
-pub fn SetUnnamedAddr(global: &'a Value, unnamed: bool) {
+pub fn SetUnnamedAddress(global: &'a Value, unnamed: UnnamedAddr) {
     unsafe {
-        LLVMSetUnnamedAddr(global, unnamed as Bool);
+        LLVMSetUnnamedAddress(global, unnamed);
     }
 }
 

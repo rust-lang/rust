@@ -1664,7 +1664,7 @@ fn generic_simd_intrinsic(
                 llvm_elem_vec_ty,
             ),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
     }
@@ -1786,7 +1786,7 @@ fn generic_simd_intrinsic(
             &llvm_intrinsic,
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
     }
@@ -2085,7 +2085,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let f = bx.declare_cfn(&llvm_intrinsic, bx.type_func(&[vec_ty, vec_ty], vec_ty));
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[lhs, rhs], None);
         return Ok(v);
     }
