@@ -89,9 +89,7 @@ impl Display for TryReserveError {
             TryReserveError::CapacityOverflow => {
                 " because the computed capacity exceeded the collection's maximum"
             }
-            TryReserveError::AllocError { .. } => {
-                " because the memory allocator returned a error"
-            }
+            TryReserveError::AllocError { .. } => " because the memory allocator returned a error",
         };
         fmt.write_str(reason)
     }
