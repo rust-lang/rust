@@ -13,77 +13,21 @@
 //! Language server executes such typing assists synchronously. That is, they
 //! block user's typing and should be pretty fast for this reason!
 
+mod on_enter;
+
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
-    AstNode, SmolStr, SourceFile,
-    SyntaxKind::*,
-    SyntaxToken, TextRange, TextUnit, TokenAtOffset,
+    AstNode, SourceFile, TextRange, TextUnit,
 };
 use ra_text_edit::TextEdit;
 
-use crate::{source_change::SingleFileChange, SourceChange, SourceFileEdit};
+use crate::{source_change::SingleFileChange, SourceChange};
 
-pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
-    let parse = db.parse(position.file_id);
-    let file = parse.tree();
-    let comment = file
-        .syntax()
-        .token_at_offset(position.offset)
-        .left_biased()
-        .and_then(ast::Comment::cast)?;
-
-    if comment.kind().shape.is_block() {
-        return None;
-    }
-
-    let prefix = comment.prefix();
-    let comment_range = comment.syntax().text_range();
-    if position.offset < comment_range.start() + TextUnit::of_str(prefix) {
-        return None;
-    }
-
-    // Continuing non-doc line comments (like this one :) ) is annoying
-    if prefix == "//" && comment_range.end() == position.offset {
-        return None;
-    }
-
-    let indent = node_indent(&file, comment.syntax())?;
-    let inserted = format!("\n{}{} ", indent, prefix);
-    let cursor_position = position.offset + TextUnit::of_str(&inserted);
-    let edit = TextEdit::insert(position.offset, inserted);
-
-    Some(
-        SourceChange::source_file_edit(
-            "on enter",
-            SourceFileEdit { edit, file_id: position.file_id },
-        )
-        .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
-    )
-}
-
-fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
-    let ws = match file.syntax().token_at_offset(token.text_range().start()) {
-        TokenAtOffset::Between(l, r) => {
-            assert!(r == *token);
-            l
-        }
-        TokenAtOffset::Single(n) => {
-            assert!(n == *token);
-            return Some("".into());
-        }
-        TokenAtOffset::None => unreachable!(),
-    };
-    if ws.kind() != WHITESPACE {
-        return None;
-    }
-    let text = ws.text();
-    let pos = text.rfind('\n').map(|it| it + 1).unwrap_or(0);
-    Some(text[pos..].into())
-}
+pub(crate) use on_enter::on_enter;
 
 pub(crate) const TRIGGER_CHARS: &str = ".=>";
 
@@ -196,101 +140,9 @@ fn on_arrow_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChang
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{add_cursor, assert_eq_text, extract_offset};
-
-    use crate::mock_analysis::single_file;
+    use test_utils::{assert_eq_text, extract_offset};
 
     use super::*;
-
-    #[test]
-    fn test_on_enter() {
-        fn apply_on_enter(before: &str) -> Option<String> {
-            let (offset, before) = extract_offset(before);
-            let (analysis, file_id) = single_file(&before);
-            let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
-
-            assert_eq!(result.source_file_edits.len(), 1);
-            let actual = result.source_file_edits[0].edit.apply(&before);
-            let actual = add_cursor(&actual, result.cursor_position.unwrap().offset);
-            Some(actual)
-        }
-
-        fn do_check(before: &str, after: &str) {
-            let actual = apply_on_enter(before).unwrap();
-            assert_eq_text!(after, &actual);
-        }
-
-        fn do_check_noop(text: &str) {
-            assert!(apply_on_enter(text).is_none())
-        }
-
-        do_check(
-            r"
-/// Some docs<|>
-fn foo() {
-}
-",
-            r"
-/// Some docs
-/// <|>
-fn foo() {
-}
-",
-        );
-        do_check(
-            r"
-impl S {
-    /// Some<|> docs.
-    fn foo() {}
-}
-",
-            r"
-impl S {
-    /// Some
-    /// <|> docs.
-    fn foo() {}
-}
-",
-        );
-        do_check(
-            r"
-fn main() {
-    // Fix<|> me
-    let x = 1 + 1;
-}
-",
-            r"
-fn main() {
-    // Fix
-    // <|> me
-    let x = 1 + 1;
-}
-",
-        );
-        do_check(
-            r"
-///<|> Some docs
-fn foo() {
-}
-",
-            r"
-///
-/// <|> Some docs
-fn foo() {
-}
-",
-        );
-        do_check_noop(
-            r"
-fn main() {
-    // Fix me<|>
-    let x = 1 + 1;
-}
-",
-        );
-
-        do_check_noop(r"<|>//! docz");
-    }
 
     fn do_type_char(char_typed: char, before: &str) -> Option<(String, SingleFileChange)> {
         let (offset, before) = extract_offset(before);
