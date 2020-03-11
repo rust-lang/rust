@@ -136,14 +136,14 @@ LL | #[cfg(FALSE)] fn e() { let _ = #[attr] &mut #![attr] 0; }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:41:37
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
-   |                                --   ^       --- help: try placing this code inside a block: `{ {}; }`
+   |                                --   ^^^^^^^ -- the attributes are attached to this branch
    |                                |    |
-   |                                |    expected `{`
-   |                                this `if` expression has a condition, but no block
+   |                                |    help: remove the attributes
+   |                                the branch belongs to this `if`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:43:38
@@ -159,13 +159,14 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `#`
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} #[attr] else {}; }
    |                                        ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:47:45
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] {}; }
-   |                                             ^       --- help: try placing this code inside a block: `{ {}; }`
-   |                                             |
-   |                                             expected `{`
+   |                                        ---- ^^^^^^^ -- the attributes are attached to this branch
+   |                                        |    |
+   |                                        |    help: remove the attributes
+   |                                        the branch belongs to this `else`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:49:46
@@ -175,22 +176,23 @@ LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else {#![attr]}; }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:51:45
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] if 0 {}; }
-   |                                             ^       -------- help: try placing this code inside a block: `{ if 0 {}; }`
-   |                                             |
-   |                                             expected `{`
+   |                                        ---- ^^^^^^^ ------- the attributes are attached to this branch
+   |                                        |    |
+   |                                        |    help: remove the attributes
+   |                                        the branch belongs to this `else`
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:53:50
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
-   |                                             --   ^       --- help: try placing this code inside a block: `{ {}; }`
+   |                                             --   ^^^^^^^ -- the attributes are attached to this branch
    |                                             |    |
-   |                                             |    expected `{`
-   |                                             this `if` expression has a condition, but no block
+   |                                             |    help: remove the attributes
+   |                                             the branch belongs to this `if`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:55:51
@@ -200,14 +202,14 @@ LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 {#![attr]}; }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:57:45
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
-   |                                --           ^       --- help: try placing this code inside a block: `{ {}; }`
+   |                                --           ^^^^^^^ -- the attributes are attached to this branch
    |                                |            |
-   |                                |            expected `{`
-   |                                this `if` expression has a condition, but no block
+   |                                |            help: remove the attributes
+   |                                the branch belongs to this `if`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:59:46
@@ -223,13 +225,14 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `#`
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} #[attr] else {}; }
    |                                                ^ expected one of `.`, `;`, `?`, `else`, or an operator
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:63:53
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] {}; }
-   |                                                     ^       --- help: try placing this code inside a block: `{ {}; }`
-   |                                                     |
-   |                                                     expected `{`
+   |                                                ---- ^^^^^^^ -- the attributes are attached to this branch
+   |                                                |    |
+   |                                                |    help: remove the attributes
+   |                                                the branch belongs to this `else`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:65:54
@@ -239,22 +242,23 @@ LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else {#![attr]}; }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:67:53
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] if let _ = 0 {}; }
-   |                                                     ^       ---------------- help: try placing this code inside a block: `{ if let _ = 0 {}; }`
-   |                                                     |
-   |                                                     expected `{`
+   |                                                ---- ^^^^^^^ --------------- the attributes are attached to this branch
+   |                                                |    |
+   |                                                |    help: remove the attributes
+   |                                                the branch belongs to this `else`
 
-error: expected `{`, found `#`
+error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:69:66
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}; }
-   |                                                     --           ^       --- help: try placing this code inside a block: `{ {}; }`
+   |                                                     --           ^^^^^^^ -- the attributes are attached to this branch
    |                                                     |            |
-   |                                                     |            expected `{`
-   |                                                     this `if` expression has a condition, but no block
+   |                                                     |            help: remove the attributes
+   |                                                     the branch belongs to this `if`
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:71:67

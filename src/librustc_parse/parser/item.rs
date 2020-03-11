@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
         } else if vis.node.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
-        } else if macros_allowed && self.token.is_path_start() {
+        } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
             (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
         } else {
@@ -352,8 +352,7 @@ impl<'a> Parser<'a> {
     fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
         let (start, end) = match attrs {
             [] => return Ok(()),
-            [x0] => (x0, x0),
-            [x0, .., xn] => (x0, xn),
+            [x0 @ xn] | [x0, .., xn] => (x0, xn),
         };
         let msg = if end.is_doc_comment() {
             "expected item after doc comment"
@@ -1411,23 +1410,28 @@ impl<'a> Parser<'a> {
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the function is a provided one.
     fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = match self.token.kind {
-            token::Semi => {
-                self.bump();
-                (Vec::new(), None)
-            }
-            token::OpenDelim(token::Brace) => {
-                let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                (attrs, Some(body))
-            }
-            token::Interpolated(ref nt) => match **nt {
-                token::NtBlock(..) => {
-                    let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                    (attrs, Some(body))
-                }
-                _ => return self.expected_semi_or_open_brace(),
-            },
-            _ => return self.expected_semi_or_open_brace(),
+        let (inner_attrs, body) = if self.check(&token::Semi) {
+            self.bump(); // `;`
+            (Vec::new(), None)
+        } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
+            self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+        } else if self.token.kind == token::Eq {
+            // Recover `fn foo() = $expr;`.
+            self.bump(); // `=`
+            let eq_sp = self.prev_token.span;
+            let _ = self.parse_expr()?;
+            self.expect_semi()?; // `;`
+            let span = eq_sp.to(self.prev_token.span);
+            self.struct_span_err(span, "function body cannot be `= expression;`")
+                .multipart_suggestion(
+                    "surround the expression with `{` and `}` instead of `=` and `;`",
+                    vec![(eq_sp, "{".to_string()), (self.prev_token.span, " }".to_string())],
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            (Vec::new(), Some(self.mk_block_err(span)))
+        } else {
+            return self.expected_semi_or_open_brace();
         };
         attrs.extend(inner_attrs);
         Ok(body)

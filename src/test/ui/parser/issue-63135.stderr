@@ -31,23 +31,11 @@ LL | fn i(n{...,f #
    |        |  expected `}`
    |        `..` must be at the end and cannot have a trailing comma
 
-error: expected `[`, found `}`
+error: expected one of `!` or `[`, found `}`
   --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
-   |                ^ expected `[`
+   |                ^ expected one of `!` or `[`
 
-error: expected one of `:` or `|`, found `)`
-  --> $DIR/issue-63135.rs:3:16
-   |
-LL | fn i(n{...,f #
-   |                ^ expected one of `:` or `|`
-
-error: expected `;` or `{`, found `<eof>`
-  --> $DIR/issue-63135.rs:3:16
-   |
-LL | fn i(n{...,f #
-   |                ^ expected `;` or `{`
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
