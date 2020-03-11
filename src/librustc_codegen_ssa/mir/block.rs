@@ -415,11 +415,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
-                (lang_items::PanicBoundsCheckFnLangItem, vec![location, index, len])
+                // It's `fn panic_bounds_check(index: usize, len: usize)`,
+                // and `#[track_caller]` adds an implicit third argument.
+                (lang_items::PanicBoundsCheckFnLangItem, vec![index, len, location])
             }
             _ => {
                 let msg_str = Symbol::intern(msg.description());
                 let msg = bx.const_str(msg_str);
+                // It's `pub fn panic(expr: &str)`, with the wide reference being passed
+                // as two arguments, and `#[track_caller]` adds an implicit third argument.
                 (lang_items::PanicFnLangItem, vec![msg.0, msg.1, location])
             }
         };
