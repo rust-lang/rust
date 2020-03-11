@@ -42,7 +42,7 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn do_snippet_completion(code: &str) -> Vec<CompletionItem> {

@@ -308,8 +308,8 @@ mod tests {
     use test_utils::covers;
 
     use crate::completion::{
-        do_completion, do_completion_with_options, CompletionItem, CompletionKind,
-        CompletionOptions,
+        test_utils::{do_completion, do_completion_with_options},
+        CompletionItem, CompletionKind, CompletionOptions,
     };
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {

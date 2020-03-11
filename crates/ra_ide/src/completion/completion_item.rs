@@ -13,7 +13,7 @@ pub struct CompletionItem {
     /// Used only internally in tests, to check only specific kind of
     /// completion (postfix, keyword, reference, etc).
     #[allow(unused)]
-    completion_kind: CompletionKind,
+    pub(crate) completion_kind: CompletionKind,
     /// Label in the completion pop up which identifies completion.
     label: String,
     /// Range of identifier that is being completed.
@@ -317,33 +317,4 @@ impl Into<Vec<CompletionItem>> for Completions {
     fn into(self) -> Vec<CompletionItem> {
         self.buf
     }
-}
-
-#[cfg(test)]
-pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    do_completion_with_options(code, kind, &crate::completion::CompletionOptions::default())
-}
-
-#[cfg(test)]
-pub(crate) fn do_completion_with_options(
-    code: &str,
-    kind: CompletionKind,
-    options: &crate::completion::CompletionOptions,
-) -> Vec<CompletionItem> {
-    use crate::{
-        completion::completions,
-        mock_analysis::{analysis_and_position, single_file_with_position},
-    };
-
-    let (analysis, position) = if code.contains("//-") {
-        analysis_and_position(code)
-    } else {
-        single_file_with_position(code)
-    };
-    let completions = completions(&analysis.db, position, &options).unwrap();
-    let completion_items: Vec<CompletionItem> = completions.into();
-    let mut kind_completions: Vec<CompletionItem> =
-        completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();
-    kind_completions.sort_by_key(|c| c.label.clone());
-    kind_completions
 }

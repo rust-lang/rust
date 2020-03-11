@@ -81,7 +81,7 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: 
 mod tests {
     use insta::assert_debug_snapshot;
 
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
     fn do_postfix_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Postfix)

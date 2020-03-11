@@ -16,11 +16,11 @@ mod complete_scope;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
+#[cfg(test)]
+mod test_utils;
 
 use ra_ide_db::RootDatabase;
 
-#[cfg(test)]
-use crate::completion::completion_item::{do_completion, do_completion_with_options};
 use crate::{
     completion::{
         completion_context::CompletionContext,
