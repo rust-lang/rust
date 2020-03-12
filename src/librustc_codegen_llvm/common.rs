@@ -259,11 +259,14 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let base_addr = match alloc_kind {
                     Some(GlobalAlloc::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
-                        if alloc.mutability == Mutability::Mut {
-                            self.static_addr_of_mut(init, alloc.align, None)
-                        } else {
-                            self.static_addr_of(init, alloc.align, None)
+                        let value = match alloc.mutability {
+                            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+                            _ => self.static_addr_of(init, alloc.align, None),
+                        };
+                        if !self.sess().fewer_names() {
+                            llvm::set_value_name(value, format!("{:?}", ptr.alloc_id).as_bytes());
                         }
+                        value
                     }
                     Some(GlobalAlloc::Function(fn_instance)) => self.get_fn_addr(fn_instance),
                     Some(GlobalAlloc::Static(def_id)) => {
