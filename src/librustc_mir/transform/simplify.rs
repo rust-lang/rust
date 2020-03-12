@@ -95,6 +95,11 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         let mut start = START_BLOCK;
 
+        // Vec of the blocks that should be merged. We store the indices here, instead of the
+        // statements itself to avoid moving the (relatively) large statements twice.
+        // We do not push the statements directly into the target block (`bb`) as that is slower
+        // due to additional reallocations
+        let mut merged_blocks = Vec::new();
         loop {
             let mut changed = false;
 
@@ -114,18 +119,28 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
 
-                let mut new_stmts = vec![];
                 let mut inner_changed = true;
+                merged_blocks.clear();
                 while inner_changed {
                     inner_changed = false;
                     inner_changed |= self.simplify_branch(&mut terminator);
-                    inner_changed |= self.merge_successor(&mut new_stmts, &mut terminator);
+                    inner_changed |= self.merge_successor(&mut merged_blocks, &mut terminator);
                     changed |= inner_changed;
                 }
 
-                let data = &mut self.basic_blocks[bb];
-                data.statements.extend(new_stmts);
-                data.terminator = Some(terminator);
+                let statements_to_merge =
+                    merged_blocks.iter().map(|&i| self.basic_blocks[i].statements.len()).sum();
+
+                if statements_to_merge > 0 {
+                    let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
+                    statements.reserve(statements_to_merge);
+                    for &from in &merged_blocks {
+                        statements.append(&mut self.basic_blocks[from].statements);
+                    }
+                    self.basic_blocks[bb].statements = statements;
+                }
+
+                self.basic_blocks[bb].terminator = Some(terminator);
 
                 changed |= inner_changed;
             }
@@ -199,7 +214,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     // merge a block with 1 `goto` predecessor to its parent
     fn merge_successor(
         &mut self,
-        new_stmts: &mut Vec<Statement<'tcx>>,
+        merged_blocks: &mut Vec<BasicBlock>,
         terminator: &mut Terminator<'tcx>,
     ) -> bool {
         let target = match terminator.kind {
@@ -216,7 +231,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 return false;
             }
         };
-        new_stmts.extend(self.basic_blocks[target].statements.drain(..));
+
+        merged_blocks.push(target);
         self.pred_count[target] = 0;
 
         true
