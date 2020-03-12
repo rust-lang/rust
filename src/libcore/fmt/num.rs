@@ -1,7 +1,5 @@
 //! Integer and floating-point number formatting
 
-// ignore-tidy-undocumented-unsafe
-
 use crate::fmt;
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
@@ -84,6 +82,8 @@ trait GenericRadix {
             }
         }
         let buf = &buf[curr..];
+        // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
+        // valid UTF-8
         let buf = unsafe {
             str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
         };
@@ -189,11 +189,19 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
+            // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
+            // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
+            // that it's OK to copy into `buf_ptr`, notice that at the beginning
+            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
+            // each step this is kept the same as `n` is divided. Since `n` is always
+            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
+            // is safe to access.
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 assert!(crate::mem::size_of::<$u>() >= 2);
@@ -206,6 +214,10 @@ macro_rules! impl_Display {
                     let d1 = (rem / 100) << 1;
                     let d2 = (rem % 100) << 1;
                     curr -= 4;
+
+                    // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
+                    // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
+                    // which is `10^40 > 2^128 > n`.
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                     ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
                 }
@@ -232,6 +244,8 @@ macro_rules! impl_Display {
                 }
             }
 
+            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
+            // UTF-8 since `DEC_DIGITS_LUT` is
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
@@ -304,6 +318,8 @@ macro_rules! impl_Exp {
             };
 
             // 39 digits (worst case u128) + . = 40
+            // Since `curr` always decreases by the number of digits copied, this means
+            // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
             let mut curr = buf.len() as isize; //index for buf
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
@@ -313,6 +329,8 @@ macro_rules! impl_Exp {
             while n >= 100 {
                 let d1 = ((n % 100) as isize) << 1;
                 curr -= 2;
+                // SAFETY: `d1 <= 198`, so we can copy from `lut_ptr[d1..d1 + 2]` since
+                // `DEC_DIGITS_LUT` has a length of 200.
                 unsafe {
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                 }
@@ -324,6 +342,7 @@ macro_rules! impl_Exp {
             // decode second-to-last character
             if n >= 10 {
                 curr -= 1;
+                // SAFETY: Safe since `40 > curr >= 0` (see comment)
                 unsafe {
                     *buf_ptr.offset(curr) = (n as u8 % 10_u8) + b'0';
                 }
@@ -333,11 +352,13 @@ macro_rules! impl_Exp {
             // add decimal point iff >1 mantissa digit will be printed
             if exponent != trailing_zeros || added_precision != 0 {
                 curr -= 1;
+                // SAFETY: Safe since `40 > curr >= 0`
                 unsafe {
                     *buf_ptr.offset(curr) = b'.';
                 }
             }
 
+            // SAFETY: Safe since `40 > curr >= 0`
             let buf_slice = unsafe {
                 // decode last character
                 curr -= 1;
@@ -350,6 +371,8 @@ macro_rules! impl_Exp {
             // stores 'e' (or 'E') and the up to 2-digit exponent
             let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
             let exp_ptr = MaybeUninit::first_ptr_mut(&mut exp_buf);
+            // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
+            // is contained within `exp_buf` since `len <= 3`.
             let exp_slice = unsafe {
                 *exp_ptr.offset(0) = if upper {b'E'} else {b'e'};
                 let len = if exponent < 10 {

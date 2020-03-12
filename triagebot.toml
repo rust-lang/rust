@@ -17,7 +17,7 @@ Hey LLVM ICE-breakers! This bug has been identified as a good
 [instructions] for tackling these sorts of bugs. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://rust-lang.github.io/rustc-guide/ice-breaker/llvm.html
+[instructions]: https://rustc-dev-guide.rust-lang.org/ice-breaker/llvm.html
 """
 label = "ICEBreaker-LLVM"
 
@@ -28,6 +28,6 @@ Hey Cleanup Crew ICE-breakers! This bug has been identified as a good
 [instructions] for tackling these sorts of bugs. Maybe take a look?
 Thanks! <3
 
-[instructions]: https://rust-lang.github.io/rustc-guide/ice-breaker/cleanup-crew.html
+[instructions]: https://rustc-dev-guide.rust-lang.org/ice-breaker/cleanup-crew.html
 """
 label = "ICEBreaker-Cleanup-Crew"

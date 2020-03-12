@@ -652,7 +652,7 @@ impl<'a> State<'a> {
                     self.word_nbsp("const");
                 }
 
-                if let hir::ImplPolarity::Negative = polarity {
+                if let hir::ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 
@@ -886,13 +886,13 @@ impl<'a> State<'a> {
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_associated_const(ti.ident, &ty, default, &vis);
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_method_sig(ti.ident, sig, &ti.generics, &vis, arg_names, None);
                 self.s.word(";");
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Provided(body)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.head("");

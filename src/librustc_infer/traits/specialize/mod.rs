@@ -4,10 +4,10 @@
 //! At the moment, this implementation support only the simple "chain" rule:
 //! If any two impls overlap, one must be a strict subset of the other.
 //!
-//! See the [rustc guide] for a bit more detail on how specialization
+//! See the [rustc dev guide] for a bit more detail on how specialization
 //! fits together with the rest of the trait machinery.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
 use specialization_graph::GraphExt;

@@ -33,7 +33,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let fndecl = match self.tcx().hir().get(hir_id) {
                     Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
                     | Node::TraitItem(&hir::TraitItem {
-                        kind: hir::TraitItemKind::Method(ref m, ..),
+                        kind: hir::TraitItemKind::Fn(ref m, ..),
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {

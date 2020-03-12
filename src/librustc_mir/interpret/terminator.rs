@@ -99,6 +99,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
+            Abort => {
+                M::abort(self)?;
+            }
+
             // When we encounter Resume, we've finished unwinding
             // cleanup for the current stack frame. We pop it in order
             // to continue unwinding the next frame
@@ -114,14 +118,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Unreachable => throw_ub!(Unreachable),
 
             // These should never occur for MIR we actually run.
-            DropAndReplace { .. } | FalseEdges { .. } | FalseUnwind { .. } => {
+            DropAndReplace { .. }
+            | FalseEdges { .. }
+            | FalseUnwind { .. }
+            | Yield { .. }
+            | GeneratorDrop => {
                 bug!("{:#?} should have been eliminated by MIR pass", terminator.kind)
-            }
-
-            // These are not (yet) supported. It is unclear if they even can occur in
-            // MIR that we actually run.
-            Yield { .. } | GeneratorDrop | Abort => {
-                throw_unsup_format!("Unsupported terminator kind: {:#?}", terminator.kind)
             }
         }
 

@@ -2,6 +2,6 @@ The `codegen` crate contains the code to convert from MIR into LLVM IR,
 and then from LLVM IR into machine code. In general it contains code
 that runs towards the end of the compilation process.
 
-For more information about how codegen works, see the [rustc guide].
+For more information about how codegen works, see the [rustc dev guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/codegen.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/codegen.html

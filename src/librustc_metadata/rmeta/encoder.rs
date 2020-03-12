@@ -805,7 +805,7 @@ impl EncodeContext<'tcx> {
                 )
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::TraitItemKind::Method(m_sig, m) = &ast_item.kind {
+                let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
                     let param_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
                             self.encode_fn_param_names(names)

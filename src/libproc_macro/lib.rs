@@ -41,7 +41,7 @@ pub use diagnostic::{Diagnostic, Level, MultiSpan};
 use std::ops::{Bound, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{fmt, iter, mem};
+use std::{error, fmt, iter, mem};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -65,6 +65,16 @@ impl !Sync for TokenStream {}
 pub struct LexError {
     _inner: (),
 }
+
+#[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("cannot parse string into token stream")
+    }
+}
+
+#[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
+impl error::Error for LexError {}
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for LexError {}

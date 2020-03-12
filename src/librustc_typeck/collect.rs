@@ -715,7 +715,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
     tcx.generics_of(def_id);
 
     match trait_item.kind {
-        hir::TraitItemKind::Method(..) => {
+        hir::TraitItemKind::Fn(..) => {
             tcx.type_of(def_id);
             tcx.fn_sig(def_id);
         }
@@ -1121,7 +1121,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     match node {
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Method(ref sig, _) => {
+            hir::TraitItemKind::Fn(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
@@ -1437,7 +1437,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Fn(sig, TraitMethod::Provided(_)),
             ident,
             generics,
             ..
@@ -1474,7 +1474,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(FnSig { header, decl }, _),
+            kind: TraitItemKind::Fn(FnSig { header, decl }, _),
             ident,
             generics,
             ..
@@ -1548,7 +1548,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative, .. } => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be negative");
             }

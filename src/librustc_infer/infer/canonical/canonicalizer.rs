@@ -1,9 +1,9 @@
 //! This module contains the "canonicalizer" itself.
 //!
 //! For an overview of what canonicalization is and how it fits into
-//! rustc, check out the [chapter in the rustc guide][c].
+//! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
 
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
@@ -33,9 +33,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// with a mapping M that maps `'?0` to `'static`.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query
+    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
@@ -77,9 +77,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// reference to `'static` alone.
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
+    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>
     where
         V: TypeFoldable<'tcx>,

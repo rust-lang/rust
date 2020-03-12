@@ -162,8 +162,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             },
             Some(Node::TraitItem(trait_method)) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
-                hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => true,
-                hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_))
+                hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(_)) => true,
+                hir::TraitItemKind::Fn(_, hir::TraitMethod::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
             Some(Node::ImplItem(impl_item)) => {
@@ -278,11 +278,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
                     hir::TraitItemKind::Const(_, None)
-                    | hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitMethod::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
                     hir::TraitItemKind::Const(_, Some(body_id))
-                    | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}

@@ -5,9 +5,9 @@
 //!   this code handles low-level equality and subtyping operations. The
 //!   type check pass in the compiler is found in the `librustc_typeck` crate.
 //!
-//! For more information about how rustc works, see the [rustc guide].
+//! For more information about how rustc works, see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/
 //!
 //! # Note
 //!

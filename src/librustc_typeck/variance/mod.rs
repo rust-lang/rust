@@ -1,7 +1,7 @@
-//! Module for inferring the variance of type and lifetime parameters. See the [rustc guide]
+//! Module for inferring the variance of type and lifetime parameters. See the [rustc dev guide]
 //! chapter for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/variance.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
 use hir::Node;
 use rustc::ty::query::Providers;
@@ -54,7 +54,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         },
 
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Method(..) => {}
+            hir::TraitItemKind::Fn(..) => {}
 
             _ => unsupported(),
         },

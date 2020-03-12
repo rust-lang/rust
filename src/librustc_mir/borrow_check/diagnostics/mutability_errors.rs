@@ -480,7 +480,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         }))
                         | Some(hir::Node::TraitItem(hir::TraitItem {
                             ident,
-                            kind: hir::TraitItemKind::Method(sig, _),
+                            kind: hir::TraitItemKind::Fn(sig, _),
                             ..
                         }))
                         | Some(hir::Node::ImplItem(hir::ImplItem {
@@ -522,7 +522,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
-                    kind: hir::TraitItemKind::Method(sig, _),
+                    kind: hir::TraitItemKind::Fn(sig, _),
                     ..
                 })
                 | hir::Node::ImplItem(hir::ImplItem {

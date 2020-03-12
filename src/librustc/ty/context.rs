@@ -611,7 +611,7 @@ impl<'tcx> TypeckTables<'tcx> {
         }
 
         match self.type_dependent_defs().get(expr.hir_id) {
-            Some(Ok((DefKind::Method, _))) => true,
+            Some(Ok((DefKind::AssocFn, _))) => true,
             _ => false,
         }
     }
@@ -916,9 +916,9 @@ pub struct FreeRegionInfo {
 /// The central data structure of the compiler. It stores references
 /// to the various **arenas** and also houses the results of the
 /// various **compiler queries** that have been performed. See the
-/// [rustc guide] for more details.
+/// [rustc dev guide] for more details.
 ///
-/// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 pub struct TyCtxt<'tcx> {

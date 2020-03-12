@@ -911,14 +911,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Method(ref sig, TraitMethod::Required(param_names)) => {
+        TraitItemKind::Fn(ref sig, TraitMethod::Required(param_names)) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
-        TraitItemKind::Method(ref sig, TraitMethod::Provided(body_id)) => {
+        TraitItemKind::Fn(ref sig, TraitMethod::Provided(body_id)) => {
             visitor.visit_fn(
                 FnKind::Method(trait_item.ident, sig, None, &trait_item.attrs),
                 &sig.decl,

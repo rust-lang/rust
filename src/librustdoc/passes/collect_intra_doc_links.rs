@@ -149,7 +149,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
                 let value = match res {
-                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssocConst, _) => true,
+                    Res::Def(DefKind::AssocFn, _) | Res::Def(DefKind::AssocConst, _) => true,
                     Res::Def(DefKind::AssocTy, _) => false,
                     Res::Def(DefKind::Variant, _) => {
                         return handle_variant(cx, res, extra_fragment);
@@ -813,7 +813,7 @@ fn ambiguity_error(
 
                     for (res, ns) in candidates {
                         let (action, mut suggestion) = match res {
-                            Res::Def(DefKind::Method, _) | Res::Def(DefKind::Fn, _) => {
+                            Res::Def(DefKind::AssocFn, _) | Res::Def(DefKind::Fn, _) => {
                                 ("add parentheses", format!("{}()", path_str))
                             }
                             Res::Def(DefKind::Macro(..), _) => {
