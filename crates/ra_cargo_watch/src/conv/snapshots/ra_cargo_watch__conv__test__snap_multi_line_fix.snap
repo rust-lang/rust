@@ -5,27 +5,27 @@ expression: diag
 [
     MappedRustDiagnostic {
         location: Location {
-            uri: "file:///test/compiler/mir/tagset.rs",
+            uri: "file:///test/src/main.rs",
             range: Range {
                 start: Position {
-                    line: 41,
-                    character: 23,
+                    line: 3,
+                    character: 4,
                 },
                 end: Position {
-                    line: 41,
-                    character: 28,
+                    line: 3,
+                    character: 5,
                 },
             },
         },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 41,
-                    character: 23,
+                    line: 3,
+                    character: 4,
                 },
                 end: Position {
-                    line: 41,
-                    character: 28,
+                    line: 3,
+                    character: 5,
                 },
             },
             severity: Some(
@@ -33,30 +33,30 @@ expression: diag
             ),
             code: Some(
                 String(
-                    "trivially_copy_pass_by_ref",
+                    "let_and_return",
                 ),
             ),
             source: Some(
                 "clippy",
             ),
-            message: "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+            message: "returning the result of a let binding from a block\n`#[warn(clippy::let_and_return)]` on by default\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/compiler/lib.rs",
+                            uri: "file:///test/src/main.rs",
                             range: Range {
                                 start: Position {
-                                    line: 0,
-                                    character: 8,
+                                    line: 2,
+                                    character: 4,
                                 },
                                 end: Position {
-                                    line: 0,
-                                    character: 19,
+                                    line: 2,
+                                    character: 30,
                                 },
                             },
                         },
-                        message: "lint level defined here",
+                        message: "unnecessary let binding",
                     },
                 ],
             ),
@@ -64,7 +64,7 @@ expression: diag
         },
         fixes: [
             CodeAction {
-                title: "consider passing by value instead",
+                title: "return the expression directly",
                 kind: Some(
                     "quickfix",
                 ),
@@ -73,19 +73,32 @@ expression: diag
                     WorkspaceEdit {
                         changes: Some(
                             {
-                                "file:///test/compiler/mir/tagset.rs": [
+                                "file:///test/src/main.rs": [
                                     TextEdit {
                                         range: Range {
                                             start: Position {
-                                                line: 41,
-                                                character: 23,
+                                                line: 2,
+                                                character: 4,
                                             },
                                             end: Position {
-                                                line: 41,
-                                                character: 28,
+                                                line: 2,
+                                                character: 30,
                                             },
                                         },
-                                        new_text: "self",
+                                        new_text: "",
+                                    },
+                                    TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: 3,
+                                                character: 4,
+                                            },
+                                            end: Position {
+                                                line: 3,
+                                                character: 5,
+                                            },
+                                        },
+                                        new_text: "(0..10).collect()",
                                     },
                                 ],
                             },
