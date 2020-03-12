@@ -5,10 +5,139 @@ use rustc::session::config::{DebugInfo, OutputType};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use crate::prelude::*;
 
 use crate::backend::{Emit, WriteDebugInfo};
+
+fn new_module(tcx: TyCtxt<'_>, name: String) -> Module<crate::backend::Backend> {
+    let module = crate::backend::make_module(tcx.sess, name);
+    assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
+    module
+}
+
+struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
+
+
+impl<HCX> HashStable<HCX> for ModuleCodegenResult {
+    fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+        // do nothing
+    }
+}
+
+fn emit_module<B: Backend>(
+    tcx: TyCtxt<'_>,
+    name: String,
+    kind: ModuleKind,
+    mut module: Module<B>,
+    debug: Option<DebugContext>,
+) -> ModuleCodegenResult
+    where B::Product: Emit + WriteDebugInfo,
+{
+    module.finalize_definitions();
+    let mut product = module.finish();
+
+    if let Some(mut debug) = debug {
+        debug.emit(&mut product);
+    }
+
+    let tmp_file = tcx
+        .output_filenames(LOCAL_CRATE)
+        .temp_path(OutputType::Object, Some(&name));
+    let obj = product.emit();
+    std::fs::write(&tmp_file, obj).unwrap();
+
+    let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
+        None
+    } else {
+        rustc_incremental::copy_cgu_workproducts_to_incr_comp_cache_dir(
+            tcx.sess,
+            &name,
+            &[(WorkProductFileKind::Object, tmp_file.clone())],
+        )
+    };
+
+    ModuleCodegenResult(
+        CompiledModule {
+            name,
+            kind,
+            object: Some(tmp_file),
+            bytecode: None,
+            bytecode_compressed: None,
+        },
+        work_product,
+    )
+}
+
+fn reuse_workproduct_for_cgu(
+    tcx: TyCtxt<'_>,
+    cgu: &CodegenUnit,
+    work_products: &mut FxHashMap<WorkProductId, WorkProduct>,
+) -> CompiledModule {
+    let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
+    let mut object = None;
+    let work_product = cgu.work_product(tcx);
+    for (kind, saved_file) in &work_product.saved_files {
+        let obj_out = match kind {
+            WorkProductFileKind::Object => {
+                let path = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
+                object = Some(path.clone());
+                path
+            }
+            WorkProductFileKind::Bytecode | WorkProductFileKind::BytecodeCompressed => {
+                panic!("cg_clif doesn't use bytecode");
+            }
+        };
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
+        if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
+            tcx.sess.err(&format!(
+                "unable to copy {} to {}: {}",
+                source_file.display(),
+                obj_out.display(),
+                err
+            ));
+        }
+    }
+
+    work_products.insert(cgu.work_product_id(), work_product);
+
+    CompiledModule {
+        name: cgu.name().to_string(),
+        kind: ModuleKind::Regular,
+        object,
+        bytecode: None,
+        bytecode_compressed: None,
+    }
+}
+
+fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
+    let cgu = tcx.codegen_unit(cgu_name);
+    let mono_items = cgu.items_in_deterministic_order(tcx);
+
+    let mut module = new_module(tcx, cgu_name.as_str().to_string());
+
+    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
+        let debug = DebugContext::new(
+            tcx,
+            module.target_config().pointer_type().bytes() as u8,
+        );
+        Some(debug)
+    } else {
+        None
+    };
+
+    super::codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
+
+    emit_module(
+        tcx,
+        cgu.name().as_str().to_string(),
+        ModuleKind::Regular,
+        module,
+        debug,
+    )
+}
 
 pub(super) fn run_aot(
     tcx: TyCtxt<'_>,
@@ -16,66 +145,6 @@ pub(super) fn run_aot(
     need_metadata_module: bool,
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
     let mut work_products = FxHashMap::default();
-
-    fn new_module(tcx: TyCtxt<'_>, name: String) -> Module<crate::backend::Backend> {
-        let module = crate::backend::make_module(tcx.sess, name);
-        assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
-        module
-    };
-
-    struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
-
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-
-    impl<HCX> HashStable<HCX> for ModuleCodegenResult {
-        fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
-            // do nothing
-        }
-    }
-
-    fn emit_module<B: Backend>(
-        tcx: TyCtxt<'_>,
-        name: String,
-        kind: ModuleKind,
-        mut module: Module<B>,
-        debug: Option<DebugContext>,
-    ) -> ModuleCodegenResult
-        where B::Product: Emit + WriteDebugInfo,
-    {
-            module.finalize_definitions();
-            let mut product = module.finish();
-
-            if let Some(mut debug) = debug {
-                debug.emit(&mut product);
-            }
-
-            let tmp_file = tcx
-                .output_filenames(LOCAL_CRATE)
-                .temp_path(OutputType::Object, Some(&name));
-            let obj = product.emit();
-            std::fs::write(&tmp_file, obj).unwrap();
-
-            let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
-                None
-            } else {
-                rustc_incremental::copy_cgu_workproducts_to_incr_comp_cache_dir(
-                    tcx.sess,
-                    &name,
-                    &[(WorkProductFileKind::Object, tmp_file.clone())],
-                )
-            };
-
-            ModuleCodegenResult(
-                CompiledModule {
-                    name,
-                    kind,
-                    object: Some(tmp_file),
-                    bytecode: None,
-                    bytecode_compressed: None,
-                },
-                work_product,
-            )
-        };
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
 
@@ -94,40 +163,7 @@ pub(super) fn run_aot(
                 _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
                 CguReuse::No => {}
                 CguReuse::PreLto => {
-                    let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
-                    let mut object = None;
-                    let work_product = cgu.work_product(tcx);
-                    for (kind, saved_file) in &work_product.saved_files {
-                        let obj_out = match kind {
-                            WorkProductFileKind::Object => {
-                                let path = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
-                                object = Some(path.clone());
-                                path
-                            }
-                            WorkProductFileKind::Bytecode | WorkProductFileKind::BytecodeCompressed => {
-                                panic!("cg_clif doesn't use bytecode");
-                            }
-                        };
-                        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
-                        if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
-                            tcx.sess.err(&format!(
-                                "unable to copy {} to {}: {}",
-                                source_file.display(),
-                                obj_out.display(),
-                                err
-                            ));
-                        }
-                    }
-
-                    work_products.insert(cgu.work_product_id(), work_product);
-
-                    return CompiledModule {
-                        name: cgu.name().to_string(),
-                        kind: ModuleKind::Regular,
-                        object,
-                        bytecode: None,
-                        bytecode_compressed: None,
-                    };
+                    return reuse_workproduct_for_cgu(tcx, &*cgu, &mut work_products);
                 }
                 CguReuse::PostLto => unreachable!(),
             }
@@ -135,34 +171,6 @@ pub(super) fn run_aot(
             let dep_node = cgu.codegen_dep_node(tcx);
             let (ModuleCodegenResult(module, work_product), _) =
                 tcx.dep_graph.with_task(dep_node, tcx, cgu.name(), module_codegen, rustc::dep_graph::hash_result);
-
-            fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
-                let cgu = tcx.codegen_unit(cgu_name);
-                let mono_items = cgu.items_in_deterministic_order(tcx);
-
-                let mut module = new_module(tcx, cgu_name.as_str().to_string());
-
-                let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
-                    let debug = DebugContext::new(
-                        tcx,
-                        module.target_config().pointer_type().bytes() as u8,
-                    );
-                    Some(debug)
-                } else {
-                    None
-                };
-
-                super::codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
-                crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
-
-                emit_module(
-                    tcx,
-                    cgu.name().as_str().to_string(),
-                    ModuleKind::Regular,
-                    module,
-                    debug,
-                )
-            }
 
             if let Some((id, product)) = work_product {
                 work_products.insert(id, product);
