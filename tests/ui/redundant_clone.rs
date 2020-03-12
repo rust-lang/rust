@@ -145,4 +145,9 @@ fn not_consumed() {
     // redundant. (It also does not consume the PathBuf)
 
     println!("x: {:?}, y: {:?}", x, y);
+
+    let mut s = String::new();
+    s.clone().push_str("foo"); // OK, removing this `clone()` will change the behavior.
+    s.push_str("bar");
+    assert_eq!(s, "bar");
 }

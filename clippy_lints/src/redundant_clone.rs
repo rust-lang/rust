@@ -195,8 +195,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             let is_temp = mir_read_only.local_kind(ret_local) == mir::LocalKind::Temp;
 
             // 1. `local` can be moved out if it is not used later.
-            // 2. If `ret_local` is a temporary and is not consumed, we can remove this `clone` call anyway.
-            let (used, consumed) = traversal::ReversePostorder::new(&mir, bb).skip(1).fold(
+            // 2. If `ret_local` is a temporary and is neither consumed nor mutated, we can remove this `clone`
+            // call anyway.
+            let (used, consumed_or_mutated) = traversal::ReversePostorder::new(&mir, bb).skip(1).fold(
                 (false, !is_temp),
                 |(used, consumed), (tbb, tdata)| {
                     // Short-circuit
@@ -209,14 +210,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
                     let mut vis = LocalUseVisitor {
                         used: (local, false),
-                        consumed: (ret_local, false),
+                        consumed_or_mutated: (ret_local, false),
                     };
                     vis.visit_basic_block_data(tbb, tdata);
-                    (used || vis.used.1, consumed || vis.consumed.1)
+                    (used || vis.used.1, consumed || vis.consumed_or_mutated.1)
                 },
             );
 
-            if !used || !consumed {
+            if !used || !consumed_or_mutated {
                 let span = terminator.source_info.span;
                 let scope = terminator.source_info.scope;
                 let node = mir.source_scopes[scope]
@@ -253,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             if used {
                                 db.span_note(
                                     span,
-                                    "cloned value is not consumed",
+                                    "cloned value is neither consumed nor mutated",
                                 );
                             } else {
                                 db.span_note(
@@ -355,7 +356,7 @@ fn base_local_and_movability<'tcx>(
 
 struct LocalUseVisitor {
     used: (mir::Local, bool),
-    consumed: (mir::Local, bool),
+    consumed_or_mutated: (mir::Local, bool),
 }
 
 impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
@@ -381,8 +382,14 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
             self.used.1 = true;
         }
 
-        if *local == self.consumed.0 && matches!(ctx, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)) {
-            self.consumed.1 = true;
+        if *local == self.consumed_or_mutated.0 {
+            match ctx {
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
+                    self.consumed_or_mutated.1 = true;
+                },
+                _ => {},
+            }
         }
     }
 }
