@@ -12,7 +12,7 @@ impl AnonPipe {
         match self.0 {}
     }
 
-    pub fn can_read_vectored(&self) -> bool {
+    pub fn is_read_vectored(&self) -> bool {
         match self.0 {}
     }
 

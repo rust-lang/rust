@@ -151,7 +151,7 @@ impl TcpStream {
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        self.inner.inner.can_read_vectored()
+        self.inner.inner.is_read_vectored()
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
