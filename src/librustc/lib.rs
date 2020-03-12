@@ -93,6 +93,6 @@ pub mod util {
 extern crate self as rustc;
 
 // Suppress warning: these crates will be unused when cfg(parallel_compiler) is not enabled
+use jobserver as _;
 use rustc_rayon as _;
 use rustc_rayon_core as _;
-use jobserver as _;
