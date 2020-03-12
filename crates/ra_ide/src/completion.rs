@@ -75,9 +75,9 @@ impl Default for CompletionOptions {
 pub(crate) fn completions(
     db: &RootDatabase,
     position: FilePosition,
-    opts: &CompletionOptions,
+    options: &CompletionOptions,
 ) -> Option<Completions> {
-    let ctx = CompletionContext::new(db, position, opts)?;
+    let ctx = CompletionContext::new(db, position, options)?;
 
     let mut acc = Completions::default();
 
