@@ -656,8 +656,8 @@ impl io::Write for UnixStream {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
-        io::Write::can_write_vectored(&&*self)
+    fn is_write_vectored(&self) -> bool {
+        io::Write::is_write_vectored(&&*self)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -676,7 +676,7 @@ impl<'a> io::Write for &'a UnixStream {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         self.0.can_write_vectored()
     }
 

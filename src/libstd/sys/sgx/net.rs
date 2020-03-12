@@ -150,7 +150,7 @@ impl TcpStream {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
+    pub fn is_read_vectored(&self) -> bool {
         self.inner.inner.can_read_vectored()
     }
 
@@ -163,8 +163,8 @@ impl TcpStream {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
-        self.inner.inner.can_write_vectored()
+    pub fn is_write_vectored(&self) -> bool {
+        self.inner.inner.is_write_vectored()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

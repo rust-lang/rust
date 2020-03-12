@@ -266,8 +266,8 @@ impl TcpStream {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
-        self.inner.can_read_vectored()
+    pub fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -283,8 +283,8 @@ impl TcpStream {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
-        self.inner.can_write_vectored()
+    pub fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

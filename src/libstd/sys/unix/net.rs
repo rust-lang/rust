@@ -227,8 +227,8 @@ impl Socket {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
-        self.0.can_read_vectored()
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
     }
 
     fn recv_from_with_flags(
@@ -269,8 +269,8 @@ impl Socket {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
-        self.0.can_write_vectored()
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {

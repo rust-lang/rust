@@ -20,7 +20,7 @@ impl Stdin {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
+    pub fn is_read_vectored(&self) -> bool {
         true
     }
 
@@ -43,7 +43,7 @@ impl Stdout {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
+    pub fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -70,7 +70,7 @@ impl Stderr {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
+    pub fn is_write_vectored(&self) -> bool {
         true
     }
 

@@ -24,7 +24,7 @@ impl AnonPipe {
         match self.0 {}
     }
 
-    pub fn can_write_vectored(&self) -> bool {
+    pub fn is_write_vectored(&self) -> bool {
         match self.0 {}
     }
 

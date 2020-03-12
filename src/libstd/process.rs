@@ -245,8 +245,8 @@ impl Write for ChildStdin {
         self.inner.write_vectored(bufs)
     }
 
-    fn can_write_vectored(&self) -> bool {
-        self.inner.can_write_vectored()
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -305,8 +305,8 @@ impl Read for ChildStdout {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        self.inner.can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]
@@ -366,8 +366,8 @@ impl Read for ChildStderr {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        self.inner.can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]

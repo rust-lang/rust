@@ -352,8 +352,8 @@ impl File {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
-        self.0.can_read_vectored()
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
@@ -369,8 +369,8 @@ impl File {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
-        self.0.can_write_vectored()
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

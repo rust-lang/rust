@@ -266,7 +266,7 @@ where
         Ok(nread)
     }
 
-    fn can_read_vectored(&self) -> bool {
+    fn is_read_vectored(&self) -> bool {
         true
     }
 
@@ -377,7 +377,7 @@ impl Write for Cursor<&mut [u8]> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -398,7 +398,7 @@ impl Write for Cursor<&mut Vec<u8>> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -419,7 +419,7 @@ impl Write for Cursor<Vec<u8>> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -442,7 +442,7 @@ impl Write for Cursor<Box<[u8]>> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 

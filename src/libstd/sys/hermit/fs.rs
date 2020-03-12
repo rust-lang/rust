@@ -302,7 +302,7 @@ impl File {
     }
 
     #[inline]
-    pub fn can_read_vectored(&self) -> bool {
+    pub fn is_read_vectored(&self) -> bool {
         false
     }
 
@@ -315,7 +315,7 @@ impl File {
     }
 
     #[inline]
-    pub fn can_write_vectored(&self) -> bool {
+    pub fn is_write_vectored(&self) -> bool {
         false
     }
 

@@ -588,8 +588,8 @@ pub trait Read {
     /// and coalesce writes into a single buffer for higher performance.
     ///
     /// The default implementation returns `false`.
-    #[unstable(feature = "can_vector", issue = "none")]
-    fn can_read_vectored(&self) -> bool {
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_read_vectored(&self) -> bool {
         false
     }
 
@@ -1325,8 +1325,8 @@ pub trait Write {
     /// and coalesce writes into a single buffer for higher performance.
     ///
     /// The default implementation returns `false`.
-    #[unstable(feature = "can_vector", issue = "none")]
-    fn can_write_vectored(&self) -> bool {
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_write_vectored(&self) -> bool {
         false
     }
 

@@ -22,7 +22,7 @@ impl io::Read for Stdin {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
+    fn is_read_vectored(&self) -> bool {
         true
     }
 }
@@ -43,7 +43,7 @@ impl io::Write for Stdout {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -68,7 +68,7 @@ impl io::Write for Stderr {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 

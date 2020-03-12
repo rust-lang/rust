@@ -55,7 +55,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn can_read_vectored(&self) -> bool {
+        pub fn is_read_vectored(&self) -> bool {
             unimpl!();
         }
 
@@ -79,7 +79,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn can_write_vectored(&self) -> bool {
+        pub fn is_write_vectored(&self) -> bool {
             unimpl!();
         }
 
@@ -179,7 +179,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn can_read_vectored(&self) -> bool {
+        pub fn is_read_vectored(&self) -> bool {
             unimpl!();
         }
 
@@ -191,7 +191,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn can_write_vectored(&self) -> bool {
+        pub fn is_write_vectored(&self) -> bool {
             unimpl!();
         }
 

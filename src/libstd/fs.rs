@@ -660,8 +660,8 @@ impl Read for File {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        self.inner.can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]
@@ -680,8 +680,8 @@ impl Write for File {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
-        self.inner.can_write_vectored()
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -705,8 +705,8 @@ impl Read for &File {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        self.inner.can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]
@@ -725,8 +725,8 @@ impl Write for &File {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
-        self.inner.can_write_vectored()
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

@@ -180,7 +180,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
+    fn is_read_vectored(&self) -> bool {
         true
     }
 
@@ -241,7 +241,7 @@ impl Write for Sink {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 

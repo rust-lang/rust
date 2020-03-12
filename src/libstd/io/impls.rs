@@ -21,8 +21,8 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        (**self).can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
     }
 
     #[inline]
@@ -58,8 +58,8 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
-        (**self).can_write_vectored()
+    fn is_write_vectored(&self) -> bool {
+        (**self).is_write_vectored()
     }
 
     #[inline]
@@ -120,8 +120,8 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
-        (**self).can_read_vectored()
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
     }
 
     #[inline]
@@ -157,8 +157,8 @@ impl<W: Write + ?Sized> Write for Box<W> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
-        (**self).can_write_vectored()
+    fn is_write_vectored(&self) -> bool {
+        (**self).is_write_vectored()
     }
 
     #[inline]
@@ -261,7 +261,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn can_read_vectored(&self) -> bool {
+    fn is_read_vectored(&self) -> bool {
         true
     }
 
@@ -342,7 +342,7 @@ impl Write for &mut [u8] {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
@@ -382,7 +382,7 @@ impl Write for Vec<u8> {
     }
 
     #[inline]
-    fn can_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
 
