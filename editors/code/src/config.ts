@@ -156,7 +156,6 @@ export class Config {
     get featureFlags() { return this.cfg.get("featureFlags") as Record<string, boolean>; }
     get additionalOutDirs() { return this.cfg.get("additionalOutDirs") as Record<string, string>; }
     get rustfmtArgs() { return this.cfg.get("rustfmtArgs") as string[]; }
-    get vscodeLldb() { return this.cfg.get("vscodeLldb") as boolean; }
 
     get cargoWatchOptions(): CargoWatchOptions {
         return {
