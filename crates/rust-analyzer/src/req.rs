@@ -4,7 +4,7 @@ use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-use ra_ide::{InlayConfig, InlayKind};
+use ra_ide::{InlayHintsOptions, InlayKind};
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,

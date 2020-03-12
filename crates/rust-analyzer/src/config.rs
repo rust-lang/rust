@@ -8,7 +8,7 @@
 //! tweak things like automatic insertion of `()` in completions.
 
 use crate::req::InlayConfigDef;
-use ra_ide::InlayConfig;
+use ra_ide::InlayHintsOptions;
 use rustc_hash::FxHashMap;
 
 use ra_project_model::CargoFeatures;
@@ -33,7 +33,7 @@ pub struct ServerConfig {
     pub lru_capacity: Option<usize>,
 
     #[serde(with = "InlayConfigDef")]
-    pub inlay_hints: InlayConfig,
+    pub inlay_hints: InlayHintsOptions,
 
     pub cargo_watch_enable: bool,
     pub cargo_watch_args: Vec<String>,
