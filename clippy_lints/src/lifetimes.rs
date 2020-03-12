@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Method(ref sig, ref body) = item.kind {
+        if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
             let body = match *body {
                 TraitMethod::Required(_) => None,
                 TraitMethod::Provided(id) => Some(id),

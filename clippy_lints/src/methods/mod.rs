@@ -1738,7 +1738,7 @@ fn lint_expect_fun_call(
                 if let hir::ExprKind::Path(ref p) = fun.kind {
                     match cx.tables.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn, def_id)
-                        | hir::def::Res::Def(hir::def::DefKind::Method, def_id) => matches!(
+                        | hir::def::Res::Def(hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind,
                             ty::Ref(ty::ReStatic, ..)
                         ),
