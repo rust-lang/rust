@@ -8,7 +8,7 @@ const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 export interface InlayHintOptions {
     typeHints: boolean;
     parameterHints: boolean;
-    maxLength: number;
+    maxLength: number | null;
 }
 
 export interface CargoWatchOptions {
@@ -160,7 +160,7 @@ export class Config {
         return {
             typeHints: this.cfg.get("inlayHints.typeHints") as boolean,
             parameterHints: this.cfg.get("inlayHints.parameterHints") as boolean,
-            maxLength: this.cfg.get("inlayHints.maxLength") as number,
+            maxLength: this.cfg.get("inlayHints.maxLength") as null | number,
         };
     }
     get excludeGlobs() { return this.cfg.get("excludeGlobs") as string[]; }

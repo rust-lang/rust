@@ -318,7 +318,10 @@
                     "description": "Whether to show function parameter name inlay hints at the call site"
                 },
                 "rust-analyzer.inlayHints.maxLength": {
-                    "type": "integer",
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
                     "default": 20,
                     "minimum": 0,
                     "exclusiveMinimum": true,
