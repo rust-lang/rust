@@ -1,9 +1,7 @@
 use {
     crate::TextSize,
     std::{
-        cmp,
-        convert::TryInto,
-        fmt,
+        cmp, fmt,
         ops::{Bound, Index, IndexMut, RangeBounds},
     },
 };
@@ -130,8 +128,7 @@ impl TextRange {
 }
 
 fn ix(size: TextSize) -> usize {
-    size.try_into()
-        .unwrap_or_else(|_| panic!("overflow when converting TextSize to usize index"))
+    size.into()
 }
 
 impl Index<TextRange> for str {
