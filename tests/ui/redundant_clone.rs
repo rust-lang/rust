@@ -150,4 +150,13 @@ fn not_consumed() {
     s.clone().push_str("foo"); // OK, removing this `clone()` will change the behavior.
     s.push_str("bar");
     assert_eq!(s, "bar");
+
+    let t = Some(s);
+    // OK
+    if let Some(x) = t.clone() {
+        println!("{}", x);
+    }
+    if let Some(x) = t {
+        println!("{}", x);
+    }
 }

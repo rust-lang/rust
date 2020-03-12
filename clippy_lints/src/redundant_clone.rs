@@ -375,14 +375,16 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
         );
     }
 
-    fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext, _: mir::Location) {
-        if *local == self.used.0
+    fn visit_place(&mut self, place: &mir::Place<'tcx>, ctx: PlaceContext, _: mir::Location) {
+        let local = place.local;
+
+        if local == self.used.0
             && !matches!(ctx, PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_))
         {
             self.used.1 = true;
         }
 
-        if *local == self.consumed_or_mutated.0 {
+        if local == self.consumed_or_mutated.0 {
             match ctx {
                 PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
                 | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
