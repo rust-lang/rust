@@ -72,14 +72,16 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(unsafe { GlobalAlloc::alloc(self, layout) })
+            .ok_or(AllocErr)
+            .map(|p| (p, layout.size()))
     }
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
-        .ok_or(AllocErr)
-        .map(|p| (p, layout.size()))
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        NonNull::new(unsafe { GlobalAlloc::alloc_zeroed(self, layout) })
+            .ok_or(AllocErr)
+            .map(|p| (p, layout.size()))
     }
     #[inline]
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {

@@ -485,7 +485,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn assert_panic(
         _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: Span,
         _: &mir::AssertKind<Operand<'tcx>>,
         _: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
