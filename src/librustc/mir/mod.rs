@@ -403,7 +403,7 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
-    pub fn as_ref(&'a self) -> ClearCrossCrate<&'a T> {
+    pub fn as_ref(&self) -> ClearCrossCrate<&T> {
         match self {
             ClearCrossCrate::Clear => ClearCrossCrate::Clear,
             ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
@@ -2503,7 +2503,7 @@ impl UserTypeProjection {
 
     pub(crate) fn variant(
         mut self,
-        adt_def: &'tcx AdtDef,
+        adt_def: &AdtDef,
         variant_index: VariantIdx,
         field: Field,
     ) -> Self {
