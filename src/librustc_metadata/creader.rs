@@ -858,6 +858,10 @@ impl<'a> CrateLoader<'a> {
         });
     }
 
+    pub fn loaded_crates(&self) -> &FxHashSet<Symbol> {
+        self.loaded_crates.as_ref().unwrap()
+    }
+
     pub fn take_loaded_crates(&mut self) -> FxHashSet<Symbol> {
         self.loaded_crates.take().unwrap()
     }

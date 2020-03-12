@@ -1276,7 +1276,6 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
-            // The used crates are finalized at this point
             used_crates: Some(used_crates),
         }
     }
@@ -1296,13 +1295,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
-            // The used crates are not finalized at this point - lowering the AST
-            // may cause us to call `Resolver.extern_prelude_get`,
-            // which may update the set of used crates even if a
-            // new crate is not loaded from disk
-            // We should never actually need to access this, but we set it to
-            // `None` so that we get an ICE if we try to unwrap it
-            used_crates: None,
+            used_crates: Some(self.crate_loader.loaded_crates().clone()),
         }
     }
 
