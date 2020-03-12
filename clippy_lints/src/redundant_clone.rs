@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::mir::{
     self, traversal,
-    visit::{MutatingUseContext, PlaceContext, Visitor as _},
+    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
 };
 use rustc::ty::{self, fold::TypeVisitor, Ty};
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
@@ -110,7 +110,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 continue;
             }
 
-            let (fn_def_id, arg, arg_ty, _) = unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
+            let (fn_def_id, arg, arg_ty, clone_ret) =
+                unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
             let from_borrow = match_def_path(cx, fn_def_id, &paths::CLONE_TRAIT_METHOD)
                 || match_def_path(cx, fn_def_id, &paths::TO_OWNED_METHOD)
@@ -132,8 +133,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 statement_index: bbdata.statements.len(),
             };
 
-            // Cloned local
-            let local = if from_borrow {
+            // `Local` to be cloned, and a local of `clone` call's destination
+            let (local, ret_local) = if from_borrow {
                 // `res = clone(arg)` can be turned into `res = move arg;`
                 // if `arg` is the only borrow of `cloned` at this point.
 
@@ -141,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     continue;
                 }
 
-                cloned
+                (cloned, clone_ret)
             } else {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
@@ -153,15 +154,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 let pred_terminator = mir[ps[0]].terminator();
 
                 // receiver of the `deref()` call
-                let pred_arg = if_chain! {
-                    if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
+                let (pred_arg, deref_clone_ret) = if_chain! {
+                    if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
-                    if res.local == cloned;
+                    if res == cloned;
                     if match_def_path(cx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
                     if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
                         || match_type(cx, pred_arg_ty, &paths::OS_STRING);
                     then {
-                        pred_arg
+                        (pred_arg, res)
                     } else {
                         continue;
                     }
@@ -188,25 +189,32 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     continue;
                 }
 
-                local
+                (local, deref_clone_ret)
             };
 
-            // `local` cannot be moved out if it is used later
-            let used_later = traversal::ReversePostorder::new(&mir, bb).skip(1).any(|(tbb, tdata)| {
-                // Give up on loops
-                if tdata.terminator().successors().any(|s| *s == bb) {
-                    return true;
-                }
+            // 1. `local` cannot be moved out if it is used later.
+            // 2. If `ret_local` is not consumed, we can remove this `clone` call anyway.
+            let (used, consumed) = traversal::ReversePostorder::new(&mir, bb).skip(1).fold(
+                (false, false),
+                |(used, consumed), (tbb, tdata)| {
+                    // Short-circuit
+                    if (used && consumed) ||
+                        // Give up on loops
+                        tdata.terminator().successors().any(|s| *s == bb)
+                    {
+                        return (true, true);
+                    }
 
-                let mut vis = LocalUseVisitor {
-                    local,
-                    used_other_than_drop: false,
-                };
-                vis.visit_basic_block_data(tbb, tdata);
-                vis.used_other_than_drop
-            });
+                    let mut vis = LocalUseVisitor {
+                        used: (local, false),
+                        consumed: (ret_local, false),
+                    };
+                    vis.visit_basic_block_data(tbb, tdata);
+                    (used || vis.used.1, consumed || vis.consumed.1)
+                },
+            );
 
-            if !used_later {
+            if !used || !consumed {
                 let span = terminator.source_info.span;
                 let scope = terminator.source_info.scope;
                 let node = mir.source_scopes[scope]
@@ -240,10 +248,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                                 String::new(),
                                 app,
                             );
-                            db.span_note(
-                                span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
-                                "this value is dropped without further use",
-                            );
+                            if used {
+                                db.span_note(
+                                    span,
+                                    "cloned value is not consumed",
+                                );
+                            } else {
+                                db.span_note(
+                                    span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
+                                    "this value is dropped without further use",
+                                );
+                            }
                         });
                     } else {
                         span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
@@ -259,7 +274,7 @@ fn is_call_with_ref_arg<'tcx>(
     cx: &LateContext<'_, 'tcx>,
     mir: &'tcx mir::Body<'tcx>,
     kind: &'tcx mir::TerminatorKind<'tcx>,
-) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, Option<&'tcx mir::Place<'tcx>>)> {
+) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, mir::Local)> {
     if_chain! {
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
@@ -268,7 +283,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
-            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)))
+            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)?.as_local()?))
         } else {
             None
         }
@@ -337,8 +352,8 @@ fn base_local_and_movability<'tcx>(
 }
 
 struct LocalUseVisitor {
-    local: mir::Local,
-    used_other_than_drop: bool,
+    used: (mir::Local, bool),
+    consumed: (mir::Local, bool),
 }
 
 impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
@@ -346,11 +361,6 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
         let statements = &data.statements;
         for (statement_index, statement) in statements.iter().enumerate() {
             self.visit_statement(statement, mir::Location { block, statement_index });
-
-            // Once flagged, skip remaining statements
-            if self.used_other_than_drop {
-                return;
-            }
         }
 
         self.visit_terminator(
@@ -363,13 +373,14 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
     }
 
     fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext, _: mir::Location) {
-        match ctx {
-            PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_) => return,
-            _ => {},
+        if *local == self.used.0
+            && !matches!(ctx, PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_))
+        {
+            self.used.1 = true;
         }
 
-        if *local == self.local {
-            self.used_other_than_drop = true;
+        if *local == self.consumed.0 && matches!(ctx, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)) {
+            self.consumed.1 = true;
         }
     }
 }

@@ -50,6 +50,7 @@ fn main() {
     cannot_double_move(Alpha);
     cannot_move_from_type_with_drop();
     borrower_propagation();
+    not_consumed();
 }
 
 #[derive(Clone)]
@@ -135,4 +136,13 @@ fn borrower_propagation() {
         let _x = &f.x;
         let _f = f.clone(); // ok
     }
+}
+
+fn not_consumed() {
+    let x = std::path::PathBuf::from("home");
+    let y = x.clone().join("matthias");
+    // join() creates a new owned PathBuf, does not take a &mut to x variable, thus the .clone() is
+    // redundant. (It also does not consume the PathBuf)
+
+    println!("x: {:?}, y: {:?}", x, y);
 }
