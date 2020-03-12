@@ -2773,12 +2773,8 @@ impl<'a> Resolver<'a> {
             } else {
                 let crate_id = if !speculative {
                     self.crate_loader.process_path_extern(ident.name, ident.span)
-                } else if let Some(crate_id) =
-                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)
-                {
-                    crate_id
                 } else {
-                    return None;
+                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)?
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 Some(

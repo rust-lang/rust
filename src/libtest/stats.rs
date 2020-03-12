@@ -204,7 +204,7 @@ impl Stats for [f64] {
     }
 
     fn median(&self) -> f64 {
-        self.percentile(50 as f64)
+        self.percentile(50_f64)
     }
 
     fn var(&self) -> f64 {
@@ -230,7 +230,7 @@ impl Stats for [f64] {
     }
 
     fn std_dev_pct(&self) -> f64 {
-        let hundred = 100 as f64;
+        let hundred = 100_f64;
         (self.std_dev() / self.mean()) * hundred
     }
 
@@ -244,7 +244,7 @@ impl Stats for [f64] {
     }
 
     fn median_abs_dev_pct(&self) -> f64 {
-        let hundred = 100 as f64;
+        let hundred = 100_f64;
         (self.median_abs_dev() / self.median()) * hundred
     }
 
@@ -257,11 +257,11 @@ impl Stats for [f64] {
     fn quartiles(&self) -> (f64, f64, f64) {
         let mut tmp = self.to_vec();
         local_sort(&mut tmp);
-        let first = 25f64;
+        let first = 25_f64;
         let a = percentile_of_sorted(&tmp, first);
-        let second = 50f64;
+        let second = 50_f64;
         let b = percentile_of_sorted(&tmp, second);
-        let third = 75f64;
+        let third = 75_f64;
         let c = percentile_of_sorted(&tmp, third);
         (a, b, c)
     }
@@ -281,7 +281,7 @@ fn percentile_of_sorted(sorted_samples: &[f64], pct: f64) -> f64 {
     }
     let zero: f64 = 0.0;
     assert!(zero <= pct);
-    let hundred = 100f64;
+    let hundred = 100_f64;
     assert!(pct <= hundred);
     if pct == hundred {
         return sorted_samples[sorted_samples.len() - 1];
@@ -307,7 +307,7 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
     let mut tmp = samples.to_vec();
     local_sort(&mut tmp);
     let lo = percentile_of_sorted(&tmp, pct);
-    let hundred = 100 as f64;
+    let hundred = 100_f64;
     let hi = percentile_of_sorted(&tmp, hundred - pct);
     for samp in samples {
         if *samp > hi {

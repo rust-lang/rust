@@ -1107,11 +1107,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
             };
 
-            match (
-                lifetime_names.len(),
-                lifetime_names.iter().next(),
-                snippet.as_ref().map(|s| s.as_str()),
-            ) {
+            match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
                 (1, Some(name), Some("&")) => {
                     suggest_existing(err, format!("&{} ", name));
                 }
