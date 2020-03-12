@@ -261,7 +261,7 @@
                 "rust-analyzer.cargo-watch.enable": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "Run `cargo check` for diagnostics on save"
+                    "markdownDescription": "Run specified `cargo-watch` command for diagnostics on save"
                 },
                 "rust-analyzer.cargo-watch.arguments": {
                     "type": "array",
