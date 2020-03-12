@@ -191,8 +191,9 @@ Two types of inlay hints are displayed currently:
 
 In VS Code, the following settings can be used to configure the inlay hints:
 
-* `rust-analyzer.inlayHintOpts.displayType` configure which types of inlay hints are shown.
-* `rust-analyzer.inlayHintOpts.maxLength` — shortens the hints if their length exceeds the value specified. If no value is specified (`null`), no shortening is applied.
+* `rust-analyzer.inlayHints.typeHints` - enable hints for inferred types.
+* `rust-analyzer.inlayHints.parameterHints` - enable hints for function parameters.
+* `rust-analyzer.inlayHints.maxLength` — shortens the hints if their length exceeds the value specified. If no value is specified (`null`), no shortening is applied.
 
 **Note:** VS Code does not have native support for inlay hints [yet](https://github.com/microsoft/vscode/issues/16221) and the hints are implemented using decorations.
 This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
