@@ -51,9 +51,6 @@
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.74.0"
     },
-    "extensionDependencies": [
-        "vadimcn.vscode-lldb"
-    ],
     "activationEvents": [
         "onLanguage:rust",
         "onCommand:rust-analyzer.analyzerStatus",

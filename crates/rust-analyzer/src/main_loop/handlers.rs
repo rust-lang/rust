@@ -805,23 +805,25 @@ pub fn handle_code_lens(
             }),
             data: None,
         };
-        if r.args[0] == "run" {
-            r.args[0] = "build".into();
-        } else {
-            r.args.push("--no-run".into());
-        }
-        let debug_lens = CodeLens {
-            range: r.range,
-            command: Some(Command {
-                title: "Debug".into(),
-                command: "rust-analyzer.debugSingle".into(),
-                arguments: Some(vec![to_value(r).unwrap()]),
-            }),
-            data: None,
-        };
-
         lenses.push(lens);
-        lenses.push(debug_lens);
+
+        if world.options.vscode_lldb {
+            if r.args[0] == "run" {
+                r.args[0] = "build".into();
+            } else {
+                r.args.push("--no-run".into());
+            }
+            let debug_lens = CodeLens {
+                range: r.range,
+                command: Some(Command {
+                    title: "Debug".into(),
+                    command: "rust-analyzer.debugSingle".into(),
+                    arguments: Some(vec![to_value(r).unwrap()]),
+                }),
+                data: None,
+            };
+            lenses.push(debug_lens);
+        }
     }
 
     // Handle impls

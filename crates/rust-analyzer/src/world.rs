@@ -37,6 +37,7 @@ pub struct Options {
     pub max_inlay_hint_length: Option<usize>,
     pub rustfmt_args: Vec<String>,
     pub cargo_watch: CheckOptions,
+    pub vscode_lldb: bool,
 }
 
 /// `WorldState` is the primary mutable state of the language server

@@ -41,6 +41,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
             withSysroot: config.withSysroot,
             cargoFeatures: config.cargoFeatures,
             rustfmtArgs: config.rustfmtArgs,
+            vscodeLldb: vscode.extensions.getExtension("vadimcn.vscode-lldb") != null,
         },
         traceOutputChannel,
         middleware: {
