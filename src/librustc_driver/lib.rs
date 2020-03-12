@@ -21,8 +21,8 @@ pub extern crate rustc_plugin_impl as plugin;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
-use rustc_codegen_ssa::CodegenResults;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_ast::ast;
+use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::{
@@ -43,6 +43,8 @@ use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
 use rustc_session::{early_error, early_warn};
+use rustc_span::source_map::{FileLoader, FileName};
+use rustc_span::symbol::sym;
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -57,11 +59,6 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
-
-use rustc_ast::ast;
-use rustc_span::source_map::FileLoader;
-use rustc_span::symbol::sym;
-use rustc_span::FileName;
 
 mod args;
 pub mod pretty;
@@ -693,16 +690,15 @@ impl RustcDefaultCalls {
                     let t_outputs = rustc_interface::util::build_output_filenames(
                         input, odir, ofile, attrs, sess,
                     );
-                    let id = rustc_codegen_utils::link::find_crate_name(Some(sess), attrs, input);
+                    let id = rustc_session::output::find_crate_name(Some(sess), attrs, input);
                     if *req == PrintRequest::CrateName {
                         println!("{}", id);
                         continue;
                     }
                     let crate_types = collect_crate_types(sess, attrs);
                     for &style in &crate_types {
-                        let fname = rustc_codegen_utils::link::filename_for_input(
-                            sess, style, &id, &t_outputs,
-                        );
+                        let fname =
+                            rustc_session::output::filename_for_input(sess, style, &id, &t_outputs);
                         println!("{}", fname.file_name().unwrap().to_string_lossy());
                     }
                 }

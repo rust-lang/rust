@@ -8,7 +8,6 @@ use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
-use rustc_codegen_utils::symbol_names;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -423,17 +422,21 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
     // This is something instantiated in an upstream crate, so we have to use
     // the slower (because uncached) version of computing the symbol name.
     match symbol {
-        ExportedSymbol::NonGeneric(def_id) => symbol_names::symbol_name_for_instance_in_crate(
-            tcx,
-            Instance::mono(tcx, def_id),
-            instantiating_crate,
-        ),
-        ExportedSymbol::Generic(def_id, substs) => symbol_names::symbol_name_for_instance_in_crate(
-            tcx,
-            Instance::new(def_id, substs),
-            instantiating_crate,
-        ),
-        ExportedSymbol::DropGlue(ty) => symbol_names::symbol_name_for_instance_in_crate(
+        ExportedSymbol::NonGeneric(def_id) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                Instance::mono(tcx, def_id),
+                instantiating_crate,
+            )
+        }
+        ExportedSymbol::Generic(def_id, substs) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                Instance::new(def_id, substs),
+                instantiating_crate,
+            )
+        }
+        ExportedSymbol::DropGlue(ty) => rustc_symbol_mangling::symbol_name_for_instance_in_crate(
             tcx,
             Instance::resolve_drop_in_place(tcx, ty),
             instantiating_crate,

@@ -87,6 +87,15 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(never_type)]
+#![feature(nll)]
+#![feature(in_band_lifetimes)]
+#![recursion_limit = "256"]
+
+#[macro_use]
+extern crate rustc;
+
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::ty::query::Providers;
@@ -102,6 +111,8 @@ use log::debug;
 
 mod legacy;
 mod v0;
+
+pub mod test;
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is

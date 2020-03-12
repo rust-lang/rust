@@ -36,7 +36,6 @@ use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_attr as attr;
-use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
@@ -47,6 +46,7 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType, Lto};
 use rustc_session::Session;
 use rustc_span::Span;
+use rustc_symbol_mangling::test as symbol_names_test;
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
@@ -514,8 +514,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
-    check_for_rustc_errors_attr(tcx);
-
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = start_async_codegen(backend, tcx, metadata, 1);

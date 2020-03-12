@@ -5,7 +5,7 @@ use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{self, ast};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
@@ -20,7 +20,7 @@ use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
-use rustc_session::{config, early_error, filesearch, DiagnosticOutput, Session};
+use rustc_session::{config, early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
@@ -505,7 +505,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     if base.is_empty() {
         base.extend(attr_types);
         if base.is_empty() {
-            base.push(::rustc_codegen_utils::link::default_output_for_target(session));
+            base.push(output::default_output_for_target(session));
         } else {
             base.sort();
             base.dedup();
@@ -513,7 +513,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     }
 
     base.retain(|crate_type| {
-        let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
+        let res = !output::invalid_output_for_target(session, *crate_type);
 
         if !res {
             session.warn(&format!(

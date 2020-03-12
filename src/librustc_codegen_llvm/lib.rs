@@ -27,7 +27,6 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_errors::{FatalError, Handler};
 use rustc_serialize::json;
 use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
