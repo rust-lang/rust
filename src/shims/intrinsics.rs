@@ -34,6 +34,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Handle diverging intrinsics.
         let (dest, ret) = match intrinsic_name {
             "abort" => {
+                // FIXME: remove, once the intrinsic on the rustc side is fixed.
                 throw_machine_stop!(TerminationInfo::Abort);
             }
             "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
