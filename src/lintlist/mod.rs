@@ -1726,6 +1726,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "ranges",
     },
     Lint {
+        name: "redundant_allocation",
+        group: "perf",
+        desc: "redundant allocation",
+        deprecation: None,
+        module: "types",
+    },
+    Lint {
         name: "redundant_clone",
         group: "perf",
         desc: "`clone()` of an owned value that is going to be dropped immediately",

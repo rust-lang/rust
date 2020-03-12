@@ -171,11 +171,35 @@ declare_clippy_lint! {
     "a borrow of a boxed type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for use of redundant allocations anywhere in the code.
+    ///
+    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Box<T>>`, `Box<&T>`
+    /// add an unnecessary level of indirection.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// fn foo(bar: Rc<&usize>) {}
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// fn foo(bar: &usize) {}
+    /// ```
+    pub REDUNDANT_ALLOCATION,
+    perf,
+    "redundant allocation"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     fn check_fn(
@@ -217,7 +241,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
 }
 
 /// Checks if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&str]) -> bool {
+fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&str]) -> Option<Span> {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -230,10 +254,27 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&st
         if let Some(did) = qpath_res(cx, qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx, did, path);
         then {
-            return true;
+            return Some(ty.span);
         }
     }
-    false
+    None
+}
+
+fn match_borrows_parameter(_cx: &LateContext<'_, '_>, qpath: &QPath<'_>) -> Option<Span> {
+    let last = last_path_segment(qpath);
+    if_chain! {
+        if let Some(ref params) = last.args;
+        if !params.parenthesized;
+        if let Some(ty) = params.args.iter().find_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        });
+        if let TyKind::Rptr(..) = ty.kind;
+        then {
+            return Some(ty.span);
+        }
+    }
+    None
 }
 
 impl Types {
@@ -257,6 +298,7 @@ impl Types {
     /// The parameter `is_local` distinguishes the context of the type; types from
     /// local bindings should only be checked for the `BORROWED_BOX` lint.
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::cognitive_complexity)]
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
         if hir_ty.span.from_expansion() {
             return;
@@ -267,13 +309,62 @@ impl Types {
                 let res = qpath_res(cx, qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                        if match_type_parameter(cx, qpath, &paths::VEC) {
+                        if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Box<&T>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
                             span_lint_and_help(
                                 cx,
                                 BOX_VEC,
                                 hir_ty.span,
                                 "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                 "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if Some(def_id) == cx.tcx.lang_items().rc() {
+                        if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<Rc<T>>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(span) = match_type_parameter(cx, qpath, &paths::BOX) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<Box<T>>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<&T>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
                         }
@@ -314,7 +405,7 @@ impl Types {
                             }
                         }
                     } else if match_def_path(cx, def_id, &paths::OPTION) {
-                        if match_type_parameter(cx, qpath, &paths::OPTION) {
+                        if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,
                                 OPTION_OPTION,

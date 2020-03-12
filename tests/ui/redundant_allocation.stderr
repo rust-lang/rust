@@ -1,0 +1,52 @@
+error: usage of `Rc<&T>`
+  --> $DIR/redundant_allocation.rs:22:22
+   |
+LL | pub fn test1<T>(foo: Rc<&T>) {}
+   |                      ^^^^^^ help: try: `&T`
+   |
+   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
+
+error: usage of `Rc<&T>`
+  --> $DIR/redundant_allocation.rs:24:19
+   |
+LL | pub fn test2(foo: Rc<&MyStruct>) {}
+   |                   ^^^^^^^^^^^^^ help: try: `&MyStruct`
+
+error: usage of `Rc<&T>`
+  --> $DIR/redundant_allocation.rs:26:19
+   |
+LL | pub fn test3(foo: Rc<&MyEnum>) {}
+   |                   ^^^^^^^^^^^ help: try: `&MyEnum`
+
+error: usage of `Rc<Rc<T>>`
+  --> $DIR/redundant_allocation.rs:32:17
+   |
+LL | pub fn test5(a: Rc<Rc<bool>>) {}
+   |                 ^^^^^^^^^^^^ help: try: `Rc<bool>`
+
+error: usage of `Rc<Box<T>>`
+  --> $DIR/redundant_allocation.rs:36:17
+   |
+LL | pub fn test6(a: Rc<Box<bool>>) {}
+   |                 ^^^^^^^^^^^^^ help: try: `Box<bool>`
+
+error: usage of `Box<&T>`
+  --> $DIR/redundant_allocation.rs:40:22
+   |
+LL | pub fn test7<T>(foo: Box<&T>) {}
+   |                      ^^^^^^^ help: try: `&T`
+
+error: usage of `Box<&T>`
+  --> $DIR/redundant_allocation.rs:42:19
+   |
+LL | pub fn test8(foo: Box<&MyStruct>) {}
+   |                   ^^^^^^^^^^^^^^ help: try: `&MyStruct`
+
+error: usage of `Box<&T>`
+  --> $DIR/redundant_allocation.rs:44:19
+   |
+LL | pub fn test9(foo: Box<&MyEnum>) {}
+   |                   ^^^^^^^^^^^^ help: try: `&MyEnum`
+
+error: aborting due to 8 previous errors
+
