@@ -33,7 +33,7 @@ pub struct ServerConfig {
     pub lru_capacity: Option<usize>,
 
     #[serde(with = "InlayConfigDef")]
-    pub inlay_hint_opts: InlayConfig,
+    pub inlay_hints: InlayConfig,
 
     pub cargo_watch_enable: bool,
     pub cargo_watch_args: Vec<String>,
@@ -60,7 +60,7 @@ impl Default for ServerConfig {
             exclude_globs: Vec::new(),
             use_client_watching: false,
             lru_capacity: None,
-            inlay_hint_opts: Default::default(),
+            inlay_hints: Default::default(),
             cargo_watch_enable: true,
             cargo_watch_args: Vec::new(),
             cargo_watch_command: "check".to_string(),

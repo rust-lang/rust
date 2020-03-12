@@ -16,7 +16,6 @@ use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
 use serde_json::from_reader;
 
 pub use crate::{
@@ -24,28 +23,6 @@ pub use crate::{
     json_project::JsonProject,
     sysroot::Sysroot,
 };
-
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum InlayHintDisplayType {
-    Off,
-    TypeHints,
-    ParameterHints,
-    Full,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", default)]
-pub struct InlayHintOptions {
-    pub display_type: InlayHintDisplayType,
-    pub max_length: Option<usize>,
-}
-
-impl Default for InlayHintOptions {
-    fn default() -> Self {
-        Self { display_type: InlayHintDisplayType::Full, max_length: None }
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CargoTomlNotFoundError {

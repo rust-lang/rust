@@ -6,7 +6,8 @@ import { log } from "./util";
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
 export interface InlayHintOptions {
-    displayType: string;
+    typeHints: boolean;
+    parameterHints: boolean;
     maxLength: number;
 }
 
@@ -28,8 +29,7 @@ export class Config {
         "cargoFeatures",
         "cargo-watch",
         "highlighting.semanticTokens",
-        "inlayHintOpts.maxLength",
-        "inlayHintOpts.displayType",
+        "inlayHints",
     ]
         .map(opt => `${Config.rootSection}.${opt}`);
 
@@ -156,10 +156,11 @@ export class Config {
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
     get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
     get lruCapacity() { return this.cfg.get("lruCapacity") as null | number; }
-    get inlayHintOpts(): InlayHintOptions {
+    get inlayHints(): InlayHintOptions {
         return {
-            displayType: this.cfg.get("inlayHintOpts.displayType") as string,
-            maxLength: this.cfg.get("inlayHintOpts.maxLength") as number,
+            typeHints: this.cfg.get("inlayHints.typeHints") as boolean,
+            parameterHints: this.cfg.get("inlayHints.parameterHints") as boolean,
+            maxLength: this.cfg.get("inlayHints.maxLength") as number,
         };
     }
     get excludeGlobs() { return this.cfg.get("excludeGlobs") as string[]; }

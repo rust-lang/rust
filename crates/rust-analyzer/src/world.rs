@@ -33,7 +33,7 @@ pub struct Options {
     pub publish_decorations: bool,
     pub supports_location_link: bool,
     pub line_folding_only: bool,
-    pub inlay_hint_opts: InlayConfig,
+    pub inlay_hints: InlayConfig,
     pub rustfmt_args: Vec<String>,
     pub cargo_watch: CheckOptions,
 }

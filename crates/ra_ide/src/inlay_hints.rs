@@ -12,13 +12,14 @@ use crate::{FileId, FunctionSignature};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayConfig {
-    pub display_type: Vec<InlayKind>,
+    pub type_hints: bool,
+    pub parameter_hints: bool,
     pub max_length: Option<usize>,
 }
 
 impl Default for InlayConfig {
     fn default() -> Self {
-        Self { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: None }
+        Self { type_hints: true, parameter_hints: true, max_length: None }
     }
 }
 
@@ -64,7 +65,7 @@ fn get_param_name_hints(
     inlay_hint_opts: &InlayConfig,
     expr: ast::Expr,
 ) -> Option<()> {
-    if !inlay_hint_opts.display_type.contains(&InlayKind::ParameterHint) {
+    if !inlay_hint_opts.parameter_hints {
         return None;
     }
 
@@ -104,7 +105,7 @@ fn get_bind_pat_hints(
     inlay_hint_opts: &InlayConfig,
     pat: ast::BindPat,
 ) -> Option<()> {
-    if !inlay_hint_opts.display_type.contains(&InlayKind::TypeHint) {
+    if !inlay_hint_opts.type_hints {
         return None;
     }
 
@@ -223,7 +224,7 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use crate::inlay_hints::{InlayConfig, InlayKind};
+    use crate::inlay_hints::InlayConfig;
     use insta::assert_debug_snapshot;
 
     use crate::mock_analysis::single_file;
@@ -237,7 +238,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![InlayKind::ParameterHint], max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ parameter_hints: true, type_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [106; 107),
@@ -261,7 +262,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![], max_length: None}).unwrap(), @r###"[]"###);
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ type_hints: false, parameter_hints: false, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
@@ -273,7 +274,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ display_type: vec![InlayKind::TypeHint], max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig{ type_hints: true, parameter_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [97; 99),
@@ -810,7 +811,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         [
             InlayHint {
                 range: [74; 75),
@@ -1020,7 +1021,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         []
         "###
         );
@@ -1046,7 +1047,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { display_type: vec![InlayKind::TypeHint, InlayKind::ParameterHint], max_length: Some(8) }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         []
         "###
         );
