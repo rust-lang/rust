@@ -180,13 +180,13 @@ pub(crate) struct MappedRustDiagnostic {
 pub(crate) fn map_rust_diagnostic_to_lsp(
     rd: &RustDiagnostic,
     workspace_root: &PathBuf,
-) -> Option<MappedRustDiagnostic> {
-    let primary_span = rd.spans.iter().find(|s| s.is_primary)?;
-
-    let location = map_span_to_location(&primary_span, workspace_root);
+) -> Vec<MappedRustDiagnostic> {
+    let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
+    if primary_spans.is_empty() {
+        return vec![];
+    }
 
     let severity = map_level_to_severity(rd.level);
-    let mut primary_span_label = primary_span.label.as_ref();
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());
@@ -199,18 +199,9 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
+    let mut needs_primary_span_label = true;
     let mut related_information = vec![];
     let mut tags = vec![];
-
-    // If error occurs from macro expansion, add related info pointing to
-    // where the error originated
-    if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
-        let def_loc = map_span_to_location_naive(&primary_span, workspace_root);
-        related_information.push(DiagnosticRelatedInformation {
-            location: def_loc,
-            message: "Error originated from macro here".to_string(),
-        });
-    }
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
         let related = map_secondary_span_to_related(secondary_span, workspace_root);
@@ -231,13 +222,9 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
                 // These secondary messages usually duplicate the content of the
                 // primary span label.
-                primary_span_label = None;
+                needs_primary_span_label = false;
             }
         }
-    }
-
-    if let Some(primary_span_label) = primary_span_label {
-        write!(&mut message, "\n{}", primary_span_label).unwrap();
     }
 
     if is_unused_or_unnecessary(rd) {
@@ -248,21 +235,45 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         tags.push(DiagnosticTag::Deprecated);
     }
 
-    let diagnostic = Diagnostic {
-        range: location.range,
-        severity,
-        code: code.map(NumberOrString::String),
-        source: Some(source),
-        message,
-        related_information: if !related_information.is_empty() {
-            Some(related_information)
-        } else {
-            None
-        },
-        tags: if !tags.is_empty() { Some(tags) } else { None },
-    };
+    primary_spans
+        .iter()
+        .map(|primary_span| {
+            let location = map_span_to_location(&primary_span, workspace_root);
 
-    Some(MappedRustDiagnostic { location, diagnostic, fixes })
+            let mut message = message.clone();
+            if needs_primary_span_label {
+                if let Some(primary_span_label) = &primary_span.label {
+                    write!(&mut message, "\n{}", primary_span_label).unwrap();
+                }
+            }
+
+            // If error occurs from macro expansion, add related info pointing to
+            // where the error originated
+            if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
+                let def_loc = map_span_to_location_naive(&primary_span, workspace_root);
+                related_information.push(DiagnosticRelatedInformation {
+                    location: def_loc,
+                    message: "Error originated from macro here".to_string(),
+                });
+            }
+
+            let diagnostic = Diagnostic {
+                range: location.range,
+                severity,
+                code: code.clone().map(NumberOrString::String),
+                source: Some(source.clone()),
+                message,
+                related_information: if !related_information.is_empty() {
+                    Some(related_information.clone())
+                } else {
+                    None
+                },
+                tags: if !tags.is_empty() { Some(tags.clone()) } else { None },
+            };
+
+            MappedRustDiagnostic { location, diagnostic, fixes: fixes.clone() }
+        })
+        .collect()
 }
 
 /// Returns a `Url` object from a given path, will lowercase drive letters if present.

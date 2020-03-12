@@ -197,23 +197,23 @@ impl CheckWatcherThread {
             }
 
             CheckEvent::Msg(Message::CompilerMessage(msg)) => {
-                let map_result =
-                    match map_rust_diagnostic_to_lsp(&msg.message, &self.workspace_root) {
-                        Some(map_result) => map_result,
-                        None => return,
-                    };
+                let map_result = map_rust_diagnostic_to_lsp(&msg.message, &self.workspace_root);
+                if map_result.is_empty() {
+                    return;
+                }
 
-                let MappedRustDiagnostic { location, diagnostic, fixes } = map_result;
-                let fixes = fixes
-                    .into_iter()
-                    .map(|fix| {
-                        CodeAction { diagnostics: Some(vec![diagnostic.clone()]), ..fix }.into()
-                    })
-                    .collect();
+                for MappedRustDiagnostic { location, diagnostic, fixes } in map_result {
+                    let fixes = fixes
+                        .into_iter()
+                        .map(|fix| {
+                            CodeAction { diagnostics: Some(vec![diagnostic.clone()]), ..fix }.into()
+                        })
+                        .collect();
 
-                task_send
-                    .send(CheckTask::AddDiagnostic { url: location.uri, diagnostic, fixes })
-                    .unwrap();
+                    task_send
+                        .send(CheckTask::AddDiagnostic { url: location.uri, diagnostic, fixes })
+                        .unwrap();
+                }
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}

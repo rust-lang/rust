@@ -58,7 +58,7 @@ fn snap_rustc_incompatible_type_for_trait() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -141,7 +141,7 @@ fn snap_rustc_unused_variable() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -266,7 +266,7 @@ fn snap_rustc_wrong_number_of_parameters() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -387,7 +387,7 @@ fn snap_clippy_pass_by_ref() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -431,7 +431,7 @@ fn snap_rustc_mismatched_type() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -703,7 +703,7 @@ fn snap_handles_macro_location() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -933,7 +933,7 @@ fn snap_macro_compiler_error() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
 
@@ -1067,6 +1067,6 @@ fn snap_multi_line_fix() {
     );
 
     let workspace_root = PathBuf::from("/test/");
-    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
     insta::assert_debug_snapshot!(diag);
 }
