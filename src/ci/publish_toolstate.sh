@@ -23,7 +23,9 @@ GIT_COMMIT_MSG="$(git log --format=%s -n1 HEAD)"
 cd rust-toolstate
 FAILURE=1
 for RETRY_COUNT in 1 2 3 4 5; do
-    #  The purpose is to publish the new "current" toolstate in the toolstate repo.
+    # The purpose of this is to publish the new "current" toolstate in the toolstate repo.
+    # This happens post-landing, on master.
+    # (Publishing the per-commit test results happens pre-landing in src/bootstrap/toolstate.rs).
     "$(ciCheckoutPath)/src/tools/publish_toolstate.py" "$GIT_COMMIT" \
         "$GIT_COMMIT_MSG" \
         "$MESSAGE_FILE" \
