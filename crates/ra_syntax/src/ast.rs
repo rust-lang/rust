@@ -30,7 +30,7 @@ pub use self::{
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode {
+pub trait AstNode: std::fmt::Display {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
