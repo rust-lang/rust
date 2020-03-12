@@ -1,8 +1,8 @@
-use super::apple_ios_base::{opts, Arch};
+use super::apple_sdk_base::{opts, AppleOS, Arch};
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
-    let base = opts(Arch::X86_64_macabi)?;
+    let base = opts(Arch::X86_64_macabi, AppleOS::iOS)?;
     Ok(Target {
         llvm_target: "x86_64-apple-ios13.0-macabi".to_string(),
         target_endian: "little".to_string(),
