@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 
 #![feature(const_fn, rustc_attrs)]
 
