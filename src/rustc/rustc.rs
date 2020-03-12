@@ -1,5 +1,5 @@
 // Suppress warning: we need this crate in the sysroot
-use rustc_codegen_ssa;
+use rustc_codegen_ssa as _;
 
 fn main() {
     // Pull in jemalloc when enabled.
