@@ -19,7 +19,7 @@ hop on the [Rust Discord server][rust-discord] or [Rust Zulip server][rust-zulip
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
-The [rustc-guide] is your friend! It describes how the compiler works and how
+The [rustc-dev-guide] is your friend! It describes how the compiler works and how
 to contribute to it in more detail than this document.
 
 If this is your first time contributing, the [walkthrough] chapter of the guide
@@ -29,8 +29,8 @@ can give you a good example of how a typical contribution would go.
 [rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
 [coc]: https://www.rust-lang.org/conduct.html
-[rustc-guide]: https://rust-lang.github.io/rustc-guide/
-[walkthrough]: https://rust-lang.github.io/rustc-guide/walkthrough.html
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
+[walkthrough]: https://rustc-dev-guide.rust-lang.org/walkthrough.html
 
 ## Feature Requests
 [feature-requests]: #feature-requests
@@ -103,12 +103,12 @@ $ RUST_BACKTRACE=1 rustc ...
 ## The Build System
 
 For info on how to configure and build the compiler, please see [this
-chapter][rustcguidebuild] of the rustc-guide. This chapter contains info for
+chapter][rustcguidebuild] of the rustc-dev-guide. This chapter contains info for
 contributions to the compiler and the standard library. It also lists some
 really useful commands to the build system (`./x.py`), which could save you a
 lot of time.
 
-[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/building/how-to-build-and-run.html
+[rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
 ## Pull Requests
 [pull-requests]: #pull-requests
@@ -336,9 +336,9 @@ to check small fixes. For example, `rustdoc src/doc/reference.md` will render
 reference to `doc/reference.html`. The CSS might be messed up, but you can
 verify that the HTML is right.
 
-Additionally, contributions to the [rustc-guide] are always welcome. Contributions
+Additionally, contributions to the [rustc-dev-guide] are always welcome. Contributions
 can be made directly at [the
-rust-lang/rustc-guide](https://github.com/rust-lang/rustc-guide) repo. The issue
+rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) repo. The issue
 tracker in that repo is also a great way to find things that need doing. There
 are issues for beginners and advanced compiler devs alike!
 
@@ -434,7 +434,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
-* The [rustc guide] contains information about how various parts of the compiler work and how to contribute to the compiler
+* The [rustc dev guide] contains information about how various parts of the compiler work and how to contribute to the compiler
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -448,7 +448,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
@@ -456,5 +456,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: https://rust-lang.github.io/rustc-guide/tests/intro.html
+[rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/

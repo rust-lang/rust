@@ -2,9 +2,9 @@
 //! the parent links in the region hierarchy.
 //!
 //! For more information about how MIR-based region-checking works,
-//! see the [rustc guide].
+//! see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/borrow_check.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use rustc::hir::map::Map;
 use rustc::middle::region::*;

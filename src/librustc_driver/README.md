@@ -5,6 +5,6 @@ not contain any of the "main logic" of the compiler (though it does
 have some code related to pretty printing or other minor compiler
 options).
 
-For more information about how the driver works, see the [rustc guide].
+For more information about how the driver works, see the [rustc dev guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/rustc-driver.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html

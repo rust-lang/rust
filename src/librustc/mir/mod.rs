@@ -1,6 +1,6 @@
-//! MIR datatypes and passes. See the [rustc guide] for more info.
+//! MIR datatypes and passes. See the [rustc dev guide] for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;

@@ -1,3 +1,3 @@
-For info on how the incremental compilation works, see the [rustc guide].
+For info on how the incremental compilation works, see the [rustc dev guide].
 
-[rustc guide]: https://rust-lang.github.io/rustc-guide/query.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/query.html

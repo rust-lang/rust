@@ -77,8 +77,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
     // See the following for a discussion on dep-graph management.
     //
-    // - https://rust-lang.github.io/rustc-guide/query.html
-    // - https://rust-lang.github.io/rustc-guide/variance.html
+    // - https://rustc-dev-guide.rust-lang.org/query.html
+    // - https://rustc-dev-guide.rust-lang.org/variance.html
     tcx.hir().krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
