@@ -192,10 +192,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 (local, deref_clone_ret)
             };
 
-            // 1. `local` cannot be moved out if it is used later.
-            // 2. If `ret_local` is not consumed, we can remove this `clone` call anyway.
+            let is_temp = mir_read_only.local_kind(ret_local) == mir::LocalKind::Temp;
+
+            // 1. `local` can be moved out if it is not used later.
+            // 2. If `ret_local` is a temporary and is not consumed, we can remove this `clone` call anyway.
             let (used, consumed) = traversal::ReversePostorder::new(&mir, bb).skip(1).fold(
-                (false, false),
+                (false, !is_temp),
                 |(used, consumed), (tbb, tdata)| {
                     // Short-circuit
                     if (used && consumed) ||
