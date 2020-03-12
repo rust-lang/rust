@@ -80,6 +80,9 @@ impl fmt::Debug for CompletionItem {
         if self.deprecated {
             s.field("deprecated", &true);
         }
+        if self.trigger_call_info {
+            s.field("trigger_call_info", &true);
+        }
         s.finish()
     }
 }
