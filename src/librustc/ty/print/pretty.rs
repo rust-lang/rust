@@ -858,16 +858,23 @@ pub trait PrettyPrinter<'tcx>:
 
         macro_rules! print_underscore {
             () => {{
-                p!(write("_"));
                 if print_ty {
-                    p!(write(": "), print(ct.ty));
+                    self = self.typed_value(
+                        |mut this| {
+                            write!(this, "_")?;
+                            Ok(this)
+                        },
+                        |this| this.print_type(ct.ty),
+                        ": ",
+                    )?;
+                } else {
+                    write!(self, "_")?;
                 }
             }};
         }
 
-        match (ct.val, &ct.ty.kind) {
-            (_, ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
-            (ty::ConstKind::Unevaluated(did, substs, promoted), _) => {
+        match ct.val {
+            ty::ConstKind::Unevaluated(did, substs, promoted) => {
                 if let Some(promoted) = promoted {
                     p!(print_value_path(did, substs));
                     p!(write("::{:?}", promoted));
@@ -892,17 +899,25 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            (ty::ConstKind::Infer(..), _) => print_underscore!(),
-            (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
-            (ty::ConstKind::Value(value), _) => {
+            ty::ConstKind::Infer(..) => print_underscore!(),
+            ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
+            ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_value(value, ct.ty, print_ty);
             }
 
-            _ => {
+            ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
                 // fallback
-                p!(write("{:?}", ct.val));
                 if print_ty {
-                    p!(write(": "), print(ct.ty));
+                    self = self.typed_value(
+                        |mut this| {
+                            write!(this, "{:?}", ct.val)?;
+                            Ok(this)
+                        },
+                        |this| this.print_type(ct.ty),
+                        ": ",
+                    )?;
+                } else {
+                    p!(write("{:?}", ct.val));
                 }
             }
         };
