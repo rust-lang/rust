@@ -48,7 +48,7 @@ MappedRustDiagnostic {
     },
     fixes: [
         CodeAction {
-            title: "consider prefixing with an underscore: \'_foo\'",
+            title: "consider prefixing with an underscore",
             kind: Some(
                 "quickfix",
             ),

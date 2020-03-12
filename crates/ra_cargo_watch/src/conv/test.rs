@@ -936,3 +936,137 @@ fn snap_macro_compiler_error() {
     let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
     insta::assert_debug_snapshot!(diag);
 }
+
+#[test]
+#[cfg(not(windows))]
+fn snap_multi_line_fix() {
+    let diag = parse_diagnostic(
+        r##"{
+            "rendered": "warning: returning the result of a let binding from a block\n --> src/main.rs:4:5\n  |\n3 |     let a = (0..10).collect();\n  |     -------------------------- unnecessary let binding\n4 |     a\n  |     ^\n  |\n  = note: `#[warn(clippy::let_and_return)]` on by default\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return\nhelp: return the expression directly\n  |\n3 |     \n4 |     (0..10).collect()\n  |\n\n",
+            "children": [
+                {
+                "children": [],
+                "code": null,
+                "level": "note",
+                "message": "`#[warn(clippy::let_and_return)]` on by default",
+                "rendered": null,
+                "spans": []
+                },
+                {
+                "children": [],
+                "code": null,
+                "level": "help",
+                "message": "for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return",
+                "rendered": null,
+                "spans": []
+                },
+                {
+                "children": [],
+                "code": null,
+                "level": "help",
+                "message": "return the expression directly",
+                "rendered": null,
+                "spans": [
+                    {
+                    "byte_end": 55,
+                    "byte_start": 29,
+                    "column_end": 31,
+                    "column_start": 5,
+                    "expansion": null,
+                    "file_name": "src/main.rs",
+                    "is_primary": true,
+                    "label": null,
+                    "line_end": 3,
+                    "line_start": 3,
+                    "suggested_replacement": "",
+                    "suggestion_applicability": "MachineApplicable",
+                    "text": [
+                        {
+                        "highlight_end": 31,
+                        "highlight_start": 5,
+                        "text": "    let a = (0..10).collect();"
+                        }
+                    ]
+                    },
+                    {
+                    "byte_end": 61,
+                    "byte_start": 60,
+                    "column_end": 6,
+                    "column_start": 5,
+                    "expansion": null,
+                    "file_name": "src/main.rs",
+                    "is_primary": true,
+                    "label": null,
+                    "line_end": 4,
+                    "line_start": 4,
+                    "suggested_replacement": "(0..10).collect()",
+                    "suggestion_applicability": "MachineApplicable",
+                    "text": [
+                        {
+                        "highlight_end": 6,
+                        "highlight_start": 5,
+                        "text": "    a"
+                        }
+                    ]
+                    }
+                ]
+                }
+            ],
+            "code": {
+                "code": "clippy::let_and_return",
+                "explanation": null
+            },
+            "level": "warning",
+            "message": "returning the result of a let binding from a block",
+            "spans": [
+                {
+                "byte_end": 55,
+                "byte_start": 29,
+                "column_end": 31,
+                "column_start": 5,
+                "expansion": null,
+                "file_name": "src/main.rs",
+                "is_primary": false,
+                "label": "unnecessary let binding",
+                "line_end": 3,
+                "line_start": 3,
+                "suggested_replacement": null,
+                "suggestion_applicability": null,
+                "text": [
+                    {
+                    "highlight_end": 31,
+                    "highlight_start": 5,
+                    "text": "    let a = (0..10).collect();"
+                    }
+                ]
+                },
+                {
+                "byte_end": 61,
+                "byte_start": 60,
+                "column_end": 6,
+                "column_start": 5,
+                "expansion": null,
+                "file_name": "src/main.rs",
+                "is_primary": true,
+                "label": null,
+                "line_end": 4,
+                "line_start": 4,
+                "suggested_replacement": null,
+                "suggestion_applicability": null,
+                "text": [
+                    {
+                    "highlight_end": 6,
+                    "highlight_start": 5,
+                    "text": "    a"
+                    }
+                ]
+                }
+            ]
+        }
+        "##,
+    );
+
+    let workspace_root = PathBuf::from("/test/");
+    let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root).expect("couldn't map diagnostic");
+    insta::assert_debug_snapshot!(diag);
+}

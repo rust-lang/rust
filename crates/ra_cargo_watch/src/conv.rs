@@ -8,6 +8,7 @@ use lsp_types::{
     Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use std::{
+    collections::HashMap,
     fmt::Write,
     path::{Component, Path, PathBuf, Prefix},
     str::FromStr,
@@ -126,44 +127,34 @@ fn map_rust_child_diagnostic(
     rd: &RustDiagnostic,
     workspace_root: &PathBuf,
 ) -> MappedRustChildDiagnostic {
-    let span: &DiagnosticSpan = match rd.spans.iter().find(|s| s.is_primary) {
-        Some(span) => span,
-        None => {
-            // `rustc` uses these spanless children as a way to print multi-line
-            // messages
-            return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
+    let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
+    if spans.is_empty() {
+        // `rustc` uses these spanless children as a way to print multi-line
+        // messages
+        return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
+    }
+
+    let mut edit_map: HashMap<Url, Vec<TextEdit>> = HashMap::new();
+    for &span in &spans {
+        if let Some(suggested_replacement) = &span.suggested_replacement {
+            let location = map_span_to_location(span, workspace_root);
+            let edit = TextEdit::new(location.range, suggested_replacement.clone());
+            edit_map.entry(location.uri).or_default().push(edit);
         }
-    };
+    }
 
-    // If we have a primary span use its location, otherwise use the parent
-    let location = map_span_to_location(&span, workspace_root);
-
-    if let Some(suggested_replacement) = &span.suggested_replacement {
-        // Include our replacement in the title unless it's empty
-        let title = if !suggested_replacement.is_empty() {
-            format!("{}: '{}'", rd.message, suggested_replacement)
-        } else {
-            rd.message.clone()
-        };
-
-        let edit = {
-            let edits = vec![TextEdit::new(location.range, suggested_replacement.clone())];
-            let mut edit_map = std::collections::HashMap::new();
-            edit_map.insert(location.uri, edits);
-            WorkspaceEdit::new(edit_map)
-        };
-
+    if !edit_map.is_empty() {
         MappedRustChildDiagnostic::SuggestedFix(CodeAction {
-            title,
+            title: rd.message.clone(),
             kind: Some("quickfix".to_string()),
             diagnostics: None,
-            edit: Some(edit),
+            edit: Some(WorkspaceEdit::new(edit_map)),
             command: None,
             is_preferred: None,
         })
     } else {
         MappedRustChildDiagnostic::Related(DiagnosticRelatedInformation {
-            location,
+            location: map_span_to_location(spans[0], workspace_root),
             message: rd.message.clone(),
         })
     }
