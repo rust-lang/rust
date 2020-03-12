@@ -17,5 +17,5 @@ fn main() {
 
     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
                          //~| HELP use parentheses to call the method
-                         //~| SUGGESTION calculate()
+                         //~| SUGGESTION ()
 }

@@ -23,7 +23,7 @@ use rustc::ty::{
 };
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
@@ -1186,15 +1186,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         //    |
                         //    = note: cannot resolve `_: Tt`
 
-                        err.span_suggestion(
-                            span,
+                        err.span_suggestion_verbose(
+                            span.shrink_to_hi(),
                             &format!(
                                 "consider specifying the type argument{} in the function call",
-                                if generics.params.len() > 1 { "s" } else { "" },
+                                pluralize!(generics.params.len()),
                             ),
                             format!(
-                                "{}::<{}>",
-                                snippet,
+                                "::<{}>",
                                 generics
                                     .params
                                     .iter()
@@ -1356,7 +1355,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             [] => (span.shrink_to_hi(), ":"),
                             [.., bound] => (bound.span().shrink_to_hi(), " + "),
                         };
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             span,
                             "consider relaxing the implicit `Sized` restriction",
                             format!("{} ?Sized", separator),

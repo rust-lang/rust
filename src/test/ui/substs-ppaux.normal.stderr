@@ -5,14 +5,16 @@ LL |     fn bar<'a, T>() where T: 'a {}
    |     --------------------------- fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |    |
-   |            |    expected `()`, found fn item
-   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+help: use parentheses to call this function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>();
+   |                                                                         ^^
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:25:17
@@ -21,14 +23,16 @@ LL |     fn bar<'a, T>() where T: 'a {}
    |     --------------------------- fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |    |
-   |            |    expected `()`, found fn item
-   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+help: use parentheses to call this function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>();
+   |                                                                          ^^
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:33:17
@@ -37,14 +41,16 @@ LL |     fn baz() {}
    |     -------- fn() {<i8 as Foo<'static, 'static, u8>>::baz} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |    |
-   |            |    expected `()`, found fn item
-   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::baz()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+help: use parentheses to call this function
+   |
+LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz();
+   |                                                        ^^
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:41:17
@@ -53,14 +59,16 @@ LL | fn foo<'z>() where &'z (): Sized {
    | -------------------------------- fn() {foo::<'static>} defined here
 ...
 LL |     let x: () = foo::<'static>;
-   |            --   ^^^^^^^^^^^^^^
-   |            |    |
-   |            |    expected `()`, found fn item
-   |            |    help: use parentheses to call this function: `foo::<'static>()`
+   |            --   ^^^^^^^^^^^^^^ expected `()`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {foo::<'static>}`
+help: use parentheses to call this function
+   |
+LL |     let x: () = foo::<'static>();
+   |                               ^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/substs-ppaux.rs:49:5
