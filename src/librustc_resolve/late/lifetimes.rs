@@ -713,7 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::TraitItemKind::*;
         self.missing_named_lifetime_spots.push((&trait_item.generics).into());
         match trait_item.kind {
-            Method(ref sig, _) => {
+            Fn(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(trait_item.hir_id)),
@@ -1816,8 +1816,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 match self.tcx.hir().get(fn_id) {
                     Node::Item(&hir::Item { kind: hir::ItemKind::Fn(..), .. })
                     | Node::TraitItem(&hir::TraitItem {
-                        kind: hir::TraitItemKind::Method(..),
-                        ..
+                        kind: hir::TraitItemKind::Fn(..), ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
                         kind: hir::ImplItemKind::Method(..), ..
@@ -2093,9 +2092,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // `fn` definitions and methods.
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(.., body), .. }) => Some(body),
 
-            Node::TraitItem(&hir::TraitItem {
-                kind: hir::TraitItemKind::Method(_, ref m), ..
-            }) => {
+            Node::TraitItem(&hir::TraitItem { kind: hir::TraitItemKind::Fn(_, ref m), .. }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) =
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {

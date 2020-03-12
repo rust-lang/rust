@@ -741,7 +741,7 @@ impl<'a> NameBinding<'a> {
     fn is_importable(&self) -> bool {
         match self.res() {
             Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Method, _)
+            | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::AssocTy, _) => false,
             _ => true,
         }

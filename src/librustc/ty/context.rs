@@ -611,7 +611,7 @@ impl<'tcx> TypeckTables<'tcx> {
         }
 
         match self.type_dependent_defs().get(expr.hir_id) {
-            Some(Ok((DefKind::Method, _))) => true,
+            Some(Ok((DefKind::AssocFn, _))) => true,
             _ => false,
         }
     }

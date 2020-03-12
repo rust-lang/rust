@@ -874,7 +874,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             | Res::PrimTy(..)
             | Res::ToolMod => self.r.define(parent, ident, TypeNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::Method, _)
+            | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::AssocConst, _)
@@ -898,7 +898,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }
-            Res::Def(DefKind::Method, def_id) => {
+            Res::Def(DefKind::AssocFn, def_id) => {
                 if cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
                     self.r.has_self.insert(def_id);
                 }
@@ -1243,7 +1243,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 if sig.decl.has_self() {
                     self.r.has_self.insert(item_def_id);
                 }
-                (Res::Def(DefKind::Method, item_def_id), ValueNS)
+                (Res::Def(DefKind::AssocFn, item_def_id), ValueNS)
             }
             AssocItemKind::TyAlias(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
             AssocItemKind::Macro(_) => bug!(), // handled above

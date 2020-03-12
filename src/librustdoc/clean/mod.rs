@@ -1082,10 +1082,10 @@ impl Clean<Item> for hir::TraitItem<'_> {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Provided(body)) => {
                 MethodItem((sig, &self.generics, body, None).clean(cx))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });

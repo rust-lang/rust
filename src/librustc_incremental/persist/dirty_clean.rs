@@ -328,7 +328,7 @@ impl DirtyCleanVisitor<'tcx> {
                 }
             }
             HirNode::TraitItem(item) => match item.kind {
-                TraitItemKind::Method(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
+                TraitItemKind::Fn(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                 TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                 TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
             },

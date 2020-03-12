@@ -933,7 +933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let ty::AssocKind::Method = item.kind {
                                 let id = self.tcx.hir().as_local_hir_id(item.def_id);
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Method(fn_sig, method),
+                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
                                     ..
                                 })) = id.map(|id| self.tcx.hir().get(id))
                                 {

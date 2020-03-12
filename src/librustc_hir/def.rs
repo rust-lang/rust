@@ -72,7 +72,7 @@ pub enum DefKind {
     Static,
     /// Refers to the struct or enum variant's constructor.
     Ctor(CtorOf, CtorKind),
-    Method,
+    AssocFn,
     AssocConst,
 
     // Macro namespace
@@ -107,7 +107,8 @@ impl DefKind {
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
-            DefKind::Method => "method",
+            // FIXME: Update the description to "assoc fn"
+            DefKind::AssocFn => "method",
             DefKind::Const => "constant",
             DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
@@ -150,7 +151,7 @@ impl DefKind {
             | DefKind::ConstParam
             | DefKind::Static
             | DefKind::Ctor(..)
-            | DefKind::Method
+            | DefKind::AssocFn
             | DefKind::AssocConst => ns == Namespace::ValueNS,
 
             DefKind::Macro(..) => ns == Namespace::MacroNS,

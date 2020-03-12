@@ -266,7 +266,7 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Static, _)
                 | Res::Local(..)
                 | Res::Def(DefKind::Fn, _)
-                | Res::Def(DefKind::Method, _)
+                | Res::Def(DefKind::AssocFn, _)
                 | Res::Def(DefKind::AssocConst, _)
                 | Res::SelfCtor(..)
                 | Res::Def(DefKind::ConstParam, _) => true,
@@ -293,7 +293,7 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::Method, _)
+                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _)
                     if ns == ValueNS =>
                 {
                     true
