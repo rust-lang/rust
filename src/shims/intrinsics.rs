@@ -248,12 +248,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "discriminant_value" => {
-                let place = this.deref_operand(args[0])?;
-                let discr_val = this.read_discriminant(place.into())?.0;
-                this.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
-            }
-
             #[rustfmt::skip]
             | "sinf32"
             | "fabsf32"
