@@ -1,29 +1,35 @@
 error: inherent impls cannot be negative
-  --> $DIR/syntax-trait-polarity.rs:7:1
+  --> $DIR/syntax-trait-polarity.rs:7:7
    |
 LL | impl !TestType {}
-   | ^^^^^^^^^^^^^^^^^
+   |      -^^^^^^^^ inherent impl for this type
+   |      |
+   |      negative because of this
 
 error[E0198]: negative impls cannot be unsafe
-  --> $DIR/syntax-trait-polarity.rs:12:1
+  --> $DIR/syntax-trait-polarity.rs:12:13
    |
 LL | unsafe impl !Send for TestType {}
-   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
+   | ------      -^^^^
+   | |           |
+   | |           negative because of this
    | unsafe because of this
 
 error: inherent impls cannot be negative
-  --> $DIR/syntax-trait-polarity.rs:19:1
+  --> $DIR/syntax-trait-polarity.rs:19:10
    |
 LL | impl<T> !TestType2<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |         -^^^^^^^^^^^^ inherent impl for this type
+   |         |
+   |         negative because of this
 
 error[E0198]: negative impls cannot be unsafe
-  --> $DIR/syntax-trait-polarity.rs:22:1
+  --> $DIR/syntax-trait-polarity.rs:22:16
    |
 LL | unsafe impl<T> !Send for TestType2<T> {}
-   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
+   | ------         -^^^^
+   | |              |
+   | |              negative because of this
    | unsafe because of this
 
 error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)

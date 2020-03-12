@@ -373,6 +373,16 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
+    fn parse_polarity(&mut self) -> ast::ImplPolarity {
+        // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
+        if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
+            self.bump(); // `!`
+            ast::ImplPolarity::Negative(self.prev_token.span)
+        } else {
+            ast::ImplPolarity::Positive
+        }
+    }
+
     /// Parses an implementation item.
     ///
     /// ```
@@ -411,13 +421,7 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
         }
 
-        // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
-        let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
-            self.bump(); // `!`
-            ast::ImplPolarity::Negative
-        } else {
-            ast::ImplPolarity::Positive
-        };
+        let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
         let err_path = |span| ast::Path::from_ident(Ident::new(kw::Invalid, span));

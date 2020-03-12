@@ -1,8 +1,10 @@
 error[E0568]: auto traits cannot have super traits
-  --> $DIR/typeck-auto-trait-no-supertraits.rs:27:1
+  --> $DIR/typeck-auto-trait-no-supertraits.rs:27:19
    |
 LL | auto trait Magic: Copy {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            -----  ^^^^ help: remove the super traits
+   |            |
+   |            auto trait cannot have super traits
 
 error: aborting due to previous error
 

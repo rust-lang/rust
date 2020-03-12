@@ -1,8 +1,8 @@
 error: inherent impls cannot be `default`
-  --> $DIR/validation.rs:7:1
+  --> $DIR/validation.rs:7:14
    |
 LL | default impl S {}
-   | -------^^^^^^^
+   | -------      ^ inherent impl for this type
    | |
    | `default` because of this
    |

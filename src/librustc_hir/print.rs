@@ -652,7 +652,7 @@ impl<'a> State<'a> {
                     self.word_nbsp("const");
                 }
 
-                if let hir::ImplPolarity::Negative = polarity {
+                if let hir::ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 
