@@ -436,16 +436,23 @@ impl<'a> CrateLoader<'a> {
     fn resolve_crate<'b>(
         &'b mut self,
         name: Symbol,
+        orig_name: Option<Symbol>,
+        transitive: bool,
         span: Span,
         dep_kind: DepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> CrateNum {
-        self.maybe_resolve_crate(name, span, dep_kind, dep).unwrap_or_else(|err| err.report())
+        self.maybe_resolve_crate(name, orig_name, transitive, span, dep_kind, dep)
+            .unwrap_or_else(|err| err.report())
     }
 
     fn maybe_resolve_crate<'b>(
         &'b mut self,
         name: Symbol,
+        orig_name: Option<Symbol>,
+        // Whether this is a direct dependency of the current compilation session,
+        // or a transitive dependency
+        transitive: bool,
         span: Span,
         mut dep_kind: DepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
@@ -479,14 +486,32 @@ impl<'a> CrateLoader<'a> {
                 Some(false), // is_proc_macro
             );
 
-            self.load(&mut locator)
+            let res = self
+                .load(&mut locator)
                 .map(|r| (r, None))
                 .or_else(|| {
                     dep_kind = DepKind::MacrosOnly;
                     self.load_proc_macro(&mut locator, path_kind)
                 })
-                .ok_or_else(move || LoadError::LocatorError(locator))?
+                .ok_or_else(move || LoadError::LocatorError(locator))?;
+
+            res
         };
+
+        // Loading a transitive dependency doesn't mark that dependency as used
+        // Note that we need to perform this check even when the crate was already loaded
+        // (e.g. `existing_match` finds the crate), since the crate may have been
+        // initially loaded as a transitive dependency
+        if !transitive {
+            self.loaded_crates.as_mut().unwrap().insert(name);
+            // If this crate was renamed via `extern crate foo as bar`,
+            // mark both names as loaded. An `extern crate` always forces
+            // the crate to be loaded, so we don't want the UNUSED_EXTERN_OPTION lint
+            // will never fire (though the UNUSED_EXTERN_CRATES lint might still fire)
+            if let Some(orig_name) = orig_name {
+                self.loaded_crates.as_mut().unwrap().insert(orig_name);
+            }
+        }
 
         match result {
             (LoadResult::Previous(cnum), None) => {
@@ -498,7 +523,6 @@ impl<'a> CrateLoader<'a> {
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
-                self.loaded_crates.as_mut().unwrap().insert(name);
                 Ok(self.register_crate(host_library, root, span, library, dep_kind, name))
             }
             _ => panic!(),
@@ -571,7 +595,7 @@ impl<'a> CrateLoader<'a> {
                     DepKind::MacrosOnly => DepKind::MacrosOnly,
                     _ => dep.kind,
                 };
-                self.resolve_crate(dep.name, span, dep_kind, Some((root, &dep)))
+                self.resolve_crate(dep.name, None, true, span, dep_kind, Some((root, &dep)))
             }))
             .collect()
     }
@@ -666,7 +690,7 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+        let cnum = self.resolve_crate(name, None, false, DUMMY_SP, DepKind::Implicit, None);
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -692,7 +716,7 @@ impl<'a> CrateLoader<'a> {
             info!("loading profiler");
 
             let name = Symbol::intern("profiler_builtins");
-            let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+            let cnum = self.resolve_crate(name, None, false, DUMMY_SP, DepKind::Implicit, None);
             let data = self.cstore.get_crate_data(cnum);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -834,7 +858,11 @@ impl<'a> CrateLoader<'a> {
         });
     }
 
-    pub fn postprocess(&mut self, krate: &ast::Crate) -> FxHashSet<Symbol> {
+    pub fn take_loaded_crates(&mut self) -> FxHashSet<Symbol> {
+        self.loaded_crates.take().unwrap()
+    }
+
+    pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
@@ -842,7 +870,6 @@ impl<'a> CrateLoader<'a> {
         if log_enabled!(log::Level::Info) {
             dump_crates(&self.cstore);
         }
-        self.loaded_crates.take().unwrap()
     }
 
     pub fn process_extern_crate(
@@ -873,7 +900,7 @@ impl<'a> CrateLoader<'a> {
                     DepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind, None);
+                let cnum = self.resolve_crate(name, orig_name, false, item.span, dep_kind, None);
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id.index).data.len();
@@ -893,7 +920,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate(name, span, DepKind::Explicit, None);
+        let cnum = self.resolve_crate(name, None, false, span, DepKind::Explicit, None);
 
         self.update_extern_crate(
             cnum,
@@ -910,6 +937,6 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
-        self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()
+        self.maybe_resolve_crate(name, None, false, span, DepKind::Explicit, None).ok()
     }
 }

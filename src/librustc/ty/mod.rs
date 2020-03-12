@@ -138,7 +138,7 @@ pub struct ResolverOutputs {
     pub extern_prelude: FxHashMap<Name, bool>,
     /// All crates that ended up getting loaded.
     /// Used to determine which `--extern` entries are unused
-    pub used_crates: FxHashSet<Symbol>,
+    pub used_crates: Option<FxHashSet<Symbol>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]

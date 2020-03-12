@@ -738,7 +738,7 @@ pub fn create_global_ctxt<'tcx>(
     }
 
     let extern_prelude = resolver_outputs.extern_prelude.clone();
-    let used_crates = resolver_outputs.used_crates.clone();
+    let used_crates = resolver_outputs.used_crates.as_ref().unwrap().clone();
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.init_locking(|| {
