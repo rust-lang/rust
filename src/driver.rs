@@ -78,7 +78,7 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    time(tcx.sess, "codegen mono items", || {
+    time(tcx, "codegen mono items", || {
         codegen_mono_items(tcx, &mut jit_module, None, mono_items);
     });
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module);
@@ -245,7 +245,7 @@ fn run_aot(
         }
     }
 
-    let modules = time(tcx.sess, "codegen mono items", || {
+    let modules = time(tcx, "codegen mono items", || {
         cgus.iter().map(|cgu| {
             let cgu_reuse = determine_cgu_reuse(tcx, cgu);
             tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
@@ -491,16 +491,16 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
     }
 }
 
-fn time<R>(sess: &Session, name: &'static str, f: impl FnOnce() -> R) -> R {
+fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {
     if std::env::var("CG_CLIF_DISPLAY_CG_TIME").is_ok() {
-        println!("[{}] start", name);
+        println!("[{:<30}: {}] start", tcx.crate_name(LOCAL_CRATE), name);
         let before = std::time::Instant::now();
-        let res = sess.time(name, f);
+        let res = tcx.sess.time(name, f);
         let after = std::time::Instant::now();
-        println!("[{}] end time: {:?}", name, after - before);
+        println!("[{:<30}: {}] end time: {:?}", tcx.crate_name(LOCAL_CRATE), name, after - before);
         res
     } else {
-        sess.time(name, f)
+        tcx.sess.time(name, f)
     }
 }
 
