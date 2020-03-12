@@ -21,7 +21,7 @@ pub fn codegen_crate(
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    if std::env::var("SHOULD_RUN").is_ok()
+    if std::env::var("CG_CLIF_JIT").is_ok()
         && tcx.sess.crate_types.get().contains(&CrateType::Executable)
     {
         #[cfg(not(target_arch = "wasm32"))]
@@ -90,12 +90,12 @@ fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
-    println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+    println!("Rustc codegen cranelift will JIT run the executable, because the CG_CLIF_JIT env var is set");
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_main) };
 
-    let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_| String::new());
+    let args = ::std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
     let args = args
         .split(" ")
         .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
@@ -215,14 +215,14 @@ fn run_aot(
             let obj = product.emit();
             std::fs::write(&tmp_file, obj).unwrap();
 
-            let work_product = if std::env::var("CG_CLIF_INCR_CACHE").is_ok() {
+            let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
+                None
+            } else {
                 rustc_incremental::copy_cgu_workproducts_to_incr_comp_cache_dir(
                     tcx.sess,
                     &name,
                     &[(WorkProductFileKind::Object, tmp_file.clone())],
                 )
-            } else {
-                None
             };
 
             ModuleCodegenResult(
@@ -251,6 +251,7 @@ fn run_aot(
             tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
             match cgu_reuse {
+                _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
                 CguReuse::No => {}
                 CguReuse::PreLto => {
                     let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
@@ -491,12 +492,16 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
 }
 
 fn time<R>(sess: &Session, name: &'static str, f: impl FnOnce() -> R) -> R {
-    println!("[{}] start", name);
-    let before = std::time::Instant::now();
-    let res = sess.time(name, f);
-    let after = std::time::Instant::now();
-    println!("[{}] end time: {:?}", name, after - before);
-    res
+    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").is_ok() {
+        println!("[{}] start", name);
+        let before = std::time::Instant::now();
+        let res = sess.time(name, f);
+        let after = std::time::Instant::now();
+        println!("[{}] end time: {:?}", name, after - before);
+        res
+    } else {
+        sess.time(name, f)
+    }
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/303d8aff6092709edd4dbd35b1c88e9aa40bf6d8/src/librustc_codegen_ssa/base.rs#L922-L953

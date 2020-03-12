@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 
 pub fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
-    if std::env::var("SHOULD_RUN").is_ok () {
+    if std::env::var("CG_CLIF_JIT").is_ok () {
         // When using JIT, dylibs won't find the __cg_clif_global_atomic_mutex data object defined here,
         // so instead define it in the cg_clif dylib.
 

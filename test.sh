@@ -22,7 +22,7 @@ echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
 
 echo "[JIT] mini_core_hello_world"
-JIT_ARGS="abc bcd" SHOULD_RUN=1 $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit
+CG_CLIF_JIT=1 CG_CLIF_JIT_ARGS="abc bcd" $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g
@@ -41,7 +41,7 @@ $RUSTC example/alloc_example.rs --crate-type bin
 ./target/out/alloc_example
 
 echo "[JIT] std_example"
-SHOULD_RUN=1 $RUSTC --crate-type bin -Cprefer-dynamic example/std_example.rs
+CG_CLIF_JIT=1 $RUSTC --crate-type bin -Cprefer-dynamic example/std_example.rs
 
 echo "[AOT] dst_field_align"
 # FIXME Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
