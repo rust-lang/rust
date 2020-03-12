@@ -999,11 +999,7 @@ pub fn handle_inlay_hints(
     Ok(analysis
         .inlay_hints(file_id, &world.options.inlay_hints)?
         .into_iter()
-        .map(|api_type| InlayHint {
-            label: api_type.label.to_string(),
-            range: api_type.range.conv_with(&line_index),
-            kind: api_type.kind,
-        })
+        .map_conv_with(&line_index)
         .collect())
 }
 

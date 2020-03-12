@@ -11,8 +11,8 @@ use lsp_types::{
 use ra_ide::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
-    InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo, ReferenceAccess, Severity,
-    SourceChange, SourceFileEdit,
+    InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
+    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -319,6 +319,20 @@ impl ConvWith<&FoldConvCtx<'_>> for Fold {
                 end_character: Some(range.end.character),
                 kind,
             }
+        }
+    }
+}
+
+impl ConvWith<&LineIndex> for InlayHint {
+    type Output = req::InlayHint;
+    fn conv_with(self, line_index: &LineIndex) -> Self::Output {
+        req::InlayHint {
+            label: self.label.to_string(),
+            range: self.range.conv_with(line_index),
+            kind: match self.kind {
+                InlayKind::ParameterHint => req::InlayKind::ParameterHint,
+                InlayKind::TypeHint => req::InlayKind::TypeHint,
+            },
         }
     }
 }

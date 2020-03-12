@@ -4,8 +4,6 @@ use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-use ra_ide::{InlayHintsOptions, InlayKind};
-
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
     CodeLensParams, CompletionParams, CompletionResponse, DiagnosticTag,
@@ -198,24 +196,14 @@ pub struct InlayHintsParams {
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(remote = "InlayKind")]
-pub enum InlayKindDef {
+pub enum InlayKind {
     TypeHint,
     ParameterHint,
-}
-
-#[derive(Deserialize)]
-#[serde(remote = "InlayConfig", rename_all = "camelCase")]
-pub struct InlayConfigDef {
-    pub type_hints: bool,
-    pub parameter_hints: bool,
-    pub max_length: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InlayHint {
     pub range: Range,
-    #[serde(with = "InlayKindDef")]
     pub kind: InlayKind,
     pub label: String,
 }

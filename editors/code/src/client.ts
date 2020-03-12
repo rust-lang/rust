@@ -29,11 +29,16 @@ export async function createClient(config: Config, serverPath: string): Promise<
         initializationOptions: {
             publishDecorations: !config.highlightingSemanticTokens,
             lruCapacity: config.lruCapacity,
-            inlayHints: config.inlayHints,
+
+            inlayHintsType: config.inlayHints.typeHints,
+            inlayHintsParameter: config.inlayHints.parameterHints,
+            inlayHintsMaxLength: config.inlayHints.maxLength,
+
             cargoWatchEnable: cargoWatchOpts.enable,
             cargoWatchArgs: cargoWatchOpts.arguments,
             cargoWatchCommand: cargoWatchOpts.command,
             cargoWatchAllTargets: cargoWatchOpts.allTargets,
+
             excludeGlobs: config.excludeGlobs,
             useClientWatching: config.useClientWatching,
             featureFlags: config.featureFlags,

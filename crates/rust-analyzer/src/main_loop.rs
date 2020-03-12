@@ -18,7 +18,7 @@ use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
-use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
+use ra_ide::{Canceled, FileId, InlayHintsOptions, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
@@ -177,7 +177,11 @@ pub fn main_loop(
                     .and_then(|it| it.folding_range.as_ref())
                     .and_then(|it| it.line_folding_only)
                     .unwrap_or(false),
-                inlay_hints: config.inlay_hints,
+                inlay_hints: InlayHintsOptions {
+                    type_hints: config.inlay_hints_type,
+                    parameter_hints: config.inlay_hints_parameter,
+                    max_length: config.inlay_hints_max_length,
+                },
                 cargo_watch: CheckOptions {
                     enable: config.cargo_watch_enable,
                     args: config.cargo_watch_args,
