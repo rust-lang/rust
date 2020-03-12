@@ -1018,7 +1018,7 @@ pub trait PrettyPrinter<'tcx>:
                     " as ",
                 )?;
             }
-            // For function type zsts just printing the type is enough
+            // For function type zsts just printing the path is enough
             (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
             // Empty tuples are frequently occurring, so don't print the fallback.
             (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
