@@ -55,10 +55,13 @@ try to keep it somewhat coherent.
 The order should roughly be:
 
 1. New lints
-2. Changes that expand what code existing lints cover
-3. ICE fixes
+2. Moves or deprecations of lints
+3. Changes that expand what code existing lints cover
 4. False positive fixes
 5. Suggestion fixes/improvements
+6. ICE fixes
+7. Documentation improvements
+8. Others
 
 Please also be sure to update the Beta/Unreleased sections at the top with the
 relevant commit ranges.
