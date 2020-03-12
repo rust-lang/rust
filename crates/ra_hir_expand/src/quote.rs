@@ -99,6 +99,7 @@ macro_rules! __quote {
     ( & ) => {$crate::__quote!(@PUNCT '&')};
     ( , ) => {$crate::__quote!(@PUNCT ',')};
     ( : ) => {$crate::__quote!(@PUNCT ':')};
+    ( ; ) => {$crate::__quote!(@PUNCT ';')};
     ( :: ) => {$crate::__quote!(@PUNCT ':', ':')};
     ( . ) => {$crate::__quote!(@PUNCT '.')};
     ( < ) => {$crate::__quote!(@PUNCT '<')};

@@ -172,6 +172,7 @@ pub mod known {
         column,
         compile_error,
         line,
+        assert,
         stringify,
         concat,
         include,

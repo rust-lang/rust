@@ -88,6 +88,7 @@ register_builtin! {
     (compile_error, CompileError) => compile_error_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
+    (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
     (format_args, FormatArgs) => format_args_expand,
     // format_args_nl only differs in that it adds a newline in the end,
@@ -148,6 +149,45 @@ fn column_expand(
         #col_num
     };
 
+    Ok(expanded)
+}
+
+fn assert_expand(
+    _db: &dyn AstDatabase,
+    _id: LazyMacroId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    // A hacky implementation for goto def and hover
+    // We expand `assert!(cond, arg1, arg2)` to
+    // ```
+    // {(cond, &(arg1), &(arg2));}
+    // ```,
+    // which is wrong but useful.
+
+    let mut args = Vec::new();
+    let mut current = Vec::new();
+    for tt in tt.token_trees.iter().cloned() {
+        match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
+                args.push(current);
+                current = Vec::new();
+            }
+            _ => {
+                current.push(tt);
+            }
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    let arg_tts = args.into_iter().flat_map(|arg| {
+        quote! { &(##arg), }
+    }.token_trees).collect::<Vec<_>>();
+
+    let expanded = quote! {
+        { { (##arg_tts); } }
+    };
     Ok(expanded)
 }
 
@@ -491,6 +531,22 @@ mod tests {
         );
 
         assert_eq!(expanded, "\"\"");
+    }
+
+    #[test]
+    fn test_assert_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! assert {
+                ($cond:expr) => ({ /* compiler built-in */ });
+                ($cond:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+            }
+            assert!(true, "{} {:?}", arg1(a, b, c), arg2);
+            "#,
+        );
+
+        assert_eq!(expanded, "{{(&(true), &(\"{} {:?}\"), &(arg1(a,b,c)), &(arg2),);}}");
     }
 
     #[test]
