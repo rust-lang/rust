@@ -40,6 +40,9 @@ pub use self::types::*;
 pub use self::ColorConfig::*;
 pub use cli::TestOpts;
 
+// Suppress warning: we need this crate in the sysroot
+use proc_macro as _;
+
 // Module to be used by rustc to compile tests in libtest
 pub mod test {
     pub use crate::{

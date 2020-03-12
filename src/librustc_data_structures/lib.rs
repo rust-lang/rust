@@ -24,6 +24,11 @@
 #![feature(thread_id_value)]
 #![allow(rustc::default_hash_types)]
 
+// Suppress warning: these crates will be unused when cfg(parallel_compiler) is not enabled
+use crossbeam_utils as _;
+use rayon as _;
+use rayon_core as _;
+
 #[macro_use]
 extern crate log;
 #[cfg(unix)]

@@ -21,3 +21,6 @@ pub use queries::Queries;
 
 #[cfg(test)]
 mod tests;
+
+// Suppress warning: this crate will be unused when cfg(parallel_compiler) is not enable
+use rayon as _;

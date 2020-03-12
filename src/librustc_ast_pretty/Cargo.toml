@@ -12,5 +12,4 @@ doctest = false
 [dependencies]
 log = "0.4"
 rustc_span = { path = "../librustc_span" }
-rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_ast = { path = "../librustc_ast" }

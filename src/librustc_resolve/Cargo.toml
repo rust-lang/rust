@@ -24,7 +24,6 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
-rustc_infer = { path = "../librustc_infer" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
