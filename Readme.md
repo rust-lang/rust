@@ -1,6 +1,6 @@
 # WIP Cranelift codegen backend for rust
 
-> ⚠⚠⚠ Threads and certain kinds of FFI don't work yet. ⚠⚠⚠
+> ⚠⚠⚠ Certain kinds of FFI don't work yet. ⚠⚠⚠
 
 ## Building
 
