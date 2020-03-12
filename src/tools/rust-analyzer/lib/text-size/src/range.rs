@@ -37,7 +37,7 @@ pub struct TextRange {
 
 impl fmt::Debug for TextRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}..{})", self.start().raw, self.end().raw)
+        write!(f, "{}..{}", self.start().raw, self.end().raw)
     }
 }
 
