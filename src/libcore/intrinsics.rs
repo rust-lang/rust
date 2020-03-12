@@ -1005,17 +1005,23 @@ extern "rust-intrinsic" {
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
+    #[cfg(bootstrap)]
     pub fn panic_if_uninhabited<T>();
+
+    /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
+    /// This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
     /// zero-initialization: This will statically either panic, or do nothing.
     #[cfg(not(bootstrap))]
-    pub fn panic_if_zero_invalid<T>();
+    pub fn assert_zero_valid<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
     /// bit patterns: This will statically either panic, or do nothing.
     #[cfg(not(bootstrap))]
-    pub fn panic_if_any_invalid<T>();
+    pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]

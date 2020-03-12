@@ -449,7 +449,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
     ) -> bool {
-        // Emit a panic or a no-op for `panic_if_uninhabited`.
+        // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
         #[derive(Debug, PartialEq)]
@@ -460,9 +460,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             // FIXME: Move to symbols instead of strings.
-            "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
-            "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
-            "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
+            "assert_inhabited" => Some(PanicIntrinsic::IfUninhabited),
+            "assert_zero_valid" => Some(PanicIntrinsic::IfZeroInvalid),
+            "assert_uninit_valid" => Some(PanicIntrinsic::IfAnyInvalid),
             _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
