@@ -67,12 +67,6 @@ export function debugSingle(ctx: Ctx): Cmd {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        if (config.args[0] === 'run') {
-            config.args[0] = 'build';
-        } else {
-            config.args.push('--no-run');
-        }
-
         const debugConfig = {
             type: "lldb",
             request: "launch",
@@ -83,6 +77,7 @@ export function debugSingle(ctx: Ctx): Cmd {
             args: config.extraArgs,
             cwd: config.cwd
         };
+
         return vscode.debug.startDebugging(undefined, debugConfig);
     };
 }

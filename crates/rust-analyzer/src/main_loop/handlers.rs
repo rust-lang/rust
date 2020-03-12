@@ -795,24 +795,27 @@ pub fn handle_code_lens(
             RunnableKind::Bin => "Run",
         }
         .to_string();
-        let r = to_lsp_runnable(&world, file_id, runnable)?;
-        let range = r.range;
-        let arguments = vec![to_value(r).unwrap()];
+        let mut r = to_lsp_runnable(&world, file_id, runnable)?;
         let lens = CodeLens {
-            range: range.clone(),
+            range: r.range,
             command: Some(Command {
                 title,
                 command: "rust-analyzer.runSingle".into(),
-                arguments: Some(arguments.clone()),
+                arguments: Some(vec![to_value(&r).unwrap()]),
             }),
             data: None,
         };
+        if r.args[0] == "run" {
+            r.args[0] = "build".into();
+        } else {
+            r.args.push("--no-run".into());
+        }
         let debug_lens = CodeLens {
-            range,
+            range: r.range,
             command: Some(Command {
                 title: "Debug".into(),
                 command: "rust-analyzer.debugSingle".into(),
-                arguments: Some(arguments.clone()),
+                arguments: Some(vec![to_value(r).unwrap()]),
             }),
             data: None,
         };

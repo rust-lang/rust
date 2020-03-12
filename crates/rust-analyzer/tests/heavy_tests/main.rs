@@ -143,10 +143,7 @@ fn main() {}
 
     server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
-        RunnablesParams {
-            text_document: server.doc_id("foo/tests/spam.rs"),
-            position: None,
-        },
+        RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
           {
             "args": [ "test", "--package", "foo", "--test", "spam" ],
@@ -184,7 +181,7 @@ fn main() {}
               }
             }
           }
-        ])
+        ]),
     );
 }
 
