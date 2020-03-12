@@ -127,9 +127,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = &{ this.tcx.tcx };
 
         // First: functions that diverge.
-        let (dest, ret) = match link_name {
-            // Note that this matches calls to the *foreign* item `__rust_start_panic* -
-            // that is, calls to `extern "Rust" { fn __rust_start_panic(...) }`.
+        let (dest, ret) = match ret {
+            None => match link_name {
+                // This matches calls to the foreign item `panic_impl`.
+                // The implementation is provided by the function with the `#[panic_handler]` attribute.
+                "panic_impl" => {
+                    let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
+                    let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
+                    return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
+                }
+                | "exit"
+                | "ExitProcess"
+                => {
+                    // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
+                    let code = this.read_scalar(args[0])?.to_i32()?;
+                    throw_machine_stop!(TerminationInfo::Exit(code.into()));
+                }
+                _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
+            },
+            Some(p) => p,
+        };
+
+        // Second: some functions that we forward to MIR implementations.
+        match link_name {
+            // This matches calls to the *foreign* item `__rust_start_panic*, that is,
+            // calls to `extern "Rust" { fn __rust_start_panic(...) }`.
             // We forward this to the underlying *implementation* in the panic runtime crate.
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
@@ -145,31 +167,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
             }
-            // Similarly, we forward calls to the `panic_impl` foreign item to its implementation.
-            // The implementation is provided by the function with the `#[panic_handler]` attribute.
-            "panic_impl" => {
-                let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
-                let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
-                return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
-            }
+            _ => {}
+        }
 
-            | "exit"
-            | "ExitProcess"
-            => {
-                // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
-                let code = this.read_scalar(args[0])?.to_i32()?;
-                throw_machine_stop!(TerminationInfo::Exit(code.into()));
-            }
-            _ => {
-                if let Some(p) = ret {
-                    p
-                } else {
-                    throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
-                }
-            }
-        };
-
-        // Next: functions that return.
+        // Third: functions that return.
         if this.emulate_foreign_item_by_name(link_name, args, dest, ret)? {
             this.dump_place(*dest);
             this.go_to_block(ret);
