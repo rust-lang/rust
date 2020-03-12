@@ -26,6 +26,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
+use rustc_data_structures::fx::FxHashSet;
 use std::path::Path;
 use std::{cmp, fs};
 
@@ -47,6 +48,7 @@ pub struct CrateLoader<'a> {
     local_crate_name: Symbol,
     // Mutable output.
     cstore: CStore,
+    loaded_crates: Option<FxHashSet<Symbol>>,
 }
 
 pub enum LoadedMacro {
@@ -197,6 +199,7 @@ impl<'a> CrateLoader<'a> {
                 allocator_kind: None,
                 has_global_allocator: false,
             },
+            loaded_crates: Some(Default::default()),
         }
     }
 
@@ -495,6 +498,7 @@ impl<'a> CrateLoader<'a> {
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
+                self.loaded_crates.as_mut().unwrap().insert(name);
                 Ok(self.register_crate(host_library, root, span, library, dep_kind, name))
             }
             _ => panic!(),
@@ -830,7 +834,7 @@ impl<'a> CrateLoader<'a> {
         });
     }
 
-    pub fn postprocess(&mut self, krate: &ast::Crate) {
+    pub fn postprocess(&mut self, krate: &ast::Crate) -> FxHashSet<Symbol> {
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
@@ -838,6 +842,7 @@ impl<'a> CrateLoader<'a> {
         if log_enabled!(log::Level::Info) {
             dump_crates(&self.cstore);
         }
+        self.loaded_crates.take().unwrap()
     }
 
     pub fn process_extern_crate(

@@ -1,0 +1,11 @@
+error: crate `unused_crate` is unused in crate `unused_extern_options`
+   |
+note: the lint level is defined here
+  --> $DIR/unused_extern_options.rs:3:9
+   |
+LL | #![deny(unused_extern_options)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   = help: try removing `unused_crate` from your `Cargo.toml`
+
+error: aborting due to previous error
+

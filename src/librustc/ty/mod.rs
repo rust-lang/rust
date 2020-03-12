@@ -30,8 +30,8 @@ use rustc_ast::ast::{self, Ident, Name};
 use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
@@ -136,6 +136,9 @@ pub struct ResolverOutputs {
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Name, bool>,
+    /// All crates that ended up getting loaded.
+    /// Used to determine which `--extern` entries are unused
+    pub used_crates: FxHashSet<Symbol>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]

@@ -47,7 +47,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use log::debug;
 use std::cell::{Cell, RefCell};
@@ -962,6 +962,8 @@ pub struct Resolver<'a> {
     lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
+
+    used_crates: FxHashSet<Symbol>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1239,6 +1241,7 @@ impl<'a> Resolver<'a> {
             variant_vis: Default::default(),
             lint_buffer: LintBuffer::default(),
             next_node_id: NodeId::from_u32(1),
+            used_crates: Default::default(),
         }
     }
 
@@ -1275,6 +1278,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            used_crates: self.used_crates,
         }
     }
 
@@ -1293,6 +1297,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            used_crates: self.used_crates.clone(),
         }
     }
 
@@ -1343,7 +1348,7 @@ impl<'a> Resolver<'a> {
 
         self.check_unused(krate);
         self.report_errors(krate);
-        self.crate_loader.postprocess(krate);
+        self.used_crates = self.crate_loader.postprocess(krate);
     }
 
     fn new_module(

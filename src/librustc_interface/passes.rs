@@ -26,7 +26,7 @@ use rustc_data_structures::{box_region_allow_access, declare_box_region_type, pa
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::Crate;
+use rustc_hir::{Crate, CRATE_HIR_ID};
 use rustc_infer::traits;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
@@ -35,6 +35,7 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_typeck as typeck;
@@ -49,6 +50,9 @@ use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
+
+use log::debug;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match input {
@@ -733,6 +737,9 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
+    let extern_prelude = resolver_outputs.extern_prelude.clone();
+    let used_crates = resolver_outputs.used_crates.clone();
+
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.init_locking(|| {
             TyCtxt::create_global_ctxt(
@@ -753,9 +760,58 @@ pub fn create_global_ctxt<'tcx>(
     // Do some initialization of the DepGraph that can only be done with the tcx available.
     ty::tls::enter_global(&gcx, |tcx| {
         tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(tcx));
+        check_unused_crates(tcx, &extern_prelude, &used_crates);
     });
 
     QueryContext(gcx)
+}
+
+fn check_unused_crates(
+    tcx: TyCtxt<'_>,
+    extern_prelude: &FxHashMap<Symbol, bool>,
+    used_crates: &FxHashSet<Symbol>,
+) {
+    for (krate, introduced_by_item) in extern_prelude {
+        let krate = *krate;
+        if *introduced_by_item {
+            debug!("check_unused_crate: crate {:?} added by `extern crate`, skipping", krate);
+            continue;
+        }
+        if used_crates.contains(&krate) {
+            debug!("check_unused_crate: crate {:?} was used, skipping", krate);
+            continue;
+        }
+
+        // HACK: These should not be hardcoded. However, libstd needs
+        // both of them mentioned in its Cargo.tonl, and trying to
+        // add 'use' or 'extern crate' statements for both crates
+        // causes an error.
+        //
+        // If either of these crates is unused, we will never have loaded
+        // their metadata (otherwise, they would be used). This means that we have
+        // no way of checking the `panic_runtime` field in the metadata, and must
+        // instead rely on the crate name itself.
+        if krate.as_str() == "panic_abort" || krate.as_str() == "panic_unwind" {
+            debug!("check_unused_crate: skipping panic runtime crate {:?}", krate);
+            continue;
+        }
+
+        if krate == sym::core || krate == sym::std {
+            debug!("check_unused_crate: skipping builtin crate {:?}", krate);
+            continue;
+        }
+
+        if tcx.sess.rust_2018() && krate == sym::meta {
+            debug!("check_unused_crate: skipping `meta` crate");
+            continue;
+        }
+
+        tcx.struct_lint_node(lint::builtin::UNUSED_EXTERN_OPTIONS, CRATE_HIR_ID, |lint| {
+            lint.build(&format!("crate `{}` is unused in crate `{}`", krate, tcx.crate_name))
+                .help(&format!("try removing `{}` from your `Cargo.toml`", krate))
+                .emit();
+        });
+    }
 }
 
 /// Runs the resolution, type-checking, region checking and other

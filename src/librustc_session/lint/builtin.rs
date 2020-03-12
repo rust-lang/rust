@@ -72,6 +72,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_EXTERN_OPTIONS,
+    Allow,
+    "extern path crates that are never used"
+}
+
+declare_lint! {
     pub UNUSED_QUALIFICATIONS,
     Allow,
     "detects unnecessarily qualified names"
@@ -505,6 +511,7 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
+        UNUSED_EXTERN_OPTIONS,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
         UNUSED_VARIABLES,
