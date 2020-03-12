@@ -92,11 +92,11 @@ unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
+    pub const unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
 
-    pub unsafe fn init(&mut self) {
+    pub unsafe fn init(&self) {
         let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
         let result = libc::pthread_mutexattr_init(attr.as_mut_ptr());
         debug_assert_eq!(result, 0);
