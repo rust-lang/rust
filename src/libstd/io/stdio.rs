@@ -792,10 +792,14 @@ fn print_to<T>(
 {
     let result = local_s
         .try_with(|s| {
-            if let Ok(mut borrowed) = s.try_borrow_mut() {
-                if let Some(w) = borrowed.as_mut() {
-                    return w.write_fmt(args);
-                }
+            // Note that we completely remove a local sink to write to in case
+            // our printing recursively panics/prints, so the recursive
+            // panic/print goes to the global sink instead of our local sink.
+            let prev = s.borrow_mut().take();
+            if let Some(mut w) = prev {
+                let result = w.write_fmt(args);
+                *s.borrow_mut() = Some(w);
+                return result;
             }
             global_s().write_fmt(args)
         })
