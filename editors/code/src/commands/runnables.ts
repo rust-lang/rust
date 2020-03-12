@@ -3,7 +3,6 @@ import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
-import { debug } from 'vscode';
 
 export function run(ctx: Ctx): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
@@ -84,7 +83,7 @@ export function debugSingle(ctx: Ctx): Cmd {
             args: config.extraArgs,
             cwd: config.cwd
         };
-        return debug.startDebugging(undefined, debugConfig);
+        return vscode.debug.startDebugging(undefined, debugConfig);
     };
 }
 
