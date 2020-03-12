@@ -31,22 +31,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // that might still hang around!
         let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
 
-        // Handle diverging intrinsics.
-        let (dest, ret) = match intrinsic_name {
-            "abort" => {
-                // FIXME: remove, once the intrinsic on the rustc side is fixed.
-                throw_machine_stop!(TerminationInfo::Abort);
-            }
-            "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
-            _ =>
-                if let Some(p) = ret {
-                    p
-                } else {
-                    throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name);
-                },
+        // First handle intrinsics without return place.
+        let (dest, ret) = match ret {
+            None => match intrinsic_name {
+                "abort" => {
+                    // FIXME: remove, once the intrinsic on the rustc side is fixed.
+                    throw_machine_stop!(TerminationInfo::Abort);
+                }
+                _ => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
+            },
+            Some(p) => p,
         };
 
         match intrinsic_name {
+            "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
+
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
