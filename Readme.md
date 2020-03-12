@@ -36,7 +36,7 @@ $ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_cod
     <dd>Enable JIT mode to immediately run a program instead of writing an executable file.</dd>
     <dt>CG_CLIF_JIT_ARGS</dt>
     <dd>When JIT mode is enable pass these arguments to the program.</dd>
-    <dt>CG_CLIF_INCR_CACHE_DISABLE</dt>
+    <dt>CG_CLIF_INCR_CACHE_DISABLED</dt>
     <dd>Don't cache object files in the incremental cache. Useful during development of cg_clif
     to make it possible to use incremental mode for all analyses performed by rustc without caching
     object files when their content should have been changed by a change to cg_clif.</dd>
