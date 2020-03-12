@@ -4941,15 +4941,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             }
-            if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
-                err.span_suggestion(
-                    expr.span,
-                    &format!("use parentheses to {}", msg),
-                    format!("{}({})", code, sugg_call),
-                    applicability,
-                );
-                return true;
-            }
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                &format!("use parentheses to {}", msg),
+                format!("({})", sugg_call),
+                applicability,
+            );
+            return true;
         }
         false
     }
