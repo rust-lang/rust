@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Method(ref sig, ref trait_method) = item.kind {
+        if let TraitItemKind::Fn(ref sig, ref trait_method) = item.kind {
             let body_id = if let TraitMethod::Provided(b) = *trait_method {
                 Some(b)
             } else {

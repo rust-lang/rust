@@ -379,8 +379,8 @@ fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) -> bool {
 
 fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
-        TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
-        TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
+        TraitItemKind::Fn(_, TraitMethod::Required(_)) => true,
+        TraitItemKind::Fn(_, TraitMethod::Provided(eid)) => {
             is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
         },
         _ => false,

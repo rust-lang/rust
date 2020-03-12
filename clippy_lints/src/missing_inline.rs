@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                     let tit_ = cx.tcx.hir().trait_item(tit.id);
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
-                        hir::TraitItemKind::Method(..) => {
+                        hir::TraitItemKind::Fn(..) => {
                             if tit.defaultness.has_value() {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided

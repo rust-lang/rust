@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableKeyType {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'tcx>) {
-        if let hir::TraitItemKind::Method(ref sig, ..) = item.kind {
+        if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             check_sig(cx, item.hir_id, &sig.decl);
         }
     }

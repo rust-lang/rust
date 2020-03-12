@@ -273,7 +273,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Method(ref sig, ref eid) = item.kind {
+        if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));

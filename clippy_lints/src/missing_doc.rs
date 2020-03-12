@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
         let desc = match trait_item.kind {
             hir::TraitItemKind::Const(..) => "an associated constant",
-            hir::TraitItemKind::Method(..) => "a trait method",
+            hir::TraitItemKind::Fn(..) => "a trait method",
             hir::TraitItemKind::Type(..) => "an associated type",
         };
 
