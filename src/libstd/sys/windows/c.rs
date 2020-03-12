@@ -295,6 +295,7 @@ pub struct WSADATA {
     pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
 }
 
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct WSABUF {
     pub len: ULONG,
