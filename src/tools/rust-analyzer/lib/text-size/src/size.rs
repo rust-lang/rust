@@ -97,7 +97,12 @@ impl TryFrom<usize> for TextSize {
 
 impl From<TextSize> for usize {
     fn from(value: TextSize) -> Self {
-        value.raw as usize
+        assert_lossless_conversion();
+        return value.raw as usize;
+
+        const fn assert_lossless_conversion() {
+            [()][(std::mem::size_of::<usize>() < std::mem::size_of::<u32>()) as usize]
+        }
     }
 }
 
