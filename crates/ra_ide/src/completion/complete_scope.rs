@@ -42,6 +42,7 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux(x: i32)",
+                trigger_call_info: true,
             },
             CompletionItem {
                 label: "x",
@@ -844,6 +845,7 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux(x: i32)",
+                trigger_call_info: true,
             },
             CompletionItem {
                 label: "x",

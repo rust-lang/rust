@@ -510,6 +510,7 @@ mod tests {
                 kind: Function,
                 lookup: "with_args",
                 detail: "fn with_args(x: i32, y: String)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -566,6 +567,7 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self, x: i32)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -600,6 +602,7 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self, x: i32)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -718,6 +721,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -747,6 +751,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -775,6 +780,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                trigger_call_info: true,
             },
         ]
         "###
@@ -803,6 +809,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve<i128>)",
+                trigger_call_info: true,
             },
         ]
         "###
