@@ -1,7 +1,5 @@
 //! Utilities for formatting and printing strings.
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
@@ -281,6 +279,14 @@ impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+        // SAFETY: `mem::transmute(x)` is safe because
+        //     1. `&'b T` keeps the lifetime it originated with `'b`
+        //              (so as to not have an unbounded lifetime)
+        //     2. `&'b T` and `&'b Void` have the same memory layout
+        //              (when `T` is `Sized`, as it is here)
+        // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
+        // and `fn(&Void, &mut Formatter<'_>) -> Result` have the same ABI
+        // (as long as `T` is `Sized`)
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
@@ -1399,6 +1405,14 @@ impl<'a> Formatter<'a> {
 
     fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
         fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
+            // SAFETY: This is used for `flt2dec::Part::Num` and `flt2dec::Part::Copy`.
+            // It's safe to use for `flt2dec::Part::Num` since every char `c` is between
+            // `b'0'` and `b'9'`, which means `s` is valid UTF-8.
+            // It's also probably safe in practice to use for `flt2dec::Part::Copy(buf)`
+            // since `buf` should be plain ASCII, but it's possible for someone to pass
+            // in a bad value for `buf` into `flt2dec::to_shortest_str` since it is a
+            // public function.
+            // FIXME: Determine whether this could result in UB.
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
         }
 
