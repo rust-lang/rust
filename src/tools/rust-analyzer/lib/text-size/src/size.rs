@@ -32,13 +32,7 @@ pub(crate) const fn TextSize(raw: u32) -> TextSize {
 
 impl fmt::Debug for TextSize {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for TextSize {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.raw, f)
+        write!(f, "{}", self.raw)
     }
 }
 
