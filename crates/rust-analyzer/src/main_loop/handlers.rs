@@ -37,7 +37,7 @@ use crate::{
     },
     diagnostics::DiagnosticTask,
     from_json,
-    req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
+    req::{self, Decoration, InlayHint, InlayHintsParams},
     semantic_tokens::SemanticTokensBuilder,
     world::WorldSnapshot,
     LspError, Result,
@@ -997,15 +997,12 @@ pub fn handle_inlay_hints(
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
     Ok(analysis
-        .inlay_hints(file_id, world.options.max_inlay_hint_length)?
+        .inlay_hints(file_id, &world.options.inlay_hints)?
         .into_iter()
         .map(|api_type| InlayHint {
             label: api_type.label.to_string(),
             range: api_type.range.conv_with(&line_index),
-            kind: match api_type.kind {
-                ra_ide::InlayKind::TypeHint => InlayKind::TypeHint,
-                ra_ide::InlayKind::ParameterHint => InlayKind::ParameterHint,
-            },
+            kind: api_type.kind,
         })
         .collect())
 }

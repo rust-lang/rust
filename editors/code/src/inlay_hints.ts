@@ -10,7 +10,7 @@ export function activateInlayHints(ctx: Ctx) {
     const maybeUpdater = {
         updater: null as null | HintsUpdater,
         onConfigChange() {
-            if (!ctx.config.displayInlayHints) {
+            if (!ctx.config.inlayHints.typeHints && !ctx.config.inlayHints.parameterHints) {
                 return this.dispose();
             }
             if (!this.updater) this.updater = new HintsUpdater(ctx);

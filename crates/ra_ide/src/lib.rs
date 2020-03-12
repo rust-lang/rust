@@ -68,7 +68,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
-    inlay_hints::{InlayHint, InlayKind},
+    inlay_hints::{InlayConfig, InlayHint, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
@@ -319,9 +319,9 @@ impl Analysis {
     pub fn inlay_hints(
         &self,
         file_id: FileId,
-        max_inlay_hint_length: Option<usize>,
+        inlay_hint_opts: &InlayConfig,
     ) -> Cancelable<Vec<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, max_inlay_hint_length))
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, inlay_hint_opts))
     }
 
     /// Returns the set of folding ranges.
