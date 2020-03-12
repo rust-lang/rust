@@ -381,7 +381,7 @@ pub fn handle_runnables(
         label,
         bin: "cargo".to_string(),
         args: check_args,
-        extra_args: Vec::with_capacity(0),
+        extra_args: Vec::new(),
         env: FxHashMap::default(),
         cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
     });
