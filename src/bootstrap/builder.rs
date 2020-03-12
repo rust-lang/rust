@@ -1067,6 +1067,10 @@ impl<'a> Builder<'a> {
             // some code doesn't go through this `rustc` wrapper.
             rustflags.arg("-Wrust_2018_idioms");
             rustflags.arg("-Wunused_lifetimes");
+            // Remove this after the next cfg(bootstrap) bump
+            if stage != 0 {
+                rustflags.arg("-Wunused_extern_options");
+            }
 
             if self.config.deny_warnings {
                 rustflags.arg("-Dwarnings");
