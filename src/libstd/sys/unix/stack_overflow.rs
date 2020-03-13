@@ -45,7 +45,7 @@ mod imp {
     use libc::{mmap, munmap};
     use libc::{sigaction, sighandler_t, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIG_DFL};
     use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
-    use libc::{MAP_ANON, MAP_PRIVATE, PROT_READ, PROT_WRITE, SIGSEGV};
+    use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
     use crate::sys_common::thread_info;
 
@@ -137,10 +137,15 @@ mod imp {
     }
 
     unsafe fn get_stackp() -> *mut libc::c_void {
+        let page_size = crate::sys::unix::os::page_size();
         let stackp =
-            mmap(ptr::null_mut(), SIGSTKSZ, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+            mmap(ptr::null_mut(), SIGSTKSZ + page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
+        }
+        let guard_result = libc::mprotect(stackp, page_size, PROT_NONE);
+        if guard_result != 0 {
+            panic!("failed to set up alternative stack guard page");
         }
         stackp
     }
