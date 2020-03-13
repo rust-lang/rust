@@ -11,7 +11,7 @@ fn range(x: ops::Range<u32>) -> TextRange {
 #[test]
 fn sum() {
     let xs: Vec<TextSize> = vec![size(0), size(1), size(2)];
-    assert_eq!(xs.iter().copied().sum::<TextSize>(), size(3));
+    assert_eq!(xs.iter().sum::<TextSize>(), size(3));
     assert_eq!(xs.into_iter().sum::<TextSize>(), size(3));
 }
 

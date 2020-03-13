@@ -100,46 +100,52 @@ impl From<TextSize> for usize {
     }
 }
 
-macro_rules! arith {
-    ($Op:ident $op:ident, $OpAssign:ident $op_assign:ident) => {
+macro_rules! ops {
+    (impl $Op:ident for TextSize by fn $f:ident = $op:tt) => {
         impl $Op<TextSize> for TextSize {
             type Output = TextSize;
-            fn $op(self, rhs: TextSize) -> TextSize {
-                TextSize($Op::$op(self.raw, rhs.raw))
+            fn $f(self, other: TextSize) -> TextSize {
+                TextSize(self.raw $op other.raw)
             }
         }
-        impl $Op<TextSize> for &'_ TextSize {
+        impl $Op<&TextSize> for TextSize {
             type Output = TextSize;
-            fn $op(self, rhs: TextSize) -> TextSize {
-                TextSize($Op::$op(self.raw, rhs.raw))
+            fn $f(self, other: &TextSize) -> TextSize {
+                self $op *other
             }
         }
-        impl $Op<&'_ TextSize> for TextSize {
-            type Output = TextSize;
-            fn $op(self, rhs: &TextSize) -> TextSize {
-                TextSize($Op::$op(self.raw, rhs.raw))
-            }
-        }
-        impl $Op<&'_ TextSize> for &'_ TextSize {
-            type Output = TextSize;
-            fn $op(self, rhs: &TextSize) -> TextSize {
-                TextSize($Op::$op(self.raw, rhs.raw))
-            }
-        }
-
-        impl<A> $OpAssign<A> for TextSize
+        impl<T> $Op<T> for &TextSize
         where
-            TextSize: $Op<A, Output = TextSize>,
+            TextSize: $Op<T, Output=TextSize>,
         {
-            fn $op_assign(&mut self, rhs: A) {
-                *self = $Op::$op(*self, rhs)
+            type Output = TextSize;
+            fn $f(self, other: T) -> TextSize {
+                *self $op other
             }
         }
     };
 }
 
-arith!(Add add, AddAssign add_assign);
-arith!(Sub sub, SubAssign sub_assign);
+ops!(impl Add for TextSize by fn add = +);
+ops!(impl Sub for TextSize by fn sub = -);
+
+impl<A> AddAssign<A> for TextSize
+where
+    TextSize: Add<A, Output = TextSize>,
+{
+    fn add_assign(&mut self, rhs: A) {
+        *self = *self + rhs
+    }
+}
+
+impl<S> SubAssign<S> for TextSize
+where
+    TextSize: Sub<S, Output = TextSize>,
+{
+    fn sub_assign(&mut self, rhs: S) {
+        *self = *self - rhs
+    }
+}
 
 impl<A> iter::Sum<A> for TextSize
 where
