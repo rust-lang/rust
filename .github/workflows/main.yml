@@ -19,8 +19,8 @@ jobs:
     - name: Cache cargo installed crates
       uses: actions/cache@v1.1.2
       with:
-        path: $HOME/.cargo/bin
-        key: cargo-installed-crates
+        path: ~/.cargo/bin
+        key: cargo-installed-crates-${{ matrix.os }}
 
     - name: Prepare dependencies
       run: |
