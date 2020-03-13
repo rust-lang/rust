@@ -913,6 +913,65 @@ impl<T> Option<T> {
     pub fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
+
+    /// Zips `self` with another `Option`.
+    ///
+    /// Returns `Some((_, _))` when both `self` and `other`
+    /// are `Some(_)`, otherwise return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_zip)]
+    /// let x = Some(1);
+    /// let y = Some("hi");
+    /// let z = None::<u8>;
+    ///
+    /// assert_eq!(x.zip(y), Some((1, "hi")));
+    /// assert_eq!(x.zip(z), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_zip", issue = "none")]
+    pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
+        self.zip_with(other, |a, b| (a, b))
+    }
+
+    /// Zips `self` and another `Option` with function `f`.
+    ///
+    /// Returns `Some(_)` when both `self` and `other`
+    /// are `Some(_)`, otherwise return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_zip)]
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct Point {
+    ///     x: f64,
+    ///     y: f64,
+    /// }
+    ///
+    /// impl Point {
+    ///     fn new(x: f64, y: f64) -> Self {
+    ///         Self { x, y }
+    ///     }
+    /// }
+    ///
+    /// let x = Some(17.);
+    /// let y = Some(42.);
+    ///
+    /// assert_eq!(x.zip_with(y, Point::new), Some(Point { x: 17., y: 42. }));
+    /// assert_eq!(x.zip_with(None, Point::new), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_zip", issue = "none")]
+    pub fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
+    where
+        F: FnOnce(T, U) -> R,
+    {
+        Some(f(self?, other?))
+    }
 }
 
 impl<T: Copy> Option<&T> {
