@@ -618,7 +618,7 @@ enum AmbiguityKind {
     Import,
     BuiltinAttr,
     DeriveHelper,
-    LegacyVsModern,
+    MacroRulesVsModularized,
     GlobVsOuter,
     GlobVsGlob,
     GlobVsExpanded,
@@ -631,7 +631,9 @@ impl AmbiguityKind {
             AmbiguityKind::Import => "name vs any other name during import resolution",
             AmbiguityKind::BuiltinAttr => "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper => "derive helper attribute vs any other name",
-            AmbiguityKind::LegacyVsModern => "`macro_rules` vs non-`macro_rules` from other module",
+            AmbiguityKind::MacroRulesVsModularized => {
+                "`macro_rules` vs non-`macro_rules` from other module"
+            }
             AmbiguityKind::GlobVsOuter => {
                 "glob import vs any other name from outer scope during import/macro resolution"
             }
@@ -1473,7 +1475,7 @@ impl<'a> Resolver<'a> {
         //    derives (you need to resolve the derive first to add helpers into scope), but they
         //    should be available before the derive is expanded for compatibility.
         //    It's mess in general, so we are being conservative for now.
-        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
+        // 1-3. `macro_rules` (open, not controlled), loop through `macro_rules` scopes. Have higher
         //    priority than prelude macros, but create ambiguities with macros in modules.
         // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled). Have higher priority than prelude macros, but create
@@ -1639,7 +1641,7 @@ impl<'a> Resolver<'a> {
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
-            // (modern hygiene) or local variables (legacy hygiene).
+            // (modern hygiene) or local variables (`macro_rules` hygiene).
             let rib_ident = if ribs[i].kind.contains_params() { modern_ident } else { ident };
             if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
@@ -1898,7 +1900,7 @@ impl<'a> Resolver<'a> {
                     break;
                 }
             }
-            // Then find the last legacy mark from the end if it exists.
+            // Then find the last semi-transparent mark from the end if it exists.
             for (mark, transparency) in iter {
                 if transparency == Transparency::SemiTransparent {
                     result = Some(mark);
@@ -2423,21 +2425,21 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn disambiguate_legacy_vs_modern(
+    fn disambiguate_macro_rules_vs_modularized(
         &self,
-        legacy: &'a NameBinding<'a>,
-        modern: &'a NameBinding<'a>,
+        macro_rules: &'a NameBinding<'a>,
+        modularized: &'a NameBinding<'a>,
     ) -> bool {
         // Some non-controversial subset of ambiguities "modern macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         match (
-            self.binding_parent_modules.get(&PtrKey(legacy)),
-            self.binding_parent_modules.get(&PtrKey(modern)),
+            self.binding_parent_modules.get(&PtrKey(macro_rules)),
+            self.binding_parent_modules.get(&PtrKey(modularized)),
         ) {
-            (Some(legacy), Some(modern)) => {
-                legacy.normal_ancestor_id == modern.normal_ancestor_id
-                    && modern.is_ancestor_of(legacy)
+            (Some(macro_rules), Some(modularized)) => {
+                macro_rules.normal_ancestor_id == modularized.normal_ancestor_id
+                    && modularized.is_ancestor_of(macro_rules)
             }
             _ => false,
         }

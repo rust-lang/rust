@@ -624,7 +624,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
-                let used = self.process_legacy_macro_imports(item, module);
+                let used = self.process_macro_use_imports(item, module);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
                 let import = self.r.arenas.alloc_import(Import {
@@ -913,7 +913,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn legacy_import_macro(
+    fn add_macro_use_binding(
         &mut self,
         name: ast::Name,
         binding: &'a NameBinding<'a>,
@@ -929,7 +929,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Returns `true` if we should consider the underlying `extern crate` to be used.
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>) -> bool {
+    fn process_macro_use_imports(&mut self, item: &Item, module: Module<'a>) -> bool {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
@@ -1004,7 +1004,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             module.for_each_child(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
                     let imported_binding = this.r.import(binding, import);
-                    this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
+                    this.add_macro_use_binding(ident.name, imported_binding, span, allow_shadowing);
                 }
             });
         } else {
@@ -1021,7 +1021,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let import = macro_use_import(self, ident.span);
                     self.r.potentially_unused_imports.push(import);
                     let imported_binding = self.r.import(binding, import);
-                    self.legacy_import_macro(
+                    self.add_macro_use_binding(
                         ident.name,
                         imported_binding,
                         ident.span,

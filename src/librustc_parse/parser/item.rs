@@ -1270,7 +1270,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(2, |t| t.is_ident())
     }
 
-    /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
+    /// Parses a `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
         self.expect_keyword(kw::MacroRules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`

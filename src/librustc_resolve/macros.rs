@@ -761,16 +761,18 @@ impl<'a> Resolver<'a> {
                                     Some(AmbiguityKind::DeriveHelper)
                                 } else if innermost_flags.contains(Flags::MACRO_RULES)
                                     && flags.contains(Flags::MODULE)
-                                    && !this
-                                        .disambiguate_legacy_vs_modern(innermost_binding, binding)
+                                    && !this.disambiguate_macro_rules_vs_modularized(
+                                        innermost_binding,
+                                        binding,
+                                    )
                                     || flags.contains(Flags::MACRO_RULES)
                                         && innermost_flags.contains(Flags::MODULE)
-                                        && !this.disambiguate_legacy_vs_modern(
+                                        && !this.disambiguate_macro_rules_vs_modularized(
                                             binding,
                                             innermost_binding,
                                         )
                                 {
-                                    Some(AmbiguityKind::LegacyVsModern)
+                                    Some(AmbiguityKind::MacroRulesVsModularized)
                                 } else if innermost_binding.is_glob_import() {
                                     Some(AmbiguityKind::GlobVsOuter)
                                 } else if innermost_binding
