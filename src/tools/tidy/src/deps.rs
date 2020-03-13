@@ -78,8 +78,6 @@ const WHITELIST: &[&str] = &[
     "c2-chacha",
     "cc",
     "cfg-if",
-    "chalk-engine",
-    "chalk-macros",
     "cloudabi",
     "cmake",
     "compiler_builtins",
