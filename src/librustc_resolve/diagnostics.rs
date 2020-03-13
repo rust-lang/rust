@@ -21,7 +21,9 @@ use rustc_span::{BytePos, MultiSpan, Span};
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{
+    BindingError, CrateLint, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot,
+};
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
@@ -498,12 +500,12 @@ impl<'a> Resolver<'a> {
                         }
                     }
                 }
-                Scope::MacroRules(legacy_scope) => {
-                    if let LegacyScope::Binding(legacy_binding) = legacy_scope {
-                        let res = legacy_binding.binding.res();
+                Scope::MacroRules(macro_rules_scope) => {
+                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope {
+                        let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
                             suggestions
-                                .push(TypoSuggestion::from_res(legacy_binding.ident.name, res))
+                                .push(TypoSuggestion::from_res(macro_rules_binding.ident.name, res))
                         }
                     }
                 }
