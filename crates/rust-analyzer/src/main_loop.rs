@@ -733,7 +733,7 @@ fn send_startup_progress(
                     title: "rust-analyzer".into(),
                     cancellable: None,
                     message: Some(format!("{}/{} packages", progress, total)),
-                    percentage: Some(100 as f64 * progress as f64 / total as f64),
+                    percentage: Some(100.0 * progress as f64 / total as f64),
                 }),
             );
         }
@@ -742,7 +742,7 @@ fn send_startup_progress(
             WorkDoneProgress::Report(WorkDoneProgressReport {
                 cancellable: None,
                 message: Some(format!("{}/{} packages", progress, total)),
-                percentage: Some(100 as f64 * progress as f64 / total as f64),
+                percentage: Some(100.0 * progress as f64 / total as f64),
             }),
         ),
         (_, true) => send_startup_progress_notif(
