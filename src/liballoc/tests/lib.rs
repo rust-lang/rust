@@ -17,6 +17,13 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+// Supress warning: this crate is only used in benchmarks
+use rand_xorshift as _;
+
+// Supress warning: these crates are used indirectly
+use alloc as _;
+use compiler_builtins as _;
+
 mod arc;
 mod binary_heap;
 mod boxed;

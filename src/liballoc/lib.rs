@@ -174,3 +174,7 @@ mod std {
 pub mod __export {
     pub use core::format_args;
 }
+
+// Suppress warning: this is only used in benchmarks
+#[cfg(test)]
+use rand_xorshift as _;
