@@ -1,6 +1,6 @@
 use {
     crate::{TextRange, TextSize},
-    serde::{Deserialize, Deserializer, Serialize, Serializer},
+    serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer},
 };
 
 impl Serialize for TextSize {
@@ -35,6 +35,13 @@ impl<'de> Deserialize<'de> for TextRange {
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(|(start, end)| TextRange(start, end))
+        let (start, end) = Deserialize::deserialize(deserializer)?;
+        if !(start <= end) {
+            return Err(Error::custom(format!(
+                "invalid range: {:?}..{:?}",
+                start, end
+            )));
+        }
+        Ok(TextRange(start, end))
     }
 }

@@ -55,3 +55,25 @@ fn range_serialization() {
         ],
     );
 }
+
+#[test]
+fn invalid_range_deserialization() {
+    assert_tokens::<TextRange>(
+        &range(62..92),
+        &[
+            Token::Tuple { len: 2 },
+            Token::U32(62),
+            Token::U32(92),
+            Token::TupleEnd,
+        ],
+    );
+    assert_de_tokens_error::<TextRange>(
+        &[
+            Token::Tuple { len: 2 },
+            Token::U32(92),
+            Token::U32(62),
+            Token::TupleEnd,
+        ],
+        "invalid range: 92..62",
+    );
+}
