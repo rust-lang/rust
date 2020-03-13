@@ -1574,7 +1574,7 @@ impl EmitterWriter {
                 .span_to_lines(parts[0].span)
                 .expect("span_to_lines failed when emitting suggestion");
 
-            assert!(!lines.lines.is_empty());
+            assert!(!lines.lines.is_empty() || parts[0].span.is_dummy());
 
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
