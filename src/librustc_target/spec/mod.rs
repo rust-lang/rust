@@ -581,6 +581,12 @@ pub struct TargetOptions {
     /// user-defined but before post_link_objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
     pub late_link_args: LinkArgs,
+    /// Linker arguments used in addition to `late_link_args` if at least one
+    /// Rust dependency is dynamically linked.
+    pub late_link_args_dynamic: LinkArgs,
+    /// Linker arguments used in addition to `late_link_args` if aall Rust
+    /// dependencies are statically linked.
+    pub late_link_args_static: LinkArgs,
     /// Objects to link after all others, always found within the
     /// sysroot folder.
     pub post_link_objects: Vec<String>, // ... unconditionally
@@ -694,11 +700,6 @@ pub struct TargetOptions {
     pub archive_format: String,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
-    /// Whether the target uses a custom unwind resumption routine.
-    /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
-    /// defined in libgcc. If this option is enabled, the target must provide
-    /// `eh_unwind_resume` lang item.
-    pub custom_unwind_resume: bool,
     /// Whether the runtime startup code requires the `main` function be passed
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
@@ -865,10 +866,11 @@ impl Default for TargetOptions {
             post_link_objects: Vec::new(),
             post_link_objects_crt: Vec::new(),
             late_link_args: LinkArgs::new(),
+            late_link_args_dynamic: LinkArgs::new(),
+            late_link_args_static: LinkArgs::new(),
             link_env: Vec::new(),
             link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
-            custom_unwind_resume: false,
             main_needs_argc_argv: true,
             allow_asm: true,
             has_elf_tls: false,
@@ -1144,6 +1146,8 @@ impl Target {
         key!(pre_link_objects_exe_crt, list);
         key!(pre_link_objects_dll, list);
         key!(late_link_args, link_args);
+        key!(late_link_args_dynamic, link_args);
+        key!(late_link_args_static, link_args);
         key!(post_link_objects, list);
         key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
@@ -1184,7 +1188,6 @@ impl Target {
         key!(relro_level, RelroLevel)?;
         key!(archive_format);
         key!(allow_asm, bool);
-        key!(custom_unwind_resume, bool);
         key!(main_needs_argc_argv, bool);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
@@ -1372,6 +1375,8 @@ impl ToJson for Target {
         target_option_val!(pre_link_objects_exe_crt);
         target_option_val!(pre_link_objects_dll);
         target_option_val!(link_args - late_link_args);
+        target_option_val!(link_args - late_link_args_dynamic);
+        target_option_val!(link_args - late_link_args_static);
         target_option_val!(post_link_objects);
         target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
@@ -1412,7 +1417,6 @@ impl ToJson for Target {
         target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
-        target_option_val!(custom_unwind_resume);
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);

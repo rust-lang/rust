@@ -1,4 +1,3 @@
-use crate::abi::FnAbi;
 use crate::attributes;
 use crate::debuginfo;
 use crate::llvm;
@@ -15,7 +14,7 @@ use rustc::mir::mono::CodegenUnit;
 use rustc::session::config::{self, CFGuard, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{
-    FnAbiExt, HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
+    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
 };
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -23,15 +22,12 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::Unsafety;
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use crate::abi::Abi;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
-use std::iter;
 use std::str;
 use std::sync::Arc;
 
@@ -87,7 +83,6 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
-    eh_unwind_resume: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<&'ll Value>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, &'ll Value>>,
@@ -327,7 +322,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             isize_ty,
             dbg_cx,
             eh_personality: Cell::new(None),
-            eh_unwind_resume: Cell::new(None),
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
@@ -402,45 +396,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
         attributes::apply_target_cpu_attr(self, llfn);
         self.eh_personality.set(Some(llfn));
-        llfn
-    }
-
-    // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
-    // otherwise declares it as an external function.
-    fn eh_unwind_resume(&self) -> &'ll Value {
-        let unwresume = &self.eh_unwind_resume;
-        if let Some(llfn) = unwresume.get() {
-            return llfn;
-        }
-
-        let tcx = self.tcx;
-        assert!(self.sess().target.target.options.custom_unwind_resume);
-        if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
-            let llfn = self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    tcx.intern_substs(&[]),
-                )
-                .unwrap(),
-            );
-            unwresume.set(Some(llfn));
-            return llfn;
-        }
-
-        let sig = ty::Binder::bind(tcx.mk_fn_sig(
-            iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
-            tcx.types.never,
-            false,
-            Unsafety::Unsafe,
-            Abi::C,
-        ));
-
-        let fn_abi = FnAbi::of_fn_ptr(self, sig, &[]);
-        let llfn = self.declare_fn("rust_eh_unwind_resume", &fn_abi);
-        attributes::apply_target_cpu_attr(self, llfn);
-        unwresume.set(Some(llfn));
         llfn
     }
 

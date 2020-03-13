@@ -6,10 +6,6 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::ptr;
 
-pub fn payload() -> *mut u8 {
-    ptr::null_mut()
-}
-
 pub unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
     extern "C" {
         pub fn __rust_abort() -> !;

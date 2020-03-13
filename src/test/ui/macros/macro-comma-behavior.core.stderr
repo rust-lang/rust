@@ -1,41 +1,41 @@
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:21:23
+  --> $DIR/macro-comma-behavior.rs:20:23
    |
 LL |     assert_eq!(1, 1, "{}",);
    |                       ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:24:23
+  --> $DIR/macro-comma-behavior.rs:23:23
    |
 LL |     assert_ne!(1, 2, "{}",);
    |                       ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:30:29
+  --> $DIR/macro-comma-behavior.rs:29:29
    |
 LL |     debug_assert_eq!(1, 1, "{}",);
    |                             ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:33:29
+  --> $DIR/macro-comma-behavior.rs:32:29
    |
 LL |     debug_assert_ne!(1, 2, "{}",);
    |                             ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:54:19
+  --> $DIR/macro-comma-behavior.rs:53:19
    |
 LL |     format_args!("{}",);
    |                   ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:72:21
+  --> $DIR/macro-comma-behavior.rs:71:21
    |
 LL |     unimplemented!("{}",);
    |                     ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:81:24
+  --> $DIR/macro-comma-behavior.rs:80:24
    |
 LL |             write!(f, "{}",)?;
    |                        ^^

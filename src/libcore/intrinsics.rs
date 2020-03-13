@@ -1871,14 +1871,16 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> u64;
 
-    /// Rust's "try catch" construct which invokes the function pointer `f` with
-    /// the data pointer `data`.
+    /// Rust's "try catch" construct which invokes the function pointer `try_fn`
+    /// with the data pointer `data`.
     ///
-    /// The third pointer is a target-specific data pointer which is filled in
-    /// with the specifics of the exception that occurred. For examples on Unix
-    /// platforms this is a `*mut *mut T` which is filled in by the compiler and
-    /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
+    /// The third argument is a function called if a panic occurs. This function
+    /// takes the data pointer and a pointer to the target-specific exception
+    /// object that was caught. For more information see the compiler's
     /// source as well as std's catch implementation.
+    #[cfg(not(bootstrap))]
+    pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
+    #[cfg(bootstrap)]
     pub fn r#try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).

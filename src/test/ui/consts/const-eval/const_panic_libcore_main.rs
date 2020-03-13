@@ -17,8 +17,6 @@ const X: () = unimplemented!();
 
 #[lang = "eh_personality"]
 fn eh() {}
-#[lang = "eh_unwind_resume"]
-fn eh_unwind_resume() {}
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

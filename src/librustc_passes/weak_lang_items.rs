@@ -28,9 +28,6 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
     if items.eh_personality().is_none() {
         items.missing.push(lang_items::EhPersonalityLangItem);
     }
-    if tcx.sess.target.target.options.custom_unwind_resume & items.eh_unwind_resume().is_none() {
-        items.missing.push(lang_items::EhUnwindResumeLangItem);
-    }
 
     {
         let mut cx = Context { tcx, items };

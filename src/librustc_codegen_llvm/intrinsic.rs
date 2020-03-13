@@ -851,19 +851,21 @@ fn memset_intrinsic(
 
 fn try_intrinsic(
     bx: &mut Builder<'a, 'll, 'tcx>,
-    func: &'ll Value,
+    try_func: &'ll Value,
     data: &'ll Value,
-    local_ptr: &'ll Value,
+    catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
     if bx.sess().no_landing_pads() {
-        bx.call(func, &[data], None);
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        bx.store(bx.const_null(bx.type_i8p()), dest, ptr_align);
+        bx.call(try_func, &[data], None);
+        // Return 0 unconditionally from the intrinsic call;
+        // we can never unwind.
+        let ret_align = bx.tcx().data_layout.i32_align.abi;
+        bx.store(bx.const_i32(0), dest, ret_align);
     } else if wants_msvc_seh(bx.sess()) {
-        codegen_msvc_try(bx, func, data, local_ptr, dest);
+        codegen_msvc_try(bx, try_func, data, catch_func, dest);
     } else {
-        codegen_gnu_try(bx, func, data, local_ptr, dest);
+        codegen_gnu_try(bx, try_func, data, catch_func, dest);
     }
 }
 
@@ -876,9 +878,9 @@ fn try_intrinsic(
 // as the old ones are still more optimized.
 fn codegen_msvc_try(
     bx: &mut Builder<'a, 'll, 'tcx>,
-    func: &'ll Value,
+    try_func: &'ll Value,
     data: &'ll Value,
-    local_ptr: &'ll Value,
+    catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
@@ -890,15 +892,15 @@ fn codegen_msvc_try(
         let mut catchpad = bx.build_sibling_block("catchpad");
         let mut caught = bx.build_sibling_block("caught");
 
-        let func = llvm::get_param(bx.llfn(), 0);
+        let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
-        let local_ptr = llvm::get_param(bx.llfn(), 2);
+        let catch_func = llvm::get_param(bx.llfn(), 2);
 
         // We're generating an IR snippet that looks like:
         //
-        //   declare i32 @rust_try(%func, %data, %ptr) {
-        //      %slot = alloca [2 x i64]
-        //      invoke %func(%data) to label %normal unwind label %catchswitch
+        //   declare i32 @rust_try(%try_func, %data, %catch_func) {
+        //      %slot = alloca u8*
+        //      invoke %try_func(%data) to label %normal unwind label %catchswitch
         //
         //   normal:
         //      ret i32 0
@@ -908,8 +910,8 @@ fn codegen_msvc_try(
         //
         //   catchpad:
         //      %tok = catchpad within %cs [%type_descriptor, 0, %slot]
-        //      %ptr[0] = %slot[0]
-        //      %ptr[1] = %slot[1]
+        //      %ptr = load %slot
+        //      call %catch_func(%data, %ptr)
         //      catchret from %tok to label %caught
         //
         //   caught:
@@ -926,31 +928,56 @@ fn codegen_msvc_try(
         //          ~rust_panic();
         //
         //          uint64_t x[2];
-        //      }
+        //      };
         //
-        //      int bar(void (*foo)(void), uint64_t *ret) {
+        //      int __rust_try(
+        //          void (*try_func)(void*),
+        //          void *data,
+        //          void (*catch_func)(void*, void*) noexcept
+        //      ) {
         //          try {
-        //              foo();
+        //              try_func(data);
         //              return 0;
         //          } catch(rust_panic& a) {
-        //              ret[0] = a.x[0];
-        //              ret[1] = a.x[1];
-        //              a.x[0] = 0;
+        //              catch_func(data, &a);
         //              return 1;
         //          }
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
-        let i64_2 = bx.type_array(bx.type_i64(), 2);
-        let i64_2_ptr = bx.type_ptr_to(i64_2);
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(i64_2_ptr, ptr_align);
-        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
+        let slot = bx.alloca(bx.type_i8p(), ptr_align);
+        bx.invoke(try_func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(bx.const_i32(0));
 
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
+
+        // We can't use the TypeDescriptor defined in libpanic_unwind because it
+        // might be in another DLL and the SEH encoding only supports specifying
+        // a TypeDescriptor from the current module.
+        //
+        // However this isn't an issue since the MSVC runtime uses string
+        // comparison on the type name to match TypeDescriptors rather than
+        // pointer equality.
+        //
+        // So instead we generate a new TypeDescriptor in each module that uses
+        // `try` and let the linker merge duplicate definitions in the same
+        // module.
+        //
+        // When modifying, make sure that the type_name string exactly matches
+        // the one used in src/libpanic_unwind/seh.rs.
+        let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_i8p());
+        let type_name = bx.const_bytes(b"rust_panic\0");
+        let type_info =
+            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_i8p()), type_name], false);
+        let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
+        unsafe {
+            llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
+            llvm::SetUniqueComdat(bx.llmod, tydesc);
+            llvm::LLVMSetInitializer(tydesc, type_info);
+        }
 
         // The flag value of 8 indicates that we are catching the exception by
         // reference instead of by value. We can't use catch by value because
@@ -959,23 +986,9 @@ fn codegen_msvc_try(
         //
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
         let flags = bx.const_i32(8);
-        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
-            Some(did) => bx.get_static(did),
-            None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
-        };
         let funclet = catchpad.catch_pad(cs, &[tydesc, flags, slot]);
-
-        let i64_align = bx.tcx().data_layout.i64_align.abi;
-        let payload_ptr = catchpad.load(slot, ptr_align);
-        let payload = catchpad.load(payload_ptr, i64_align);
-        let local_ptr = catchpad.bitcast(local_ptr, bx.type_ptr_to(i64_2));
-        catchpad.store(payload, local_ptr, i64_align);
-
-        // Clear the first word of the exception so avoid double-dropping it.
-        // This will be read by the destructor which is implicitly called at the
-        // end of the catch block by the runtime.
-        let payload_0_ptr = catchpad.inbounds_gep(payload_ptr, &[bx.const_i32(0), bx.const_i32(0)]);
-        catchpad.store(bx.const_u64(0), payload_0_ptr, i64_align);
+        let ptr = catchpad.load(slot, ptr_align);
+        catchpad.call(catch_func, &[data, ptr], Some(&funclet));
 
         catchpad.catch_ret(&funclet, caught.llbb());
 
@@ -984,7 +997,7 @@ fn codegen_msvc_try(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llfn, &[func, data, local_ptr], None);
+    let ret = bx.call(llfn, &[try_func, data, catch_func], None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1002,38 +1015,34 @@ fn codegen_msvc_try(
 // the right personality function.
 fn codegen_gnu_try(
     bx: &mut Builder<'a, 'll, 'tcx>,
-    func: &'ll Value,
+    try_func: &'ll Value,
     data: &'ll Value,
-    local_ptr: &'ll Value,
+    catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
         // Codegens the shims described above:
         //
         //   bx:
-        //      invoke %func(%args...) normal %normal unwind %catch
+        //      invoke %try_func(%data) normal %normal unwind %catch
         //
         //   normal:
         //      ret 0
         //
         //   catch:
-        //      (ptr, _) = landingpad
-        //      store ptr, %local_ptr
+        //      (%ptr, _) = landingpad
+        //      call %catch_func(%data, %ptr)
         //      ret 1
-        //
-        // Note that the `local_ptr` data passed into the `try` intrinsic is
-        // expected to be `*mut *mut u8` for this to actually work, but that's
-        // managed by the standard library.
 
         bx.sideeffect();
 
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
 
-        let func = llvm::get_param(bx.llfn(), 0);
+        let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
-        let local_ptr = llvm::get_param(bx.llfn(), 2);
-        bx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
+        let catch_func = llvm::get_param(bx.llfn(), 2);
+        bx.invoke(try_func, &[data], then.llbb(), catch.llbb(), None);
         then.ret(bx.const_i32(0));
 
         // Type indicator for the exception being thrown.
@@ -1053,15 +1062,13 @@ fn codegen_gnu_try(
         };
         catch.add_clause(vals, tydesc);
         let ptr = catch.extract_value(vals, 0);
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_i8p()));
-        catch.store(ptr, bitcast, ptr_align);
+        catch.call(catch_func, &[data, ptr], None);
         catch.ret(bx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llfn, &[func, data, local_ptr], None);
+    let ret = bx.call(llfn, &[try_func, data, catch_func], None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1084,6 +1091,8 @@ fn gen_fn<'ll, 'tcx>(
     ));
     let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
     let llfn = cx.declare_fn(name, &fn_abi);
+    cx.set_frame_pointer_elimination(llfn);
+    cx.apply_target_cpu_attr(llfn);
     // FIXME(eddyb) find a nicer way to do this.
     unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     let bx = Builder::new_block(cx, llfn, "entry-block");
@@ -1106,15 +1115,22 @@ fn get_rust_try_fn<'ll, 'tcx>(
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
         iter::once(i8p),
         tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
+    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+        [i8p, i8p].iter().cloned(),
+        tcx.mk_unit(),
+        false,
+        hir::Unsafety::Unsafe,
+        Abi::Rust,
+    )));
     let output = tcx.types.i32;
-    let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, codegen);
+    let rust_try = gen_fn(cx, "__rust_try", vec![try_fn_ty, i8p, catch_fn_ty], output, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
 }
