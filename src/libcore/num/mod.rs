@@ -2154,7 +2154,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_be().to_ne_bytes()
@@ -2174,7 +2174,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_le().to_ne_bytes()
@@ -2209,7 +2209,7 @@ assert_eq!(
 );
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             // SAFETY: const sound because integers are plain old datatypes so we can always
             // transmute them to arrays of bytes
             #[allow_internal_unstable(const_fn_union)]
@@ -2251,7 +2251,7 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_be(Self::from_ne_bytes(bytes))
@@ -2284,7 +2284,7 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_le(Self::from_ne_bytes(bytes))
@@ -2327,7 +2327,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             // SAFETY: const sound because integers are plain old datatypes so we can always
             // transmute to them
             #[allow_internal_unstable(const_fn_union)]
@@ -4115,7 +4115,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_be().to_ne_bytes()
@@ -4135,7 +4135,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_le().to_ne_bytes()
@@ -4170,7 +4170,7 @@ assert_eq!(
 );
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             // SAFETY: const sound because integers are plain old datatypes so we can always
             // transmute them to arrays of bytes
             #[allow_internal_unstable(const_fn_union)]
@@ -4212,7 +4212,7 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_be(Self::from_ne_bytes(bytes))
@@ -4245,7 +4245,7 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_le(Self::from_ne_bytes(bytes))
@@ -4288,7 +4288,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_stable(feature = "const_int_conversion", since = "1.43.0")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             // SAFETY: const sound because integers are plain old datatypes so we can always
             // transmute to them
             #[allow_internal_unstable(const_fn_union)]
