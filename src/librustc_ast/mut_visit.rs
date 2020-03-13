@@ -591,7 +591,7 @@ pub fn noop_visit_mac<T: MutVisitor>(mac: &mut MacCall, vis: &mut T) {
 }
 
 pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T) {
-    let MacroDef { body, legacy: _ } = macro_def;
+    let MacroDef { body, macro_rules: _ } = macro_def;
     visit_mac_args(body, vis);
 }
 

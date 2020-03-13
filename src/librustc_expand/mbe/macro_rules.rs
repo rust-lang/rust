@@ -350,8 +350,8 @@ pub fn compile_declarative_macro(
     let tt_spec = ast::Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
-    let (is_legacy, body) = match &def.kind {
-        ast::ItemKind::MacroDef(macro_def) => (macro_def.legacy, macro_def.body.inner_tokens()),
+    let (macro_rules, body) = match &def.kind {
+        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.inner_tokens()),
         _ => unreachable!(),
     };
 
@@ -370,7 +370,7 @@ pub fn compile_declarative_macro(
                     mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
                 ],
                 separator: Some(Token::new(
-                    if is_legacy { token::Semi } else { token::Comma },
+                    if macro_rules { token::Semi } else { token::Comma },
                     def.span,
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
@@ -382,7 +382,7 @@ pub fn compile_declarative_macro(
             DelimSpan::dummy(),
             Lrc::new(mbe::SequenceRepetition {
                 tts: vec![mbe::TokenTree::token(
-                    if is_legacy { token::Semi } else { token::Comma },
+                    if macro_rules { token::Semi } else { token::Comma },
                     def.span,
                 )],
                 separator: None,
@@ -456,7 +456,7 @@ pub fn compile_declarative_macro(
     // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
     valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
-    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, is_legacy);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
             diag.span_err(span, &format!("unknown macro transparency: `{}`", value))

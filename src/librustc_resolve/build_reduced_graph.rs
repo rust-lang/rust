@@ -1098,10 +1098,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
-        let (ext, ident, span, is_legacy) = match &item.kind {
+        let (ext, ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(def) => {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
-                (ext, item.ident, item.span, def.legacy)
+                (ext, item.ident, item.span, def.macro_rules)
             }
             ItemKind::Fn(..) => match Self::proc_macro_stub(item) {
                 Some((macro_kind, ident, span)) => {
@@ -1118,7 +1118,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         self.r.macro_map.insert(def_id, ext);
         self.r.local_macro_def_scopes.insert(item.id, parent_scope.module);
 
-        if is_legacy {
+        if macro_rules {
             let ident = ident.modern();
             self.r.macro_names.insert(ident);
             let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
