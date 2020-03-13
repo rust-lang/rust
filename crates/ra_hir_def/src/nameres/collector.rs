@@ -102,6 +102,7 @@ struct MacroDirective {
     module_id: LocalModuleId,
     ast_id: AstIdWithPath<ast::MacroCall>,
     legacy: Option<MacroCallId>,
+    depth: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -134,6 +135,7 @@ where
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
         ModCollector {
             def_collector: &mut *self,
+            macro_depth: 0,
             module_id,
             file_id: file_id.into(),
             raw_items: &raw_items,
@@ -516,7 +518,7 @@ where
         macros.retain(|directive| {
             if let Some(call_id) = directive.legacy {
                 res = ReachedFixedPoint::No;
-                resolved.push((directive.module_id, call_id));
+                resolved.push((directive.module_id, call_id, directive.depth));
                 return false;
             }
 
@@ -530,7 +532,7 @@ where
                 );
                 resolved_res.resolved_def.take_macros()
             }) {
-                resolved.push((directive.module_id, call_id));
+                resolved.push((directive.module_id, call_id, directive.depth));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -541,7 +543,7 @@ where
             if let Some(call_id) =
                 directive.ast_id.as_call_id(self.db, |path| self.resolve_attribute_macro(&path))
             {
-                resolved.push((directive.module_id, call_id));
+                resolved.push((directive.module_id, call_id, 0));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -552,8 +554,12 @@ where
         self.unexpanded_macros = macros;
         self.unexpanded_attribute_macros = attribute_macros;
 
-        for (module_id, macro_call_id) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id);
+        for (module_id, macro_call_id, depth) in resolved {
+            if depth > 1024 {
+                log::debug!("Max macro expansion depth reached");
+                continue;
+            }
+            self.collect_macro_expansion(module_id, macro_call_id, depth);
         }
 
         res
@@ -573,12 +579,18 @@ where
         None
     }
 
-    fn collect_macro_expansion(&mut self, module_id: LocalModuleId, macro_call_id: MacroCallId) {
+    fn collect_macro_expansion(
+        &mut self,
+        module_id: LocalModuleId,
+        macro_call_id: MacroCallId,
+        depth: usize,
+    ) {
         let file_id: HirFileId = macro_call_id.as_file();
         let raw_items = self.db.raw_items(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
             def_collector: &mut *self,
+            macro_depth: depth,
             file_id,
             module_id,
             raw_items: &raw_items,
@@ -595,6 +607,7 @@ where
 /// Walks a single module, populating defs, imports and macros
 struct ModCollector<'a, D> {
     def_collector: D,
+    macro_depth: usize,
     module_id: LocalModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
@@ -684,6 +697,7 @@ where
 
                 ModCollector {
                     def_collector: &mut *self.def_collector,
+                    macro_depth: self.macro_depth,
                     module_id,
                     file_id: self.file_id,
                     raw_items: self.raw_items,
@@ -713,6 +727,7 @@ where
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
+                            macro_depth: self.macro_depth,
                             module_id,
                             file_id: file_id.into(),
                             raw_items: &raw_items,
@@ -887,6 +902,7 @@ where
                 module_id: self.module_id,
                 ast_id,
                 legacy: Some(macro_call_id),
+                depth: self.macro_depth + 1,
             });
 
             return;
@@ -902,6 +918,7 @@ where
             module_id: self.module_id,
             ast_id,
             legacy: None,
+            depth: self.macro_depth + 1,
         });
     }
 
@@ -971,13 +988,26 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_expand_will_stop() {
+    fn test_macro_expand_will_stop_1() {
         do_resolve(
             r#"
         macro_rules! foo {
-            ($($ty:ty)*) => { foo!($($ty)*, $($ty)*); }
+            ($($ty:ty)*) => { foo!($($ty)*); }
         }
-foo!(KABOOM);
+        foo!(KABOOM);
+        "#,
+        );
+    }
+
+    #[ignore] // this test does succeed, but takes quite a while :/
+    #[test]
+    fn test_macro_expand_will_stop_2() {
+        do_resolve(
+            r#"
+        macro_rules! foo {
+            ($($ty:ty)*) => { foo!($($ty)* $($ty)*); }
+        }
+        foo!(KABOOM);
         "#,
         );
     }
