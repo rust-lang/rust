@@ -284,7 +284,7 @@ pub trait Visitor<'v>: Sized {
     /// If you use this, you probably don't want to process the
     /// contents of nested item-like things, since the outer loop will
     /// visit them as well.
-    fn as_deep_visitor<'s>(&'s mut self) -> DeepVisitor<'s, Self> {
+    fn as_deep_visitor(&mut self) -> DeepVisitor<'_, Self> {
         DeepVisitor::new(self)
     }
 

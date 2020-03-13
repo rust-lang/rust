@@ -43,7 +43,7 @@ pub(crate) fn const_field<'tcx>(
     op_to_const(&ecx, field)
 }
 
-pub(crate) fn const_caller_location<'tcx>(
+pub(crate) fn const_caller_location(
     tcx: TyCtxt<'tcx>,
     (file, line, col): (Symbol, u32, u32),
 ) -> ConstValue<'tcx> {

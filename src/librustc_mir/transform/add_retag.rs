@@ -34,7 +34,7 @@ fn is_stable(place: PlaceRef<'_>) -> bool {
 }
 
 /// Determine whether this type may be a reference (or box), and thus needs retagging.
-fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
+fn may_be_reference(ty: Ty<'tcx>) -> bool {
     match ty.kind {
         // Primitive types that are not references
         ty::Bool

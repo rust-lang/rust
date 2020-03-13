@@ -143,7 +143,7 @@ impl LanguageItemCollector<'tcx> {
 }
 
 /// Traverses and collects all the lang items in all crates.
-fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
+fn collect(tcx: TyCtxt<'_>) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
 
