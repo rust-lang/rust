@@ -11,6 +11,7 @@ use crate::{
 use ra_parser::{FragmentKind::*, TreeSink};
 use ra_syntax::{SmolStr, SyntaxKind};
 use tt::buffer::{Cursor, TokenBuffer};
+use super::ExpandResult;
 
 impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
@@ -64,19 +65,19 @@ macro_rules! bail {
     };
 }
 
-pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> Result<Bindings, ExpandError> {
+pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<Bindings> {
     assert!(pattern.delimiter == None);
 
     let mut res = Bindings::default();
     let mut src = TtIter::new(src);
 
-    match_subtree(&mut res, pattern, &mut src)?;
+    let mut err = match_subtree(&mut res, pattern, &mut src).err();
 
-    if src.len() > 0 {
-        bail!("leftover tokens");
+    if src.len() > 0 && err.is_none() {
+        err = Some(err!("leftover tokens"));
     }
 
-    Ok(res)
+    (res, err)
 }
 
 fn match_subtree(

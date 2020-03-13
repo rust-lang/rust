@@ -30,6 +30,8 @@ pub enum ExpandError {
     InvalidRepeat,
 }
 
+pub type ExpandResult<T> = (T, Option<ExpandError>);
+
 pub use crate::syntax_bridge::{
     ast_to_token_tree, parse_to_token_tree, syntax_node_to_token_tree, token_tree_to_syntax_node,
     TokenMap,
@@ -150,7 +152,7 @@ impl MacroRules {
         Ok(MacroRules { rules, shift: Shift::new(tt) })
     }
 
-    pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
+    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
         // apply shift
         let mut tt = tt.clone();
         self.shift.shift_all(&mut tt);

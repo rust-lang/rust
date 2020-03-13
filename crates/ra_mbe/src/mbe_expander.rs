@@ -8,19 +8,30 @@ mod transcriber;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 
-use crate::ExpandError;
+use crate::{ExpandResult, ExpandError};
 
 pub(crate) fn expand(
     rules: &crate::MacroRules,
     input: &tt::Subtree,
-) -> Result<tt::Subtree, ExpandError> {
-    rules.rules.iter().find_map(|it| expand_rule(it, input).ok()).ok_or(ExpandError::NoMatchingRule)
+) -> ExpandResult<tt::Subtree> {
+    let (mut result, mut err) = (tt::Subtree::default(), Some(ExpandError::NoMatchingRule));
+    for rule in &rules.rules {
+        let (res, e) = expand_rule(rule, input);
+        if e.is_none() {
+            // if we find a rule that applies without errors, we're done
+            return (res, None);
+        }
+        // TODO decide which result is better
+        result = res;
+        err = e;
+    }
+    (result, err)
 }
 
-fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
-    let bindings = matcher::match_(&rule.lhs, input)?;
-    let res = transcriber::transcribe(&rule.rhs, &bindings)?;
-    Ok(res)
+fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    let (bindings, bindings_err) = dbg!(matcher::match_(&rule.lhs, input));
+    let (res, transcribe_err) = dbg!(transcriber::transcribe(&rule.rhs, &bindings));
+    (res, bindings_err.or(transcribe_err))
 }
 
 /// The actual algorithm for expansion is not too hard, but is pretty tricky.
@@ -111,7 +122,7 @@ mod tests {
     }
 
     fn assert_err(macro_body: &str, invocation: &str, err: ExpandError) {
-        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation), Err(err));
+        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation).1, Some(err));
     }
 
     fn format_macro(macro_body: &str) -> String {
@@ -138,7 +149,7 @@ mod tests {
     fn expand_first(
         rules: &crate::MacroRules,
         invocation: &str,
-    ) -> Result<tt::Subtree, ExpandError> {
+    ) -> ExpandResult<tt::Subtree> {
         let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();

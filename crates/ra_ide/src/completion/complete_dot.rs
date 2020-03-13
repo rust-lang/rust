@@ -752,6 +752,43 @@ mod tests {
     }
 
     #[test]
+    fn macro_expansion_resilient() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! dbg {
+                    () => {};
+                    ($val:expr) => {
+                        match $val { tmp => { tmp } }
+                    };
+                    // Trailing comma with single argument is ignored
+                    ($val:expr,) => { $crate::dbg!($val) };
+                    ($($val:expr),+ $(,)?) => {
+                        ($($crate::dbg!($val)),+,)
+                    };
+                }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    dbg!(a.<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [552; 553),
+                delete: [552; 553),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn test_method_completion_3547() {
         assert_debug_snapshot!(
             do_ref_completion(

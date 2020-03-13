@@ -259,7 +259,7 @@ fn some_thing() -> u32 {
         );
 
         assert_eq!(res.name, "foo");
-        assert_snapshot!(res.expansion, @r###"bar!()"###);
+        assert_snapshot!(res.expansion, @r###""###);
     }
 
     #[test]
