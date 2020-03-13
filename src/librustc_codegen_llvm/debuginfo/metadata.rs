@@ -663,7 +663,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
         }
         ty::Closure(def_id, substs) => {
-            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
+            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys().collect();
             let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(
                 cx,
@@ -678,7 +678,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         ty::Generator(def_id, substs, _) => {
             let upvar_tys: Vec<_> = substs
                 .as_generator()
-                .prefix_tys(def_id, cx.tcx)
+                .prefix_tys()
                 .map(|t| cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
                 .collect();
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span, upvar_tys)

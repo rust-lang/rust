@@ -93,8 +93,8 @@ where
                 match component.kind {
                     _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
 
-                    ty::Closure(def_id, substs) => {
-                        for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
+                    ty::Closure(_, substs) => {
+                        for upvar_ty in substs.as_closure().upvar_tys() {
                             queue_type(self, upvar_ty);
                         }
                     }

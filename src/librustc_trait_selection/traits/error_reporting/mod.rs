@@ -481,7 +481,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                        let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
+                        let found_kind = self.closure_kind(closure_substs).unwrap();
                         let closure_span = self
                             .tcx
                             .sess

@@ -61,15 +61,15 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
     match ty.kind {
-            ty::Closure(def_id, ref substs) => {
-                for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
+            ty::Closure(_, ref substs) => {
+                for upvar_ty in substs.as_closure().upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
                 }
             }
 
-            ty::Generator(def_id, ref substs, _) => {
+            ty::Generator(_, ref substs, _) => {
                 // Same as the closure case
-                for upvar_ty in substs.as_generator().upvar_tys(def_id, tcx) {
+                for upvar_ty in substs.as_generator().upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
                 }
 

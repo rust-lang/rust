@@ -474,7 +474,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // generators don't take arguments.
                 }
 
-                ty::Closure(def_id, substs) => {
+                ty::Closure(_, substs) => {
                     // Only check the upvar types for WF, not the rest
                     // of the types within. This is needed because we
                     // capture the signature and it may not be WF
@@ -505,7 +505,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
-                    for upvar_ty in substs.as_closure().upvar_tys(def_id, self.infcx.tcx) {
+                    for upvar_ty in substs.as_closure().upvar_tys() {
                         self.compute(upvar_ty);
                     }
                 }

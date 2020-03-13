@@ -1496,12 +1496,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Obtains the latest type of the given closure; this may be a
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
-    pub fn closure_kind(
-        &self,
-        closure_def_id: DefId,
-        closure_substs: SubstsRef<'tcx>,
-    ) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self.tcx);
+    pub fn closure_kind(&self, closure_substs: SubstsRef<'tcx>) -> Option<ty::ClosureKind> {
+        let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }

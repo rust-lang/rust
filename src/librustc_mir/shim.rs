@@ -341,8 +341,8 @@ fn build_clone_shim<'tcx>(
             let len = len.eval_usize(tcx, param_env);
             builder.array_shim(dest, src, ty, len)
         }
-        ty::Closure(def_id, substs) => {
-            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys(def_id, tcx))
+        ty::Closure(_, substs) => {
+            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),

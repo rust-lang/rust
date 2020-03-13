@@ -798,8 +798,8 @@ where
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.kind {
-            ty::Closure(def_id, substs) => {
-                let tys: Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
+            ty::Closure(_, substs) => {
+                let tys: Vec<_> = substs.as_closure().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -808,8 +808,8 @@ where
             // This should only happen for the self argument on the resume function.
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
-            ty::Generator(def_id, substs, _) => {
-                let tys: Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
+            ty::Generator(_, substs, _) => {
+                let tys: Vec<_> = substs.as_generator().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(..) => {

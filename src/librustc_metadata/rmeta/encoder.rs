@@ -1320,7 +1320,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         self.encode_item_type(def_id);
         if let ty::Closure(def_id, substs) = ty.kind {
-            record!(self.per_def.fn_sig[def_id] <- substs.as_closure().sig(def_id, self.tcx));
+            record!(self.per_def.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id);
         self.encode_optimized_mir(def_id);
