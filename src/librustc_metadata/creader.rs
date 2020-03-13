@@ -558,9 +558,10 @@ impl<'a> CrateLoader<'a> {
         dep_kind: DepKind,
     ) -> CrateNumMap {
         debug!("resolving deps of external crate");
-        if crate_root.is_proc_macro_crate() {
-            return CrateNumMap::new();
-        }
+
+        // Note that we need to resolve deps for proc-macro crates (just like normal crates)
+        // since we may need to decode `Span`s that reference the `CrateNums`
+        // of transitive dependencies
 
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
