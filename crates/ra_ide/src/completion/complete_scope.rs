@@ -867,4 +867,38 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn completes_unresolved_uses() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                use spam::Quux;
+
+                fn main() {
+                    <|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Quux",
+                source_range: [82; 82),
+                delete: [82; 82),
+                insert: "Quux",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [82; 82),
+                delete: [82; 82),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
+        );
+    }
 }
