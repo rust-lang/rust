@@ -31,6 +31,7 @@ use crate::borrow_check::{
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
+    Frozen,
 };
 
 mod dump_mir;
@@ -54,12 +55,12 @@ pub struct RegionInferenceContext<'tcx> {
     liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    constraints: Rc<OutlivesConstraintSet>,
+    constraints: Frozen<OutlivesConstraintSet>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
     /// the SCC (see `constraint_sccs`) and for error reporting.
-    constraint_graph: Rc<NormalConstraintGraph>,
+    constraint_graph: Frozen<NormalConstraintGraph>,
 
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
@@ -263,8 +264,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
-        let constraints = Rc::new(outlives_constraints); // freeze constraints
-        let constraint_graph = Rc::new(constraints.graph(definitions.len()));
+        let constraints = Frozen::freeze(outlives_constraints);
+        let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 

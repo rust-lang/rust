@@ -73,6 +73,24 @@ crate use place_ext::PlaceExt;
 crate use places_conflict::{places_conflict, PlaceConflictBias};
 crate use region_infer::RegionInferenceContext;
 
+/// An owned immutable value.
+#[derive(Debug)]
+struct Frozen<T>(T);
+
+impl<T> Frozen<T> {
+    pub fn freeze(val: T) -> Self {
+        Frozen(val)
+    }
+}
+
+impl<T> std::ops::Deref for Frozen<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
 crate struct Upvar {
@@ -1577,11 +1595,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 mpi,
             );
         } // Only query longest prefix with a MovePath, not further
-        // ancestors; dataflow recurs on children when parents
-        // move (to support partial (re)inits).
-        //
-        // (I.e., querying parents breaks scenario 7; but may want
-        // to do such a query based on partial-init feature-gate.)
+          // ancestors; dataflow recurs on children when parents
+          // move (to support partial (re)inits).
+          //
+          // (I.e., querying parents breaks scenario 7; but may want
+          // to do such a query based on partial-init feature-gate.)
     }
 
     /// Subslices correspond to multiple move paths, so we iterate through the
