@@ -11,7 +11,9 @@ use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
+use crate::iter::FromIterator;
 use crate::marker::Unsize;
+use crate::mem::MaybeUninit;
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -171,6 +173,103 @@ impl<T: Hash, const N: usize> Hash for [T; N] {
 impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self[..], f)
+    }
+}
+
+/// Return Error of the FromIterator impl for array
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+pub struct FillError<T, const N: usize> {
+    array: [MaybeUninit<T>; N],
+    len: usize,
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> fmt::Display for FillError<T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(
+            &format_args!("The iterator only returned {} items, but {} were needed", self.len(), N),
+            f,
+        )
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FillError")
+            .field("array", &self.as_slice())
+            .field("len", &self.len())
+            .finish()
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> Drop for FillError<T, N> {
+    fn drop(&mut self) {
+        // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
+        // of elements that have been initialized and need to be droped
+        unsafe { crate::ptr::drop_in_place(self.as_mut_slice()) }
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> FillError<T, N> {
+    fn new() -> Self {
+        Self { array: MaybeUninit::uninit_array(), len: 0 }
+    }
+
+    /// Returns how many elements were read from the given iterator.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Returns an immutable slice of all initialized elements.
+    pub fn as_slice(&self) -> &[T] {
+        // SAFETY: We know that all elements from 0 to len are properly initialized.
+        unsafe { MaybeUninit::slice_get_ref(&self.array[0..self.len]) }
+    }
+
+    /// Returns a mutable slice of all initialized elements.
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: We know that all elements from 0 to len are properly initialized.
+        unsafe { MaybeUninit::slice_get_mut(&mut self.array[0..self.len]) }
+    }
+
+    /// Tries to initialize the left-over elements using `iter`.
+    pub fn fill<I: IntoIterator<Item = T>>(mut self, iter: I) -> Result<[T; N], FillError<T, N>> {
+        let mut iter = iter.into_iter();
+
+        for i in self.len..N {
+            if let Some(value) = iter.next() {
+                self.array[i].write(value);
+            } else {
+                self.len = i;
+                return Err(self);
+            }
+        }
+
+        // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
+        // promise:
+        //
+        // > `MaybeUninit<T>` is guaranteed to have the same size and alignment
+        // > as `T`.
+        //
+        // The docs even show a transmute from an array of `MaybeUninit<T>` to
+        // an array of `T`.
+        //
+        // With that, this initialization satisfies the invariants.
+        // FIXME: actually use `mem::transmute` here, once it
+        // works with const generics:
+        //     `mem::transmute::<[MaybeUninit<T>; N], [T; N]>(array)`
+        Ok(unsafe { crate::ptr::read(&self.array as *const [MaybeUninit<T>; N] as *const [T; N]) })
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> FromIterator<T> for Result<[T; N], FillError<T, N>> {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        FillError::<T, N>::new().fill(iter)
     }
 }
 
