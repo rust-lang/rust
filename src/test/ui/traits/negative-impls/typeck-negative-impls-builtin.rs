@@ -1,3 +1,6 @@
+// A simple test that we are able to create negative impls, when the
+// feature gate is given.
+//
 // run-pass
 
 #![feature(negative_impls)]
@@ -6,7 +9,7 @@
 struct TestType;
 
 trait TestTrait {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 impl !TestTrait for TestType {}
