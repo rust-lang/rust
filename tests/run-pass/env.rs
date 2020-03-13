@@ -1,5 +1,3 @@
-//ignore-windows: TODO env var emulation stubbed out on Windows
-
 use std::env;
 
 fn main() {
