@@ -555,7 +555,7 @@ declare_features! (
     (active, const_eval_limit, "1.43.0", Some(67217), None),
 
     /// Allow negative trait implementations.
-    (active, negative_impls, "1.43.0", Some(68318), None),
+    (active, negative_impls, "1.44.0", Some(68318), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
