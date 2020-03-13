@@ -219,7 +219,7 @@ mod impls {
         }
     }
 
-    // Shared references can be cloned, but mutable references *cannot*!
+    /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for &T {
         #[inline]
@@ -228,7 +228,7 @@ mod impls {
         }
     }
 
-    // Shared references can be cloned, but mutable references *cannot*!
+    /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(not(bootstrap))]
     impl<T: ?Sized> !Clone for &mut T {}
