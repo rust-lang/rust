@@ -2,7 +2,7 @@ use {
     crate::TextSize,
     std::{
         cmp, fmt,
-        ops::{Bound, Index, IndexMut, RangeBounds},
+        ops::{Bound, Index, IndexMut, Range, RangeBounds},
     },
 };
 
@@ -127,20 +127,16 @@ impl TextRange {
     }
 }
 
-fn ix(size: TextSize) -> usize {
-    size.into()
-}
-
 impl Index<TextRange> for str {
     type Output = str;
     fn index(&self, index: TextRange) -> &Self::Output {
-        &self[ix(index.start())..ix(index.end())]
+        &self[Range::<usize>::from(index)]
     }
 }
 
 impl IndexMut<TextRange> for str {
     fn index_mut(&mut self, index: TextRange) -> &mut Self::Output {
-        &mut self[ix(index.start())..ix(index.end())]
+        &mut self[Range::<usize>::from(index)]
     }
 }
 
@@ -151,5 +147,14 @@ impl RangeBounds<TextSize> for TextRange {
 
     fn end_bound(&self) -> Bound<&TextSize> {
         Bound::Excluded(&self.end)
+    }
+}
+
+impl<T> From<TextRange> for Range<T>
+where
+    T: From<TextSize>,
+{
+    fn from(r: TextRange) -> Self {
+        r.start().into()..r.end().into()
     }
 }
