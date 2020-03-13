@@ -1,0 +1,8 @@
+error: array lengths can't depend on generic parameters
+  --> $DIR/issue-62504.rs:18:25
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^
+
+error: aborting due to previous error
+
