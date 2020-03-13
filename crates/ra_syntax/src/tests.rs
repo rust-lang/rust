@@ -34,6 +34,7 @@ fn main() {
     "##;
 
     let parse = SourceFile::parse(code);
+    // eprintln!("{:#?}", parse.syntax_node());
     assert!(parse.ok().is_ok());
 }
 
