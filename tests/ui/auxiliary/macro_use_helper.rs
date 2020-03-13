@@ -17,7 +17,7 @@ pub mod inner {
 
     // ITEM
     #[macro_export]
-    macro_rules! inner_mod {
+    macro_rules! inner_mod_macro {
         () => {
             #[allow(dead_code)]
             pub struct Tardis;
@@ -27,7 +27,7 @@ pub mod inner {
 
 // EXPR
 #[macro_export]
-macro_rules! function {
+macro_rules! function_macro {
     () => {
         if true {
         } else {
@@ -37,7 +37,7 @@ macro_rules! function {
 
 // TYPE
 #[macro_export]
-macro_rules! ty_mac {
+macro_rules! ty_macro {
     () => {
         Vec<u8>
     };
@@ -46,7 +46,7 @@ macro_rules! ty_mac {
 mod extern_exports {
     pub(super) mod private_inner {
         #[macro_export]
-        macro_rules! pub_in_private {
+        macro_rules! pub_in_private_macro {
             ($name:ident) => {
                 let $name = String::from("secrets and lies");
             };

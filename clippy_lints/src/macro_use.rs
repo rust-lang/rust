@@ -2,7 +2,7 @@ use crate::utils::{in_macro, snippet, span_lint_and_sugg};
 use hir::def::{DefKind, Res};
 use if_chain::if_chain;
 use rustc_ast::ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -29,7 +29,7 @@ declare_clippy_lint! {
 
 const BRACKETS: &[char] = &['<', '>'];
 
-/// MacroRefData includes the name of the macro
+/// `MacroRefData` includes the name of the macro
 /// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
@@ -38,11 +38,11 @@ pub struct MacroRefData {
 }
 
 impl MacroRefData {
-    pub fn new(name: String, span: Span, ecx: &LateContext<'_, '_>) -> Self {
+    pub fn new(name: &str, span: Span, ecx: &LateContext<'_, '_>) -> Self {
         let mut path = ecx.sess().source_map().span_to_filename(span).to_string();
 
         // std lib paths are <::std::module::file type>
-        // so remove brackets and space
+        // so remove brackets, space and type.
         if path.contains('<') {
             path = path.replace(BRACKETS, "");
         }
@@ -57,13 +57,12 @@ impl MacroRefData {
 }
 
 #[derive(Default)]
+#[allow(clippy::module_name_repetitions)]
 pub struct MacroUseImports {
     /// the actual import path used and the span of the attribute above it.
     imports: Vec<(String, Span)>,
-    /// the span of the macro reference and the `MacroRefData`
-    /// for the use of the macro.
-    /// TODO make this FxHashSet<Span> to guard against inserting already found macros
-    collected: FxHashMap<Span, MacroRefData>,
+    /// the span of the macro reference, kept to ensure only one reference is used per macro call.
+    collected: FxHashSet<Span>,
     mac_refs: Vec<(Span, MacroRefData)>,
 }
 
@@ -72,34 +71,28 @@ impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
     fn check_item(&mut self, lcx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         if_chain! {
-            if lcx.sess().opts.edition == Edition::Edition2018;
-            if let hir::ItemKind::Use(path, _kind) = &item.kind;
-            if let Some(mac_attr) = item
-                .attrs
-                .iter()
-                .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
-            if let Res::Def(DefKind::Mod, id) = path.res;
-            then {
-                // println!("{:#?}", lcx.tcx.def_path_str(id));
-                for kid in lcx.tcx.item_children(id).iter() {
-                    // println!("{:#?}", kid);
-                    if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                        let span = mac_attr.span.clone();
-
-                        // println!("{:#?}", lcx.tcx.def_path_str(mac_id));
-
-                        self.imports.push((lcx.tcx.def_path_str(mac_id), span));
+                if lcx.sess().opts.edition == Edition::Edition2018;
+                if let hir::ItemKind::Use(path, _kind) = &item.kind;
+                if let Some(mac_attr) = item
+                    .attrs
+                    .iter()
+                    .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
+                if let Res::Def(DefKind::Mod, id) = path.res;
+                then {
+                    for kid in lcx.tcx.item_children(id).iter() {
+                        if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
+                            let span = mac_attr.span;
+                            self.imports.push((lcx.tcx.def_path_str(mac_id), span));
+                        }
                     }
-                }
-            } else {
+                } else {
                 if in_macro(item.span) {
                     let call_site = item.span.source_callsite();
                     let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
                     if let Some(callee) = item.span.source_callee() {
-                        if !self.collected.contains_key(&call_site) {
-                            let mac = MacroRefData::new(name.to_string(), callee.def_site, lcx);
-                            self.mac_refs.push((call_site, mac.clone()));
-                            self.collected.insert(call_site, mac);
+                        if !self.collected.contains(&call_site) {
+                            self.mac_refs.push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                            self.collected.insert(call_site);
                         }
                     }
                 }
@@ -111,18 +104,16 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             let call_site = attr.span.source_callsite();
             let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = attr.span.source_callee() {
-                if !self.collected.contains_key(&call_site) {
-                    println!("{:?}\n{:#?}", call_site, attr);
-
+                if !self.collected.contains(&call_site) {
                     let name = if name.contains("::") {
                         name.split("::").last().unwrap().to_string()
                     } else {
                         name.to_string()
                     };
 
-                    let mac = MacroRefData::new(name, callee.def_site, lcx);
-                    self.mac_refs.push((call_site, mac.clone()));
-                    self.collected.insert(call_site, mac);
+                    self.mac_refs
+                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                    self.collected.insert(call_site);
                 }
             }
         }
@@ -132,16 +123,16 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             let call_site = expr.span.source_callsite();
             let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = expr.span.source_callee() {
-                if !self.collected.contains_key(&call_site) {
+                if !self.collected.contains(&call_site) {
                     let name = if name.contains("::") {
                         name.split("::").last().unwrap().to_string()
                     } else {
                         name.to_string()
                     };
 
-                    let mac = MacroRefData::new(name, callee.def_site, lcx);
-                    self.mac_refs.push((call_site, mac.clone()));
-                    self.collected.insert(call_site, mac);
+                    self.mac_refs
+                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                    self.collected.insert(call_site);
                 }
             }
         }
@@ -151,16 +142,16 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             let call_site = stmt.span.source_callsite();
             let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = stmt.span.source_callee() {
-                if !self.collected.contains_key(&call_site) {
+                if !self.collected.contains(&call_site) {
                     let name = if name.contains("::") {
                         name.split("::").last().unwrap().to_string()
                     } else {
                         name.to_string()
                     };
 
-                    let mac = MacroRefData::new(name, callee.def_site, lcx);
-                    self.mac_refs.push((call_site, mac.clone()));
-                    self.collected.insert(call_site, mac);
+                    self.mac_refs
+                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                    self.collected.insert(call_site);
                 }
             }
         }
@@ -170,10 +161,10 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             let call_site = pat.span.source_callsite();
             let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = pat.span.source_callee() {
-                if !self.collected.contains_key(&call_site) {
-                    let mac = MacroRefData::new(name.to_string(), callee.def_site, lcx);
-                    self.mac_refs.push((call_site, mac.clone()));
-                    self.collected.insert(call_site, mac);
+                if !self.collected.contains(&call_site) {
+                    self.mac_refs
+                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                    self.collected.insert(call_site);
                 }
             }
         }
@@ -183,22 +174,18 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             let call_site = ty.span.source_callsite();
             let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = ty.span.source_callee() {
-                if !self.collected.contains_key(&call_site) {
-                    let mac = MacroRefData::new(name.to_string(), callee.def_site, lcx);
-                    self.mac_refs.push((call_site, mac.clone()));
-                    self.collected.insert(call_site, mac);
+                if !self.collected.contains(&call_site) {
+                    self.mac_refs
+                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
+                    self.collected.insert(call_site);
                 }
             }
         }
     }
 
     fn check_crate_post(&mut self, lcx: &LateContext<'_, '_>, _krate: &hir::Crate<'_>) {
-        for (import, span) in self.imports.iter() {
-            let matched = self
-                .mac_refs
-                .iter()
-                .find(|(_span, mac)| import.ends_with(&mac.name))
-                .is_some();
+        for (import, span) in &self.imports {
+            let matched = self.mac_refs.iter().any(|(_span, mac)| import.ends_with(&mac.name));
 
             if matched {
                 self.mac_refs.retain(|(_span, mac)| !import.ends_with(&mac.name));
@@ -218,30 +205,8 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
         if !self.mac_refs.is_empty() {
             // TODO if not empty we found one we could not make a suggestion for
             // such as std::prelude::v1 or something else I haven't thought of.
-            // println!("{:#?}", self.mac_refs);
+            // If we defer the calling of span_lint_and_sugg we can make a decision about its
+            // applicability?
         }
     }
-}
-
-const PRELUDE: &[&str] = &[
-    "marker", "ops", "convert", "iter", "option", "result", "borrow", "boxed", "string", "vec", "macros",
-];
-
-/// This is somewhat of a fallback for imports from `std::prelude` because they
-/// are not recognized by `LateLintPass::check_item` `lcx.tcx.item_children(id)`
-fn make_path(mac: &MacroRefData, use_path: &str) -> String {
-    let segs = mac.path.split("::").filter(|s| *s != "").collect::<Vec<_>>();
-
-    if segs.starts_with(&["std"]) && PRELUDE.iter().any(|m| segs.contains(m)) {
-        return format!(
-            "std::prelude::{} is imported by default, remove `use` statement",
-            mac.name
-        );
-    }
-
-    if use_path.split("::").count() == 1 {
-        return format!("{}::{}", use_path, mac.name);
-    }
-
-    mac.path.clone()
 }

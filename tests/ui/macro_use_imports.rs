@@ -13,8 +13,6 @@ extern crate clippy_mini_macro_test as mini_mac;
 
 mod a {
     #[macro_use]
-    use std::prelude;
-    #[macro_use]
     use mac;
     #[macro_use]
     use mini_mac;
@@ -26,15 +24,13 @@ mod a {
 
     fn main() {
         pub_macro!();
-        inner_mod!();
-        pub_in_private!(_var);
-        function!();
-        let v: ty_mac!() = Vec::default();
+        inner_mod_macro!();
+        pub_in_private_macro!(_var);
+        function_macro!();
+        let v: ty_macro!() = Vec::default();
 
         inner::try_err!();
     }
 }
 
-fn main() {
-    println!();
-}
+fn main() {}
