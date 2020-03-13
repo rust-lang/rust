@@ -38,13 +38,11 @@ pub fn project_root() -> PathBuf {
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
+    let _dir = pushd(project_root());
     ensure_rustfmt()?;
 
-    if mode == Mode::Verify {
-        run!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN)?;
-    } else {
-        run!("rustup run {} -- cargo fmt", TOOLCHAIN)?;
-    }
+    let check = if mode == Mode::Verify { "--check" } else { "" };
+    run!("rustup run {} -- cargo fmt -- {}", TOOLCHAIN, check)?;
     Ok(())
 }
 
