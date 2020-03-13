@@ -85,7 +85,7 @@ jobs:
 
       dist-x86_64-apple:
         SCRIPT: ./x.py dist
-        IINTIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
