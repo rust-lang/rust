@@ -135,7 +135,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     type Map = Map<'hir>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 

@@ -1427,7 +1427,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn as_cursor<'cm>(&'cm self) -> Cursor<'cm, T> {
+    pub fn as_cursor(&self) -> Cursor<'_, T> {
         Cursor { list: self.list, current: self.current, index: self.index }
     }
 }

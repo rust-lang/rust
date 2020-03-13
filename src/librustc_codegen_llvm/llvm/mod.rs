@@ -185,12 +185,12 @@ impl Drop for SectionIter<'a> {
     }
 }
 
-pub fn mk_section_iter(llof: &'a ffi::ObjectFile) -> SectionIter<'a> {
+pub fn mk_section_iter(llof: &ffi::ObjectFile) -> SectionIter<'_> {
     unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
 }
 
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
-pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
+pub fn get_param(llfn: &Value, index: c_uint) -> &Value {
     unsafe {
         assert!(
             index < LLVMCountParams(llfn),
@@ -203,7 +203,7 @@ pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
 }
 
 /// Safe wrapper for `LLVMGetValueName2` into a byte slice
-pub fn get_value_name(value: &'a Value) -> &'a [u8] {
+pub fn get_value_name(value: &Value) -> &[u8] {
     unsafe {
         let mut len = 0;
         let data = LLVMGetValueName2(value, &mut len);

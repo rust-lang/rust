@@ -11,6 +11,7 @@ allow-unauthenticated = [
 [assign]
 
 [ping.icebreakers-llvm]
+alias = ["llvm", "llvms"]
 message = """\
 Hey LLVM ICE-breakers! This bug has been identified as a good
 "LLVM ICE-breaking candidate". In case it's useful, here are some
@@ -22,6 +23,7 @@ Thanks! <3
 label = "ICEBreaker-LLVM"
 
 [ping.icebreakers-cleanup-crew]
+alias = ["cleanup", "cleanups", "shrink", "reduce", "bisect"]
 message = """\
 Hey Cleanup Crew ICE-breakers! This bug has been identified as a good
 "Cleanup ICE-breaking candidate". In case it's useful, here are some

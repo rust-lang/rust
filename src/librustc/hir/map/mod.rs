@@ -298,7 +298,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
-        let node = if let Some(node) = self.find(hir_id) { node } else { return None };
+        let node = self.find(hir_id)?;
 
         Some(match node {
             Node::Item(item) => match item.kind {

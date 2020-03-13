@@ -1,6 +1,7 @@
 use crate::marker::PhantomData;
 use crate::slice;
 
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a> {
     vec: wasi::Ciovec,

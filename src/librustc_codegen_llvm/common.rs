@@ -323,7 +323,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-pub fn val_ty(v: &'ll Value) -> &'ll Type {
+pub fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
@@ -345,6 +345,6 @@ fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
 
-fn try_as_const_integral(v: &'ll Value) -> Option<&'ll ConstantInt> {
+fn try_as_const_integral(v: &Value) -> Option<&ConstantInt> {
     unsafe { llvm::LLVMIsAConstantInt(v) }
 }
