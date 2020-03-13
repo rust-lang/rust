@@ -11,7 +11,9 @@ use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
+use crate::iter::{FromIterator, ExactSizeIterator};
 use crate::marker::Unsize;
+use crate::mem::MaybeUninit;
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -185,6 +187,65 @@ impl<T: Hash, const N: usize> Hash for [T; N] {
 impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self[..], f)
+    }
+}
+
+#[stable(feature = "array_from_iter_impl", since = "1.44.0")]
+impl<T, const N: usize> FromIterator<T> for [T; N] 
+where
+     [T; N]: LengthAtMost32,
+{
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        <Self as ArrayFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
+    }
+}
+
+// Specialization trait used for array::from_iter
+trait ArrayFromIter<T, I> {
+    fn from_iter(iter: I) -> Self;
+}
+
+impl<T, I, const N: usize> ArrayFromIter<T, I> for [T; N] 
+    where I: Iterator<Item=T>,
+    [T; N]: LengthAtMost32,
+{
+    default fn from_iter(mut iter: I) -> Self {
+        let mut array: [MaybeUninit<T>; N] = MaybeUninit::uninit_array();
+        
+        for p in array.iter_mut() {
+            p.write(iter.next().expect("Iterator is to short"));
+        }
+        
+        // FIXME: actually use `mem::transmute` here, once it
+        // works with const generics:
+        //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
+        unsafe {
+            crate::ptr::read(&array as *const [MaybeUninit<T>; N] as *const [T; N])
+        }
+    }
+}
+
+// Early panic if we know the size of the iterator
+impl<T, I, const N: usize> ArrayFromIter<T, I> for [T; N] 
+    where I: ExactSizeIterator<Item=T>,
+    [T; N]: LengthAtMost32,
+{
+    default fn from_iter(iter: I) -> Self {
+        assert_eq!(N, iter.len(), "Iterator is not the same length as the array");
+
+        let mut array: [MaybeUninit<T>; N] = MaybeUninit::uninit_array();
+        
+        for (p, v) in array.iter_mut().zip(iter) {
+            p.write(v);
+        }
+        
+        // FIXME: actually use `mem::transmute` here, once it
+        // works with const generics:
+        //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
+        unsafe {
+            crate::ptr::read(&array as *const [MaybeUninit<T>; N] as *const [T; N])
+        }
     }
 }
 
