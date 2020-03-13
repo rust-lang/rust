@@ -544,6 +544,20 @@ fn main() {
     }
 
     #[test]
+    fn generic_struct() {
+        let info = call_info(
+            r#"
+struct TS<T>(T);
+fn main() {
+    let s = TS(<|>);
+}"#,
+        );
+
+        assert_eq!(info.label(), "struct TS<T>(T) -> TS");
+        assert_eq!(info.active_parameter, Some(0));
+    }
+
+    #[test]
     #[should_panic]
     fn cant_call_named_structs() {
         let _ = call_info(
