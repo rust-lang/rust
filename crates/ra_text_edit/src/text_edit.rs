@@ -63,12 +63,12 @@ impl TextEdit {
     }
 
     pub fn apply(&self, text: &str) -> String {
-        let mut total_len = text.len();
+        let mut total_len = TextUnit::of_str(text);
         for atom in self.atoms.iter() {
-            total_len += atom.insert.len();
-            total_len -= (atom.delete.end() - atom.delete.start()).to_usize();
+            total_len += TextUnit::of_str(&atom.insert);
+            total_len -= atom.delete.end() - atom.delete.start();
         }
-        let mut buf = String::with_capacity(total_len);
+        let mut buf = String::with_capacity(total_len.to_usize());
         let mut prev = 0;
         for atom in self.atoms.iter() {
             let start = atom.delete.start().to_usize();
@@ -80,7 +80,7 @@ impl TextEdit {
             prev = end;
         }
         buf.push_str(&text[prev..text.len()]);
-        assert_eq!(buf.len(), total_len);
+        assert_eq!(TextUnit::of_str(&buf), total_len);
         buf
     }
 

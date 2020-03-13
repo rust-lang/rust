@@ -145,7 +145,7 @@ impl Iterator for OffsetStepIter<'_> {
                     Some((next, next_offset))
                 } else {
                     let char_len = TextUnit::of_char(c);
-                    if char_len.to_usize() > 1 {
+                    if char_len > TextUnit::from_usize(1) {
                         let start = self.offset + TextUnit::from_usize(i);
                         let end = start + char_len;
                         let next = Step::Utf16Char(TextRange::from_to(start, end));

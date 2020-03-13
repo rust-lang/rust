@@ -59,7 +59,7 @@ impl LineIndex {
             }
 
             let char_len = TextUnit::of_char(c);
-            if char_len.to_usize() > 1 {
+            if char_len > TextUnit::from_usize(1) {
                 utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + char_len });
             }
 
@@ -101,12 +101,12 @@ impl LineIndex {
             .filter(|it| !it.is_empty())
     }
 
-    fn utf8_to_utf16_col(&self, line: u32, mut col: TextUnit) -> usize {
+    fn utf8_to_utf16_col(&self, line: u32, col: TextUnit) -> usize {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
-            let mut correction = TextUnit::from_usize(0);
+            let mut correction = 0;
             for c in utf16_chars {
                 if col >= c.end {
-                    correction += c.len() - TextUnit::from_usize(1);
+                    correction += c.len().to_usize() - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -114,10 +114,10 @@ impl LineIndex {
                 }
             }
 
-            col -= correction;
+            col.to_usize() - correction
+        } else {
+            col.to_usize()
         }
-
-        col.to_usize()
     }
 
     fn utf16_to_utf8_col(&self, line: u32, col: u32) -> TextUnit {

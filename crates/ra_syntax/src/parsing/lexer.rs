@@ -65,7 +65,7 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxError>)> {
     lex_first_token(text)
-        .filter(|(token, _)| token.len.to_usize() == text.len())
+        .filter(|(token, _)| token.len == TextUnit::of_str(text))
         .map(|(token, error)| (token.kind, error))
 }
 
@@ -75,7 +75,7 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
     lex_first_token(text)
-        .filter(|(token, error)| !error.is_some() && token.len.to_usize() == text.len())
+        .filter(|(token, error)| !error.is_some() && token.len == TextUnit::of_str(text))
         .map(|(token, _error)| token.kind)
 }
 
