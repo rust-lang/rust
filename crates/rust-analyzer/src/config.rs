@@ -55,6 +55,9 @@ pub struct ServerConfig {
 
     /// Cargo feature configurations.
     pub cargo_features: CargoFeatures,
+
+    /// Enabled if the vscode_lldb extension is available.
+    pub vscode_lldb: bool,
 }
 
 impl Default for ServerConfig {
@@ -76,6 +79,7 @@ impl Default for ServerConfig {
             additional_out_dirs: FxHashMap::default(),
             cargo_features: Default::default(),
             rustfmt_args: Vec::new(),
+            vscode_lldb: false,
         }
     }
 }

@@ -189,6 +189,7 @@ pub fn main_loop(
                     all_targets: config.cargo_watch_all_targets,
                 },
                 rustfmt_args: config.rustfmt_args,
+                vscode_lldb: config.vscode_lldb,
             }
         };
 

@@ -83,6 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
+    ctx.registerCommand('debugSingle', commands.debugSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);

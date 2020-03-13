@@ -19,50 +19,48 @@ impl CargoTargetSpec {
     pub(crate) fn runnable_args(
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
-    ) -> Result<Vec<String>> {
-        let mut res = Vec::new();
+    ) -> Result<(Vec<String>, Vec<String>)> {
+        let mut args = Vec::new();
+        let mut extra_args = Vec::new();
         match kind {
             RunnableKind::Test { test_id } => {
-                res.push("test".to_string());
+                args.push("test".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut res);
+                    spec.push_to(&mut args);
                 }
-                res.push("--".to_string());
-                res.push(test_id.to_string());
+                extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
-                    res.push("--exact".to_string());
+                    extra_args.push("--exact".to_string());
                 }
-                res.push("--nocapture".to_string());
+                extra_args.push("--nocapture".to_string());
             }
             RunnableKind::TestMod { path } => {
-                res.push("test".to_string());
+                args.push("test".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut res);
+                    spec.push_to(&mut args);
                 }
-                res.push("--".to_string());
-                res.push(path.to_string());
-                res.push("--nocapture".to_string());
+                extra_args.push(path.to_string());
+                extra_args.push("--nocapture".to_string());
             }
             RunnableKind::Bench { test_id } => {
-                res.push("bench".to_string());
+                args.push("bench".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut res);
+                    spec.push_to(&mut args);
                 }
-                res.push("--".to_string());
-                res.push(test_id.to_string());
+                extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
-                    res.push("--exact".to_string());
+                    extra_args.push("--exact".to_string());
                 }
-                res.push("--nocapture".to_string());
+                extra_args.push("--nocapture".to_string());
             }
             RunnableKind::Bin => {
-                res.push("run".to_string());
+                args.push("run".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut res);
+                    spec.push_to(&mut args);
                 }
             }
         }
-        Ok(res)
+        Ok((args, extra_args))
     }
 
     pub(crate) fn for_file(

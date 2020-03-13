@@ -381,6 +381,7 @@ pub fn handle_runnables(
         label,
         bin: "cargo".to_string(),
         args: check_args,
+        extra_args: Vec::new(),
         env: FxHashMap::default(),
         cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
     });
@@ -794,18 +795,35 @@ pub fn handle_code_lens(
             RunnableKind::Bin => "Run",
         }
         .to_string();
-        let r = to_lsp_runnable(&world, file_id, runnable)?;
+        let mut r = to_lsp_runnable(&world, file_id, runnable)?;
         let lens = CodeLens {
             range: r.range,
             command: Some(Command {
                 title,
                 command: "rust-analyzer.runSingle".into(),
-                arguments: Some(vec![to_value(r).unwrap()]),
+                arguments: Some(vec![to_value(&r).unwrap()]),
             }),
             data: None,
         };
-
         lenses.push(lens);
+
+        if world.options.vscode_lldb {
+            if r.args[0] == "run" {
+                r.args[0] = "build".into();
+            } else {
+                r.args.push("--no-run".into());
+            }
+            let debug_lens = CodeLens {
+                range: r.range,
+                command: Some(Command {
+                    title: "Debug".into(),
+                    command: "rust-analyzer.debugSingle".into(),
+                    arguments: Some(vec![to_value(r).unwrap()]),
+                }),
+                data: None,
+            };
+            lenses.push(debug_lens);
+        }
     }
 
     // Handle impls
@@ -952,7 +970,7 @@ fn to_lsp_runnable(
     runnable: Runnable,
 ) -> Result<req::Runnable> {
     let spec = CargoTargetSpec::for_file(world, file_id)?;
-    let args = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
+    let (args, extra_args) = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
         RunnableKind::Test { test_id } => format!("test {}", test_id),
@@ -965,6 +983,7 @@ fn to_lsp_runnable(
         label,
         bin: "cargo".to_string(),
         args,
+        extra_args,
         env: {
             let mut m = FxHashMap::default();
             m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
@@ -973,6 +992,7 @@ fn to_lsp_runnable(
         cwd: world.workspace_root_for(file_id).map(|root| root.to_string_lossy().to_string()),
     })
 }
+
 fn highlight(world: &WorldSnapshot, file_id: FileId) -> Result<Vec<Decoration>> {
     let line_index = world.analysis().file_line_index(file_id)?;
     let res = world

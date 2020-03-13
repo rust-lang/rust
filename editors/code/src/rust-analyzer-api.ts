@@ -80,12 +80,11 @@ export interface Runnable {
     label: string;
     bin: string;
     args: Vec<string>;
+    extraArgs: Vec<string>;
     env: FxHashMap<string, string>;
     cwd: Option<string>;
 }
 export const runnables = request<RunnablesParams, Vec<Runnable>>("runnables");
-
-
 
 export type InlayHint = InlayHint.TypeHint | InlayHint.ParamHint;
 

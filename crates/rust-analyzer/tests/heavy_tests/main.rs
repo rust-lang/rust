@@ -75,7 +75,8 @@ fn foo() {
         RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
         json!([
           {
-            "args": [ "test", "--", "foo", "--nocapture" ],
+            "args": [ "test" ],
+            "extraArgs": [ "foo", "--nocapture" ],
             "bin": "cargo",
             "env": { "RUST_BACKTRACE": "short" },
             "cwd": null,
@@ -90,6 +91,7 @@ fn foo() {
               "check",
               "--all"
             ],
+            "extraArgs": [],
             "bin": "cargo",
             "env": {},
             "cwd": null,
@@ -141,13 +143,11 @@ fn main() {}
 
     server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
-        RunnablesParams {
-            text_document: server.doc_id("foo/tests/spam.rs"),
-            position: None,
-        },
+        RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
           {
-            "args": [ "test", "--package", "foo", "--test", "spam", "--", "test_eggs", "--exact", "--nocapture" ],
+            "args": [ "test", "--package", "foo", "--test", "spam" ],
+            "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
             "bin": "cargo",
             "env": { "RUST_BACKTRACE": "short" },
             "label": "test test_eggs",
@@ -165,6 +165,7 @@ fn main() {}
               "--test",
               "spam"
             ],
+            "extraArgs": [],
             "bin": "cargo",
             "env": {},
             "cwd": server.path().join("foo"),
@@ -180,7 +181,7 @@ fn main() {}
               }
             }
           }
-        ])
+        ]),
     );
 }
 

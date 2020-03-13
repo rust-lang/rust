@@ -62,6 +62,26 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
+export function debugSingle(ctx: Ctx): Cmd {
+    return async (config: ra.Runnable) => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) return;
+
+        const debugConfig = {
+            type: "lldb",
+            request: "launch",
+            name: config.label,
+            cargo: {
+                args: config.args,
+            },
+            args: config.extraArgs,
+            cwd: config.cwd
+        };
+
+        return vscode.debug.startDebugging(undefined, debugConfig);
+    };
+}
+
 class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
@@ -87,7 +107,7 @@ function createTask(spec: ra.Runnable): vscode.Task {
         type: 'cargo',
         label: spec.label,
         command: spec.bin,
-        args: spec.args,
+        args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
         env: spec.env,
     };
 
