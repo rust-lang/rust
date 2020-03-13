@@ -533,14 +533,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Error => p!(write("[type error]")),
             ty::Param(ref param_ty) => p!(write("{}", param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => {
-                    if debruijn == ty::INNERMOST {
-                        p!(write("^{}", bound_ty.var.index()))
-                    } else {
-                        p!(write("^{}_{}", debruijn.index(), bound_ty.var.index()))
-                    }
-                }
-
+                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
                 ty::BoundTyKind::Param(p) => p!(write("{}", p)),
             },
             ty::Adt(def, substs) => {
@@ -716,6 +709,18 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         Ok(self)
+    }
+
+    fn pretty_print_bound_var(
+        &mut self,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+    ) -> Result<(), Self::Error> {
+        if debruijn == ty::INNERMOST {
+            write!(self, "^{}", var.index())
+        } else {
+            write!(self, "^{}_{}", debruijn.index(), var.index())
+        }
     }
 
     fn infer_ty_name(&self, _: ty::TyVid) -> Option<String> {
@@ -905,7 +910,10 @@ pub trait PrettyPrinter<'tcx>:
                 return self.pretty_print_const_value(value, ct.ty, print_ty);
             }
 
-            ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            ty::ConstKind::Bound(debruijn, bound_var) => {
+                self.pretty_print_bound_var(debruijn, bound_var)?
+            }
+            ty::ConstKind::Placeholder(_) => {
                 // fallback
                 if print_ty {
                     self = self.typed_value(
