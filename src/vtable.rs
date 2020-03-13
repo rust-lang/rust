@@ -135,7 +135,14 @@ fn build_vtable<'tcx>(
     let data_id = fx
         .module
         .declare_data(
-            &format!("vtable.{:?}.for.{:?}", trait_ref, layout.ty),
+            &format!(
+                "__vtable.{}.for.{:?}",
+                trait_ref
+                    .as_ref()
+                    .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
+                    .unwrap_or(std::borrow::Cow::Borrowed("???")),
+                layout.ty
+            ),
             Linkage::Local,
             false,
             false,
