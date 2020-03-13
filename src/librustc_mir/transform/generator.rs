@@ -944,7 +944,7 @@ fn create_generator_drop_shim<'tcx>(
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(&mut body);
 
-    dump_mir(tcx, None, "generator_drop", &0, source, &mut body, |_, _| Ok(()));
+    dump_mir(tcx, None, "generator_drop", &0, source, &body, |_, _| Ok(()));
 
     body
 }

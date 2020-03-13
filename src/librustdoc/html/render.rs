@@ -1543,7 +1543,7 @@ impl Context {
         }
 
         if self.shared.sort_modules_alphabetically {
-            for (_, items) in &mut map {
+            for items in map.values_mut() {
                 items.sort();
             }
         }
@@ -3396,10 +3396,8 @@ fn render_assoc_items(
         let deref_impl =
             traits.iter().find(|t| t.inner_impl().trait_.def_id() == c.deref_trait_did);
         if let Some(impl_) = deref_impl {
-            let has_deref_mut = traits
-                .iter()
-                .find(|t| t.inner_impl().trait_.def_id() == c.deref_mut_trait_did)
-                .is_some();
+            let has_deref_mut =
+                traits.iter().any(|t| t.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
 
@@ -3740,7 +3738,7 @@ fn render_impl(
     ) {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
-            if i.items.iter().find(|m| m.name == n).is_some() {
+            if i.items.iter().any(|m| m.name == n) {
                 continue;
             }
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();

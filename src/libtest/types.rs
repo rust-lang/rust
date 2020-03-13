@@ -59,10 +59,10 @@ impl TestName {
     }
 
     pub fn with_padding(&self, padding: NamePadding) -> TestName {
-        let name = match self {
-            &TestName::StaticTestName(name) => Cow::Borrowed(name),
-            &TestName::DynTestName(ref name) => Cow::Owned(name.clone()),
-            &TestName::AlignedTestName(ref name, _) => name.clone(),
+        let name = match *self {
+            TestName::StaticTestName(name) => Cow::Borrowed(name),
+            TestName::DynTestName(ref name) => Cow::Owned(name.clone()),
+            TestName::AlignedTestName(ref name, _) => name.clone(),
         };
 
         TestName::AlignedTestName(name, padding)

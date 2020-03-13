@@ -293,7 +293,7 @@ fn dump_matched_mir_node<'tcx>(
         writeln!(file, "// MIR local liveness analysis for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
-        writeln!(file, "")?;
+        writeln!(file)?;
         write_mir_fn(tcx, source, body, &mut file, result)?;
         Ok(())
     });
@@ -316,7 +316,7 @@ pub fn write_mir_fn<'tcx>(
         write_basic_block(tcx, block, body, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
         if block.index() + 1 != body.basic_blocks().len() {
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
     }
 

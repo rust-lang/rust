@@ -1124,12 +1124,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         return None;
     }
 
-    let matches = if let Some(matches) = handle_options(&args) {
-        matches
-    } else {
-        return None;
-    };
-
+    let matches = handle_options(&args)?;
     let mut result = Vec::new();
     let mut excluded_cargo_defaults = false;
     for flag in ICE_REPORT_COMPILER_FLAGS {
