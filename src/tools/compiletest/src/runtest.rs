@@ -2779,7 +2779,7 @@ impl<'test> TestCx<'test> {
                 Command::new(&nodejs)
                     .arg(root.join("src/tools/rustdoc-js/tester.js"))
                     .arg(out_dir.parent().expect("no parent"))
-                    .arg(&self.testpaths.file.file_stem().expect("couldn't get file stem")),
+                    .arg(self.testpaths.file.with_extension("js")),
             );
             if !res.status.success() {
                 self.fatal_proc_rec("rustdoc-js test failed!", &res);
