@@ -88,8 +88,23 @@ impl TextRange {
 
 /// Manipulation methods.
 impl TextRange {
+    /// Check if this range contains an offset.
+    ///
+    /// The end index is considered excluded.
+    pub fn contains(self, offset: TextSize) -> bool {
+        self.start() <= offset && offset < self.end()
+    }
+
+    /// Check if this range contains an offset.
+    ///
+    /// The end index is considered included.
+    pub fn contains_inclusive(self, offset: TextSize) -> bool {
+        let point = offset.into();
+        self.start() <= point && point <= self.end()
+    }
+
     /// Check if this range completely contains another range.
-    pub fn contains(self, other: TextRange) -> bool {
+    pub fn contains_range(self, other: TextRange) -> bool {
         self.start() <= other.start() && other.end() <= self.end()
     }
 
@@ -109,21 +124,6 @@ impl TextRange {
         let start = cmp::min(lhs.start(), rhs.start());
         let end = cmp::max(lhs.end(), rhs.end());
         TextRange(start, end)
-    }
-
-    /// Check if this range contains an offset.
-    ///
-    /// The end index is considered excluded.
-    pub fn contains_exclusive(self, offset: TextSize) -> bool {
-        self.start() <= offset && offset < self.end()
-    }
-
-    /// Check if this range contains an offset.
-    ///
-    /// The end index is considered included.
-    pub fn contains_inclusive(self, offset: TextSize) -> bool {
-        let point = offset.into();
-        self.start() <= point && point <= self.end()
     }
 }
 

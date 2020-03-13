@@ -32,8 +32,8 @@ fn checked_math() {
 #[test]
 #[rustfmt::skip]
 fn contains() {
-    assert!(   range(2..4).contains(range(2..3)));
-    assert!( ! range(2..4).contains(range(1..3)));
+    assert!(   range(2..4).contains_range(range(2..3)));
+    assert!( ! range(2..4).contains_range(range(1..3)));
 }
 
 #[test]
@@ -59,11 +59,11 @@ fn covering() {
 #[test]
 #[rustfmt::skip]
 fn contains_point() {
-    assert!( ! range(1..3).contains_exclusive(size(0)));
-    assert!(   range(1..3).contains_exclusive(size(1)));
-    assert!(   range(1..3).contains_exclusive(size(2)));
-    assert!( ! range(1..3).contains_exclusive(size(3)));
-    assert!( ! range(1..3).contains_exclusive(size(4)));
+    assert!( ! range(1..3).contains(size(0)));
+    assert!(   range(1..3).contains(size(1)));
+    assert!(   range(1..3).contains(size(2)));
+    assert!( ! range(1..3).contains(size(3)));
+    assert!( ! range(1..3).contains(size(4)));
 
     assert!( ! range(1..3).contains_inclusive(size(0)));
     assert!(   range(1..3).contains_inclusive(size(1)));
