@@ -645,7 +645,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.potentially_unused_imports.push(import);
                 let imported_binding = self.r.import(binding, import);
                 if ptr::eq(parent, self.r.graph_root) {
-                    if let Some(entry) = self.r.extern_prelude.get(&ident.modern()) {
+                    if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0())
+                    {
                         if expansion != ExpnId::root()
                             && orig_name.is_some()
                             && entry.extern_crate_item.is_none()
@@ -656,10 +657,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         }
                     }
                     let entry =
-                        self.r.extern_prelude.entry(ident.modern()).or_insert(ExternPreludeEntry {
-                            extern_crate_item: None,
-                            introduced_by_item: true,
-                        });
+                        self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(
+                            ExternPreludeEntry {
+                                extern_crate_item: None,
+                                introduced_by_item: true,
+                            },
+                        );
                     entry.extern_crate_item = Some(imported_binding);
                     if orig_name.is_some() {
                         entry.introduced_by_item = true;
@@ -1119,7 +1122,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         self.r.local_macro_def_scopes.insert(item.id, parent_scope.module);
 
         if macro_rules {
-            let ident = ident.modern();
+            let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
             let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {

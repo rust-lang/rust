@@ -758,7 +758,7 @@ impl<'a> Resolver<'a> {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
             err.span_note(ident.span, &msg);
         }
-        if self.macro_names.contains(&ident.modern()) {
+        if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
     }

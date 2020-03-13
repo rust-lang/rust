@@ -416,7 +416,8 @@ impl<'a> Resolver<'a> {
                 None => return Err((Undetermined, Weak::Yes)),
             };
             let tmp_parent_scope;
-            let (mut adjusted_parent_scope, mut ident) = (parent_scope, ident.modern());
+            let (mut adjusted_parent_scope, mut ident) =
+                (parent_scope, ident.normalize_to_macros_2_0());
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =

@@ -79,9 +79,9 @@ impl ParamName {
         }
     }
 
-    pub fn modern(&self) -> ParamName {
+    pub fn normalize_to_macros_2_0(&self) -> ParamName {
         match *self {
-            ParamName::Plain(ident) => ParamName::Plain(ident.modern()),
+            ParamName::Plain(ident) => ParamName::Plain(ident.normalize_to_macros_2_0()),
             param_name => param_name,
         }
     }
@@ -151,9 +151,11 @@ impl LifetimeName {
         self == &LifetimeName::Static
     }
 
-    pub fn modern(&self) -> LifetimeName {
+    pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
         match *self {
-            LifetimeName::Param(param_name) => LifetimeName::Param(param_name.modern()),
+            LifetimeName::Param(param_name) => {
+                LifetimeName::Param(param_name.normalize_to_macros_2_0())
+            }
             lifetime_name => lifetime_name,
         }
     }

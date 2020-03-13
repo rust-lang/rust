@@ -258,7 +258,13 @@ impl<'a> base::Resolver for Resolver<'a> {
                             force,
                         ) {
                             Ok((Some(ext), _)) => {
-                                let span = path.segments.last().unwrap().ident.span.modern();
+                                let span = path
+                                    .segments
+                                    .last()
+                                    .unwrap()
+                                    .ident
+                                    .span
+                                    .normalize_to_macros_2_0();
                                 helper_attrs.extend(
                                     ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
                                 );

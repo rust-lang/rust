@@ -424,7 +424,7 @@ impl ModuleKind {
 /// program) if all but one of them come from glob imports.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct BindingKey {
-    /// The identifier for the binding, aways the `modern` version of the
+    /// The identifier for the binding, aways the `normalize_to_macros_2_0` version of the
     /// identifier.
     ident: Ident,
     ns: Namespace,
@@ -1362,7 +1362,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
-        let ident = ident.modern();
+        let ident = ident.normalize_to_macros_2_0();
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
@@ -1413,7 +1413,7 @@ impl<'a> Resolver<'a> {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
-                if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                     if let Some(crate_item) = entry.extern_crate_item {
                         if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
                             return;
@@ -1500,7 +1500,7 @@ impl<'a> Resolver<'a> {
             TypeNS | ValueNS => Scope::Module(module),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
-        let mut ident = ident.modern();
+        let mut ident = ident.normalize_to_macros_2_0();
         let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
@@ -1622,18 +1622,18 @@ impl<'a> Resolver<'a> {
         if ident.name == kw::Invalid {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
-        let (general_span, modern_span) = if ident.name == kw::SelfUpper {
+        let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
             let empty_span = ident.span.with_ctxt(SyntaxContext::root());
             (empty_span, empty_span)
         } else if ns == TypeNS {
-            let modern_span = ident.span.modern();
-            (modern_span, modern_span)
+            let normalized_span = ident.span.normalize_to_macros_2_0();
+            (normalized_span, normalized_span)
         } else {
-            (ident.span.modern_and_legacy(), ident.span.modern())
+            (ident.span.normalize_to_macro_rules(), ident.span.normalize_to_macros_2_0())
         };
         ident.span = general_span;
-        let modern_ident = Ident { span: modern_span, ..ident };
+        let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
@@ -1641,8 +1641,8 @@ impl<'a> Resolver<'a> {
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
-            // (modern hygiene) or local variables (`macro_rules` hygiene).
-            let rib_ident = if ribs[i].kind.contains_params() { modern_ident } else { ident };
+            // (macro 2.0 hygiene) or local variables (`macro_rules` hygiene).
+            let rib_ident = if ribs[i].kind.contains_params() { normalized_ident } else { ident };
             if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
@@ -1685,7 +1685,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        ident = modern_ident;
+        ident = normalized_ident;
         let mut poisoned = None;
         loop {
             let opt_module = if let Some(node_id) = record_used_id {
@@ -1854,14 +1854,14 @@ impl<'a> Resolver<'a> {
         let mut adjusted_parent_scope = parent_scope;
         match module {
             ModuleOrUniformRoot::Module(m) => {
-                if let Some(def) = ident.span.modernize_and_adjust(m.expansion) {
+                if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(m.expansion) {
                     tmp_parent_scope =
                         ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.modernize_and_adjust(ExpnId::root());
+                ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
             }
             ModuleOrUniformRoot::CrateRootAndExternPrelude | ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments
@@ -1884,14 +1884,14 @@ impl<'a> Resolver<'a> {
         let mark = if ident.name == kw::DollarCrate {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
-            // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
+            // as described in `SyntaxContext::apply_mark`, so we ignore prepended opaque marks.
             // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
             // definitions actually produced by `macro` and `macro` definitions produced by
             // `macro_rules!`, but at least such configurations are not stable yet.
-            ctxt = ctxt.modern_and_legacy();
+            ctxt = ctxt.normalize_to_macro_rules();
             let mut iter = ctxt.marks().into_iter().rev().peekable();
             let mut result = None;
-            // Find the last modern mark from the end if it exists.
+            // Find the last opaque mark from the end if it exists.
             while let Some(&(mark, transparency)) = iter.peek() {
                 if transparency == Transparency::Opaque {
                     result = Some(mark);
@@ -1910,7 +1910,7 @@ impl<'a> Resolver<'a> {
             }
             result
         } else {
-            ctxt = ctxt.modern();
+            ctxt = ctxt.normalize_to_macros_2_0();
             ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
@@ -1922,7 +1922,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
         let mut module = self.get_module(module.normal_ancestor_id);
-        while module.span.ctxt().modern() != *ctxt {
+        while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
             module = self.get_module(parent.normal_ancestor_id);
         }
@@ -1990,7 +1990,7 @@ impl<'a> Resolver<'a> {
 
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
-                    let mut ctxt = ident.span.ctxt().modern();
+                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                     let self_module = match i {
                         0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
                         _ => match module {
@@ -2016,7 +2016,7 @@ impl<'a> Resolver<'a> {
                 }
                 if i == 0 {
                     if name == kw::SelfLower {
-                        let mut ctxt = ident.span.ctxt().modern();
+                        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_self(&mut ctxt, parent_scope.module),
                         ));
@@ -2430,7 +2430,7 @@ impl<'a> Resolver<'a> {
         macro_rules: &'a NameBinding<'a>,
         modularized: &'a NameBinding<'a>,
     ) -> bool {
-        // Some non-controversial subset of ambiguities "modern macro name" vs "macro_rules"
+        // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         match (
@@ -2769,7 +2769,7 @@ impl<'a> Resolver<'a> {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
         }
-        self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
+        self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
                 if !speculative && entry.introduced_by_item {
                     self.record_use(ident, TypeNS, binding, false);

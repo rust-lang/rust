@@ -227,7 +227,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _ => &mut seen_value_items,
         };
-        match seen_items.entry(impl_item.ident.modern()) {
+        match seen_items.entry(impl_item.ident.normalize_to_macros_2_0()) {
             Occupied(entry) => {
                 let mut err = struct_span_err!(
                     tcx.sess,
