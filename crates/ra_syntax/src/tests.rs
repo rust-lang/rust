@@ -5,7 +5,7 @@ use std::{
 
 use test_utils::{collect_tests, dir_tests, project_dir, read_text};
 
-use crate::{fuzz, tokenize, SourceFile, SyntaxError, Token};
+use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextUnit, Token};
 
 #[test]
 fn lexer_tests() {
@@ -120,11 +120,11 @@ fn assert_errors_are_absent(errors: &[SyntaxError], path: &Path) {
 
 fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) -> String {
     let mut acc = String::new();
-    let mut offset = 0;
+    let mut offset = TextUnit::from_usize(0);
     for token in tokens {
-        let token_len = token.len.to_usize();
-        let token_text = &text[offset..offset + token_len];
-        offset += token_len;
+        let token_len = token.len;
+        let token_text = &text[TextRange::offset_len(offset, token.len)];
+        offset += token.len;
         writeln!(acc, "{:?} {} {:?}", token.kind, token_len, token_text).unwrap();
     }
     for err in errors {

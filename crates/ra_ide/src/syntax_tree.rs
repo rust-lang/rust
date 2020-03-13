@@ -5,7 +5,7 @@ use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo, AstNode, NodeOrToken, SourceFile,
     SyntaxKind::{RAW_STRING, STRING},
-    SyntaxToken, TextRange,
+    SyntaxToken, TextRange, TextUnit,
 };
 
 pub use ra_db::FileId;
@@ -56,19 +56,23 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
     let start = text_range.start() - node_range.start();
 
     // how many characters we have selected
-    let len = text_range.len().to_usize();
+    let len = text_range.len();
 
-    let node_len = node_range.len().to_usize();
+    let node_len = node_range.len();
 
-    let start = start.to_usize();
+    let start = start;
 
     // We want to cap our length
     let len = len.min(node_len);
 
     // Ensure our slice is inside the actual string
-    let end = if start + len < text.len() { start + len } else { text.len() - start };
+    let end = if start + len < TextUnit::of_str(&text) {
+        start + len
+    } else {
+        TextUnit::of_str(&text) - start
+    };
 
-    let text = &text[start..end];
+    let text = &text[TextRange::from_to(start, end)];
 
     // Remove possible extra string quotes from the start
     // and the end of the string

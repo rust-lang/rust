@@ -235,7 +235,7 @@ mod helpers {
             (Some(assist), ExpectedResult::Target(target)) => {
                 let action = assist.0[0].action.clone().unwrap();
                 let range = action.target.expect("expected target on action");
-                assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
+                assert_eq_text!(&before[range], target);
             }
             (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
             (None, ExpectedResult::After(_)) | (None, ExpectedResult::Target(_)) => {
