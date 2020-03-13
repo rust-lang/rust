@@ -138,8 +138,14 @@ mod imp {
     }
 
     unsafe fn get_stackp() -> *mut libc::c_void {
-        let stackp =
-            mmap(ptr::null_mut(), SIGSTKSZ + page_size(), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        let stackp = mmap(
+            ptr::null_mut(),
+            SIGSTKSZ + page_size(),
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0,
+        );
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
