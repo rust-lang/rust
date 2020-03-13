@@ -18,7 +18,7 @@ jobs:
     
     # https://github.com/actions/cache/issues/133
     - name: Fixup owner of ~/.cargo/bin
-      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/bin
+      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo
     
     - name: Cache cargo installed crates
       uses: actions/cache@v1.1.2
