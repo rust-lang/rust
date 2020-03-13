@@ -97,7 +97,7 @@ impl<N: Idx, S: Idx> GraphSuccessors<'graph> for Sccs<N, S> {
 }
 
 impl<N: Idx, S: Idx> WithSuccessors for Sccs<N, S> {
-    fn successors<'graph>(&'graph self, node: S) -> <Self as GraphSuccessors<'graph>>::Iter {
+    fn successors(&self, node: S) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors(node).iter().cloned()
     }
 }

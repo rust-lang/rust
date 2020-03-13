@@ -33,7 +33,7 @@ use std::slice;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
-crate fn unerased_lint_store<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx LintStore {
+crate fn unerased_lint_store(tcx: TyCtxt<'_>) -> &LintStore {
     let store: &dyn Any = &*tcx.lint_store;
     store.downcast_ref().unwrap()
 }
@@ -99,7 +99,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, Self::Map> {
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
         hir_visit::NestedVisitorMap::All(&self.context.tcx.hir())
     }
 

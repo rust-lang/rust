@@ -451,7 +451,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_non_local_constructor<'tcx>(ty: Ty<'tcx>, in_crate: InCrate) -> Option<Ty<'tcx>> {
+fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> {
     debug!("ty_is_non_local_constructor({:?})", ty);
 
     match ty.kind {
