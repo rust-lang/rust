@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 // Test that we can handle newtypes wrapping extern types
 

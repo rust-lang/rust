@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![warn(const_err)]
 
 #![crate_type = "lib"]
