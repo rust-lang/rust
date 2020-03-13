@@ -64,7 +64,7 @@ impl FunctionSignature {
             .fields(db)
             .into_iter()
             .map(|field: hir::StructField| {
-                let ty = field.ty(db);
+                let ty = field.signature_ty(db);
                 format!("{}", ty.display(db))
             })
             .collect();
@@ -102,7 +102,7 @@ impl FunctionSignature {
             .into_iter()
             .map(|field: hir::StructField| {
                 let name = field.name(db);
-                let ty = field.ty(db);
+                let ty = field.signature_ty(db);
                 format!("{}: {}", name, ty.display(db))
             })
             .collect();

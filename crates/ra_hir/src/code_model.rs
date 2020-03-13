@@ -311,7 +311,11 @@ impl StructField {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
 
-    pub fn ty(&self, db: &impl HirDatabase) -> Type {
+    /// Returns the type as in the signature of the struct (i.e., with
+    /// placeholder types for type parameters). This is good for showing
+    /// signature help, but not so good to actually get the type of the field
+    /// when you actually have a variable of the struct.
+    pub fn signature_ty(&self, db: &impl HirDatabase) -> Type {
         let var_id = self.parent.into();
         let generic_def_id: GenericDefId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
@@ -485,6 +489,10 @@ impl Adt {
         let subst = db.generic_defaults(self.into());
         subst.iter().any(|ty| ty == &Ty::Unknown)
     }
+
+    /// Turns this ADT into a type. Any type parameters of the ADT will be
+    /// turned into unknown types, which is good for e.g. finding the most
+    /// general set of completions, but will not look very nice when printed.
     pub fn ty(self, db: &impl HirDatabase) -> Type {
         let id = AdtId::from(self);
         Type::from_def(db, id.module(db).krate, id)
@@ -1031,7 +1039,7 @@ impl Type {
         krate: CrateId,
         def: impl HasResolver + Into<TyDefId> + Into<GenericDefId>,
     ) -> Type {
-        let substs = Substs::type_params(db, def);
+        let substs = Substs::build_for_def(db, def).fill_with_unknown().build();
         let ty = db.ty(def.into()).subst(&substs);
         Type::new(db, krate, def, ty)
     }

@@ -1005,4 +1005,36 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn completes_hashmap_new() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct RandomState;
+                struct HashMap<K, V, S = RandomState> {}
+
+                impl<K, V> HashMap<K, V, RandomState> {
+                    pub fn new() -> HashMap<K, V, RandomState> { }
+                }
+                fn foo() {
+                    HashMap::<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "new()",
+                source_range: [292; 292),
+                delete: [292; 292),
+                insert: "new()$0",
+                kind: Function,
+                lookup: "new",
+                detail: "pub fn new() -> HashMap<K, V, RandomState>",
+            },
+        ]
+        "###
+        );
+    }
 }
