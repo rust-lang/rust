@@ -102,6 +102,28 @@ fn crate_def_map_super_super() {
 }
 
 #[test]
+fn crate_def_map_fn_mod_same_name() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod m {
+            pub mod z {}
+            pub fn z() {}
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮m: t
+        ⋮
+        ⋮crate::m
+        ⋮z: t v
+        ⋮
+        ⋮crate::m::z
+    "###)
+}
+
+#[test]
 fn bogus_paths() {
     covers!(bogus_paths);
     let map = def_map(

@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 use std::sync::Arc;
 
+use arrayvec::ArrayVec;
 use either::Either;
 use hir_def::{
     adt::StructKind,
@@ -226,7 +227,11 @@ impl Module {
                     Some((name, def))
                 }
             })
-            .map(|(name, def)| (name.clone(), def.into()))
+            .flat_map(|(name, def)|
+                ScopeDef::all_items(def)
+                    .into_iter()
+                    .map(move |item| (name.clone(), item))
+            )
             .collect()
     }
 
@@ -1288,15 +1293,38 @@ pub enum ScopeDef {
     Unknown,
 }
 
-impl From<PerNs> for ScopeDef {
-    fn from(def: PerNs) -> Self {
-        def.take_types()
-            .or_else(|| def.take_values())
-            .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
-            .or_else(|| {
-                def.take_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
-            })
-            .unwrap_or(ScopeDef::Unknown)
+impl ScopeDef {
+    pub fn all_items(def: PerNs) -> ArrayVec<[Self; 3]> {
+        let mut items = ArrayVec::new();
+
+        match (def.take_types(), def.take_values()) {
+            (Some(m1), None) => 
+                items.push(ScopeDef::ModuleDef(m1.into())),
+            (None, Some(m2)) =>
+                items.push(ScopeDef::ModuleDef(m2.into())),
+            (Some(m1), Some(m2)) => {
+                // Some items, like unit structs and enum variants, are
+                // returned as both a type and a value. Here we want
+                // to de-duplicate them.
+                if m1 != m2 {
+                    items.push(ScopeDef::ModuleDef(m1.into()));
+                    items.push(ScopeDef::ModuleDef(m2.into()));
+                } else {
+                    items.push(ScopeDef::ModuleDef(m1.into()));
+                }
+            },
+            (None, None) => {},
+        };
+
+        if let Some(macro_def_id) = def.take_macros() {
+            items.push(ScopeDef::MacroDef(macro_def_id.into()));
+        }
+
+        if items.is_empty() {
+            items.push(ScopeDef::Unknown);
+        }
+
+        items
     }
 }
 

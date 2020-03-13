@@ -11,6 +11,7 @@ doctest = false
 log = "0.4.8"
 rustc-hash = "1.1.0"
 either = "1.5.3"
+arrayvec = "0.5.1"
 
 itertools = "0.8.2"
 
