@@ -213,14 +213,14 @@ fn foo() {
         type_char(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                 <|>
             }
             ",
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     .
             }
             ",
@@ -228,8 +228,8 @@ fn foo() {
         type_char_noop(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     <|>
             }
             ",
@@ -241,14 +241,14 @@ fn foo() {
         type_char(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                 <|>;
             }
             ",
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     .;
             }
             ",
@@ -256,8 +256,8 @@ fn foo() {
         type_char_noop(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     <|>;
             }
             ",
@@ -269,15 +269,15 @@ fn foo() {
         type_char(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     .first()
                 <|>
             }
             ",
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     .first()
                     .
             }
@@ -286,8 +286,8 @@ fn foo() {
         type_char_noop(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
+            fn main() {
+                xs.foo()
                     .first()
                     <|>
             }
@@ -334,7 +334,7 @@ fn foo() {
         type_char_noop(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+            fn main() {
                 <|>
             }
             ",
@@ -342,7 +342,7 @@ fn foo() {
         type_char_noop(
             '.',
             r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+            fn main() {
             <|>
             }
             ",
