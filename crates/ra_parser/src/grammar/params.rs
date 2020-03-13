@@ -56,20 +56,16 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         // fn f(#[attr1] pat: Type) {}
         attributes::outer_attributes(p);
 
-        // test param_list_vararg
-        // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-        match flavor {
-            FnDef | FnPointer if p.eat(T![...]) => break,
-            _ => (),
-        }
-
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
         }
-        value_parameter(p, flavor);
+        let param = value_parameter(p, flavor);
         if !p.at(ket) {
             p.expect(T![,]);
+        }
+        if let Variadic(true) = param {
+            break;
         }
     }
 
@@ -79,14 +75,25 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
 const VALUE_PARAMETER_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
-fn value_parameter(p: &mut Parser, flavor: Flavor) {
+struct Variadic(bool);
+
+fn value_parameter(p: &mut Parser, flavor: Flavor) -> Variadic {
+    let mut res = Variadic(false);
     let m = p.start();
     match flavor {
+        // test param_list_vararg
+        // extern "C" { fn printf(format: *const i8, ...) -> i32; }
+        Flavor::FnDef | Flavor::FnPointer if p.eat(T![...]) => res = Variadic(true),
+
         // test fn_def_param
         // fn foo((x, y): (i32, i32)) {}
         Flavor::FnDef => {
             patterns::pattern(p);
-            types::ascription(p);
+            if variadic_param(p) {
+                res = Variadic(true)
+            } else {
+                types::ascription(p);
+            }
         }
         // test value_parameters_no_patterns
         // type F = Box<Fn(i32, &i32, &i32, ())>;
@@ -102,7 +109,11 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         Flavor::FnPointer => {
             if (p.at(IDENT) || p.at(UNDERSCORE)) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
                 patterns::pattern_single(p);
-                types::ascription(p);
+                if variadic_param(p) {
+                    res = Variadic(true)
+                } else {
+                    types::ascription(p);
+                }
             } else {
                 types::type_(p);
             }
@@ -119,6 +130,17 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         }
     }
     m.complete(p, PARAM);
+    res
+}
+
+fn variadic_param(p: &mut Parser) -> bool {
+    if p.at(T![:]) && p.nth_at(1, T![...]) {
+        p.bump(T![:]);
+        p.bump(T![...]);
+        true
+    } else {
+        false
+    }
 }
 
 // test self_param

@@ -32,7 +32,8 @@ SOURCE_FILE@[0; 57)
                       IDENT@[38; 40) "i8"
           COMMA@[40; 41) ","
           WHITESPACE@[41; 42) " "
-          DOTDOTDOT@[42; 45) "..."
+          PARAM@[42; 45)
+            DOTDOTDOT@[42; 45) "..."
           R_PAREN@[45; 46) ")"
         WHITESPACE@[46; 47) " "
         RET_TYPE@[47; 53)

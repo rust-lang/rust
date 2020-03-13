@@ -118,7 +118,8 @@ SOURCE_FILE@[0; 519)
                   IDENT@[108; 112) "attr"
             R_BRACK@[112; 113) "]"
           WHITESPACE@[113; 114) " "
-          DOTDOTDOT@[114; 117) "..."
+          PARAM@[114; 117)
+            DOTDOTDOT@[114; 117) "..."
           R_PAREN@[117; 118) ")"
         WHITESPACE@[118; 119) " "
         RET_TYPE@[119; 125)

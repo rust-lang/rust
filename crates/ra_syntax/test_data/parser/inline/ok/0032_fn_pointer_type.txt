@@ -81,7 +81,8 @@ SOURCE_FILE@[0; 113)
         WHITESPACE@[97; 98) " "
         COMMA@[98; 99) ","
         WHITESPACE@[99; 100) " "
-        DOTDOTDOT@[100; 103) "..."
+        PARAM@[100; 103)
+          DOTDOTDOT@[100; 103) "..."
         WHITESPACE@[103; 104) " "
         R_PAREN@[104; 105) ")"
       WHITESPACE@[105; 106) " "
