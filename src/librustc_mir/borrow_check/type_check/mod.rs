@@ -18,6 +18,7 @@ use rustc::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
     TyCtxt, UserType, UserTypeAnnotationIndex,
 };
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -55,7 +56,6 @@ use crate::borrow_check::{
     renumber,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    Frozen,
 };
 
 macro_rules! span_mirbug {

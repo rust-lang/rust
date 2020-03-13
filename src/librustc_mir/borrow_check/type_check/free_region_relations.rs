@@ -1,6 +1,7 @@
 use rustc::mir::ConstraintCategory;
 use rustc::ty::free_region_map::FreeRegionRelations;
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::region_constraints::GenericKind;
@@ -15,7 +16,6 @@ use crate::borrow_check::{
     type_check::constraint_conversion,
     type_check::{Locations, MirTypeckRegionConstraints},
     universal_regions::UniversalRegions,
-    Frozen,
 };
 
 #[derive(Debug)]
