@@ -22,6 +22,12 @@ jobs:
         path: ~/.cargo/bin
         key: cargo-installed-crates-${{ matrix.os }}
 
+    - name: Cache target dir
+      uses: actions/cache@v1.1.2
+      with:
+        path: target
+        key: target-dir-${{ matrix.os }}-${{ hashFiles('rust-toolchain') }}
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
