@@ -11,15 +11,23 @@ use {
 
 /// A measure of text length. Also, equivalently, an index into text.
 ///
-/// This is a utf8-bytes-offset stored as `u32`, but
+/// This is a UTF-8 bytes offset stored as `u32`, but
 /// most clients should treat it as an opaque measure.
+///
+/// For cases that need to escape `TextSize` and return to working directly
+/// with primitive integers, `TextSize` can be converted losslessly to/from
+/// `u32` via [`From`] conversions as well as losslessly be converted [`Into`]
+/// `usize`. The `usize -> TextSize` direction can be done via [`TryFrom`].
+///
+/// These escape hatches are primarily required for unit testing and when
+/// converting from UTF-8 size to another coordinate space, such as UTF-16.
 ///
 /// # Translation from `text_unit`
 ///
 /// - `TextUnit::of_char(c)`        ⟹ `TextSize::of(c)`
-/// - `TextUnit::of_str(s)`         ⟹ `TextSize:of(s)`
+/// - `TextUnit::of_str(s)`         ⟹ `TextSize::of(s)`
 /// - `TextUnit::from_usize(size)`  ⟹ `TextSize::try_from(size).unwrap_or_else(|| panic!(_))`
-/// - `unit.to_usize()`             ⟹ `usize::try_from(size).unwrap_or_else(|| panic!(_))`
+/// - `unit.to_usize()`             ⟹ `usize::from(size)`
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TextSize {
     pub(crate) raw: u32,
@@ -49,6 +57,11 @@ impl TextSize {
     pub const fn zero() -> TextSize {
         TextSize(0)
     }
+
+    /// A size of one.
+    pub const fn one() -> TextSize {
+        TextSize(1)
+    }
 }
 
 /// Methods to act like a primitive integer type, where reasonably applicable.
@@ -58,6 +71,8 @@ impl TextSize {
     pub const MIN: TextSize = TextSize(u32::MIN);
     /// The largest representable text size. (`u32::MAX`)
     pub const MAX: TextSize = TextSize(u32::MAX);
+    /// The text size of a single ASCII character.
+    pub const ONE: TextSize = TextSize(1);
 
     #[allow(missing_docs)]
     pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
@@ -72,7 +87,7 @@ impl TextSize {
 
 impl From<u32> for TextSize {
     fn from(raw: u32) -> Self {
-        TextSize { raw }
+        TextSize(raw)
     }
 }
 
@@ -91,12 +106,7 @@ impl TryFrom<usize> for TextSize {
 
 impl From<TextSize> for usize {
     fn from(value: TextSize) -> Self {
-        assert_lossless_conversion();
-        return value.raw as usize;
-
-        const fn assert_lossless_conversion() {
-            [()][(std::mem::size_of::<usize>() < std::mem::size_of::<u32>()) as usize]
-        }
+        value.raw as usize
     }
 }
 

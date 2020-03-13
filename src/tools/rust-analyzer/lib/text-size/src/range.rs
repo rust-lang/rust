@@ -2,30 +2,25 @@ use {
     crate::TextSize,
     std::{
         cmp, fmt,
-        ops::{Bound, Index, IndexMut, Range, RangeBounds},
+        ops::{Bound, Index, IndexMut, Range, RangeBounds, RangeFrom},
     },
 };
 
 /// A range in text, represented as a pair of [`TextSize`][struct@TextSize].
 ///
-/// It is a logical error to have `end() < start()`, but
-/// code must not assume this is true for `unsafe` guarantees.
-///
 /// # Translation from `text_unit`
 ///
-/// - `TextRange::from_to(from, to)`        ⟹ `TextRange::from(from..to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::from(offset..offset + size)`
+/// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::to(size).offset(offset)`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
-/// - `range.len()`                         ⟹ `range.len()`<sup>†</sup>
+/// - `range.len()`                         ⟹ `range.len()`
 /// - `range.is_empty()`                    ⟹ `range.is_empty()`
-/// - `a.is_subrange(b)`                    ⟹ `b.contains(a)`
+/// - `a.is_subrange(b)`                    ⟹ `b.contains_range(a)`
 /// - `a.intersection(b)`                   ⟹ `TextRange::intersection(a, b)`
 /// - `a.extend_to(b)`                      ⟹ `TextRange::covering(a, b)`
-/// - `range.contains(offset)`              ⟹ `range.contains_exclusive(point)`
+/// - `range.contains(offset)`              ⟹ `range.contains(point)`
 /// - `range.contains_inclusive(offset)`    ⟹ `range.contains_inclusive(point)`
-///
-/// † See the note on [`TextRange::len`] for differing behavior for incorrect reverse ranges.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange {
     // Invariant: start <= end
@@ -39,7 +34,7 @@ impl fmt::Debug for TextRange {
     }
 }
 
-/// Creates a new `TextRange` with given `start` and `end.
+/// Creates a new `TextRange` with the given `start` and `end` (`start..end`).
 ///
 /// # Panics
 ///
@@ -50,16 +45,47 @@ pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
     TextRange { start, end }
 }
 
-/// Identity methods.
 impl TextRange {
-    /// Creates a zero-length range at the specified offset.
-    pub const fn empty(self, offset: TextSize) -> TextRange {
+    /// Create a zero-length range at the specified offset (`offset..offset`).
+    pub const fn empty(offset: TextSize) -> TextRange {
         TextRange {
             start: offset,
             end: offset,
         }
     }
 
+    /// Create a range up to the given end (`..end`).
+    pub const fn before(end: TextSize) -> TextRange {
+        TextRange {
+            start: TextSize::zero(),
+            end,
+        }
+    }
+
+    /// Create a range after the given start (`start..`).
+    ///
+    /// This returns a std [`RangeFrom`] rather than `TextRange` because
+    /// `TextRange` does not support right-unbounded ranges. As such, this
+    /// should only be used for direct indexing, and bounded ranges should be
+    /// used for persistent ranges (`TextRange(start, TextSize::of(text))`).
+    pub const fn after(start: TextSize) -> RangeFrom<usize> {
+        start.raw as usize..
+    }
+
+    /// Offset this range by some amount.
+    ///
+    /// This is typically used to convert a range from one coordinate space to
+    /// another, such as from within a substring to within an entire document.
+    pub fn offset(self, offset: TextSize) -> TextRange {
+        TextRange(
+            self.start().checked_add(offset).unwrap(),
+            self.end().checked_add(offset).unwrap(),
+        )
+    }
+}
+
+/// Identity methods.
+impl TextRange {
     /// The start point of this range.
     pub const fn start(self) -> TextSize {
         self.start
@@ -76,10 +102,7 @@ impl TextRange {
         TextSize(self.end().raw - self.start().raw)
     }
 
-    /// Check if this range empty or reversed.
-    ///
-    /// When `end() < start()`, this returns false.
-    /// Code should prefer `is_empty()` to `len() == 0`.
+    /// Check if this range is empty.
     pub const fn is_empty(self) -> bool {
         // HACK for const fn: math on primitives only
         self.start().raw == self.end().raw
@@ -99,8 +122,7 @@ impl TextRange {
     ///
     /// The end index is considered included.
     pub fn contains_inclusive(self, offset: TextSize) -> bool {
-        let point = offset.into();
-        self.start() <= point && point <= self.end()
+        self.start() <= offset && offset <= self.end()
     }
 
     /// Check if this range completely contains another range.
