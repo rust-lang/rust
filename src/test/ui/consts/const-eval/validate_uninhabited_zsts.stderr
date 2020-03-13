@@ -4,7 +4,7 @@ warning: any use of this value will cause an error
 LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              entering unreachable code
+   |              transmuting to uninhabited type
    |              inside call to `foo` at $DIR/validate_uninhabited_zsts.rs:14:26
 ...
 LL | const FOO: [Empty; 3] = [foo(); 3];
