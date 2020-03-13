@@ -26,11 +26,23 @@ jobs:
         path: ~/.cargo/bin
         key: cargo-installed-crates-${{ matrix.os }}
 
-    - name: Cache target dir
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo target dir
       uses: actions/cache@v1.1.2
       with:
         path: target
-        key: target-dir-${{ matrix.os }}-${{ hashFiles('rust-toolchain') }}
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
     - name: Prepare dependencies
       run: |
