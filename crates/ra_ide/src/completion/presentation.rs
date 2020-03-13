@@ -1,6 +1,6 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, StructKind, Type};
+use hir::{Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, StructKind, Type};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -9,7 +9,10 @@ use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use crate::display::{const_label, macro_label, type_label, FunctionSignature};
+use crate::{
+    display::{const_label, macro_label, type_label, FunctionSignature},
+    RootDatabase,
+};
 
 impl Completions {
     pub(crate) fn add_field(
@@ -300,7 +303,7 @@ impl Completions {
     }
 }
 
-fn is_deprecated(node: impl HasAttrs, db: &impl HirDatabase) -> bool {
+fn is_deprecated(node: impl HasAttrs, db: &RootDatabase) -> bool {
     node.attrs(db).by_key("deprecated").exists()
 }
 

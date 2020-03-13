@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::{db::HirDatabase, Adt, HasSource, Semantics};
+use hir::{Adt, HasSource, Semantics};
 use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -88,11 +88,7 @@ fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
     })
 }
 
-fn build_pat(
-    db: &impl HirDatabase,
-    module: hir::Module,
-    var: hir::EnumVariant,
-) -> Option<ast::Pat> {
+fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> Option<ast::Pat> {
     let path = crate::ast_transform::path_to_ast(module.find_use_path(db, var.into())?);
 
     // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though

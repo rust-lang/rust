@@ -37,7 +37,6 @@ pub struct SubstituteTypeParams<'a> {
 impl<'a> SubstituteTypeParams<'a> {
     pub fn for_trait_impl(
         source_scope: &'a SemanticsScope<'a, RootDatabase>,
-        db: &'a RootDatabase,
         // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
         impl_def: ast::ImplDef,
@@ -45,7 +44,7 @@ impl<'a> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
         let substs_by_param: FxHashMap<_, _> = generic_def
-            .params(db)
+            .params(source_scope.db)
             .into_iter()
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             .skip(1)
@@ -104,7 +103,6 @@ impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
 pub struct QualifyPaths<'a> {
     target_scope: &'a SemanticsScope<'a, RootDatabase>,
     source_scope: &'a SemanticsScope<'a, RootDatabase>,
-    db: &'a RootDatabase,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
@@ -112,9 +110,8 @@ impl<'a> QualifyPaths<'a> {
     pub fn new(
         target_scope: &'a SemanticsScope<'a, RootDatabase>,
         source_scope: &'a SemanticsScope<'a, RootDatabase>,
-        db: &'a RootDatabase,
     ) -> Self {
-        Self { target_scope, source_scope, db, previous: Box::new(NullTransformer) }
+        Self { target_scope, source_scope, previous: Box::new(NullTransformer) }
     }
 
     fn get_substitution_inner(
@@ -132,7 +129,7 @@ impl<'a> QualifyPaths<'a> {
         let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {
             PathResolution::Def(def) => {
-                let found_path = from.find_use_path(self.db, def)?;
+                let found_path = from.find_use_path(self.source_scope.db, def)?;
                 let mut path = path_to_ast(found_path);
 
                 let type_args = p
