@@ -55,6 +55,7 @@ use crate::borrow_check::{
     renumber,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
+    Frozen,
 };
 
 macro_rules! span_mirbug {
@@ -828,7 +829,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
-    crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    pub(in crate::borrow_check) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     crate opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
 }
 

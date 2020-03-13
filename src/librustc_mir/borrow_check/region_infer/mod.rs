@@ -113,7 +113,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -243,11 +243,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// The `outlives_constraints` and `type_tests` are an initial set
     /// of constraints produced by the MIR type check.
-    pub(crate) fn new(
+    pub(in crate::borrow_check) fn new(
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
-        universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+        universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         outlives_constraints: OutlivesConstraintSet,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
