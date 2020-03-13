@@ -838,12 +838,12 @@ pub fn run_cargo(
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
     let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
-        let (filenames, crate_types) = match msg {
+        let (filenames, crate_types, kind, name) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
-                target: CargoTarget { crate_types },
+                target: CargoTarget { crate_types, kind, name },
                 ..
-            } => (filenames, crate_types),
+            } => (filenames, crate_types, kind, name),
             _ => return,
         };
         for filename in filenames {
@@ -859,12 +859,24 @@ pub fn run_cargo(
 
             let filename = Path::new(&*filename);
 
-            // If this was an output file in the "host dir" we don't actually
-            // worry about it, it's not relevant for us
+            // If this was an output file in the "host dir", we want
+            // to ignore it if it's a build script.
             if filename.starts_with(&host_root_dir) {
-                // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
                     deps.push((filename.to_path_buf(), true));
+                }
+
+                let is_build_script = kind == &["custom_build"]
+                    && crate_types == &["bin"]
+                    && name == "build-script-build";
+                // We don't care about build scripts, but we *do* care about proc-macro
+                // dependencies - the compiler needs their metadata when loading proc-macro
+                // crates. Anything that's not a build script should be a proc-macro dependency.
+                //
+                // FIXME: Have Cargo explicitly indicate build-script vs proc-macro dependencies,
+                // instead of relying on this check.
+                if !is_build_script {
+                    deps.push((filename.to_path_buf(), false));
                 }
                 continue;
             }
@@ -1003,6 +1015,8 @@ pub fn stream_cargo(
 #[derive(Deserialize)]
 pub struct CargoTarget<'a> {
     crate_types: Vec<Cow<'a, str>>,
+    kind: Vec<Cow<'a, str>>,
+    name: Cow<'a, str>,
 }
 
 #[derive(Deserialize)]
