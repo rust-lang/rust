@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Cache cargo installed crates
+      uses: actions/cache@v1.1.2
+      with:
+        path: $HOME/.cargo/bin
+        key: cargo-installed-crates
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./prepare.sh
+    
+    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
+    - name: Compile
+      uses: actions-rs/cargo@v1.0.1
+      with:
+        command: build
+        args: --release
+    
+    - name: Test
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+        
+        # Reduce amount of benchmark runs as they are slow
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
+        
+        ./test.sh --release
