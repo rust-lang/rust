@@ -349,8 +349,8 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
                     for item in items {
                         f(name.clone(), item);
                     }
-                    return
-                },
+                    return;
+                }
                 resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                 resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                 resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(TypeParam { id }),

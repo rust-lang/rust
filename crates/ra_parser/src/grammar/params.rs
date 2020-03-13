@@ -82,26 +82,8 @@ const VALUE_PARAMETER_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYP
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
     match flavor {
-        // test trait_fn_placeholder_parameter
-        // trait Foo {
-        //     fn bar(_: u64, mut x: i32);
-        // }
-
-        // test trait_fn_patterns
-        // trait T {
-        //     fn f1((a, b): (usize, usize)) {}
-        //     fn f2(S { a, b }: S) {}
-        //     fn f3(NewType(a): NewType) {}
-        //     fn f4(&&a: &&usize) {}
-        // }
-
-        // test fn_patterns
-        // impl U {
-        //     fn f1((a, b): (usize, usize)) {}
-        //     fn f2(S { a, b }: S) {}
-        //     fn f3(NewType(a): NewType) {}
-        //     fn f4(&&a: &&usize) {}
-        // }
+        // test fn_def_param
+        // fn foo((x, y): (i32, i32)) {}
         Flavor::FnDef => {
             patterns::pattern(p);
             types::ascription(p);

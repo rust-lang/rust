@@ -227,11 +227,9 @@ impl Module {
                     Some((name, def))
                 }
             })
-            .flat_map(|(name, def)|
-                ScopeDef::all_items(def)
-                    .into_iter()
-                    .map(move |item| (name.clone(), item))
-            )
+            .flat_map(|(name, def)| {
+                ScopeDef::all_items(def).into_iter().map(move |item| (name.clone(), item))
+            })
             .collect()
     }
 
@@ -1298,10 +1296,8 @@ impl ScopeDef {
         let mut items = ArrayVec::new();
 
         match (def.take_types(), def.take_values()) {
-            (Some(m1), None) => 
-                items.push(ScopeDef::ModuleDef(m1.into())),
-            (None, Some(m2)) =>
-                items.push(ScopeDef::ModuleDef(m2.into())),
+            (Some(m1), None) => items.push(ScopeDef::ModuleDef(m1.into())),
+            (None, Some(m2)) => items.push(ScopeDef::ModuleDef(m2.into())),
             (Some(m1), Some(m2)) => {
                 // Some items, like unit structs and enum variants, are
                 // returned as both a type and a value. Here we want
@@ -1312,8 +1308,8 @@ impl ScopeDef {
                 } else {
                     items.push(ScopeDef::ModuleDef(m1.into()));
                 }
-            },
-            (None, None) => {},
+            }
+            (None, None) => {}
         };
 
         if let Some(macro_def_id) = def.take_macros() {

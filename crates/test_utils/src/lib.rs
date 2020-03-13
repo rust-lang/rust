@@ -397,6 +397,8 @@ pub fn skip_slow_tests() -> bool {
     should_skip
 }
 
+const REWRITE: bool = false;
+
 /// Asserts that `expected` and `actual` strings are equal. If they differ only
 /// in trailing or leading whitespace the test won't fail and
 /// the contents of `actual` will be written to the file located at `path`.
@@ -412,7 +414,6 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
         fs::write(path, actual).unwrap();
         return;
     }
-    const REWRITE: bool = false;
     if REWRITE {
         println!("rewriting {}", pretty_path.display());
         fs::write(path, actual).unwrap();
