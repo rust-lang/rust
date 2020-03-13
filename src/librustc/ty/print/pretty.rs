@@ -913,21 +913,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::ConstKind::Bound(debruijn, bound_var) => {
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
-            ty::ConstKind::Placeholder(_) => {
-                // fallback
-                if print_ty {
-                    self = self.typed_value(
-                        |mut this| {
-                            write!(this, "{:?}", ct.val)?;
-                            Ok(this)
-                        },
-                        |this| this.print_type(ct.ty),
-                        ": ",
-                    )?;
-                } else {
-                    p!(write("{:?}", ct.val));
-                }
-            }
+            ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
         };
         Ok(self)
     }
