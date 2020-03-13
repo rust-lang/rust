@@ -413,12 +413,7 @@ pub(super) fn specialization_graph_provider(
 fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = if let Some(tr) = tcx.impl_trait_ref(impl_def_id) {
-        tr
-    } else {
-        return None;
-    };
-
+    let trait_ref = tcx.impl_trait_ref(impl_def_id)?;
     let mut w = "impl".to_owned();
 
     let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);

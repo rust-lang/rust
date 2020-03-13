@@ -169,7 +169,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
     if !quiet {
         if ntest != 0 || nbench != 0 {
-            writeln!(output, "")?;
+            writeln!(output)?;
         }
 
         writeln!(output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;

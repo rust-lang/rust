@@ -41,11 +41,7 @@ pub fn try_inline(
     attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
-    let did = if let Some(did) = res.opt_def_id() {
-        did
-    } else {
-        return None;
-    };
+    let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
     }
@@ -578,7 +574,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     name: ref _name,
                 },
             ref bounds,
-        } => !(*s == "Self" && did == trait_did) && !bounds.is_empty(),
+        } => !(bounds.is_empty() || *s == "Self" && did == trait_did),
         _ => true,
     });
     g

@@ -113,7 +113,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             return AutoTraitResult::ExplicitImpl;
         }
 
-        return tcx.infer_ctxt().enter(|mut infcx| {
+        return tcx.infer_ctxt().enter(|infcx| {
             let mut fresh_preds = FxHashSet::default();
 
             // Due to the way projections are handled by SelectionContext, we need to run
@@ -164,7 +164,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let (full_env, full_user_env) = self
                 .evaluate_predicates(
-                    &mut infcx,
+                    &infcx,
                     trait_did,
                     ty,
                     new_env,

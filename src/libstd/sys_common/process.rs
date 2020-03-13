@@ -47,7 +47,7 @@ impl CommandEnv {
             }
         }
         for (key, maybe_val) in self.vars.iter() {
-            if let &Some(ref val) = maybe_val {
+            if let Some(ref val) = maybe_val {
                 env::set_var(key, val);
             } else {
                 env::remove_var(key);
