@@ -863,7 +863,7 @@ pub fn run_cargo(
             // to ignore it if it's a build script.
             if filename.starts_with(&host_root_dir) {
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    deps.push((filename.to_path_buf(), true));
+                    deps.push((filename.to_path_buf(), /* host_dep */ true));
                 }
 
                 let is_build_script = kind == &["custom_build"]
@@ -876,7 +876,7 @@ pub fn run_cargo(
                 // FIXME: Have Cargo explicitly indicate build-script vs proc-macro dependencies,
                 // instead of relying on this check.
                 if !is_build_script {
-                    deps.push((filename.to_path_buf(), false));
+                    deps.push((filename.to_path_buf(), /* host_dep */ true));
                 }
                 continue;
             }
@@ -945,8 +945,8 @@ pub fn run_cargo(
     deps.extend(additional_target_deps.into_iter().map(|d| (d, false)));
     deps.sort();
     let mut new_contents = Vec::new();
-    for (dep, proc_macro) in deps.iter() {
-        new_contents.extend(if *proc_macro { b"h" } else { b"t" });
+    for (dep, host_dep) in deps.iter() {
+        new_contents.extend(if *host_dep { b"h" } else { b"t" });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
     }
