@@ -13,7 +13,6 @@ use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyl
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
@@ -722,13 +721,12 @@ impl Crate<'_> {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct MacroDef<'hir> {
-    pub name: Name,
+    pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub span: Span,
-    pub body: TokenStream,
-    pub legacy: bool,
+    pub ast: ast::MacroDef,
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the

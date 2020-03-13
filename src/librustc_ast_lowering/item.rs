@@ -6,6 +6,7 @@ use rustc::bug;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -219,18 +220,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
 
-        if let ItemKind::MacroDef(ref def) = i.kind {
-            if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
-                let body = self.lower_token_stream(def.body.inner_tokens());
+        if let ItemKind::MacroDef(MacroDef { ref body, legacy }) = i.kind {
+            if !legacy || attr::contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
+                let body = P(self.lower_mac_args(body));
                 self.exported_macros.push(hir::MacroDef {
-                    name: ident.name,
+                    ident,
                     vis,
                     attrs,
                     hir_id,
                     span: i.span,
-                    body,
-                    legacy: def.legacy,
+                    ast: MacroDef { body, legacy },
                 });
             } else {
                 self.non_exported_macro_attrs.extend(attrs.iter().cloned());
