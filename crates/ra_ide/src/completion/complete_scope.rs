@@ -811,7 +811,44 @@ mod tests {
                 }
                 "
             ),
-            @"[]"
+            @r###"
+        [
+            CompletionItem {
+                label: "m!",
+                source_range: [145; 145),
+                delete: [145; 145),
+                insert: "m!($0)",
+                kind: Macro,
+                detail: "macro_rules! m",
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [145; 145),
+                delete: [145; 145),
+                insert: "quux(${1:x})$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux(x: i32)",
+                trigger_call_info: true,
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [145; 145),
+                delete: [145; 145),
+                insert: "x",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "y",
+                source_range: [145; 145),
+                delete: [145; 145),
+                insert: "y",
+                kind: Binding,
+                detail: "i32",
+            },
+        ]
+        "###
         );
     }
 

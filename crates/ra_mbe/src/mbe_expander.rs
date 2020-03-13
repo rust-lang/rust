@@ -14,24 +14,27 @@ pub(crate) fn expand(
     rules: &crate::MacroRules,
     input: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let (mut result, mut err) = (tt::Subtree::default(), Some(ExpandError::NoMatchingRule));
+    let (mut result, mut left_over, mut err) = (tt::Subtree::default(), usize::max_value(), Some(ExpandError::NoMatchingRule));
     for rule in &rules.rules {
-        let (res, e) = expand_rule(rule, input);
+        let ((res, left), e) = expand_rule(rule, input);
         if e.is_none() {
             // if we find a rule that applies without errors, we're done
             return (res, None);
         }
-        // TODO decide which result is better
-        result = res;
-        err = e;
+        // use the rule if we matched more tokens
+        if left < left_over {
+            result = res;
+            err = e;
+            left_over = left;
+        }
     }
     (result, err)
 }
 
-fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-    let (bindings, bindings_err) = dbg!(matcher::match_(&rule.lhs, input));
+fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> ExpandResult<(tt::Subtree, usize)> {
+    let ((bindings, left_over), bindings_err) = dbg!(matcher::match_(&rule.lhs, input));
     let (res, transcribe_err) = dbg!(transcriber::transcribe(&rule.rhs, &bindings));
-    (res, bindings_err.or(transcribe_err))
+    ((res, left_over), bindings_err.or(transcribe_err))
 }
 
 /// The actual algorithm for expansion is not too hard, but is pretty tricky.

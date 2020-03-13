@@ -65,7 +65,7 @@ macro_rules! bail {
     };
 }
 
-pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<Bindings> {
+pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<(Bindings, usize)> {
     assert!(pattern.delimiter == None);
 
     let mut res = Bindings::default();
@@ -77,7 +77,7 @@ pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<B
         err = Some(err!("leftover tokens"));
     }
 
-    (res, err)
+    ((res, src.len()), err)
 }
 
 fn match_subtree(
