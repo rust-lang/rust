@@ -449,38 +449,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
     ) -> bool {
-        // Emit a panic or a no-op for `panic_if_uninhabited`.
+        // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
         #[derive(Debug, PartialEq)]
-        enum PanicIntrinsic {
-            IfUninhabited,
-            IfZeroInvalid,
-            IfAnyInvalid,
+        enum AssertIntrinsic {
+            Inhabited,
+            ZeroValid,
+            UninitValid,
         };
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             // FIXME: Move to symbols instead of strings.
-            "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
-            "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
-            "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
+            "assert_inhabited" => Some(AssertIntrinsic::Inhabited),
+            "assert_zero_valid" => Some(AssertIntrinsic::ZeroValid),
+            "assert_uninit_valid" => Some(AssertIntrinsic::UninitValid),
             _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
-            use PanicIntrinsic::*;
+            use AssertIntrinsic::*;
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
-                IfUninhabited => layout.abi.is_uninhabited(),
+                Inhabited => layout.abi.is_uninhabited(),
                 // We unwrap as the error type is `!`.
-                IfZeroInvalid => !layout.might_permit_raw_init(bx, /*zero:*/ true).unwrap(),
+                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true).unwrap(),
                 // We unwrap as the error type is `!`.
-                IfAnyInvalid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
+                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
             };
             if do_panic {
                 let msg_str = if layout.abi.is_uninhabited() {
                     // Use this error even for the other intrinsics as it is more precise.
                     format!("attempted to instantiate uninhabited type `{}`", ty)
-                } else if intrinsic == IfZeroInvalid {
+                } else if intrinsic == ZeroValid {
                     format!("attempted to zero-initialize type `{}`, which is invalid", ty)
                 } else {
                     format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
