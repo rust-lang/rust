@@ -12,9 +12,9 @@ use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
-use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor};
+use crate::{utils::variant_data, Substs, Ty, TypeCtor};
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
+impl<'a> InferenceContext<'a> {
     fn infer_tuple_struct_pat(
         &mut self,
         path: Option<&Path>,
@@ -23,7 +23,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         default_bm: BindingMode,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
-        let var_data = def.map(|it| variant_data(self.db, it));
+        let var_data = def.map(|it| variant_data(self.db.upcast(), it));
         self.unify(&ty, expected);
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
@@ -51,7 +51,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         id: PatId,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
-        let var_data = def.map(|it| variant_data(self.db, it));
+        let var_data = def.map(|it| variant_data(self.db.upcast(), it));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }

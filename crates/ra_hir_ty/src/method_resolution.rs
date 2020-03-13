@@ -48,10 +48,7 @@ pub struct CrateImplDefs {
 }
 
 impl CrateImplDefs {
-    pub(crate) fn impls_in_crate_query(
-        db: &impl HirDatabase,
-        krate: CrateId,
-    ) -> Arc<CrateImplDefs> {
+    pub(crate) fn impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<CrateImplDefs> {
         let _p = profile("impls_in_crate_query");
         let mut res =
             CrateImplDefs { impls: FxHashMap::default(), impls_by_trait: FxHashMap::default() };
@@ -92,7 +89,7 @@ impl CrateImplDefs {
 impl Ty {
     pub fn def_crates(
         &self,
-        db: &impl HirDatabase,
+        db: &dyn HirDatabase,
         cur_crate: CrateId,
     ) -> Option<ArrayVec<[CrateId; 2]>> {
         // Types like slice can have inherent impls in several crates, (core and alloc).
@@ -110,7 +107,7 @@ impl Ty {
         let lang_item_targets = match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Adt(def_id) => {
-                    return Some(std::iter::once(def_id.module(db).krate).collect())
+                    return Some(std::iter::once(def_id.module(db.upcast()).krate).collect())
                 }
                 TypeCtor::Bool => lang_item_crate!("bool"),
                 TypeCtor::Char => lang_item_crate!("char"),
@@ -134,7 +131,7 @@ impl Ty {
                 LangItemTarget::ImplDefId(it) => Some(it),
                 _ => None,
             })
-            .map(|it| it.lookup(db).container.module(db).krate)
+            .map(|it| it.lookup(db.upcast()).container.module(db.upcast()).krate)
             .collect();
         Some(res)
     }
@@ -143,7 +140,7 @@ impl Ty {
 /// receiver type (but without autoref applied yet).
 pub(crate) fn lookup_method(
     ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -181,7 +178,7 @@ pub enum LookupMode {
 // FIXME add a context type here?
 pub fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -247,7 +244,7 @@ pub fn iterate_method_candidates<T>(
 
 fn iterate_method_candidates_with_autoref<T>(
     deref_chain: &[Canonical<Ty>],
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -304,7 +301,7 @@ fn iterate_method_candidates_with_autoref<T>(
 fn iterate_method_candidates_by_receiver<T>(
     receiver_ty: &Canonical<Ty>,
     rest_of_deref_chain: &[Canonical<Ty>],
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -340,7 +337,7 @@ fn iterate_method_candidates_by_receiver<T>(
 
 fn iterate_method_candidates_for_self_ty<T>(
     self_ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -367,7 +364,7 @@ fn iterate_method_candidates_for_self_ty<T>(
 
 fn iterate_trait_method_candidates<T>(
     self_ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
@@ -381,7 +378,7 @@ fn iterate_trait_method_candidates<T>(
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         env.trait_predicates_for_self_ty(&self_ty.value)
             .map(|tr| tr.trait_)
-            .flat_map(|t| all_super_traits(db, t))
+            .flat_map(|t| all_super_traits(db.upcast(), t))
             .collect()
     } else {
         Vec::new()
@@ -416,7 +413,7 @@ fn iterate_trait_method_candidates<T>(
 
 fn iterate_inherent_methods<T>(
     self_ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
@@ -449,7 +446,7 @@ fn iterate_inherent_methods<T>(
 
 /// Returns the self type for the index trait call.
 pub fn resolve_indexing_op(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     ty: &Canonical<Ty>,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
@@ -467,7 +464,7 @@ pub fn resolve_indexing_op(
 }
 
 fn is_valid_candidate(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     item: AssocItemId,
@@ -504,7 +501,7 @@ fn is_valid_candidate(
 }
 
 pub(crate) fn inherent_impl_substs(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     impl_id: ImplId,
     self_ty: &Canonical<Ty>,
 ) -> Option<Substs> {
@@ -544,11 +541,11 @@ fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
 }
 
 fn transform_receiver_ty(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     function_id: FunctionId,
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
-    let substs = match function_id.lookup(db).container {
+    let substs = match function_id.lookup(db.upcast()).container {
         AssocContainerId::TraitId(_) => Substs::build_for_def(db, function_id)
             .push(self_ty.value.clone())
             .fill_with_unknown()
@@ -562,7 +559,7 @@ fn transform_receiver_ty(
 
 pub fn implements_trait(
     ty: &Canonical<Ty>,
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     trait_: TraitId,
@@ -581,7 +578,7 @@ pub fn implements_trait(
 /// This creates Substs for a trait with the given Self type and type variables
 /// for all other parameters, to query Chalk with it.
 fn generic_implements_goal(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
     self_ty: Canonical<Ty>,
@@ -598,7 +595,7 @@ fn generic_implements_goal(
 }
 
 fn autoderef_method_receiver(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     ty: InEnvironment<Canonical<Ty>>,
 ) -> Vec<Canonical<Ty>> {

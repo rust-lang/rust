@@ -20,7 +20,7 @@ use crate::{
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
 pub fn autoderef<'a>(
-    db: &'a impl HirDatabase,
+    db: &'a dyn HirDatabase,
     krate: Option<CrateId>,
     ty: InEnvironment<Canonical<Ty>>,
 ) -> impl Iterator<Item = Canonical<Ty>> + 'a {
@@ -32,7 +32,7 @@ pub fn autoderef<'a>(
 }
 
 pub(crate) fn deref(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
@@ -44,7 +44,7 @@ pub(crate) fn deref(
 }
 
 fn deref_by_trait(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
@@ -54,7 +54,7 @@ fn deref_by_trait(
     };
     let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;
 
-    let generic_params = generics(db, target.into());
+    let generic_params = generics(db.upcast(), target.into());
     if generic_params.len() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type

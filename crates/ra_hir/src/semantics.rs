@@ -190,7 +190,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         T::to_def(self, src)
     }
 
-    fn with_ctx<F: FnOnce(&mut SourceToDefCtx<&DB>) -> T, T>(&self, f: F) -> T {
+    fn with_ctx<F: FnOnce(&mut SourceToDefCtx) -> T, T>(&self, f: F) -> T {
         let mut cache = self.s2d_cache.borrow_mut();
         let mut ctx = SourceToDefCtx { db: self.db, cache: &mut *cache };
         f(&mut ctx)
@@ -369,35 +369,35 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 }
 
 // FIXME: Change `HasSource` trait to work with `Semantics` and remove this?
-pub fn original_range(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> FileRange {
+pub fn original_range(db: &dyn HirDatabase, node: InFile<&SyntaxNode>) -> FileRange {
     if let Some(range) = original_range_opt(db, node) {
-        let original_file = range.file_id.original_file(db);
+        let original_file = range.file_id.original_file(db.upcast());
         if range.file_id == original_file.into() {
             return FileRange { file_id: original_file, range: range.value };
         }
 
         log::error!("Fail to mapping up more for {:?}", range);
-        return FileRange { file_id: range.file_id.original_file(db), range: range.value };
+        return FileRange { file_id: range.file_id.original_file(db.upcast()), range: range.value };
     }
 
     // Fall back to whole macro call
-    if let Some(expansion) = node.file_id.expansion_info(db) {
+    if let Some(expansion) = node.file_id.expansion_info(db.upcast()) {
         if let Some(call_node) = expansion.call_node() {
             return FileRange {
-                file_id: call_node.file_id.original_file(db),
+                file_id: call_node.file_id.original_file(db.upcast()),
                 range: call_node.value.text_range(),
             };
         }
     }
 
-    FileRange { file_id: node.file_id.original_file(db), range: node.value.text_range() }
+    FileRange { file_id: node.file_id.original_file(db.upcast()), range: node.value.text_range() }
 }
 
 fn original_range_opt(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     node: InFile<&SyntaxNode>,
 ) -> Option<InFile<TextRange>> {
-    let expansion = node.file_id.expansion_info(db)?;
+    let expansion = node.file_id.expansion_info(db.upcast())?;
 
     // the input node has only one token ?
     let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
@@ -419,7 +419,7 @@ fn original_range_opt(
 }
 
 fn ascend_call_token(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     expansion: &ExpansionInfo,
     token: InFile<SyntaxToken>,
 ) -> Option<InFile<SyntaxToken>> {
@@ -427,7 +427,7 @@ fn ascend_call_token(
     if origin != Origin::Call {
         return None;
     }
-    if let Some(info) = mapped.file_id.expansion_info(db) {
+    if let Some(info) = mapped.file_id.expansion_info(db.upcast()) {
         return ascend_call_token(db, &info, mapped);
     }
     Some(mapped)

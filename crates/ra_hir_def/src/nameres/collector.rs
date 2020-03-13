@@ -30,7 +30,7 @@ use crate::{
     TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
-pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
 
     // populate external prelude
@@ -112,8 +112,8 @@ struct DeriveDirective {
 }
 
 /// Walks the tree of module recursively
-struct DefCollector<'a, DB> {
-    db: &'a DB,
+struct DefCollector<'a> {
+    db: &'a dyn DefDatabase,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
@@ -124,10 +124,7 @@ struct DefCollector<'a, DB> {
     cfg_options: &'a CfgOptions,
 }
 
-impl<DB> DefCollector<'_, DB>
-where
-    DB: DefDatabase,
-{
+impl DefCollector<'_> {
     fn collect(&mut self) {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let raw_items = self.db.raw_items(file_id.into());
@@ -605,8 +602,8 @@ where
 }
 
 /// Walks a single module, populating defs, imports and macros
-struct ModCollector<'a, D> {
-    def_collector: D,
+struct ModCollector<'a, 'b> {
+    def_collector: &'a mut DefCollector<'b>,
     macro_depth: usize,
     module_id: LocalModuleId,
     file_id: HirFileId,
@@ -614,10 +611,7 @@ struct ModCollector<'a, D> {
     mod_dir: ModDir,
 }
 
-impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
-where
-    DB: DefDatabase,
-{
+impl ModCollector<'_, '_> {
     fn collect(&mut self, items: &[raw::RawItem]) {
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -950,7 +944,7 @@ mod tests {
 
     use super::*;
 
-    fn do_collect_defs(db: &impl DefDatabase, def_map: CrateDefMap) -> CrateDefMap {
+    fn do_collect_defs(db: &dyn DefDatabase, def_map: CrateDefMap) -> CrateDefMap {
         let mut collector = DefCollector {
             db,
             def_map,

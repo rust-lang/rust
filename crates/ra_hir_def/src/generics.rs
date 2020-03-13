@@ -69,7 +69,7 @@ type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
         let _p = profile("generic_params_query");
@@ -77,7 +77,7 @@ impl GenericParams {
         Arc::new(params)
     }
 
-    fn new(db: &impl DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
+    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
         let mut generics = GenericParams { types: Arena::default(), where_predicates: Vec::new() };
         let mut sm = ArenaMap::default();
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
@@ -242,14 +242,14 @@ impl GenericParams {
 impl HasChildSource for GenericDefId {
     type ChildId = LocalTypeParamId;
     type Value = Either<ast::TraitDef, ast::TypeParam>;
-    fn child_source(&self, db: &impl DefDatabase) -> InFile<SourceMap> {
+    fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMap> {
         let (_, sm) = GenericParams::new(db, *self);
         sm
     }
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
+    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
         let mut res = DynMap::default();
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();

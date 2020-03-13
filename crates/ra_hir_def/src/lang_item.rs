@@ -77,7 +77,7 @@ impl LangItems {
     }
 
     /// Salsa query. This will look for lang items in a specific crate.
-    pub(crate) fn crate_lang_items_query(db: &impl DefDatabase, krate: CrateId) -> Arc<LangItems> {
+    pub(crate) fn crate_lang_items_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<LangItems> {
         let mut lang_items = LangItems::default();
 
         let crate_def_map = db.crate_def_map(krate);
@@ -92,7 +92,7 @@ impl LangItems {
     }
 
     pub(crate) fn module_lang_items_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         module: ModuleId,
     ) -> Option<Arc<LangItems>> {
         let mut lang_items = LangItems::default();
@@ -107,7 +107,7 @@ impl LangItems {
     /// Salsa query. Look for a lang item, starting from the specified crate and recursively
     /// traversing its dependencies.
     pub(crate) fn lang_item_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         start_crate: CrateId,
         item: SmolStr,
     ) -> Option<LangItemTarget> {
@@ -122,7 +122,7 @@ impl LangItems {
             .find_map(|dep| db.lang_item(dep.crate_id, item.clone()))
     }
 
-    fn collect_lang_items(&mut self, db: &impl DefDatabase, module: ModuleId) {
+    fn collect_lang_items(&mut self, db: &dyn DefDatabase, module: ModuleId) {
         // Look for impl targets
         let def_map = db.crate_def_map(module.krate);
         let module_data = &def_map[module.local_id];
@@ -152,7 +152,7 @@ impl LangItems {
 
     fn collect_lang_item<T>(
         &mut self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         item: T,
         constructor: fn(T) -> LangItemTarget,
     ) where

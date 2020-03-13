@@ -30,7 +30,7 @@ use ra_syntax::{algo::replace_descendants, SyntaxElement, SyntaxNode};
 use std::{collections::HashMap, sync::Arc};
 
 pub fn expand_eager_macro(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
@@ -78,7 +78,7 @@ fn to_subtree(node: &SyntaxNode) -> Option<tt::Subtree> {
 }
 
 fn lazy_expand(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
 ) -> Option<InFile<SyntaxNode>> {
@@ -91,7 +91,7 @@ fn lazy_expand(
 }
 
 fn eager_macro_recur(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     curr: InFile<SyntaxNode>,
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
 ) -> Option<SyntaxNode> {

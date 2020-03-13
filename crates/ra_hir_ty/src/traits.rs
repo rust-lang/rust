@@ -24,8 +24,8 @@ const CHALK_SOLVER_MAX_SIZE: usize = 10;
 const CHALK_SOLVER_FUEL: i32 = 100;
 
 #[derive(Debug, Copy, Clone)]
-struct ChalkContext<'a, DB> {
-    db: &'a DB,
+struct ChalkContext<'a> {
+    db: &'a dyn HirDatabase,
     krate: CrateId,
 }
 
@@ -37,7 +37,7 @@ fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
 
 /// Collects impls for the given trait in the whole dependency tree of `krate`.
 pub(crate) fn impls_for_trait_query(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     trait_: TraitId,
 ) -> Arc<[ImplId]> {
@@ -136,7 +136,7 @@ impl TypeWalk for ProjectionPredicate {
 
 /// Solve a trait goal using Chalk.
 pub(crate) fn trait_solve_query(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
@@ -163,7 +163,7 @@ pub(crate) fn trait_solve_query(
 }
 
 fn solve(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
@@ -188,7 +188,7 @@ fn solve(
 }
 
 fn solution_from_chalk(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {

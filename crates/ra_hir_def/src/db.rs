@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
-use ra_db::{salsa, CrateId, SourceDatabase};
+use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
 use ra_prof::profile;
 use ra_syntax::SmolStr;
 
@@ -43,7 +43,7 @@ pub trait InternDatabase: SourceDatabase {
 }
 
 #[salsa::query_group(DefDatabaseStorage)]
-pub trait DefDatabase: InternDatabase + AstDatabase {
+pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
@@ -108,6 +108,12 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 }
+
+// impl<T: DefDatabase> Upcast<dyn AstDatabase> for T {
+//     fn upcast(&self) -> &dyn AstDatabase {
+//         &*self
+//     }
+// }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
     let _p = profile("crate_def_map:wait");

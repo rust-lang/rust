@@ -34,19 +34,19 @@ pub(crate) struct Expander {
 
 impl Expander {
     pub(crate) fn new(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         current_file_id: HirFileId,
         module: ModuleId,
     ) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
-        let hygiene = Hygiene::new(db, current_file_id);
+        let hygiene = Hygiene::new(db.upcast(), current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
     }
 
-    pub(crate) fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
+    pub(crate) fn enter_expand<T: ast::AstNode>(
         &mut self,
-        db: &DB,
+        db: &dyn DefDatabase,
         local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
@@ -70,7 +70,7 @@ impl Expander {
                         ast_id_map: mem::take(&mut self.ast_id_map),
                         bomb: DropBomb::new("expansion mark dropped"),
                     };
-                    self.hygiene = Hygiene::new(db, file_id);
+                    self.hygiene = Hygiene::new(db.upcast(), file_id);
                     self.current_file_id = file_id;
                     self.ast_id_map = db.ast_id_map(file_id);
 
@@ -84,8 +84,8 @@ impl Expander {
         None
     }
 
-    pub(crate) fn exit(&mut self, db: &impl DefDatabase, mut mark: Mark) {
-        self.hygiene = Hygiene::new(db, mark.file_id);
+    pub(crate) fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
+        self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
         mark.bomb.defuse();
@@ -99,7 +99,7 @@ impl Expander {
         Path::from_src(path, &self.hygiene)
     }
 
-    fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &ModPath) -> Option<MacroDefId> {
+    fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
         self.crate_def_map
             .resolve_path(db, self.module.local_id, path, BuiltinShadowMode::Other)
             .0
@@ -167,7 +167,7 @@ pub struct SyntheticSyntax;
 
 impl Body {
     pub(crate) fn body_with_source_map_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
         let _p = profile("body_with_source_map_query");
@@ -196,12 +196,12 @@ impl Body {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub(crate) fn body_query(db: &impl DefDatabase, def: DefWithBodyId) -> Arc<Body> {
+    pub(crate) fn body_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
         db.body_with_source_map(def).0
     }
 
     fn new(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         def: DefWithBodyId,
         expander: Expander,
         params: Option<ast::ParamList>,

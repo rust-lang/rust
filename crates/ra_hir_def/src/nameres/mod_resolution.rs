@@ -40,12 +40,12 @@ impl ModDir {
 
     pub(super) fn resolve_declaration(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, ModDir), RelativePathBuf> {
-        let file_id = file_id.original_file(db);
+        let file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = Vec::new();
         match attr_to_path(attr_path) {

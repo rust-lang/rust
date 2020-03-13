@@ -19,7 +19,7 @@ pub struct Hygiene {
 }
 
 impl Hygiene {
-    pub fn new(db: &impl AstDatabase, file_id: HirFileId) -> Hygiene {
+    pub fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Hygiene {
         let def_crate = match file_id.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {

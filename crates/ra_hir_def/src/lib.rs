@@ -47,8 +47,8 @@ mod marks;
 use std::hash::Hash;
 
 use hir_expand::{
-    ast_id_map::FileAstId, db::AstDatabase, eager::expand_eager_macro, hygiene::Hygiene, AstId,
-    HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    ast_id_map::FileAstId, eager::expand_eager_macro, hygiene::Hygiene, AstId, HirFileId, InFile,
+    MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -87,14 +87,14 @@ macro_rules! impl_intern {
 
         impl Intern for $loc {
             type ID = $id;
-            fn intern(self, db: &impl db::DefDatabase) -> $id {
+            fn intern(self, db: &dyn db::DefDatabase) -> $id {
                 db.$intern(self)
             }
         }
 
         impl Lookup for $id {
             type Data = $loc;
-            fn lookup(&self, db: &impl db::DefDatabase) -> $loc {
+            fn lookup(&self, db: &dyn db::DefDatabase) -> $loc {
                 db.$lookup(*self)
             }
         }
@@ -339,20 +339,20 @@ impl_froms!(VariantId: EnumVariantId, StructId, UnionId);
 
 trait Intern {
     type ID;
-    fn intern(self, db: &impl db::DefDatabase) -> Self::ID;
+    fn intern(self, db: &dyn db::DefDatabase) -> Self::ID;
 }
 
 pub trait Lookup {
     type Data;
-    fn lookup(&self, db: &impl db::DefDatabase) -> Self::Data;
+    fn lookup(&self, db: &dyn db::DefDatabase) -> Self::Data;
 }
 
 pub trait HasModule {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId;
 }
 
 impl HasModule for ContainerId {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match *self {
             ContainerId::ModuleId(it) => it,
             ContainerId::DefWithBodyId(it) => it.module(db),
@@ -361,7 +361,7 @@ impl HasModule for ContainerId {
 }
 
 impl HasModule for AssocContainerId {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match *self {
             AssocContainerId::ContainerId(it) => it.module(db),
             AssocContainerId::ImplId(it) => it.lookup(db).container.module(db),
@@ -371,13 +371,13 @@ impl HasModule for AssocContainerId {
 }
 
 impl<N: AstNode> HasModule for AssocItemLoc<N> {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         self.container.module(db)
     }
 }
 
 impl HasModule for AdtId {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
             AdtId::StructId(it) => it.lookup(db).container,
             AdtId::UnionId(it) => it.lookup(db).container,
@@ -388,7 +388,7 @@ impl HasModule for AdtId {
 }
 
 impl HasModule for DefWithBodyId {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
             DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
@@ -398,7 +398,7 @@ impl HasModule for DefWithBodyId {
 }
 
 impl HasModule for GenericDefId {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
             GenericDefId::FunctionId(it) => it.lookup(db).module(db),
             GenericDefId::AdtId(it) => it.module(db),
@@ -412,7 +412,7 @@ impl HasModule for GenericDefId {
 }
 
 impl HasModule for StaticLoc {
-    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         self.container.module(db)
     }
 }
@@ -421,7 +421,7 @@ impl HasModule for StaticLoc {
 pub trait AsMacroCall {
     fn as_call_id(
         &self,
-        db: &(impl db::DefDatabase + AstDatabase),
+        db: &dyn db::DefDatabase,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId>;
 }
@@ -429,11 +429,11 @@ pub trait AsMacroCall {
 impl AsMacroCall for InFile<&ast::MacroCall> {
     fn as_call_id(
         &self,
-        db: &(impl db::DefDatabase + AstDatabase),
+        db: &dyn db::DefDatabase,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
-        let h = Hygiene::new(db, self.file_id);
+        let h = Hygiene::new(db.upcast(), self.file_id);
         let path = path::ModPath::from_src(self.value.path()?, &h)?;
 
         AstIdWithPath::new(ast_id.file_id, ast_id.value, path).as_call_id(db, resolver)
@@ -456,23 +456,23 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
 impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
     fn as_call_id(
         &self,
-        db: &impl AstDatabase,
+        db: &dyn db::DefDatabase,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def: MacroDefId = resolver(self.path.clone())?;
 
         if let MacroDefKind::BuiltInEager(_) = def.kind {
-            let macro_call = InFile::new(self.ast_id.file_id, self.ast_id.to_node(db));
-            let hygiene = Hygiene::new(db, self.ast_id.file_id);
+            let macro_call = InFile::new(self.ast_id.file_id, self.ast_id.to_node(db.upcast()));
+            let hygiene = Hygiene::new(db.upcast(), self.ast_id.file_id);
 
             Some(
-                expand_eager_macro(db, macro_call, def, &|path: ast::Path| {
+                expand_eager_macro(db.upcast(), macro_call, def, &|path: ast::Path| {
                     resolver(path::ModPath::from_src(path, &hygiene)?)
                 })?
                 .into(),
             )
         } else {
-            Some(def.as_lazy_macro(db, MacroCallKind::FnLike(self.ast_id)).into())
+            Some(def.as_lazy_macro(db.upcast(), MacroCallKind::FnLike(self.ast_id)).into())
         }
     }
 }
@@ -480,10 +480,10 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
 impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
     fn as_call_id(
         &self,
-        db: &impl AstDatabase,
+        db: &dyn db::DefDatabase,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
-        Some(def.as_lazy_macro(db, MacroCallKind::Attr(self.ast_id)).into())
+        Some(def.as_lazy_macro(db.upcast(), MacroCallKind::Attr(self.ast_id)).into())
     }
 }

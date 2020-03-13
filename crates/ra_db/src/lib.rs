@@ -32,6 +32,10 @@ macro_rules! impl_intern_key {
     };
 }
 
+pub trait Upcast<T: ?Sized> {
+    fn upcast(&self) -> &T;
+}
+
 pub trait CheckCanceled {
     /// Aborts current query if there are pending changes.
     ///

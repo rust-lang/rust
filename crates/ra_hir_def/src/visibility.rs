@@ -33,22 +33,22 @@ impl RawVisibility {
     }
 
     pub(crate) fn from_ast_with_default(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         default: RawVisibility,
         node: InFile<Option<ast::Visibility>>,
     ) -> RawVisibility {
         Self::from_ast_with_hygiene_and_default(
             node.value,
             default,
-            &Hygiene::new(db, node.file_id),
+            &Hygiene::new(db.upcast(), node.file_id),
         )
     }
 
     pub(crate) fn from_ast(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         node: InFile<Option<ast::Visibility>>,
     ) -> RawVisibility {
-        Self::from_ast_with_hygiene(node.value, &Hygiene::new(db, node.file_id))
+        Self::from_ast_with_hygiene(node.value, &Hygiene::new(db.upcast(), node.file_id))
     }
 
     pub(crate) fn from_ast_with_hygiene(
@@ -90,7 +90,7 @@ impl RawVisibility {
 
     pub fn resolve(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         resolver: &crate::resolver::Resolver,
     ) -> Visibility {
         // we fall back to public visibility (i.e. fail open) if the path can't be resolved
@@ -108,7 +108,7 @@ pub enum Visibility {
 }
 
 impl Visibility {
-    pub fn is_visible_from(self, db: &impl DefDatabase, from_module: ModuleId) -> bool {
+    pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
             Visibility::Module(m) => m,
             Visibility::Public => return true,

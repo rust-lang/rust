@@ -9,8 +9,8 @@ use crate::{
 use hir_def::{generics::TypeParamProvenance, AdtId, AssocContainerId, Lookup};
 use hir_expand::name::Name;
 
-pub struct HirFormatter<'a, 'b, DB> {
-    pub db: &'a DB,
+pub struct HirFormatter<'a, 'b> {
+    pub db: &'a dyn HirDatabase,
     fmt: &'a mut fmt::Formatter<'b>,
     buf: String,
     curr_size: usize,
@@ -19,20 +19,20 @@ pub struct HirFormatter<'a, 'b, DB> {
 }
 
 pub trait HirDisplay {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result;
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result;
 
-    fn display<'a, DB>(&'a self, db: &'a DB) -> HirDisplayWrapper<'a, DB, Self>
+    fn display<'a>(&'a self, db: &'a dyn HirDatabase) -> HirDisplayWrapper<'a, Self>
     where
         Self: Sized,
     {
         HirDisplayWrapper(db, self, None, false)
     }
 
-    fn display_truncated<'a, DB>(
+    fn display_truncated<'a>(
         &'a self,
-        db: &'a DB,
+        db: &'a dyn HirDatabase,
         max_size: Option<usize>,
-    ) -> HirDisplayWrapper<'a, DB, Self>
+    ) -> HirDisplayWrapper<'a, Self>
     where
         Self: Sized,
     {
@@ -40,10 +40,7 @@ pub trait HirDisplay {
     }
 }
 
-impl<'a, 'b, DB> HirFormatter<'a, 'b, DB>
-where
-    DB: HirDatabase,
-{
+impl<'a, 'b> HirFormatter<'a, 'b> {
     pub fn write_joined<T: HirDisplay>(
         &mut self,
         iter: impl IntoIterator<Item = T>,
@@ -84,11 +81,10 @@ where
     }
 }
 
-pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<usize>, bool);
+pub struct HirDisplayWrapper<'a, T>(&'a dyn HirDatabase, &'a T, Option<usize>, bool);
 
-impl<'a, DB, T> fmt::Display for HirDisplayWrapper<'a, DB, T>
+impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
 where
-    DB: HirDatabase,
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -106,13 +102,13 @@ where
 const TYPE_HINT_TRUNCATION: &str = "…";
 
 impl HirDisplay for &Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for ApplicationTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -178,7 +174,7 @@ impl HirDisplay for ApplicationTy {
                     }
                 }
                 if self.parameters.len() > 0 {
-                    let generics = generics(f.db, def.into());
+                    let generics = generics(f.db.upcast(), def.into());
                     let (parent_params, self_param, type_params, _impl_trait_params) =
                         generics.provenance_split();
                     let total_len = parent_params + self_param + type_params;
@@ -238,7 +234,7 @@ impl HirDisplay for ApplicationTy {
                 }
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let trait_ = match type_alias.lookup(f.db).container {
+                let trait_ = match type_alias.lookup(f.db.upcast()).container {
                     AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
@@ -272,7 +268,7 @@ impl HirDisplay for ApplicationTy {
 }
 
 impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -290,7 +286,7 @@ impl HirDisplay for ProjectionTy {
 }
 
 impl HirDisplay for Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -299,7 +295,7 @@ impl HirDisplay for Ty {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Placeholder(id) => {
-                let generics = generics(f.db, id.parent);
+                let generics = generics(f.db.upcast(), id.parent);
                 let param_data = &generics.params.types[id.local_id];
                 match param_data.provenance {
                     TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
@@ -334,7 +330,7 @@ impl HirDisplay for Ty {
 
 fn write_bounds_like_dyn_trait(
     predicates: &[GenericPredicate],
-    f: &mut HirFormatter<impl HirDatabase>,
+    f: &mut HirFormatter,
 ) -> fmt::Result {
     // Note: This code is written to produce nice results (i.e.
     // corresponding to surface Rust) for types that can occur in
@@ -398,7 +394,7 @@ fn write_bounds_like_dyn_trait(
 }
 
 impl TraitRef {
-    fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
+    fn hir_fmt_ext(&self, f: &mut HirFormatter, use_as: bool) -> fmt::Result {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -420,19 +416,19 @@ impl TraitRef {
 }
 
 impl HirDisplay for TraitRef {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         self.hir_fmt_ext(f, false)
     }
 }
 
 impl HirDisplay for &GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -456,7 +452,7 @@ impl HirDisplay for GenericPredicate {
 }
 
 impl HirDisplay for Obligation {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
         match self {
             Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
             Obligation::Projection(proj) => write!(

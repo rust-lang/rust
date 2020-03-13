@@ -63,9 +63,9 @@ mod pat;
 mod coerce;
 
 /// The entry point of type inference.
-pub(crate) fn infer_query(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
+pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
-    let resolver = def.resolver(db);
+    let resolver = def.resolver(db.upcast());
     let mut ctx = InferenceContext::new(db, def, resolver);
 
     match def {
@@ -164,7 +164,7 @@ impl InferenceResult {
     }
     pub fn add_diagnostics(
         &self,
-        db: &impl HirDatabase,
+        db: &dyn HirDatabase,
         owner: FunctionId,
         sink: &mut DiagnosticSink,
     ) {
@@ -190,8 +190,8 @@ impl Index<PatId> for InferenceResult {
 
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
-struct InferenceContext<'a, D: HirDatabase> {
-    db: &'a D,
+struct InferenceContext<'a> {
+    db: &'a dyn HirDatabase,
     owner: DefWithBodyId,
     body: Arc<Body>,
     resolver: Resolver,
@@ -208,8 +208,8 @@ struct InferenceContext<'a, D: HirDatabase> {
     return_ty: Ty,
 }
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
-    fn new(db: &'a D, owner: DefWithBodyId, resolver: Resolver) -> Self {
+impl<'a> InferenceContext<'a> {
+    fn new(db: &'a dyn HirDatabase, owner: DefWithBodyId, resolver: Resolver) -> Self {
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(),
@@ -425,7 +425,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        return match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
+        return match resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
                 let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
@@ -439,7 +439,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 (ty, Some(var.into()))
             }
             Some(TypeNs::SelfType(impl_id)) => {
-                let generics = crate::utils::generics(self.db, impl_id.into());
+                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = Substs::type_params_for_generics(&generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 let variant = ty_variant(&ty);
@@ -500,13 +500,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = path![std::iter::IntoIterator];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
         let path = path![std::ops::Try];
-        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
     }
 
@@ -532,37 +532,37 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_range_full(&self) -> Option<AdtId> {
         let path = path![std::ops::RangeFull];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
         let path = path![std::ops::Range];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
         let path = path![std::ops::RangeInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
         let path = path![std::ops::RangeFrom];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
         let path = path![std::ops::RangeTo];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
         let path = path![std::ops::RangeToInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
@@ -676,13 +676,13 @@ mod diagnostics {
     impl InferenceDiagnostic {
         pub(super) fn add_to(
             &self,
-            db: &impl HirDatabase,
+            db: &dyn HirDatabase,
             owner: FunctionId,
             sink: &mut DiagnosticSink,
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let file = owner.lookup(db).source(db).file_id;
+                    let file = owner.lookup(db.upcast()).source(db.upcast()).file_id;
                     let (_, source_map) = db.body_with_source_map(owner.into());
                     let field = source_map.field_syntax(*expr, *field);
                     sink.push(NoSuchField { file, field })

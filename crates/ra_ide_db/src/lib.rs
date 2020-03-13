@@ -14,10 +14,11 @@ mod wasm_shims;
 
 use std::sync::Arc;
 
+use hir::db::{AstDatabase, DefDatabase};
 use ra_db::{
     salsa::{self, Database, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath,
-    SourceDatabase, SourceRootId,
+    SourceDatabase, SourceRootId, Upcast,
 };
 use rustc_hash::FxHashMap;
 
@@ -39,6 +40,18 @@ pub struct RootDatabase {
     pub(crate) debug_data: Arc<DebugData>,
     pub last_gc: crate::wasm_shims::Instant,
     pub last_gc_check: crate::wasm_shims::Instant,
+}
+
+impl Upcast<dyn AstDatabase> for RootDatabase {
+    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+        &*self
+    }
+}
+
+impl Upcast<dyn DefDatabase> for RootDatabase {
+    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
+        &*self
+    }
 }
 
 impl FileLoader for RootDatabase {

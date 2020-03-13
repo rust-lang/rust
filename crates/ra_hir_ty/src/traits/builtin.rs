@@ -26,7 +26,7 @@ pub(super) struct BuiltinImplAssocTyValueData {
 }
 
 pub(super) fn get_builtin_impls(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     ty: &Ty,
     // The first argument for the trait, if present
@@ -59,7 +59,7 @@ pub(super) fn get_builtin_impls(
 }
 
 fn get_builtin_unsize_impls(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     ty: &Ty,
     // The first argument for the trait, if present
@@ -79,7 +79,7 @@ fn get_builtin_unsize_impls(
         // FIXME what about more complicated dyn tys with marker traits?
         if let Some(trait_ref) = ty.dyn_trait_ref() {
             if trait_ref.trait_ != target_trait.trait_ {
-                let super_traits = all_super_traits(db, trait_ref.trait_);
+                let super_traits = all_super_traits(db.upcast(), trait_ref.trait_);
                 if super_traits.contains(&target_trait.trait_) {
                     callback(Impl::UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData {
                         trait_: trait_ref.trait_,
@@ -94,7 +94,7 @@ fn get_builtin_unsize_impls(
     }
 }
 
-pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
+pub(super) fn impl_datum(db: &dyn HirDatabase, krate: CrateId, impl_: Impl) -> BuiltinImplData {
     match impl_ {
         Impl::ImplDef(_) => unreachable!(),
         Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
@@ -107,7 +107,7 @@ pub(super) fn impl_datum(db: &impl HirDatabase, krate: CrateId, impl_: Impl) -> 
 }
 
 pub(super) fn associated_ty_value(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     data: AssocTyValue,
 ) -> BuiltinImplAssocTyValueData {
@@ -122,7 +122,7 @@ pub(super) fn associated_ty_value(
 // Closure Fn trait impls
 
 fn check_closure_fn_trait_impl_prerequisites(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> bool {
@@ -143,7 +143,7 @@ fn check_closure_fn_trait_impl_prerequisites(
 }
 
 fn closure_fn_trait_impl_datum(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> BuiltinImplData {
@@ -189,7 +189,7 @@ fn closure_fn_trait_impl_datum(
 }
 
 fn closure_fn_trait_output_assoc_ty_value(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> BuiltinImplAssocTyValueData {
@@ -223,17 +223,17 @@ fn closure_fn_trait_output_assoc_ty_value(
 
 // Array unsizing
 
-fn check_unsize_impl_prerequisites(db: &impl HirDatabase, krate: CrateId) -> bool {
+fn check_unsize_impl_prerequisites(db: &dyn HirDatabase, krate: CrateId) -> bool {
     // the Unsize trait needs to exist and have two type parameters (Self and T)
     let unsize_trait = match get_unsize_trait(db, krate) {
         Some(t) => t,
         None => return false,
     };
-    let generic_params = generics(db, unsize_trait.into());
+    let generic_params = generics(db.upcast(), unsize_trait.into());
     generic_params.len() == 2
 }
 
-fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImplData {
+fn array_unsize_impl_datum(db: &dyn HirDatabase, krate: CrateId) -> BuiltinImplData {
     // impl<T> Unsize<[T]> for [T; _]
     // (this can be a single impl because we don't distinguish array sizes currently)
 
@@ -260,7 +260,7 @@ fn array_unsize_impl_datum(db: &impl HirDatabase, krate: CrateId) -> BuiltinImpl
 // Trait object unsizing
 
 fn trait_object_unsize_impl_datum(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     trait_: TraitId,
 ) -> BuiltinImplData {
@@ -295,7 +295,7 @@ fn trait_object_unsize_impl_datum(
 }
 
 fn super_trait_object_unsize_impl_datum(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     krate: CrateId,
     data: UnsizeToSuperTraitObjectData,
 ) -> BuiltinImplData {
@@ -313,7 +313,7 @@ fn super_trait_object_unsize_impl_datum(
     let self_bounds = vec![GenericPredicate::Implemented(self_trait_ref.clone())];
 
     // we need to go from our trait to the super trait, substituting type parameters
-    let path = crate::utils::find_super_trait_path(db, data.trait_, data.super_trait);
+    let path = crate::utils::find_super_trait_path(db.upcast(), data.trait_, data.super_trait);
 
     let mut current_trait_ref = self_trait_ref;
     for t in path.into_iter().skip(1) {
@@ -344,11 +344,7 @@ fn super_trait_object_unsize_impl_datum(
     BuiltinImplData { num_vars, trait_ref, where_clauses: Vec::new(), assoc_ty_values: Vec::new() }
 }
 
-fn get_fn_trait(
-    db: &impl HirDatabase,
-    krate: CrateId,
-    fn_trait: super::FnTrait,
-) -> Option<TraitId> {
+fn get_fn_trait(db: &dyn HirDatabase, krate: CrateId, fn_trait: super::FnTrait) -> Option<TraitId> {
     let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),
@@ -356,7 +352,7 @@ fn get_fn_trait(
     }
 }
 
-fn get_unsize_trait(db: &impl HirDatabase, krate: CrateId) -> Option<TraitId> {
+fn get_unsize_trait(db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
     let target = db.lang_item(krate, "unsize".into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),

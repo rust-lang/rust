@@ -9,7 +9,6 @@ use std::{ops::Index, sync::Arc};
 
 use hir_expand::{
     ast_id_map::AstIdMap,
-    db::AstDatabase,
     hygiene::Hygiene,
     name::{AsName, Name},
 };
@@ -45,16 +44,13 @@ pub struct RawItems {
 }
 
 impl RawItems {
-    pub(crate) fn raw_items_query(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: HirFileId,
-    ) -> Arc<RawItems> {
+    pub(crate) fn raw_items_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<RawItems> {
         let _p = profile("raw_items_query");
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),
             file_id,
-            hygiene: Hygiene::new(db, file_id),
+            hygiene: Hygiene::new(db.upcast(), file_id),
         };
         if let Some(node) = db.parse_or_expand(file_id) {
             if let Some(source_file) = ast::SourceFile::cast(node.clone()) {

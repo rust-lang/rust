@@ -6,8 +6,10 @@ use std::{
 };
 
 use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
-use hir_expand::diagnostics::DiagnosticSink;
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
+use hir_expand::{db::AstDatabase, diagnostics::DiagnosticSink};
+use ra_db::{
+    salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase, Upcast,
+};
 
 use crate::{db::HirDatabase, expr::ExprValidator};
 
@@ -23,6 +25,18 @@ use crate::{db::HirDatabase, expr::ExprValidator};
 pub struct TestDB {
     events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
     runtime: salsa::Runtime<TestDB>,
+}
+
+impl Upcast<dyn AstDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+        &*self
+    }
+}
+
+impl Upcast<dyn DefDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
+        &*self
+    }
 }
 
 impl salsa::Database for TestDB {
