@@ -17,17 +17,24 @@ use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
+use rustc_ast::tokenstream::TokenStream;
 use std::mem;
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
+        let res = self.collect_tokens(|this| this.parse_stmt_without_recovery());
+        let (mut stmt, tokens) = res.unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
-            None
-        }))
+            (None, TokenStream::default())
+        });
+
+        if let Some(stmt) = stmt.as_mut() {
+            stmt.tokens = Some(tokens)
+        }
+        Ok(stmt)
     }
 
     fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
@@ -236,10 +243,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
-        let (attrs, block) = self.parse_inner_attrs_and_block()?;
+        let ((attrs, mut block), tokens) =
+            self.collect_tokens(|this| this.parse_inner_attrs_and_block())?;
         if let [.., last] = &*attrs {
             self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);
         }
+        block.tokens = Some(tokens);
         Ok(block)
     }
 
@@ -398,11 +407,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
-        P(Block { stmts, id: DUMMY_NODE_ID, rules, span })
+        P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
-        Stmt { id: DUMMY_NODE_ID, kind, span }
+        Stmt { id: DUMMY_NODE_ID, kind, span, tokens: None }
     }
 
     fn mk_stmt_err(&self, span: Span) -> Stmt {

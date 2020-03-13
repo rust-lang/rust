@@ -711,6 +711,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 rules,
                 id: resolver.next_node_id(),
                 span: rustc_span::DUMMY_SP,
+                tokens: None,
             }
         }
 
@@ -720,12 +721,14 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 kind: ast::ExprKind::Block(P(b), None),
                 span: rustc_span::DUMMY_SP,
                 attrs: AttrVec::new(),
+                tokens: None,
             });
 
             ast::Stmt {
                 id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
                 span: rustc_span::DUMMY_SP,
+                tokens: None,
             }
         }
 
@@ -735,12 +738,14 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             id: self.resolver.next_node_id(),
             span: rustc_span::DUMMY_SP,
             attrs: AttrVec::new(),
+            tokens: None,
         });
 
         let loop_stmt = ast::Stmt {
             id: self.resolver.next_node_id(),
             span: rustc_span::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
+            tokens: None,
         };
 
         if self.within_static_or_const {

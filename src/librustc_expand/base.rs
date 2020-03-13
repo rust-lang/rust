@@ -391,6 +391,7 @@ macro_rules! make_stmts_default {
                 id: ast::DUMMY_NODE_ID,
                 span: e.span,
                 kind: ast::StmtKind::Expr(e),
+                tokens: None
             }]
         })
     };
@@ -542,6 +543,7 @@ impl MacResult for MacEager {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
                     kind: PatKind::Lit(e),
+                    tokens: None,
                 }));
             }
         }
@@ -582,12 +584,13 @@ impl DummyResult {
             kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ast::AttrVec::new(),
+            tokens: None,
         })
     }
 
     /// A plain dummy pattern.
     pub fn raw_pat(sp: Span) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: sp }
+        ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: sp, tokens: None }
     }
 
     /// A plain dummy type.
@@ -596,6 +599,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp,
+            tokens: None,
         })
     }
 }
@@ -630,6 +634,7 @@ impl MacResult for DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
+            tokens: None
         }])
     }
 

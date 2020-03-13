@@ -38,7 +38,10 @@ impl<'a> Parser<'a> {
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
     pub fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
-        self.parse_pat_with_range_pat(true, expected)
+        let (mut pat, tokens) =
+            self.collect_tokens(|this| this.parse_pat_with_range_pat(true, expected))?;
+        pat.tokens = Some(tokens);
+        Ok(pat)
     }
 
     /// Entry point to the main pattern parser.
@@ -986,6 +989,6 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
-        P(Pat { kind, span, id: ast::DUMMY_NODE_ID })
+        P(Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }

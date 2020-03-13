@@ -52,6 +52,7 @@ pub fn expand_concat_idents<'cx>(
                 kind: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
                 span: self.ident.span,
                 attrs: ast::AttrVec::new(),
+                tokens: None,
             }))
         }
 
@@ -60,6 +61,7 @@ pub fn expand_concat_idents<'cx>(
                 id: ast::DUMMY_NODE_ID,
                 kind: ast::TyKind::Path(None, ast::Path::from_ident(self.ident)),
                 span: self.ident.span,
+                tokens: None,
             }))
         }
     }

@@ -53,7 +53,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty(&self, span: Span, kind: ast::TyKind) -> P<ast::Ty> {
-        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind })
+        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
     }
 
     pub fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
@@ -69,7 +69,13 @@ impl<'a> ExtCtxt<'a> {
     pub fn anon_const(&self, span: Span, kind: ast::ExprKind) -> ast::AnonConst {
         ast::AnonConst {
             id: ast::DUMMY_NODE_ID,
-            value: P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new() }),
+            value: P(ast::Expr {
+                id: ast::DUMMY_NODE_ID,
+                kind,
+                span,
+                attrs: AttrVec::new(),
+                tokens: None,
+            }),
         }
     }
 
@@ -151,7 +157,12 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(expr),
+            tokens: None,
+        }
     }
 
     pub fn stmt_let(
@@ -175,7 +186,12 @@ impl<'a> ExtCtxt<'a> {
             span: sp,
             attrs: AttrVec::new(),
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Local(local),
+            span: sp,
+            tokens: None,
+        }
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
@@ -188,11 +204,16 @@ impl<'a> ExtCtxt<'a> {
             span,
             attrs: AttrVec::new(),
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span, tokens: None }
     }
 
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Item(item),
+            span: sp,
+            tokens: None,
+        }
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
@@ -202,15 +223,22 @@ impl<'a> ExtCtxt<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
+                tokens: None,
             }],
         )
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
-        P(ast::Block { stmts, id: ast::DUMMY_NODE_ID, rules: BlockCheckMode::Default, span })
+        P(ast::Block {
+            stmts,
+            id: ast::DUMMY_NODE_ID,
+            rules: BlockCheckMode::Default,
+            span,
+            tokens: None,
+        })
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
-        P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new() })
+        P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new(), tokens: None })
     }
 
     pub fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
@@ -396,7 +424,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn pat(&self, span: Span, kind: PatKind) -> P<ast::Pat> {
-        P(ast::Pat { id: ast::DUMMY_NODE_ID, kind, span })
+        P(ast::Pat { id: ast::DUMMY_NODE_ID, kind, span, tokens: None })
     }
     pub fn pat_wild(&self, span: Span) -> P<ast::Pat> {
         self.pat(span, PatKind::Wild)

@@ -62,7 +62,11 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::No)
+        let (mut ty, tokens) = self.collect_tokens(|this| {
+            this.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::No)
+        })?;
+        ty.tokens = Some(tokens);
+        Ok(ty)
     }
 
     /// Parse a type suitable for a function or function pointer parameter.
@@ -614,6 +618,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
-        P(Ty { kind, span, id: ast::DUMMY_NODE_ID })
+        P(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }

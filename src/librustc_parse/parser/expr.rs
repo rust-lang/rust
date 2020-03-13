@@ -86,7 +86,10 @@ impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
-        self.parse_expr_res(Restrictions::empty(), None)
+        let (mut expr, tokens) =
+            self.collect_tokens(|this| this.parse_expr_res(Restrictions::empty(), None))?;
+        expr.tokens = Some(tokens);
+        Ok(expr)
     }
 
     pub(super) fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {
@@ -2122,7 +2125,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
-        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {

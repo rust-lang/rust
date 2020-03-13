@@ -28,8 +28,9 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None),
         span: ident.span,
+        tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID };
+    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -106,7 +107,12 @@ impl RecoverQPath for Ty {
         Some(P(self.clone()))
     }
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
-        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
+        Self {
+            span: path.span,
+            kind: TyKind::Path(qself, path),
+            id: ast::DUMMY_NODE_ID,
+            tokens: None,
+        }
     }
 }
 
@@ -115,7 +121,12 @@ impl RecoverQPath for Pat {
         self.to_ty()
     }
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
-        Self { span: path.span, kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
+        Self {
+            span: path.span,
+            kind: PatKind::Path(qself, path),
+            id: ast::DUMMY_NODE_ID,
+            tokens: None,
+        }
     }
 }
 
@@ -129,6 +140,7 @@ impl RecoverQPath for Expr {
             kind: ExprKind::Path(qself, path),
             attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
+            tokens: None,
         }
     }
 }
@@ -1363,7 +1375,8 @@ impl<'a> Parser<'a> {
         .emit();
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat = P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID });
+        let pat =
+            P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID, tokens: None });
         Ok((pat, ty))
     }
 

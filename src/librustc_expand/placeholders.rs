@@ -33,10 +33,11 @@ pub fn placeholder(
             span,
             attrs: ast::AttrVec::new(),
             kind: ast::ExprKind::MacCall(mac_placeholder()),
+            tokens: None
         })
     };
-    let ty = || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span });
-    let pat = || P(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span });
+    let ty = || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None });
+    let pat = || P(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span, tokens: None });
 
     match kind {
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
@@ -83,13 +84,14 @@ pub fn placeholder(
             id,
             span,
             kind: ast::PatKind::MacCall(mac_placeholder()),
+            tokens: None
         })),
         AstFragmentKind::Ty => {
-            AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::MacCall(mac_placeholder()) }))
+            AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::MacCall(mac_placeholder()), tokens: None }))
         }
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::AttrVec::new()));
-            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
+            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac), tokens: None }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),

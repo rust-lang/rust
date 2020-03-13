@@ -492,6 +492,7 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -499,6 +500,7 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 impl Pat {
@@ -534,7 +536,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -875,6 +877,7 @@ pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 impl Stmt {
@@ -1011,11 +1014,12 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
+    pub tokens: Option<TokenStream>,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 96);
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1091,7 +1095,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1829,6 +1833,7 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2009,13 +2014,14 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
+        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
         let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
+                tokens: None,
             }),
             span,
             ty,
@@ -2031,6 +2037,7 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
+                    tokens: None,
                 }),
             ),
         }
