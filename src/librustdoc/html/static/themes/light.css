@@ -248,7 +248,7 @@ a.test-arrow:hover{
 }
 
 pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
+	border-left: 2px solid rgba(255,0,0,.5);
 }
 
 pre.compile_fail:hover, .information:hover + pre.compile_fail {
@@ -256,7 +256,7 @@ pre.compile_fail:hover, .information:hover + pre.compile_fail {
 }
 
 pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.4);
+	border-left: 2px solid rgba(255,142,0,.6);
 }
 
 pre.ignore:hover, .information:hover + pre.ignore {
@@ -264,7 +264,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip.compile_fail {
-	color: rgba(255,0,0,.3);
+	color: rgba(255,0,0,.5);
 }
 
 .information > .compile_fail:hover {
@@ -272,11 +272,11 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip.ignore {
-	color: rgba(255,142,0,.3);
+	color: rgba(255,142,0,.6);
 }
 
 .information > .ignore:hover {
-	color: rgba(255,142,0,1);
+	color: #ff9200;
 }
 
 .search-failed a {
@@ -284,7 +284,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip .tooltiptext {
-	background-color: black;
+	background-color: #000;
 	color: #fff;
 }
 
