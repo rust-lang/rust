@@ -85,7 +85,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // If we reach here the `..` pattern is not semantically allowed.
                 self.ban_illegal_rest_pat(p.span)
             }
-            PatKind::Paren(_) => span_bug!(p.span, "Should be handled by `lower_pat`"),
+            PatKind::Paren(_) => span_bug!(p.span, "Should have been handled by `lower_pat`"),
             PatKind::MacCall(_) => span_bug!(p.span, "Shouldn't exist here"),
         }
     }

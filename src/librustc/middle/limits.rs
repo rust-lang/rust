@@ -18,7 +18,7 @@ use rustc_data_structures::sync::Once;
 // `ensure_sufficient_stack`.
 const RED_ZONE: usize = 100 * 1024; // 100k
 
-// Ony the first stack that is pushed, grows exponentially (2^n * STACK_PER_RECURSION) from then
+// Only the first stack that is pushed, grows exponentially (2^n * STACK_PER_RECURSION) from then
 // on. This flag has performance relevant characteristics. Don't set it too high.
 const STACK_PER_RECURSION: usize = 1 * 1024 * 1024; // 1MB
 
@@ -27,7 +27,7 @@ const STACK_PER_RECURSION: usize = 1 * 1024 * 1024; // 1MB
 /// from this.
 ///
 /// Should not be sprinkled around carelessly, as it causes a little bit of overhead.
-pub fn ensure_sufficient_stack<R, F: FnOnce() -> R>(f: F) -> R {
+pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(RED_ZONE, STACK_PER_RECURSION, f)
 }
 

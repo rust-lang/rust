@@ -1,7 +1,7 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
-use rustc::bug;
 use rustc::middle::limits::ensure_sufficient_stack;
+use rustc::{bug, span_bug};
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -210,9 +210,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
             ExprKind::Err => hir::ExprKind::Err,
             ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-
             ExprKind::ForLoop(..) | ExprKind::Paren(_) => {
-                span_bug!(e.span, "Should be handled by `lower_expr`")
+                span_bug!(e.span, "Should have been handled by `lower_expr`")
             }
             ExprKind::MacCall(_) => span_bug!(e.span, "Shouldn't exist here"),
         }
