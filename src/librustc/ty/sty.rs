@@ -2422,6 +2422,8 @@ fn const_param_def_id(expr: &hir::Expr<'_>) -> Option<DefId> {
 }
 
 impl<'tcx> Const<'tcx> {
+    /// Literals and const generic parameters are eagerly converted to a constant, everything else
+    /// becomes `Unevaluated`.
     pub fn from_hir_anon_const(
         tcx: TyCtxt<'tcx>,
         ast_const: &hir::AnonConst,
@@ -2471,16 +2473,19 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    /// Interns the given value as a constant.
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self { val: ConstKind::Value(val), ty })
     }
 
     #[inline]
+    /// Interns the given scalar as a constant.
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
         Self::from_value(tcx, ConstValue::Scalar(val), ty)
     }
 
     #[inline]
+    /// Creates a constant with the given integer value and interns it.
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx Self {
         let size = tcx
             .layout_of(ty)
@@ -2490,21 +2495,27 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
         Self::from_scalar(tcx, Scalar::zst(), ty)
     }
 
     #[inline]
+    /// Creates an interned bool constant.
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> &'tcx Self {
         Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
     }
 
     #[inline]
+    /// Creates an interned usize constant.
     pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> &'tcx Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
     #[inline]
+    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
+    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
+    /// contains const generic parameters or pointers).
     pub fn try_eval_bits(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2518,6 +2529,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
+    /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
         let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs, promoted| {
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
@@ -2574,12 +2587,14 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
     pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
         self.try_eval_bits(tcx, param_env, ty)
             .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
     }
 
     #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
     pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
         self.eval_bits(tcx, param_env, tcx.types.usize) as u64
     }
