@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rustc_span::DUMMY_SP;
 
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
 };
@@ -246,7 +247,7 @@ fn data_id_for_static(
             &*symbol_name,
             linkage,
             is_mutable,
-            attrs.flags.contains(rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL),
+            attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
             Some(align.try_into().unwrap()),
         )
         .unwrap();
@@ -359,6 +360,10 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     data_id_for_alloc_id(module, reloc, alloc.align)
                 }
                 GlobalAlloc::Static(def_id) => {
+                    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                        tcx.sess.fatal(&format!("Allocation {:?} contains reference to TLS value {:?}", alloc, def_id));
+                    }
+
                     // Don't push a `TodoItem::Static` here, as it will cause statics used by
                     // multiple crates to be duplicated between them. It isn't necessary anyway,
                     // as it will get pushed by `codegen_static` when necessary.
