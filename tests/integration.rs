@@ -68,13 +68,8 @@ fn integration_test() {
     }
 
     match output.status.code() {
-        Some(code) => {
-            if code == 0 {
-                println!("Compilation successful");
-            } else {
-                eprintln!("Compilation failed. Exit code: {}", code);
-            }
-        },
+        Some(0) => println!("Compilation successful"),
+        Some(code) => eprintln!("Compilation failed. Exit code: {}", code),
         None => panic!("Process terminated by signal"),
     }
 }
