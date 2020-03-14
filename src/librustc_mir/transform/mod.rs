@@ -30,6 +30,7 @@ pub mod no_landing_pads;
 pub mod promote_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
+pub mod remove_unit_storage;
 pub mod rustc_peek;
 pub mod simplify;
 pub mod simplify_branches;
@@ -299,6 +300,7 @@ fn run_optimization_passes<'tcx>(
             // From here on out, regions are gone.
             &erase_regions::EraseRegions,
             // Optimizations begin.
+            &remove_unit_storage::RemoveUnitStorage,
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
