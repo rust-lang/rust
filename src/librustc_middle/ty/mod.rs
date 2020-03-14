@@ -3013,7 +3013,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(id) = self.hir().as_local_hir_id(did) {
             Attributes::Borrowed(self.hir().attrs(id))
         } else {
-            Attributes::Owned(self.item_attrs(did))
+            Attributes::Borrowed(self.item_attrs(did))
         }
     }
 

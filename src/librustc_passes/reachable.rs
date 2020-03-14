@@ -6,7 +6,6 @@
 // reachable as well.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -375,7 +374,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
     }
 }
 
-fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Lrc<HirIdSet> {
+fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -421,7 +420,7 @@ fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Lrc<HirIdSet> {
     debug!("Inline reachability shows: {:?}", reachable_context.reachable_symbols);
 
     // Return the set of reachable symbols.
-    Lrc::new(reachable_context.reachable_symbols)
+    tcx.arena.alloc(reachable_context.reachable_symbols)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

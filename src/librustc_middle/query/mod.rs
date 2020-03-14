@@ -610,7 +610,7 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> Lrc<HirIdSet> {
+        query reachable_set(_: CrateNum) -> &'tcx HirIdSet {
             desc { "reachability" }
         }
 
@@ -642,7 +642,7 @@ rustc_queries! {
         query lookup_stability(_: DefId) -> Option<&'tcx attr::Stability> {}
         query lookup_const_stability(_: DefId) -> Option<&'tcx attr::ConstStability> {}
         query lookup_deprecation_entry(_: DefId) -> Option<DeprecationEntry> {}
-        query item_attrs(_: DefId) -> Lrc<[ast::Attribute]> {}
+        query item_attrs(_: DefId) -> &'tcx [ast::Attribute] {}
     }
 
     Codegen {
@@ -1047,7 +1047,7 @@ rustc_queries! {
             desc { "looking up all possibly unused extern crates" }
         }
         query names_imported_by_glob_use(_: DefId)
-            -> Lrc<FxHashSet<ast::Name>> {
+            -> &'tcx FxHashSet<ast::Name> {
             eval_always
         }
 

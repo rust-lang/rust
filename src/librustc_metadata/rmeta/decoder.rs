@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
+    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Vec<ast::Attribute> {
         // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -1208,15 +1208,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             node_id
         };
 
-        Lrc::from(
-            self.root
-                .tables
-                .attributes
-                .get(self, item_id)
-                .unwrap_or(Lazy::empty())
-                .decode((self, sess))
-                .collect::<Vec<_>>(),
-        )
+        self.root
+            .tables
+            .attributes
+            .get(self, item_id)
+            .unwrap_or(Lazy::empty())
+            .decode((self, sess))
+            .collect::<Vec<_>>()
     }
 
     fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<ast::Name>> {

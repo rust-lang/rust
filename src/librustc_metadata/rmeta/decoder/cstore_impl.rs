@@ -138,7 +138,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
+    item_attrs => { tcx.arena.alloc_from_iter(
+        cdata.get_item_attrs(def_id.index, tcx.sess).into_iter()
+    ) }
     // FIXME(#38501) We've skipped a `read` on the `hir_owner_nodes` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
