@@ -1,7 +1,7 @@
 import * as os from "os";
 import * as vscode from 'vscode';
 import { ArtifactSource } from "./installation/interfaces";
-import { log } from "./util";
+import { log, vscodeReloadWindow } from "./util";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -43,20 +43,20 @@ export class Config {
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
+    readonly packageJsonVersion = vscode
+        .extensions
+        .getExtension(this.extensionId)!
+        .packageJSON
+        .version as string; // n.n.YYYYMMDD[-nightly]
+
     /**
      * Either `nightly` or `YYYY-MM-DD` (i.e. `stable` release)
      */
     readonly extensionReleaseTag: string = (() => {
-        const packageJsonVersion = vscode
-            .extensions
-            .getExtension(this.extensionId)!
-            .packageJSON
-            .version as string; // n.n.YYYYMMDD[-nightly]
-
-        if (packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
+        if (this.packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
 
         const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
-        const [, yyyy, mm, dd] = packageJsonVersion.match(realVersionRegexp)!;
+        const [, yyyy, mm, dd] = this.packageJsonVersion.match(realVersionRegexp)!;
 
         return `${yyyy}-${mm}-${dd}`;
     })();
@@ -72,7 +72,10 @@ export class Config {
         this.cfg = vscode.workspace.getConfiguration(this.rootSection);
         const enableLogging = this.cfg.get("trace.extension") as boolean;
         log.setEnabled(enableLogging);
-        log.debug("Using configuration:", this.cfg);
+        log.debug(
+            "Extension version:", this.packageJsonVersion,
+            "using configuration:", this.cfg
+        );
     }
 
     private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
@@ -90,7 +93,7 @@ export class Config {
         );
 
         if (userResponse === "Reload now") {
-            vscode.commands.executeCommand("workbench.action.reloadWindow");
+            await vscodeReloadWindow();
         }
     }
 
@@ -180,16 +183,11 @@ export class Config {
     }
 
     readonly installedNightlyExtensionReleaseDate = new DateStorage(
-        "rust-analyzer-installed-nightly-extension-release-date",
+        "installed-nightly-extension-release-date",
         this.ctx.globalState
     );
-    readonly serverReleaseDate = new DateStorage(
-        "rust-analyzer-server-release-date",
-        this.ctx.globalState
-    );
-    readonly serverReleaseTag = new Storage<null | string>(
-        "rust-analyzer-release-tag", this.ctx.globalState, null
-    );
+    readonly serverReleaseDate = new DateStorage("server-release-date", this.ctx.globalState);
+    readonly serverReleaseTag = new Storage<null | string>("server-release-tag", this.ctx.globalState, null);
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension

@@ -44,10 +44,20 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
 
     const currentExtReleaseDate = config.installedNightlyExtensionReleaseDate.get();
 
-    assert(currentExtReleaseDate !== null, "nightly release date must've been set during installation");
+    if (currentExtReleaseDate === null) {
+        void vscode.window.showErrorMessage(
+            "Nightly release date must've been set during the installation. " +
+            "Did you download and install the nightly .vsix package manually?"
+        );
+        throw new Error("Nightly release date was not set in globalStorage");
+    }
 
-    const hoursSinceLastUpdate = diffInHours(currentExtReleaseDate, new Date());
-    log.debug(`Current rust-analyzer nightly was downloaded ${hoursSinceLastUpdate} hours ago`);
+    const dateNow = new Date;
+    const hoursSinceLastUpdate = diffInHours(currentExtReleaseDate, dateNow);
+    log.debug(
+        "Current rust-analyzer nightly was downloaded", hoursSinceLastUpdate,
+        "hours ago, namely:", currentExtReleaseDate, "and now is", dateNow
+    );
 
     if (hoursSinceLastUpdate < HEURISTIC_NIGHTLY_RELEASE_PERIOD_IN_HOURS) {
         return;
