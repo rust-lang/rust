@@ -213,7 +213,7 @@ impl Validator<'a, 'mir, 'tcx> {
 
         // If an operation is supported in miri (and is not already controlled by a feature gate) it
         // can be turned on with `-Zunleash-the-miri-inside-of-you`.
-        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate(self.tcx).is_none();
+        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate().is_none();
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(span, "skipping const checks");
