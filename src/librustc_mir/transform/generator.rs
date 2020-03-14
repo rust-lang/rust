@@ -1099,17 +1099,17 @@ fn create_generator_resume_function<'tcx>(
     // Panic when resumed on the returned or poisoned state
     let generator_kind = body.generator_kind.unwrap();
 
-    if can_return {
-        cases.insert(
-            1,
-            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))),
-        );
-    }
-
     if can_unwind {
         cases.insert(
             1,
             (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))),
+        );
+    }
+
+    if can_return {
+        cases.insert(
+            1,
+            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))),
         );
     }
 
