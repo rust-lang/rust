@@ -438,20 +438,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(result_ptr, dest)?;
             }
 
-            "panic_if_uninhabited" |
-            "panic_if_zero_invalid" |
-            "panic_if_any_invalid" => {
+            "assert_inhabited" |
+            "assert_zero_valid" |
+            "assert_uninit_valid" => {
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
                 if layout.abi.is_uninhabited() {
                     // Return here because we paniced instead of returning normally from the intrinsic.
                     return this.start_panic(&format!("attempted to instantiate uninhabited type `{}`", ty), unwind);
                 }
-                if intrinsic_name == "panic_if_zero_invalid" && !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap() {
+                if intrinsic_name == "assert_zero_valid" && !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap() {
                     // Return here because we paniced instead of returning normally from the intrinsic.
                     return this.start_panic(&format!("attempted to zero-initialize type `{}`, which is invalid", ty), unwind);
                 }
-                if intrinsic_name == "panic_if_any_invalid" && !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap() {
+                if intrinsic_name == "assert_uninit_valid" && !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap() {
                     // Return here because we paniced instead of returning normally from the intrinsic.
                     return this.start_panic(&format!("attempted to leave type `{}` uninitialized, which is invalid", ty), unwind);
                 }
