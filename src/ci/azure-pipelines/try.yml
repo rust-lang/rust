@@ -57,14 +57,14 @@ jobs:
 #      x86_64-gnu-distcheck: {}
 #      mingw-check: {}
 #
-#- job: macOS
-#  timeoutInMinutes: 600
-#  pool:
-#    vmImage: macos-10.15
-#  steps:
-#  - template: steps/run.yml
-#  strategy:
-#    matrix:
+- job: macOS
+  timeoutInMinutes: 600
+  pool:
+    vmImage: macos-10.15
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
       # OSX builders running tests, these run the full test suite.
       # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
       # runners that run `//ignore-debug` tests.
@@ -107,27 +107,27 @@ jobs:
   strategy:
     matrix:
      # 32/64 bit MSVC tests
-      x86_64-msvc-1:
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+#      x86_64-msvc-1:
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+#        SCRIPT: make ci-subset-1
+#        # FIXME(#59637)
+#        NO_DEBUG_ASSERTIONS: 1
+#        NO_LLVM_ASSERTIONS: 1
+#      x86_64-msvc-2:
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+#        SCRIPT: make ci-subset-2
+      i686-msvc-1:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-1
-        # FIXME(#59637)
+       # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
-      x86_64-msvc-2:
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      i686-msvc-2:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-2
-#      i686-msvc-1:
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-#        SCRIPT: make ci-subset-1
-        # FIXME(#59637)
-#        NO_DEBUG_ASSERTIONS: 1
-#        NO_LLVM_ASSERTIONS: 1
-#      i686-msvc-2:
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-#        SCRIPT: make ci-subset-2
-        # FIXME(#59637)
-#        NO_DEBUG_ASSERTIONS: 1
-#        NO_LLVM_ASSERTIONS: 1
+       # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
       # MSVC aux tests
 #      x86_64-msvc-aux:
 #        RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
