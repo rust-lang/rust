@@ -26,7 +26,6 @@ use rustc_target::spec::{HasTargetSpec, Target};
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
-use std::sync::Arc;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
@@ -39,7 +38,7 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
-    pub codegen_unit: Arc<CodegenUnit<'tcx>>,
+    pub codegen_unit: &'tcx CodegenUnit<'tcx>,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
@@ -232,7 +231,7 @@ pub unsafe fn create_module(
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
@@ -402,8 +401,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.check_overflow
     }
 
-    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
-        &self.codegen_unit
+    fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
+        self.codegen_unit
     }
 
     fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {

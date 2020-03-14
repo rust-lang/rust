@@ -117,6 +117,7 @@ macro_rules! arena_types {
             [few] inferred_outlives_crate: rustc_middle::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
+            [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
 
             // Interned types
             [] tys: rustc_middle::ty::TyS<$tcx>,

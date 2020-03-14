@@ -533,7 +533,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
     let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
-    let codegen_units = (*codegen_units).clone();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -541,7 +540,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // lead to having to re-execute compile_codegen_unit, possibly
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
-        for cgu in &codegen_units {
+        for cgu in codegen_units {
             tcx.codegen_unit(cgu.name());
         }
     }
@@ -603,7 +602,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.
     let codegen_units = {
-        let mut codegen_units = codegen_units;
+        let mut codegen_units = codegen_units.iter().collect::<Vec<_>>();
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         codegen_units
     };

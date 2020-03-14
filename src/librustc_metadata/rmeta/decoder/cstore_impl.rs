@@ -26,7 +26,6 @@ use rustc_span::symbol::Symbol;
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 use std::any::Any;
-use std::sync::Arc;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -239,7 +238,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         // to block export of generics from dylibs, but we must fix
         // rust-lang/rust#65890 before we can do that robustly.
 
-        Arc::new(syms)
+        syms
     }
 }
 

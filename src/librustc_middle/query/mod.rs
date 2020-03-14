@@ -1075,19 +1075,19 @@ rustc_queries! {
         ///   correspond to a publicly visible symbol in `cnum` machine code.
         /// - The `exported_symbols` sets of different crates do not intersect.
         query exported_symbols(_: CrateNum)
-            -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>> {
+            -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
             desc { "exported_symbols" }
         }
     }
 
     Codegen {
         query collect_and_partition_mono_items(_: CrateNum)
-            -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
+            -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
             eval_always
             desc { "collect_and_partition_mono_items" }
         }
         query is_codegened_item(_: DefId) -> bool {}
-        query codegen_unit(_: Symbol) -> Arc<CodegenUnit<'tcx>> {
+        query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
         query backend_optimization_level(_: CrateNum) -> OptLevel {

@@ -1343,13 +1343,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn exported_symbols(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
+    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
         if self.root.is_proc_macro_crate() {
             // If this crate is a custom derive crate, then we're not even going to
             // link those in so we skip those crates.
-            vec![]
+            &[]
         } else {
-            self.root.exported_symbols.decode((self, tcx)).collect()
+            tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
         }
     }
 

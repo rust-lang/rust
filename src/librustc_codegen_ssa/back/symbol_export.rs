@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry::*;
-use std::sync::Arc;
 
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -164,11 +163,11 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 fn exported_symbols_provider_local(
     tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> Arc<Vec<(ExportedSymbol<'_>, SymbolExportLevel)>> {
+) -> &'tcx [(ExportedSymbol<'_>, SymbolExportLevel)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Arc::new(vec![]);
+        return &[];
     }
 
     let mut symbols: Vec<_> = tcx
@@ -274,7 +273,7 @@ fn exported_symbols_provider_local(
     // Sort so we get a stable incr. comp. hash.
     symbols.sort_by_cached_key(|s| s.0.symbol_name_for_local_instance(tcx));
 
-    Arc::new(symbols)
+    tcx.arena.alloc_from_iter(symbols)
 }
 
 fn upstream_monomorphizations_provider(
