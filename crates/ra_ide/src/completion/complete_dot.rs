@@ -777,8 +777,8 @@ mod tests {
         [
             CompletionItem {
                 label: "the_field",
-                source_range: [552; 553),
-                delete: [552; 553),
+                source_range: [552; 552),
+                delete: [552; 552),
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",

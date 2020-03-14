@@ -8,33 +8,44 @@ mod transcriber;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 
-use crate::{ExpandResult, ExpandError};
+use crate::{ExpandError, ExpandResult};
 
-pub(crate) fn expand(
-    rules: &crate::MacroRules,
-    input: &tt::Subtree,
-) -> ExpandResult<tt::Subtree> {
-    let (mut result, mut left_over, mut err) = (tt::Subtree::default(), usize::max_value(), Some(ExpandError::NoMatchingRule));
+pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    let (mut result, mut unmatched_tokens, mut unmatched_patterns, mut err) = (
+        tt::Subtree::default(),
+        usize::max_value(),
+        usize::max_value(),
+        Some(ExpandError::NoMatchingRule),
+    );
     for rule in &rules.rules {
-        let ((res, left), e) = expand_rule(rule, input);
+        let ((res, tokens, patterns), e) = expand_rule(rule, input);
         if e.is_none() {
             // if we find a rule that applies without errors, we're done
             return (res, None);
         }
-        // use the rule if we matched more tokens
-        if left < left_over {
+        // use the rule if we matched more tokens, or had fewer patterns left
+        if tokens < unmatched_tokens || tokens == unmatched_tokens && patterns < unmatched_patterns
+        {
             result = res;
             err = e;
-            left_over = left;
+            unmatched_tokens = tokens;
+            unmatched_patterns = patterns;
         }
     }
     (result, err)
 }
 
-fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> ExpandResult<(tt::Subtree, usize)> {
-    let ((bindings, left_over), bindings_err) = dbg!(matcher::match_(&rule.lhs, input));
-    let (res, transcribe_err) = dbg!(transcriber::transcribe(&rule.rhs, &bindings));
-    ((res, left_over), bindings_err.or(transcribe_err))
+fn expand_rule(
+    rule: &crate::Rule,
+    input: &tt::Subtree,
+) -> ExpandResult<(tt::Subtree, usize, usize)> {
+    dbg!(&rule.lhs);
+    let (match_result, bindings_err) = dbg!(matcher::match_(&rule.lhs, input));
+    let (res, transcribe_err) = dbg!(transcriber::transcribe(&rule.rhs, &match_result.bindings));
+    (
+        (res, match_result.unmatched_tokens, match_result.unmatched_patterns),
+        bindings_err.or(transcribe_err),
+    )
 }
 
 /// The actual algorithm for expansion is not too hard, but is pretty tricky.
@@ -149,10 +160,7 @@ mod tests {
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
-    fn expand_first(
-        rules: &crate::MacroRules,
-        invocation: &str,
-    ) -> ExpandResult<tt::Subtree> {
+    fn expand_first(rules: &crate::MacroRules, invocation: &str) -> ExpandResult<tt::Subtree> {
         let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
@@ -160,6 +168,7 @@ mod tests {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        expand_rule(&rules.rules[0], &invocation_tt)
+        let expanded = expand_rule(&rules.rules[0], &invocation_tt);
+        ((expanded.0).0, expanded.1)
     }
 }

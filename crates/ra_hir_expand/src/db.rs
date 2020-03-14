@@ -31,8 +31,12 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
             // FIXME switch these to ExpandResult as well
-            TokenExpander::Builtin(it) => it.expand(db, id, tt).map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
-            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
+            TokenExpander::Builtin(it) => it
+                .expand(db, id, tt)
+                .map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
+            TokenExpander::BuiltinDerive(it) => it
+                .expand(db, id, tt)
+                .map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
         }
     }
 
@@ -182,7 +186,7 @@ fn macro_expand_with_arg(
             if arg.is_some() {
                 return (
                     None,
-                    Some("hypothetical macro expansion not implemented for eager macro".to_owned())
+                    Some("hypothetical macro expansion not implemented for eager macro".to_owned()),
                 );
             } else {
                 return (Some(db.lookup_intern_eager_expansion(id).subtree), None);
@@ -252,9 +256,9 @@ pub fn parse_macro_with_arg(
                 let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
                     it.file_id.call_node(db)
                 })
-                    .map(|n| format!("{:#}", n.value))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                .map(|n| format!("{:#}", n.value))
+                .collect::<Vec<_>>()
+                .join("\n");
 
                 log::warn!(
                     "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",

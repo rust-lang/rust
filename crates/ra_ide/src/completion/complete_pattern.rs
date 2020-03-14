@@ -89,7 +89,6 @@ mod tests {
 
     #[test]
     fn completes_in_simple_macro_call() {
-        // FIXME: doesn't work yet because of missing error recovery in macro expansion
         let completions = complete(
             r"
             macro_rules! m { ($e:expr) => { $e } }
@@ -102,6 +101,16 @@ mod tests {
             }
             ",
         );
-        assert_debug_snapshot!(completions, @r###"[]"###);
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "E",
+                source_range: [151; 151),
+                delete: [151; 151),
+                insert: "E",
+                kind: Enum,
+            },
+        ]
+        "###);
     }
 }
