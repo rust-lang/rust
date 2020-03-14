@@ -2401,26 +2401,6 @@ pub struct Const<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Const<'_>, 48);
 
-/// Returns the `DefId` of the constant parameter that the provided expression is a path to.
-fn const_param_def_id(expr: &hir::Expr<'_>) -> Option<DefId> {
-    // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-    // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-    let expr = match &expr.kind {
-        hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-            block.expr.as_ref().unwrap()
-        }
-        _ => expr,
-    };
-
-    match &expr.kind {
-        hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
-            hir::def::Res::Def(hir::def::DefKind::ConstParam, did) => Some(did),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
@@ -2456,20 +2436,36 @@ impl<'tcx> Const<'tcx> {
             }
         }
 
-        let kind = if let Some(def_id) = const_param_def_id(expr) {
-            // Find the name and index of the const parameter by indexing the generics of the
-            // parent item and construct a `ParamConst`.
-            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-            let item_id = tcx.hir().get_parent_node(hir_id);
-            let item_def_id = tcx.hir().local_def_id(item_id);
-            let generics = tcx.generics_of(item_def_id);
-            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
-            let name = tcx.hir().name(hir_id);
-            ty::ConstKind::Param(ty::ParamConst::new(index, name))
-        } else {
-            ty::ConstKind::Unevaluated(def_id, InternalSubsts::identity_for_item(tcx, def_id), None)
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = match &expr.kind {
+            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
+                block.expr.as_ref().unwrap()
+            }
+            _ => expr,
         };
-        tcx.mk_const(ty::Const { val: kind, ty })
+
+        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
+        let val = match expr.kind {
+            ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
+                // Find the name and index of the const parameter by indexing the generics of
+                // the parent item and construct a `ParamConst`.
+                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                let item_id = tcx.hir().get_parent_node(hir_id);
+                let item_def_id = tcx.hir().local_def_id(item_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
+                let name = tcx.hir().name(hir_id);
+                ty::ConstKind::Param(ty::ParamConst::new(index, name))
+            }
+            _ => ty::ConstKind::Unevaluated(
+                def_id,
+                InternalSubsts::identity_for_item(tcx, def_id),
+                None,
+            ),
+        };
+
+        tcx.mk_const(ty::Const { val, ty })
     }
 
     #[inline]
