@@ -9,11 +9,10 @@ LL | fn want_foo_for_any_tcx<F>(f: &F)
 LL |     where F : for<'tcx> Foo<'tcx>
    |               ------------------- required by this bound in `want_foo_for_any_tcx`
    |
-help: consider further restricting this bound with `+ for<'tcx> Foo<'tcx>`
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:15:11
+help: consider further restricting this bound
    |
-LL |     where F : Foo<'x>
-   |           ^^^^^^^^^^^
+LL |     where F : Foo<'x> + for<'tcx> Foo<'tcx>
+   |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
@@ -26,11 +25,10 @@ LL | fn want_bar_for_any_ccx<B>(b: &B)
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ------------------- required by this bound in `want_bar_for_any_ccx`
    |
-help: consider further restricting this bound with `+ for<'ccx> Bar<'ccx>`
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:11
+help: consider further restricting this bound
    |
-LL |     where B : Bar<'x>
-   |           ^^^^^^^^^^^
+LL |     where B : Bar<'x> + for<'ccx> Bar<'ccx>
+   |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
