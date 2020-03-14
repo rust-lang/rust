@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 
 import { vscodeReinstallExtension, vscodeReloadWindow, log, vscodeInstallExtensionFromVsix, assert, notReentrant } from "../util";
 import { Config, UpdatesChannel } from "../config";
-import { ArtifactReleaseInfo } from "./interfaces";
+import { ArtifactReleaseInfo, ArtifactSource } from "./interfaces";
 import { downloadArtifactWithProgressUi } from "./downloads";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 
@@ -16,7 +16,7 @@ const HEURISTIC_NIGHTLY_RELEASE_PERIOD_IN_HOURS = 25;
  */
 export async function ensureProperExtensionVersion(config: Config): Promise<never | void> {
     // User has built lsp server from sources, she should manage updates manually
-    if (config.serverPath !== null) return;
+    if (config.serverSource?.type === ArtifactSource.Type.ExplicitPath) return;
 
     const currentUpdChannel = config.installedExtensionUpdateChannel;
     const desiredUpdChannel = config.updatesChannel;

@@ -35,6 +35,7 @@ export class Config {
 
     private readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [
+        "serverPath",
         "cargoFeatures",
         "cargo-watch",
         "highlighting.semanticTokens",
@@ -50,7 +51,7 @@ export class Config {
             .extensions
             .getExtension(this.extensionId)!
             .packageJSON
-            .version as string;
+            .version as string; // n.n.YYYYMMDD[-nightly]
 
         if (packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
 
@@ -193,7 +194,7 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    get serverPath() { return this.cfg.get("serverPath") as null | string; }
+    private get serverPath() { return this.cfg.get("serverPath") as null | string; }
     get updatesChannel() { return this.cfg.get("updates.channel") as UpdatesChannel; }
     get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
     get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
