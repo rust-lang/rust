@@ -134,7 +134,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_, '_>) {
         if set.insert(traitt) {
-            for supertrait in rustc_infer::traits::supertrait_def_ids(cx.tcx, traitt) {
+            for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
