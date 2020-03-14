@@ -265,7 +265,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
         let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
-        let snippet = match hir.get_if_local(def_id) {
+        let (snippet, sugg) = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, decl, _, span, ..),
                 ..
@@ -276,7 +276,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     None => return,
                 };
                 let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                format!("{}({})", name, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", name, sugg), sugg)
             }
             Some(hir::Node::Item(hir::Item {
                 ident,
@@ -297,7 +298,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{}({})", ident, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", ident, sugg), sugg)
             }
             _ => return,
         };
@@ -306,10 +308,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. This is signaled
             // by `points_at_arg`. Otherwise, we give a more general note.
-            err.span_suggestion(
-                obligation.cause.span,
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_hi(),
                 &msg,
-                snippet,
+                sugg,
                 Applicability::HasPlaceholders,
             );
         } else {
@@ -494,7 +496,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
                             "&mut ".to_string(),
@@ -898,11 +900,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     pipe_span,
                     &format!(
                         "consider changing the closure to take and ignore the expected argument{}",
-                        if expected_args.len() < 2 { "" } else { "s" }
+                        pluralize!(expected_args.len())
                     ),
                     format!("|{}|", underscores),
                     Applicability::MachineApplicable,
@@ -916,7 +918,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .map(|(name, _)| name.to_owned())
                         .collect::<Vec<String>>()
                         .join(", ");
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         found_span,
                         "change the closure to take multiple arguments instead of a single tuple",
                         format!("|{}|", sugg),
@@ -953,7 +955,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             String::new()
                         },
                     );
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         found_span,
                         "change the closure to accept a tuple instead of individual arguments",
                         sugg,

@@ -5,13 +5,14 @@ LL | fn foo<X: Trait>(_: X) {}
    |    ---    ----- required by this bound in `foo`
 ...
 LL |   foo(&s);
-   |       -^
-   |       |
-   |       the trait `Trait` is not implemented for `&S`
-   |       help: consider changing this borrow's mutability: `&mut`
+   |       ^^ the trait `Trait` is not implemented for `&S`
    |
    = help: the following implementations were found:
              <&'a mut S as Trait>
+help: consider changing this borrow's mutability
+   |
+LL |   foo(&mut s);
+   |       ^^^^
 
 error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:13:7
