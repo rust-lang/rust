@@ -323,13 +323,6 @@ enum LexicalScopeBinding<'a> {
 }
 
 impl<'a> LexicalScopeBinding<'a> {
-    fn item(self) -> Option<&'a NameBinding<'a>> {
-        match self {
-            LexicalScopeBinding::Item(binding) => Some(binding),
-            _ => None,
-        }
-    }
-
     fn res(self) -> Res {
         match self {
             LexicalScopeBinding::Item(binding) => binding.res(),
