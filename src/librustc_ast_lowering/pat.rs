@@ -75,7 +75,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.ban_illegal_rest_pat(p.span)
             }
             PatKind::Paren(ref inner) => return self.lower_pat(inner),
-            PatKind::Mac(_) => panic!("Shouldn't exist here"),
+            PatKind::MacCall(_) => panic!("Shouldn't exist here"),
         };
 
         self.pat_with_node_id_of(p, node)

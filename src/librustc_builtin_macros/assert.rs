@@ -40,7 +40,7 @@ pub fn expand_assert<'cx>(
         ))
     });
     let args = P(MacArgs::Delimited(DelimSpan::from_single(sp), MacDelimiter::Parenthesis, tokens));
-    let panic_call = Mac {
+    let panic_call = MacCall {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         args,
         prior_type_ascription: None,
@@ -48,7 +48,7 @@ pub fn expand_assert<'cx>(
     let if_expr = cx.expr_if(
         sp,
         cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)),
-        cx.expr(sp, ExprKind::Mac(panic_call)),
+        cx.expr(sp, ExprKind::MacCall(panic_call)),
         None,
     );
     MacEager::expr(if_expr)

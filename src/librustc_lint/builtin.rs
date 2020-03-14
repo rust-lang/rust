@@ -778,7 +778,7 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Empty
             | ast::StmtKind::Semi(_)
             | ast::StmtKind::Expr(_)
-            | ast::StmtKind::Mac(_) => return,
+            | ast::StmtKind::MacCall(_) => return,
         };
 
         warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
@@ -1478,7 +1478,7 @@ impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
         self.check_tokens(cx, mac_def.body.inner_tokens());
     }
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
         self.check_tokens(cx, mac.args.inner_tokens());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {

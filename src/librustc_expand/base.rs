@@ -372,7 +372,7 @@ where
                 mut_visit::noop_visit_tt(tt, self)
             }
 
-            fn visit_mac(&mut self, mac: &mut ast::Mac) {
+            fn visit_mac(&mut self, mac: &mut ast::MacCall) {
                 mut_visit::noop_visit_mac(mac, self)
             }
         }
