@@ -8,7 +8,7 @@ use self::TyKind::*;
 use crate::infer::canonical::Canonical;
 use crate::middle::region;
 use crate::mir::interpret::ConstValue;
-use crate::mir::interpret::Scalar;
+use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
 use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
@@ -2401,7 +2401,75 @@ pub struct Const<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Const<'_>, 48);
 
+/// Returns the `DefId` of the constant parameter that the provided expression is a path to.
+fn const_param_def_id(expr: &hir::Expr<'_>) -> Option<DefId> {
+    // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+    // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+    let expr = match &expr.kind {
+        hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
+            block.expr.as_ref().unwrap()
+        }
+        _ => expr,
+    };
+
+    match &expr.kind {
+        hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
+            hir::def::Res::Def(hir::def::DefKind::ConstParam, did) => Some(did),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 impl<'tcx> Const<'tcx> {
+    pub fn from_hir_anon_const(
+        tcx: TyCtxt<'tcx>,
+        ast_const: &hir::AnonConst,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        debug!("Const::from_hir_anon_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
+
+        let def_id = tcx.hir().local_def_id(ast_const.hir_id);
+
+        let expr = &tcx.hir().body(ast_const.body).value;
+
+        let lit_input = match expr.kind {
+            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
+                hir::ExprKind::Lit(ref lit) => {
+                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+
+        if let Some(lit_input) = lit_input {
+            // If an error occurred, ignore that it's a literal and leave reporting the error up to
+            // mir.
+            if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
+                return c;
+            } else {
+                tcx.sess.delay_span_bug(expr.span, "ast_const_to_const: couldn't lit_to_const");
+            }
+        }
+
+        let kind = if let Some(def_id) = const_param_def_id(expr) {
+            // Find the name and index of the const parameter by indexing the generics of the
+            // parent item and construct a `ParamConst`.
+            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+            let item_id = tcx.hir().get_parent_node(hir_id);
+            let item_def_id = tcx.hir().local_def_id(item_id);
+            let generics = tcx.generics_of(item_def_id);
+            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
+            let name = tcx.hir().name(hir_id);
+            ty::ConstKind::Param(ty::ParamConst::new(index, name))
+        } else {
+            ty::ConstKind::Unevaluated(def_id, InternalSubsts::identity_for_item(tcx, def_id), None)
+        };
+        tcx.mk_const(ty::Const { val: kind, ty })
+    }
+
     #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self { val: ConstKind::Value(val), ty })

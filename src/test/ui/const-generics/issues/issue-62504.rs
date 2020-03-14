@@ -16,7 +16,7 @@ struct ArrayHolder<const X: usize>([u32; X]);
 impl<const X: usize> ArrayHolder<{ X }> {
     pub const fn new() -> Self {
         ArrayHolder([0; Self::SIZE])
-        //~^ ERROR: array lengths can't depend on generic parameters
+        //~^ ERROR: mismatched types
     }
 }
 

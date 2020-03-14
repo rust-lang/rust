@@ -2066,7 +2066,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, u64),
+    Repeat(Operand<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
@@ -2194,7 +2194,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
         match *self {
             Use(ref place) => write!(fmt, "{:?}", place),
-            Repeat(ref a, ref b) => write!(fmt, "[{:?}; {:?}]", a, b),
+            Repeat(ref a, ref b) => {
+                write!(fmt, "[{:?}; ", a)?;
+                pretty_print_const(b, fmt, false)?;
+                write!(fmt, "]")
+            }
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
@@ -2562,16 +2566,24 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use crate::ty::print::PrettyPrinter;
         write!(fmt, "const ")?;
-        ty::tls::with(|tcx| {
-            let literal = tcx.lift(&self.literal).unwrap();
-            let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
-            cx.print_alloc_ids = true;
-            cx.pretty_print_const(literal, true)?;
-            Ok(())
-        })
+        pretty_print_const(self.literal, fmt, true)
     }
+}
+
+fn pretty_print_const(
+    c: &ty::Const<'tcx>,
+    fmt: &mut Formatter<'_>,
+    print_types: bool,
+) -> fmt::Result {
+    use crate::ty::print::PrettyPrinter;
+    ty::tls::with(|tcx| {
+        let literal = tcx.lift(&c).unwrap();
+        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        cx.print_alloc_ids = true;
+        cx.pretty_print_const(literal, print_types)?;
+        Ok(())
+    })
 }
 
 impl<'tcx> graph::DirectedGraph for Body<'tcx> {

@@ -106,6 +106,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
 
+                let count =
+                    self.monomorphize(&count).eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+
                 bx.write_operand_repeatedly(cg_elem, count, dest)
             }
 

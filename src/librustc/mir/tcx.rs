@@ -149,7 +149,9 @@ impl<'tcx> Rvalue<'tcx> {
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Repeat(ref operand, count) => tcx.mk_array(operand.ty(local_decls, tcx), count),
+            Rvalue::Repeat(ref operand, count) => {
+                tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
+            }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })

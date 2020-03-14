@@ -3279,13 +3279,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
-    pub fn const_param_def_id(&self, hir_c: &hir::AnonConst) -> Option<DefId> {
-        AstConv::const_param_def_id(self, &self.tcx.hir().body(hir_c.body).value)
-    }
-
     pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        AstConv::ast_const_to_const(self, ast_c, ty)
+        ty::Const::from_hir_anon_const(self.tcx, ast_c, ty)
     }
 
     // If the type given by the user has free regions, save it for later, since
