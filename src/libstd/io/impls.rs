@@ -1,9 +1,11 @@
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
+    self, default_write_vectored, BufRead, Error, ErrorKind, Initializer, IoSlice, IoSliceMut,
+    Read, Seek, SeekFrom, Write,
 };
 use crate::mem;
+use core::intrinsics::unlikely;
 
 // =============================================================================
 // Forwarding implementations
@@ -337,6 +339,9 @@ impl Write for &mut [u8] {
 impl Write for Vec<u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if unlikely(self.try_reserve(buf.len()).is_err()) {
+            return write_vec_oom(self, buf);
+        }
         self.extend_from_slice(buf);
         Ok(buf.len())
     }
@@ -344,7 +349,11 @@ impl Write for Vec<u8> {
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let len = bufs.iter().map(|b| b.len()).sum();
-        self.reserve(len);
+
+        if unlikely(self.try_reserve(len).is_err()) {
+            return default_write_vectored(|buf| write_vec_oom(self, buf), bufs);
+        }
+
         for buf in bufs {
             self.extend_from_slice(buf);
         }
@@ -353,6 +362,9 @@ impl Write for Vec<u8> {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        if unlikely(self.try_reserve(buf.len()).is_err()) {
+            return Err(ErrorKind::Other.into()); //Using into to save on heap, since we might be oom.
+        }
         self.extend_from_slice(buf);
         Ok(())
     }
@@ -360,6 +372,26 @@ impl Write for Vec<u8> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+fn write_vec_oom(vec: &mut Vec<u8>, buf: &[u8]) -> io::Result<usize> {
+    debug_assert!(
+        !buf.is_empty(),
+        "write_vec_oom called with a empty buffer, should be handled earlier"
+    );
+    // Using try_reserve instead of try_reserve_exact, which fails earlier, but the allocation time is O(1) amortized.
+    // try_reserve is guaranteed not to reallocate if there is enough space in the vector,
+    // and we need to write at least one byte to return successfully.
+    match vec.try_reserve(1) {
+        Ok(()) => {
+            let available_cap = vec.capacity() - vec.len();
+            debug_assert!(available_cap > 0);
+            let new_len = available_cap.min(buf.len());
+            vec.extend_from_slice(&buf[..new_len]);
+            Ok(new_len)
+        }
+        Err(_) => Err(ErrorKind::Other.into()), //Using into to save on heap, since we might be oom.
     }
 }
 
