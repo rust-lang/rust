@@ -6,7 +6,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
@@ -493,7 +493,11 @@ pub fn stdout() -> Stdout {
             Ok(stdout) => Maybe::Real(stdout),
             _ => Maybe::Fake,
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        unsafe {
+            let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
+            ret.init();
+            return ret;
+        }
     }
 }
 
@@ -520,7 +524,7 @@ impl Stdout {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock<'_> {
-        StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdoutLock { inner: self.inner.lock() }
     }
 }
 
@@ -581,7 +585,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<Maybe<StderrRaw>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -639,19 +643,28 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
-    return Stderr {
-        inner: unsafe { INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown") },
-    };
+    // Note that unlike `stdout()` we don't use `Lazy` here which registers a
+    // destructor. Stderr is not buffered nor does the `stderr_raw` type consume
+    // any owned resources, so there's no need to run any destructors at some
+    // point in the future.
+    //
+    // This has the added benefit of allowing `stderr` to be usable during
+    // process shutdown as well!
+    static INSTANCE: ReentrantMutex<RefCell<Maybe<StderrRaw>>> =
+        unsafe { ReentrantMutex::new(RefCell::new(Maybe::Fake)) };
 
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stderr = match stderr_raw() {
-            Ok(stderr) => Maybe::Real(stderr),
-            _ => Maybe::Fake,
-        };
-        Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
-    }
+    // When accessing stderr we need one-time initialization of the reentrant
+    // mutex, followed by one-time detection of whether we actually have a
+    // stderr handle or not. Afterwards we can just always use the now-filled-in
+    // `INSTANCE` value.
+    static INIT: Once = Once::new();
+    INIT.call_once(|| unsafe {
+        INSTANCE.init();
+        if let Ok(stderr) = stderr_raw() {
+            *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
+        }
+    });
+    return Stderr { inner: &INSTANCE };
 }
 
 impl Stderr {
@@ -677,7 +690,7 @@ impl Stderr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock<'_> {
-        StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StderrLock { inner: self.inner.lock() }
     }
 }
 
