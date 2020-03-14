@@ -651,7 +651,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if M::stack_pop(self, frame.extra, unwinding)? == StackPopJump::NoJump {
             // The hook already did everything.
-            // We want to skip the `trace!` below, hence early return.
+            // We want to skip the `info!` below, hence early return.
             return Ok(());
         }
         // Normal return.

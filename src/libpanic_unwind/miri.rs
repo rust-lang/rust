@@ -1,6 +1,6 @@
 //! Unwinding panics for Miri.
-use core::any::Any;
 use alloc::boxed::Box;
+use core::any::Any;
 
 // The type of the payload that the Miri engine propagates through unwinding for us.
 // Must be pointer-sized.

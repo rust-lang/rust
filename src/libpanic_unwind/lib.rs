@@ -30,7 +30,6 @@
 #![feature(raw)]
 #![panic_runtime]
 #![feature(panic_runtime)]
-
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 
