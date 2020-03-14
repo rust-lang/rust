@@ -508,7 +508,8 @@ impl<'tcx> EncodeContext<'tcx> {
         let proc_macro_data = self.encode_proc_macros();
         let proc_macro_data_bytes = self.position() - i;
 
-        // Encode exported symbols info.
+        // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
+        // this last to give the prefetching as much time as possible to complete.
         i = self.position();
         let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.encode_exported_symbols(&exported_symbols);
@@ -889,6 +890,8 @@ impl EncodeContext<'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
+
+        // This should be kept in sync with `PrefetchVisitor.visit_trait_item`.
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -960,6 +963,9 @@ impl EncodeContext<'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
+
+        // The following part should be kept in sync with `PrefetchVisitor.visit_impl_item`.
+
         let mir = match ast_item.kind {
             hir::ImplItemKind::Const(..) => true,
             hir::ImplItemKind::Fn(ref sig, _) => {
@@ -1250,6 +1256,8 @@ impl EncodeContext<'tcx> {
             }
             _ => {}
         }
+
+        // The following part should be kept in sync with `PrefetchVisitor.visit_item`.
 
         let mir = match item.kind {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => true,
@@ -1699,6 +1707,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 }
 
 /// Used to prefetch queries which will be needed later by metadata encoding.
+/// Only a subset of the queries are actually prefetched to keep this code smaller.
 struct PrefetchVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_keys: &'tcx DefIdSet,
@@ -1715,6 +1724,7 @@ impl<'tcx> PrefetchVisitor<'tcx> {
 
 impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
     fn visit_item(&self, item: &hir::Item<'_>) {
+        // This should be kept in sync with `encode_info_for_item`.
         let tcx = self.tcx;
         match item.kind {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
@@ -1734,10 +1744,12 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
     }
 
     fn visit_trait_item(&self, trait_item: &'v hir::TraitItem<'v>) {
+        // This should be kept in sync with `encode_info_for_trait_item`.
         self.prefetch_mir(self.tcx.hir().local_def_id(trait_item.hir_id));
     }
 
     fn visit_impl_item(&self, impl_item: &'v hir::ImplItem<'v>) {
+        // This should be kept in sync with `encode_info_for_impl_item`.
         let tcx = self.tcx;
         match impl_item.kind {
             hir::ImplItemKind::Const(..) => {
@@ -1789,6 +1801,8 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
                 return;
             }
             // Prefetch some queries used by metadata encoding.
+            // This is not necessary for correctness, but is only done for performance reasons.
+            // It can be removed if it turns out to cause trouble or be detrimental to performance.
             tcx.dep_graph.with_ignore(|| {
                 join(
                     || {
