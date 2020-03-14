@@ -1892,10 +1892,12 @@ extern "rust-intrinsic" {
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
-    /// Compiles to a NOP during non-Miri codegen.
+    /// ICEs when encountered during non-Miri codegen.
     ///
-    /// Perma-unstable: do not use
-    pub fn miri_start_panic(data: *mut (dyn crate::any::Any + crate::marker::Send)) -> ();
+    /// The `payload` ptr here will be exactly the one `do_catch` gets passed by `try`.
+    ///
+    /// Perma-unstable: do not use.
+    pub fn miri_start_panic(payload: *mut u8) -> !;
 }
 
 // Some functions are defined here because they accidentally got made

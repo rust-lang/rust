@@ -30,6 +30,8 @@
 #![feature(raw)]
 #![panic_runtime]
 #![feature(panic_runtime)]
+// `real_imp` is unused with Miri, so silence warnings.
+#![cfg_attr(miri, allow(dead_code))]
 
 use alloc::boxed::Box;
 use core::any::Any;
@@ -38,25 +40,38 @@ use core::panic::BoxMeUp;
 cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
-        mod imp;
+        mod real_imp;
     } else if #[cfg(target_arch = "wasm32")] {
         #[path = "dummy.rs"]
-        mod imp;
+        mod real_imp;
     } else if #[cfg(target_os = "hermit")] {
         #[path = "hermit.rs"]
-        mod imp;
+        mod real_imp;
     } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
         #[path = "dummy.rs"]
-        mod imp;
+        mod real_imp;
     } else if #[cfg(target_env = "msvc")] {
         #[path = "seh.rs"]
-        mod imp;
+        mod real_imp;
     } else {
         // Rust runtime's startup objects depend on these symbols, so make them public.
         #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-        pub use imp::eh_frame_registry::*;
+        pub use real_imp::eh_frame_registry::*;
         #[path = "gcc.rs"]
+        mod real_imp;
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(miri)] {
+        // Use the Miri runtime.
+        // We still need to also load the normal runtime above, as rustc expects certain lang
+        // items from there to be defined.
+        #[path = "miri.rs"]
         mod imp;
+    } else {
+        // Use the real runtime.
+        use real_imp as imp;
     }
 }
 
@@ -80,13 +95,6 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     let payload = payload as *mut &mut dyn BoxMeUp;
     let payload = (*payload).take_box();
-
-    // Miri panic support: cfg'd out of normal builds just to be sure.
-    // When going through normal codegen, `miri_start_panic` is a NOP, so the
-    // Miri-enabled sysroot still supports normal unwinding. But when executed in
-    // Miri, this line initiates unwinding.
-    #[cfg(miri)]
-    core::intrinsics::miri_start_panic(payload);
 
     imp::panic(Box::from_raw(payload))
 }

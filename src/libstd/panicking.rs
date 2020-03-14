@@ -251,21 +251,20 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     //
     // We go through a transition where:
     //
-    // * First, we set the data to be the closure that we're going to call.
+    // * First, we set the data field `f` to be the argumentless closure that we're going to call.
     // * When we make the function call, the `do_call` function below, we take
-    //   ownership of the function pointer. At this point the `Data` union is
+    //   ownership of the function pointer. At this point the `data` union is
     //   entirely uninitialized.
     // * If the closure successfully returns, we write the return value into the
-    //   data's return slot. Note that `ptr::write` is used as it's overwriting
-    //   uninitialized data.
+    //   data's return slot (field `r`).
+    // * If the closure panics (`do_catch` below), we write the panic payload into field `p`.
     // * Finally, when we come back out of the `try` intrinsic we're
     //   in one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
-    //         filled in. We move it out of `data` and return it.
-    //      2. The closure panicked, in which case the return value wasn't
-    //         filled in. In this case the entire `data` union is invalid, so
-    //         there is no need to drop anything.
+    //         filled in. We move it out of `data.r` and return it.
+    //      2. The closure panicked, in which case the panic payload was
+    //         filled in. We move it out of `data.p` and return it.
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.

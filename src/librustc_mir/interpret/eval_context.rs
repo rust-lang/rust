@@ -21,7 +21,7 @@ use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
-    ScalarMaybeUndef, StackPopInfo,
+    ScalarMaybeUndef, StackPopJump,
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -623,23 +623,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
-        let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
-        if let (false, StackPopInfo::StopUnwinding) = (unwinding, stack_pop_info) {
-            bug!("Attempted to stop unwinding while there is no unwinding!");
-        }
 
         // Now where do we jump next?
-
-        // Determine if we leave this function normally or via unwinding.
-        let cur_unwinding =
-            if let StackPopInfo::StopUnwinding = stack_pop_info { false } else { unwinding };
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         let (cleanup, next_block) = match frame.return_to_block {
             StackPopCleanup::Goto { ret, unwind } => {
-                (true, Some(if cur_unwinding { unwind } else { ret }))
+                (true, Some(if unwinding { unwind } else { ret }))
             }
             StackPopCleanup::None { cleanup, .. } => (cleanup, None),
         };
@@ -647,7 +639,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !cleanup {
             assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
             assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
-            // Leak the locals, skip validation.
+            assert!(!unwinding, "tried to skip cleanup during unwinding");
+            // Leak the locals, skip validation, skip machine hook.
             return Ok(());
         }
 
@@ -656,13 +649,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.deallocate_local(local.value)?;
         }
 
-        trace!(
-            "StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
-            frame.return_to_block,
-            stack_pop_info,
-            cur_unwinding
-        );
-        if cur_unwinding {
+        if M::stack_pop(self, frame.extra, unwinding)? == StackPopJump::NoJump {
+            // The hook already did everything.
+            // We want to skip the `info!` below, hence early return.
+            return Ok(());
+        }
+        // Normal return.
+        if unwinding {
             // Follow the unwind edge.
             let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
             self.unwind_to_block(unwind);
@@ -697,7 +690,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 "CONTINUING({}) {} (unwinding = {})",
                 self.cur_frame(),
                 self.frame().instance,
-                cur_unwinding
+                unwinding
             );
         }
 

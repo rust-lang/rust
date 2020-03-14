@@ -24,7 +24,7 @@ pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
 
 pub use self::memory::{AllocCheck, FnVal, Memory, MemoryKind};
 
-pub use self::machine::{AllocMap, Machine, MayLeak, StackPopInfo};
+pub use self::machine::{AllocMap, Machine, MayLeak, StackPopJump};
 
 pub use self::operand::{ImmTy, Immediate, OpTy, Operand, ScalarMaybeUndef};
 
