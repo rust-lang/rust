@@ -75,6 +75,18 @@ pub fn trap_unreachable(
     fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
+/// Like `trap_unreachable` but returns a fake value of the specified type.
+///
+/// Trap code: user65535
+pub fn trap_unreachable_ret_value<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
+    dest_layout: TyLayout<'tcx>,
+    msg: impl AsRef<str>,
+) -> CValue<'tcx> {
+    trap_unreachable(fx, msg);
+    CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout)
+}
+
 /// Use this when something is unimplemented, but `libcore` or `libstd` requires it to codegen.
 /// Unlike `trap_unreachable` this will not fill the current block, so you **must** add instructions
 /// to it afterwards.
@@ -89,10 +101,10 @@ pub fn trap_unimplemented(
     fx.bcx.ins().trapnz(true_, TrapCode::User(!0));
 }
 
-/// Like `trap_unreachable` but returns a fake value of the specified type.
+/// Like `trap_unimplemented` but returns a fake value of the specified type.
 ///
 /// Trap code: user65535
-pub fn trap_unreachable_ret_value<'tcx>(
+pub fn trap_unimplemented_ret_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
     dest_layout: TyLayout<'tcx>,
     msg: impl AsRef<str>,

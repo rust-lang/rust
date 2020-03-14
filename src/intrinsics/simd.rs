@@ -127,7 +127,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.mir.span,
                 "`simd_insert` is not yet implemented. Calling this function will panic.",
             );
-            crate::trap::trap_unimplemented(fx, "`simd_insert` is not yet implemented");
+            let val = crate::trap::trap_unimplemented_ret_value(fx, ret.layout(), "`simd_insert` is not yet implemented");
+            ret.write_cvalue(fx, val);
         };
 
         simd_extract, (c v, o idx) {
@@ -138,7 +139,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     fx.mir.span,
                     "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
                 );
-                crate::trap::trap_unimplemented(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
+                let val = crate::trap::trap_unimplemented_ret_value(fx, ret.layout(), "`#[rustc_arg_required_const(..)]` is not yet supported.");
+                ret.write_cvalue(fx, val);
                 return;
             };
 
