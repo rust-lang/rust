@@ -1794,6 +1794,10 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
 // generated regardless of trailing bytes that end up in it.
 
 pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+    // Since encoding metadata is not in a query, and nothing is cached,
+    // there's no need to do dep-graph tracking for any of it.
+    tcx.dep_graph.assert_ignored();
+
     join(
         || encode_metadata_impl(tcx),
         || {
@@ -1803,21 +1807,19 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
             // Prefetch some queries used by metadata encoding.
             // This is not necessary for correctness, but is only done for performance reasons.
             // It can be removed if it turns out to cause trouble or be detrimental to performance.
-            tcx.dep_graph.with_ignore(|| {
-                join(
-                    || {
-                        if !tcx.sess.opts.output_types.should_codegen() {
-                            // We won't emit MIR, so don't prefetch it.
-                            return;
-                        }
-                        tcx.hir().krate().par_visit_all_item_likes(&PrefetchVisitor {
-                            tcx,
-                            mir_keys: tcx.mir_keys(LOCAL_CRATE),
-                        });
-                    },
-                    || tcx.exported_symbols(LOCAL_CRATE),
-                );
-            })
+            join(
+                || {
+                    if !tcx.sess.opts.output_types.should_codegen() {
+                        // We won't emit MIR, so don't prefetch it.
+                        return;
+                    }
+                    tcx.hir().krate().par_visit_all_item_likes(&PrefetchVisitor {
+                        tcx,
+                        mir_keys: tcx.mir_keys(LOCAL_CRATE),
+                    });
+                },
+                || tcx.exported_symbols(LOCAL_CRATE),
+            );
         },
     )
     .0
@@ -1830,29 +1832,26 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
-    // Since encoding metadata is not in a query, and nothing is cached,
-    // there's no need to do dep-graph tracking for any of it.
-    let (root, mut result) = tcx.dep_graph.with_ignore(move || {
-        let mut ecx = EncodeContext {
-            opaque: encoder,
-            tcx,
-            per_def: Default::default(),
-            lazy_state: LazyState::NoNode,
-            type_shorthands: Default::default(),
-            predicate_shorthands: Default::default(),
-            source_file_cache: tcx.sess.source_map().files()[0].clone(),
-            interpret_allocs: Default::default(),
-            interpret_allocs_inverse: Default::default(),
-        };
+    let mut ecx = EncodeContext {
+        opaque: encoder,
+        tcx,
+        per_def: Default::default(),
+        lazy_state: LazyState::NoNode,
+        type_shorthands: Default::default(),
+        predicate_shorthands: Default::default(),
+        source_file_cache: tcx.sess.source_map().files()[0].clone(),
+        interpret_allocs: Default::default(),
+        interpret_allocs_inverse: Default::default(),
+    };
 
-        // Encode the rustc version string in a predictable location.
-        rustc_version().encode(&mut ecx).unwrap();
+    // Encode the rustc version string in a predictable location.
+    rustc_version().encode(&mut ecx).unwrap();
 
-        // Encode all the entries and extra information in the crate,
-        // culminating in the `CrateRoot` which points to all of it.
-        let root = ecx.encode_crate_root();
-        (root, ecx.opaque.into_inner())
-    });
+    // Encode all the entries and extra information in the crate,
+    // culminating in the `CrateRoot` which points to all of it.
+    let root = ecx.encode_crate_root();
+
+    let mut result = ecx.opaque.into_inner();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
