@@ -2,7 +2,7 @@ error[E0599]: no method named `as_deref_err` found for enum `std::result::Result
   --> $DIR/result-as_deref_err.rs:4:28
    |
 LL |     let _result = &Err(41).as_deref_err();
-   |                            ^^^^^^^^^^^^ help: there is a method with a similar name: `as_deref_mut`
+   |                            ^^^^^^^^^^^^ help: there is an associated function with a similar name: `as_deref_mut`
    |
    = note: the method `as_deref_err` exists but the following trait bounds were not satisfied:
            `{integer}: std::ops::Deref`

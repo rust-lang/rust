@@ -21,9 +21,9 @@ fn main() {
     let _woohoo = (Box::new(my_struct)).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 
-    (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
+    (&my_struct).happyfun();               //~ ERROR associated function `happyfun` is private
 
-    (Box::new(my_struct)).happyfun();          //~ ERROR method `happyfun` is private
+    (Box::new(my_struct)).happyfun();          //~ ERROR associated function `happyfun` is private
     let nope = my_struct.priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 }

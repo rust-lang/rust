@@ -107,8 +107,7 @@ impl DefKind {
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
-            // FIXME: Update the description to "assoc fn"
-            DefKind::AssocFn => "method",
+            DefKind::AssocFn => "associated function",
             DefKind::Const => "constant",
             DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
@@ -123,6 +122,7 @@ impl DefKind {
             DefKind::AssocTy
             | DefKind::AssocConst
             | DefKind::AssocOpaqueTy
+            | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),

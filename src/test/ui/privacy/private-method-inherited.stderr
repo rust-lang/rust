@@ -1,4 +1,4 @@
-error[E0624]: method `f` is private
+error[E0624]: associated function `f` is private
   --> $DIR/private-method-inherited.rs:13:7
    |
 LL |     x.f();

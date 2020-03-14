@@ -10,13 +10,13 @@ error[E0616]: field `priv_field` of struct `my_mod::MyStruct` is private
 LL |     let _woohoo = (Box::new(my_struct)).priv_field;
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0624]: method `happyfun` is private
+error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:24:18
    |
 LL |     (&my_struct).happyfun();
    |                  ^^^^^^^^
 
-error[E0624]: method `happyfun` is private
+error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:26:27
    |
 LL |     (Box::new(my_struct)).happyfun();
