@@ -23,6 +23,6 @@ fn main() {
 
     // Neither of these generators have the resume arg live across the `yield`, so they should be
     // 4 Bytes in size (only storing the discriminant)
-    assert_eq!(size_of_val(&gen_copy), 4);
-    assert_eq!(size_of_val(&gen_move), 4);
+    assert_eq!(size_of_val(&gen_copy), 1);
+    assert_eq!(size_of_val(&gen_move), 1);
 }
