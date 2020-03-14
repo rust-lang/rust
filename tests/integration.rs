@@ -12,10 +12,8 @@ fn integration_test() {
         .nth(1)
         .expect("repo name should have format `<org>/<name>`");
 
-    let repo_dir = tempfile::tempdir()
-        .expect("couldn't create temp dir")
-        .path()
-        .join(crate_name);
+    let mut repo_dir = tempfile::tempdir().expect("couldn't create temp dir").into_path();
+    repo_dir.push(crate_name);
 
     let st = Command::new("git")
         .args(&["clone", "--depth=1", &repo_url, repo_dir.to_str().unwrap()])
