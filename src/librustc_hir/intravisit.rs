@@ -911,14 +911,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Fn(ref sig, TraitMethod::Required(param_names)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
-        TraitItemKind::Fn(ref sig, TraitMethod::Provided(body_id)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             visitor.visit_fn(
                 FnKind::Method(trait_item.ident, sig, None, &trait_item.attrs),
                 &sig.decl,
@@ -968,7 +968,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
             visitor.visit_nested_body(body);
         }
-        ImplItemKind::Method(ref sig, body_id) => {
+        ImplItemKind::Fn(ref sig, body_id) => {
             visitor.visit_fn(
                 FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), &impl_item.attrs),
                 &sig.decl,

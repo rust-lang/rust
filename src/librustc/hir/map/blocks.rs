@@ -51,7 +51,7 @@ impl MaybeFnLike for hir::Item<'_> {
 impl MaybeFnLike for hir::ImplItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
-            hir::ImplItemKind::Method(..) => true,
+            hir::ImplItemKind::Fn(..) => true,
             _ => false,
         }
     }
@@ -60,7 +60,7 @@ impl MaybeFnLike for hir::ImplItem<'_> {
 impl MaybeFnLike for hir::TraitItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
-            hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(_)) => true,
+            hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
             _ => false,
         }
     }
@@ -239,13 +239,13 @@ impl<'a> FnLikeNode<'a> {
                 _ => bug!("item FnLikeNode that is not fn-like"),
             },
             Node::TraitItem(ti) => match ti.kind {
-                hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Provided(body)) => {
+                hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                     method(ti.hir_id, ti.ident, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
             },
             Node::ImplItem(ii) => match ii.kind {
-                hir::ImplItemKind::Method(ref sig, body) => {
+                hir::ImplItemKind::Fn(ref sig, body) => {
                     method(ii.hir_id, ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                 }
                 _ => bug!("impl method FnLikeNode that is not fn-like"),

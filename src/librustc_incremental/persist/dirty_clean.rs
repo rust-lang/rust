@@ -333,7 +333,7 @@ impl DirtyCleanVisitor<'tcx> {
                 TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
             },
             HirNode::ImplItem(item) => match item.kind {
-                ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
+                ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),

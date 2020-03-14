@@ -771,7 +771,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::ImplItemKind::*;
         self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
-            Method(ref sig, _) => {
+            Fn(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(impl_item.hir_id)),
@@ -1466,7 +1466,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                     }
                     Node::ImplItem(impl_item) => {
-                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.kind {
+                        if let hir::ImplItemKind::Fn(sig, _) = &impl_item.kind {
                             find_arg_use_span(sig.decl.inputs);
                         }
                     }
@@ -1818,9 +1818,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     | Node::TraitItem(&hir::TraitItem {
                         kind: hir::TraitItemKind::Fn(..), ..
                     })
-                    | Node::ImplItem(&hir::ImplItem {
-                        kind: hir::ImplItemKind::Method(..), ..
-                    }) => {
+                    | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
                         def = Region::Free(scope, def.id().unwrap());
                     }
@@ -2100,12 +2098,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         trait_items.iter().find(|ti| ti.id.hir_id == parent).map(|ti| ti.kind);
                 }
                 match *m {
-                    hir::TraitMethod::Required(_) => None,
-                    hir::TraitMethod::Provided(body) => Some(body),
+                    hir::TraitFn::Required(_) => None,
+                    hir::TraitFn::Provided(body) => Some(body),
                 }
             }
 
-            Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Method(_, body), .. }) => {
+            Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
                 if let hir::ItemKind::Impl { ref self_ty, ref items, .. } =
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {

@@ -53,7 +53,7 @@ fn method_might_be_inlined(
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true;
     }
-    if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.kind {
+    if let hir::ImplItemKind::Fn(method_sig, _) = &impl_item.kind {
         if method_sig.header.is_const() {
             return true;
         }
@@ -162,14 +162,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             },
             Some(Node::TraitItem(trait_method)) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
-                hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(_)) => true,
-                hir::TraitItemKind::Fn(_, hir::TraitMethod::Required(_))
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
             Some(Node::ImplItem(impl_item)) => {
                 match impl_item.kind {
                     hir::ImplItemKind::Const(..) => true,
-                    hir::ImplItemKind::Method(..) => {
+                    hir::ImplItemKind::Fn(..) => {
                         let attrs = self.tcx.codegen_fn_attrs(def_id);
                         let generics = self.tcx.generics_of(def_id);
                         if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
@@ -278,11 +278,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
                     hir::TraitItemKind::Const(_, None)
-                    | hir::TraitItemKind::Fn(_, hir::TraitMethod::Required(_)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
                     hir::TraitItemKind::Const(_, Some(body_id))
-                    | hir::TraitItemKind::Fn(_, hir::TraitMethod::Provided(body_id)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}
@@ -292,7 +292,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 hir::ImplItemKind::Const(_, body) => {
                     self.visit_nested_body(body);
                 }
-                hir::ImplItemKind::Method(_, body) => {
+                hir::ImplItemKind::Fn(_, body) => {
                     let did = self.tcx.hir().get_parent_did(search_item);
                     if method_might_be_inlined(self.tcx, impl_item, did) {
                         self.visit_nested_body(body)

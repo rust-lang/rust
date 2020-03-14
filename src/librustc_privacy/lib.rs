@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     || items.iter().any(|impl_item_ref| {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         match impl_item.kind {
-                            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Method(..) => {
+                            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
                                 self.access_levels.is_reachable(impl_item_ref.id.hir_id)
                             }
                             hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => {
@@ -1578,8 +1578,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // types in private items.
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                                 match impl_item.kind {
-                                    hir::ImplItemKind::Const(..)
-                                    | hir::ImplItemKind::Method(..)
+                                    hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..)
                                         if self
                                             .item_is_public(&impl_item.hir_id, &impl_item.vis) =>
                                     {

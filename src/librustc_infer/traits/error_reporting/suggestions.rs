@@ -78,7 +78,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     generics,
-                    kind: hir::ImplItemKind::Method(..),
+                    kind: hir::ImplItemKind::Fn(..),
                     ..
                 })
                 | hir::Node::Item(hir::Item {
@@ -798,7 +798,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
             | Node::ImplItem(&hir::ImplItem {
                 span,
-                kind: hir::ImplItemKind::Method(ref sig, _),
+                kind: hir::ImplItemKind::Fn(ref sig, _),
                 ..
             })
             | Node::TraitItem(&hir::TraitItem {

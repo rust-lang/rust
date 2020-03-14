@@ -486,7 +486,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
         let desc = match impl_item.kind {
             hir::ImplItemKind::Const(..) => "an associated constant",
-            hir::ImplItemKind::Method(..) => "a method",
+            hir::ImplItemKind::Fn(..) => "a method",
             hir::ImplItemKind::TyAlias(_) => "an associated type",
             hir::ImplItemKind::OpaqueTy(_) => "an associated `impl Trait` type",
         };
