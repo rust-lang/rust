@@ -2,7 +2,7 @@
   "message": "cannot find type `Iter` in this scope",
   "code": {
     "code": "E0412",
-    "explanation": "The type name used is not in scope.
+    "explanation": "A used type name is not in scope.
 
 Erroneous code examples:
 
