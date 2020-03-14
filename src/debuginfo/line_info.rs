@@ -3,7 +3,7 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use rustc_span::FileName;
+use rustc_span::{FileName, SourceFileAndLine};
 
 use cranelift_codegen::binemit::CodeOffset;
 
@@ -139,25 +139,32 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 rustc_span::hygiene::walk_chain(span, function_span.ctxt())
             };
 
-            let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
+            let (file, line, col) = match tcx.sess.source_map().lookup_line(span.lo()) {
+                Ok(SourceFileAndLine { sf: file, line }) => {
+                    let line_pos = file.line_begin_pos(span.lo());
+
+                    (file, u64::try_from(line).unwrap() + 1, u64::from((span.lo() - line_pos).to_u32()) + 1)
+                }
+                Err(file) => (file, 0, 0)
+            };
 
             // line_program_add_file is very slow.
             // Optimize for the common case of the current file not being changed.
             let current_file_changed = if let Some(last_file) = &mut last_file {
                 // If the allocations are not equal, then the files may still be equal, but that
                 // is not a problem, as this is just an optimization.
-                !Lrc::ptr_eq(last_file, &loc.file)
+                !Lrc::ptr_eq(last_file, &file)
             } else {
                 true
             };
             if current_file_changed {
-                let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
+                let file_id = line_program_add_file(line_program, line_strings, &file.name);
                 line_program.row().file = file_id;
-                last_file = Some(loc.file.clone());
+                last_file = Some(file.clone());
             }
 
-            line_program.row().line = loc.line as u64;
-            line_program.row().column = loc.col.to_u32() as u64 + 1;
+            line_program.row().line = line;
+            line_program.row().column = col;
             line_program.generate_row();
         };
 
