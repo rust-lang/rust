@@ -122,8 +122,23 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         blocks.sort_by_key(|block| func.offsets[*block]); // Ensure inst offsets always increase
 
         let line_strings = &mut self.debug_context.dwarf.line_strings;
+        let function_span = self.mir.span;
         let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
+            // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
+            // In order to have a good line stepping behavior in debugger, we overwrite debug
+            // locations of macro expansions with that of the outermost expansion site
+            // (unless the crate is being compiled with `-Z debug-macros`).
+            let span = if !span.from_expansion() ||
+                tcx.sess.opts.debugging_opts.debug_macros {
+                span
+            } else {
+                // Walk up the macro expansion chain until we reach a non-expanded span.
+                // We also stop at the function body level because no line stepping can occur
+                // at the level above that.
+                rustc_span::hygiene::walk_chain(span, function_span.ctxt())
+            };
+
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
             // line_program_add_file is very slow.
