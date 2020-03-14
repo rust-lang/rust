@@ -6,12 +6,11 @@ LL |     || { t; t; };
    |          |
    |          value moved here
    |
-help: consider restricting this type parameter with `T: Copy`
-  --> $DIR/issue-67123.rs:1:8
-   |
-LL | fn foo<T>(t: T) {
-   |        ^
    = note: move occurs because `t` has type `T`, which does not implement the `Copy` trait
+help: consider restricting type parameter `T`
+   |
+LL | fn foo<T: Copy>(t: T) {
+   |         ^^^^^^
 
 error: aborting due to previous error
 

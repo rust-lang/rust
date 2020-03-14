@@ -5,11 +5,10 @@ LL |     1.bar::<T>();
    |       ^^^ `T` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `T`
-help: consider further restricting this bound with `+ std::marker::Send`
-  --> $DIR/bad-method-typaram-kind.rs:1:10
+help: consider further restricting this bound
    |
-LL | fn foo<T:'static>() {
-   |          ^^^^^^^
+LL | fn foo<T:'static + std::marker::Send>() {
+   |                  ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

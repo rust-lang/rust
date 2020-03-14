@@ -6,11 +6,10 @@ LL | trait A<T: Foo> {}
 LL | trait B<T> = A<T>;
    |              ^^^^ the trait `Foo` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: Foo`
-  --> $DIR/trait-alias-wf.rs:5:9
+help: consider restricting type parameter `T`
    |
-LL | trait B<T> = A<T>;
-   |         ^
+LL | trait B<T: Foo> = A<T>;
+   |          ^^^^^
 
 error: aborting due to previous error
 

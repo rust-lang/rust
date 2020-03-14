@@ -47,11 +47,10 @@ LL | impl<T> UncheckedCopy for T {}
    |
    = help: the trait `std::fmt::Display` is not implemented for `T`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-help: consider restricting this type parameter with `T: std::fmt::Display`
-  --> $DIR/defaults-unsound-62211-1.rs:41:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> UncheckedCopy for T {}
-   |      ^
+LL | impl<T: std::fmt::Display> UncheckedCopy for T {}
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::ops::Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:41:9
@@ -59,11 +58,10 @@ error[E0277]: the trait bound `T: std::ops::Deref` is not satisfied
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::ops::Deref`
-  --> $DIR/defaults-unsound-62211-1.rs:41:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> UncheckedCopy for T {}
-   |      ^
+LL | impl<T: std::ops::Deref> UncheckedCopy for T {}
+   |       ^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot add-assign `&'static str` to `T`
   --> $DIR/defaults-unsound-62211-1.rs:41:9
@@ -72,11 +70,10 @@ LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ no implementation for `T += &'static str`
    |
    = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `T`
-help: consider restricting this type parameter with `T: std::ops::AddAssign<&'static str>`
-  --> $DIR/defaults-unsound-62211-1.rs:41:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> UncheckedCopy for T {}
-   |      ^
+LL | impl<T: std::ops::AddAssign<&'static str>> UncheckedCopy for T {}
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:41:9
@@ -84,11 +81,10 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/defaults-unsound-62211-1.rs:41:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> UncheckedCopy for T {}
-   |      ^
+LL | impl<T: std::marker::Copy> UncheckedCopy for T {}
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

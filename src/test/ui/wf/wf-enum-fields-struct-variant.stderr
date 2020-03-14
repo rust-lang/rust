@@ -7,11 +7,10 @@ LL | struct IsCopy<T:Copy> {
 LL |         f: IsCopy<A>
    |         ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
    |
-help: consider restricting this type parameter with `A: std::marker::Copy`
-  --> $DIR/wf-enum-fields-struct-variant.rs:11:18
+help: consider restricting type parameter `A`
    |
-LL | enum AnotherEnum<A> {
-   |                  ^
+LL | enum AnotherEnum<A: std::marker::Copy> {
+   |                   ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -9,11 +9,10 @@ LL | impl<T> Complete for T {
 LL |     type Assoc = T;
    |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/issue-43784-associated-type.rs:13:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> Complete for T {
-   |      ^
+LL | impl<T: std::marker::Copy> Complete for T {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

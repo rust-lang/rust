@@ -13,7 +13,7 @@ fn test_no_bounds<T: std::fmt::Debug>(t: T) {
 }
 
 #[allow(dead_code)]
-fn test_one_bound<T: std::fmt::Debug +  Sized>(t: T) {
+fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
     println!("{:?}", t);
     //~^ ERROR doesn't implement
 }
@@ -25,7 +25,7 @@ fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt:
 }
 
 #[allow(dead_code)]
-fn test_one_bound_where<X>(x: X) where X: std::fmt::Debug + Sized {
+fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
     println!("{:?}", x);
     //~^ ERROR doesn't implement
 }

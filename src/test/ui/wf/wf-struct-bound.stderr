@@ -7,11 +7,10 @@ LL | trait ExtraCopy<T:Copy> { }
 LL |     where T: ExtraCopy<U>
    |              ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
    |
-help: consider restricting this type parameter with `where U: std::marker::Copy`
-  --> $DIR/wf-struct-bound.rs:9:21
+help: consider further restricting type parameter `U`
    |
-LL | struct SomeStruct<T,U>
-   |                     ^
+LL |     where T: ExtraCopy<U>, U: std::marker::Copy
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

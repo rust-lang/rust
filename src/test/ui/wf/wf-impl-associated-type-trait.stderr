@@ -7,11 +7,10 @@ LL | pub struct MySet<T:MyHash> {
 LL |     type Bar = MySet<T>;
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyHash` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: MyHash`
-  --> $DIR/wf-impl-associated-type-trait.rs:16:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> Foo for T {
-   |      ^
+LL | impl<T: MyHash> Foo for T {
+   |       ^^^^^^^^
 
 error: aborting due to previous error
 

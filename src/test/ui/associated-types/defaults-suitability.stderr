@@ -23,12 +23,11 @@ LL | trait Foo<T> {
 LL |     type Bar: Clone = Vec<T>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::clone::Clone`
-  --> $DIR/defaults-suitability.rs:32:11
-   |
-LL | trait Foo<T> {
-   |           ^
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<T>`
+help: consider restricting type parameter `T`
+   |
+LL | trait Foo<T: std::clone::Clone> {
+   |            ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
   --> $DIR/defaults-suitability.rs:39:17
@@ -119,11 +118,10 @@ LL | |     type Baz = T;
 LL | | }
    | |_- required by `Foo3`
    |
-help: consider restricting this type parameter with `where T: std::clone::Clone`
-  --> $DIR/defaults-suitability.rs:88:12
+help: consider further restricting type parameter `T`
    |
-LL | trait Foo3<T> where
-   |            ^
+LL |     Self::Baz: Clone, T: std::clone::Clone
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/defaults-suitability.rs:27:5

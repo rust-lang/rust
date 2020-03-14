@@ -218,51 +218,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Enum(_, generics), span, ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Union(_, generics),
-                    span,
-                    ..
-                })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(_, generics), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(_, generics), .. })
                 | hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Trait(_, _, generics, ..),
-                    span,
                     ..
                 })
                 | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. },
-                    span,
-                    ..
+                    kind: hir::ItemKind::Impl { generics, .. }, ..
+                })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
+                | hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::TyAlias(_, generics), ..
                 })
                 | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, generics, _),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TyAlias(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TraitAlias(generics, _),
-                    span,
-                    ..
+                    kind: hir::ItemKind::TraitAlias(generics, _), ..
                 })
                 | hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
-                    span,
                     ..
                 })
-                | hir::Node::TraitItem(hir::TraitItem { generics, span, .. })
-                | hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
+                | hir::Node::TraitItem(hir::TraitItem { generics, .. })
+                | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
                     // Missing generic type parameter bound.
@@ -274,8 +252,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &mut err,
                         &param_name,
                         &constraint,
-                        self.tcx.sess.source_map(),
-                        *span,
                         Some(trait_ref.def_id()),
                     ) {
                         return;

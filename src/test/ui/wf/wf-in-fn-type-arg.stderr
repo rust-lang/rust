@@ -7,11 +7,10 @@ LL | struct MustBeCopy<T:Copy> {
 LL |     x: fn(MustBeCopy<T>)
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/wf-in-fn-type-arg.rs:7:12
+help: consider restricting type parameter `T`
    |
-LL | struct Bar<T> {
-   |            ^
+LL | struct Bar<T: std::marker::Copy> {
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -7,11 +7,10 @@ LL | struct IsCopy<T:Copy> {
 LL |     data: IsCopy<A>
    |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
    |
-help: consider restricting this type parameter with `A: std::marker::Copy`
-  --> $DIR/wf-struct-field.rs:11:19
+help: consider restricting type parameter `A`
    |
-LL | struct SomeStruct<A> {
-   |                   ^
+LL | struct SomeStruct<A: std::marker::Copy> {
+   |                    ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
