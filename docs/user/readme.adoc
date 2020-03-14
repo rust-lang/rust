@@ -65,6 +65,25 @@ Note that we only support the latest version of VS Code.
 
 The extension will be updated automatically as new versions become available. It will ask your permission to download the matching language server version binary if needed.
 
+===== Nightly
+
+We ship nightly releases for VS Code. To help us out with testing the newest code and follow the bleeding edge of our `master`, please use the following config:
+
+[source,json]
+----
+{ "rust-analyzer.updates.channel": "nightly" }
+----
+
+You will be prompted to install the `nightly` extension version. Just click `Download now` and from that moment you will get automatic updates each 24 hours.
+
+If you don't want to be asked for `Download now` every day when the new nightly version is released add the following to your `settings.json`:
+[source,json]
+----
+{ "rust-analyzer.updates.askBeforeDownload": false }
+----
+
+NOTE: Nightly extension should **only** be installed via the `Download now` action from VS Code.
+
 ==== Building From Source
 
 Alternatively, both the server and the plugin can be installed from source:
