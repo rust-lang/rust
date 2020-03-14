@@ -1446,7 +1446,7 @@ impl MacDelimiter {
 }
 
 /// Represents a macro definition.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct MacroDef {
     pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.

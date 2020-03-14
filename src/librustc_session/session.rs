@@ -103,11 +103,6 @@ pub struct Session {
     /// The maximum blocks a const expression can evaluate.
     pub const_eval_limit: Once<usize>,
 
-    /// Map from imported macro spans (which consist of
-    /// the localized span for the macro body) to the
-    /// macro name and definition span in the source crate.
-    pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
-
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
     /// `-Zquery-dep-graph` is specified.
@@ -1080,7 +1075,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_limit: Once::new(),
-        imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,
