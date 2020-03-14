@@ -200,8 +200,15 @@ where
         let mut iter = iter.into_iter();
         let mut array: [MaybeUninit<T>; N] = MaybeUninit::uninit_array();
         
-        for p in array.iter_mut() {
-            p.write(iter.next().expect("Iterator is to short"));
+        for i in 0..N {
+            let value = iter.next().unwrap_or_else(|| {
+                // Drop already writen elements
+                for elem in &mut array[0..i] {
+                    unsafe { crate::ptr::drop_in_place(elem.as_mut_ptr()); }
+                }
+                panic!("Iterator is to short");
+            });
+            array[i].write(value);
         }
         
         // FIXME: actually use `mem::transmute` here, once it
