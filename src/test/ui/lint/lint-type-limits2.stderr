@@ -17,6 +17,7 @@ note: the lint level is defined here
    |
 LL | #![warn(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
+   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
 
 error: aborting due to previous error
 

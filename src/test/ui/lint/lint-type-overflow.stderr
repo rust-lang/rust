@@ -9,108 +9,143 @@ note: the lint level is defined here
    |
 LL | #![deny(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
 
 error: literal out of range for `u8`
   --> $DIR/lint-type-overflow.rs:13:14
    |
 LL |     let x1 = 256_u8;
    |              ^^^^^^
+   |
+   = note: the literal `256_u8` does not fit into the type `u8` whose range is `0..=255`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:16:18
    |
 LL |     let x1: i8 = 128;
    |                  ^^^
+   |
+   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:18:19
    |
 LL |     let x3: i8 = -129;
    |                   ^^^
+   |
+   = note: the literal `129` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:19:19
    |
 LL |     let x3: i8 = -(129);
    |                   ^^^^^
+   |
+   = note: the literal `129` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:20:20
    |
 LL |     let x3: i8 = -{129};
    |                    ^^^
+   |
+   = note: the literal `129` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:22:10
    |
 LL |     test(1000);
    |          ^^^^
+   |
+   = note: the literal `1000` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:24:13
    |
 LL |     let x = 128_i8;
    |             ^^^^^^
+   |
+   = note: the literal `128_i8` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i8`
   --> $DIR/lint-type-overflow.rs:28:14
    |
 LL |     let x = -129_i8;
    |              ^^^^^^
+   |
+   = note: the literal `129_i8` does not fit into the type `i8` whose range is `-128..=127`
 
 error: literal out of range for `i32`
   --> $DIR/lint-type-overflow.rs:32:18
    |
 LL |     let x: i32 = 2147483648;
    |                  ^^^^^^^^^^
+   |
+   = note: the literal `2147483648` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
 
 error: literal out of range for `i32`
   --> $DIR/lint-type-overflow.rs:33:13
    |
 LL |     let x = 2147483648_i32;
    |             ^^^^^^^^^^^^^^
+   |
+   = note: the literal `2147483648_i32` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
 
 error: literal out of range for `i32`
   --> $DIR/lint-type-overflow.rs:36:19
    |
 LL |     let x: i32 = -2147483649;
    |                   ^^^^^^^^^^
+   |
+   = note: the literal `2147483649` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
 
 error: literal out of range for `i32`
   --> $DIR/lint-type-overflow.rs:37:14
    |
 LL |     let x = -2147483649_i32;
    |              ^^^^^^^^^^^^^^
+   |
+   = note: the literal `2147483649_i32` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
 
 error: literal out of range for `i32`
   --> $DIR/lint-type-overflow.rs:38:13
    |
 LL |     let x = 2147483648;
    |             ^^^^^^^^^^
+   |
+   = note: the literal `2147483648` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
 
 error: literal out of range for `i64`
   --> $DIR/lint-type-overflow.rs:40:13
    |
 LL |     let x = 9223372036854775808_i64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `9223372036854775808_i64` does not fit into the type `i64` whose range is `-9223372036854775808..=9223372036854775807`
 
 error: literal out of range for `i64`
   --> $DIR/lint-type-overflow.rs:42:13
    |
 LL |     let x = 18446744073709551615_i64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `18446744073709551615_i64` does not fit into the type `i64` whose range is `-9223372036854775808..=9223372036854775807`
 
 error: literal out of range for `i64`
   --> $DIR/lint-type-overflow.rs:43:19
    |
 LL |     let x: i64 = -9223372036854775809;
    |                   ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `9223372036854775809` does not fit into the type `i64` whose range is `-9223372036854775808..=9223372036854775807`
 
 error: literal out of range for `i64`
   --> $DIR/lint-type-overflow.rs:44:14
    |
 LL |     let x = -9223372036854775809_i64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `9223372036854775809_i64` does not fit into the type `i64` whose range is `-9223372036854775808..=9223372036854775807`
 
 error: aborting due to 18 previous errors
 
