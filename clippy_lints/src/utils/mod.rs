@@ -47,12 +47,14 @@ use rustc_hir::{
     MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::predicate_for_trait_def;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
@@ -1387,7 +1389,7 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
 /// }
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool {
-    use rustc_infer::traits;
+    use rustc_trait_selection::traits;
     let predicates = cx
         .tcx
         .predicates_of(did)

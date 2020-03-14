@@ -51,6 +51,8 @@ extern crate rustc_span;
 #[allow(unused_extern_crates)]
 extern crate rustc_target;
 #[allow(unused_extern_crates)]
+extern crate rustc_trait_selection;
+#[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 
 use rustc::session::Session;
