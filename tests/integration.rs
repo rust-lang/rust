@@ -20,7 +20,7 @@ fn integration_test() {
     let st = Command::new("git")
         .args(&["clone", "--depth=1", &repo_url, repo_dir.to_str().unwrap()])
         .status()
-        .expect("unstable to run git");
+        .expect("unable to run git");
     assert!(st.success());
 
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
