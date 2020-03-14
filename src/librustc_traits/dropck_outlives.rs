@@ -191,12 +191,12 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            rustc_middle::limits::ensure_sufficient_stack(|| {
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)
             })?;
         }
 
-        ty::Tuple(tys) => rustc_middle::limits::ensure_sufficient_stack(|| {
+        ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
                 dtorck_constraint_for_ty(
                     tcx,
@@ -210,7 +210,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             Ok::<_, NoSolution>(())
         })?,
 
-        ty::Closure(_, substs) => rustc_middle::limits::ensure_sufficient_stack(|| {
+        ty::Closure(_, substs) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in substs.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }

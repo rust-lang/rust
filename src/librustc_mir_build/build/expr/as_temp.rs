@@ -3,8 +3,8 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
-use rustc_middle::limits::ensure_sufficient_stack;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 

@@ -1,12 +1,12 @@
 pub use self::def_id_forest::DefIdForest;
 
-use crate::middle::limits::ensure_sufficient_stack;
 use crate::ty;
 use crate::ty::context::TyCtxt;
 use crate::ty::TyKind::*;
 use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 
 mod def_id_forest;
 
