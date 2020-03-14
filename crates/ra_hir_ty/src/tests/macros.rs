@@ -363,6 +363,26 @@ fn main() {
 }
 
 #[test]
+fn infer_local_macro() {
+    assert_snapshot!(
+        infer(r#"
+fn main() {
+    macro_rules! foo {
+        () => { 1usize }
+    }
+    let _a  = foo!();
+}
+"#),
+        @r###"
+        ![0; 6) '1usize': usize
+        [11; 90) '{     ...!(); }': ()
+        [17; 66) 'macro_...     }': {unknown}
+        [75; 77) '_a': usize
+    "###
+    );
+}
+
+#[test]
 fn infer_builtin_macros_line() {
     assert_snapshot!(
         infer(r#"

@@ -3,7 +3,10 @@
 
 use either::Either;
 
-use hir_expand::name::{name, AsName, Name};
+use hir_expand::{
+    name::{name, AsName, Name},
+    MacroDefId, MacroDefKind,
+};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -452,19 +455,30 @@ where
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
-            // FIXME expand to statements in statement position
             ast::Expr::MacroCall(e) => {
-                let macro_call = self.expander.to_source(AstPtr::new(&e));
-                match self.expander.enter_expand(self.db, e) {
-                    Some((mark, expansion)) => {
-                        self.source_map
-                            .expansions
-                            .insert(macro_call, self.expander.current_file_id);
-                        let id = self.collect_expr(expansion);
-                        self.expander.exit(self.db, mark);
-                        id
+                if let Some(name) = is_macro_rules(&e) {
+                    let mac = MacroDefId {
+                        krate: Some(self.expander.module.krate),
+                        ast_id: Some(self.expander.ast_id(&e)),
+                        kind: MacroDefKind::Declarative,
+                    };
+                    self.body.item_scope.define_legacy_macro(name, mac);
+
+                    // FIXME: do we still need to allocate this as missing ?
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                } else {
+                    let macro_call = self.expander.to_source(AstPtr::new(&e));
+                    match self.expander.enter_expand(self.db, Some(&self.body.item_scope), e) {
+                        Some((mark, expansion)) => {
+                            self.source_map
+                                .expansions
+                                .insert(macro_call, self.expander.current_file_id);
+                            let id = self.collect_expr(expansion);
+                            self.expander.exit(self.db, mark);
+                            id
+                        }
+                        None => self.alloc_expr(Expr::Missing, syntax_ptr),
                     }
-                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
 
@@ -683,6 +697,16 @@ where
         } else {
             self.missing_pat()
         }
+    }
+}
+
+fn is_macro_rules(m: &ast::MacroCall) -> Option<Name> {
+    let name = m.path()?.segment()?.name_ref()?.as_name();
+
+    if name == name![macro_rules] {
+        Some(m.name()?.as_name())
+    } else {
+        None
     }
 }
 

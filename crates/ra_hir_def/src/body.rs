@@ -47,13 +47,19 @@ impl Expander {
     pub(crate) fn enter_expand<T: ast::AstNode, DB: DefDatabase>(
         &mut self,
         db: &DB,
+        local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
         let macro_call = InFile::new(self.current_file_id, &macro_call);
 
-        if let Some(call_id) =
-            macro_call.as_call_id(db, |path| self.resolve_path_as_macro(db, &path))
-        {
+        if let Some(call_id) = macro_call.as_call_id(db, |path| {
+            if let Some(local_scope) = local_scope {
+                if let Some(def) = path.as_ident().and_then(|n| local_scope.get_legacy_macro(n)) {
+                    return Some(def);
+                }
+            }
+            self.resolve_path_as_macro(db, &path)
+        }) {
             let file_id = call_id.as_file();
             if let Some(node) = db.parse_or_expand(file_id) {
                 if let Some(expr) = T::cast(node) {

@@ -381,6 +381,11 @@ impl Resolver {
         db: &impl DefDatabase,
         path: &ModPath,
     ) -> Option<MacroDefId> {
+        // Search item scope legacy macro first
+        if let Some(def) = self.resolve_local_macro_def(path) {
+            return Some(def);
+        }
+
         let (item_map, module) = self.module_scope()?;
         item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
     }
@@ -410,6 +415,16 @@ impl Resolver {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
             _ => None,
+        })
+    }
+
+    fn resolve_local_macro_def(&self, path: &ModPath) -> Option<MacroDefId> {
+        let name = path.as_ident()?;
+        self.scopes.iter().rev().find_map(|scope| {
+            if let Scope::LocalItemsScope(body) = scope {
+                return body.item_scope.get_legacy_macro(name);
+            }
+            None
         })
     }
 
