@@ -3,9 +3,9 @@ use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::traits::query::dropck_outlives::DropckOutlivesResult;
-use rustc_infer::traits::query::type_op::outlives::DropckOutlives;
-use rustc_infer::traits::query::type_op::TypeOp;
+use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
+use rustc_trait_selection::traits::query::type_op::TypeOp;
 use std::rc::Rc;
 
 use crate::dataflow::generic::ResultsCursor;

@@ -22,8 +22,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
-use rustc_infer::traits;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use self::probe::{IsSuggestion, ProbeScope};
 

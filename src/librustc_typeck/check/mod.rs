@@ -121,17 +121,22 @@ use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, Q
 use rustc_index::vec::Idx;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
-use rustc_infer::traits::error_reporting::recursive_type_with_infinite_size_error;
-use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::opaque_types::{InferCtxtExt as _, OpaqueTypeDecl};
+use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{
+    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
+};
 
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::cmp;

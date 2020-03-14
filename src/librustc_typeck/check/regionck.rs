@@ -87,6 +87,8 @@ use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc_span::Span;
+use rustc_trait_selection::infer::OutlivesEnvironmentExt;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 use std::mem;
 use std::ops::Deref;
 

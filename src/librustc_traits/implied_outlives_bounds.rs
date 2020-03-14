@@ -7,12 +7,14 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::query::outlives_bounds::OutlivesBound;
-use rustc_infer::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
-use rustc_infer::traits::wf;
-use rustc_infer::traits::FulfillmentContext;
-use rustc_infer::traits::{TraitEngine, TraitEngineExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::DUMMY_SP;
+use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::query::outlives_bounds::OutlivesBound;
+use rustc_trait_selection::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
+use rustc_trait_selection::traits::wf;
+use rustc_trait_selection::traits::FulfillmentContext;
+use rustc_trait_selection::traits::TraitEngine;
 use smallvec::{smallvec, SmallVec};
 
 crate fn provide(p: &mut Providers<'_>) {

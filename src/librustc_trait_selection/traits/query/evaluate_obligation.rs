@@ -4,10 +4,35 @@ use crate::traits::{
     EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
 };
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+pub trait InferCtxtExt<'tcx> {
+    fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+
+    fn predicate_must_hold_considering_regions(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> bool;
+
+    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+
+    fn evaluate_obligation(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> Result<EvaluationResult, OverflowError>;
+
+    // Helper function that canonicalizes and runs the query. If an
+    // overflow results, we re-run it in the local context so we can
+    // report a nice error.
+    /*crate*/
+    fn evaluate_obligation_no_overflow(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> EvaluationResult;
+}
+
+impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
-    pub fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+    fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         self.evaluate_obligation_no_overflow(obligation).may_apply()
     }
 
@@ -17,7 +42,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ///
     /// This version may conservatively fail when outlives obligations
     /// are required.
-    pub fn predicate_must_hold_considering_regions(
+    fn predicate_must_hold_considering_regions(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
@@ -29,15 +54,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// not entirely accurate if inference variables are involved.
     ///
     /// This version ignores all outlives constraints.
-    pub fn predicate_must_hold_modulo_regions(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> bool {
+    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         self.evaluate_obligation_no_overflow(obligation).must_apply_modulo_regions()
     }
 
     /// Evaluate a given predicate, capturing overflow and propagating it back.
-    pub fn evaluate_obligation(
+    fn evaluate_obligation(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
@@ -53,7 +75,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     // Helper function that canonicalizes and runs the query. If an
     // overflow results, we re-run it in the local context so we can
     // report a nice error.
-    crate fn evaluate_obligation_no_overflow(
+    fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> EvaluationResult {

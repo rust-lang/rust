@@ -72,7 +72,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
             debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let vtable = infcx.drain_fulfillment_cx_or_panic(&mut fulfill_cx, &vtable);
+        let vtable = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, &vtable);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
         Some(vtable)
@@ -81,34 +81,32 @@ pub fn codegen_fulfill_obligation<'tcx>(
 
 // # Global Cache
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    /// Finishes processes any obligations that remain in the
-    /// fulfillment context, and then returns the result with all type
-    /// variables removed and regions erased. Because this is intended
-    /// for use after type-check has completed, if any errors occur,
-    /// it will panic. It is used during normalization and other cases
-    /// where processing the obligations in `fulfill_cx` may cause
-    /// type inference variables that appear in `result` to be
-    /// unified, and hence we need to process those obligations to get
-    /// the complete picture of the type.
-    fn drain_fulfillment_cx_or_panic<T>(
-        &self,
-        fulfill_cx: &mut FulfillmentContext<'tcx>,
-        result: &T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        debug!("drain_fulfillment_cx_or_panic()");
+/// Finishes processes any obligations that remain in the
+/// fulfillment context, and then returns the result with all type
+/// variables removed and regions erased. Because this is intended
+/// for use after type-check has completed, if any errors occur,
+/// it will panic. It is used during normalization and other cases
+/// where processing the obligations in `fulfill_cx` may cause
+/// type inference variables that appear in `result` to be
+/// unified, and hence we need to process those obligations to get
+/// the complete picture of the type.
+fn drain_fulfillment_cx_or_panic<T>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    fulfill_cx: &mut FulfillmentContext<'tcx>,
+    result: &T,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    debug!("drain_fulfillment_cx_or_panic()");
 
-        // In principle, we only need to do this so long as `result`
-        // contains unbound type parameters. It could be a slight
-        // optimization to stop iterating early.
-        if let Err(errors) = fulfill_cx.select_all_or_error(self) {
-            bug!("Encountered errors `{:?}` resolving bounds after type-checking", errors);
-        }
-
-        let result = self.resolve_vars_if_possible(result);
-        self.tcx.erase_regions(&result)
+    // In principle, we only need to do this so long as `result`
+    // contains unbound type parameters. It could be a slight
+    // optimization to stop iterating early.
+    if let Err(errors) = fulfill_cx.select_all_or_error(infcx) {
+        bug!("Encountered errors `{:?}` resolving bounds after type-checking", errors);
     }
+
+    let result = infcx.resolve_vars_if_possible(result);
+    infcx.tcx.erase_regions(&result)
 }

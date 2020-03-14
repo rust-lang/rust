@@ -18,9 +18,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Generics, HirId, Item, StructField, Variant};
-use rustc_infer::traits::misc::can_type_implement_copy;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use std::cmp::Ordering;
 use std::mem::replace;

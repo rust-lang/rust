@@ -11,9 +11,9 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::{ObligationCause, Pattern};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};

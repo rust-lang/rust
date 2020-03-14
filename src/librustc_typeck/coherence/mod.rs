@@ -9,8 +9,8 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_infer::traits;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
 mod builtin;
 mod inherent_impls;

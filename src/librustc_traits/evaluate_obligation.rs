@@ -1,11 +1,11 @@
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::query::CanonicalPredicateGoal;
-use rustc_infer::traits::{
+use rustc_span::source_map::DUMMY_SP;
+use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
+use rustc_trait_selection::traits::{
     EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
 };
-use rustc_span::source_map::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { evaluate_obligation, ..*p };

@@ -8,7 +8,8 @@ use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::{InferCtxt, InferOk};
-use rustc_infer::traits::{self, TraitEngine};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, TraitEngine};
 
 use rustc_ast::ast::Ident;
 use rustc_span::Span;

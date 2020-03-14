@@ -42,6 +42,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_plugin_impl = { path = "../librustc_plugin_impl" }
 rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }
 rustc_ty = { path = "../librustc_ty" }
 tempfile = "3.0.5"
 once_cell = "1"

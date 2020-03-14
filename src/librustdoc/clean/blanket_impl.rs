@@ -1,3 +1,4 @@
+use crate::rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{ToPredicate, WithConstness};
 use rustc_hir as hir;

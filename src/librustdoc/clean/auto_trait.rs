@@ -1,7 +1,7 @@
 use rustc::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_infer::traits::auto_trait::{self, AutoTraitResult};
+use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
 

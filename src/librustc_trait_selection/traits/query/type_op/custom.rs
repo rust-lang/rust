@@ -4,7 +4,9 @@ use std::fmt;
 
 use crate::infer::canonical::query_response;
 use crate::infer::canonical::QueryRegionConstraints;
-use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
+use crate::traits::engine::TraitEngineExt as _;
+use crate::traits::{ObligationCause, TraitEngine};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::DUMMY_SP;
 use std::rc::Rc;
 

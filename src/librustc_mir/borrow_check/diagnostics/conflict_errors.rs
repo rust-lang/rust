@@ -10,9 +10,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
-use rustc_infer::traits::error_reporting::suggest_constraining_type_param;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
+use rustc_trait_selection::traits::error_reporting::suggest_constraining_type_param;
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};

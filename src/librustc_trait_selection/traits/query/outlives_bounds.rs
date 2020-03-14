@@ -1,14 +1,25 @@
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::query::NoSolution;
-use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
+use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine};
 use rustc::ty::{self, Ty};
 use rustc_hir as hir;
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::Span;
 
 pub use rustc::traits::query::OutlivesBound;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+pub trait InferCtxtExt<'tcx> {
+    fn implied_outlives_bounds(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: hir::HirId,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> Vec<OutlivesBound<'tcx>>;
+}
+
+impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// Implied bounds are region relationships that we deduce
     /// automatically. The idea is that (e.g.) a caller must check that a
     /// function's argument types are well-formed immediately before
@@ -30,7 +41,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// - `ty`, the type that we are supposed to assume is WF.
     /// - `span`, a span to use when normalizing, hopefully not important,
     ///   might be useful if a `bug!` occurs.
-    pub fn implied_outlives_bounds(
+    fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
@@ -81,23 +92,4 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         result.value
     }
-}
-
-pub fn explicit_outlives_bounds<'tcx>(
-    param_env: ty::ParamEnv<'tcx>,
-) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {
-    debug!("explicit_outlives_bounds()");
-    param_env.caller_bounds.into_iter().filter_map(move |predicate| match predicate {
-        ty::Predicate::Projection(..)
-        | ty::Predicate::Trait(..)
-        | ty::Predicate::Subtype(..)
-        | ty::Predicate::WellFormed(..)
-        | ty::Predicate::ObjectSafe(..)
-        | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..) => None,
-        ty::Predicate::RegionOutlives(ref data) => data
-            .no_bound_vars()
-            .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a)),
-    })
 }

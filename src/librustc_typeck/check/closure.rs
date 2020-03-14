@@ -12,10 +12,11 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
-use rustc_infer::traits::error_reporting::ArgKind;
-use rustc_infer::traits::Obligation;
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::error_reporting::ArgKind;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::Obligation;
 use std::cmp;
 use std::iter;
 

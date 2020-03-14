@@ -24,17 +24,19 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::opaque_types::GenerateMemberConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
     InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
 };
-use rustc_infer::traits::query::type_op;
-use rustc_infer::traits::query::type_op::custom::CustomTypeOp;
-use rustc_infer::traits::query::{Fallible, NoSolution};
-use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::opaque_types::{GenerateMemberConstraints, InferCtxtExt};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::type_op;
+use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
+use rustc_trait_selection::traits::query::{Fallible, NoSolution};
+use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations};
 
 use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::MoveData;

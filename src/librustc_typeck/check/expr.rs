@@ -34,10 +34,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::{self, ObligationCauseCode};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::fmt::Display;
 

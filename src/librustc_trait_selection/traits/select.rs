@@ -9,9 +9,7 @@ use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
 use super::project;
-use super::project::{
-    normalize_with_depth, normalize_with_depth_to, Normalized, ProjectionCacheKey,
-};
+use super::project::{normalize_with_depth, normalize_with_depth_to};
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
@@ -21,6 +19,7 @@ use super::SelectionResult;
 use super::TraitNotObjectSafe;
 use super::TraitQueryMode;
 use super::{BuiltinDerivedObligation, ImplDerivedObligation, ObligationCauseCode};
+use super::{Normalized, ProjectionCacheKey};
 use super::{ObjectCastObligation, Obligation};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{OutputTypeParameterMismatch, Overflow, SelectionError, Unimplemented};
@@ -34,6 +33,8 @@ use super::{
 };
 
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
+use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::project::ProjectionCacheKeyExt;
 use rustc::dep_graph::{DepKind, DepNodeIndex};
 use rustc::middle::lang_items;
 use rustc::ty::fast_reject;
@@ -93,47 +94,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
-}
-
-#[derive(Clone, Debug)]
-pub enum IntercrateAmbiguityCause {
-    DownstreamCrate { trait_desc: String, self_desc: Option<String> },
-    UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
-    ReservationImpl { message: String },
-}
-
-impl IntercrateAmbiguityCause {
-    /// Emits notes when the overlap is caused by complex intercrate ambiguities.
-    /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint(&self, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
-        err.note(&self.intercrate_ambiguity_hint());
-    }
-
-    pub fn intercrate_ambiguity_hint(&self) -> String {
-        match self {
-            &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
-            }
-            &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!(
-                    "upstream crates may add a new impl of trait `{}`{} \
-                     in future versions",
-                    trait_desc, self_desc
-                )
-            }
-            &IntercrateAmbiguityCause::ReservationImpl { ref message } => message.clone(),
-        }
-    }
 }
 
 // A stack that walks back up the stack frame.
@@ -3506,9 +3466,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 }
 
-impl<'tcx> TraitObligation<'tcx> {
+trait TraitObligationExt<'tcx> {
+    fn derived_cause(
+        &self,
+        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx>;
+}
+
+impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
     #[allow(unused_comparisons)]
-    pub fn derived_cause(
+    fn derived_cause(
         &self,
         variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {

@@ -5,11 +5,17 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::query::dropck_outlives::trivial_dropck_outlives;
-use rustc_infer::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
-use rustc_infer::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc_infer::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outlives;
+use rustc_trait_selection::traits::query::dropck_outlives::{
+    DropckOutlivesResult, DtorckConstraint,
+};
+use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
+use rustc_trait_selection::traits::{
+    Normalized, ObligationCause, TraitEngine, TraitEngineExt as _,
+};
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };

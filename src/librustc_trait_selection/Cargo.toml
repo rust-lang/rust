@@ -1,30 +1,27 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_resolve"
+name = "rustc_trait_selection"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc_resolve"
+name = "rustc_trait_selection"
 path = "lib.rs"
-test = false
 doctest = false
 
 [dependencies]
-bitflags = "1.2.1"
-log = "0.4"
-rustc_ast = { path = "../librustc_ast" }
-arena = { path = "../libarena" }
-rustc = { path = "../librustc" }
-rustc_ast_lowering = { path = "../librustc_ast_lowering" }
-rustc_ast_pretty = { path = "../librustc_ast_pretty" }
+fmt_macros = { path = "../libfmt_macros" }
+log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc_attr = { path = "../librustc_attr" }
+rustc = { path = "../librustc" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_expand = { path = "../librustc_expand" }
-rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
-rustc_metadata = { path = "../librustc_metadata" }
+rustc_index = { path = "../librustc_index" }
+rustc_infer = { path = "../librustc_infer" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
+rustc_target = { path = "../librustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

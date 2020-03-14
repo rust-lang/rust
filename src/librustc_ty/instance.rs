@@ -1,8 +1,8 @@
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits;
 
 use log::debug;
 

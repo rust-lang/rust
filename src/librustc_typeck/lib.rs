@@ -101,9 +101,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
-use rustc_infer::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::{
+    ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt as _,
+};
 
 use std::iter;
 
