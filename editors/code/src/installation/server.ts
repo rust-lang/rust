@@ -5,7 +5,7 @@ import { spawnSync } from "child_process";
 import { ArtifactSource } from "./interfaces";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 import { downloadArtifactWithProgressUi } from "./downloads";
-import { log, assert } from "../util";
+import { log, assert, notReentrant } from "../util";
 import { Config, NIGHTLY_TAG } from "../config";
 
 export async function ensureServerBinary(config: Config): Promise<null | string> {
@@ -82,7 +82,10 @@ function shouldDownloadServer(
     return installed.date.getTime() !== required.date.getTime();
 }
 
-async function downloadServer(
+/**
+ * Enforcing no reentrancy for this is best-effort.
+ */
+const downloadServer = notReentrant(async function downloadServer(
     source: ArtifactSource.GithubRelease,
     config: Config,
 ): Promise<null | string> {
@@ -112,7 +115,7 @@ async function downloadServer(
     );
 
     return binaryPath;
-}
+});
 
 function isBinaryAvailable(binaryPath: string): boolean {
     const res = spawnSync(binaryPath, ["--version"]);

@@ -97,7 +97,7 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
  *
  * ACHTUNG!: this function has a crazy amount of state transitions, handling errors during
  * each of them would result in a ton of code (especially accounting for cross-process
- * shared mutable `globalState` access). Enforcing reentrancy for this is best-effort.
+ * shared mutable `globalState` access). Enforcing no reentrancy for this is best-effort.
  */
 const tryDownloadNightlyExtension = notReentrant(async function tryDownloadNightlyExtension(
     config: Config,
