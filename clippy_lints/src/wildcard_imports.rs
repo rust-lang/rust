@@ -43,6 +43,10 @@ declare_clippy_lint! {
     ///
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
+    /// Note that this will not warn about wildcard imports from modules named `prelude`; many
+    /// crates (including the standard library) provide modules named "prelude" specifically
+    /// designed for wildcard import.
+    ///
     /// **Known problems:** If macros are imported through the wildcard, this macro is not included
     /// by the suggestion and has to be added by hand.
     ///
