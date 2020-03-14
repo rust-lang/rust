@@ -1,6 +1,7 @@
 #![cfg(feature = "integration")]
 
 use std::env;
+use std::ffi::OsStr;
 use std::process::Command;
 
 #[cfg_attr(feature = "integration", test)]
@@ -16,7 +17,12 @@ fn integration_test() {
     repo_dir.push(crate_name);
 
     let st = Command::new("git")
-        .args(&["clone", "--depth=1", &repo_url, repo_dir.to_str().unwrap()])
+        .args(&[
+            OsStr::new("clone"),
+            OsStr::new("--depth=1"),
+            OsStr::new(&repo_url),
+            OsStr::new(&repo_dir),
+        ])
         .status()
         .expect("unable to run git");
     assert!(st.success());
