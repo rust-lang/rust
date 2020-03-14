@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
 
@@ -24,7 +25,10 @@ impl MetadataLoader for CraneliftMetadataLoader {
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
             if entry.header().identifier() == METADATA_FILENAME.as_bytes() {
-                let mut buf = Vec::new();
+                let mut buf = Vec::with_capacity(
+                    usize::try_from(entry.header().size())
+                        .expect("Rlib metadata file too big to load into memory.")
+                );
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
                 return Ok(rustc_erase_owner!(buf.map_owner_box()));
