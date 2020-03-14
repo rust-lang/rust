@@ -12,13 +12,14 @@ use lsp_types::{
     notification::{DidOpenTextDocument, Exit},
     request::Shutdown,
     ClientCapabilities, DidOpenTextDocumentParams, GotoCapability, TextDocumentClientCapabilities,
-    TextDocumentIdentifier, TextDocumentItem, Url,
+    TextDocumentIdentifier, TextDocumentItem, Url, WorkDoneProgress,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
+use req::{ProgressParams, ProgressParamsValue};
 use rust_analyzer::{main_loop, req, ServerConfig};
 
 pub struct Project<'a> {
@@ -201,10 +202,14 @@ impl Server {
     }
     pub fn wait_until_workspace_is_loaded(&self) {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
-            Message::Notification(n) if n.method == "window/showMessage" => {
-                let msg =
-                    n.clone().extract::<req::ShowMessageParams>("window/showMessage").unwrap();
-                msg.message.starts_with("workspace loaded")
+            Message::Notification(n) if n.method == "$/progress" => {
+                match n.clone().extract::<ProgressParams>("$/progress").unwrap() {
+                    ProgressParams {
+                        token: req::ProgressToken::String(ref token),
+                        value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(_)),
+                    } if token == "rustAnalyzer/startup" => true,
+                    _ => false,
+                }
             }
             _ => false,
         })
