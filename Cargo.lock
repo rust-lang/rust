@@ -476,7 +476,7 @@ version = "0.0.212"
 dependencies = [
  "cargo_metadata 0.9.0",
  "if_chain",
- "itertools 0.8.0",
+ "itertools 0.9.0",
  "lazy_static 1.4.0",
  "matches",
  "pulldown-cmark 0.7.0",
@@ -1600,6 +1600,15 @@ name = "itertools"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b8467d9c1cebe26feb08c640139247fac215782d35371ade9a2136ed6085358"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
