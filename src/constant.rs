@@ -7,6 +7,7 @@ use rustc::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
 };
 use rustc::ty::{layout::Align, Const, ConstKind};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::interpret::{
     ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
     StackPopCleanup, StackPopInfo,
@@ -19,11 +20,11 @@ use crate::prelude::*;
 
 #[derive(Default)]
 pub struct ConstantCx {
-    todo: HashSet<TodoItem>,
-    done: HashSet<DataId>,
+    todo: Vec<TodoItem>,
+    done: FxHashSet<DataId>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug)]
 enum TodoItem {
     Alloc(AllocId),
     Static(DefId),
@@ -39,7 +40,7 @@ impl ConstantCx {
 }
 
 pub fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
-    constants_cx.todo.insert(TodoItem::Static(def_id));
+    constants_cx.todo.push(TodoItem::Static(def_id));
 }
 
 fn codegen_static_ref<'tcx>(
@@ -109,7 +110,7 @@ pub fn trans_const_value<'tcx>(
                     let alloc_kind = fx.tcx.alloc_map.lock().get(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.constants_cx.todo.insert(TodoItem::Alloc(ptr.alloc_id));
+                            fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
                             let data_id = data_id_for_alloc_id(fx.module, ptr.alloc_id, alloc.align);
                             let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
@@ -139,7 +140,7 @@ pub fn trans_const_value<'tcx>(
         }
         ConstValue::ByRef { alloc, offset } => {
             let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
-            fx.constants_cx.todo.insert(TodoItem::Alloc(alloc_id));
+            fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
             let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
             let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
             let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
@@ -195,7 +196,7 @@ fn trans_const_place<'tcx>(
 
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
-    fx.constants_cx.todo.insert(TodoItem::Alloc(alloc_id));
+    fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
@@ -287,7 +288,7 @@ fn cplace_for_dataid<'tcx>(
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
     let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
 
-    while let Some(todo_item) = pop_set(&mut cx.todo) {
+    while let Some(todo_item) = cx.todo.pop() {
         let (data_id, alloc) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
@@ -356,7 +357,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     continue;
                 }
                 GlobalAlloc::Memory(_) => {
-                    cx.todo.insert(TodoItem::Alloc(reloc));
+                    cx.todo.push(TodoItem::Alloc(reloc));
                     data_id_for_alloc_id(module, reloc, alloc.align)
                 }
                 GlobalAlloc::Static(def_id) => {
@@ -385,15 +386,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
     }
 
     assert!(cx.todo.is_empty(), "{:?}", cx.todo);
-}
-
-fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> {
-    if let Some(elem) = set.iter().next().map(|elem| *elem) {
-        set.remove(&elem);
-        Some(elem)
-    } else {
-        None
-    }
 }
 
 struct TransPlaceInterpreter;
