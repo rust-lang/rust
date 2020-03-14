@@ -32,11 +32,10 @@ pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
     pub call_id: stacked_borrows::CallId,
 
-    /// If this is Some(), then this is a special "catch unwind" frame (the frame of the closure
-    /// called by `__rustc_maybe_catch_panic`). When this frame is popped during unwinding a panic,
-    /// we stop unwinding, use the `CatchUnwindData` to
-    /// store the panic payload, and continue execution in the parent frame.
-    pub catch_panic: Option<CatchUnwindData<'tcx>>,
+    /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
+    /// called by `try`). When this frame is popped during unwinding a panic,
+    /// we stop unwinding, use the `CatchUnwindData` to handle catching.
+    pub catch_unwind: Option<CatchUnwindData<'tcx>>,
 }
 
 /// Extra memory kinds
@@ -163,7 +162,8 @@ pub struct Evaluator<'tcx> {
 
     /// The temporary used for storing the argument of
     /// the call to `miri_start_panic` (the panic payload) when unwinding.
-    pub(crate) panic_payload: Option<ImmTy<'tcx, Tag>>,
+    /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
+    pub(crate) panic_payload: Option<Scalar<Tag>>,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -405,7 +405,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
             stacked_borrows.borrow_mut().new_call()
         });
-        Ok(FrameData { call_id, catch_panic: None })
+        Ok(FrameData { call_id, catch_unwind: None })
     }
 
     #[inline(always)]
@@ -413,7 +413,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: FrameData<'tcx>,
         unwinding: bool,
-    ) -> InterpResult<'tcx, StackPopInfo> {
+    ) -> InterpResult<'tcx, StackPopJump> {
         ecx.handle_stack_pop(extra, unwinding)
     }
 
