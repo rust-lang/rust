@@ -123,8 +123,17 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         let line_strings = &mut self.debug_context.dwarf.line_strings;
         let function_span = self.mir.span;
+        let mut last_span = None;
         let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
+            if let Some(last_span) = last_span {
+                if span == last_span {
+                    line_program.generate_row();
+                    return;
+                }
+            }
+            last_span = Some(span);
+
             // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
             // In order to have a good line stepping behavior in debugger, we overwrite debug
             // locations of macro expansions with that of the outermost expansion site
@@ -150,7 +159,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
             // line_program_add_file is very slow.
             // Optimize for the common case of the current file not being changed.
-            let current_file_changed = if let Some(last_file) = &mut last_file {
+            let current_file_changed = if let Some(last_file) = &last_file {
                 // If the allocations are not equal, then the files may still be equal, but that
                 // is not a problem, as this is just an optimization.
                 !Lrc::ptr_eq(last_file, &file)
