@@ -2,7 +2,7 @@ error[E0599]: no method named `as_deref` found for enum `std::option::Option<{in
   --> $DIR/option-as_deref.rs:2:29
    |
 LL |     let _result = &Some(42).as_deref();
-   |                             ^^^^^^^^ help: there is a method with a similar name: `as_ref`
+   |                             ^^^^^^^^ help: there is an associated function with a similar name: `as_ref`
    |
    = note: the method `as_deref` exists but the following trait bounds were not satisfied:
            `{integer}: std::ops::Deref`

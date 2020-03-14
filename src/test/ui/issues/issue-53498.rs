@@ -13,5 +13,5 @@ pub mod test {
 }
 
 fn main() {
-    test::Foo::<test::B>::foo(); //~ ERROR method `foo` is private
+    test::Foo::<test::B>::foo(); //~ ERROR associated function `foo` is private
 }

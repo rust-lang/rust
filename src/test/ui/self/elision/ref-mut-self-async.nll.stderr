@@ -6,7 +6,7 @@ LL |     async fn ref_self(&mut self, f: &u32) -> &u32 {
    |                       |
    |                       let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:19:9
@@ -16,7 +16,7 @@ LL |     async fn ref_Self(self: &mut Self, f: &u32) -> &u32 {
    |                             |
    |                             let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:23:9
@@ -26,7 +26,7 @@ LL |     async fn box_ref_Self(self: Box<&mut Self>, f: &u32) -> &u32 {
    |                                     |
    |                                     let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:27:9
@@ -36,7 +36,7 @@ LL |     async fn pin_ref_Self(self: Pin<&mut Self>, f: &u32) -> &u32 {
    |                                     |
    |                                     let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:31:9
@@ -46,7 +46,7 @@ LL |     async fn box_box_ref_Self(self: Box<Box<&mut Self>>, f: &u32) -> &u32 {
    |                                             |
    |                                             let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:35:9
@@ -56,7 +56,7 @@ LL |     async fn box_pin_ref_Self(self: Box<Pin<&mut Self>>, f: &u32) -> &u32 {
    |                                             |
    |                                             let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: aborting due to 6 previous errors
 

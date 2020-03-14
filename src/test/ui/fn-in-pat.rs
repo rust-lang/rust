@@ -8,7 +8,7 @@ fn hof<F>(_: F) where F: FnMut(()) {}
 
 fn ice() {
     hof(|c| match c {
-        A::new() => (), //~ ERROR expected tuple struct or tuple variant, found method
+        A::new() => (), //~ ERROR expected tuple struct or tuple variant, found associated function
         _ => ()
     })
 }
