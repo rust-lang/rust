@@ -47,13 +47,17 @@ pub fn astconv_object_safety_violations(
     violations
 }
 
-fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
+fn object_safety_violations(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+) -> &'tcx [ObjectSafetyViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("object_safety_violations: {:?}", trait_def_id);
 
-    traits::supertrait_def_ids(tcx, trait_def_id)
-        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id))
-        .collect()
+    tcx.arena.alloc_from_iter(
+        traits::supertrait_def_ids(tcx, trait_def_id)
+            .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
+    )
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait

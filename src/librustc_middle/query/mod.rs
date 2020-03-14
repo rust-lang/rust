@@ -652,7 +652,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(_: DefId) -> Vec<ast::Name> {}
+        query fn_arg_names(_: DefId) -> &'tcx [ast::Name] {}
         /// Gets the rendered value of the specified constant or associated constant.
         /// Used by rustdoc.
         query rendered_const(_: DefId) -> String {}
@@ -699,7 +699,7 @@ rustc_queries! {
             desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
+        query object_safety_violations(key: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 

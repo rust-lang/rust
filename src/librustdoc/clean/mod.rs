@@ -973,10 +973,11 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if cx.tcx.hir().as_local_hir_id(did).is_some() {
-            vec![].into_iter()
+            &[]
         } else {
-            cx.tcx.fn_arg_names(did).into_iter()
-        };
+            cx.tcx.fn_arg_names(did)
+        }
+        .iter();
 
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
