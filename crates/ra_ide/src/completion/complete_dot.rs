@@ -402,6 +402,38 @@ mod tests {
     }
 
     #[test]
+    fn completes_trait_method_from_other_module() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            struct A {}
+            mod m {
+                pub trait Trait { fn the_method(&self); }
+            }
+            use m::Trait;
+            impl Trait for A {}
+            fn foo(a: A) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_method()",
+                source_range: [219; 219),
+                delete: [219; 219),
+                insert: "the_method()$0",
+                kind: Method,
+                lookup: "the_method",
+                detail: "fn the_method(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn test_no_non_self_method() {
         assert_debug_snapshot!(
         do_ref_completion(

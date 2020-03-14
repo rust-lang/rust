@@ -6,7 +6,7 @@ use ra_syntax::ast;
 use crate::{
     db::DefDatabase,
     path::{ModPath, PathKind},
-    ModuleId,
+    AssocContainerId, ModuleId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -20,9 +20,28 @@ pub enum RawVisibility {
 }
 
 impl RawVisibility {
-    const fn private() -> RawVisibility {
+    pub(crate) const fn private() -> RawVisibility {
         let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
         RawVisibility::Module(path)
+    }
+
+    pub(crate) fn default_for_container(container_id: AssocContainerId) -> Self {
+        match container_id {
+            AssocContainerId::TraitId(_) => RawVisibility::Public,
+            _ => RawVisibility::private(),
+        }
+    }
+
+    pub(crate) fn from_ast_with_default(
+        db: &impl DefDatabase,
+        default: RawVisibility,
+        node: InFile<Option<ast::Visibility>>,
+    ) -> RawVisibility {
+        Self::from_ast_with_hygiene_and_default(
+            node.value,
+            default,
+            &Hygiene::new(db, node.file_id),
+        )
     }
 
     pub(crate) fn from_ast(
@@ -36,8 +55,16 @@ impl RawVisibility {
         node: Option<ast::Visibility>,
         hygiene: &Hygiene,
     ) -> RawVisibility {
+        Self::from_ast_with_hygiene_and_default(node, RawVisibility::private(), hygiene)
+    }
+
+    pub(crate) fn from_ast_with_hygiene_and_default(
+        node: Option<ast::Visibility>,
+        default: RawVisibility,
+        hygiene: &Hygiene,
+    ) -> RawVisibility {
         let node = match node {
-            None => return RawVisibility::private(),
+            None => return default,
             Some(node) => node,
         };
         match node.kind() {

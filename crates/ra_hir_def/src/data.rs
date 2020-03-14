@@ -34,7 +34,8 @@ pub struct FunctionData {
 
 impl FunctionData {
     pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
-        let src = func.lookup(db).source(db);
+        let loc = func.lookup(db);
+        let src = loc.source(db);
         let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
@@ -76,7 +77,9 @@ impl FunctionData {
             ret_type
         };
 
-        let visibility = RawVisibility::from_ast(db, src.map(|s| s.visibility()));
+        let vis_default = RawVisibility::default_for_container(loc.container);
+        let visibility =
+            RawVisibility::from_ast_with_default(db, vis_default, src.map(|s| s.visibility()));
 
         let sig = FunctionData { name, params, ret_type, has_self_param, visibility };
         Arc::new(sig)
@@ -105,10 +108,13 @@ impl TypeAliasData {
         db: &impl DefDatabase,
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
-        let node = typ.lookup(db).source(db);
+        let loc = typ.lookup(db);
+        let node = loc.source(db);
         let name = node.value.name().map_or_else(Name::missing, |n| n.as_name());
         let type_ref = node.value.type_ref().map(TypeRef::from_ast);
-        let visibility = RawVisibility::from_ast(db, node.map(|n| n.visibility()));
+        let vis_default = RawVisibility::default_for_container(loc.container);
+        let visibility =
+            RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
         Arc::new(TypeAliasData { name, type_ref, visibility })
     }
 }
@@ -230,22 +236,26 @@ pub struct ConstData {
 
 impl ConstData {
     pub(crate) fn const_data_query(db: &impl DefDatabase, konst: ConstId) -> Arc<ConstData> {
-        let node = konst.lookup(db).source(db);
-        Arc::new(ConstData::new(db, node))
+        let loc = konst.lookup(db);
+        let node = loc.source(db);
+        let vis_default = RawVisibility::default_for_container(loc.container);
+        Arc::new(ConstData::new(db, vis_default, node))
     }
 
     pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
         let node = konst.lookup(db).source(db);
-        Arc::new(ConstData::new(db, node))
+        Arc::new(ConstData::new(db, RawVisibility::private(), node))
     }
 
     fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(
         db: &impl DefDatabase,
+        vis_default: RawVisibility,
         node: InFile<N>,
     ) -> ConstData {
         let name = node.value.name().map(|n| n.as_name());
         let type_ref = TypeRef::from_ast_opt(node.value.ascribed_type());
-        let visibility = RawVisibility::from_ast(db, node.map(|n| n.visibility()));
+        let visibility =
+            RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
         ConstData { name, type_ref, visibility }
     }
 }
