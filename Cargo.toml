@@ -37,7 +37,6 @@ clippy_lints = { version = "0.0.212", path = "clippy_lints" }
 regex = "1"
 semver = "0.9"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
-git2 = { version = "0.12", optional = true }
 tempfile = { version = "3.1.0", optional = true }
 lazy_static = "1.0"
 
@@ -60,4 +59,4 @@ rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 
 [features]
 deny-warnings = []
-integration = ["git2", "tempfile"]
+integration = ["tempfile"]
