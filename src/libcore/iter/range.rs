@@ -45,8 +45,11 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     ///
     /// For any `a`, `n`, and `m`:
     ///
-    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == n.checked_add(m).and_then(|x| Step::forward_checked(a, x))`
-    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == try { Step::forward_checked(a, n.checked_add(m)?) }`
+    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == Step::forward_checked(a, m).and_then(|x| Step::forward_checked(x, n))`
+    ///
+    /// For any `a`, `n`, and `m` where `n + m` does not overflow:
+    ///
+    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == Step::forward_checked(a, n + m)`
     ///
     /// For any `a` and `n`:
     ///

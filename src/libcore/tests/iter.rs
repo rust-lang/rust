@@ -228,11 +228,7 @@ fn test_iterator_chain_size_hint() {
         }
 
         fn size_hint(&self) -> (usize, Option<usize>) {
-            if self.is_empty {
-                (0, Some(0))
-            } else {
-                (1, Some(1))
-            }
+            if self.is_empty { (0, Some(0)) } else { (1, Some(1)) }
         }
     }
 
@@ -1558,11 +1554,7 @@ fn test_find_map() {
     assert_eq!(iter.next(), Some(&7));
 
     fn half_if_even(x: &isize) -> Option<isize> {
-        if x % 2 == 0 {
-            Some(x / 2)
-        } else {
-            None
-        }
+        if x % 2 == 0 { Some(x / 2) } else { None }
     }
 }
 
