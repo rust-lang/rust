@@ -822,7 +822,7 @@ impl EncodeContext<'tcx> {
                 } else {
                     bug!()
                 };
-                EntryKind::AssocFn(self.lazy(MethodData {
+                EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
                     has_self: trait_item.method_has_self_argument,
@@ -903,7 +903,7 @@ impl EncodeContext<'tcx> {
                 } else {
                     bug!()
                 };
-                EntryKind::AssocFn(self.lazy(MethodData {
+                EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
                     has_self: impl_item.method_has_self_argument,
