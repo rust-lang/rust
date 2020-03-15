@@ -6,6 +6,7 @@
 // EMIT_MIR rustc.main-{{closure}}.generator_drop.0.mir
 fn main() {
     let gen = || {
+        let _s = String::new();
         yield;
     };
 }
