@@ -926,6 +926,8 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
+    /// Called directly after having parsed an external `mod foo;` in expansion.
+    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -933,12 +935,14 @@ impl<'a> ExtCtxt<'a> {
         parse_sess: &'a ParseSess,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn Resolver,
+        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            root_path: PathBuf::new(),
             resolver,
+            extern_mod_loaded,
+            root_path: PathBuf::new(),
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
