@@ -30,7 +30,7 @@ declare_clippy_lint! {
 declare_lint_pass!(DbgMacro => [DBG_MACRO]);
 
 impl EarlyLintPass for DbgMacro {
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
         if mac.path == sym!(dbg) {
             if let Some(sugg) = tts_span(mac.args.inner_tokens()).and_then(|span| snippet_opt(cx, span)) {
                 span_lint_and_sugg(

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
-use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, Mac, StrLit, StrStyle};
+use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, MacCall, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
@@ -216,7 +216,7 @@ impl EarlyLintPass for Write {
         self.in_debug_impl = false;
     }
 
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
         if mac.path == sym!(println) {
             span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
             if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), false) {
