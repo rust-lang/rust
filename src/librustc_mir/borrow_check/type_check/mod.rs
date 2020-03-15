@@ -18,6 +18,7 @@ use rustc::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
     TyCtxt, UserType, UserTypeAnnotationIndex,
 };
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -830,7 +831,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
-    crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    pub(in crate::borrow_check) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     crate opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
 }
 

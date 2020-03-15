@@ -7,6 +7,7 @@ use rustc::mir::{
 };
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::binary_search_util;
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::DefId;
@@ -54,12 +55,12 @@ pub struct RegionInferenceContext<'tcx> {
     liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    constraints: Rc<OutlivesConstraintSet>,
+    constraints: Frozen<OutlivesConstraintSet>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
     /// the SCC (see `constraint_sccs`) and for error reporting.
-    constraint_graph: Rc<NormalConstraintGraph>,
+    constraint_graph: Frozen<NormalConstraintGraph>,
 
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
@@ -112,7 +113,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -242,11 +243,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// The `outlives_constraints` and `type_tests` are an initial set
     /// of constraints produced by the MIR type check.
-    pub(crate) fn new(
+    pub(in crate::borrow_check) fn new(
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
-        universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+        universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         outlives_constraints: OutlivesConstraintSet,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
@@ -263,8 +264,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
-        let constraints = Rc::new(outlives_constraints); // freeze constraints
-        let constraint_graph = Rc::new(constraints.graph(definitions.len()));
+        let constraints = Frozen::freeze(outlives_constraints);
+        let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
