@@ -4,6 +4,7 @@ extern crate rustc;
 extern crate rustc_interface;
 extern crate rustc_driver;
 extern crate rustc_span;
+extern crate rustc_session;
 
 use rustc_session::DiagnosticOutput;
 use rustc_session::config::{Input, Options,

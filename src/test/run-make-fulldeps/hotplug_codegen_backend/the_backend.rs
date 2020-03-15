@@ -8,6 +8,7 @@ extern crate rustc_hir;
 extern crate rustc_target;
 extern crate rustc_driver;
 extern crate rustc_span;
+extern crate rustc_session;
 
 use std::any::Any;
 use std::sync::Arc;
