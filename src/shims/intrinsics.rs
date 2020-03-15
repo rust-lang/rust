@@ -34,17 +34,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First handle intrinsics without return place.
         let (dest, ret) = match ret {
             None => match intrinsic_name {
-                "abort" => {
-                    // FIXME: remove, once the intrinsic on the rustc side is fixed.
-                    throw_machine_stop!(TerminationInfo::Abort);
-                }
+                "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
                 _ => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
             },
             Some(p) => p,
         };
 
         match intrinsic_name {
-            "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
+            "try" => return this.handle_try(args, dest, ret),
 
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;

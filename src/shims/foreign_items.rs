@@ -150,12 +150,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Second: some functions that we forward to MIR implementations.
         match link_name {
-            // This matches calls to the *foreign* item `__rust_start_panic*, that is,
-            // calls to `extern "Rust" { fn __rust_start_panic(...) }`.
+            // This matches calls to the foreign item `__rust_start_panic`, that is,
+            // calls to `extern "Rust" { fn __rust_start_panic(...) }`
+            // (and `__rust_panic_cleanup`, respectively).
             // We forward this to the underlying *implementation* in the panic runtime crate.
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
-            "__rust_start_panic" => {
+            "__rust_start_panic" | "__rust_panic_cleanup"=> {
                 // FIXME we might want to cache this... but it's not really performance-critical.
                 let panic_runtime = tcx
                     .crates()
@@ -164,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("No panic runtime found!");
                 let panic_runtime = tcx.crate_name(*panic_runtime);
                 let start_panic_instance =
-                    this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
+                    this.resolve_path(&[&*panic_runtime.as_str(), link_name])?;
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
             }
             _ => {}
@@ -289,11 +290,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     MiriMemoryKind::Rust.into(),
                 )?;
                 this.write_scalar(new_ptr, dest)?;
-            }
-
-            "__rust_maybe_catch_panic" => {
-                this.handle_catch_panic(args, dest, ret)?;
-                return Ok(false);
             }
 
             "memcmp" => {
