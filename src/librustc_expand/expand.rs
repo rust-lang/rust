@@ -1396,8 +1396,19 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     // We have an outline `mod foo;` so we need to parse the file.
                     let (new_mod, dir) =
                         parse_external_mod(sess, ident, span, dir, &mut attrs, pushed);
-                    *old_mod = new_mod;
-                    item.attrs = attrs;
+
+                    let krate = ast::Crate {
+                        span: new_mod.inner,
+                        module: new_mod,
+                        attrs,
+                        proc_macros: vec![],
+                    };
+                    if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
+                        extern_mod_loaded(&krate);
+                    }
+
+                    *old_mod = krate.module;
+                    item.attrs = krate.attrs;
                     // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
                     item = match self.configure(item) {
                         Some(node) => node,

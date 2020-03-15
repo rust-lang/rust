@@ -210,14 +210,7 @@ pub fn register_plugins<'a>(
     Ok((krate, Lrc::new(lint_store)))
 }
 
-fn configure_and_expand_inner<'a>(
-    sess: &'a Session,
-    lint_store: &'a LintStore,
-    mut krate: ast::Crate,
-    crate_name: &str,
-    resolver_arenas: &'a ResolverArenas<'a>,
-    metadata_loader: &'a MetadataLoaderDyn,
-) -> Result<(ast::Crate, Resolver<'a>)> {
+fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {
     sess.time("pre_AST_expansion_lint_checks", || {
         rustc_lint::check_ast_crate(
             sess,
@@ -228,6 +221,17 @@ fn configure_and_expand_inner<'a>(
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
         );
     });
+}
+
+fn configure_and_expand_inner<'a>(
+    sess: &'a Session,
+    lint_store: &'a LintStore,
+    mut krate: ast::Crate,
+    crate_name: &str,
+    resolver_arenas: &'a ResolverArenas<'a>,
+    metadata_loader: &'a MetadataLoaderDyn,
+) -> Result<(ast::Crate, Resolver<'a>)> {
+    pre_expansion_lint(sess, lint_store, &krate);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
     rustc_builtin_macros::register_builtin_macros(&mut resolver, sess.edition());
@@ -291,7 +295,8 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
+        let extern_mod_loaded = |k: &ast::Crate| pre_expansion_lint(sess, lint_store, k);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
