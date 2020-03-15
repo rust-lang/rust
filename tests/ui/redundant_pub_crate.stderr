@@ -1,0 +1,146 @@
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:5:5
+   |
+LL |     pub(crate) fn g() {} // private due to m1
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-pub-crate` implied by `-D warnings`
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:10:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1_1 and m1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) module inside private module
+  --> $DIR/redundant_pub_crate.rs:14:5
+   |
+LL | /     pub(crate) mod m1_2 {
+LL | |         // ^ private due to m1
+LL | |         fn f() {}
+LL | |         pub(crate) fn g() {} // private due to m1_2 and m1
+LL | |         pub fn h() {}
+LL | |     }
+   | |_____^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:17:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1_2 and m1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:23:9
+   |
+LL |         pub(crate) fn g() {} // private due to m1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:30:5
+   |
+LL |     pub(crate) fn g() {} // already crate visible due to m2
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:35:9
+   |
+LL |         pub(crate) fn g() {} // private due to m2_1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) module inside private module
+  --> $DIR/redundant_pub_crate.rs:39:5
+   |
+LL | /     pub(crate) mod m2_2 {
+LL | |         // ^ already crate visible due to m2
+LL | |         fn f() {}
+LL | |         pub(crate) fn g() {} // already crate visible due to m2_2 and m2
+LL | |         pub fn h() {}
+LL | |     }
+   | |_____^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:42:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m2_2 and m2
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:48:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m2
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:60:9
+   |
+LL |         pub(crate) fn g() {} // private due to m3_1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:67:9
+   |
+LL |         pub(crate) fn g() {} // already crate visible due to m3_2
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:80:5
+   |
+LL |     pub(crate) fn g() {} // private: not re-exported by `pub use m4::*`
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:85:9
+   |
+LL |         pub(crate) fn g() {} // private due to m4_1
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) module inside private module
+  --> $DIR/redundant_pub_crate.rs:89:5
+   |
+LL | /     pub(crate) mod m4_2 {
+LL | |         // ^ private: not re-exported by `pub use m4::*`
+LL | |         fn f() {}
+LL | |         pub(crate) fn g() {} // private due to m4_2
+LL | |         pub fn h() {}
+LL | |     }
+   | |_____^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: pub(crate) function inside private module
+  --> $DIR/redundant_pub_crate.rs:92:9
+   |
+LL |         pub(crate) fn g() {} // private due to m4_2
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `pub` instead of `pub(crate)`
+
+error: aborting due to 16 previous errors
+
