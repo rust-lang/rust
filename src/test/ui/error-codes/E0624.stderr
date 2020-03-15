@@ -1,4 +1,4 @@
-error[E0624]: method `method` is private
+error[E0624]: associated function `method` is private
   --> $DIR/E0624.rs:11:9
    |
 LL |     foo.method();

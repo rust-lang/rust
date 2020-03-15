@@ -154,31 +154,31 @@ note: the trait `B` is defined here
 LL |     trait B {
    |     ^^^^^^^
 
-error[E0624]: method `bar` is private
+error[E0624]: associated function `bar` is private
   --> $DIR/privacy1.rs:77:9
    |
 LL |         self::baz::A::bar();
    |         ^^^^^^^^^^^^^^^^^
 
-error[E0624]: method `bar` is private
+error[E0624]: associated function `bar` is private
   --> $DIR/privacy1.rs:95:5
    |
 LL |     bar::A::bar();
    |     ^^^^^^^^^^^
 
-error[E0624]: method `bar` is private
+error[E0624]: associated function `bar` is private
   --> $DIR/privacy1.rs:102:9
    |
 LL |         ::bar::A::bar();
    |         ^^^^^^^^^^^^^
 
-error[E0624]: method `bar` is private
+error[E0624]: associated function `bar` is private
   --> $DIR/privacy1.rs:105:9
    |
 LL |         ::bar::baz::A::bar();
    |         ^^^^^^^^^^^^^^^^^^
 
-error[E0624]: method `bar2` is private
+error[E0624]: associated function `bar2` is private
   --> $DIR/privacy1.rs:108:23
    |
 LL |         ::bar::baz::A.bar2();

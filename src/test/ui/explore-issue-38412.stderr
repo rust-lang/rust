@@ -79,19 +79,19 @@ LL |     r.unstable_undeclared();
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0624]: method `pub_crate` is private
+error[E0624]: associated function `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:50:7
    |
 LL |     r.pub_crate();
    |       ^^^^^^^^^
 
-error[E0624]: method `pub_mod` is private
+error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:51:7
    |
 LL |     r.pub_mod();
    |       ^^^^^^^
 
-error[E0624]: method `private` is private
+error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:52:7
    |
 LL |     r.private();
@@ -115,19 +115,19 @@ LL |     t.unstable_undeclared();
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0624]: method `pub_crate` is private
+error[E0624]: associated function `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:63:7
    |
 LL |     t.pub_crate();
    |       ^^^^^^^^^
 
-error[E0624]: method `pub_mod` is private
+error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:64:7
    |
 LL |     t.pub_mod();
    |       ^^^^^^^
 
-error[E0624]: method `private` is private
+error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:65:7
    |
 LL |     t.private();
