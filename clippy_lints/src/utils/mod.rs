@@ -479,7 +479,7 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
             self.result = true;
         }
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -1355,7 +1355,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
 }
 
 pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
-    krate.attrs.iter().any(|attr| {
+    krate.item.attrs.iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr) = attr.kind {
             attr.path == symbol::sym::no_std
         } else {

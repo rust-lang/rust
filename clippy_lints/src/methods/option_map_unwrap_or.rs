@@ -99,8 +99,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.cx.tcx.hir())
     }
 }
 
@@ -121,8 +121,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.cx.tcx.hir())
     }
 }
 

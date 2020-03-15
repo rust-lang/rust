@@ -1545,7 +1545,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             }
         }
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }
@@ -3453,7 +3453,7 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
             }
         }
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }
