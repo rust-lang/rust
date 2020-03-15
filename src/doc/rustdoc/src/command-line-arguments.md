@@ -79,8 +79,8 @@ Rustdoc only supports HTML output, and so this flag is redundant today.
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs -o target\\doc
-$ rustdoc src/lib.rs --output target\\doc
+$ rustdoc src/lib.rs -o target/doc
+$ rustdoc src/lib.rs --output target/doc
 ```
 
 By default, `rustdoc`'s output appears in a directory named `doc` in
