@@ -290,7 +290,7 @@ fn collect_impl_items_in_macro(
         return Vec::new();
     }
 
-    if let Some((mark, items)) = expander.enter_expand(db, m) {
+    if let Some((mark, items)) = expander.enter_expand(db, None, m) {
         let items: InFile<ast::MacroItems> = expander.to_source(items);
         let mut res = collect_impl_items(
             db,

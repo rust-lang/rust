@@ -788,6 +788,21 @@ mod tests {
     }
 
     #[test]
+    fn goto_def_in_local_macro() {
+        check_goto(
+            "
+            //- /lib.rs            
+            fn bar() {
+                macro_rules! foo { () => { () } }
+                <|>foo!();
+            }
+            ",
+            "foo MACRO_CALL FileId(1) [15; 48) [28; 31)",
+            "macro_rules! foo { () => { () } }|foo",
+        );
+    }
+
+    #[test]
     fn goto_def_for_field_init_shorthand() {
         covers!(ra_ide_db::goto_def_for_field_init_shorthand);
         check_goto(
