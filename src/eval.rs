@@ -198,7 +198,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
         Ok(v) => v,
         Err(mut err) => {
             err.print_backtrace();
-            panic!("Miri initialziation error: {}", err.kind)
+            panic!("Miri initialization error: {}", err.kind)
         }
     };
 
