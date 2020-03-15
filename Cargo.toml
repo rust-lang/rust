@@ -56,11 +56,11 @@ serde = { version = "*", features = ["derive"] }
 [build-dependencies]
 vergen = "3"
 
+[dev-dependencies]
+compiletest_rs = { version = "0.4", features = ["tmp"] }
+colored = "1.6"
+
 [features]
 default = ["cargo_miri"]
 cargo_miri = ["cargo_metadata", "directories", "rustc_version", "serde_json"]
 rustc_tests = []
-
-[dev-dependencies]
-compiletest_rs = { version = "0.4", features = ["tmp"] }
-colored = "1.6"
