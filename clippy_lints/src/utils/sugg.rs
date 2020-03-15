@@ -154,7 +154,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::Lit(..)
             | ast::ExprKind::Loop(..)
-            | ast::ExprKind::Mac(..)
+            | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
             | ast::ExprKind::Paren(..)
             | ast::ExprKind::Path(..)
