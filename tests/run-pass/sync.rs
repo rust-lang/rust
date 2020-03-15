@@ -10,7 +10,7 @@ fn main() {
     {
         test_mutex_libc_recursive();
         test_rwlock_stdlib();
-        test_rwlock_libc_init();
+        test_mutex_libc_init();
         test_rwlock_libc_static_initializer();
     }
 }
@@ -68,7 +68,7 @@ fn test_rwlock_stdlib() {
 // std::sys::unix::rwlock::RWLock keeps track of write_locked and num_readers
 
 #[cfg(not(target_os = "windows"))]
-fn test_rwlock_libc_init() {
+fn test_mutex_libc_init() {
     unsafe {
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, std::ptr::null_mut()), 0);

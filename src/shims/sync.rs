@@ -13,7 +13,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_init(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, attr_op, 4)?;
+        assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
         if this.is_null(attr)? {
@@ -36,7 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, attr_op, 4)?;
+        assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
         if this.is_null(attr)? {
@@ -62,7 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_destroy(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, attr_op, 4)?;
+        assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
         if this.is_null(attr)? {
@@ -92,8 +92,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, mutex_op, 16)?;
-        check_ptr_target_min_size(this, attr_op, 4)?;
+        assert_ptr_target_min_size(this, mutex_op, 16)?;
+        assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
         if this.is_null(mutex)? {
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_lock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, mutex_op, 16)?;
+        assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
         if this.is_null(mutex)? {
@@ -166,7 +166,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_trylock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, mutex_op, 16)?;
+        assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
         if this.is_null(mutex)? {
@@ -201,7 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_unlock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, mutex_op, 16)?;
+        assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
         if this.is_null(mutex)? {
@@ -246,7 +246,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_destroy(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, mutex_op, 16)?;
+        assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
         if this.is_null(mutex)? {
@@ -277,7 +277,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_rdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -301,7 +301,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -325,7 +325,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_wrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -351,7 +351,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -375,7 +375,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_unlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -402,7 +402,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_destroy(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        check_ptr_target_min_size(this, rwlock_op, 12)?;
+        assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
         if this.is_null(rwlock)? {
@@ -427,7 +427,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-fn check_ptr_target_min_size<'mir, 'tcx: 'mir>(ecx: &MiriEvalContext<'mir, 'tcx>, operand: OpTy<'tcx, Tag>, min_size: u64) -> InterpResult<'tcx, ()> {
+fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(ecx: &MiriEvalContext<'mir, 'tcx>, operand: OpTy<'tcx, Tag>, min_size: u64) -> InterpResult<'tcx, ()> {
     let target_ty = match operand.layout.ty.kind {
         TyKind::RawPtr(TypeAndMut{ ty, mutbl: _ }) => ty,
         _ => panic!("Argument to pthread function was not a raw pointer"),
