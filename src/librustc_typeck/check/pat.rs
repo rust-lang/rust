@@ -716,7 +716,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
             | Res::SelfCtor(..)
             | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::AssocConst, _) => {} // OK
+            | Res::Def(DefKind::AssocConst, _)
+            | Res::Def(DefKind::ConstParam, _) => {} // OK
             _ => bug!("unexpected pattern resolution: {:?}", res),
         }
 
