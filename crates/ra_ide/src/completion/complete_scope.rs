@@ -906,6 +906,59 @@ mod tests {
     }
 
     #[test]
+    fn completes_in_simple_macro_without_closing_parens() {
+        assert_debug_snapshot!(
+                    do_reference_completion(
+                        r"
+                macro_rules! m { ($e:expr) => { $e } }
+                fn quux(x: i32) {
+                    let y = 92;
+                    m!(x<|>
+                }
+                "
+                    ),
+                    @r###"
+        [
+            CompletionItem {
+                label: "m!",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "m!($0)",
+                kind: Macro,
+                detail: "macro_rules! m",
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "quux(${1:x})$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux(x: i32)",
+                trigger_call_info: true,
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "x",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "y",
+                source_range: [145; 146),
+                delete: [145; 146),
+                insert: "y",
+                kind: Binding,
+                detail: "i32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn completes_unresolved_uses() {
         assert_debug_snapshot!(
             do_reference_completion(

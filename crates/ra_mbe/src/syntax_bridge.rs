@@ -73,7 +73,6 @@ pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
-    eprintln!("token_tree_to_syntax_node {:?} as {:?}", tt, fragment_kind);
     let tmp;
     let tokens = match tt {
         tt::Subtree { delimiter: None, token_trees } => token_trees.as_slice(),

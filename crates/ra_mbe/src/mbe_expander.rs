@@ -11,7 +11,6 @@ use rustc_hash::FxHashMap;
 use crate::{ExpandError, ExpandResult};
 
 pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-    eprintln!("expanding input: {:?}", input);
     let (mut result, mut unmatched_tokens, mut unmatched_patterns, mut err) = (
         tt::Subtree::default(),
         usize::max_value(),
