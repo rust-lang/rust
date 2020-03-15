@@ -2,7 +2,6 @@
 
 use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
-use rustc::ty::TyCtxt;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
@@ -15,9 +14,9 @@ pub trait NonConstOp: std::fmt::Debug {
     /// Whether this operation can be evaluated by miri.
     const IS_SUPPORTED_IN_MIRI: bool = true;
 
-    /// Returns a boolean indicating whether the feature gate that would allow this operation is
-    /// enabled, or `None` if such a feature gate does not exist.
-    fn feature_gate(_tcx: TyCtxt<'tcx>) -> Option<bool> {
+    /// Returns the `Symbol` corresponding to the feature gate that would enable this operation,
+    /// or `None` if such a feature gate does not exist.
+    fn feature_gate() -> Option<Symbol> {
         None
     }
 
@@ -25,8 +24,11 @@ pub trait NonConstOp: std::fmt::Debug {
     ///
     /// This check should assume that we are not in a non-const `fn`, where all operations are
     /// legal.
+    ///
+    /// By default, it returns `true` if and only if this operation has a corresponding feature
+    /// gate and that gate is enabled.
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
-        Self::feature_gate(item.tcx).unwrap_or(false)
+        Self::feature_gate().map_or(false, |gate| item.tcx.features().enabled(gate))
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -55,8 +57,8 @@ pub trait NonConstOp: std::fmt::Debug {
 #[derive(Debug)]
 pub struct Downcast;
 impl NonConstOp for Downcast {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_if_match)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_if_match)
     }
 }
 
@@ -147,8 +149,8 @@ impl NonConstOp for HeapAllocation {
 #[derive(Debug)]
 pub struct IfOrMatch;
 impl NonConstOp for IfOrMatch {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_if_match)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_if_match)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -175,8 +177,8 @@ impl NonConstOp for LiveDrop {
 #[derive(Debug)]
 pub struct Loop;
 impl NonConstOp for Loop {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_loop)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_loop)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -203,8 +205,8 @@ impl NonConstOp for CellBorrow {
 #[derive(Debug)]
 pub struct MutBorrow;
 impl NonConstOp for MutBorrow {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_mut_refs)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -238,8 +240,8 @@ impl NonConstOp for MutBorrow {
 #[derive(Debug)]
 pub struct MutAddressOf;
 impl NonConstOp for MutAddressOf {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_mut_refs)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -256,16 +258,16 @@ impl NonConstOp for MutAddressOf {
 #[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_mut_refs)
     }
 }
 
 #[derive(Debug)]
 pub struct Panic;
 impl NonConstOp for Panic {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_panic)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_panic)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -282,8 +284,8 @@ impl NonConstOp for Panic {
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_compare_raw_pointers)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_compare_raw_pointers)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -300,8 +302,8 @@ impl NonConstOp for RawPtrComparison {
 #[derive(Debug)]
 pub struct RawPtrDeref;
 impl NonConstOp for RawPtrDeref {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_raw_ptr_deref)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_raw_ptr_deref)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -318,8 +320,8 @@ impl NonConstOp for RawPtrDeref {
 #[derive(Debug)]
 pub struct RawPtrToIntCast;
 impl NonConstOp for RawPtrToIntCast {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_raw_ptr_to_usize_cast)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_raw_ptr_to_usize_cast)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -386,11 +388,12 @@ pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
         // Union accesses are stable in all contexts except `const fn`.
-        item.const_kind() != ConstKind::ConstFn || Self::feature_gate(item.tcx).unwrap()
+        item.const_kind() != ConstKind::ConstFn
+            || item.tcx.features().enabled(Self::feature_gate().unwrap())
     }
 
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_fn_union)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_fn_union)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
