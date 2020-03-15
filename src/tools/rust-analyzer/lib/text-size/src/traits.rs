@@ -10,7 +10,7 @@ impl TextSized for &'_ str {
     fn text_size(self) -> TextSize {
         self.len()
             .try_into()
-            .unwrap_or_else(|| panic!("string too large ({}) for TextSize", self.len()))
+            .unwrap_or_else(|_| panic!("string too large ({}) for TextSize", self.len()))
     }
 }
 
