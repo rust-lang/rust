@@ -8,14 +8,9 @@ pub trait TextSized: Copy {
 
 impl TextSized for &'_ str {
     fn text_size(self) -> TextSize {
-        let len = self.len();
-        if let Ok(size) = len.try_into() {
-            size
-        } else if cfg!(debug_assertions) {
-            panic!("overflow when converting to TextSize");
-        } else {
-            TextSize(len as u32)
-        }
+        self.len()
+            .try_into()
+            .unwrap_or_else(|_| panic!("string too large ({}) for TextSize", self.len()))
     }
 }
 
