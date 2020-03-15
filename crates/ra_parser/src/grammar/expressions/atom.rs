@@ -61,7 +61,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME,
     ]);
 
-const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
+const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW, R_DOLLAR];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
@@ -565,10 +565,10 @@ fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
             it
         }
         _ => {
-            while !p.at(EOF) && !p.at(R_DOLLAR) {
+            while !p.at(R_DOLLAR) {
                 p.bump_any()
             }
-            p.eat(R_DOLLAR);
+            p.bump(R_DOLLAR);
             m.complete(p, ERROR)
         }
     }
