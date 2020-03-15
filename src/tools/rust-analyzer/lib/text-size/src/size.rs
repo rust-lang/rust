@@ -46,6 +46,7 @@ impl fmt::Debug for TextSize {
 
 impl TextSize {
     /// The text size of some text-like object.
+    #[inline]
     pub fn of(text: impl TextSized) -> TextSize {
         text.text_size()
     }
@@ -54,11 +55,13 @@ impl TextSize {
     ///
     /// This is equivalent to `TextSize::default()` or [`TextSize::MIN`],
     /// but is more explicit on intent.
+    #[inline]
     pub const fn zero() -> TextSize {
         TextSize(0)
     }
 
     /// A size of one.
+    #[inline]
     pub const fn one() -> TextSize {
         TextSize(1)
     }
@@ -74,24 +77,28 @@ impl TextSize {
     /// The text size of a single ASCII character.
     pub const ONE: TextSize = TextSize(1);
 
-    #[allow(missing_docs)]
+    /// Checked addition. Returns `None` if overflow occurred.
+    #[inline]
     pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
         self.raw.checked_add(rhs.raw).map(TextSize)
     }
 
-    #[allow(missing_docs)]
+    /// Checked subtraction. Returns `None` if overflow occurred.
+    #[inline]
     pub fn checked_sub(self, rhs: TextSize) -> Option<TextSize> {
         self.raw.checked_sub(rhs.raw).map(TextSize)
     }
 }
 
 impl From<u32> for TextSize {
+    #[inline]
     fn from(raw: u32) -> Self {
         TextSize(raw)
     }
 }
 
 impl From<TextSize> for u32 {
+    #[inline]
     fn from(value: TextSize) -> Self {
         value.raw
     }
@@ -99,12 +106,14 @@ impl From<TextSize> for u32 {
 
 impl TryFrom<usize> for TextSize {
     type Error = TryFromIntError;
+    #[inline]
     fn try_from(value: usize) -> Result<Self, TryFromIntError> {
         Ok(u32::try_from(value)?.into())
     }
 }
 
 impl From<TextSize> for usize {
+    #[inline]
     fn from(value: TextSize) -> Self {
         value.raw as usize
     }
@@ -114,12 +123,14 @@ macro_rules! ops {
     (impl $Op:ident for TextSize by fn $f:ident = $op:tt) => {
         impl $Op<TextSize> for TextSize {
             type Output = TextSize;
+            #[inline]
             fn $f(self, other: TextSize) -> TextSize {
                 TextSize(self.raw $op other.raw)
             }
         }
         impl $Op<&TextSize> for TextSize {
             type Output = TextSize;
+            #[inline]
             fn $f(self, other: &TextSize) -> TextSize {
                 self $op *other
             }
@@ -129,6 +140,7 @@ macro_rules! ops {
             TextSize: $Op<T, Output=TextSize>,
         {
             type Output = TextSize;
+            #[inline]
             fn $f(self, other: T) -> TextSize {
                 *self $op other
             }
@@ -143,6 +155,7 @@ impl<A> AddAssign<A> for TextSize
 where
     TextSize: Add<A, Output = TextSize>,
 {
+    #[inline]
     fn add_assign(&mut self, rhs: A) {
         *self = *self + rhs
     }
@@ -152,6 +165,7 @@ impl<S> SubAssign<S> for TextSize
 where
     TextSize: Sub<S, Output = TextSize>,
 {
+    #[inline]
     fn sub_assign(&mut self, rhs: S) {
         *self = *self - rhs
     }
@@ -161,6 +175,7 @@ impl<A> iter::Sum<A> for TextSize
 where
     TextSize: Add<A, Output = TextSize>,
 {
+    #[inline]
     fn sum<I: Iterator<Item = A>>(iter: I) -> TextSize {
         iter.fold(TextSize::zero(), Add::add)
     }

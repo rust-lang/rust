@@ -40,6 +40,7 @@ impl fmt::Debug for TextRange {
 ///
 /// Panics if `end < start`.
 #[allow(non_snake_case)]
+#[inline]
 pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
     assert!(start <= end);
     TextRange { start, end }
@@ -47,6 +48,7 @@ pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
 
 impl TextRange {
     /// Create a zero-length range at the specified offset (`offset..offset`).
+    #[inline]
     pub const fn empty(offset: TextSize) -> TextRange {
         TextRange {
             start: offset,
@@ -55,6 +57,7 @@ impl TextRange {
     }
 
     /// Create a range up to the given end (`..end`).
+    #[inline]
     pub const fn before(end: TextSize) -> TextRange {
         TextRange {
             start: TextSize::zero(),
@@ -68,6 +71,7 @@ impl TextRange {
     /// `TextRange` does not support right-unbounded ranges. As such, this
     /// should only be used for direct indexing, and bounded ranges should be
     /// used for persistent ranges (`TextRange(start, TextSize::of(text))`).
+    #[inline]
     pub const fn after(start: TextSize) -> RangeFrom<usize> {
         start.raw as usize..
     }
@@ -76,6 +80,7 @@ impl TextRange {
     ///
     /// This is typically used to convert a range from one coordinate space to
     /// another, such as from within a substring to within an entire document.
+    #[inline]
     pub fn offset(self, offset: TextSize) -> TextRange {
         TextRange(
             self.start().checked_add(offset).unwrap(),
@@ -87,22 +92,26 @@ impl TextRange {
 /// Identity methods.
 impl TextRange {
     /// The start point of this range.
+    #[inline]
     pub const fn start(self) -> TextSize {
         self.start
     }
 
     /// The end point of this range.
+    #[inline]
     pub const fn end(self) -> TextSize {
         self.end
     }
 
     /// The size of this range.
+    #[inline]
     pub const fn len(self) -> TextSize {
         // HACK for const fn: math on primitives only
         TextSize(self.end().raw - self.start().raw)
     }
 
     /// Check if this range is empty.
+    #[inline]
     pub const fn is_empty(self) -> bool {
         // HACK for const fn: math on primitives only
         self.start().raw == self.end().raw
@@ -151,12 +160,14 @@ impl TextRange {
 
 impl Index<TextRange> for str {
     type Output = str;
+    #[inline]
     fn index(&self, index: TextRange) -> &Self::Output {
         &self[Range::<usize>::from(index)]
     }
 }
 
 impl IndexMut<TextRange> for str {
+    #[inline]
     fn index_mut(&mut self, index: TextRange) -> &mut Self::Output {
         &mut self[Range::<usize>::from(index)]
     }
@@ -176,6 +187,7 @@ impl<T> From<TextRange> for Range<T>
 where
     T: From<TextSize>,
 {
+    #[inline]
     fn from(r: TextRange) -> Self {
         r.start().into()..r.end().into()
     }
