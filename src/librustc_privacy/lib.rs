@@ -920,7 +920,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        if attr::find_transparency(&md.attrs, md.legacy).0 != Transparency::Opaque {
+        if attr::find_transparency(&md.attrs, md.ast.legacy).0 != Transparency::Opaque {
             self.update(md.hir_id, Some(AccessLevel::Public));
             return;
         }

@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 use crate::mbe;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
-use rustc_ast::ast::{Ident, Mac};
+use rustc_ast::ast::{Ident, MacCall};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
@@ -23,7 +23,7 @@ impl MutVisitor for Marker {
         *span = span.apply_mark(self.0, self.1)
     }
 
-    fn visit_mac(&mut self, mac: &mut Mac) {
+    fn visit_mac(&mut self, mac: &mut MacCall) {
         mut_visit::noop_visit_mac(mac, self)
     }
 }

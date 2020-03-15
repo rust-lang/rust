@@ -10,8 +10,7 @@ use rustc::mir;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
-use rustc_ast::ast;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::ast::{self, MacroDef};
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -321,12 +320,6 @@ struct RenderedConst(String);
 #[derive(RustcEncodable, RustcDecodable)]
 struct ModData {
     reexports: Lazy<[Export<hir::HirId>]>,
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
-struct MacroDef {
-    body: TokenStream,
-    legacy: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

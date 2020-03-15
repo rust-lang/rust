@@ -174,7 +174,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
             // FIXME(plietar): needs a new DefKind in rls-data
             ast::ForeignItemKind::TyAlias(..) => None,
-            ast::ForeignItemKind::Macro(..) => None,
+            ast::ForeignItemKind::MacCall(..) => None,
         }
     }
 
@@ -793,19 +793,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             // FIXME(eddyb) maybe there is a way to handle them usefully?
             ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
         };
-
-        // If the callee is an imported macro from an external crate, need to get
-        // the source span and name from the session, as their spans are localized
-        // when read in, and no longer correspond to the source.
-        if let Some(mac) = self.tcx.sess.imported_macro_spans.borrow().get(&callee.def_site) {
-            let &(ref mac_name, mac_span) = mac;
-            let mac_span = self.span_from_span(mac_span);
-            return Some(MacroRef {
-                span: callsite_span,
-                qualname: mac_name.clone(), // FIXME: generate the real qualname
-                callee_span: mac_span,
-            });
-        }
 
         let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {

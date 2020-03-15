@@ -17,8 +17,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::ptr::P;
-use rustc_ast::tokenstream::DelimSpan;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -415,8 +413,6 @@ impl CStore {
         }
 
         let span = data.get_span(id.index, sess);
-        let dspan = DelimSpan::from_single(span);
-        let rmeta::MacroDef { body, legacy } = data.get_macro(id.index, sess);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);
@@ -424,25 +420,21 @@ impl CStore {
             attr::mark_used(attr);
         }
 
-        let name = data
+        let ident = data
             .def_key(id.index)
             .disambiguated_data
             .data
             .get_opt_name()
+            .map(ast::Ident::with_dummy_span) // FIXME: cross-crate hygiene
             .expect("no name in load_macro");
-        sess.imported_macro_spans.borrow_mut().insert(span, (name.to_string(), span));
 
         LoadedMacro::MacroDef(
             ast::Item {
-                // FIXME: cross-crate hygiene
-                ident: ast::Ident::with_dummy_span(name),
+                ident,
                 id: ast::DUMMY_NODE_ID,
                 span,
                 attrs: attrs.iter().cloned().collect(),
-                kind: ast::ItemKind::MacroDef(ast::MacroDef {
-                    body: P(ast::MacArgs::Delimited(dspan, ast::MacDelimiter::Brace, body)),
-                    legacy,
-                }),
+                kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: source_map::respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 tokens: None,
             },

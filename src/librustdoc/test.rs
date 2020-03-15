@@ -449,7 +449,7 @@ pub fn make_test(
                         }
 
                         if !found_macro {
-                            if let ast::ItemKind::Mac(..) = item.kind {
+                            if let ast::ItemKind::MacCall(..) = item.kind {
                                 found_macro = true;
                             }
                         }
@@ -955,7 +955,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
-        self.visit_testable(macro_def.name.to_string(), &macro_def.attrs, |_| ());
+        self.visit_testable(macro_def.ident.to_string(), &macro_def.attrs, |_| ());
     }
 }
 

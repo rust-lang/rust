@@ -17,7 +17,7 @@ impl MutVisitor for ToZzIdentMutVisitor {
     fn visit_ident(&mut self, ident: &mut ast::Ident) {
         *ident = Ident::from_str("zz");
     }
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, mac: &mut ast::MacCall) {
         mut_visit::noop_visit_mac(mac, self)
     }
 }

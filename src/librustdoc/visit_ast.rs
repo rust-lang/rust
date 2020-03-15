@@ -620,8 +620,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         def: &'tcx hir::MacroDef,
         renamed: Option<ast::Name>,
     ) -> Macro<'tcx> {
-        debug!("visit_local_macro: {}", def.name);
-        let tts = def.body.trees().collect::<Vec<_>>();
+        debug!("visit_local_macro: {}", def.ident);
+        let tts = def.ast.body.inner_tokens().trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();
 
@@ -629,7 +629,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hid: def.hir_id,
             def_id: self.cx.tcx.hir().local_def_id(def.hir_id),
             attrs: &def.attrs,
-            name: renamed.unwrap_or(def.name),
+            name: renamed.unwrap_or(def.ident.name),
             whence: def.span,
             matchers,
             imported_from: None,

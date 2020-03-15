@@ -519,7 +519,7 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
         noop_flat_map_assoc_item(configure!(self, item), self)
     }
 
-    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
         // Don't configure interpolated AST (cf. issue #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
     }

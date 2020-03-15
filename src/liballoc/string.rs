@@ -2225,6 +2225,17 @@ impl From<&str> for String {
     }
 }
 
+#[stable(feature = "from_mut_str_for_string", since = "1.44.0")]
+impl From<&mut str> for String {
+    /// Converts a `&mut str` into a `String`.
+    ///
+    /// The result is allocated on the heap.
+    #[inline]
+    fn from(s: &mut str) -> String {
+        s.to_owned()
+    }
+}
+
 #[stable(feature = "from_ref_string", since = "1.35.0")]
 impl From<&String> for String {
     #[inline]

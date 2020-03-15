@@ -4,16 +4,12 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use rustc_ast::ast::{self, Async, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind};
-use rustc_ast::ast::{
-    Async, Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind,
-};
-use rustc_ast::ast::{
-    BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind,
-};
+use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, MacArgs, MacCall, MacDelimiter, Param};
+use rustc_ast::ast::{Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, SelfKind, Visibility, VisibilityKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -220,7 +216,7 @@ impl<'a> Parser<'a> {
             return Ok(None);
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
-            (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
+            (Ident::invalid(), ItemKind::MacCall(self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -339,13 +335,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item macro, e.g., `item!();`.
-    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, Mac> {
+    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
         self.expect(&token::Not)?; // `!`
         let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
         self.eat_semi_for_macro_if_needed(&args);
         self.complain_if_pub_macro(vis, false);
-        Ok(Mac { path, args, prior_type_ascription: self.last_type_ascription })
+        Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.

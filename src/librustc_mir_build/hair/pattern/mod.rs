@@ -31,6 +31,7 @@ use std::fmt;
 #[derive(Clone, Debug)]
 crate enum PatternError {
     AssocConstInPattern(Span),
+    ConstParamInPattern(Span),
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
@@ -727,7 +728,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
 
             _ => {
-                self.errors.push(PatternError::NonConstPath(span));
+                let pattern_error = match res {
+                    Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
+                    _ => PatternError::NonConstPath(span),
+                };
+                self.errors.push(pattern_error);
                 PatKind::Wild
             }
         };

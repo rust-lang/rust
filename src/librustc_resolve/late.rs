@@ -449,7 +449,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Macro(..) => {
+            ForeignItemKind::MacCall(..) => {
                 visit::walk_foreign_item(self, foreign_item);
             }
         }
@@ -852,7 +852,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     AssocItemKind::TyAlias(_, generics, _, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::Macro(_) => {
+                                    AssocItemKind::MacCall(_) => {
                                         panic!("unexpanded macro in resolve!")
                                     }
                                 };
@@ -897,7 +897,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // do nothing, these are just around to be encoded
             }
 
-            ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
+            ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
         }
     }
 
@@ -1174,7 +1174,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::Macro(_) => {
+                                        AssocItemKind::MacCall(_) => {
                                             panic!("unexpanded macro in resolve!")
                                         }
                                     }
@@ -1517,9 +1517,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
-        let binding =
-            self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?.item()?;
-        let res = binding.res();
+        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
+        let (res, binding) = match ls_binding {
+            LexicalScopeBinding::Item(binding) if binding.is_ambiguity() => {
+                // For ambiguous bindings we don't know all their definitions and cannot check
+                // whether they can be shadowed by fresh bindings or not, so force an error.
+                self.r.record_use(ident, ValueNS, binding, false);
+                return None;
+            }
+            LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
+            LexicalScopeBinding::Res(res) => (res, None),
+        };
 
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
@@ -1527,11 +1535,15 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::Def(DefKind::Const, _)
+            Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::ConstParam, _)
                 if is_syntactic_ambiguity =>
             {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
-                self.r.record_use(ident, ValueNS, binding, false);
+                if let Some(binding) = binding {
+                    self.r.record_use(ident, ValueNS, binding, false);
+                }
                 Some(res)
             }
             Res::Def(DefKind::Ctor(..), _)
@@ -1547,23 +1559,20 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     ResolutionError::BindingShadowsSomethingUnacceptable(
                         pat_src.descr(),
                         ident.name,
-                        binding,
+                        binding.expect("no binding for a ctor or static"),
                     ),
                 );
                 None
             }
-            Res::Def(DefKind::Fn, _) | Res::Err => {
+            Res::Def(DefKind::Fn, _) | Res::Local(..) | Res::Err => {
                 // These entities are explicitly allowed to be shadowed by fresh bindings.
                 None
             }
-            res => {
-                span_bug!(
-                    ident.span,
-                    "unexpected resolution for an \
-                                        identifier in pattern: {:?}",
-                    res
-                );
-            }
+            _ => span_bug!(
+                ident.span,
+                "unexpected resolution for an identifier in pattern: {:?}",
+                res
+            ),
         }
     }
 

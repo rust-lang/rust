@@ -86,7 +86,7 @@ pub fn expand_test_or_bench(
             .raise();
     };
 
-    if let ast::ItemKind::Mac(_) = item.kind {
+    if let ast::ItemKind::MacCall(_) = item.kind {
         cx.parse_sess.span_diagnostic.span_warn(
             item.span,
             "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.",

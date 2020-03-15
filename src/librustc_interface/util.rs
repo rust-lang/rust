@@ -780,7 +780,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
 
     // in general the pretty printer processes unexpanded code, so
     // we override the default `visit_mac` method which panics.
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, mac: &mut ast::MacCall) {
         noop_visit_mac(mac, self)
     }
 }

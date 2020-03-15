@@ -198,7 +198,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 return self.lower_expr_for(e, pat, head, body, opt_label);
             }
             ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-            ExprKind::Mac(_) => panic!("Shouldn't exist here"),
+            ExprKind::MacCall(_) => panic!("Shouldn't exist here"),
         };
 
         hir::Expr {
