@@ -17,7 +17,7 @@ pub mod eager;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use ra_db::{salsa, CrateId, FileId};
+use ra_db::{salsa, CrateId, FileId, impl_intern_key};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
@@ -174,25 +174,11 @@ pub enum MacroCallId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LazyMacroId(salsa::InternId);
-impl salsa::InternKey for LazyMacroId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        LazyMacroId(v)
-    }
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
-}
+impl_intern_key!(LazyMacroId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EagerMacroId(salsa::InternId);
-impl salsa::InternKey for EagerMacroId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        EagerMacroId(v)
-    }
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
-}
+impl_intern_key!(EagerMacroId);
 
 impl From<LazyMacroId> for MacroCallId {
     fn from(it: LazyMacroId) -> Self {
