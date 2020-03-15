@@ -565,10 +565,10 @@ fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
             it
         }
         _ => {
-            while !p.at(R_DOLLAR) {
+            while !p.at(EOF) && !p.at(R_DOLLAR) {
                 p.bump_any()
             }
-            p.bump(R_DOLLAR);
+            p.eat(R_DOLLAR);
             m.complete(p, ERROR)
         }
     }

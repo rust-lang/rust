@@ -720,7 +720,18 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 156),
+                delete: [156; 156),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
         );
     }
 

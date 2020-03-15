@@ -135,7 +135,7 @@ impl<'a> CompletionContext<'a> {
                 ),
             ) {
                 let new_offset = hypothetical_expansion.1.text_range().start();
-                if new_offset >= actual_expansion.text_range().end() {
+                if new_offset > actual_expansion.text_range().end() {
                     break;
                 }
                 original_file = actual_expansion;
