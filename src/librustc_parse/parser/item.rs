@@ -6,14 +6,11 @@ use crate::maybe_whole;
 
 use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
-use rustc_ast::ast::{
-    Async, Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind,
-};
-use rustc_ast::ast::{
-    BindingMode, Block, FnDecl, FnSig, MacArgs, MacCall, MacDelimiter, Param, SelfKind,
-};
+use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, SelfKind, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, PathSegment, Visibility, VisibilityKind};
+use rustc_ast::ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
