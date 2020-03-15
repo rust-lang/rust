@@ -15,3 +15,7 @@ pub extern "C" fn g() {}
 pub enum Foo {
     Bar,
 }
+
+// @has foo/struct.Repr.html '//*[@class="docblock attributes top-attr"]' '#[repr(C, align (8))]'
+#[repr(C, align(8))]
+pub struct Repr;

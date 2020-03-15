@@ -44,7 +44,6 @@ use std::sync::Arc;
 
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -3126,25 +3125,6 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let path = pprust::path_to_string(&attr.path);
-
-    if attr.is_word() {
-        Some(path)
-    } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", path, v))
-    } else if let Some(values) = attr.meta_item_list() {
-        let display: Vec<_> = values
-            .iter()
-            .filter_map(|attr| attr.meta_item().and_then(|mi| render_attribute(mi)))
-            .collect();
-
-        if !display.is_empty() { Some(format!("{}({})", path, display.join(", "))) } else { None }
-    } else {
-        None
-    }
-}
-
 const ATTRIBUTE_WHITELIST: &[Symbol] = &[
     sym::export_name,
     sym::lang,
@@ -3170,9 +3150,9 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
         if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
             continue;
         }
-        if let Some(s) = render_attribute(&attr.meta().unwrap()) {
-            attrs.push_str(&format!("#[{}]\n", s));
-        }
+
+        // FIXME: this currently renders too many spaces as in: `#[repr(C, align (8))]`.
+        attrs.push_str(&pprust::attribute_to_string(&attr));
     }
     if !attrs.is_empty() {
         write!(
