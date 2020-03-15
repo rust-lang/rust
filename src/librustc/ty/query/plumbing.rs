@@ -30,11 +30,11 @@ use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(crate) struct QueryStateShard<'tcx, K, C> {
-    pub(super) cache: C,
-    pub(super) active: FxHashMap<K, QueryResult<'tcx>>,
+    cache: C,
+    active: FxHashMap<K, QueryResult<'tcx>>,
 
     /// Used to generate unique ids for active jobs.
-    pub(super) jobs: u32,
+    jobs: u32,
 }
 
 impl<'tcx, K, C> QueryStateShard<'tcx, K, C> {
@@ -50,8 +50,8 @@ impl<'tcx, K, C: Default> Default for QueryStateShard<'tcx, K, C> {
 }
 
 pub(crate) struct QueryState<'tcx, C: QueryCache> {
-    pub(super) cache: C,
-    pub(super) shards: Sharded<QueryStateShard<'tcx, C::Key, C::Sharded>>,
+    cache: C,
+    shards: Sharded<QueryStateShard<'tcx, C::Key, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub(super) cache_hits: AtomicUsize,
 }
@@ -75,7 +75,7 @@ impl<'tcx, C: QueryCache> QueryState<'tcx, C> {
 }
 
 /// Indicates the state of a query for a given key in a query map.
-pub(super) enum QueryResult<'tcx> {
+enum QueryResult<'tcx> {
     /// An already executing query. The query job can be used to await for its completion.
     Started(QueryJob<'tcx>),
 
@@ -85,7 +85,7 @@ pub(super) enum QueryResult<'tcx> {
 }
 
 impl<'tcx, C: QueryCache> QueryState<'tcx, C> {
-    pub fn iter_results<R>(
+    pub(super) fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
             Box<dyn Iterator<Item = (&'a C::Key, &'a C::Value, DepNodeIndex)> + 'a>,
@@ -93,7 +93,7 @@ impl<'tcx, C: QueryCache> QueryState<'tcx, C> {
     ) -> R {
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
-    pub fn all_inactive(&self) -> bool {
+    pub(super) fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
         shards.iter().all(|shard| shard.active.is_empty())
     }
@@ -142,13 +142,13 @@ impl<'tcx, C: QueryCache> Default for QueryState<'tcx, C> {
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
 pub(crate) struct QueryLookup<'tcx, K, C> {
     pub(super) key_hash: u64,
-    pub(super) shard: usize,
+    shard: usize,
     pub(super) lock: LockGuard<'tcx, QueryStateShard<'tcx, K, C>>,
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-pub(super) struct JobOwner<'tcx, C>
+struct JobOwner<'tcx, C>
 where
     C: QueryCache,
     C::Key: Eq + Hash + Clone + Debug,
@@ -174,7 +174,7 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    pub(super) fn try_start<Q>(
+    fn try_start<Q>(
         tcx: TyCtxt<'tcx>,
         span: Span,
         key: &C::Key,
@@ -262,12 +262,7 @@ where
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    pub(super) fn complete(
-        self,
-        tcx: TyCtxt<'tcx>,
-        result: &C::Value,
-        dep_node_index: DepNodeIndex,
-    ) {
+    fn complete(self, tcx: TyCtxt<'tcx>, result: &C::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let state = self.state;
@@ -327,14 +322,14 @@ where
 }
 
 #[derive(Clone)]
-pub struct CycleError<'tcx> {
+pub(crate) struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
     pub(super) usage: Option<(Span, Query<'tcx>)>,
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
 }
 
 /// The result of `try_start`.
-pub(super) enum TryGetJob<'tcx, C: QueryCache>
+enum TryGetJob<'tcx, C: QueryCache>
 where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
@@ -357,7 +352,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
     #[inline(always)]
-    pub(super) fn start_query<F, R>(
+    fn start_query<F, R>(
         self,
         token: QueryJobId,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
@@ -529,7 +524,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub(super) fn try_execute_query<Q: QueryDescription<'tcx> + 'tcx>(
+    fn try_execute_query<Q: QueryDescription<'tcx> + 'tcx>(
         self,
         span: Span,
         key: Q::Key,
@@ -1136,7 +1131,7 @@ macro_rules! define_queries_struct {
         }
 
         impl<$tcx> Queries<$tcx> {
-            pub fn new(
+            pub(crate) fn new(
                 providers: IndexVec<CrateNum, Providers<$tcx>>,
                 fallback_extern_providers: Providers<$tcx>,
                 on_disk_cache: OnDiskCache<'tcx>,
@@ -1149,7 +1144,7 @@ macro_rules! define_queries_struct {
                 }
             }
 
-            pub fn try_collect_active_jobs(
+            pub(crate) fn try_collect_active_jobs(
                 &self
             ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<'tcx>>> {
                 let mut jobs = FxHashMap::default();

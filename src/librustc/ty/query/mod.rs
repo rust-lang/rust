@@ -62,7 +62,7 @@ use std::sync::Arc;
 
 #[macro_use]
 mod plumbing;
-pub use self::plumbing::CycleError;
+pub(crate) use self::plumbing::CycleError;
 use self::plumbing::*;
 
 mod stats;
