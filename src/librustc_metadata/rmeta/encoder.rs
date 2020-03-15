@@ -18,11 +18,11 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, 
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
 
-use rustc::session::config::{self, CrateType};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
+use rustc_session::config::{self, CrateType};
 
 use log::{debug, trace};
 use rustc_ast::ast;

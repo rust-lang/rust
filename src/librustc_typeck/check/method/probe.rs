@@ -10,7 +10,6 @@ use crate::hir::def_id::DefId;
 
 use rustc::lint;
 use rustc::middle::stability;
-use rustc::session::config::nightly_options;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
@@ -28,6 +27,7 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_session::config::nightly_options;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;

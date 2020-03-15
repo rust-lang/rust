@@ -1,5 +1,4 @@
 use rustc::hir::map::Map;
-use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::with_globals;
@@ -8,6 +7,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_interface::interface;
+use rustc_session::{config, DiagnosticOutput};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
@@ -854,7 +854,7 @@ impl Tester for Collector {
 }
 
 struct HirCollector<'a, 'hir> {
-    sess: &'a session::Session,
+    sess: &'a rustc_session::Session,
     collector: &'a mut Collector,
     map: Map<'hir>,
     codes: ErrorCodes,

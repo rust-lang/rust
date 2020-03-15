@@ -80,7 +80,6 @@ pub mod infer;
 pub mod lint;
 pub mod middle;
 pub mod mir;
-pub use rustc_session as session;
 pub mod traits;
 pub mod ty;
 

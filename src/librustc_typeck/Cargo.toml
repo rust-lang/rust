@@ -22,6 +22,7 @@ rustc_target = { path = "../librustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
+rustc_session = { path = "../librustc_session" }
 rustc_index = { path = "../librustc_index" }
 rustc_infer = { path = "../librustc_infer" }
 rustc_trait_selection = { path = "../librustc_trait_selection" }

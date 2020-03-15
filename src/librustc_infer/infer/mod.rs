@@ -16,7 +16,6 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::middle::region;
 use rustc::mir;
 use rustc::mir::interpret::ConstEvalResult;
-use rustc::session::config::BorrowckMode;
 use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
@@ -24,6 +23,7 @@ use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
+use rustc_session::config::BorrowckMode;
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

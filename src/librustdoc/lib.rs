@@ -36,7 +36,7 @@ extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
 extern crate rustc_session;
-extern crate rustc_span as rustc_span;
+extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
@@ -49,8 +49,8 @@ use std::env;
 use std::panic;
 use std::process;
 
-use rustc::session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc::session::{early_error, early_warn};
+use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::{early_error, early_warn};
 
 #[macro_use]
 mod externalfiles;

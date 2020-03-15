@@ -8,8 +8,8 @@ use std::io;
 use crate::transform::{MirPass, MirSource};
 use crate::util as mir_util;
 use rustc::mir::{Body, BodyAndCache};
-use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
+use rustc_session::config::{OutputFilenames, OutputType};
 
 pub struct Marker(pub &'static str);
 

@@ -4,8 +4,6 @@
 
 use crate::hir::map as hir_map;
 use crate::hir::map::definitions::{DefKey, DefPathTable};
-use crate::session::search_paths::PathKind;
-use crate::session::CrateDisambiguator;
 use crate::ty::TyCtxt;
 
 use rustc_ast::ast;
@@ -14,6 +12,8 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_macros::HashStable;
+use rustc_session::search_paths::PathKind;
+use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;

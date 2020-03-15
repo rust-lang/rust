@@ -3,8 +3,6 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::session::config::{OutputFilenames, OutputType};
-use rustc::session::Session;
 use rustc::ty::steal::Steal;
 use rustc::ty::{GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
@@ -15,6 +13,8 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
+use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::Session;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;

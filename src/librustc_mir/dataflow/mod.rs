@@ -8,9 +8,9 @@ use rustc_index::vec::Idx;
 
 use rustc::mir::traversal;
 use rustc::mir::{self, BasicBlock, BasicBlockData, Body, Location, Statement, Terminator};
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
+use rustc_session::Session;
 
 use std::borrow::Borrow;
 use std::fmt;

@@ -10,11 +10,11 @@ use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
 use rustc::middle::dependency_format::Linkage;
-use rustc::session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_serialize::{json, Encoder};
+use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 

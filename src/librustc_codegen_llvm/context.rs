@@ -11,8 +11,6 @@ use rustc_codegen_ssa::traits::*;
 use crate::callee::get_fn;
 use rustc::bug;
 use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{self, CFGuard, DebugInfo};
-use rustc::session::Session;
 use rustc::ty::layout::{
     HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
 };
@@ -22,6 +20,8 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_session::config::{self, CFGuard, DebugInfo};
+use rustc_session::Session;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use rustc_span::source_map::{Span, DUMMY_SP};

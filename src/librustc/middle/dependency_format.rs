@@ -4,7 +4,7 @@
 //! For all the gory details, see the provider of the `dependency_formats`
 //! query.
 
-use crate::session::config;
+use rustc_session::config;
 
 /// A list of dependencies for a certain crate type.
 ///

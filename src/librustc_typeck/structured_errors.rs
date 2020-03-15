@@ -1,6 +1,6 @@
-use rustc::session::Session;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_session::Session;
 use rustc_span::Span;
 
 pub trait StructuredDiagnostic<'tcx> {

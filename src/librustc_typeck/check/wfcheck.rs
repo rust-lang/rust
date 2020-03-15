@@ -2,7 +2,6 @@ use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use rustc::middle::lang_items;
-use rustc::session::parse::feature_err;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -12,6 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::may_define_opaque_type;

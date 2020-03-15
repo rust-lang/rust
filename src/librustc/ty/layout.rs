@@ -1,8 +1,8 @@
-use crate::session::{self, DataTypeKind};
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast::ast::{self, Ident, IntTy, UintTy};
 use rustc_attr as attr;
+use rustc_session::{self, DataTypeKind};
 use rustc_span::DUMMY_SP;
 
 use std::cmp;
@@ -1648,7 +1648,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         if min_size < field_end {
                             min_size = field_end;
                         }
-                        session::FieldInfo {
+                        rustc_session::FieldInfo {
                             name: name.to_string(),
                             offset: offset.bytes(),
                             size: field_layout.size.bytes(),
@@ -1658,12 +1658,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 })
                 .collect();
 
-            session::VariantInfo {
+            rustc_session::VariantInfo {
                 name: n.map(|n| n.to_string()),
                 kind: if layout.is_unsized() {
-                    session::SizeKind::Min
+                    rustc_session::SizeKind::Min
                 } else {
-                    session::SizeKind::Exact
+                    rustc_session::SizeKind::Exact
                 },
                 align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },

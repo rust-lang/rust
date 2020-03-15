@@ -14,7 +14,6 @@ use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
 use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::mir::{self, interpret, BodyAndCache, Promoted};
-use rustc::session::Session;
 use rustc::ty::codec::TyDecoder;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::common::record_time;
@@ -27,6 +26,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::Session;
 
 use std::io;
 use std::mem;

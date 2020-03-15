@@ -13,8 +13,8 @@ use std::any::Any;
 use std::sync::Arc;
 use std::path::Path;
 use rustc_span::symbol::Symbol;
-use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
+use rustc_session::Session;
+use rustc_session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
@@ -89,7 +89,7 @@ impl CodegenBackend for TheBackend {
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
         use std::io::Write;
-        use rustc::session::config::CrateType;
+        use rustc_session::config::CrateType;
         use rustc_codegen_utils::link::out_filename;
         let crate_name = codegen_results.downcast::<Symbol>()
             .expect("in link: codegen_results is not a Symbol");

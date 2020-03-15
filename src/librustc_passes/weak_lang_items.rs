@@ -2,7 +2,7 @@
 
 use rustc::middle::lang_items;
 use rustc::middle::lang_items::whitelisted;
-use rustc::session::config;
+use rustc_session::config;
 
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;

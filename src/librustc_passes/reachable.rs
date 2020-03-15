@@ -8,7 +8,6 @@
 use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::privacy;
-use rustc::session::config;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -21,6 +20,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdSet, Node};
+use rustc_session::config;
 use rustc_target::spec::abi::Abi;
 
 // Returns true if the given item must be inlined because it may be

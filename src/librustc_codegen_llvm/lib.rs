@@ -32,13 +32,13 @@ use std::sync::Arc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{self, OptLevel, OutputFilenames, PrintRequest};
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_serialize::json;
+use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::Session;
 
 mod back {
     pub mod archive;

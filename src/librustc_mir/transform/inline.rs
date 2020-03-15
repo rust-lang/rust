@@ -8,9 +8,9 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
-use rustc::session::config::Sanitizer;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_session::config::Sanitizer;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 use crate::transform::{MirPass, MirSource};

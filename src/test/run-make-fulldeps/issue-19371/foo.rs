@@ -5,8 +5,8 @@ extern crate rustc_interface;
 extern crate rustc_driver;
 extern crate rustc_span;
 
-use rustc::session::DiagnosticOutput;
-use rustc::session::config::{Input, Options,
+use rustc_session::DiagnosticOutput;
+use rustc_session::config::{Input, Options,
                              OutputType, OutputTypes};
 use rustc_interface::interface;
 use rustc_span::source_map::FileName;
