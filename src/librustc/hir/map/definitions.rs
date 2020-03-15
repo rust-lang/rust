@@ -6,7 +6,6 @@
 
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir as hir;
@@ -17,9 +16,10 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
-use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
+
+pub use rustc_hir::def_id::DefPathHash;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
@@ -80,7 +80,11 @@ pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: IndexVec<DefIndex, ast::NodeId>,
+
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    /// The reverse mapping of `node_to_hir_id`.
+    pub(super) hir_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
+
     /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
@@ -282,28 +286,6 @@ pub enum DefPathData {
     ImplTrait,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
-pub struct DefPathHash(pub Fingerprint);
-
-impl Borrow<Fingerprint> for DefPathHash {
-    #[inline]
-    fn borrow(&self) -> &Fingerprint {
-        &self.0
-    }
-}
-
 impl Definitions {
     pub fn def_path_table(&self) -> &DefPathTable {
         &self.table
@@ -366,6 +348,11 @@ impl Definitions {
         } else {
             None
         }
+    }
+
+    #[inline]
+    pub fn hir_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
+        self.hir_to_node_id[&hir_id]
     }
 
     #[inline]
@@ -494,6 +481,13 @@ impl Definitions {
             "trying to initialize `NodeId` -> `HirId` mapping twice"
         );
         self.node_to_hir_id = mapping;
+
+        // Build the reverse mapping of `node_to_hir_id`.
+        self.hir_to_node_id = self
+            .node_to_hir_id
+            .iter_enumerated()
+            .map(|(node_id, &hir_id)| (hir_id, node_id))
+            .collect();
     }
 
     pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {

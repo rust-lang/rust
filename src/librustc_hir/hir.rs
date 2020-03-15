@@ -596,13 +596,21 @@ pub struct WhereEqPredicate<'hir> {
     pub rhs_ty: &'hir Ty<'hir>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate
     pub items: BTreeSet<HirId>,
     pub trait_items: BTreeSet<TraitItemId>,
     pub impl_items: BTreeSet<ImplItemId>,
+}
+
+/// A type representing only the top-level module.
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub struct CrateItem<'hir> {
+    pub module: Mod<'hir>,
+    pub attrs: &'hir [Attribute],
+    pub span: Span,
 }
 
 /// The top-level data structure that stores the entire contents of
@@ -613,9 +621,7 @@ pub struct ModuleItems {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate<'hir> {
-    pub module: Mod<'hir>,
-    pub attrs: &'hir [Attribute],
-    pub span: Span,
+    pub item: CrateItem<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
@@ -2651,7 +2657,7 @@ pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {
     Param(&'hir Param<'hir>),
     Item(&'hir Item<'hir>),
@@ -2681,7 +2687,7 @@ pub enum Node<'hir> {
     GenericParam(&'hir GenericParam<'hir>),
     Visibility(&'hir Visibility<'hir>),
 
-    Crate,
+    Crate(&'hir CrateItem<'hir>),
 }
 
 impl Node<'_> {

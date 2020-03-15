@@ -29,7 +29,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
-    let push = builder.levels.push(&krate.attrs, &store);
+    let push = builder.levels.push(&krate.item.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
         builder.levels.register_id(macro_def.hir_id);
@@ -438,8 +438,8 @@ impl LintLevelMapBuilder<'_, '_> {
 impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {

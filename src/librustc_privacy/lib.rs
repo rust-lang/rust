@@ -373,8 +373,8 @@ struct PubRestrictedVisitor<'tcx> {
 impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
     fn visit_vis(&mut self, vis: &'tcx hir::Visibility<'tcx>) {
         self.has_pub_restricted = self.has_pub_restricted || vis.node.is_pub_restricted();
@@ -678,8 +678,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -1049,8 +1049,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
@@ -1191,8 +1191,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     type Map = Map<'v>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -1479,8 +1479,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -1925,8 +1925,8 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

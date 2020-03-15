@@ -1,5 +1,7 @@
 use crate::dep_graph::{self, DepConstructor, DepNode, DepNodeParams};
 use crate::hir::exports::Export;
+use crate::hir::map;
+use crate::hir::{HirOwner, HirOwnerItems};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -54,6 +56,7 @@ use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -176,10 +179,7 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
-        DepKind::AllLocalTraitImpls |
         DepKind::CrateMetadata |
-        DepKind::HirBody |
-        DepKind::Hir |
 
         // These are anonymous nodes.
         DepKind::TraitSelect |

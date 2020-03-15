@@ -7,18 +7,21 @@
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label = "hir_owner", cfg = "cfail2")]
+#[rustc_dirty(label = "hir_owner_items", cfg = "cfail2")]
 pub fn foo() {
     #[cfg(cfail1)]
-    pub fn baz() { } // order is different...
+    pub fn baz() {} // order is different...
 
-    #[rustc_clean(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail2")]
-    pub fn bar() { } // but that doesn't matter.
+    // FIXME: Make "hir_owner" use `rustc_clean` here. Currently "hir_owner" includes a reference to
+    // the parent node, which is the statement holding this item. Changing the position of
+    // `bar` in `foo` will update that reference and make `hir_owner(bar)` dirty.
+    #[rustc_dirty(label = "hir_owner", cfg = "cfail2")]
+    #[rustc_clean(label = "hir_owner_items", cfg = "cfail2")]
+    pub fn bar() {} // but that doesn't matter.
 
     #[cfg(cfail2)]
-    pub fn baz() { } // order is different...
+    pub fn baz() {} // order is different...
 
-    pub fn bap() { } // neither does adding a new item
+    pub fn bap() {} // neither does adding a new item
 }

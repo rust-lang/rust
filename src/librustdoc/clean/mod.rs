@@ -141,6 +141,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()
@@ -194,6 +195,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()

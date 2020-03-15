@@ -45,7 +45,7 @@ struct MatchVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -755,7 +755,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
         type Map = Map<'v>;
 
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
 

@@ -28,18 +28,18 @@ mod mod3 {
     #[cfg(rpass3)]
     use mod2::Foo;
 
-    #[rustc_clean(label="Hir", cfg="rpass2")]
-    #[rustc_clean(label="HirBody", cfg="rpass2")]
-    #[rustc_clean(label="Hir", cfg="rpass3")]
-    #[rustc_dirty(label="HirBody", cfg="rpass3")]
+    #[rustc_clean(label="hir_owner", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner_items", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner", cfg="rpass3")]
+    #[rustc_dirty(label="hir_owner_items", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
-    #[rustc_clean(label="Hir", cfg="rpass2")]
-    #[rustc_clean(label="HirBody", cfg="rpass2")]
-    #[rustc_clean(label="Hir", cfg="rpass3")]
-    #[rustc_dirty(label="HirBody", cfg="rpass3")]
+    #[rustc_clean(label="hir_owner", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner_items", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner", cfg="rpass3")]
+    #[rustc_dirty(label="hir_owner_items", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

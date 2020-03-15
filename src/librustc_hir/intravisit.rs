@@ -134,7 +134,7 @@ pub trait Map<'hir> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, M> {
+pub enum NestedVisitorMap<M> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -151,20 +151,20 @@ pub enum NestedVisitorMap<'this, M> {
     /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
-    OnlyBodies(&'this M),
+    OnlyBodies(M),
 
     /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
     /// kick off the visit by doing `walk_krate()`.
-    All(&'this M),
+    All(M),
 }
 
-impl<'this, M> NestedVisitorMap<'this, M> {
+impl<M> NestedVisitorMap<M> {
     /// Returns the map to use for an "intra item-like" thing (if any).
     /// E.g., function body.
-    fn intra(self) -> Option<&'this M> {
+    fn intra(self) -> Option<M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(map) => Some(map),
@@ -174,7 +174,7 @@ impl<'this, M> NestedVisitorMap<'this, M> {
 
     /// Returns the map to use for an "item-like" thing (if any).
     /// E.g., item, impl-item.
-    fn inter(self) -> Option<&'this M> {
+    fn inter(self) -> Option<M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(_) => None,
@@ -221,7 +221,7 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
@@ -438,8 +438,8 @@ pub trait Visitor<'v>: Sized {
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
-    visitor.visit_mod(&krate.module, krate.span, CRATE_HIR_ID);
-    walk_list!(visitor, visit_attribute, krate.attrs);
+    visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
+    walk_list!(visitor, visit_attribute, krate.item.attrs);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
 }
 

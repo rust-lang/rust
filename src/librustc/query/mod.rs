@@ -55,6 +55,37 @@ rustc_queries! {
             desc { "get the crate HIR" }
         }
 
+        // The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
+        // Avoid calling this query directly.
+        query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
+            eval_always
+            no_hash
+            desc { "index HIR" }
+        }
+
+        // The items in a module.
+        // This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+        // Avoid calling this query directly.
+        query hir_module_items(key: DefId) -> &'tcx hir::ModuleItems {
+            eval_always
+        }
+
+        // An HIR item with a `DefId` that can own other HIR items which do not themselves have
+        // a `DefId`.
+        // This can be conveniently accessed by methods on `tcx.hir()`.
+        // Avoid calling this query directly.
+        query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
+            eval_always
+        }
+
+        // The HIR items which do not themselves have a `DefId` and are owned by another HIR item
+        // with a `DefId`.
+        // This can be conveniently accessed by methods on `tcx.hir()`.
+        // Avoid calling this query directly.
+        query hir_owner_items(key: DefId) -> &'tcx HirOwnerItems<'tcx> {
+            eval_always
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }
@@ -653,6 +684,9 @@ rustc_queries! {
     }
 
     TypeChecking {
+        query all_local_trait_impls(key: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+            desc { "local trait impls" }
+        }
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }

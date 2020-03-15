@@ -529,8 +529,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     impl<'tcx> intravisit::Visitor<'tcx> for ConstraintLocator<'tcx> {
         type Map = Map<'tcx>;
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
-            intravisit::NestedVisitorMap::All(&self.tcx.hir())
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::All(self.tcx.hir())
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
             if let hir::ExprKind::Closure(..) = ex.kind {

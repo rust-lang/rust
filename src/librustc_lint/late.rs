@@ -99,8 +99,8 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
-        hir_visit::NestedVisitorMap::All(&self.context.tcx.hir())
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
+        hir_visit::NestedVisitorMap::All(self.context.tcx.hir())
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
@@ -419,7 +419,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
-    cx.with_lint_attrs(hir::CRATE_HIR_ID, &krate.attrs, |cx| {
+    cx.with_lint_attrs(hir::CRATE_HIR_ID, &krate.item.attrs, |cx| {
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate, krate);

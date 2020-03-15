@@ -341,9 +341,9 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
-    let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
+    let no_builtins = attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
     let subsystem =
-        attr::first_attr_value_str_by_name(&tcx.hir().krate().attrs, sym::windows_subsystem);
+        attr::first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(

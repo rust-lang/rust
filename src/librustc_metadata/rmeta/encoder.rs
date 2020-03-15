@@ -331,7 +331,7 @@ impl<'tcx> EncodeContext<'tcx> {
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
         let vis = Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public };
-        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.module, &krate.attrs, &vis);
+        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module, &krate.item.attrs, &vis);
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
         for macro_def in krate.exported_macros {
             self.visit_macro_def(macro_def);
@@ -1502,8 +1502,8 @@ impl EncodeContext<'tcx> {
 impl Visitor<'tcx> for EncodeContext<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);

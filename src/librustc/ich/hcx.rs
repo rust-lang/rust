@@ -7,7 +7,7 @@ use crate::ty::{fast_reject, TyCtxt};
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIndex};
@@ -164,15 +164,6 @@ impl<'a> StableHashingContext<'a> {
         }
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
-
-    pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
-        let prev_hash_node_ids = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
-
-        f(self);
-
-        self.node_id_hashing_mode = prev_hash_node_ids;
-    }
 }
 
 /// Something that can provide a stable hashing context.
@@ -205,19 +196,6 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
 }
 
 impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.local_def_path_hash(self.owner);
-        (def_path_hash, self.local_id)
-    }
-}
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
     fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {

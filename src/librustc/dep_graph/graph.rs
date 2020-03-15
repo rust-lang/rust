@@ -225,28 +225,6 @@ impl DepGraph {
         )
     }
 
-    /// Creates a new dep-graph input with value `input`
-    pub fn input_task<'a, C, R>(&self, key: DepNode, cx: C, input: R) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + StableHashingContextProvider<'a>,
-        R: for<'b> HashStable<StableHashingContext<'b>>,
-    {
-        fn identity_fn<C, A>(_: C, arg: A) -> A {
-            arg
-        }
-
-        self.with_task_impl(
-            key,
-            cx,
-            input,
-            true,
-            identity_fn,
-            |_| None,
-            |data, key, fingerprint, _| data.alloc_node(key, SmallVec::new(), fingerprint),
-            hash_result::<R>,
-        )
-    }
-
     fn with_task_impl<'a, C, A, R>(
         &self,
         key: DepNode,
@@ -676,18 +654,25 @@ impl DepGraph {
                             continue;
                         }
                     } else {
+                        // FIXME: This match is just a workaround for incremental bugs and should
+                        // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
+                        // bug that must be fixed before removing this.
                         match dep_dep_node.kind {
-                            DepKind::Hir | DepKind::HirBody | DepKind::CrateMetadata => {
+                            DepKind::hir_owner
+                            | DepKind::hir_owner_items
+                            | DepKind::CrateMetadata => {
                                 if let Some(def_id) = dep_dep_node.extract_def_id(tcx) {
                                     if def_id_corresponds_to_hir_dep_node(tcx, def_id) {
-                                        // The `DefPath` has corresponding node,
-                                        // and that node should have been marked
-                                        // either red or green in `data.colors`.
-                                        bug!(
-                                            "DepNode {:?} should have been \
+                                        if dep_dep_node.kind == DepKind::CrateMetadata {
+                                            // The `DefPath` has corresponding node,
+                                            // and that node should have been marked
+                                            // either red or green in `data.colors`.
+                                            bug!(
+                                                "DepNode {:?} should have been \
                                              pre-marked as red or green but wasn't.",
-                                            dep_dep_node
-                                        );
+                                                dep_dep_node
+                                            );
+                                        }
                                     } else {
                                         // This `DefPath` does not have a
                                         // corresponding `DepNode` (e.g. a

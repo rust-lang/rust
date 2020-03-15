@@ -53,9 +53,9 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // Hir and HirBody should be computed for all nodes
-    label_strs::Hir,
-    label_strs::HirBody,
+    // hir_owner and hir_owner_items should be computed for all nodes
+    label_strs::hir_owner,
+    label_strs::hir_owner_items,
 ];
 
 /// `impl` implementation of struct/trait
@@ -548,8 +548,8 @@ impl FindAllAttrs<'tcx> {
 impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

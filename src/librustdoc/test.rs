@@ -107,12 +107,12 @@ pub fn run(options: Options) -> i32 {
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
                     collector: &mut collector,
-                    map: *tcx.hir(),
+                    map: tcx.hir(),
                     codes: ErrorCodes::from(
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),
                 };
-                hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+                hir_collector.visit_testable("".to_string(), &krate.item.attrs, |this| {
                     intravisit::walk_crate(this, krate);
                 });
             });
@@ -146,6 +146,7 @@ fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
     let test_attrs: Vec<_> = krate
+        .item
         .attrs
         .iter()
         .filter(|a| a.check_name(sym::doc))
@@ -855,7 +856,7 @@ impl Tester for Collector {
 struct HirCollector<'a, 'hir> {
     sess: &'a session::Session,
     collector: &'a mut Collector,
-    map: &'a Map<'hir>,
+    map: Map<'hir>,
     codes: ErrorCodes,
 }
 
@@ -903,8 +904,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     type Map = Map<'hir>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
-        intravisit::NestedVisitorMap::All(&self.map)
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.map)
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item) {

@@ -5,46 +5,59 @@
 pub mod exports;
 pub mod map;
 
+use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::print;
-use rustc_hir::Crate;
+use rustc_hir::Body;
 use rustc_hir::HirId;
-use std::ops::Deref;
+use rustc_hir::ItemLocalId;
+use rustc_hir::Node;
+use rustc_index::vec::IndexVec;
 
-/// A wrapper type which allows you to access HIR.
+pub struct HirOwner<'tcx> {
+    parent: HirId,
+    node: Node<'tcx>,
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwner<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        let HirOwner { parent, node } = self;
+        hcx.while_hashing_hir_bodies(false, |hcx| {
+            parent.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher);
+        });
+    }
+}
+
 #[derive(Clone)]
-pub struct Hir<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    map: &'tcx map::Map<'tcx>,
+pub struct HirItem<'tcx> {
+    parent: ItemLocalId,
+    node: Node<'tcx>,
 }
 
-impl<'tcx> Hir<'tcx> {
-    pub fn krate(&self) -> &'tcx Crate<'tcx> {
-        self.tcx.hir_crate(LOCAL_CRATE)
-    }
+pub struct HirOwnerItems<'tcx> {
+    hash: Fingerprint,
+    items: IndexVec<ItemLocalId, Option<HirItem<'tcx>>>,
+    bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
 
-impl<'tcx> Deref for Hir<'tcx> {
-    type Target = &'tcx map::Map<'tcx>;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        &self.map
-    }
-}
-
-impl<'hir> print::PpAnn for Hir<'hir> {
-    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) {
-        self.map.nested(state, nested)
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwnerItems<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        // We ignore the `items` and `bodies` fields since these refer to information included in
+        // `hash` which is hashed in the collector and used for the crate hash.
+        let HirOwnerItems { hash, items: _, bodies: _ } = *self;
+        hash.hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
-    pub fn hir(self) -> Hir<'tcx> {
-        Hir { tcx: self, map: &self.hir_map }
+    pub fn hir(self) -> map::Map<'tcx> {
+        map::Map { tcx: self }
     }
 
     pub fn parent_module(self, id: HirId) -> DefId {
@@ -57,6 +70,17 @@ pub fn provide(providers: &mut Providers<'_>) {
         let hir = tcx.hir();
         hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id).unwrap()))
     };
-    providers.hir_crate = |tcx, _| tcx.hir_map.untracked_krate();
+    providers.hir_crate = |tcx, _| tcx.untracked_crate;
+    providers.index_hir = map::index_hir;
+    providers.hir_module_items = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let hir = tcx.hir();
+        let module = hir.as_local_hir_id(id).unwrap();
+        &tcx.untracked_crate.modules[&module]
+    };
+    providers.hir_owner = |tcx, id| tcx.index_hir(id.krate).map[id.index].signature.unwrap();
+    providers.hir_owner_items = |tcx, id| {
+        tcx.index_hir(id.krate).map[id.index].with_bodies.as_ref().map(|items| &**items).unwrap()
+    };
     map::provide(providers);
 }

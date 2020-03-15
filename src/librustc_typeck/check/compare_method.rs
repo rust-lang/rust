@@ -893,7 +893,7 @@ fn compare_synthetic_generics<'tcx>(
                             type Map = Map<'v>;
                             fn nested_visit_map(
                                 &mut self,
-                            ) -> intravisit::NestedVisitorMap<'_, Self::Map>
+                            ) -> intravisit::NestedVisitorMap<Self::Map>
                             {
                                 intravisit::NestedVisitorMap::None
                             }

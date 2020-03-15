@@ -282,7 +282,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
-                hir::Node::Crate => return,
+                hir::Node::Crate(..) => return,
 
                 _ => {}
             }
@@ -1569,7 +1569,7 @@ struct ReturnsVisitor<'v> {
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     type Map = rustc::hir::map::Map<'v>;
 
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
         hir::intravisit::NestedVisitorMap::None
     }
 

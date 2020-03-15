@@ -35,7 +35,7 @@
 //! "infer" some properties for each kind of `DepNode`:
 //!
 //! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s, like `AllLocalTraitImpls`, represent global concepts with only one value.
+//!   `DepNode`s could represent global concepts with only one value.
 //! * Whether it is possible, in principle, to reconstruct a query key from a
 //!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
 //!   in which case it is possible to map the node's fingerprint back to the
@@ -223,8 +223,8 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            pub fn from_def_path_hash(kind: DepKind,
-                                      def_path_hash: DefPathHash)
+            pub fn from_def_path_hash(def_path_hash: DefPathHash,
+                                      kind: DepKind)
                                       -> DepNode {
                 debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
@@ -280,7 +280,7 @@ macro_rules! define_dep_nodes {
                 }
 
                 if kind.has_params() {
-                    Ok(def_path_hash.to_dep_node(kind))
+                    Ok(DepNode::from_def_path_hash(def_path_hash, kind))
                 } else {
                     Ok(DepNode::new_no_params(kind))
                 }
@@ -337,27 +337,12 @@ impl fmt::Debug for DepNode {
     }
 }
 
-impl DefPathHash {
-    pub fn to_dep_node(self, kind: DepKind) -> DepNode {
-        DepNode::from_def_path_hash(kind, self)
-    }
-}
-
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
-    // Represents the body of a function or method. The def-id is that of the
-    // function/method.
-    [eval_always] HirBody(DefId),
-
-    // Represents the HIR node with the given node-id
-    [eval_always] Hir(DefId),
-
     // Represents metadata from an extern crate.
     [eval_always] CrateMetadata(CrateNum),
-
-    [eval_always] AllLocalTraitImpls,
 
     [anon] TraitSelect,
 

@@ -93,8 +93,8 @@ struct FindNestedTypeVisitor<'tcx> {
 impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
@@ -212,8 +212,8 @@ struct TyPathVisitor<'tcx> {
 impl Visitor<'tcx> for TyPathVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Map<'tcx>> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Map<'tcx>> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {

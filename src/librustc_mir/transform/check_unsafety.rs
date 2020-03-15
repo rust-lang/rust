@@ -453,7 +453,7 @@ struct UnusedUnsafeVisitor<'a> {
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 

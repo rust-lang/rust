@@ -124,7 +124,7 @@ impl ExprVisitor<'tcx> {
 impl Visitor<'tcx> for ItemVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -141,7 +141,7 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
 impl Visitor<'tcx> for ExprVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
