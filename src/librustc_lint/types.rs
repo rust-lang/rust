@@ -165,7 +165,7 @@ fn report_bin_hex_error(
         let mut err = lint.build(&format!("literal out of range for {}", t));
         err.note(&format!(
             "the literal `{}` (decimal `{}`) does not fit into \
-                    an `{}` and will become `{}{}`",
+             the type `{}` and will become `{}{}`",
             repr_str, val, t, actually, t
         ));
         if let Some(sugg_ty) = get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative)
@@ -242,7 +242,7 @@ fn lint_int_literal<'a, 'tcx>(
     v: u128,
 ) {
     let int_type = t.normalize(cx.sess().target.ptr_width);
-    let (_, max) = int_ty_range(int_type);
+    let (min, max) = int_ty_range(int_type);
     let max = max as u128;
     let negative = type_limits.negated_expr_id == e.hir_id;
 
@@ -267,7 +267,19 @@ fn lint_int_literal<'a, 'tcx>(
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+            lint.build(&format!("literal out of range for `{}`", t.name_str()))
+                .note(&format!(
+                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+                    cx.sess()
+                        .source_map()
+                        .span_to_snippet(lit.span)
+                        .ok()
+                        .expect("must get snippet from literal"),
+                    t.name_str(),
+                    min,
+                    max,
+                ))
+                .emit();
         });
     }
 }
@@ -320,7 +332,19 @@ fn lint_uint_literal<'a, 'tcx>(
             return;
         }
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+            lint.build(&format!("literal out of range for `{}`", t.name_str()))
+                .note(&format!(
+                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+                    cx.sess()
+                        .source_map()
+                        .span_to_snippet(lit.span)
+                        .ok()
+                        .expect("must get snippet from literal"),
+                    t.name_str(),
+                    min,
+                    max,
+                ))
+                .emit()
         });
     }
 }
@@ -352,7 +376,17 @@ fn lint_literal<'a, 'tcx>(
             };
             if is_infinite == Ok(true) {
                 cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-                    lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+                    lint.build(&format!("literal out of range for `{}`", t.name_str()))
+                        .note(&format!(
+                            "the literal `{}` does not fit into the type `{}` and will be converted to `std::{}::INFINITY`",
+                            cx.sess()
+                                .source_map()
+                                .span_to_snippet(lit.span)
+                                .expect("must get snippet from literal"),
+                            t.name_str(),
+                            t.name_str(),
+                        ))
+                        .emit();
                 });
             }
         }
