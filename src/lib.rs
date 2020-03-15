@@ -90,8 +90,6 @@ mod prelude {
 
     pub use rustc_index::vec::Idx;
 
-    pub use rustc_mir::monomorphize::collector;
-
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
     pub use rustc_codegen_ssa::traits::*;
     pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
