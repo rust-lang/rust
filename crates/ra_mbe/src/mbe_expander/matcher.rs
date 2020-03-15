@@ -255,7 +255,7 @@ impl<'a> TtIter<'a> {
     pub(crate) fn expect_fragment(
         &mut self,
         fragment_kind: ra_parser::FragmentKind,
-    ) -> ExpandResult<tt::TokenTree> {
+    ) -> ExpandResult<Option<tt::TokenTree>> {
         pub(crate) struct OffsetTokenSink<'a> {
             pub(crate) cursor: Cursor<'a>,
             pub(crate) error: bool,
@@ -297,12 +297,16 @@ impl<'a> TtIter<'a> {
             }
         }
         self.inner = self.inner.as_slice()[res.len()..].iter();
+        if res.len() == 0 && err.is_none() {
+            err = Some(err!("no tokens consumed"));
+        }
         let res = match res.len() {
-            1 => res[0].clone(),
-            _ => tt::TokenTree::Subtree(tt::Subtree {
+            1 => Some(res[0].clone()),
+            0 => None,
+            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: None,
                 token_trees: res.into_iter().cloned().collect(),
-            }),
+            })),
         };
         (res, err)
     }
@@ -312,7 +316,7 @@ impl<'a> TtIter<'a> {
         match fork.expect_fragment(Visibility) {
             (tt, None) => {
                 *self = fork;
-                Some(tt)
+                tt
             }
             (_, Some(_)) => None,
         }
@@ -419,8 +423,8 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         }
     };
     let (tt, err) = input.expect_fragment(fragment);
-    let fragment = if kind == "expr" { Fragment::Ast(tt) } else { Fragment::Tokens(tt) };
-    (Some(fragment), err)
+    let fragment = if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) };
+    (fragment, err)
 }
 
 fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &tt::Subtree) -> Result<(), ExpandError> {

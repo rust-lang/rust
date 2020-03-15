@@ -21,9 +21,7 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
         let (new_match, bindings_err) = matcher::match_(&rule.lhs, input);
         if bindings_err.is_none() {
             // if we find a rule that applies without errors, we're done
-            eprintln!("match without errors: {:?}", new_match);
             let (res, transcribe_err) = transcriber::transcribe(&rule.rhs, &new_match.bindings);
-            eprintln!("transcribe_err = {:?}", transcribe_err);
             if transcribe_err.is_none() {
                 return (res, None);
             }
