@@ -5,6 +5,7 @@
 
 fn main() {
     let gen = || {
+        let _s = String::new();
         yield;
     };
 }
@@ -13,35 +14,49 @@ fn main() {
 
 // START rustc.main-{{closure}}.generator_drop.0.mir
 // bb0: {
-//     _7 = discriminant((*_1));
-//     switchInt(move _7) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
+//     _9 = discriminant((*_1));
+//     switchInt(move _9) -> [0u32: bb7, 3u32: bb11, otherwise: bb12];
 // }
-// bb1: {
-//     StorageDead(_4);
-//     StorageDead(_3);
-//     goto -> bb5;
+// bb1 (cleanup): {
+//     resume;
 // }
-// bb2: {
-//     return;
+// bb2 (cleanup): {
+//     nop;
+//     goto -> bb8;
 // }
 // bb3: {
-//     return;
+//     StorageDead(_5);
+//     StorageDead(_4);
+//     drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb4, unwind: bb2];
 // }
 // bb4: {
-//     goto -> bb6;
+//     nop;
+//     goto -> bb9;
 // }
 // bb5: {
-//     goto -> bb2;
+//     return;
 // }
 // bb6: {
-//     goto -> bb3;
+//     return;
 // }
 // bb7: {
-//     StorageLive(_3);
-//     StorageLive(_4);
+//     goto -> bb10;
+// }
+// bb8 (cleanup): {
 //     goto -> bb1;
 // }
-// bb8: {
+// bb9: {
+//     goto -> bb5;
+// }
+// bb10: {
+//     goto -> bb6;
+// }
+// bb11: {
+//     StorageLive(_4);
+//     StorageLive(_5);
+//     goto -> bb3;
+// }
+// bb12: {
 //     return;
 // }
 // END rustc.main-{{closure}}.generator_drop.0.mir
