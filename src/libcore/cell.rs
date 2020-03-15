@@ -958,6 +958,33 @@ impl<T: ?Sized> RefCell<T> {
         unsafe { &mut *self.value.get() }
     }
 
+    /// Undo the effect of leaked guards on the borrow state of the `RefCell`.
+    ///
+    /// This call is similar to [`get_mut`] but more specialized. It borrows `RefCell` mutably to
+    /// ensure no borrows exist and then resets the state tracking shared borrows. This is relevant
+    /// if some `Ref` or `RefMut` borrows have been leaked.
+    ///
+    /// [`get_mut`]: #method.get_mut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_leak)]
+    /// use std::cell::RefCell;
+    ///
+    /// let mut c = RefCell::new(0);
+    /// std::mem::forget(c.borrow_mut());
+    ///
+    /// assert!(c.try_borrow().is_err());
+    /// c.undo_leak();
+    /// assert!(c.try_borrow().is_ok());
+    /// ```
+    #[unstable(feature = "cell_leak", issue = "69099")]
+    pub fn undo_leak(&mut self) -> &mut T {
+        *self.borrow.get_mut() = UNUSED;
+        self.get_mut()
+    }
+
     /// Immutably borrows the wrapped value, returning an error if the value is
     /// currently mutably borrowed.
     ///
@@ -1272,8 +1299,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
     pub fn leak(orig: Ref<'b, T>) -> &'b T {
-        // By forgetting this Ref we ensure that the borrow counter in the RefCell never goes back
-        // to UNUSED again. No further mutable references can be created from the original cell.
+        // By forgetting this Ref we ensure that the borrow counter in the RefCell can't go back to
+        // UNUSED within the lifetime `'b`. Resetting the reference tracking state would require a
+        // unique reference to the borrowed RefCell. No further mutable references can be created
+        // from the original cell.
         mem::forget(orig.borrow);
         orig.value
     }
@@ -1387,9 +1416,11 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
     pub fn leak(orig: RefMut<'b, T>) -> &'b mut T {
-        // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell never
-        // goes back to UNUSED again. No further references can be created from the original cell,
-        // making the current borrow the only reference for the remaining lifetime.
+        // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell can't
+        // go back to UNUSED within the lifetime `'b`. Resetting the reference tracking state would
+        // require a unique reference to the borrowed RefCell. No further references can be created
+        // from the original cell within that lifetime, making the current borrow the only
+        // reference for the remaining lifetime.
         mem::forget(orig.borrow);
         orig.value
     }
