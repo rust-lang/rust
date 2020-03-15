@@ -9,7 +9,7 @@ LL |       ) -> &dyn Foo
 LL | /     {
 LL | |         foo
 LL | |     }
-   | |_____^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+   | |_____^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: aborting due to previous error
 

@@ -380,6 +380,7 @@ E0689: include_str!("./error_codes/E0689.md"),
 E0690: include_str!("./error_codes/E0690.md"),
 E0691: include_str!("./error_codes/E0691.md"),
 E0692: include_str!("./error_codes/E0692.md"),
+E0693: include_str!("./error_codes/E0693.md"),
 E0695: include_str!("./error_codes/E0695.md"),
 E0697: include_str!("./error_codes/E0697.md"),
 E0698: include_str!("./error_codes/E0698.md"),
@@ -595,7 +596,6 @@ E0748: include_str!("./error_codes/E0748.md"),
     E0667, // `impl Trait` in projections
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-    E0693, // incorrect `repr(align)` attribute format
 //  E0694, // an unknown tool name found in scoped attributes
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check

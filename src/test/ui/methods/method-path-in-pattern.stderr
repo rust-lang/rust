@@ -1,34 +1,34 @@
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
   --> $DIR/method-path-in-pattern.rs:15:9
    |
 LL |         Foo::bar => {}
    |         ^^^^^^^^
 
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
   --> $DIR/method-path-in-pattern.rs:19:9
    |
 LL |         <Foo>::bar => {}
    |         ^^^^^^^^^^
 
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::trait_bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::trait_bar`
   --> $DIR/method-path-in-pattern.rs:23:9
    |
 LL |         <Foo>::trait_bar => {}
    |         ^^^^^^^^^^^^^^^^
 
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
   --> $DIR/method-path-in-pattern.rs:26:12
    |
 LL |     if let Foo::bar = 0u32 {}
    |            ^^^^^^^^
 
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
   --> $DIR/method-path-in-pattern.rs:28:12
    |
 LL |     if let <Foo>::bar = 0u32 {}
    |            ^^^^^^^^^^
 
-error[E0533]: expected unit struct, unit variant or constant, found method `Foo::trait_bar`
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::trait_bar`
   --> $DIR/method-path-in-pattern.rs:30:12
    |
 LL |     if let Foo::trait_bar = 0u32 {}
