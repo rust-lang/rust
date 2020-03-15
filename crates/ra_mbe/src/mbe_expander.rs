@@ -11,40 +11,45 @@ use rustc_hash::FxHashMap;
 use crate::{ExpandError, ExpandResult};
 
 pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-    let (mut result, mut unmatched_tokens, mut unmatched_patterns, mut err) = (
-        tt::Subtree::default(),
-        usize::max_value(),
-        usize::max_value(),
-        Some(ExpandError::NoMatchingRule),
-    );
-    for rule in &rules.rules {
-        let ((res, tokens, patterns), e) = expand_rule(rule, input);
-        if e.is_none() {
-            // if we find a rule that applies without errors, we're done
-            return (res, None);
-        }
-        // use the rule if we matched more tokens, or had fewer patterns left
-        if tokens < unmatched_tokens || tokens == unmatched_tokens && patterns < unmatched_patterns
-        {
-            result = res;
-            err = e;
-            unmatched_tokens = tokens;
-            unmatched_patterns = patterns;
-        }
-    }
-    (result, err)
+    expand_rules(&rules.rules, input)
 }
 
-fn expand_rule(
-    rule: &crate::Rule,
-    input: &tt::Subtree,
-) -> ExpandResult<(tt::Subtree, usize, usize)> {
-    let (match_result, bindings_err) = matcher::match_(&rule.lhs, input);
-    let (res, transcribe_err) = transcriber::transcribe(&rule.rhs, &match_result.bindings);
-    (
-        (res, match_result.unmatched_tokens, match_result.unmatched_patterns),
-        bindings_err.or(transcribe_err),
-    )
+fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
+    let mut err = Some(ExpandError::NoMatchingRule);
+    for rule in rules {
+        let (new_match, bindings_err) = matcher::match_(&rule.lhs, input);
+        if bindings_err.is_none() {
+            // if we find a rule that applies without errors, we're done
+            eprintln!("match without errors: {:?}", new_match);
+            let (res, transcribe_err) = transcriber::transcribe(&rule.rhs, &new_match.bindings);
+            eprintln!("transcribe_err = {:?}", transcribe_err);
+            if transcribe_err.is_none() {
+                return (res, None);
+            }
+        }
+        // use the rule if we matched more tokens, or had fewer patterns left
+        if let Some((prev_match, _)) = &match_ {
+            if new_match.unmatched_tokens < prev_match.unmatched_tokens
+                || new_match.unmatched_tokens == prev_match.unmatched_tokens
+                    && new_match.unmatched_patterns < prev_match.unmatched_patterns
+                || err.is_some() && bindings_err.is_none()
+            {
+                match_ = Some((new_match, rule));
+                err = bindings_err;
+            }
+        } else {
+            match_ = Some((new_match, rule));
+            err = bindings_err;
+        }
+    }
+    if let Some((match_, rule)) = match_ {
+        // if we got here, there was no match without errors
+        let (result, transcribe_err) = transcriber::transcribe(&rule.rhs, &match_.bindings);
+        (result, err.or(transcribe_err))
+    } else {
+        (tt::Subtree::default(), err)
+    }
 }
 
 /// The actual algorithm for expansion is not too hard, but is pretty tricky.
@@ -167,7 +172,7 @@ mod tests {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        let expanded = expand_rule(&rules.rules[0], &invocation_tt);
-        ((expanded.0).0, expanded.1)
+        let expanded = expand_rules(&rules.rules, &invocation_tt);
+        (expanded.0, expanded.1)
     }
 }
