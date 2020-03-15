@@ -3,10 +3,10 @@ mod doc;
 
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
-use self::metadata::{file_metadata, type_metadata, TypeMap};
+use self::metadata::{file_metadata, type_metadata, TypeMap, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
-use self::utils::{create_DIArray, is_node_local_to_unit, span_start, DIB};
+use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
 use crate::llvm;
 use crate::llvm::debuginfo::{
@@ -248,7 +248,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
-        let loc = span_start(self, span);
+        let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
 
         let function_type_metadata = unsafe {
@@ -304,9 +304,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 linkage_name.as_ptr().cast(),
                 linkage_name.len(),
                 file_metadata,
-                loc.line as c_uint,
+                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 function_type_metadata,
-                scope_line as c_uint,
+                scope_line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 flags,
                 spflags,
                 llfn,
@@ -530,7 +530,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
-        let loc = span_start(self, span);
+        let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
 
         let type_metadata = type_metadata(self, variable_type, span);
@@ -550,7 +550,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 name.as_ptr().cast(),
                 name.len(),
                 file_metadata,
-                loc.line as c_uint,
+                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 type_metadata,
                 true,
                 DIFlags::FlagZero,

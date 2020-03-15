@@ -1,15 +1,11 @@
-use super::metadata::file_metadata;
-use super::utils::{span_start, DIB};
+use super::metadata::{file_metadata, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use super::utils::DIB;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
 use rustc::mir::{Body, SourceScope};
-
-use libc::c_uint;
-
-use rustc_span::Pos;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -54,7 +50,7 @@ fn make_mir_scope(
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
-        let loc = span_start(cx, mir.span);
+        let loc = cx.lookup_debug_loc(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
             scope_metadata: Some(fn_metadata),
             file_start_pos: loc.file.start_pos,
@@ -70,7 +66,7 @@ fn make_mir_scope(
         return;
     }
 
-    let loc = span_start(cx, scope_data.span);
+    let loc = cx.lookup_debug_loc(scope_data.span.lo());
     let file_metadata = file_metadata(cx, &loc.file.name, debug_context.defining_crate);
 
     let scope_metadata = unsafe {
@@ -78,8 +74,8 @@ fn make_mir_scope(
             DIB(cx),
             parent_scope.scope_metadata.unwrap(),
             file_metadata,
-            loc.line as c_uint,
-            loc.col.to_usize() as c_uint,
+            loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
+            loc.col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
         ))
     };
     debug_context.scopes[scope] = DebugScope {

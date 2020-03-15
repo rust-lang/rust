@@ -9,9 +9,6 @@ use rustc_hir::def_id::DefId;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};
-use rustc_codegen_ssa::traits::*;
-
-use rustc_span::Span;
 
 pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
     // The is_local_to_unit flag indicates whether a function is local to the
@@ -30,11 +27,6 @@ pub fn create_DIArray(builder: &DIBuilder<'ll>, arr: &[Option<&'ll DIDescriptor>
     return unsafe {
         llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };
-}
-
-/// Returns rustc_span::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CodegenCx<'_, '_>, span: Span) -> rustc_span::Loc {
-    cx.sess().source_map().lookup_char_pos(span.lo())
 }
 
 #[inline]
