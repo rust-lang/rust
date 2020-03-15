@@ -10,20 +10,22 @@ export function ssr(ctx: Ctx): Cmd {
         if (!client) return;
 
         const options: vscode.InputBoxOptions = {
-            placeHolder: "foo($a:expr, $b:expr) ==>> bar($a, foo($b))",
-            prompt: "Enter request",
-            validateInput: (x: string) => {
-                if (x.includes('==>>')) {
-                    return null;
+            value: "() ==>> ()",
+            prompt: "EnteR request, for example 'Foo($a:expr) ==> Foo::new($a)' ",
+            validateInput: async (x: string) => {
+                try {
+                    await client.sendRequest(ra.ssr, { query: x, parseOnly: true });
+                } catch (e) {
+                    return e.toString();
                 }
-                return "Enter request: pattern ==>> template";
+                return null;
             }
         };
         const request = await vscode.window.showInputBox(options);
 
         if (!request) return;
 
-        const change = await client.sendRequest(ra.ssr, { arg: request });
+        const change = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
 
         await applySourceChange(ctx, change);
     };

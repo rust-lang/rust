@@ -478,9 +478,10 @@ impl Analysis {
     pub fn structural_search_replace(
         &self,
         query: &str,
+        parse_only: bool,
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
-            let edits = ssr::parse_search_replace(query, db)?;
+            let edits = ssr::parse_search_replace(query, parse_only, db)?;
             Ok(SourceChange::source_file_edits("ssr", edits))
         })
     }

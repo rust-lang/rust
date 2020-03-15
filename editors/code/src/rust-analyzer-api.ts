@@ -108,7 +108,8 @@ export const inlayHints = request<InlayHintsParams, Vec<InlayHint>>("inlayHints"
 
 
 export interface SsrParams {
-    arg: string;
+    query: string;
+    parseOnly: boolean;
 }
 export const ssr = request<SsrParams, SourceChange>("ssr");
 

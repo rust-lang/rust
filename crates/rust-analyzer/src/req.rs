@@ -217,6 +217,8 @@ impl Request for Ssr {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SsrParams {
-    pub arg: String,
+    pub query: String,
+    pub parse_only: bool,
 }
