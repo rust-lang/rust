@@ -828,7 +828,7 @@ fn convert_variant(
         .iter()
         .map(|f| {
             let fid = tcx.hir().local_def_id(f.hir_id);
-            let dup_span = seen_fields.get(&f.ident.modern()).cloned();
+            let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 struct_span_err!(
                     tcx.sess,
@@ -841,7 +841,7 @@ fn convert_variant(
                 .span_label(prev_span, format!("`{}` first declared here", f.ident))
                 .emit();
             } else {
-                seen_fields.insert(f.ident.modern(), f.span);
+                seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
             ty::FieldDef {

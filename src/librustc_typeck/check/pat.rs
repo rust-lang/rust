@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.ident.modern(), (i, field)))
+            .map(|(i, field)| (field.ident.normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut unmentioned_fields = variant
             .fields
             .iter()
-            .map(|field| field.ident.modern())
+            .map(|field| field.ident.normalize_to_macros_2_0())
             .filter(|ident| !used_fields.contains_key(&ident))
             .collect::<Vec<_>>();
 

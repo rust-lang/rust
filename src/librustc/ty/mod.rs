@@ -3083,7 +3083,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
         // We could use `Ident::eq` here, but we deliberately don't. The name
         // comparison fails frequently, and we want to avoid the expensive
-        // `modern()` calls required for the span comparison whenever possible.
+        // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
         use_name.name == def_name.name
             && use_name
                 .span
@@ -3099,7 +3099,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
-        ident.span.modernize_and_adjust(self.expansion_that_defined(scope));
+        ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope));
         ident
     }
 
@@ -3109,12 +3109,14 @@ impl<'tcx> TyCtxt<'tcx> {
         scope: DefId,
         block: hir::HirId,
     ) -> (Ident, DefId) {
-        let scope = match ident.span.modernize_and_adjust(self.expansion_that_defined(scope)) {
-            Some(actual_expansion) => {
-                self.hir().definitions().parent_module_of_macro_def(actual_expansion)
-            }
-            None => self.parent_module(block),
-        };
+        let scope =
+            match ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope))
+            {
+                Some(actual_expansion) => {
+                    self.hir().definitions().parent_module_of_macro_def(actual_expansion)
+                }
+                None => self.parent_module(block),
+            };
         (ident, scope)
     }
 

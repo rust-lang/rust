@@ -1238,7 +1238,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let (kw, has_bang) = if macro_def.legacy {
+                let (kw, has_bang) = if macro_def.macro_rules {
                     ("macro_rules", true)
                 } else {
                     self.print_visibility(&item.vis);

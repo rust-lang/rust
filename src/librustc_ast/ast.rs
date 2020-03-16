@@ -1450,7 +1450,7 @@ impl MacDelimiter {
 pub struct MacroDef {
     pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.
-    pub legacy: bool,
+    pub macro_rules: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, Eq, PartialEq)]
