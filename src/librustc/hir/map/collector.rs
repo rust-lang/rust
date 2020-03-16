@@ -132,7 +132,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
             map: (0..definitions.def_index_count())
-                .map(|_| HirOwnerData { signature: None, with_bodies: None })
+                .map(|_| HirOwnerData { signature: None, with_bodies: None, defs: None })
                 .collect(),
         };
         collector.insert_entry(
@@ -201,6 +201,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let arena = self.arena;
 
         let data = &mut self.map[id.owner];
+
+        if i != 0 {
+            // Check if this HirId has a DefId, and insert it in the `defs` map if so.
+            let node_id = self.definitions.hir_id_to_node_id(id);
+            if let Some(def_id) = self.definitions.opt_local_def_id(node_id) {
+                if data.defs.is_none() {
+                    data.defs = Some(arena.alloc(FxHashMap::default()));
+                };
+                data.defs.as_mut().unwrap().insert(id.local_id, def_id);
+            }
+        }
 
         if data.with_bodies.is_none() {
             data.with_bodies = Some(arena.alloc(OwnerNodes {

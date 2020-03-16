@@ -81,5 +81,8 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes =
         |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_ref().map(|nodes| &**nodes);
+    providers.local_def_id_to_hir_id = |tcx, id| tcx.definitions.as_local_hir_id(id.to_def_id());
+    providers.hir_owner_defs =
+        |tcx, index| tcx.index_hir(LOCAL_CRATE).map[index].defs.as_ref().map(|defs| &**defs);
     map::provide(providers);
 }

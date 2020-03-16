@@ -125,6 +125,10 @@ macro_rules! arena_types {
             [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc::hir::OwnerNodes<$tcx>,
+            [] hir_owner_defs: rustc_data_structures::fx::FxHashMap<
+                rustc_hir::ItemLocalId,
+                rustc_span::def_id::LocalDefId
+            >,
         ], $tcx);
     )
 }

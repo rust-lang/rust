@@ -90,6 +90,22 @@ rustc_queries! {
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
+        // Converts a `LocalDefId` to a `HirId`.
+        // This can be conveniently accessed by `tcx.hir().as_local_hir_id`.
+        // Avoid calling this query directly.
+        query local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId> {
+            eval_always
+            desc { "converting a LocalDefId to HirId" }
+        }
+
+        // A map of the HIR items which also have a `DefId` in addition to their `HirId`.
+        // This can be conveniently accessed by `tcx.hir().opt_local_def_id`.
+        // Avoid calling this query directly.
+        query hir_owner_defs(key: LocalDefId) -> Option<&'tcx FxHashMap<ItemLocalId, LocalDefId>> {
+            eval_always
+            desc { "getting a LocalDefId map" }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }
