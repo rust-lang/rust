@@ -11,6 +11,10 @@ jobs:
   rust-audit:
     name: Audit Rust vulnerabilities
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
