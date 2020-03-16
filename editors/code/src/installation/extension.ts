@@ -112,7 +112,7 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
 const tryDownloadNightlyExtension = notReentrant(async (
     config: Config,
     shouldDownload: (releaseInfo: ArtifactReleaseInfo) => boolean = () => true
-): Promise<never | void> {
+): Promise<never | void> => {
     const vsixSource = config.nightlyVsixSource;
     try {
         const releaseInfo = await fetchArtifactReleaseInfo(vsixSource.repo, vsixSource.file, vsixSource.tag);
