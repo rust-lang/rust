@@ -1,3 +1,4 @@
+// compile-flags: -O
 // run-pass
 
 #![allow(unused_must_use)]
