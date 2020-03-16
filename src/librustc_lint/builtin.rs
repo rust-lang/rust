@@ -349,7 +349,7 @@ impl MissingDoc {
         id: Option<hir::HirId>,
         attrs: &[ast::Attribute],
         sp: Span,
-        desc: &'static str,
+        desc: &str,
     ) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
@@ -413,12 +413,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
-        let desc = match it.kind {
-            hir::ItemKind::Fn(..) => "a function",
-            hir::ItemKind::Mod(..) => "a module",
-            hir::ItemKind::Enum(..) => "an enum",
-            hir::ItemKind::Struct(..) => "a struct",
-            hir::ItemKind::Union(..) => "a union",
+        match it.kind {
             hir::ItemKind::Trait(.., trait_item_refs) => {
                 // Issue #11592: traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
@@ -428,33 +423,45 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                     }
                     return;
                 }
-                "a trait"
             }
-            hir::ItemKind::TyAlias(..) => "a type alias",
             hir::ItemKind::Impl { of_trait: Some(ref trait_ref), items, .. } => {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
-                    match cx.tcx.hir().find(hir_id) {
-                        Some(Node::Item(item)) => {
-                            if let hir::VisibilityKind::Inherited = item.vis.node {
-                                for impl_item_ref in items {
-                                    self.private_traits.insert(impl_item_ref.id.hir_id);
-                                }
+                    if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
+                        if let hir::VisibilityKind::Inherited = item.vis.node {
+                            for impl_item_ref in items {
+                                self.private_traits.insert(impl_item_ref.id.hir_id);
                             }
                         }
-                        _ => {}
                     }
                 }
                 return;
             }
-            hir::ItemKind::Const(..) => "a constant",
-            hir::ItemKind::Static(..) => "a static",
+
+            hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Static(..) => {}
+
             _ => return,
         };
 
-        self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, desc);
+        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id);
+
+        self.check_missing_docs_attrs(
+            cx,
+            Some(it.hir_id),
+            &it.attrs,
+            it.span,
+            &format!("{} {}", article, desc),
+        );
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, trait_item: &hir::TraitItem<'_>) {
