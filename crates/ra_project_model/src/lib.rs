@@ -177,7 +177,6 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         default_cfg_options: &CfgOptions,
-        additional_out_dirs: &FxHashMap<String, PathBuf>,
         extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
@@ -251,15 +250,8 @@ impl ProjectWorkspace {
                             opts
                         };
 
-                        let mut env = Env::default();
-                        let mut extern_source = ExternSource::default();
-                        if let Some(path) = additional_out_dirs.get(krate.name(&sysroot)) {
-                            env.set("OUT_DIR", path.to_string_lossy().to_string());
-                            if let Some(extern_source_id) = extern_source_roots.get(path) {
-                                extern_source.set_extern_path(&path, *extern_source_id);
-                            }
-                        }
-
+                        let env = Env::default();
+                        let extern_source = ExternSource::default();
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
@@ -310,19 +302,11 @@ impl ProjectWorkspace {
                             };
                             let mut env = Env::default();
                             let mut extern_source = ExternSource::default();
-                            if let Some(out_dir) = dbg!(pkg.out_dir(cargo)) {
+                            if let Some(out_dir) = pkg.out_dir(cargo) {
+                                // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
                                 env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
-                                if let Some(extern_source_id) =
-                                    dbg!(dbg!(&extern_source_roots).get(out_dir))
-                                {
-                                    extern_source.set_extern_path(&out_dir, *extern_source_id);
-                                }
-                            } else {
-                                if let Some(path) = additional_out_dirs.get(pkg.name(&cargo)) {
-                                    env.set("OUT_DIR", path.to_string_lossy().to_string());
-                                    if let Some(extern_source_id) = extern_source_roots.get(path) {
-                                        extern_source.set_extern_path(&path, *extern_source_id);
-                                    }
+                                if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
+                                    extern_source.set_extern_path(&out_dir, extern_source_id);
                                 }
                             }
                             let crate_id = crate_graph.add_crate_root(

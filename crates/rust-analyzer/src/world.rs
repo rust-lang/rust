@@ -82,7 +82,6 @@ impl WorldState {
         watch: Watch,
         options: Options,
         feature_flags: FeatureFlags,
-        additional_out_dirs: FxHashMap<String, String>,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
@@ -105,8 +104,7 @@ impl WorldState {
             }));
         }
 
-        let mut extern_dirs: FxHashSet<_> =
-            additional_out_dirs.iter().map(|(_, path)| (PathBuf::from(path))).collect();
+        let mut extern_dirs = FxHashSet::default();
         for ws in workspaces.iter() {
             extern_dirs.extend(ws.out_dirs());
         }
@@ -152,21 +150,9 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
-        let additional_out_dirs: FxHashMap<String, PathBuf> = additional_out_dirs
-            .into_iter()
-            .map(|(name, path)| (name, PathBuf::from(&path)))
-            .collect();
-
         workspaces
             .iter()
-            .map(|ws| {
-                ws.to_crate_graph(
-                    &default_cfg_options,
-                    &additional_out_dirs,
-                    &extern_source_roots,
-                    &mut load,
-                )
-            })
+            .map(|ws| ws.to_crate_graph(&default_cfg_options, &extern_source_roots, &mut load))
             .for_each(|graph| {
                 crate_graph.extend(graph);
             });

@@ -39,6 +39,9 @@ pub struct CargoFeatures {
 
     /// Runs cargo check on launch to figure out the correct values of OUT_DIR
     pub load_out_dirs_from_check: bool,
+
+    /// Fine grained controls for additional `OUT_DIR` env variables
+    pub out_dir_overrides: FxHashMap<PackageId, PathBuf>,
 }
 
 impl Default for CargoFeatures {
@@ -48,6 +51,7 @@ impl Default for CargoFeatures {
             all_features: true,
             features: Vec::new(),
             load_out_dirs_from_check: false,
+            out_dir_overrides: FxHashMap::default(),
         }
     }
 }
@@ -191,6 +195,10 @@ impl CargoWorkspace {
         if cargo_features.load_out_dirs_from_check {
             out_dir_by_id = load_out_dirs(cargo_toml, cargo_features);
         }
+        // We explicitly extend afterwards to allow overriding the value returned by cargo
+        out_dir_by_id.extend(
+            cargo_features.out_dir_overrides.iter().map(|(id, path)| (id.clone(), path.clone())),
+        );
 
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
