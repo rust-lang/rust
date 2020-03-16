@@ -6,14 +6,14 @@ variables:
 - group: prod-credentials
 
 jobs:
-- job: Linux
-  timeoutInMinutes: 600
-  pool:
-    vmImage: ubuntu-16.04
-  steps:
-  - template: steps/run.yml
-  strategy:
-    matrix:
+#- job: Linux
+#  timeoutInMinutes: 600
+#  pool:
+#    vmImage: ubuntu-16.04
+#  steps:
+#  - template: steps/run.yml
+#  strategy:
+#    matrix:
       # Round 1
 #      x86_64-gnu-llvm-7:
 #        RUST_BACKTRACE: 1
