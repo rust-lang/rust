@@ -206,3 +206,55 @@ bench_suite!(
     iter_ahash_random,
     iter_std_random
 );
+
+#[bench]
+fn clone_small(b: &mut Bencher) {
+    let mut m = HashMap::new();
+    for i in 0..10 {
+        m.insert(i, i);
+    }
+
+    b.iter(|| {
+        black_box(m.clone());
+    })
+}
+
+#[bench]
+fn clone_from_small(b: &mut Bencher) {
+    let mut m = HashMap::new();
+    let mut m2 = HashMap::new();
+    for i in 0..10 {
+        m.insert(i, i);
+    }
+
+    b.iter(|| {
+        m2.clone_from(&m);
+        black_box(&mut m2);
+    })
+}
+
+#[bench]
+fn clone_large(b: &mut Bencher) {
+    let mut m = HashMap::new();
+    for i in 0..1000 {
+        m.insert(i, i);
+    }
+
+    b.iter(|| {
+        black_box(m.clone());
+    })
+}
+
+#[bench]
+fn clone_from_large(b: &mut Bencher) {
+    let mut m = HashMap::new();
+    let mut m2 = HashMap::new();
+    for i in 0..1000 {
+        m.insert(i, i);
+    }
+
+    b.iter(|| {
+        m2.clone_from(&m);
+        black_box(&mut m2);
+    })
+}
