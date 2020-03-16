@@ -315,7 +315,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId
     };
 
     match res {
-        Res::Def(DefKind::Trait, trait_id) | Res::Def(DefKind::TraitAlias, trait_id) => Some(trait_id),
+        Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         Res::Err => unreachable!("this trait resolution is impossible: {:?}", &path),
         _ => None,
     }
@@ -448,10 +448,11 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<Name> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
     match cx.tcx.hir().find(parent_id) {
-        Some(Node::Item(&Item { ref ident, .. })) => Some(ident.name),
-        Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
-            Some(ident.name)
-        },
+        Some(
+            Node::Item(Item { ident, .. })
+            | Node::TraitItem(TraitItem { ident, .. })
+            | Node::ImplItem(ImplItem { ident, .. }),
+        ) => Some(ident.name),
         _ => None,
     }
 }
@@ -925,7 +926,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
         if let ExprKind::Path(ref qp) = fun.kind {
             let res = cx.tables.qpath_res(qp, fun.hir_id);
             return match res {
-                def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => true,
+                def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
                 _ => false,
             };

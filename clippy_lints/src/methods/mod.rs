@@ -1755,9 +1755,7 @@ fn lint_expect_fun_call(
                 )
             }),
             hir::ExprKind::Path(ref p) => match cx.tables.qpath_res(p, arg.hir_id) {
-                hir::def::Res::Def(hir::def::DefKind::Const, _) | hir::def::Res::Def(hir::def::DefKind::Static, _) => {
-                    true
-                },
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
                 _ => false,
             },
             _ => false,
