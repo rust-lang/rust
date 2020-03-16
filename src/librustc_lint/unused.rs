@@ -124,7 +124,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             descr_post: &str,
             plural_len: usize,
         ) -> bool {
-            if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(cx.tcx.parent_module(expr.hir_id), ty)
+            if ty.is_unit()
+                || cx.tcx.is_ty_uninhabited_from(
+                    cx.tcx.parent_module(expr.hir_id),
+                    ty,
+                    cx.param_env,
+                )
             {
                 return true;
             }
