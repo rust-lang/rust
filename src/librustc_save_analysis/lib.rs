@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -753,9 +754,22 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::Mod, def_id) => {
                 Some(Ref { kind: RefKind::Mod, span, ref_id: id_from_def_id(def_id) })
             }
-            Res::PrimTy(..)
+
+            Res::Def(
+                HirDefKind::Macro(..)
+                | HirDefKind::ExternCrate
+                | HirDefKind::ForeignMod
+                | HirDefKind::LifetimeParam
+                | HirDefKind::AnonConst
+                | HirDefKind::Use
+                | HirDefKind::Field
+                | HirDefKind::GlobalAsm
+                | HirDefKind::Impl
+                | HirDefKind::Closure,
+                _,
+            )
+            | Res::PrimTy(..)
             | Res::SelfTy(..)
-            | Res::Def(HirDefKind::Macro(..), _)
             | Res::ToolMod
             | Res::NonMacroAttr(..)
             | Res::SelfCtor(..)
