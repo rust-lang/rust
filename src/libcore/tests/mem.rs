@@ -142,8 +142,4 @@ fn test_const_forget() {
     const fn const_forget_box<T>(x: Box<T>) {
         forget(x);
     }
-
-    // Call the forget_box at runtime,
-    // as we can't const-construct a box yet.
-    const_forget_box(Box::new(0i32));
 }
