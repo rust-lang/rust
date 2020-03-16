@@ -289,13 +289,13 @@ self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
                        msg);
 ```
 
-We want to convert this into an error. In some cases, there may be an existing
-error for this scenario. In others, we will need to allocate a fresh diagnostic
-code.
-[Instructions for allocating a fresh diagnostic code can be found here.](diagnostics/diagnostic-codes.html)
-You may want to mention in the extended description that the compiler behavior
-changed on this point, and include a reference to the tracking issue for the
-change.
+We want to convert this into an error. In some cases, there may be an
+existing error for this scenario. In others, we will need to allocate a
+fresh diagnostic code.  [Instructions for allocating a fresh diagnostic
+code can be found here.](diagnostics/diagnostic-codes.html) You may want
+to mention in the extended description that the compiler behavior
+changed on this point, and include a reference to the tracking issue for
+the change.
 
 Let's say that we've adopted `E0592` as our code. Then we can change the
 `add_lint()` call above to something like:
