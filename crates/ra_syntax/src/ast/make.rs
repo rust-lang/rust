@@ -112,8 +112,12 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);
     expr_from_text(&format!("{}{}", token, expr.syntax()))
 }
-pub fn expr_from_text(text: &str) -> ast::Expr {
+fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
+}
+
+pub fn try_expr_from_text(text: &str) -> Option<ast::Expr> {
+    try_ast_from_text(&format!("const C: () = {};", text))
 }
 
 pub fn bind_pat(name: ast::Name) -> ast::BindPat {
@@ -237,6 +241,16 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
     let node = N::cast(node).unwrap();
     assert_eq!(node.syntax().text_range().start(), 0.into());
     node
+}
+
+fn try_ast_from_text<N: AstNode>(text: &str) -> Option<N> {
+    let parse = SourceFile::parse(text);
+    let node = parse.tree().syntax().descendants().find_map(N::cast)?;
+    let node = node.syntax().clone();
+    let node = unroot(node);
+    let node = N::cast(node).unwrap();
+    assert_eq!(node.syntax().text_range().start(), 0.into());
+    Some(node)
 }
 
 fn unroot(n: SyntaxNode) -> SyntaxNode {

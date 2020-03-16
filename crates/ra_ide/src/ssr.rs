@@ -1,17 +1,16 @@
 //!  structural search replace
 
 use crate::source_change::SourceFileEdit;
+use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_ide_db::symbol_index::SymbolsDatabase;
 use ra_ide_db::RootDatabase;
-use ra_syntax::ast::make::expr_from_text;
+use ra_syntax::ast::make::try_expr_from_text;
 use ra_syntax::ast::{AstToken, Comment};
 use ra_syntax::{AstNode, SyntaxElement, SyntaxNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::str::FromStr;
-
-pub use ra_db::{SourceDatabase, SourceDatabaseExt};
-use ra_ide_db::symbol_index::SymbolsDatabase;
 
 #[derive(Debug, PartialEq)]
 pub struct SsrError(String);
@@ -26,14 +25,17 @@ impl std::error::Error for SsrError {}
 
 pub fn parse_search_replace(
     query: &str,
+    parse_only: bool,
     db: &RootDatabase,
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
     let mut edits = vec![];
     let query: SsrQuery = query.parse()?;
+    if parse_only {
+        return Ok(edits);
+    }
     for &root in db.local_roots().iter() {
         let sr = db.source_root(root);
         for file_id in sr.walk() {
-            dbg!(db.file_relative_path(file_id));
             let matches = find(&query.pattern, db.parse(file_id).tree().syntax());
             if !matches.matches.is_empty() {
                 edits.push(SourceFileEdit { file_id, edit: replace(&matches, &query.template) });
@@ -106,7 +108,10 @@ impl FromStr for SsrQuery {
             template = replace_in_template(template, var, new_var);
         }
 
-        let template = expr_from_text(&template).syntax().clone();
+        let template = try_expr_from_text(&template)
+            .ok_or(SsrError("Template is not an expression".into()))?
+            .syntax()
+            .clone();
         let mut placeholders = FxHashMap::default();
 
         traverse(&template, &mut |n| {
@@ -118,7 +123,13 @@ impl FromStr for SsrQuery {
             }
         });
 
-        let pattern = SsrPattern { pattern: expr_from_text(&pattern).syntax().clone(), vars };
+        let pattern = SsrPattern {
+            pattern: try_expr_from_text(&pattern)
+                .ok_or(SsrError("Pattern is not an expression".into()))?
+                .syntax()
+                .clone(),
+            vars,
+        };
         let template = SsrTemplate { template, placeholders };
         Ok(SsrQuery { pattern, template })
     }
@@ -284,7 +295,6 @@ mod tests {
         assert_eq!(result.pattern.vars[0].0, "__search_pattern_a");
         assert_eq!(result.pattern.vars[1].0, "__search_pattern_b");
         assert_eq!(&result.template.template.text(), "bar(__search_pattern_b, __search_pattern_a)");
-        dbg!(result.template.placeholders);
     }
 
     #[test]
@@ -332,6 +342,16 @@ mod tests {
             parse_error_text("foo($a:expr, $a:expr) ==>>"),
             "Parse error: Name `a` repeats more than once"
         );
+    }
+
+    #[test]
+    fn parser_invlid_pattern() {
+        assert_eq!(parse_error_text(" ==>> ()"), "Parse error: Pattern is not an expression");
+    }
+
+    #[test]
+    fn parser_invlid_template() {
+        assert_eq!(parse_error_text("() ==>> )"), "Parse error: Template is not an expression");
     }
 
     #[test]
