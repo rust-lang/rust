@@ -121,7 +121,7 @@ jobs:
     - run: npm ci
       working-directory: ./editors/code
 
-    - run: npm audit || sleep 10 && npm audit || sleep 30 && npm audit
+    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
       working-directory: ./editors/code
 
     - run: npm run lint
