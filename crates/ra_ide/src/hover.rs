@@ -67,10 +67,10 @@ fn hover_text(
     desc: Option<String>,
     mod_path: Option<String>,
 ) -> Option<String> {
-    match (desc, docs, mod_path) {
-        (Some(desc), docs, mod_path) => Some(rust_code_markup_with_doc(desc, docs, mod_path)),
-        (None, Some(docs), _) => Some(docs),
-        _ => None,
+    if let Some(desc) = desc {
+        Some(rust_code_markup_with_doc(&desc, docs.as_deref(), mod_path.as_deref()))
+    } else {
+        docs
     }
 }
 
@@ -106,7 +106,7 @@ fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
             .flatten()
             .join("::")
     });
-    mod_path
+    mod_path // FIXME: replace dashes with underscores in crate display name
 }
 
 fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
@@ -143,9 +143,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
             ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Definition::Local(it) => {
-            Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string()))
-        }
+        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display_truncated(db, None))),
         Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
@@ -210,7 +208,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     }?;
 
-    res.extend(Some(rust_code_markup(ty.display_truncated(db, None).to_string())));
+    res.extend(Some(rust_code_markup(&ty.display_truncated(db, None))));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
