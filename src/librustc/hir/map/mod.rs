@@ -342,18 +342,23 @@ impl<'hir> Map<'hir> {
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
-        Some(self.get_entry(id))
+        if id.local_id == ItemLocalId::from_u32_const(0) {
+            let owner = self.tcx.hir_owner(id.owner_def_id());
+            owner.map(|owner| Entry { parent: owner.parent, node: owner.node })
+        } else {
+            let owner = self.tcx.hir_owner_items(id.owner_def_id());
+            owner.and_then(|owner| {
+                let item = owner.items[id.local_id].as_ref();
+                item.map(|item| Entry {
+                    parent: HirId { owner: id.owner, local_id: item.parent },
+                    node: item.node,
+                })
+            })
+        }
     }
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
-        if id.local_id == ItemLocalId::from_u32_const(0) {
-            let owner = self.tcx.hir_owner(id.owner_def_id());
-            Entry { parent: owner.parent, node: owner.node }
-        } else {
-            let owner = self.tcx.hir_owner_items(id.owner_def_id());
-            let item = owner.items[id.local_id].as_ref().unwrap();
-            Entry { parent: HirId { owner: id.owner, local_id: item.parent }, node: item.node }
-        }
+        self.find_entry(id).unwrap()
     }
 
     pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
@@ -380,6 +385,7 @@ impl<'hir> Map<'hir> {
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.tcx
             .hir_owner_items(DefId::local(id.hir_id.owner))
+            .unwrap()
             .bodies
             .get(&id.hir_id.local_id)
             .unwrap()
@@ -541,8 +547,9 @@ impl<'hir> Map<'hir> {
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        let node = self.get_entry(hir_id).node;
-        if let Node::Crate(..) = node { None } else { Some(node) }
+        self.find_entry(hir_id).and_then(|entry| {
+            if let Node::Crate(..) = entry.node { None } else { Some(entry.node) }
+        })
     }
 
     /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
