@@ -105,7 +105,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     if in_external_macro(cx.sess(), impl_item.span) {
                         return;
                     }
-                    if let hir::ImplItemKind::Method(ref sig, _) = impl_item.kind {
+                    if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
                         let id = impl_item.hir_id;
                         if sig.header.constness == hir::Constness::Const {

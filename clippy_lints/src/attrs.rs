@@ -12,7 +12,7 @@ use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind,
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitItem, TraitItemKind, TraitMethod,
+    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
 use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -372,15 +372,15 @@ fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
 
 fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
-        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
+        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
 fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
-        TraitItemKind::Fn(_, TraitMethod::Required(_)) => true,
-        TraitItemKind::Fn(_, TraitMethod::Provided(eid)) => {
+        TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
+        TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
             is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
         },
         _ => false,

@@ -1410,7 +1410,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         let ty = cx.tcx.type_of(def_id);
         if_chain! {
-            if let hir::ImplItemKind::Method(ref sig, id) = impl_item.kind;
+            if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl{ of_trait: None, .. } = item.kind;
 
@@ -1469,7 +1469,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             }
         }
 
-        if let hir::ImplItemKind::Method(_, _) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
             // walk the return type and check for Self (this does not check associated types)

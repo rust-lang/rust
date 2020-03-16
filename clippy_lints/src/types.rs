@@ -15,8 +15,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitItem,
-    TraitItemKind, TraitMethod, TyKind, UnOp,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitFn,
+    TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
@@ -1457,7 +1457,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
-            TraitItemKind::Fn(FnSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
+            TraitItemKind::Fn(FnSig { ref decl, .. }, TraitFn::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }

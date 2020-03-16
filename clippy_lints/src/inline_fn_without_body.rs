@@ -4,7 +4,7 @@ use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
 use rustc_ast::ast::{Attribute, Name};
 use rustc_errors::Applicability;
-use rustc_hir::{TraitItem, TraitItemKind, TraitMethod};
+use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -32,7 +32,7 @@ declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Fn(_, TraitMethod::Required(_)) = item.kind {
+        if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind {
             check_attrs(cx, item.ident.name, &item.attrs);
         }
     }
