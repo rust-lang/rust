@@ -189,7 +189,7 @@ impl Lit {
 
     /// Converts arbitrary token into an AST literal.
     ///
-    /// Keep this in sync with `Token::can_begin_literal_or_bool`.
+    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {
