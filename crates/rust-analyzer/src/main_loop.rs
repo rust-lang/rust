@@ -714,45 +714,48 @@ fn send_startup_progress(
     world_state: &WorldState,
 ) {
     let total: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
+    let prev_progress = loop_state.roots_scanned_progress;
     let progress = total - world_state.roots_to_scan;
-    if loop_state.roots_scanned_progress == Some(progress) {
+    if prev_progress == Some(progress) {
         return;
     }
     loop_state.roots_scanned_progress = Some(progress);
 
-    match progress {
-        0 => {
-            let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
-                loop_state.next_request_id(),
-                WorkDoneProgressCreateParams {
-                    token: req::ProgressToken::String("rustAnalyzer/startup".into()),
-                },
-            );
-            sender.send(work_done_progress_create.into()).unwrap();
-            send_startup_progress_notif(
-                sender,
-                WorkDoneProgress::Begin(WorkDoneProgressBegin {
-                    title: "rust-analyzer".into(),
-                    cancellable: None,
-                    message: Some(format!("{}/{} packages", progress, total)),
-                    percentage: Some(100.0 * progress as f64 / total as f64),
-                }),
-            );
-        }
-        progress if progress == total => send_startup_progress_notif(
+    if prev_progress.is_none() {
+        let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
+            loop_state.next_request_id(),
+            WorkDoneProgressCreateParams {
+                token: req::ProgressToken::String("rustAnalyzer/startup".into()),
+            },
+        );
+        sender.send(work_done_progress_create.into()).unwrap();
+        send_startup_progress_notif(
             sender,
-            WorkDoneProgress::End(WorkDoneProgressEnd {
-                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
+            WorkDoneProgress::Begin(WorkDoneProgressBegin {
+                title: "rust-analyzer".into(),
+                cancellable: None,
+                message: Some(format!("{}/{} packages", progress, total)),
+                percentage: Some(100.0 * progress as f64 / total as f64),
             }),
-        ),
-        progress => send_startup_progress_notif(
+        );
+    } else if progress < total {
+        send_startup_progress_notif(
             sender,
             WorkDoneProgress::Report(WorkDoneProgressReport {
                 cancellable: None,
                 message: Some(format!("{}/{} packages", progress, total)),
                 percentage: Some(100.0 * progress as f64 / total as f64),
             }),
-        ),
+        )
+    }
+
+    if progress == total {
+        send_startup_progress_notif(
+            sender,
+            WorkDoneProgress::End(WorkDoneProgressEnd {
+                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
+            }),
+        )
     }
 }
 
