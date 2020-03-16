@@ -42,7 +42,6 @@ export async function createClient(config: Config, serverPath: string): Promise<
             excludeGlobs: config.excludeGlobs,
             useClientWatching: config.useClientWatching,
             featureFlags: config.featureFlags,
-            additionalOutDirs: config.additionalOutDirs,
             withSysroot: config.withSysroot,
             cargoFeatures: config.cargoFeatures,
             rustfmtArgs: config.rustfmtArgs,
