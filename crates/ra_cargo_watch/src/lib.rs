@@ -254,6 +254,7 @@ impl WatchThread {
     fn new(options: &CheckOptions, workspace_root: &PathBuf) -> WatchThread {
         let mut args: Vec<String> = vec![
             options.command.clone(),
+            "--workspace".to_string(),
             "--message-format=json".to_string(),
             "--manifest-path".to_string(),
             format!("{}/Cargo.toml", workspace_root.to_string_lossy()),
