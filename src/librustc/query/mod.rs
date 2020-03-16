@@ -74,7 +74,7 @@ rustc_queries! {
         // a `DefId`.
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
+        query hir_owner(key: DefId) -> Option<&'tcx HirOwner<'tcx>> {
             eval_always
         }
 
@@ -82,7 +82,7 @@ rustc_queries! {
         // with a `DefId`.
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner_items(key: DefId) -> &'tcx HirOwnerItems<'tcx> {
+        query hir_owner_items(key: DefId) -> Option<&'tcx HirOwnerItems<'tcx>> {
             eval_always
         }
 
