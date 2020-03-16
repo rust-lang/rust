@@ -8,7 +8,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
   to profile.
 - Set the following settings in your `config.toml`:
   - `debuginfo-level = 1` - enables line debuginfo
-  - `use-jemalloc = false` - lets you do memory use profiling with valgrind
+  - `jemalloc = false` - lets you do memory use profiling with valgrind
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
 - Make a rustup toolchain pointing to that result
