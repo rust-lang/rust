@@ -1,5 +1,5 @@
 error[E0658]: `while` is not allowed in a `const`
-  --> $DIR/issue-51714.rs:11:17
+  --> $DIR/issue-51714.rs:14:17
    |
 LL |     [(); return while let Some(n) = Some(0) {}];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,24 +15,42 @@ LL |     |_:  [_; return || {}] | {};
    |              ^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:5:10
+  --> $DIR/issue-51714.rs:6:10
    |
 LL |     [(); return || {}];
    |          ^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:8:10
+  --> $DIR/issue-51714.rs:10:10
    |
 LL |     [(); return |ice| {}];
    |          ^^^^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:11:10
+  --> $DIR/issue-51714.rs:14:10
    |
 LL |     [(); return while let Some(n) = Some(0) {}];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-51714.rs:2:14
+   |
+LL |     |_:  [_; return || {}] | {};
+   |              ^^^^^^^^^^^^
+
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-51714.rs:6:10
+   |
+LL |     [(); return || {}];
+   |          ^^^^^^^^^^^^
+
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-51714.rs:10:10
+   |
+LL |     [(); return |ice| {}];
+   |          ^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0572, E0658.
 For more information about an error, try `rustc --explain E0572`.

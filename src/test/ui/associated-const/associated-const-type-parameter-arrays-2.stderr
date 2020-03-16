@@ -7,11 +7,7 @@ LL |     const Y: usize;
 LL |     let _array = [4; <A as Foo>::Y];
    |                      ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
    |
-help: consider further restricting this bound with `+ Foo`
-  --> $DIR/associated-const-type-parameter-arrays-2.rs:15:16
-   |
-LL | pub fn test<A: Foo, B: Foo>() {
-   |                ^^^
+   = note: associated types can't be referenced in `const` contexts, like array in length
 
 error: aborting due to previous error
 

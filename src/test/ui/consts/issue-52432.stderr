@@ -5,7 +5,7 @@ LL |     [(); &(static |x| {}) as *const _ as usize];
    |            ^^^^^^^^^^
 
 error[E0697]: closures cannot be static
-  --> $DIR/issue-52432.rs:7:12
+  --> $DIR/issue-52432.rs:8:12
    |
 LL |     [(); &(static || {}) as *const _ as usize];
    |            ^^^^^^^^^
@@ -17,12 +17,18 @@ LL |     [(); &(static |x| {}) as *const _ as usize];
    |                    ^ consider giving this closure parameter a type
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52432.rs:7:10
+  --> $DIR/issue-52432.rs:8:10
    |
 LL |     [(); &(static || {}) as *const _ as usize];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
-error: aborting due to 4 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/issue-52432.rs:4:20
+   |
+LL |     [(); &(static |x| {}) as *const _ as usize];
+   |                    ^ consider giving this closure parameter a type
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0080, E0282, E0697.
 For more information about an error, try `rustc --explain E0080`.

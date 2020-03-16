@@ -15,5 +15,7 @@ use inference_unstable_itertools::IpuItertools;
 fn main() {
     assert_eq!('x'.ipu_flatten(), 1);
     //~^ WARN a method with this name may be added to the standard library in the future
-    //~^^ WARN once this method is added to the standard library, the ambiguity may cause an error
+    //~| WARN a method with this name may be added to the standard library in the future
+    //~| WARN once this method is added to the standard library, the ambiguity may cause an error
+    //~| WARN once this method is added to the standard library, the ambiguity may cause an error
 }
