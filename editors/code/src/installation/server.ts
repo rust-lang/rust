@@ -85,10 +85,10 @@ function shouldDownloadServer(
 /**
  * Enforcing no reentrancy for this is best-effort.
  */
-const downloadServer = notReentrant(async function downloadServer(
+const downloadServer = notReentrant(async (
     source: ArtifactSource.GithubRelease,
     config: Config,
-): Promise<null | string> {
+): Promise<null | string> => {
     try {
         const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.tag);
 
