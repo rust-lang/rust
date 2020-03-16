@@ -580,7 +580,7 @@ where
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.base.try_reserve(additional).map_err(map_collection_alloc_err)
+        self.base.try_reserve(additional).map_err(map_try_reserve_error)
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -2569,10 +2569,10 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> TryReserveError {
+fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
     match err {
-        hashbrown::CollectionAllocErr::CapacityOverflow => TryReserveError::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr { layout } => {
+        hashbrown::TryReserveError::CapacityOverflow => TryReserveError::CapacityOverflow,
+        hashbrown::TryReserveError::AllocError { layout } => {
             TryReserveError::AllocError { layout, non_exhaustive: () }
         }
     }
