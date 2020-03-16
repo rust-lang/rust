@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use mbe::MacroRules;
+use mbe::{ExpandResult, MacroRules};
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
@@ -31,12 +31,8 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
             // FIXME switch these to ExpandResult as well
-            TokenExpander::Builtin(it) => it
-                .expand(db, id, tt)
-                .map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
-            TokenExpander::BuiltinDerive(it) => it
-                .expand(db, id, tt)
-                .map_or_else(|e| (tt::Subtree::default(), Some(e)), |r| (r, None)),
+            TokenExpander::Builtin(it) => it.expand(db, id, tt).into(),
+            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
         }
     }
 
@@ -204,7 +200,7 @@ fn macro_expand_with_arg(
         Some(it) => it,
         None => return (None, Some("Fail to find macro definition".into())),
     };
-    let (tt, err) = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
+    let ExpandResult(tt, err) = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 65536 {

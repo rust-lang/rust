@@ -79,7 +79,7 @@ pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<M
         err = Some(err!("leftover tokens"));
     }
 
-    (res, err)
+    ExpandResult(res, err)
 }
 
 fn match_subtree(
@@ -148,7 +148,7 @@ fn match_subtree(
                         continue;
                     }
                 };
-                let (matched, match_err) = match_meta_var(kind.as_str(), src);
+                let ExpandResult(matched, match_err) = match_meta_var(kind.as_str(), src);
                 match matched {
                     Some(fragment) => {
                         res.bindings.inner.insert(name.clone(), Binding::Fragment(fragment));
@@ -308,17 +308,17 @@ impl<'a> TtIter<'a> {
                 token_trees: res.into_iter().cloned().collect(),
             })),
         };
-        (res, err)
+        ExpandResult(res, err)
     }
 
     pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
         let mut fork = self.clone();
         match fork.expect_fragment(Visibility) {
-            (tt, None) => {
+            ExpandResult(tt, None) => {
                 *self = fork;
                 tt
             }
-            (_, Some(_)) => None,
+            ExpandResult(_, Some(_)) => None,
         }
     }
 }
@@ -419,12 +419,11 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                 },
                 _ => Err(ExpandError::UnexpectedToken),
             };
-            return to_expand_result(tt_result.map(|it| it.map(Fragment::Tokens)));
+            return tt_result.map(|it| it.map(Fragment::Tokens)).into();
         }
     };
-    let (tt, err) = input.expect_fragment(fragment);
-    let fragment = if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) };
-    (fragment, err)
+    let result = input.expect_fragment(fragment);
+    result.map(|tt| if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) })
 }
 
 fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &tt::Subtree) -> Result<(), ExpandError> {
@@ -437,8 +436,4 @@ fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &tt::Subtree) -> Result<(), Exp
         }
     }
     Ok(())
-}
-
-fn to_expand_result<T: Default>(result: Result<T, ExpandError>) -> ExpandResult<T> {
-    result.map_or_else(|e| (Default::default(), Some(e)), |it| (it, None))
 }

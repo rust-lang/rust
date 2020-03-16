@@ -18,12 +18,13 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     let mut err = Some(ExpandError::NoMatchingRule);
     for rule in rules {
-        let (new_match, bindings_err) = matcher::match_(&rule.lhs, input);
+        let ExpandResult(new_match, bindings_err) = matcher::match_(&rule.lhs, input);
         if bindings_err.is_none() {
             // if we find a rule that applies without errors, we're done
-            let (res, transcribe_err) = transcriber::transcribe(&rule.rhs, &new_match.bindings);
+            let ExpandResult(res, transcribe_err) =
+                transcriber::transcribe(&rule.rhs, &new_match.bindings);
             if transcribe_err.is_none() {
-                return (res, None);
+                return ExpandResult::ok(res);
             }
         }
         // use the rule if we matched more tokens, or had fewer patterns left
@@ -43,10 +44,11 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
     }
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
-        let (result, transcribe_err) = transcriber::transcribe(&rule.rhs, &match_.bindings);
-        (result, err.or(transcribe_err))
+        let ExpandResult(result, transcribe_err) =
+            transcriber::transcribe(&rule.rhs, &match_.bindings);
+        ExpandResult(result, err.or(transcribe_err))
     } else {
-        (tt::Subtree::default(), err)
+        ExpandResult(tt::Subtree::default(), err)
     }
 }
 
@@ -171,6 +173,6 @@ mod tests {
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
         let expanded = expand_rules(&rules.rules, &invocation_tt);
-        (expanded.0, expanded.1)
+        expanded
     }
 }

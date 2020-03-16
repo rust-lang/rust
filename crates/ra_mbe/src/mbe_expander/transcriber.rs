@@ -87,23 +87,23 @@ fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> ExpandResult<t
         match op {
             Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => buf.push(tt.clone()),
             Op::TokenTree(tt::TokenTree::Subtree(tt)) => {
-                let (tt, e) = expand_subtree(ctx, tt);
+                let ExpandResult(tt, e) = expand_subtree(ctx, tt);
                 err = err.or(e);
                 buf.push(tt.into());
             }
             Op::Var { name, kind: _ } => {
-                let (fragment, e) = expand_var(ctx, name);
+                let ExpandResult(fragment, e) = expand_var(ctx, name);
                 err = err.or(e);
                 push_fragment(&mut buf, fragment);
             }
             Op::Repeat { subtree, kind, separator } => {
-                let (fragment, e) = expand_repeat(ctx, subtree, kind, separator);
+                let ExpandResult(fragment, e) = expand_repeat(ctx, subtree, kind, separator);
                 err = err.or(e);
                 push_fragment(&mut buf, fragment)
             }
         }
     }
-    (tt::Subtree { delimiter: template.delimiter, token_trees: buf }, err)
+    ExpandResult(tt::Subtree { delimiter: template.delimiter, token_trees: buf }, err)
 }
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
@@ -112,7 +112,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
         let tt =
             tt::Leaf::from(tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() })
                 .into();
-        (Fragment::Tokens(tt), None)
+        ExpandResult::ok(Fragment::Tokens(tt))
     } else if !ctx.bindings.contains(v) {
         // Note that it is possible to have a `$var` inside a macro which is not bound.
         // For example:
@@ -141,11 +141,11 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
             ],
         }
         .into();
-        (Fragment::Tokens(tt), None)
+        ExpandResult::ok(Fragment::Tokens(tt))
     } else {
         ctx.bindings.get(&v, &mut ctx.nesting).map_or_else(
-            |e| (Fragment::Tokens(tt::TokenTree::empty()), Some(e)),
-            |b| (b.clone(), None),
+            |e| ExpandResult(Fragment::Tokens(tt::TokenTree::empty()), Some(e)),
+            |b| ExpandResult::ok(b.clone()),
         )
     }
 }
@@ -165,7 +165,7 @@ fn expand_repeat(
     let mut counter = 0;
 
     loop {
-        let (mut t, e) = expand_subtree(ctx, template);
+        let ExpandResult(mut t, e) = expand_subtree(ctx, template);
         let nesting_state = ctx.nesting.last_mut().unwrap();
         if nesting_state.at_end || !nesting_state.hit {
             break;
@@ -225,9 +225,9 @@ fn expand_repeat(
     let tt = tt::Subtree { delimiter: None, token_trees: buf }.into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
-        return (Fragment::Tokens(tt), Some(ExpandError::UnexpectedToken));
+        return ExpandResult(Fragment::Tokens(tt), Some(ExpandError::UnexpectedToken));
     }
-    (Fragment::Tokens(tt), None)
+    ExpandResult::ok(Fragment::Tokens(tt))
 }
 
 fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {

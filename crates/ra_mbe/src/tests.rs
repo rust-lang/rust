@@ -1430,8 +1430,7 @@ impl MacroFixture {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        let (tt, err) = self.rules.expand(&invocation_tt);
-        err.map(Err).unwrap_or(Ok(tt))
+        self.rules.expand(&invocation_tt).result()
     }
 
     fn assert_expand_err(&self, invocation: &str, err: &ExpandError) {

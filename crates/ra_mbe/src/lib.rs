@@ -30,8 +30,6 @@ pub enum ExpandError {
     InvalidRepeat,
 }
 
-pub type ExpandResult<T> = (T, Option<ExpandError>);
-
 pub use crate::syntax_bridge::{
     ast_to_token_tree, parse_to_token_tree, syntax_node_to_token_tree, token_tree_to_syntax_node,
     TokenMap,
@@ -209,6 +207,36 @@ fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
         }
     }
     Ok(())
+}
+
+pub struct ExpandResult<T>(pub T, pub Option<ExpandError>);
+
+impl<T> ExpandResult<T> {
+    pub fn ok(t: T) -> ExpandResult<T> {
+        ExpandResult(t, None)
+    }
+
+    pub fn only_err(err: ExpandError) -> ExpandResult<T>
+    where
+        T: Default,
+    {
+        ExpandResult(Default::default(), Some(err))
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ExpandResult<U> {
+        ExpandResult(f(self.0), self.1)
+    }
+
+    pub fn result(self) -> Result<T, ExpandError> {
+        self.1.map(Err).unwrap_or(Ok(self.0))
+    }
+}
+
+impl<T: Default> From<Result<T, ExpandError>> for ExpandResult<T> {
+    fn from(result: Result<T, ExpandError>) -> ExpandResult<T> {
+        result
+            .map_or_else(|e| ExpandResult(Default::default(), Some(e)), |it| ExpandResult(it, None))
+    }
 }
 
 #[cfg(test)]
