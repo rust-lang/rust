@@ -5,6 +5,7 @@ LL |     let x: u8 = 256;
    |                 ^^^
    |
    = note: `#[deny(overflowing_literals)]` on by default
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
 
 error: range endpoint is out of range for `u8`
   --> $DIR/deny-overflowing-literals.rs:5:14
