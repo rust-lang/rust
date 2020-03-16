@@ -1105,29 +1105,6 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Box<T> {}
 
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self))
-    }
-}
-
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut())
-    }
-}
-
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
     type Yield = G::Yield;
@@ -1138,7 +1115,6 @@ impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<Box<G>> {
     type Yield = G::Yield;

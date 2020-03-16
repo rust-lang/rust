@@ -41,10 +41,7 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
         // Safe because we're !Unpin + !Drop mapping to a ?Unpin value
         let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
         let _guard = unsafe { set_task_context(cx) };
-        match gen.resume(
-            #[cfg(not(bootstrap))]
-            (),
-        ) {
+        match gen.resume(()) {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         }
