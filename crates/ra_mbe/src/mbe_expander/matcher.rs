@@ -62,24 +62,41 @@ macro_rules! err {
 #[derive(Debug, Default)]
 pub(super) struct Match {
     pub bindings: Bindings,
-    pub unmatched_tokens: usize,
-    pub unmatched_patterns: usize,
+    /// We currently just keep the first error and count the rest to compare matches.
+    pub err: Option<ExpandError>,
+    pub err_count: usize,
+    /// How many top-level token trees were left to match.
+    pub unmatched_tts: usize,
 }
 
-pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> ExpandResult<Match> {
+impl Match {
+    pub fn add_err(&mut self, err: ExpandError) {
+        let prev_err = self.err.take();
+        self.err = prev_err.or(Some(err));
+        self.err_count += 1;
+    }
+}
+
+// General note: These functions have two channels to return errors, a `Result`
+// return value and the `&mut Match`. The returned Result is for pattern parsing
+// errors; if a branch of the macro definition doesn't parse, it doesn't make
+// sense to try using it. Matching errors are added to the `Match`. It might
+// make sense to make pattern parsing a separate step?
+
+pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> Result<Match, ExpandError> {
     assert!(pattern.delimiter == None);
 
     let mut res = Match::default();
     let mut src = TtIter::new(src);
 
-    let mut err = match_subtree(&mut res, pattern, &mut src).err();
+    match_subtree(&mut res, pattern, &mut src)?;
 
-    res.unmatched_tokens += src.len();
-    if src.len() > 0 && err.is_none() {
-        err = Some(err!("leftover tokens"));
+    if src.len() > 0 {
+        res.unmatched_tts += src.len();
+        res.add_err(err!("leftover tokens"));
     }
 
-    ExpandResult(res, err)
+    Ok(res)
 }
 
 fn match_subtree(
@@ -87,19 +104,13 @@ fn match_subtree(
     pattern: &tt::Subtree,
     src: &mut TtIter,
 ) -> Result<(), ExpandError> {
-    let mut result = Ok(());
     for op in parse_pattern(pattern) {
-        if result.is_err() {
-            // We're just going through the patterns to count how many we missed
-            res.unmatched_patterns += 1;
-            continue;
-        }
         match op? {
             Op::TokenTree(tt::TokenTree::Leaf(lhs)) => {
                 let rhs = match src.expect_leaf() {
                     Ok(l) => l,
                     Err(()) => {
-                        result = Err(err!("expected leaf: `{}`", lhs));
+                        res.add_err(err!("expected leaf: `{}`", lhs));
                         continue;
                     }
                 };
@@ -117,7 +128,7 @@ fn match_subtree(
                         tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
                     ) if lhs == rhs => (),
                     _ => {
-                        result = Err(ExpandError::UnexpectedToken);
+                        res.add_err(ExpandError::UnexpectedToken);
                     }
                 }
             }
@@ -125,26 +136,25 @@ fn match_subtree(
                 let rhs = match src.expect_subtree() {
                     Ok(s) => s,
                     Err(()) => {
-                        result = Err(err!("expected subtree"));
+                        res.add_err(err!("expected subtree"));
                         continue;
                     }
                 };
                 if lhs.delimiter_kind() != rhs.delimiter_kind() {
-                    result = Err(err!("mismatched delimiter"));
+                    res.add_err(err!("mismatched delimiter"));
                     continue;
                 }
                 let mut src = TtIter::new(rhs);
-                result = match_subtree(res, lhs, &mut src);
-                res.unmatched_tokens += src.len();
-                if src.len() > 0 && result.is_ok() {
-                    result = Err(err!("leftover tokens"));
+                match_subtree(res, lhs, &mut src)?;
+                if src.len() > 0 {
+                    res.add_err(err!("leftover tokens"));
                 }
             }
             Op::Var { name, kind } => {
                 let kind = match kind {
                     Some(k) => k,
                     None => {
-                        result = Err(ExpandError::UnexpectedToken);
+                        res.add_err(ExpandError::UnexpectedToken);
                         continue;
                     }
                 };
@@ -156,14 +166,16 @@ fn match_subtree(
                     None if match_err.is_none() => res.bindings.push_optional(name),
                     _ => {}
                 }
-                result = match_err.map_or(Ok(()), Err);
+                if let Some(err) = match_err {
+                    res.add_err(err);
+                }
             }
             Op::Repeat { subtree, kind, separator } => {
-                result = match_repeat(res, subtree, kind, separator, src);
+                match_repeat(res, subtree, kind, separator, src)?;
             }
         }
     }
-    result
+    Ok(())
 }
 
 impl<'a> TtIter<'a> {
@@ -345,35 +357,39 @@ pub(super) fn match_repeat(
         }
 
         let mut nested = Match::default();
-        match match_subtree(&mut nested, pattern, &mut fork) {
-            Ok(()) => {
-                limit -= 1;
-                if limit == 0 {
-                    log::warn!(
-                        "match_lhs exceeded repeat pattern limit => {:#?}\n{:#?}\n{:#?}\n{:#?}",
-                        pattern,
-                        src,
-                        kind,
-                        separator
-                    );
+        match_subtree(&mut nested, pattern, &mut fork)?;
+        if nested.err.is_none() {
+            limit -= 1;
+            if limit == 0 {
+                log::warn!(
+                    "match_lhs exceeded repeat pattern limit => {:#?}\n{:#?}\n{:#?}\n{:#?}",
+                    pattern,
+                    src,
+                    kind,
+                    separator
+                );
+                break;
+            }
+            *src = fork;
+
+            if let Err(err) = res.bindings.push_nested(counter, nested.bindings) {
+                res.add_err(err);
+            }
+            counter += 1;
+            if counter == 1 {
+                if let RepeatKind::ZeroOrOne = kind {
                     break;
                 }
-                *src = fork;
-
-                res.bindings.push_nested(counter, nested.bindings)?;
-                counter += 1;
-                if counter == 1 {
-                    if let RepeatKind::ZeroOrOne = kind {
-                        break;
-                    }
-                }
             }
-            Err(_) => break,
+        } else {
+            break;
         }
     }
 
     match (kind, counter) {
-        (RepeatKind::OneOrMore, 0) => return Err(ExpandError::UnexpectedToken),
+        (RepeatKind::OneOrMore, 0) => {
+            res.add_err(ExpandError::UnexpectedToken);
+        }
         (_, 0) => {
             // Collect all empty variables in subtrees
             let mut vars = Vec::new();

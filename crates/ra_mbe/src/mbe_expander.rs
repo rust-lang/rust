@@ -16,10 +16,15 @@ pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandRe
 
 fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
-    let mut err = Some(ExpandError::NoMatchingRule);
     for rule in rules {
-        let ExpandResult(new_match, bindings_err) = matcher::match_(&rule.lhs, input);
-        if bindings_err.is_none() {
+        let new_match = match matcher::match_(&rule.lhs, input) {
+            Ok(m) => m,
+            Err(_e) => {
+                // error in pattern parsing
+                continue;
+            }
+        };
+        if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
@@ -32,25 +37,22 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
         // Use the rule if we matched more tokens, or had fewer patterns left,
         // or had no error
         if let Some((prev_match, _)) = &match_ {
-            if (new_match.unmatched_tokens, new_match.unmatched_patterns)
-                < (prev_match.unmatched_tokens, prev_match.unmatched_patterns)
-                || err.is_some() && bindings_err.is_none()
+            if (new_match.unmatched_tts, new_match.err_count)
+                < (prev_match.unmatched_tts, prev_match.err_count)
             {
                 match_ = Some((new_match, rule));
-                err = bindings_err;
             }
         } else {
             match_ = Some((new_match, rule));
-            err = bindings_err;
         }
     }
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult(result, transcribe_err) =
             transcriber::transcribe(&rule.rhs, &match_.bindings);
-        ExpandResult(result, err.or(transcribe_err))
+        ExpandResult(result, match_.err.or(transcribe_err))
     } else {
-        ExpandResult(tt::Subtree::default(), err)
+        ExpandResult(tt::Subtree::default(), Some(ExpandError::NoMatchingRule))
     }
 }
 
