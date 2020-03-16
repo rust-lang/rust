@@ -1520,20 +1520,21 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
     pub fn article_and_description(&self, def_id: DefId) -> (&'static str, &'static str) {
-        match self.def_key(def_id).disambiguated_data.data {
-            DefPathData::TypeNs(..) | DefPathData::ValueNs(..) | DefPathData::MacroNs(..) => {
-                let kind = self.def_kind(def_id).unwrap();
-                (kind.article(), kind.descr(def_id))
-            }
-            DefPathData::ClosureExpr => match self.generator_kind(def_id) {
-                None => ("a", "closure"),
-                Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
-                Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
-            },
-            DefPathData::LifetimeNs(..) => ("a", "lifetime"),
-            DefPathData::Impl => ("an", "implementation"),
-            _ => bug!("article_and_description called on def_id {:?}", def_id),
-        }
+        self.def_kind(def_id)
+            .map(|def_kind| (def_kind.article(), def_kind.descr(def_id)))
+            .unwrap_or_else(|| match self.def_key(def_id).disambiguated_data.data {
+                DefPathData::ClosureExpr => match self.generator_kind(def_id) {
+                    None => ("a", "closure"),
+                    Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
+                    Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
+                },
+                DefPathData::LifetimeNs(..) => ("a", "lifetime"),
+                DefPathData::Impl => ("an", "implementation"),
+                DefPathData::TypeNs(..) | DefPathData::ValueNs(..) | DefPathData::MacroNs(..) => {
+                    unreachable!()
+                }
+                _ => bug!("article_and_description called on def_id {:?}", def_id),
+            })
     }
 }
 
