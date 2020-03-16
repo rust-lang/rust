@@ -7,6 +7,7 @@ import { Config, UpdatesChannel } from "../config";
 import { ArtifactReleaseInfo, ArtifactSource } from "./interfaces";
 import { downloadArtifactWithProgressUi } from "./downloads";
 import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
+import { PersistentState } from "../persistent_state";
 
 const HEURISTIC_NIGHTLY_RELEASE_PERIOD_IN_HOURS = 25;
 
@@ -14,7 +15,7 @@ const HEURISTIC_NIGHTLY_RELEASE_PERIOD_IN_HOURS = 25;
  * Installs `stable` or latest `nightly` version or does nothing if the current
  * extension version is what's needed according to `desiredUpdateChannel`.
  */
-export async function ensureProperExtensionVersion(config: Config): Promise<never | void> {
+export async function ensureProperExtensionVersion(config: Config, state: PersistentState): Promise<never | void> {
     // User has built lsp server from sources, she should manage updates manually
     if (config.serverSource?.type === ArtifactSource.Type.ExplicitPath) return;
 
@@ -23,7 +24,7 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
 
     if (currentUpdChannel === UpdatesChannel.Stable) {
         // Release date is present only when we are on nightly
-        await config.installedNightlyExtensionReleaseDate.set(null);
+        await state.installedNightlyExtensionReleaseDate.set(null);
     }
 
     if (desiredUpdChannel === UpdatesChannel.Stable) {
@@ -39,10 +40,10 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
     if (currentUpdChannel === UpdatesChannel.Stable) {
         if (!await askToDownloadProperExtensionVersion(config)) return;
 
-        return await tryDownloadNightlyExtension(config);
+        return await tryDownloadNightlyExtension(config, state);
     }
 
-    const currentExtReleaseDate = config.installedNightlyExtensionReleaseDate.get();
+    const currentExtReleaseDate = state.installedNightlyExtensionReleaseDate.get();
 
     if (currentExtReleaseDate === null) {
         void vscode.window.showErrorMessage(
@@ -66,9 +67,9 @@ export async function ensureProperExtensionVersion(config: Config): Promise<neve
         return;
     }
 
-    await tryDownloadNightlyExtension(config, releaseInfo => {
+    await tryDownloadNightlyExtension(config, state, releaseInfo => {
         assert(
-            currentExtReleaseDate.getTime() === config.installedNightlyExtensionReleaseDate.get()?.getTime(),
+            currentExtReleaseDate.getTime() === state.installedNightlyExtensionReleaseDate.get()?.getTime(),
             "Other active VSCode instance has reinstalled the extension"
         );
 
@@ -111,6 +112,7 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
  */
 const tryDownloadNightlyExtension = notReentrant(async (
     config: Config,
+    state: PersistentState,
     shouldDownload: (releaseInfo: ArtifactReleaseInfo) => boolean = () => true
 ): Promise<never | void> => {
     const vsixSource = config.nightlyVsixSource;
@@ -124,7 +126,7 @@ const tryDownloadNightlyExtension = notReentrant(async (
         const vsixPath = path.join(vsixSource.dir, vsixSource.file);
 
         await vscodeInstallExtensionFromVsix(vsixPath);
-        await config.installedNightlyExtensionReleaseDate.set(releaseInfo.releaseDate);
+        await state.installedNightlyExtensionReleaseDate.set(releaseInfo.releaseDate);
         await fs.unlink(vsixPath);
 
         await vscodeReloadWindow(); // never returns

@@ -4,19 +4,21 @@ import * as lc from 'vscode-languageclient';
 import { Config } from './config';
 import { createClient } from './client';
 import { isRustEditor, RustEditor } from './util';
+import { PersistentState } from './persistent_state';
 
 export class Ctx {
     private constructor(
         readonly config: Config,
+        readonly state: PersistentState,
         private readonly extCtx: vscode.ExtensionContext,
         readonly client: lc.LanguageClient
     ) {
 
     }
 
-    static async create(config: Config, extCtx: vscode.ExtensionContext, serverPath: string): Promise<Ctx> {
+    static async create(config: Config, state: PersistentState, extCtx: vscode.ExtensionContext, serverPath: string): Promise<Ctx> {
         const client = await createClient(config, serverPath);
-        const res = new Ctx(config, extCtx, client);
+        const res = new Ctx(config, state, extCtx, client);
         res.pushCleanup(client.start());
         await client.onReady();
         return res;

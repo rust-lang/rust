@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process';
 
 export function serverVersion(ctx: Ctx): Cmd {
     return async () => {
-        const binaryPath = await ensureServerBinary(ctx.config);
+        const binaryPath = await ensureServerBinary(ctx.config, ctx.state);
 
         if (binaryPath == null) {
             throw new Error(

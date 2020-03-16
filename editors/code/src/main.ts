@@ -9,6 +9,7 @@ import { ensureServerBinary } from './installation/server';
 import { Config } from './config';
 import { log } from './util';
 import { ensureProperExtensionVersion } from './installation/extension';
+import { PersistentState } from './persistent_state';
 
 let ctx: Ctx | undefined;
 
@@ -34,13 +35,14 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(defaultOnEnter);
 
     const config = new Config(context);
+    const state = new PersistentState(context);
 
-    vscode.workspace.onDidChangeConfiguration(() => ensureProperExtensionVersion(config).catch(log.error));
+    vscode.workspace.onDidChangeConfiguration(() => ensureProperExtensionVersion(config, state).catch(log.error));
 
     // Don't await the user response here, otherwise we will block the lsp server bootstrap
-    void ensureProperExtensionVersion(config).catch(log.error);
+    void ensureProperExtensionVersion(config, state).catch(log.error);
 
-    const serverPath = await ensureServerBinary(config);
+    const serverPath = await ensureServerBinary(config, state);
 
     if (serverPath == null) {
         throw new Error(
@@ -53,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // registers its `onDidChangeDocument` handler before us.
     //
     // This a horribly, horribly wrong way to deal with this problem.
-    ctx = await Ctx.create(config, context, serverPath);
+    ctx = await Ctx.create(config, state, context, serverPath);
 
     // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand('reload', (ctx) => {
