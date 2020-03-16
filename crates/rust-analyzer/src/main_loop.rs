@@ -427,6 +427,12 @@ fn loop_turn(
     }
 
     if !loop_state.workspace_loaded
+        && world_state.feature_flags.get("notifications.workspace-loaded")
+    {
+        send_startup_progress(&connection.sender, loop_state, world_state);
+    }
+
+    if !loop_state.workspace_loaded
         && world_state.roots_to_scan == 0
         && loop_state.pending_libraries.is_empty()
         && loop_state.in_flight_libraries == 0
@@ -439,7 +445,6 @@ fn loop_turn(
             move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
     }
-    send_startup_progress(&connection.sender, loop_state, world_state);
 
     if state_changed {
         update_file_notifications_on_threadpool(
@@ -708,9 +713,6 @@ fn send_startup_progress(
     loop_state: &mut LoopState,
     world_state: &WorldState,
 ) {
-    if !world_state.feature_flags.get("notifications.workspace-loaded") {
-        return;
-    }
     let total: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
     let progress = total - world_state.roots_to_scan;
     if loop_state.roots_scanned_progress == Some(progress) {
@@ -718,8 +720,8 @@ fn send_startup_progress(
     }
     loop_state.roots_scanned_progress = Some(progress);
 
-    match (progress, loop_state.workspace_loaded) {
-        (0, false) => {
+    match progress {
+        0 => {
             let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
                 loop_state.next_request_id(),
                 WorkDoneProgressCreateParams {
@@ -737,18 +739,18 @@ fn send_startup_progress(
                 }),
             );
         }
-        (_, false) => send_startup_progress_notif(
+        progress if progress == total => send_startup_progress_notif(
+            sender,
+            WorkDoneProgress::End(WorkDoneProgressEnd {
+                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
+            }),
+        ),
+        progress => send_startup_progress_notif(
             sender,
             WorkDoneProgress::Report(WorkDoneProgressReport {
                 cancellable: None,
                 message: Some(format!("{}/{} packages", progress, total)),
                 percentage: Some(100.0 * progress as f64 / total as f64),
-            }),
-        ),
-        (_, true) => send_startup_progress_notif(
-            sender,
-            WorkDoneProgress::End(WorkDoneProgressEnd {
-                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
             }),
         ),
     }
