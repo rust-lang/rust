@@ -191,7 +191,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
-        if let hir::ImplItemKind::Method(ref sig, body_id) = item.kind {
+        if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
             lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
         }
     }

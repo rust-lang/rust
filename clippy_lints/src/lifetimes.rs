@@ -9,7 +9,7 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
-    ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitItem, TraitItemKind, TraitMethod, Ty,
+    ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty,
     TyKind, WhereClause, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Method(ref sig, id) = item.kind {
+        if let ImplItemKind::Fn(ref sig, id) = item.kind {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id).is_none();
             check_fn_inner(
                 cx,
@@ -102,8 +102,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
             let body = match *body {
-                TraitMethod::Required(_) => None,
-                TraitMethod::Provided(id) => Some(id),
+                TraitFn::Required(_) => None,
+                TraitFn::Provided(id) => Some(id),
             };
             check_fn_inner(cx, &sig.decl, body, &item.generics, item.span, true);
         }

@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         kind: AssocItemKind::Method { has_self: true },
                         ..
                     } = impl_item_ref;
-                    if let ImplItemKind::Method(_, body_id) = &impl_item.kind;
+                    if let ImplItemKind::Fn(_, body_id) = &impl_item.kind;
                     let body = cx.tcx.hir().body(*body_id);
                     if !body.params.is_empty();
                     then {

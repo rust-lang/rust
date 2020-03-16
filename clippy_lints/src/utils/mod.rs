@@ -101,7 +101,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
             ..
         })
         | Node::ImplItem(&ImplItem {
-            kind: ImplItemKind::Method(ref sig, _),
+            kind: ImplItemKind::Fn(ref sig, _),
             ..
         }) => sig.header.constness == Constness::Const,
         _ => false,
@@ -758,7 +758,7 @@ pub fn get_enclosing_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, hir_id: HirId) 
                 ..
             })
             | Node::ImplItem(&ImplItem {
-                kind: ImplItemKind::Method(_, eid),
+                kind: ImplItemKind::Fn(_, eid),
                 ..
             }) => match cx.tcx.hir().body(eid).value.kind {
                 ExprKind::Block(ref block, _) => Some(block),

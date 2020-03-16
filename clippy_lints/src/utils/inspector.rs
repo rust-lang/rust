@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
                 println!("associated constant");
                 print_expr(cx, &cx.tcx.hir().body(body_id).value, 1);
             },
-            hir::ImplItemKind::Method(..) => println!("method"),
+            hir::ImplItemKind::Fn(..) => println!("method"),
             hir::ImplItemKind::TyAlias(_) => println!("associated type"),
             hir::ImplItemKind::OpaqueTy(_) => println!("existential type"),
         }

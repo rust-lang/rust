@@ -195,7 +195,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                     if let Some(impl_trait_ref) = impl_trait_ref {
                         for impl_item_ref in refs {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
-                            if let ImplItemKind::Method(FnSig{ decl: impl_decl, .. }, impl_body_id)
+                            if let ImplItemKind::Fn(FnSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.kind {
                                 let item_type = cx.tcx.type_of(impl_def_id);
                                 check_trait_method_impl_decl(cx, item_type, impl_item, impl_decl, &impl_trait_ref);

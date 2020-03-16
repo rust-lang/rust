@@ -10,7 +10,7 @@ use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{
     BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind,
-    Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitItem, TraitItemKind, TraitMethod, Ty, TyKind,
+    Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -109,7 +109,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Method(ref sig, body_id) = item.kind {
+        if let ImplItemKind::Fn(ref sig, body_id) = item.kind {
             let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
                 if let ItemKind::Impl { of_trait: Some(_), .. } = it.kind {
@@ -122,7 +122,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(ref sig, ref trait_method) = item.kind {
-            let body_id = if let TraitMethod::Provided(b) = *trait_method {
+            let body_id = if let TraitFn::Provided(b) = *trait_method {
                 Some(b)
             } else {
                 None

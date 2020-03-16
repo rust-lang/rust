@@ -250,7 +250,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Method(ref sig, ref body_id) = item.kind {
+        if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
             let attr = must_use_attr(&item.attrs);
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -284,7 +284,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
                 check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
             }
-            if let hir::TraitMethod::Provided(eid) = *eid {
+            if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
