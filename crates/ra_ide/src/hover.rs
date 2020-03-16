@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Logic for computing info that is displayed when the user hovers over any
+//! source code items (e.g. function call, struct field, variable symbol...)
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
@@ -24,33 +25,18 @@ use itertools::Itertools;
 use std::iter::once;
 
 /// Contains the results when hovering over an item
-#[derive(Debug, Clone)]
+#[derive(Debug, Default)]
 pub struct HoverResult {
     results: Vec<String>,
-    exact: bool,
-}
-
-impl Default for HoverResult {
-    fn default() -> Self {
-        HoverResult::new()
-    }
 }
 
 impl HoverResult {
     pub fn new() -> HoverResult {
-        HoverResult {
-            results: Vec::new(),
-            // We assume exact by default
-            exact: true,
-        }
+        Self::default()
     }
 
     pub fn extend(&mut self, item: Option<String>) {
         self.results.extend(item);
-    }
-
-    pub fn is_exact(&self) -> bool {
-        self.exact
     }
 
     pub fn is_empty(&self) -> bool {
@@ -72,20 +58,7 @@ impl HoverResult {
     /// Returns the results converted into markup
     /// for displaying in a UI
     pub fn to_markup(&self) -> String {
-        let mut markup = if !self.exact {
-            let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support traits.");
-            if !self.results.is_empty() {
-                msg.push_str("  \nThese items were found instead:");
-            }
-            msg.push_str("\n\n---\n");
-            msg
-        } else {
-            String::new()
-        };
-
-        markup.push_str(&self.results.join("\n\n---\n"));
-
-        markup
+        self.results.join("\n\n---\n")
     }
 }
 
@@ -94,10 +67,10 @@ fn hover_text(
     desc: Option<String>,
     mod_path: Option<String>,
 ) -> Option<String> {
-    match (desc, docs, mod_path) {
-        (Some(desc), docs, mod_path) => Some(rust_code_markup_with_doc(desc, docs, mod_path)),
-        (None, Some(docs), _) => Some(docs),
-        _ => None,
+    if let Some(desc) = desc {
+        Some(rust_code_markup_with_doc(&desc, docs.as_deref(), mod_path.as_deref()))
+    } else {
+        docs
     }
 }
 
@@ -133,7 +106,7 @@ fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
             .flatten()
             .join("::")
     });
-    mod_path
+    mod_path // FIXME: replace dashes with underscores in crate display name
 }
 
 fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
@@ -170,9 +143,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
             ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Definition::Local(it) => {
-            Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string()))
-        }
+        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display_truncated(db, None))),
         Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
@@ -237,7 +208,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     }?;
 
-    res.extend(Some(rust_code_markup(ty.display_truncated(db, None).to_string())));
+    res.extend(Some(rust_code_markup(&ty.display_truncated(db, None))));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -595,7 +566,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("wrapper::Thing\nfn new() -> Thing"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 
     #[test]
@@ -618,7 +588,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("const C: u32"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 
     #[test]
@@ -635,7 +604,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
-        assert_eq!(hover.info.is_exact(), true);
 
         /* FIXME: revive these tests
                 let (analysis, position) = single_file_with_position(
@@ -651,7 +619,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
                 let hover = analysis.hover(position).unwrap().unwrap();
                 assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
-                assert_eq!(hover.info.is_exact(), true);
 
                 let (analysis, position) = single_file_with_position(
                     "
@@ -665,7 +632,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
                 assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
-                assert_eq!(hover.info.is_exact(), true);
 
                 let (analysis, position) = single_file_with_position(
                     "
@@ -678,7 +644,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
                 assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
-                assert_eq!(hover.info.is_exact(), true);
         */
     }
 
@@ -696,7 +661,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 
     #[test]
@@ -714,7 +678,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("macro_rules! foo"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 
     #[test]
@@ -726,7 +689,6 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 
     #[test]

@@ -6,6 +6,8 @@ mod navigation_target;
 mod structure;
 mod short_label;
 
+use std::fmt::{Display, Write};
+
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
     SyntaxKind::{ATTR, COMMENT},
@@ -67,24 +69,27 @@ pub(crate) fn macro_label(node: &ast::MacroCall) -> String {
     format!("{}macro_rules! {}", vis, name)
 }
 
-pub(crate) fn rust_code_markup<CODE: AsRef<str>>(val: CODE) -> String {
-    rust_code_markup_with_doc::<_, &str>(val, None, None)
+pub(crate) fn rust_code_markup(code: &impl Display) -> String {
+    rust_code_markup_with_doc(code, None, None)
 }
 
-pub(crate) fn rust_code_markup_with_doc<CODE, DOC>(
-    val: CODE,
-    doc: Option<DOC>,
-    mod_path: Option<String>,
-) -> String
-where
-    CODE: AsRef<str>,
-    DOC: AsRef<str>,
-{
-    let mod_path =
-        mod_path.filter(|path| !path.is_empty()).map(|path| path + "\n").unwrap_or_default();
-    if let Some(doc) = doc {
-        format!("```rust\n{}{}\n```\n\n{}", mod_path, val.as_ref(), doc.as_ref())
-    } else {
-        format!("```rust\n{}{}\n```", mod_path, val.as_ref())
+pub(crate) fn rust_code_markup_with_doc(
+    code: &impl Display,
+    doc: Option<&str>,
+    mod_path: Option<&str>,
+) -> String {
+    let mut markup = "```rust\n".to_owned();
+
+    if let Some(mod_path) = mod_path {
+        if !mod_path.is_empty() {
+            write!(markup, "{}\n", mod_path).unwrap();
+        }
     }
+    write!(markup, "{}\n```", code).unwrap();
+
+    if let Some(doc) = doc {
+        write!(markup, "\n\n{}", doc).unwrap();
+    }
+
+    markup
 }
