@@ -77,8 +77,8 @@ pub fn provide(providers: &mut Providers<'_>) {
         let module = hir.as_local_hir_id(id);
         &tcx.untracked_crate.modules[&module]
     };
-    providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
-    providers.hir_owner_nodes =
-        |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_ref().map(|nodes| &**nodes);
+    providers.hir_owner = |tcx, id| tcx.index_hir(id.krate).map[id.index].signature;
+    providers.hir_owner_items =
+        |tcx, id| tcx.index_hir(id.krate).map[id.index].with_bodies.as_ref().map(|items| &**items);
     map::provide(providers);
 }
