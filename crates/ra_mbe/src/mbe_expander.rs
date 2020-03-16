@@ -20,18 +20,20 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
     for rule in rules {
         let ExpandResult(new_match, bindings_err) = matcher::match_(&rule.lhs, input);
         if bindings_err.is_none() {
-            // if we find a rule that applies without errors, we're done
+            // If we find a rule that applies without errors, we're done.
+            // Unconditionally returning the transcription here makes the
+            // `test_repeat_bad_var` test fail.
             let ExpandResult(res, transcribe_err) =
                 transcriber::transcribe(&rule.rhs, &new_match.bindings);
             if transcribe_err.is_none() {
                 return ExpandResult::ok(res);
             }
         }
-        // use the rule if we matched more tokens, or had fewer patterns left
+        // Use the rule if we matched more tokens, or had fewer patterns left,
+        // or had no error
         if let Some((prev_match, _)) = &match_ {
-            if new_match.unmatched_tokens < prev_match.unmatched_tokens
-                || new_match.unmatched_tokens == prev_match.unmatched_tokens
-                    && new_match.unmatched_patterns < prev_match.unmatched_patterns
+            if (new_match.unmatched_tokens, new_match.unmatched_patterns)
+                < (prev_match.unmatched_tokens, prev_match.unmatched_patterns)
                 || err.is_some() && bindings_err.is_none()
             {
                 match_ = Some((new_match, rule));
