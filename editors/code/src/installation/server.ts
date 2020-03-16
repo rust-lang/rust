@@ -7,8 +7,9 @@ import { fetchArtifactReleaseInfo } from "./fetch_artifact_release_info";
 import { downloadArtifactWithProgressUi } from "./downloads";
 import { log, assert, notReentrant } from "../util";
 import { Config, NIGHTLY_TAG } from "../config";
+import { PersistentState } from "../persistent_state";
 
-export async function ensureServerBinary(config: Config): Promise<null | string> {
+export async function ensureServerBinary(config: Config, state: PersistentState): Promise<null | string> {
     const source = config.serverSource;
 
     if (!source) {
@@ -37,7 +38,7 @@ export async function ensureServerBinary(config: Config): Promise<null | string>
             return null;
         }
         case ArtifactSource.Type.GithubRelease: {
-            if (!shouldDownloadServer(source, config)) {
+            if (!shouldDownloadServer(state, source)) {
                 return path.join(source.dir, source.file);
             }
 
@@ -50,24 +51,24 @@ export async function ensureServerBinary(config: Config): Promise<null | string>
                 if (userResponse !== "Download now") return null;
             }
 
-            return await downloadServer(source, config);
+            return await downloadServer(state, source);
         }
     }
 }
 
 function shouldDownloadServer(
+    state: PersistentState,
     source: ArtifactSource.GithubRelease,
-    config: Config
 ): boolean {
     if (!isBinaryAvailable(path.join(source.dir, source.file))) return true;
 
     const installed = {
-        tag: config.serverReleaseTag.get(),
-        date: config.serverReleaseDate.get()
+        tag: state.serverReleaseTag.get(),
+        date: state.serverReleaseDate.get()
     };
     const required = {
         tag: source.tag,
-        date: config.installedNightlyExtensionReleaseDate.get()
+        date: state.installedNightlyExtensionReleaseDate.get()
     };
 
     log.debug("Installed server:", installed, "required:", required);
@@ -86,16 +87,16 @@ function shouldDownloadServer(
  * Enforcing no reentrancy for this is best-effort.
  */
 const downloadServer = notReentrant(async (
+    state: PersistentState,
     source: ArtifactSource.GithubRelease,
-    config: Config,
 ): Promise<null | string> => {
     try {
         const releaseInfo = await fetchArtifactReleaseInfo(source.repo, source.file, source.tag);
 
         await downloadArtifactWithProgressUi(releaseInfo, source.file, source.dir, "language server");
         await Promise.all([
-            config.serverReleaseTag.set(releaseInfo.releaseName),
-            config.serverReleaseDate.set(releaseInfo.releaseDate)
+            state.serverReleaseTag.set(releaseInfo.releaseName),
+            state.serverReleaseDate.set(releaseInfo.releaseDate)
         ]);
     } catch (err) {
         log.downloadError(err, "language server", source.repo.name);
