@@ -44,12 +44,12 @@ impl ModPath {
 
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path(db: &impl DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
 fn find_path_inner(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
     max_len: usize,
@@ -165,7 +165,7 @@ fn select_best_path(old_path: ModPath, new_path: ModPath) -> ModPath {
 }
 
 fn find_importable_locations(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
 ) -> Vec<(ModuleId, Name)> {
@@ -195,7 +195,7 @@ fn find_importable_locations(
 /// Note that the crate doesn't need to be the one in which the item is defined;
 /// it might be re-exported in other crates.
 fn importable_locations_in_crate(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     item: ItemInNs,
     krate: CrateId,
 ) -> Vec<(ModuleId, Name, Visibility)> {

@@ -46,7 +46,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         ExprValidator { func, infer, sink }
     }
 
-    pub fn validate_body(&mut self, db: &impl HirDatabase) {
+    pub fn validate_body(&mut self, db: &dyn HirDatabase) {
         let body = db.body(self.func.into());
 
         for e in body.exprs.iter() {
@@ -67,7 +67,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         _path: &Option<Path>,
         fields: &[RecordLitField],
         spread: Option<ExprId>,
-        db: &impl HirDatabase,
+        db: &dyn HirDatabase,
     ) {
         if spread.is_some() {
             return;
@@ -80,7 +80,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return;
         }
 
-        let variant_data = variant_data(db, variant_def);
+        let variant_data = variant_data(db.upcast(), variant_def);
 
         let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
         let missed_fields: Vec<Name> = variant_data
@@ -102,7 +102,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
             if let Some(expr) = source_ptr.value.left() {
-                let root = source_ptr.file_syntax(db);
+                let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
                     if let Some(field_list) = record_lit.record_field_list() {
                         self.sink.push(MissingFields {
@@ -116,12 +116,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_results_in_tail_expr(
-        &mut self,
-        body_id: ExprId,
-        id: ExprId,
-        db: &impl HirDatabase,
-    ) {
+    fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {
         // the mismatch will be on the whole block currently
         let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
             Some(m) => m,
@@ -130,8 +125,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let std_result_path = path![std::result::Result];
 
-        let resolver = self.func.resolver(db);
-        let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
+        let resolver = self.func.resolver(db.upcast());
+        let std_result_enum = match resolver.resolve_known_enum(db.upcast(), &std_result_path) {
             Some(it) => it,
             _ => return,
         };

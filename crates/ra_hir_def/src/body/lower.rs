@@ -36,7 +36,7 @@ use crate::{
 };
 
 pub(super) fn lower(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     def: DefWithBodyId,
     expander: Expander,
     params: Option<ast::ParamList>,
@@ -58,8 +58,8 @@ pub(super) fn lower(
     .collect(params, body)
 }
 
-struct ExprCollector<DB> {
-    db: DB,
+struct ExprCollector<'a> {
+    db: &'a dyn DefDatabase,
     def: DefWithBodyId,
     expander: Expander,
 
@@ -67,10 +67,7 @@ struct ExprCollector<DB> {
     source_map: BodySourceMap,
 }
 
-impl<'a, DB> ExprCollector<&'a DB>
-where
-    DB: DefDatabase,
-{
+impl ExprCollector<'_> {
     fn collect(
         mut self,
         param_list: Option<ast::ParamList>,

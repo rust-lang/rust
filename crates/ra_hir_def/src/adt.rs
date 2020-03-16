@@ -52,14 +52,14 @@ pub struct StructFieldData {
 }
 
 impl StructData {
-    pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
+    pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(db, src.map(|s| s.kind()));
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
-    pub(crate) fn union_data_query(db: &impl DefDatabase, id: UnionId) -> Arc<StructData> {
+    pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let src = id.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(
@@ -76,7 +76,7 @@ impl StructData {
 }
 
 impl EnumData {
-    pub(crate) fn enum_data_query(db: &impl DefDatabase, e: EnumId) -> Arc<EnumData> {
+    pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
         let _p = profile("enum_data_query");
         let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
@@ -94,7 +94,7 @@ impl EnumData {
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
     type Value = ast::EnumVariant;
-    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(db, &mut trace, &src);
@@ -103,7 +103,7 @@ impl HasChildSource for EnumId {
 }
 
 fn lower_enum(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     trace: &mut Trace<LocalEnumVariantId, EnumVariantData, ast::EnumVariant>,
     ast: &InFile<ast::EnumDef>,
 ) {
@@ -119,7 +119,7 @@ fn lower_enum(
 }
 
 impl VariantData {
-    fn new(db: &impl DefDatabase, flavor: InFile<ast::StructKind>) -> Self {
+    fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>) -> Self {
         let mut trace = Trace::new_for_arena();
         match lower_struct(db, &mut trace, &flavor) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
@@ -153,7 +153,7 @@ impl HasChildSource for VariantId {
     type ChildId = LocalStructFieldId;
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
-    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source
@@ -182,7 +182,7 @@ pub enum StructKind {
 }
 
 fn lower_struct(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     trace: &mut Trace<
         LocalStructFieldId,
         StructFieldData,

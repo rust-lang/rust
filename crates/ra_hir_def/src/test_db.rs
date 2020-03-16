@@ -5,8 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use hir_expand::db::AstDatabase;
+use ra_db::{
+    salsa, CrateId, ExternSourceId, FileId, FileLoader, FileLoaderDelegate, RelativePath, Upcast,
+};
+
 use crate::db::DefDatabase;
-use ra_db::{salsa, CrateId, ExternSourceId, FileId, FileLoader, FileLoaderDelegate, RelativePath};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -19,6 +23,18 @@ use ra_db::{salsa, CrateId, ExternSourceId, FileId, FileLoader, FileLoaderDelega
 pub struct TestDB {
     runtime: salsa::Runtime<TestDB>,
     events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
+}
+
+impl Upcast<dyn AstDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn AstDatabase + 'static) {
+        &*self
+    }
+}
+
+impl Upcast<dyn DefDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
+        &*self
+    }
 }
 
 impl salsa::Database for TestDB {

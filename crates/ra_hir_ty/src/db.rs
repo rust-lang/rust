@@ -7,7 +7,7 @@ use hir_def::{
     VariantId,
 };
 use ra_arena::map::ArenaMap;
-use ra_db::{impl_intern_key, salsa, CrateId};
+use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 
 use crate::{
@@ -20,7 +20,7 @@ use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
-pub trait HirDatabase: DefDatabase {
+pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(infer_wait)]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 

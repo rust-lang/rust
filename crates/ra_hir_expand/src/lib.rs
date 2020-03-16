@@ -366,7 +366,7 @@ impl<T> InFile<T> {
     pub fn as_ref(&self) -> InFile<&T> {
         self.with_value(&self.value)
     }
-    pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
+    pub fn file_syntax(&self, db: &dyn db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")
     }
 }
@@ -387,7 +387,7 @@ impl<T> InFile<Option<T>> {
 impl InFile<SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
-        db: &impl crate::db::AstDatabase,
+        db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
         std::iter::successors(Some(self), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
@@ -402,7 +402,7 @@ impl InFile<SyntaxNode> {
 impl InFile<SyntaxToken> {
     pub fn ancestors_with_macros(
         self,
-        db: &impl crate::db::AstDatabase,
+        db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
         self.map(|it| it.parent()).ancestors_with_macros(db)
     }

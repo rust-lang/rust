@@ -77,7 +77,7 @@ pub trait AstDatabase: SourceDatabase {
 /// token. The `token_to_map` mapped down into the expansion, with the mapped
 /// token returned.
 pub fn expand_hypothetical(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     actual_macro_call: MacroCallId,
     hypothetical_args: &ra_syntax::ast::TokenTree,
     token_to_map: ra_syntax::SyntaxToken,

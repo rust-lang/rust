@@ -14,7 +14,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
+fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
     // returning the iterator directly doesn't easily work because of
     // lifetime problems, but since there usually shouldn't be more than a
@@ -43,7 +43,7 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
 
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
-pub(super) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
+pub(super) fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     // we need to take care a bit here to avoid infinite loops in case of cycles
     // (i.e. if we have `trait A: B; trait B: A;`)
     let mut result = vec![trait_];
@@ -65,7 +65,7 @@ pub(super) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<Tr
 /// Finds a path from a trait to one of its super traits. Returns an empty
 /// vector if there is no path.
 pub(super) fn find_super_trait_path(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     trait_: TraitId,
     super_trait: TraitId,
 ) -> Vec<TraitId> {
@@ -73,7 +73,7 @@ pub(super) fn find_super_trait_path(
     result.push(trait_);
     return if go(db, super_trait, &mut result) { result } else { Vec::new() };
 
-    fn go(db: &impl DefDatabase, super_trait: TraitId, path: &mut Vec<TraitId>) -> bool {
+    fn go(db: &dyn DefDatabase, super_trait: TraitId, path: &mut Vec<TraitId>) -> bool {
         let trait_ = *path.last().unwrap();
         if trait_ == super_trait {
             return true;
@@ -95,7 +95,7 @@ pub(super) fn find_super_trait_path(
 }
 
 pub(super) fn associated_type_by_name_including_super_traits(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     trait_: TraitId,
     name: &Name,
 ) -> Option<TypeAliasId> {
@@ -104,7 +104,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
         .find_map(|t| db.trait_data(t).associated_type_by_name(name))
 }
 
-pub(super) fn variant_data(db: &impl DefDatabase, var: VariantId) -> Arc<VariantData> {
+pub(super) fn variant_data(db: &dyn DefDatabase, var: VariantId) -> Arc<VariantData> {
     match var {
         VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
         VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
@@ -123,7 +123,7 @@ pub(crate) fn make_mut_slice<T: Clone>(a: &mut Arc<[T]>) -> &mut [T] {
     Arc::get_mut(a).unwrap()
 }
 
-pub(crate) fn generics(db: &impl DefDatabase, def: GenericDefId) -> Generics {
+pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     Generics { def, params: db.generic_params(def), parent_generics }
 }
@@ -222,7 +222,7 @@ impl Generics {
     }
 }
 
-fn parent_generic_def(db: &impl DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,

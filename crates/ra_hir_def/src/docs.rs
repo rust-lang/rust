@@ -34,7 +34,7 @@ impl Documentation {
     }
 
     pub(crate) fn documentation_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         def: AttrDefId,
     ) -> Option<Documentation> {
         match def {
@@ -60,7 +60,7 @@ impl Documentation {
                 docs_from_ast(&src.value[it.local_id])
             }
             AttrDefId::TraitId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db)),
+            AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db.upcast())),
             AttrDefId::ConstId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::StaticId(it) => docs_from_ast(&it.lookup(db).source(db).value),
             AttrDefId::FunctionId(it) => docs_from_ast(&it.lookup(db).source(db).value),

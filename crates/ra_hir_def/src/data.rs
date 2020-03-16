@@ -105,7 +105,7 @@ pub struct TypeAliasData {
 
 impl TypeAliasData {
     pub(crate) fn type_alias_data_query(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
         let loc = typ.lookup(db);
@@ -127,7 +127,7 @@ pub struct TraitData {
 }
 
 impl TraitData {
-    pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: TraitId) -> Arc<TraitData> {
+    pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
         let src = tr.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let auto = src.value.is_auto();
@@ -200,7 +200,7 @@ pub struct ImplData {
 }
 
 impl ImplData {
-    pub(crate) fn impl_data_query(db: &impl DefDatabase, id: ImplId) -> Arc<ImplData> {
+    pub(crate) fn impl_data_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplData> {
         let _p = profile("impl_data_query");
         let impl_loc = id.lookup(db);
         let src = impl_loc.source(db);
@@ -235,20 +235,20 @@ pub struct ConstData {
 }
 
 impl ConstData {
-    pub(crate) fn const_data_query(db: &impl DefDatabase, konst: ConstId) -> Arc<ConstData> {
+    pub(crate) fn const_data_query(db: &dyn DefDatabase, konst: ConstId) -> Arc<ConstData> {
         let loc = konst.lookup(db);
         let node = loc.source(db);
         let vis_default = RawVisibility::default_for_container(loc.container);
         Arc::new(ConstData::new(db, vis_default, node))
     }
 
-    pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
+    pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<ConstData> {
         let node = konst.lookup(db).source(db);
         Arc::new(ConstData::new(db, RawVisibility::private(), node))
     }
 
     fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         vis_default: RawVisibility,
         node: InFile<N>,
     ) -> ConstData {
@@ -261,7 +261,7 @@ impl ConstData {
 }
 
 fn collect_impl_items_in_macros(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     module_id: ModuleId,
     impl_def: &InFile<ast::ItemList>,
     id: ImplId,
@@ -280,7 +280,7 @@ fn collect_impl_items_in_macros(
 }
 
 fn collect_impl_items_in_macro(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     expander: &mut Expander,
     m: ast::MacroCall,
     id: ImplId,
@@ -312,7 +312,7 @@ fn collect_impl_items_in_macro(
 }
 
 fn collect_impl_items(
-    db: &impl DefDatabase,
+    db: &dyn DefDatabase,
     impl_items: impl Iterator<Item = ImplItem>,
     file_id: crate::HirFileId,
     id: ImplId,

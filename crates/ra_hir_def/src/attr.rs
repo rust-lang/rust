@@ -32,7 +32,7 @@ impl ops::Deref for Attrs {
 }
 
 impl Attrs {
-    pub(crate) fn attrs_query(db: &impl DefDatabase, def: AttrDefId) -> Attrs {
+    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
@@ -71,8 +71,8 @@ impl Attrs {
         }
     }
 
-    fn from_attrs_owner(db: &impl DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
-        let hygiene = Hygiene::new(db, owner.file_id);
+    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
+        let hygiene = Hygiene::new(db.upcast(), owner.file_id);
         Attrs::new(owner.value, &hygiene)
     }
 
@@ -155,20 +155,18 @@ impl<'a> AttrQuery<'a> {
     }
 }
 
-fn attrs_from_ast<D, N>(src: AstId<N>, db: &D) -> Attrs
+fn attrs_from_ast<N>(src: AstId<N>, db: &dyn DefDatabase) -> Attrs
 where
     N: ast::AttrsOwner,
-    D: DefDatabase,
 {
-    let src = InFile::new(src.file_id, src.to_node(db));
+    let src = InFile::new(src.file_id, src.to_node(db.upcast()));
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 
-fn attrs_from_loc<T, D>(node: T, db: &D) -> Attrs
+fn attrs_from_loc<T>(node: T, db: &dyn DefDatabase) -> Attrs
 where
     T: HasSource,
     T::Value: ast::AttrsOwner,
-    D: DefDatabase,
 {
     let src = node.source(db);
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))

@@ -152,7 +152,7 @@ pub struct TypeCtorId(salsa::InternId);
 impl_intern_key!(TypeCtorId);
 
 impl TypeCtor {
-    pub fn num_ty_params(self, db: &impl HirDatabase) -> usize {
+    pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
         match self {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -167,15 +167,15 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
             => 1,
             TypeCtor::Adt(adt) => {
-                let generic_params = generics(db, adt.into());
+                let generic_params = generics(db.upcast(), adt.into());
                 generic_params.len()
             }
             TypeCtor::FnDef(callable) => {
-                let generic_params = generics(db, callable.into());
+                let generic_params = generics(db.upcast(), callable.into());
                 generic_params.len()
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let generic_params = generics(db, type_alias.into());
+                let generic_params = generics(db.upcast(), type_alias.into());
                 generic_params.len()
             }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
@@ -183,7 +183,7 @@ impl TypeCtor {
         }
     }
 
-    pub fn krate(self, db: &impl HirDatabase) -> Option<CrateId> {
+    pub fn krate(self, db: &dyn HirDatabase) -> Option<CrateId> {
         match self {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -199,9 +199,11 @@ impl TypeCtor {
             | TypeCtor::Tuple { .. } => None,
             // Closure's krate is irrelevant for coherence I would think?
             TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => Some(adt.module(db).krate),
+            TypeCtor::Adt(adt) => Some(adt.module(db.upcast()).krate),
             TypeCtor::FnDef(callable) => Some(callable.krate(db)),
-            TypeCtor::AssociatedType(type_alias) => Some(type_alias.lookup(db).module(db).krate),
+            TypeCtor::AssociatedType(type_alias) => {
+                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
+            }
         }
     }
 
@@ -246,12 +248,12 @@ pub struct ProjectionTy {
 }
 
 impl ProjectionTy {
-    pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
+    pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
         TraitRef { trait_: self.trait_(db), substs: self.parameters.clone() }
     }
 
-    fn trait_(&self, db: &impl HirDatabase) -> TraitId {
-        match self.associated_ty.lookup(db).container {
+    fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
+        match self.associated_ty.lookup(db.upcast()).container {
             AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
@@ -372,8 +374,8 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub fn type_params(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> Substs {
-        let params = generics(db, def.into());
+    pub fn type_params(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substs {
+        let params = generics(db.upcast(), def.into());
         Substs::type_params_for_generics(&params)
     }
 
@@ -382,9 +384,9 @@ impl Substs {
         Substs(generic_params.iter().enumerate().map(|(idx, _)| Ty::Bound(idx as u32)).collect())
     }
 
-    pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
+    pub fn build_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
         let def = def.into();
-        let params = generics(db, def);
+        let params = generics(db.upcast(), def);
         let param_count = params.len();
         Substs::builder(param_count)
     }
@@ -393,7 +395,7 @@ impl Substs {
         Substs::builder(generic_params.len())
     }
 
-    pub fn build_for_type_ctor(db: &impl HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {
+    pub fn build_for_type_ctor(db: &dyn HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {
         Substs::builder(type_ctor.num_ty_params(db))
     }
 
@@ -538,7 +540,7 @@ impl GenericPredicate {
         }
     }
 
-    pub fn trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
+    pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
         match self {
             GenericPredicate::Implemented(tr) => Some(tr.clone()),
             GenericPredicate::Projection(proj) => Some(proj.projection_ty.trait_ref(db)),
@@ -693,7 +695,7 @@ impl Ty {
         }
     }
 
-    fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
+    fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::FnPtr { .. } => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),

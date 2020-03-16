@@ -14,9 +14,7 @@ use hir_expand::name::Name;
 use ra_syntax::ast::RangeOp;
 
 use crate::{
-    autoderef,
-    db::HirDatabase,
-    method_resolution, op,
+    autoderef, method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef,
@@ -25,7 +23,7 @@ use crate::{
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
+impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
         let could_unify = self.unify(&ty, &expected.ty);
@@ -184,7 +182,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = resolver_for_expr(self.db, self.owner, tgt_expr);
+                let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
@@ -214,7 +212,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
-                let variant_data = def_id.map(|it| variant_data(self.db, it));
+                let variant_data = def_id.map(|it| variant_data(self.db.upcast(), it));
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_def =
                         variant_data.as_ref().and_then(|it| match it.field(&field.name) {
@@ -579,7 +577,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
         let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
 
-        let traits_in_scope = self.resolver.traits_in_scope(self.db);
+        let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         let resolved = self.resolver.krate().and_then(|krate| {
             method_resolution::lookup_method(
@@ -595,7 +593,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
-                (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
+                (ty, self.db.value_ty(func.into()), Some(generics(self.db.upcast(), func.into())))
             }
             None => (receiver_ty, Binders::new(0, Ty::Unknown), None),
         };
@@ -703,10 +701,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // add obligation for trait implementation, if this is a trait method
                 match def {
                     CallableDef::FunctionId(f) => {
-                        if let AssocContainerId::TraitId(trait_) = f.lookup(self.db).container {
+                        if let AssocContainerId::TraitId(trait_) =
+                            f.lookup(self.db.upcast()).container
+                        {
                             // construct a TraitDef
-                            let substs =
-                                a_ty.parameters.prefix(generics(self.db, trait_.into()).len());
+                            let substs = a_ty
+                                .parameters
+                                .prefix(generics(self.db.upcast(), trait_.into()).len());
                             self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
                     }

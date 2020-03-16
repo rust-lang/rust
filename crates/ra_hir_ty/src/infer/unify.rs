@@ -7,10 +7,10 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use test_utils::tested_by;
 
 use super::{InferenceContext, Obligation};
-use crate::{db::HirDatabase, Canonical, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{Canonical, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk};
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
-    pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
+impl<'a> InferenceContext<'a> {
+    pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b>
     where
         'a: 'b,
     {
@@ -18,11 +18,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 }
 
-pub(super) struct Canonicalizer<'a, 'b, D: HirDatabase>
+pub(super) struct Canonicalizer<'a, 'b>
 where
     'a: 'b,
 {
-    ctx: &'b mut InferenceContext<'a, D>,
+    ctx: &'b mut InferenceContext<'a>,
     free_vars: Vec<InferTy>,
     /// A stack of type variables that is used to detect recursive types (which
     /// are an error, but we need to protect against them to avoid stack
@@ -35,7 +35,7 @@ pub(super) struct Canonicalized<T> {
     free_vars: Vec<InferTy>,
 }
 
-impl<'a, 'b, D: HirDatabase> Canonicalizer<'a, 'b, D>
+impl<'a, 'b> Canonicalizer<'a, 'b>
 where
     'a: 'b,
 {
@@ -123,11 +123,7 @@ impl<T> Canonicalized<T> {
         ty
     }
 
-    pub fn apply_solution(
-        &self,
-        ctx: &mut InferenceContext<'_, impl HirDatabase>,
-        solution: Canonical<Vec<Ty>>,
-    ) {
+    pub fn apply_solution(&self, ctx: &mut InferenceContext<'_>, solution: Canonical<Vec<Ty>>) {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substs((0..solution.num_vars).map(|_| ctx.table.new_type_var()).collect());
         for (i, ty) in solution.value.into_iter().enumerate() {

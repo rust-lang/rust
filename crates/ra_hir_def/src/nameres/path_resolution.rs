@@ -70,7 +70,7 @@ impl CrateDefMap {
 
     pub(crate) fn resolve_visibility(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         original_module: LocalModuleId,
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
@@ -98,7 +98,7 @@ impl CrateDefMap {
     // the result.
     pub(super) fn resolve_path_fp_with_macro(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         mode: ResolveMode,
         original_module: LocalModuleId,
         path: &ModPath,
@@ -262,7 +262,7 @@ impl CrateDefMap {
 
     fn resolve_name_in_module(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         module: LocalModuleId,
         name: &Name,
         shadow: BuiltinShadowMode,
@@ -304,7 +304,7 @@ impl CrateDefMap {
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
+    fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {

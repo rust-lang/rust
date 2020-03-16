@@ -7,13 +7,11 @@
 use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
 use test_utils::tested_by;
 
-use crate::{
-    autoderef, db::HirDatabase, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor,
-};
+use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor};
 
 use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
+impl<'a> InferenceContext<'a> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(super) fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
@@ -126,7 +124,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             _ => return None,
         };
 
-        let generic_params = crate::utils::generics(self.db, coerce_unsized_trait.into());
+        let generic_params = crate::utils::generics(self.db.upcast(), coerce_unsized_trait.into());
         if generic_params.len() != 2 {
             // The CoerceUnsized trait should have two generic params: Self and T.
             return None;

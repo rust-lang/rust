@@ -9,11 +9,11 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{db::HirDatabase, method_resolution, Substs, Ty, ValueTyDefId};
+use crate::{method_resolution, Substs, Ty, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
-impl<'a, D: HirDatabase> InferenceContext<'a, D> {
+impl<'a> InferenceContext<'a> {
     pub(super) fn infer_path(
         &mut self,
         resolver: &Resolver,
@@ -47,7 +47,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 id,
             )?
         } else {
-            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, path.mod_path())?;
+            let value_or_partial =
+                resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path())?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => (it, None),
@@ -192,7 +193,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
         let krate = self.resolver.krate()?;
-        let traits_in_scope = self.resolver.traits_in_scope(self.db);
+        let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
@@ -205,9 +206,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             move |_ty, item| {
                 let (def, container) = match item {
                     AssocItemId::FunctionId(f) => {
-                        (ValueNs::FunctionId(f), f.lookup(self.db).container)
+                        (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
                     }
-                    AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db).container),
+                    AssocItemId::ConstId(c) => {
+                        (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container)
+                    }
                     AssocItemId::TypeAliasId(_) => unreachable!(),
                 };
                 let substs = match container {

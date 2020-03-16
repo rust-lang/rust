@@ -21,12 +21,12 @@ use crate::{db::HirDatabase, InFile, MacroDefId};
 
 pub(super) type SourceToDefCache = FxHashMap<ChildContainer, DynMap>;
 
-pub(super) struct SourceToDefCtx<'a, DB> {
-    pub(super) db: DB,
+pub(super) struct SourceToDefCtx<'a, 'b> {
+    pub(super) db: &'b dyn HirDatabase,
     pub(super) cache: &'a mut SourceToDefCache,
 }
 
-impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
+impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> Option<ModuleId> {
         let _p = profile("SourceBinder::to_module_def");
         let (krate, local_id) = self.db.relevant_crates(file).iter().find_map(|&crate_id| {
@@ -43,7 +43,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
             .as_ref()
             .map(|it| it.syntax())
             .cloned()
-            .ancestors_with_macros(self.db)
+            .ancestors_with_macros(self.db.upcast())
             .skip(1)
             .find_map(|it| {
                 let m = ast::Module::cast(it.value.clone())?;
@@ -53,7 +53,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
         let parent_module = match parent_declaration {
             Some(parent_declaration) => self.module_to_def(parent_declaration),
             None => {
-                let file_id = src.file_id.original_file(self.db);
+                let file_id = src.file_id.original_file(self.db.upcast());
                 self.file_to_def(file_id)
             }
         }?;
@@ -147,7 +147,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
     // FIXME: use DynMap as well?
     pub(super) fn macro_call_to_def(&mut self, src: InFile<ast::MacroCall>) -> Option<MacroDefId> {
         let kind = MacroDefKind::Declarative;
-        let file_id = src.file_id.original_file(self.db);
+        let file_id = src.file_id.original_file(self.db.upcast());
         let krate = self.file_to_def(file_id)?.krate;
         let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
         let ast_id = Some(AstId::new(src.file_id, file_ast_id));
@@ -155,7 +155,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
-        for container in src.cloned().ancestors_with_macros(self.db).skip(1) {
+        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: ChildContainer = match_ast! {
                 match (container.value) {
                     ast::Module(it) => {
@@ -200,12 +200,12 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
             return Some(res);
         }
 
-        let def = self.file_to_def(src.file_id.original_file(self.db))?;
+        let def = self.file_to_def(src.file_id.original_file(self.db.upcast()))?;
         Some(def.into())
     }
 
     fn find_type_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
-        for container in src.cloned().ancestors_with_macros(self.db).skip(1) {
+        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
                     ast::FnDef(it) => { self.fn_to_def(container.with_value(it))?.into() },
@@ -223,7 +223,7 @@ impl<DB: HirDatabase> SourceToDefCtx<'_, &'_ DB> {
     }
 
     fn find_pat_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
-        for container in src.cloned().ancestors_with_macros(self.db).skip(1) {
+        for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {
                     ast::ConstDef(it) => { self.const_to_def(container.with_value(it))?.into() },
@@ -262,7 +262,8 @@ impl_froms! {
 }
 
 impl ChildContainer {
-    fn child_by_source(self, db: &impl HirDatabase) -> DynMap {
+    fn child_by_source(self, db: &dyn HirDatabase) -> DynMap {
+        let db = db.upcast();
         match self {
             ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
             ChildContainer::ModuleId(it) => it.child_by_source(db),

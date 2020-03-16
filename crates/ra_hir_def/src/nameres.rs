@@ -151,16 +151,17 @@ impl ModuleOrigin {
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
+    fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         match self {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 let file_id = *definition;
                 let sf = db.parse(file_id).tree();
                 InFile::new(file_id.into(), ModuleSource::SourceFile(sf))
             }
-            ModuleOrigin::Inline { definition } => {
-                InFile::new(definition.file_id, ModuleSource::Module(definition.to_node(db)))
-            }
+            ModuleOrigin::Inline { definition } => InFile::new(
+                definition.file_id,
+                ModuleSource::Module(definition.to_node(db.upcast())),
+            ),
         }
     }
 }
@@ -176,7 +177,7 @@ pub struct ModuleData {
 }
 
 impl CrateDefMap {
-    pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
+    pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
         let _p = profile("crate_def_map_query").detail(|| {
             db.crate_graph()[krate]
                 .display_name
@@ -204,7 +205,7 @@ impl CrateDefMap {
 
     pub fn add_diagnostics(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         module: LocalModuleId,
         sink: &mut DiagnosticSink,
     ) {
@@ -220,7 +221,7 @@ impl CrateDefMap {
 
     pub(crate) fn resolve_path(
         &self,
-        db: &impl DefDatabase,
+        db: &dyn DefDatabase,
         original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
@@ -273,15 +274,15 @@ impl CrateDefMap {
 
 impl ModuleData {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
+    pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root or block.
-    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<InFile<ast::Module>> {
+    pub fn declaration_source(&self, db: &dyn DefDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.origin.declaration()?;
-        let value = decl.to_node(db);
+        let value = decl.to_node(db.upcast());
         Some(InFile { file_id: decl.file_id, value })
     }
 }
@@ -311,7 +312,7 @@ mod diagnostics {
     impl DefDiagnostic {
         pub(super) fn add_to(
             &self,
-            db: &impl DefDatabase,
+            db: &dyn DefDatabase,
             target_module: LocalModuleId,
             sink: &mut DiagnosticSink,
         ) {
@@ -320,7 +321,7 @@ mod diagnostics {
                     if *module != target_module {
                         return;
                     }
-                    let decl = declaration.to_node(db);
+                    let decl = declaration.to_node(db.upcast());
                     sink.push(UnresolvedModule {
                         file: declaration.file_id,
                         decl: AstPtr::new(&decl),
