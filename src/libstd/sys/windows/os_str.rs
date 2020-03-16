@@ -80,6 +80,11 @@ impl Buf {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut Slice {
+        unsafe { mem::transmute(self.inner.as_mut_slice()) }
+    }
+
     pub fn into_string(self) -> Result<String, Buf> {
         self.inner.into_string().map_err(|buf| Buf { inner: buf })
     }

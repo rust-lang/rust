@@ -109,6 +109,11 @@ impl Buf {
         unsafe { mem::transmute(&*self.inner) }
     }
 
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut Slice {
+        unsafe { mem::transmute(&mut *self.inner) }
+    }
+
     pub fn into_string(self) -> Result<String, Buf> {
         String::from_utf8(self.inner).map_err(|p| Buf { inner: p.into_bytes() })
     }
