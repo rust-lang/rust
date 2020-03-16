@@ -6,7 +6,7 @@
     "private": true,
     "icon": "icon.png",
     "//": "The real version is in release.yaml, this one just needs to be bigger",
-    "version": "0.2.20200211-dev",
+    "version": "0.2.20200309-nightly",
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
@@ -219,6 +219,19 @@
                         }
                     }
                 },
+                "rust-analyzer.updates.channel": {
+                    "type": "string",
+                    "enum": [
+                        "stable",
+                        "nightly"
+                    ],
+                    "default": "stable",
+                    "markdownEnumDescriptions": [
+                        "`\"stable\"` updates are shipped weekly, they don't contain cutting-edge features from VSCode proposed APIs but have less bugs in general",
+                        "`\"nightly\"` updates are shipped daily, they contain cutting-edge features and latest bug fixes. These releases help us get your feedback very quickly and speed up rust-analyzer development **drastically**"
+                    ],
+                    "markdownDescription": "Choose `\"nightly\"` updates to get the latest features and bug fixes every day. While `\"stable\"` releases occur weekly and don't contain cutting-edge features from VSCode proposed APIs"
+                },
                 "rust-analyzer.updates.askBeforeDownload": {
                     "type": "boolean",
                     "default": true,
@@ -235,7 +248,7 @@
                         "string"
                     ],
                     "default": null,
-                    "description": "Path to rust-analyzer executable (points to bundled binary by default)"
+                    "description": "Path to rust-analyzer executable (points to bundled binary by default). If this is set, then \"rust-analyzer.updates.channel\" setting is not used"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",

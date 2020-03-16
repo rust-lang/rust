@@ -8,6 +8,7 @@ import { activateHighlighting } from './highlighting';
 import { ensureServerBinary } from './installation/server';
 import { Config } from './config';
 import { log } from './util';
+import { ensureProperExtensionVersion } from './installation/extension';
 
 let ctx: Ctx | undefined;
 
@@ -34,7 +35,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const config = new Config(context);
 
-    const serverPath = await ensureServerBinary(config.serverSource);
+    vscode.workspace.onDidChangeConfiguration(() => ensureProperExtensionVersion(config).catch(log.error));
+
+    // Don't await the user response here, otherwise we will block the lsp server bootstrap
+    void ensureProperExtensionVersion(config).catch(log.error);
+
+    const serverPath = await ensureServerBinary(config);
+
     if (serverPath == null) {
         throw new Error(
             "Rust Analyzer Language Server is not available. " +

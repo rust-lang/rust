@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process';
 
 export function serverVersion(ctx: Ctx): Cmd {
     return async () => {
-        const binaryPath = await ensureServerBinary(ctx.config.serverSource);
+        const binaryPath = await ensureServerBinary(ctx.config);
 
         if (binaryPath == null) {
             throw new Error(
@@ -18,4 +18,3 @@ export function serverVersion(ctx: Ctx): Cmd {
         vscode.window.showInformationMessage('rust-analyzer version : ' + version);
     };
 }
-

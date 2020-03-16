@@ -1,7 +1,7 @@
 import * as os from "os";
 import * as vscode from 'vscode';
 import { ArtifactSource } from "./installation/interfaces";
-import { log } from "./util";
+import { log, vscodeReloadWindow } from "./util";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -23,25 +23,40 @@ export interface CargoFeatures {
     allFeatures: boolean;
     features: string[];
 }
+
+export const enum UpdatesChannel {
+    Stable = "stable",
+    Nightly = "nightly"
+}
+
+export const NIGHTLY_TAG = "nightly";
 export class Config {
-    private static readonly rootSection = "rust-analyzer";
-    private static readonly requiresReloadOpts = [
+    readonly extensionId = "matklad.rust-analyzer";
+
+    private readonly rootSection = "rust-analyzer";
+    private readonly requiresReloadOpts = [
+        "serverPath",
         "cargoFeatures",
         "cargo-watch",
         "highlighting.semanticTokens",
         "inlayHints",
     ]
-        .map(opt => `${Config.rootSection}.${opt}`);
+        .map(opt => `${this.rootSection}.${opt}`);
 
-    private static readonly extensionVersion: string = (() => {
-        const packageJsonVersion = vscode
-            .extensions
-            .getExtension("matklad.rust-analyzer")!
-            .packageJSON
-            .version as string; // n.n.YYYYMMDD
+    readonly packageJsonVersion = vscode
+        .extensions
+        .getExtension(this.extensionId)!
+        .packageJSON
+        .version as string; // n.n.YYYYMMDD[-nightly]
+
+    /**
+     * Either `nightly` or `YYYY-MM-DD` (i.e. `stable` release)
+     */
+    readonly extensionReleaseTag: string = (() => {
+        if (this.packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
 
         const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
-        const [, yyyy, mm, dd] = packageJsonVersion.match(realVersionRegexp)!;
+        const [, yyyy, mm, dd] = this.packageJsonVersion.match(realVersionRegexp)!;
 
         return `${yyyy}-${mm}-${dd}`;
     })();
@@ -54,16 +69,19 @@ export class Config {
     }
 
     private refreshConfig() {
-        this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
+        this.cfg = vscode.workspace.getConfiguration(this.rootSection);
         const enableLogging = this.cfg.get("trace.extension") as boolean;
         log.setEnabled(enableLogging);
-        log.debug("Using configuration:", this.cfg);
+        log.debug(
+            "Extension version:", this.packageJsonVersion,
+            "using configuration:", this.cfg
+        );
     }
 
     private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
         this.refreshConfig();
 
-        const requiresReloadOpt = Config.requiresReloadOpts.find(
+        const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
 
@@ -75,7 +93,7 @@ export class Config {
         );
 
         if (userResponse === "Reload now") {
-            vscode.commands.executeCommand("workbench.action.reloadWindow");
+            await vscodeReloadWindow();
         }
     }
 
@@ -121,8 +139,14 @@ export class Config {
         }
     }
 
+    get installedExtensionUpdateChannel(): UpdatesChannel {
+        return this.extensionReleaseTag === NIGHTLY_TAG
+            ? UpdatesChannel.Nightly
+            : UpdatesChannel.Stable;
+    }
+
     get serverSource(): null | ArtifactSource {
-        const serverPath = RA_LSP_DEBUG ?? this.cfg.get<null | string>("serverPath");
+        const serverPath = RA_LSP_DEBUG ?? this.serverPath;
 
         if (serverPath) {
             return {
@@ -135,13 +159,18 @@ export class Config {
 
         if (!prebuiltBinaryName) return null;
 
+        return this.createGithubReleaseSource(
+            prebuiltBinaryName,
+            this.extensionReleaseTag
+        );
+    }
+
+    private createGithubReleaseSource(file: string, tag: string): ArtifactSource.GithubRelease {
         return {
             type: ArtifactSource.Type.GithubRelease,
+            file,
+            tag,
             dir: this.ctx.globalStoragePath,
-            file: prebuiltBinaryName,
-            storage: this.ctx.globalState,
-            tag: Config.extensionVersion,
-            askBeforeDownload: this.cfg.get("updates.askBeforeDownload") as boolean,
             repo: {
                 name: "rust-analyzer",
                 owner: "rust-analyzer",
@@ -149,9 +178,23 @@ export class Config {
         };
     }
 
+    get nightlyVsixSource(): ArtifactSource.GithubRelease {
+        return this.createGithubReleaseSource("rust-analyzer.vsix", NIGHTLY_TAG);
+    }
+
+    readonly installedNightlyExtensionReleaseDate = new DateStorage(
+        "installed-nightly-extension-release-date",
+        this.ctx.globalState
+    );
+    readonly serverReleaseDate = new DateStorage("server-release-date", this.ctx.globalState);
+    readonly serverReleaseTag = new Storage<null | string>("server-release-tag", this.ctx.globalState, null);
+
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
+    private get serverPath() { return this.cfg.get("serverPath") as null | string; }
+    get updatesChannel() { return this.cfg.get("updates.channel") as UpdatesChannel; }
+    get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
     get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
     get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
@@ -188,4 +231,38 @@ export class Config {
 
     // for internal use
     get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
+}
+
+export class Storage<T> {
+    constructor(
+        private readonly key: string,
+        private readonly storage: vscode.Memento,
+        private readonly defaultVal: T
+    ) { }
+
+    get(): T {
+        const val = this.storage.get(this.key, this.defaultVal);
+        log.debug(this.key, "==", val);
+        return val;
+    }
+    async set(val: T) {
+        log.debug(this.key, "=", val);
+        await this.storage.update(this.key, val);
+    }
+}
+export class DateStorage {
+    inner: Storage<null | string>;
+
+    constructor(key: string, storage: vscode.Memento) {
+        this.inner = new Storage(key, storage, null);
+    }
+
+    get(): null | Date {
+        const dateStr = this.inner.get();
+        return dateStr ? new Date(dateStr) : null;
+    }
+
+    async set(date: null | Date) {
+        await this.inner.set(date ? date.toString() : null);
+    }
 }
