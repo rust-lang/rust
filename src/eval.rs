@@ -205,7 +205,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     // Perform the main execution.
     let res: InterpResult<'_, i64> = (|| {
         // Main loop.
-        while ecx.step()? {
+        while ecx.schedule()? {
+            assert!(ecx.step()?);
             ecx.process_diagnostics();
         }
         // Read the return code pointer *before* we run TLS destructors, to assert

@@ -12,6 +12,7 @@ extern crate rustc_ast;
 #[macro_use] extern crate rustc_middle;
 extern crate rustc_data_structures;
 extern crate rustc_hir;
+extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -26,6 +27,7 @@ mod operator;
 mod range_map;
 mod shims;
 mod stacked_borrows;
+mod threads;
 
 // Make all those symbols available in the same place as our own.
 pub use rustc_mir::interpret::*;
@@ -60,6 +62,7 @@ pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
 };
+pub use crate::threads::EvalContextExt as ThreadsEvalContextExt;
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.

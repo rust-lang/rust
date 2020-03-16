@@ -1,22 +1,24 @@
 //! Implement thread-local storage.
 
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 use log::trace;
 
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
-use crate::{HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
+use crate::{HelpersEvalContextExt, ThreadsEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
+use crate::machine::ThreadId;
 
 pub type TlsKey = u128;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
     /// Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
-    data: Option<Scalar<Tag>>,
+    data: BTreeMap<ThreadId, Scalar<Tag>>,
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -52,7 +54,7 @@ impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>, max_size: Size) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
-        self.keys.insert(new_key, TlsEntry { data: None, dtor }).unwrap_none();
+        self.keys.insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap_none();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
         if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits() as u128) {
@@ -74,22 +76,34 @@ impl<'tcx> TlsData<'tcx> {
     pub fn load_tls(
         &self,
         key: TlsKey,
+        thread_id: ThreadId,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         match self.keys.get(&key) {
-            Some(&TlsEntry { data, .. }) => {
-                trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data.unwrap_or_else(|| Scalar::null_ptr(cx).into()))
+            Some(TlsEntry { data, .. }) => {
+                let value = data.get(&thread_id).cloned();
+                trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
+                Ok(value.unwrap_or_else(|| Scalar::null_ptr(cx).into()))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
     }
 
-    pub fn store_tls(&mut self, key: TlsKey, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
+    pub fn store_tls(
+        &mut self,
+         key: TlsKey, thread_id: ThreadId, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
-                trace!("TLS key {} stored: {:?}", key, new_data);
-                *data = new_data;
+                match new_data {
+                    Some(ptr) => {
+                        trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, ptr);
+                        data.insert(thread_id, ptr);
+                    }
+                    None => {
+                        trace!("TLS key {} for thread {:?} removed", key, thread_id);
+                        data.remove(&thread_id);
+                    }
+                }
                 Ok(())
             }
             None => throw_ub_format!("storing to a non-existing TLS key: {}", key),
@@ -131,7 +145,8 @@ impl<'tcx> TlsData<'tcx> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-    ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
+        thread_id: ThreadId,
+    ) -> Option<(ty::Instance<'tcx>, ThreadId, Scalar<Tag>, TlsKey)> {
         use std::collections::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -142,12 +157,15 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, TlsEntry { data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if let Some(data_scalar) = *data {
-                if let Some(dtor) = dtor {
-                    let ret = Some((*dtor, data_scalar, key));
-                    *data = None;
-                    return ret;
+            match data.entry(thread_id) {
+                Entry::Occupied(entry) => {
+                    let (thread_id, data_scalar) = entry.remove_entry();
+                    if let Some(dtor) = dtor {
+                        let ret = Some((dtor, thread_id, data_scalar, key));
+                        return ret;
+                    }
                 }
+                Entry::Vacant(_) => {}
             }
         }
         None
@@ -156,6 +174,7 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Run TLS destructors for the currently active thread.
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         assert!(!this.machine.tls.dtors_running, "running TLS dtors twice");
@@ -204,28 +223,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Now run the "keyed" destructors.
-        let mut dtor = this.machine.tls.fetch_tls_dtor(None);
-        while let Some((instance, ptr, key)) = dtor {
-            trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-            assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
+        for thread_id in this.get_all_thread_ids() {
+            this.set_active_thread(thread_id)?;
+            let mut dtor = this.machine.tls.fetch_tls_dtor(None, thread_id);
+            while let Some((instance, thread_id, ptr, key)) = dtor {
+                trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, thread_id);
+                assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
 
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
-            this.call_function(
-                instance,
-                &[ptr.into()],
-                Some(ret_place),
-                StackPopCleanup::None { cleanup: true },
-            )?;
+                let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+                this.call_function(
+                    instance,
+                    &[ptr.into()],
+                    Some(ret_place),
+                    StackPopCleanup::None { cleanup: true },
+                )?;
 
-            // step until out of stackframes
-            this.run()?;
+                // step until out of stackframes
+                this.run()?;
 
-            // Fetch next dtor after `key`.
-            dtor = match this.machine.tls.fetch_tls_dtor(Some(key)) {
-                dtor @ Some(_) => dtor,
-                // We ran each dtor once, start over from the beginning.
-                None => this.machine.tls.fetch_tls_dtor(None),
-            };
+                // Fetch next dtor after `key`.
+                dtor = match this.machine.tls.fetch_tls_dtor(Some(key), thread_id) {
+                    dtor @ Some(_) => dtor,
+                    // We ran each dtor once, start over from the beginning.
+                    None => this.machine.tls.fetch_tls_dtor(None, thread_id),
+                };
+            }
         }
         Ok(())
     }

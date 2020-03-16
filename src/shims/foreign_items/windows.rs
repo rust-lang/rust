@@ -144,13 +144,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "TlsGetValue" => {
                 let key = u128::from(this.read_scalar(args[0])?.to_u32()?);
-                let ptr = this.machine.tls.load_tls(key, this)?;
+                let active_thread = this.get_active_thread()?;
+                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
                 let key = u128::from(this.read_scalar(args[0])?.to_u32()?);
+                let active_thread = this.get_active_thread()?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
+                this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
                 // Return success (`1`).
                 this.write_scalar(Scalar::from_i32(1), dest)?;

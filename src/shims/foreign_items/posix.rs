@@ -6,6 +6,7 @@ use std::convert::TryFrom;
 use log::trace;
 
 use crate::*;
+use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_target::abi::{Align, LayoutOf, Size};
 
@@ -221,13 +222,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_getspecific" => {
                 let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
-                let ptr = this.machine.tls.load_tls(key, this)?;
+                let active_thread = this.get_active_thread()?;
+                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
+                let active_thread = this.get_active_thread()?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
+                this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -291,11 +294,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            // Better error for attempts to create a thread
-            "pthread_create" => {
-                throw_unsup_format!("Miri does not support threading");
-            }
-
             // Miscellaneous
             "isatty" => {
                 let _fd = this.read_scalar(args[0])?.to_i32()?;
@@ -316,7 +314,94 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
+            // Threading
+            "pthread_create" => {
+                assert_eq!(args.len(), 4);
+                let func = args[2];
+                let fn_ptr = this.read_scalar(func)?.not_undef()?;
+                let fn_val = this.memory.get_fn(fn_ptr)?;
+                let instance = match fn_val {
+                    rustc_mir::interpret::FnVal::Instance(instance) => instance,
+                    _ => unreachable!(),
+                };
+                let thread_info_place = this.deref_operand(args[0])?;
+                let thread_info_type = args[0].layout.ty
+                    .builtin_deref(true)
+                    .ok_or_else(|| err_ub_format!(
+                        "wrong signature used for `pthread_create`: first argument must be a raw pointer."
+                    ))?
+                    .ty;
+                let thread_info_layout = this.layout_of(thread_info_type)?;
+                let func_arg = match *args[3] {
+                    rustc_mir::interpret::Operand::Immediate(immediate) => immediate,
+                    _ => unreachable!(),
+                };
+                let func_args = [func_arg];
+                let ret_place =
+                    this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into());
+                let new_thread_id = this.create_thread()?;
+                let old_thread_id = this.set_active_thread(new_thread_id)?;
+                this.call_function(
+                    instance,
+                    &func_args[..],
+                    Some(ret_place.into()),
+                    StackPopCleanup::None { cleanup: true },
+                )?;
+                this.set_active_thread(old_thread_id)?;
+                this.write_scalar(
+                    Scalar::from_uint(new_thread_id.index() as u128, thread_info_layout.size),
+                    thread_info_place.into(),
+                )?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+            "pthread_join" => {
+                assert_eq!(args.len(), 2);
+                assert!(
+                    this.is_null(this.read_scalar(args[1])?.not_undef()?)?,
+                    "Miri supports pthread_join only with retval==NULL"
+                );
+                let thread = this.read_scalar(args[0])?.not_undef()?.to_machine_usize(this)?;
+                this.join_thread(thread.into())?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+            "pthread_detach" => {
+                let thread = this.read_scalar(args[0])?.not_undef()?.to_machine_usize(this)?;
+                this.detach_thread(thread.into())?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+
+            "pthread_attr_getguardsize" => {
+                assert_eq!(args.len(), 2);
+
+                let guard_size = this.deref_operand(args[1])?;
+                let guard_size_type = args[1].layout.ty
+                    .builtin_deref(true)
+                    .ok_or_else(|| err_ub_format!(
+                        "wrong signature used for `pthread_attr_getguardsize`: first argument must be a raw pointer."
+                    ))?
+                    .ty;
+                let guard_size_layout = this.layout_of(guard_size_type)?;
+                this.write_scalar(Scalar::from_uint(crate::PAGE_SIZE, guard_size_layout.size), guard_size.into())?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+
+            "prctl" => {
+                let option = this.read_scalar(args[0])?.not_undef()?.to_i32()?;
+                assert_eq!(option, 0xf, "Miri supports only PR_SET_NAME");
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+
+            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
             // These shims are enabled only when the caller is in the standard library.
             | "pthread_attr_init"
             | "pthread_attr_destroy"
