@@ -16,7 +16,10 @@ use std::{
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
-use lsp_types::{ClientCapabilities, NumberOrString};
+use lsp_types::{
+    ClientCapabilities, NumberOrString, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressCreateParams, WorkDoneProgressEnd, WorkDoneProgressReport,
+};
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
 use ra_ide::{Canceled, FileId, InlayHintsOptions, LibraryData, SourceRootId};
 use ra_prof::profile;
@@ -330,6 +333,7 @@ struct LoopState {
     in_flight_libraries: usize,
     pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
+    roots_scanned_progress: Option<usize>,
 }
 
 impl LoopState {
@@ -429,17 +433,15 @@ fn loop_turn(
         && loop_state.in_flight_libraries == 0
     {
         loop_state.workspace_loaded = true;
-        let n_packages: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
-        if world_state.feature_flags.get("notifications.workspace-loaded") {
-            let msg = format!("workspace loaded, {} rust packages", n_packages);
-            show_message(req::MessageType::Info, msg, &connection.sender);
-        }
         world_state.check_watcher.update();
         pool.execute({
             let subs = loop_state.subscriptions.subscriptions();
             let snap = world_state.snapshot();
             move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
+        send_startup_progress(&connection.sender, loop_state, world_state);
+    } else if !loop_state.workspace_loaded {
+        send_startup_progress(&connection.sender, loop_state, world_state);
     }
 
     if state_changed {
@@ -702,6 +704,65 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
         let not = notification_new::<req::PublishDiagnostics>(params);
         msg_sender.send(not.into()).unwrap();
     }
+}
+
+fn send_startup_progress(
+    sender: &Sender<Message>,
+    loop_state: &mut LoopState,
+    world_state: &WorldState,
+) {
+    if !world_state.feature_flags.get("notifications.workspace-loaded") {
+        return;
+    }
+
+    let total: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
+    let prev_progress = loop_state.roots_scanned_progress;
+    let progress = total - world_state.roots_to_scan;
+    loop_state.roots_scanned_progress = Some(progress);
+
+    match (prev_progress, loop_state.workspace_loaded) {
+        (None, false) => {
+            let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
+                loop_state.next_request_id(),
+                WorkDoneProgressCreateParams {
+                    token: req::ProgressToken::String("rustAnalyzer/startup".into()),
+                },
+            );
+            sender.send(work_done_progress_create.into()).unwrap();
+            send_startup_progress_notif(
+                sender,
+                WorkDoneProgress::Begin(WorkDoneProgressBegin {
+                    title: "rust-analyzer".into(),
+                    cancellable: None,
+                    message: Some(format!("{}/{} packages", progress, total)),
+                    percentage: Some(100.0 * progress as f64 / total as f64),
+                }),
+            );
+        }
+        (Some(prev), false) if progress != prev => send_startup_progress_notif(
+            sender,
+            WorkDoneProgress::Report(WorkDoneProgressReport {
+                cancellable: None,
+                message: Some(format!("{}/{} packages", progress, total)),
+                percentage: Some(100.0 * progress as f64 / total as f64),
+            }),
+        ),
+        (_, true) => send_startup_progress_notif(
+            sender,
+            WorkDoneProgress::End(WorkDoneProgressEnd {
+                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
+            }),
+        ),
+        _ => {}
+    }
+}
+
+fn send_startup_progress_notif(sender: &Sender<Message>, work_done_progress: WorkDoneProgress) {
+    let notif = notification_new::<req::Progress>(req::ProgressParams {
+        token: req::ProgressToken::String("rustAnalyzer/startup".into()),
+        value: req::ProgressParamsValue::WorkDone(work_done_progress),
+    });
+    sender.send(notif.into()).unwrap();
 }
 
 struct PoolDispatcher<'a> {
