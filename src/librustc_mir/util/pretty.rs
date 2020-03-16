@@ -817,7 +817,7 @@ fn write_mir_sig(
             write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (None, _) => {} // things like anon const, not an item
+        (Some(DefKind::AnonConst), _) | (None, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
