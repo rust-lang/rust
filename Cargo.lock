@@ -455,7 +455,6 @@ dependencies = [
  "clippy_lints",
  "compiletest_rs",
  "derive-new",
- "git2",
  "lazy_static 1.4.0",
  "regex",
  "rustc-workspace-hack",
