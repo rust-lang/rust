@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast::Ident;
@@ -612,8 +613,8 @@ impl EmbargoVisitor<'tcx> {
                 }
             }
 
-            // These have type privacy, so are not reachable unless they're
-            // public
+            // These have type privacy or are not namespaced, so are not reachable unless they're
+            // public.
             DefKind::AssocConst
             | DefKind::AssocTy
             | DefKind::AssocOpaqueTy
@@ -626,7 +627,16 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::AssocFn
             | DefKind::Trait
             | DefKind::TyParam
-            | DefKind::Variant => (),
+            | DefKind::Variant
+            | DefKind::LifetimeParam
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::Field
+            | DefKind::GlobalAsm
+            | DefKind::Impl
+            | DefKind::Closure => (),
         }
     }
 
