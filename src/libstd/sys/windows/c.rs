@@ -1045,6 +1045,10 @@ compat_fn! {
                     _dwBufferSize: DWORD) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
+    pub fn GetSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: LPFILETIME)
+                                          -> () {
+        GetSystemTimeAsFileTime(lpSystemTimeAsFileTime)
+    }
     pub fn SleepConditionVariableSRW(ConditionVariable: PCONDITION_VARIABLE,
                                      SRWLock: PSRWLOCK,
                                      dwMilliseconds: DWORD,
