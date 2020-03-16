@@ -424,7 +424,7 @@ impl Token {
                 NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
                 _ => false,
             },
-            _ => self.can_begin_literal_or_bool(),
+            _ => self.can_begin_literal_maybe_minus(),
         }
     }
 
@@ -448,13 +448,22 @@ impl Token {
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     ///
-    /// Keep this in sync with `Lit::from_token`.
-    pub fn can_begin_literal_or_bool(&self) -> bool {
+    /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
+    ///
+    /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
-                NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
+                NtLiteral(_) => true,
+                NtExpr(e) => match &e.kind {
+                    ast::ExprKind::Lit(_) => true,
+                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
+                        matches!(&e.kind, ast::ExprKind::Lit(_))
+                    }
+                    _ => false,
+                },
                 _ => false,
             },
             _ => false,
