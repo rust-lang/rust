@@ -31,7 +31,7 @@ fn dist_client(nightly: bool) -> Result<()> {
     let version_suffix = if nightly { "-nightly" } else { "" };
 
     let mut package_json = original_package_json.replace(
-        r#""version": "0.2.20200211-dev""#,
+        r#""version": "0.2.20200309-nightly""#,
         &format!(r#""version": "0.1.{}{}""#, date, version_suffix),
     );
 
