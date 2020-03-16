@@ -69,7 +69,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
-                    Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => {
+                    Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..) => {
                         !has_drop(cx, cx.tables.expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,

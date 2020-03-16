@@ -1780,7 +1780,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                             }
                             return false;  // no need to walk further *on the variable*
                         }
-                        Res::Def(DefKind::Static, ..) | Res::Def(DefKind::Const, ..) => {
+                        Res::Def(DefKind::Static | DefKind::Const, ..) => {
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                             }
