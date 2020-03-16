@@ -4,6 +4,6 @@
 struct Const<const P: *const u32>;
 
 fn main() {
-    let _: Const<{15 as *const _}> = Const::<{10 as *const _}>; //~ mismatched types
-    let _: Const<{10 as *const _}> = Const::<{10 as *const _}>;
+    let _: Const<{ 15 as *const _ }> = Const::<{ 10 as *const _ }>; //~ mismatched types
+    let _: Const<{ 10 as *const _ }> = Const::<{ 10 as *const _ }>;
 }

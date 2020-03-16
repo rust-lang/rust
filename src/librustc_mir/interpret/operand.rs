@@ -3,18 +3,20 @@
 
 use std::convert::{TryFrom, TryInto};
 
-use rustc::ty::layout::{
-    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
-};
-use rustc::{mir, ty};
-
 use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
     sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
 };
-use rustc_ast::ast;
+use rustc::ty::layout::{
+    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
+};
+use rustc::ty::print::{FmtPrinter, PrettyPrinter, Printer};
+use rustc::ty::Ty;
+use rustc::{mir, ty};
+use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
+use std::fmt::Write;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -92,47 +94,44 @@ pub struct ImmTy<'tcx, Tag = ()> {
     pub layout: TyLayout<'tcx>,
 }
 
-// `Tag: Copy` because some methods on `Scalar` consume them by value
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.imm {
-            // We cannot use `to_bits_or_ptr` as we do not have a `tcx`.
-            // So we use `is_bits` and circumvent a bunch of sanity checking -- but
-            // this is anyway only for printing.
-            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) if s.is_ptr() => {
-                fmt.write_str("{pointer}")
-            }
-            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => {
-                let s = s.assert_bits(self.layout.size);
-                match self.layout.ty.kind {
-                    ty::Int(_) => {
-                        return write!(fmt, "{}", super::sign_extend(s, self.layout.size) as i128,);
-                    }
-                    ty::Uint(_) => return write!(fmt, "{}", s),
-                    ty::Bool if s == 0 => return fmt.write_str("false"),
-                    ty::Bool if s == 1 => return fmt.write_str("true"),
-                    ty::Char => {
-                        if let Some(c) = u32::try_from(s).ok().and_then(std::char::from_u32) {
-                            return write!(fmt, "{}", c);
-                        }
-                    }
-                    ty::Float(ast::FloatTy::F32) => {
-                        if let Ok(u) = u32::try_from(s) {
-                            return write!(fmt, "{}", f32::from_bits(u));
-                        }
-                    }
-                    ty::Float(ast::FloatTy::F64) => {
-                        if let Ok(u) = u64::try_from(s) {
-                            return write!(fmt, "{}", f64::from_bits(u));
-                        }
-                    }
-                    _ => {}
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        /// Helper function for printing a scalar to a FmtPrinter
+        fn p<'a, 'tcx, F: std::fmt::Write, Tag>(
+            cx: FmtPrinter<'a, 'tcx, F>,
+            s: ScalarMaybeUndef<Tag>,
+            ty: Ty<'tcx>,
+        ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
+            match s {
+                ScalarMaybeUndef::Scalar(s) => {
+                    cx.pretty_print_const_scalar(s.erase_tag(), ty, true)
                 }
-                write!(fmt, "{:x}", s)
+                ScalarMaybeUndef::Undef => cx.typed_value(
+                    |mut this| {
+                        this.write_str("{undef ")?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    " ",
+                ),
             }
-            Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
-            Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
         }
+        ty::tls::with(|tcx| {
+            match self.imm {
+                Immediate::Scalar(s) => {
+                    if let Some(ty) = tcx.lift(&self.layout.ty) {
+                        let cx = FmtPrinter::new(tcx, f, Namespace::ValueNS);
+                        p(cx, s, ty)?;
+                        return Ok(());
+                    }
+                    write!(f, "{:?}: {}", s.erase_tag(), self.layout.ty)
+                }
+                Immediate::ScalarPair(a, b) => {
+                    // FIXME(oli-obk): at least print tuples and slices nicely
+                    write!(f, "({:?}, {:?}): {}", a.erase_tag(), b.erase_tag(), self.layout.ty,)
+                }
+            }
+        })
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
-use crate::mir::interpret::{sign_extend, truncate, ConstValue, Scalar};
+use crate::mir::interpret::{sign_extend, truncate, AllocId, ConstValue, Pointer, Scalar};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
@@ -17,6 +17,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
+use std::char;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::ops::{Deref, DerefMut};
@@ -207,6 +208,21 @@ pub trait PrettyPrinter<'tcx>:
                 self = elem.print(self)?;
             }
         }
+        Ok(self)
+    }
+
+    /// Prints `{f: t}` or `{f as t}` depending on the `cast` argument
+    fn typed_value(
+        mut self,
+        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        conversion: &str,
+    ) -> Result<Self::Const, Self::Error> {
+        self.write_str("{")?;
+        self = f(self)?;
+        self.write_str(conversion)?;
+        self = t(self)?;
+        self.write_str("}")?;
         Ok(self)
     }
 
@@ -517,14 +533,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Error => p!(write("[type error]")),
             ty::Param(ref param_ty) => p!(write("{}", param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => {
-                    if debruijn == ty::INNERMOST {
-                        p!(write("^{}", bound_ty.var.index()))
-                    } else {
-                        p!(write("^{}_{}", debruijn.index(), bound_ty.var.index()))
-                    }
-                }
-
+                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
                 ty::BoundTyKind::Param(p) => p!(write("{}", p)),
             },
             ty::Adt(def, substs) => {
@@ -689,7 +698,7 @@ pub trait PrettyPrinter<'tcx>:
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!(write("_"));
-                } else if let Some(n) = sz.try_eval_usize(self.tcx(), ty::ParamEnv::empty()) {
+                } else if let Some(n) = sz.val.try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
                 } else {
                     p!(write("_"));
@@ -700,6 +709,18 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         Ok(self)
+    }
+
+    fn pretty_print_bound_var(
+        &mut self,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+    ) -> Result<(), Self::Error> {
+        if debruijn == ty::INNERMOST {
+            write!(self, "^{}", var.index())
+        } else {
+            write!(self, "^{}_{}", debruijn.index(), var.index())
+        }
     }
 
     fn infer_ty_name(&self, _: ty::TyVid) -> Option<String> {
@@ -842,16 +863,23 @@ pub trait PrettyPrinter<'tcx>:
 
         macro_rules! print_underscore {
             () => {{
-                p!(write("_"));
                 if print_ty {
-                    p!(write(": "), print(ct.ty));
+                    self = self.typed_value(
+                        |mut this| {
+                            write!(this, "_")?;
+                            Ok(this)
+                        },
+                        |this| this.print_type(ct.ty),
+                        ": ",
+                    )?;
+                } else {
+                    write!(self, "_")?;
                 }
             }};
         }
 
-        match (ct.val, &ct.ty.kind) {
-            (_, ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
-            (ty::ConstKind::Unevaluated(did, substs, promoted), _) => {
+        match ct.val {
+            ty::ConstKind::Unevaluated(did, substs, promoted) => {
                 if let Some(promoted) = promoted {
                     p!(print_value_path(did, substs));
                     p!(write("::{:?}", promoted));
@@ -876,20 +904,200 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            (ty::ConstKind::Infer(..), _) => print_underscore!(),
-            (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
-            (ty::ConstKind::Value(value), _) => {
+            ty::ConstKind::Infer(..) => print_underscore!(),
+            ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
+            ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_value(value, ct.ty, print_ty);
             }
 
-            _ => {
-                // fallback
-                p!(write("{:?}", ct.val));
-                if print_ty {
-                    p!(write(": "), print(ct.ty));
+            ty::ConstKind::Bound(debruijn, bound_var) => {
+                self.pretty_print_bound_var(debruijn, bound_var)?
+            }
+            ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+        };
+        Ok(self)
+    }
+
+    fn pretty_print_const_scalar(
+        mut self,
+        scalar: Scalar,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+
+        match (scalar, &ty.kind) {
+            // Byte strings (&[u8; N])
+            (
+                Scalar::Ptr(ptr),
+                ty::Ref(
+                    _,
+                    ty::TyS {
+                        kind:
+                            ty::Array(
+                                ty::TyS { kind: ty::Uint(ast::UintTy::U8), .. },
+                                ty::Const {
+                                    val:
+                                        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw {
+                                            data,
+                                            ..
+                                        })),
+                                    ..
+                                },
+                            ),
+                        ..
+                    },
+                    _,
+                ),
+            ) => {
+                let byte_str = self
+                    .tcx()
+                    .alloc_map
+                    .lock()
+                    .unwrap_memory(ptr.alloc_id)
+                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data as u64))
+                    .unwrap();
+                p!(pretty_print_byte_str(byte_str));
+            }
+            // Bool
+            (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
+            (Scalar::Raw { data: 1, .. }, ty::Bool) => p!(write("true")),
+            // Float
+            (Scalar::Raw { data, .. }, ty::Float(ast::FloatTy::F32)) => {
+                p!(write("{}f32", Single::from_bits(data)))
+            }
+            (Scalar::Raw { data, .. }, ty::Float(ast::FloatTy::F64)) => {
+                p!(write("{}f64", Double::from_bits(data)))
+            }
+            // Int
+            (Scalar::Raw { data, .. }, ty::Uint(ui)) => {
+                let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
+                let max = truncate(u128::MAX, bit_size);
+
+                let ui_str = ui.name_str();
+                if data == max {
+                    p!(write("std::{}::MAX", ui_str))
+                } else {
+                    if print_ty { p!(write("{}{}", data, ui_str)) } else { p!(write("{}", data)) }
+                };
+            }
+            (Scalar::Raw { data, .. }, ty::Int(i)) => {
+                let size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size();
+                let bit_size = size.bits() as u128;
+                let min = 1u128 << (bit_size - 1);
+                let max = min - 1;
+
+                let i_str = i.name_str();
+                match data {
+                    d if d == min => p!(write("std::{}::MIN", i_str)),
+                    d if d == max => p!(write("std::{}::MAX", i_str)),
+                    _ => {
+                        let data = sign_extend(data, size) as i128;
+                        if print_ty {
+                            p!(write("{}{}", data, i_str))
+                        } else {
+                            p!(write("{}", data))
+                        }
+                    }
                 }
             }
-        };
+            // Char
+            (Scalar::Raw { data, .. }, ty::Char) if char::from_u32(data as u32).is_some() => {
+                p!(write("{:?}", char::from_u32(data as u32).unwrap()))
+            }
+            // Raw pointers
+            (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
+                self = self.typed_value(
+                    |mut this| {
+                        write!(this, "0x{:x}", data)?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    " as ",
+                )?;
+            }
+            (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
+                let instance = {
+                    let alloc_map = self.tcx().alloc_map.lock();
+                    alloc_map.unwrap_fn(ptr.alloc_id)
+                };
+                self = self.typed_value(
+                    |this| this.print_value_path(instance.def_id(), instance.substs),
+                    |this| this.print_type(ty),
+                    " as ",
+                )?;
+            }
+            // For function type zsts just printing the path is enough
+            (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
+            // Empty tuples are frequently occurring, so don't print the fallback.
+            (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
+            // Zero element arrays have a trivial representation.
+            (
+                Scalar::Raw { size: 0, .. },
+                ty::Array(
+                    _,
+                    ty::Const {
+                        val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: 0, .. })),
+                        ..
+                    },
+                ),
+            ) => p!(write("[]")),
+            // Nontrivial types with scalar bit representation
+            (Scalar::Raw { data, size }, _) => {
+                let print = |mut this: Self| {
+                    if size == 0 {
+                        write!(this, "transmute(())")?;
+                    } else {
+                        write!(this, "transmute(0x{:01$x})", data, size as usize * 2)?;
+                    }
+                    Ok(this)
+                };
+                self = if print_ty {
+                    self.typed_value(print, |this| this.print_type(ty), ": ")?
+                } else {
+                    print(self)?
+                };
+            }
+            // Any pointer values not covered by a branch above
+            (Scalar::Ptr(p), _) => {
+                self = self.pretty_print_const_pointer(p, ty, print_ty)?;
+            }
+        }
+        Ok(self)
+    }
+
+    /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
+    /// from MIR where it is actually useful.
+    fn pretty_print_const_pointer(
+        mut self,
+        _: Pointer,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        if print_ty {
+            self.typed_value(
+                |mut this| {
+                    this.write_str("&_")?;
+                    Ok(this)
+                },
+                |this| this.print_type(ty),
+                ": ",
+            )
+        } else {
+            self.write_str("&_")?;
+            Ok(self)
+        }
+    }
+
+    fn pretty_print_byte_str(mut self, byte_str: &'tcx [u8]) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+        p!(write("b\""));
+        for &c in byte_str {
+            for e in std::ascii::escape_default(c) {
+                self.write_char(e as char)?;
+            }
+        }
+        p!(write("\""));
         Ok(self)
     }
 
@@ -906,112 +1114,54 @@ pub trait PrettyPrinter<'tcx>:
             return Ok(self);
         }
 
-        let u8 = self.tcx().types.u8;
+        let u8_type = self.tcx().types.u8;
 
         match (ct, &ty.kind) {
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Bool) => {
-                p!(write("{}", if data == 0 { "false" } else { "true" }))
+            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+            (
+                ConstValue::Slice { data, start, end },
+                ty::Ref(_, ty::TyS { kind: ty::Slice(t), .. }, _),
+            ) if *t == u8_type => {
+                // The `inspect` here is okay since we checked the bounds, and there are
+                // no relocations (we have an active slice reference here). We don't use
+                // this result to affect interpreter execution.
+                let byte_str = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                self.pretty_print_byte_str(byte_str)
             }
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Float(ast::FloatTy::F32)) => {
-                p!(write("{}f32", Single::from_bits(data)))
+            (
+                ConstValue::Slice { data, start, end },
+                ty::Ref(_, ty::TyS { kind: ty::Str, .. }, _),
+            ) => {
+                // The `inspect` here is okay since we checked the bounds, and there are no
+                // relocations (we have an active `str` reference here). We don't use this
+                // result to affect interpreter execution.
+                let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                p!(write("{:?}", s));
+                Ok(self)
             }
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Float(ast::FloatTy::F64)) => {
-                p!(write("{}f64", Double::from_bits(data)))
-            }
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Uint(ui)) => {
-                let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
-                let max = truncate(u128::MAX, bit_size);
+            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
+                let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
+                // cast is ok because we already checked for pointer size (32 or 64 bit) above
+                let n = Size::from_bytes(n as u64);
+                let ptr = Pointer::new(AllocId(0), offset);
 
-                let ui_str = ui.name_str();
-                if data == max {
-                    p!(write("std::{}::MAX", ui_str))
-                } else {
-                    p!(write("{}{}", data, ui_str))
-                };
+                let byte_str = alloc.get_bytes(&self.tcx(), ptr, n).unwrap();
+                p!(write("*"));
+                p!(pretty_print_byte_str(byte_str));
+                Ok(self)
             }
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Int(i)) => {
-                let bit_size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size().bits() as u128;
-                let min = 1u128 << (bit_size - 1);
-                let max = min - 1;
-
-                let ty = self.tcx().lift(&ty).unwrap();
-                let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
-                let i_str = i.name_str();
-                match data {
-                    d if d == min => p!(write("std::{}::MIN", i_str)),
-                    d if d == max => p!(write("std::{}::MAX", i_str)),
-                    _ => p!(write("{}{}", sign_extend(data, size) as i128, i_str)),
-                }
-            }
-            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Char) => {
-                p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap()))
-            }
-            (ConstValue::Scalar(_), ty::RawPtr(_)) => p!(write("{{pointer}}")),
-            (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::FnPtr(_)) => {
-                let instance = {
-                    let alloc_map = self.tcx().alloc_map.lock();
-                    alloc_map.unwrap_fn(ptr.alloc_id)
-                };
-                p!(print_value_path(instance.def_id(), instance.substs));
-            }
+            // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
+            // their fields instead of just dumping the memory.
             _ => {
-                let printed = if let ty::Ref(_, ref_ty, _) = ty.kind {
-                    let byte_str = match (ct, &ref_ty.kind) {
-                        (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                            let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
-                            Some(
-                                self.tcx()
-                                    .alloc_map
-                                    .lock()
-                                    .unwrap_memory(ptr.alloc_id)
-                                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(n))
-                                    .unwrap(),
-                            )
-                        }
-                        (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
-                            // The `inspect` here is okay since we checked the bounds, and there are
-                            // no relocations (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
-                        }
-                        _ => None,
-                    };
-
-                    if let Some(byte_str) = byte_str {
-                        p!(write("b\""));
-                        for &c in byte_str {
-                            for e in std::ascii::escape_default(c) {
-                                self.write_char(e as char)?;
-                            }
-                        }
-                        p!(write("\""));
-                        true
-                    } else if let (ConstValue::Slice { data, start, end }, ty::Str) =
-                        (ct, &ref_ty.kind)
-                    {
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
-                        let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                        p!(write("{:?}", s));
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-                if !printed {
-                    // fallback
-                    p!(write("{:?}", ct));
-                    if print_ty {
-                        p!(write(": "), print(ty));
-                    }
+                // fallback
+                p!(write("{:?}", ct));
+                if print_ty {
+                    p!(write(": "), print(ty));
                 }
+                Ok(self)
             }
-        };
-        Ok(self)
+        }
     }
 }
 
@@ -1024,6 +1174,7 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
 
     empty_path: bool,
     in_value: bool,
+    pub print_alloc_ids: bool,
 
     used_region_names: FxHashSet<Symbol>,
     region_index: usize,
@@ -1054,6 +1205,7 @@ impl<F> FmtPrinter<'a, 'tcx, F> {
             fmt,
             empty_path: false,
             in_value: ns == Namespace::ValueNS,
+            print_alloc_ids: false,
             used_region_names: Default::default(),
             region_index: 0,
             binder_depth: 0,
@@ -1326,6 +1478,22 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self.pretty_in_binder(value)
     }
 
+    fn typed_value(
+        mut self,
+        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        conversion: &str,
+    ) -> Result<Self::Const, Self::Error> {
+        self.write_str("{")?;
+        self = f(self)?;
+        self.write_str(conversion)?;
+        let was_in_value = std::mem::replace(&mut self.in_value, false);
+        self = t(self)?;
+        self.in_value = was_in_value;
+        self.write_str("}")?;
+        Ok(self)
+    }
+
     fn generic_delimiters(
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
@@ -1380,6 +1548,28 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
             ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
 
             ty::ReStatic | ty::ReEmpty(_) | ty::ReClosureBound(_) => true,
+        }
+    }
+
+    fn pretty_print_const_pointer(
+        self,
+        p: Pointer,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        let print = |mut this: Self| {
+            define_scoped_cx!(this);
+            if this.print_alloc_ids {
+                p!(write("{:?}", p));
+            } else {
+                p!(write("&_"));
+            }
+            Ok(this)
+        };
+        if print_ty {
+            self.typed_value(print, |this| this.print_type(ty), ": ")
+        } else {
+            print(self)
         }
     }
 }
