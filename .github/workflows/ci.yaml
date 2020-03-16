@@ -16,8 +16,21 @@ jobs:
       CARGO_NET_RETRY: 10
 
     steps:
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
     - name: Checkout repository
       uses: actions/checkout@v2
+
+    - name: Cache cargo
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - run: cargo install cargo-audit
     - run: cargo audit
@@ -108,7 +121,7 @@ jobs:
     - run: npm ci
       working-directory: ./editors/code
 
-    - run: npm audit || sleep 10 && npm audit || sleep 30 && npm audit
+    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
       working-directory: ./editors/code
 
     - run: npm run lint
