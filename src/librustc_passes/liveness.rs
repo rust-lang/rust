@@ -398,7 +398,7 @@ fn visit_fn<'tcx>(
     intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
 
     // compute liveness
-    let mut lsets = Liveness::new(&mut fn_maps, body_id);
+    let mut lsets = Liveness::new(&mut fn_maps, def_id);
     let entry_ln = lsets.compute(&body.value);
 
     // check for various error conditions
@@ -658,6 +658,7 @@ const ACC_USE: u32 = 4;
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     s: Specials,
     successors: Vec<LiveNode>,
     rwu_table: RWUTable,
@@ -670,7 +671,7 @@ struct Liveness<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn new(ir: &'a mut IrMaps<'tcx>, body: hir::BodyId) -> Liveness<'a, 'tcx> {
+    fn new(ir: &'a mut IrMaps<'tcx>, def_id: DefId) -> Liveness<'a, 'tcx> {
         // Special nodes and variables:
         // - exit_ln represents the end of the fn, either by return or panic
         // - implicit_ret_var is a pseudo-variable that represents
@@ -681,7 +682,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             clean_exit_var: ir.add_variable(CleanExit),
         };
 
-        let tables = ir.tcx.body_tables(body);
+        let tables = ir.tcx.typeck_tables_of(def_id);
+        let param_env = ir.tcx.param_env(def_id);
 
         let num_live_nodes = ir.num_live_nodes;
         let num_vars = ir.num_vars;
@@ -689,6 +691,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         Liveness {
             ir,
             tables,
+            param_env,
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
@@ -1126,7 +1129,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Call(ref f, ref args) => {
                 let m = self.ir.tcx.parent_module(expr.hir_id);
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
+                let succ = if self.ir.tcx.is_ty_uninhabited_from(
+                    m,
+                    self.tables.expr_ty(expr),
+                    self.param_env,
+                ) {
                     self.s.exit_ln
                 } else {
                     succ
@@ -1137,7 +1144,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::MethodCall(.., ref args) => {
                 let m = self.ir.tcx.parent_module(expr.hir_id);
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
+                let succ = if self.ir.tcx.is_ty_uninhabited_from(
+                    m,
+                    self.tables.expr_ty(expr),
+                    self.param_env,
+                ) {
                     self.s.exit_ln
                 } else {
                     succ
