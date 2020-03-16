@@ -56,7 +56,7 @@ fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
         },
 
         Node::ImplItem(ref item) => match item.kind {
-            ImplItemKind::Method(ref sig, _) => Some(&sig.decl),
+            ImplItemKind::Fn(ref sig, _) => Some(&sig.decl),
             _ => None,
         },
 
@@ -82,7 +82,7 @@ fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
         },
 
         Node::ImplItem(item) => match &item.kind {
-            ImplItemKind::Method(sig, _) => Some(sig),
+            ImplItemKind::Fn(sig, _) => Some(sig),
             _ => None,
         },
 
@@ -100,13 +100,14 @@ fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
         },
 
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Const(_, Some(body))
-            | TraitItemKind::Fn(_, TraitMethod::Provided(body)) => Some(body),
+            TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)) => {
+                Some(body)
+            }
             _ => None,
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Const(_, body) | ImplItemKind::Method(_, body) => Some(body),
+            ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body) => Some(body),
             _ => None,
         },
 
@@ -299,7 +300,7 @@ impl<'hir> Map<'hir> {
             },
             Node::ImplItem(item) => match item.kind {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
-                ImplItemKind::Method(..) => DefKind::AssocFn,
+                ImplItemKind::Fn(..) => DefKind::AssocFn,
                 ImplItemKind::TyAlias(..) => DefKind::AssocTy,
                 ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
             },
@@ -443,7 +444,7 @@ impl<'hir> Map<'hir> {
             Node::Ctor(..)
             | Node::Item(&Item { kind: ItemKind::Fn(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Method(..), .. }) => BodyOwnerKind::Fn,
+            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Fn(..), .. }) => BodyOwnerKind::Fn,
             Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => BodyOwnerKind::Static(m),
             Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => BodyOwnerKind::Closure,
             node => bug!("{:#?} is not a body node", node),
@@ -749,7 +750,7 @@ impl<'hir> Map<'hir> {
                     _ => false,
                 },
                 Node::ImplItem(ii) => match ii.kind {
-                    ImplItemKind::Method(..) => true,
+                    ImplItemKind::Fn(..) => true,
                     _ => false,
                 },
                 Node::Block(_) => true,
@@ -1110,7 +1111,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
             ImplItemKind::Const(..) => {
                 format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
             }
-            ImplItemKind::Method(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
+            ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
             ImplItemKind::TyAlias(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
             }

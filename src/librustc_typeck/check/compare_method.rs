@@ -403,7 +403,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
     let tcx = infcx.tcx;
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
     let (impl_m_output, impl_m_iter) = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
-        ImplItemKind::Method(ref impl_m_sig, _) => {
+        ImplItemKind::Fn(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
         _ => bug!("{:?} is not a method", impl_m),
@@ -732,7 +732,7 @@ fn compare_number_of_method_arguments<'tcx>(
         };
         let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
         let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
-            ImplItemKind::Method(ref impl_m_sig, _) => {
+            ImplItemKind::Fn(ref impl_m_sig, _) => {
                 let pos = if impl_number_args > 0 { impl_number_args - 1 } else { 0 };
                 if let Some(arg) = impl_m_sig.decl.inputs.get(pos) {
                     if pos == 0 {
@@ -873,7 +873,7 @@ fn compare_synthetic_generics<'tcx>(
                         let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
                         let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
                         let input_tys = match impl_m.kind {
-                            hir::ImplItemKind::Method(ref sig, _) => sig.decl.inputs,
+                            hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),
                         };
                         struct Visitor(Option<Span>, hir::def_id::DefId);

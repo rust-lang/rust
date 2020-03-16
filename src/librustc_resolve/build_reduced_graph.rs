@@ -7,7 +7,7 @@
 
 use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
-use crate::macros::{LegacyBinding, LegacyScope};
+use crate::macros::{MacroRulesBinding, MacroRulesScope};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
 use crate::{
@@ -165,11 +165,11 @@ impl<'a> Resolver<'a> {
         &mut self,
         fragment: &AstFragment,
         parent_scope: ParentScope<'a>,
-    ) -> LegacyScope<'a> {
+    ) -> MacroRulesScope<'a> {
         collect_definitions(&mut self.definitions, fragment, parent_scope.expansion);
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
-        visitor.parent_scope.legacy
+        visitor.parent_scope.macro_rules
     }
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
@@ -624,7 +624,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
-                let used = self.process_legacy_macro_imports(item, module);
+                let used = self.process_macro_use_imports(item, module);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
                 let import = self.r.arenas.alloc_import(Import {
@@ -645,7 +645,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.potentially_unused_imports.push(import);
                 let imported_binding = self.r.import(binding, import);
                 if ptr::eq(parent, self.r.graph_root) {
-                    if let Some(entry) = self.r.extern_prelude.get(&ident.modern()) {
+                    if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0())
+                    {
                         if expansion != ExpnId::root()
                             && orig_name.is_some()
                             && entry.extern_crate_item.is_none()
@@ -656,10 +657,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         }
                     }
                     let entry =
-                        self.r.extern_prelude.entry(ident.modern()).or_insert(ExternPreludeEntry {
-                            extern_crate_item: None,
-                            introduced_by_item: true,
-                        });
+                        self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(
+                            ExternPreludeEntry {
+                                extern_crate_item: None,
+                                introduced_by_item: true,
+                            },
+                        );
                     entry.extern_crate_item = Some(imported_binding);
                     if orig_name.is_some() {
                         entry.introduced_by_item = true;
@@ -913,7 +916,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn legacy_import_macro(
+    fn add_macro_use_binding(
         &mut self,
         name: ast::Name,
         binding: &'a NameBinding<'a>,
@@ -929,7 +932,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Returns `true` if we should consider the underlying `extern crate` to be used.
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>) -> bool {
+    fn process_macro_use_imports(&mut self, item: &Item, module: Module<'a>) -> bool {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
@@ -1004,7 +1007,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             module.for_each_child(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
                     let imported_binding = this.r.import(binding, import);
-                    this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
+                    this.add_macro_use_binding(ident.name, imported_binding, span, allow_shadowing);
                 }
             });
         } else {
@@ -1021,7 +1024,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let import = macro_use_import(self, ident.span);
                     self.r.potentially_unused_imports.push(import);
                     let imported_binding = self.r.import(binding, import);
-                    self.legacy_import_macro(
+                    self.add_macro_use_binding(
                         ident.name,
                         imported_binding,
                         ident.span,
@@ -1060,7 +1063,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         false
     }
 
-    fn visit_invoc(&mut self, id: NodeId) -> LegacyScope<'a> {
+    fn visit_invoc(&mut self, id: NodeId) -> MacroRulesScope<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
         self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
@@ -1068,7 +1071,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
-        LegacyScope::Invocation(invoc_id)
+        MacroRulesScope::Invocation(invoc_id)
     }
 
     fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
@@ -1095,20 +1098,20 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
+    fn define_macro(&mut self, item: &ast::Item) -> MacroRulesScope<'a> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
-        let (ext, ident, span, is_legacy) = match &item.kind {
+        let (ext, ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(def) => {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
-                (ext, item.ident, item.span, def.legacy)
+                (ext, item.ident, item.span, def.macro_rules)
             }
             ItemKind::Fn(..) => match Self::proc_macro_stub(item) {
                 Some((macro_kind, ident, span)) => {
                     self.r.proc_macro_stubs.insert(item.id);
                     (self.r.dummy_ext(macro_kind), ident, span, false)
                 }
-                None => return parent_scope.legacy,
+                None => return parent_scope.macro_rules,
             },
             _ => unreachable!(),
         };
@@ -1118,8 +1121,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         self.r.macro_map.insert(def_id, ext);
         self.r.local_macro_def_scopes.insert(item.id, parent_scope.module);
 
-        if is_legacy {
-            let ident = ident.modern();
+        if macro_rules {
+            let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
             let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
@@ -1137,8 +1140,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.check_reserved_macro_name(ident, res);
                 self.insert_unused_macro(ident, item.id, span);
             }
-            LegacyScope::Binding(self.r.arenas.alloc_legacy_binding(LegacyBinding {
-                parent_legacy_scope: parent_scope.legacy,
+            MacroRulesScope::Binding(self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
+                parent_macro_rules_scope: parent_scope.macro_rules,
                 binding,
                 ident,
             }))
@@ -1149,7 +1152,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_unused_macro(ident, item.id, span);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
-            self.parent_scope.legacy
+            self.parent_scope.macro_rules
         }
     }
 }
@@ -1174,29 +1177,29 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &'b Item) {
         let macro_use = match item.kind {
             ItemKind::MacroDef(..) => {
-                self.parent_scope.legacy = self.define_macro(item);
+                self.parent_scope.macro_rules = self.define_macro(item);
                 return;
             }
             ItemKind::MacCall(..) => {
-                self.parent_scope.legacy = self.visit_invoc(item.id);
+                self.parent_scope.macro_rules = self.visit_invoc(item.id);
                 return;
             }
             ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
             _ => false,
         };
         let orig_current_module = self.parent_scope.module;
-        let orig_current_legacy_scope = self.parent_scope.legacy;
+        let orig_current_macro_rules_scope = self.parent_scope.macro_rules;
         self.build_reduced_graph_for_item(item);
         visit::walk_item(self, item);
         self.parent_scope.module = orig_current_module;
         if !macro_use {
-            self.parent_scope.legacy = orig_current_legacy_scope;
+            self.parent_scope.macro_rules = orig_current_macro_rules_scope;
         }
     }
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
         if let ast::StmtKind::MacCall(..) = stmt.kind {
-            self.parent_scope.legacy = self.visit_invoc(stmt.id);
+            self.parent_scope.macro_rules = self.visit_invoc(stmt.id);
         } else {
             visit::walk_stmt(self, stmt);
         }
@@ -1214,11 +1217,11 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_block(&mut self, block: &'b Block) {
         let orig_current_module = self.parent_scope.module;
-        let orig_current_legacy_scope = self.parent_scope.legacy;
+        let orig_current_macro_rules_scope = self.parent_scope.macro_rules;
         self.build_reduced_graph_for_block(block);
         visit::walk_block(self, block);
         self.parent_scope.module = orig_current_module;
-        self.parent_scope.legacy = orig_current_legacy_scope;
+        self.parent_scope.macro_rules = orig_current_macro_rules_scope;
     }
 
     fn visit_assoc_item(&mut self, item: &'b AssocItem, ctxt: AssocCtxt) {

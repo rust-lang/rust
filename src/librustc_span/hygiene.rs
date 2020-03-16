@@ -201,11 +201,11 @@ impl HygieneData {
         true
     }
 
-    fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
-    fn modern_and_legacy(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
     }
 
@@ -266,9 +266,9 @@ impl HygieneData {
 
         let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
-            self.modern(call_site_ctxt)
+            self.normalize_to_macros_2_0(call_site_ctxt)
         } else {
-            self.modern_and_legacy(call_site_ctxt)
+            self.normalize_to_macro_rules(call_site_ctxt)
         };
 
         if call_site_ctxt == SyntaxContext::root() {
@@ -491,10 +491,10 @@ impl SyntaxContext {
         HygieneData::with(|data| data.adjust(self, expn_id))
     }
 
-    /// Like `SyntaxContext::adjust`, but also modernizes `self`.
-    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
-            *self = data.modern(*self);
+            *self = data.normalize_to_macros_2_0(*self);
             data.adjust(self, expn_id)
         })
     }
@@ -527,7 +527,7 @@ impl SyntaxContext {
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             let mut scope = None;
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 scope = Some(data.remove_mark(&mut glob_ctxt).0);
                 if data.remove_mark(self).0 != scope.unwrap() {
@@ -558,7 +558,7 @@ impl SyntaxContext {
                 return None;
             }
 
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
             let mut marks = Vec::new();
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 marks.push(data.remove_mark(&mut glob_ctxt));
@@ -574,20 +574,20 @@ impl SyntaxContext {
 
     pub fn hygienic_eq(self, other: SyntaxContext, expn_id: ExpnId) -> bool {
         HygieneData::with(|data| {
-            let mut self_modern = data.modern(self);
-            data.adjust(&mut self_modern, expn_id);
-            self_modern == data.modern(other)
+            let mut self_normalized = data.normalize_to_macros_2_0(self);
+            data.adjust(&mut self_normalized, expn_id);
+            self_normalized == data.normalize_to_macros_2_0(other)
         })
     }
 
     #[inline]
-    pub fn modern(self) -> SyntaxContext {
-        HygieneData::with(|data| data.modern(self))
+    pub fn normalize_to_macros_2_0(self) -> SyntaxContext {
+        HygieneData::with(|data| data.normalize_to_macros_2_0(self))
     }
 
     #[inline]
-    pub fn modern_and_legacy(self) -> SyntaxContext {
-        HygieneData::with(|data| data.modern_and_legacy(self))
+    pub fn normalize_to_macro_rules(self) -> SyntaxContext {
+        HygieneData::with(|data| data.normalize_to_macro_rules(self))
     }
 
     #[inline]

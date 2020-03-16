@@ -886,13 +886,13 @@ impl<'a> State<'a> {
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_associated_const(ti.ident, &ty, default, &vis);
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref arg_names)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_method_sig(ti.ident, sig, &ti.generics, &vis, arg_names, None);
                 self.s.word(";");
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.head("");
@@ -925,7 +925,7 @@ impl<'a> State<'a> {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");
                 self.print_method_sig(ii.ident, sig, &ii.generics, &ii.vis, &[], Some(body));
                 self.nbsp();

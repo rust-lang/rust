@@ -203,7 +203,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     generics,
-                    kind: hir::ImplItemKind::Method(..),
+                    kind: hir::ImplItemKind::Fn(..),
                     ..
                 })
                 | hir::Node::Item(hir::Item {

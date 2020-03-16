@@ -62,7 +62,7 @@ impl RegionExt for Region {
         let def_id = hir_map.local_def_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (param.name.modern(), Region::EarlyBound(i, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::EarlyBound(i, def_id, origin))
     }
 
     fn late(hir_map: &Map<'_>, param: &GenericParam<'_>) -> (ParamName, Region) {
@@ -73,7 +73,7 @@ impl RegionExt for Region {
             "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
             param, depth, def_id, origin,
         );
-        (param.name.modern(), Region::LateBound(depth, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::LateBound(depth, def_id, origin))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -771,7 +771,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::ImplItemKind::*;
         self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
-            Method(ref sig, _) => {
+            Fn(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(impl_item.hir_id)),
@@ -1174,7 +1174,9 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
 
                 Scope::Binder { ref lifetimes, s, .. } => {
                     // FIXME (#24278): non-hygienic comparison
-                    if let Some(def) = lifetimes.get(&hir::ParamName::Plain(label.modern())) {
+                    if let Some(def) =
+                        lifetimes.get(&hir::ParamName::Plain(label.normalize_to_macros_2_0()))
+                    {
                         let hir_id = tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
@@ -1253,7 +1255,7 @@ fn object_lifetime_defaults_for_item(
     fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound<'_>]) {
         for bound in bounds {
             if let hir::GenericBound::Outlives(ref lifetime) = *bound {
-                set.insert(lifetime.name.modern());
+                set.insert(lifetime.name.normalize_to_macros_2_0());
             }
         }
     }
@@ -1466,7 +1468,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                     }
                     Node::ImplItem(impl_item) => {
-                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.kind {
+                        if let hir::ImplItemKind::Fn(sig, _) = &impl_item.kind {
                             find_arg_use_span(sig.decl.inputs);
                         }
                     }
@@ -1791,7 +1793,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder { ref lifetimes, s, .. } => {
                     match lifetime_ref.name {
                         LifetimeName::Param(param_name) => {
-                            if let Some(&def) = lifetimes.get(&param_name.modern()) {
+                            if let Some(&def) = lifetimes.get(&param_name.normalize_to_macros_2_0())
+                            {
                                 break Some(def.shifted(late_depth));
                             }
                         }
@@ -1818,9 +1821,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     | Node::TraitItem(&hir::TraitItem {
                         kind: hir::TraitItemKind::Fn(..), ..
                     })
-                    | Node::ImplItem(&hir::ImplItem {
-                        kind: hir::ImplItemKind::Method(..), ..
-                    }) => {
+                    | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
                         def = Region::Free(scope, def.id().unwrap());
                     }
@@ -2100,12 +2101,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         trait_items.iter().find(|ti| ti.id.hir_id == parent).map(|ti| ti.kind);
                 }
                 match *m {
-                    hir::TraitMethod::Required(_) => None,
-                    hir::TraitMethod::Provided(body) => Some(body),
+                    hir::TraitFn::Required(_) => None,
+                    hir::TraitFn::Provided(body) => Some(body),
                 }
             }
 
-            Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Method(_, body), .. }) => {
+            Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
                 if let hir::ItemKind::Impl { ref self_ty, ref items, .. } =
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {
@@ -2544,7 +2545,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let lifetimes: Vec<_> = params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => Some((param, param.name.modern())),
+                GenericParamKind::Lifetime { .. } => {
+                    Some((param, param.name.normalize_to_macros_2_0()))
+                }
                 _ => None,
             })
             .collect();
@@ -2661,7 +2664,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 Scope::Binder { ref lifetimes, s, .. } => {
-                    if let Some(&def) = lifetimes.get(&param.name.modern()) {
+                    if let Some(&def) = lifetimes.get(&param.name.normalize_to_macros_2_0()) {
                         let hir_id = self.tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
@@ -2799,7 +2802,7 @@ fn insert_late_bound_lifetimes(
                 // `'a: 'b` means both `'a` and `'b` are referenced
                 appears_in_where_clause
                     .regions
-                    .insert(hir::LifetimeName::Param(param.name.modern()));
+                    .insert(hir::LifetimeName::Param(param.name.normalize_to_macros_2_0()));
             }
         }
     }
@@ -2821,7 +2824,7 @@ fn insert_late_bound_lifetimes(
             hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => continue,
         }
 
-        let lt_name = hir::LifetimeName::Param(param.name.modern());
+        let lt_name = hir::LifetimeName::Param(param.name.normalize_to_macros_2_0());
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&lt_name) {
             continue;
@@ -2885,7 +2888,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name.modern());
+            self.regions.insert(lifetime_ref.name.normalize_to_macros_2_0());
         }
     }
 
@@ -2902,7 +2905,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name.modern());
+            self.regions.insert(lifetime_ref.name.normalize_to_macros_2_0());
         }
     }
 }

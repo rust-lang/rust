@@ -79,9 +79,9 @@ impl ParamName {
         }
     }
 
-    pub fn modern(&self) -> ParamName {
+    pub fn normalize_to_macros_2_0(&self) -> ParamName {
         match *self {
-            ParamName::Plain(ident) => ParamName::Plain(ident.modern()),
+            ParamName::Plain(ident) => ParamName::Plain(ident.normalize_to_macros_2_0()),
             param_name => param_name,
         }
     }
@@ -151,9 +151,11 @@ impl LifetimeName {
         self == &LifetimeName::Static
     }
 
-    pub fn modern(&self) -> LifetimeName {
+    pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
         match *self {
-            LifetimeName::Param(param_name) => LifetimeName::Param(param_name.modern()),
+            LifetimeName::Param(param_name) => {
+                LifetimeName::Param(param_name.normalize_to_macros_2_0())
+            }
             lifetime_name => lifetime_name,
         }
     }
@@ -1854,7 +1856,7 @@ pub struct TraitItem<'hir> {
 
 /// Represents a trait method's body (or just argument names).
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum TraitMethod<'hir> {
+pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
     Required(&'hir [Ident]),
 
@@ -1868,7 +1870,7 @@ pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<BodyId>),
     /// An associated function with an optional body.
-    Fn(FnSig<'hir>, TraitMethod<'hir>),
+    Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -1901,8 +1903,8 @@ pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
     Const(&'hir Ty<'hir>, BodyId),
-    /// A method implementation with the given signature and body.
-    Method(FnSig<'hir>, BodyId),
+    /// An associated function implementation with the given signature and body.
+    Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty<'hir>),
     /// An associated `type = impl Trait`.
@@ -1913,7 +1915,7 @@ impl ImplItemKind<'_> {
     pub fn namespace(&self) -> Namespace {
         match self {
             ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
-            ImplItemKind::Const(..) | ImplItemKind::Method(..) => Namespace::ValueNS,
+            ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
         }
     }
 }
@@ -2704,7 +2706,7 @@ impl Node<'_> {
     pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Method(fn_sig, _), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
             Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
                 Some(fn_decl)

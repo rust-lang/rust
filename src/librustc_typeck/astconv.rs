@@ -1441,12 +1441,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
 
-        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
         let assoc_ty = tcx
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
-            .find(|i| i.kind == ty::AssocKind::Type && i.ident.modern() == assoc_ident)
+            .find(|i| {
+                i.kind == ty::AssocKind::Type && i.ident.normalize_to_macros_2_0() == assoc_ident
+            })
             .expect("missing associated type");
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
@@ -2298,12 +2300,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
 
-        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
         let item = tcx
             .associated_items(trait_did)
             .in_definition_order()
-            .find(|i| i.kind.namespace() == Namespace::TypeNS && i.ident.modern() == assoc_ident)
+            .find(|i| {
+                i.kind.namespace() == Namespace::TypeNS
+                    && i.ident.normalize_to_macros_2_0() == assoc_ident
+            })
             .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);

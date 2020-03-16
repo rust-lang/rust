@@ -505,7 +505,7 @@ impl EntryKind {
             EntryKind::Struct(_, _) => DefKind::Struct,
             EntryKind::Union(_, _) => DefKind::Union,
             EntryKind::Fn(_) | EntryKind::ForeignFn(_) => DefKind::Fn,
-            EntryKind::Method(_) => DefKind::AssocFn,
+            EntryKind::AssocFn(_) => DefKind::AssocFn,
             EntryKind::Type => DefKind::TyAlias,
             EntryKind::TypeParam => DefKind::TyParam,
             EntryKind::ConstParam => DefKind::ConstParam,
@@ -1067,7 +1067,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         let (kind, container, has_self) = match self.kind(id) {
             EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
-            EntryKind::Method(data) => {
+            EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
                 (ty::AssocKind::Method, data.container, data.has_self)
             }
@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_fn_param_names(&self, id: DefIndex) -> Vec<ast::Name> {
         let param_names = match self.kind(id) {
             EntryKind::Fn(data) | EntryKind::ForeignFn(data) => data.decode(self).param_names,
-            EntryKind::Method(data) => data.decode(self).fn_data.param_names,
+            EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
         param_names.decode(self).collect()
@@ -1286,7 +1286,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     // don't serialize constness for tuple variant and tuple struct constructors.
     fn is_const_fn_raw(&self, id: DefIndex) -> bool {
         let constness = match self.kind(id) {
-            EntryKind::Method(data) => data.decode(self).fn_data.constness,
+            EntryKind::AssocFn(data) => data.decode(self).fn_data.constness,
             EntryKind::Fn(data) => data.decode(self).constness,
             // Some intrinsics can be const fn. While we could recompute this (at least until we
             // stop having hardcoded whitelists and move to stability attributes), it seems cleaner
@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn asyncness(&self, id: DefIndex) -> hir::IsAsync {
         match self.kind(id) {
             EntryKind::Fn(data) => data.decode(self).asyncness,
-            EntryKind::Method(data) => data.decode(self).fn_data.asyncness,
+            EntryKind::AssocFn(data) => data.decode(self).fn_data.asyncness,
             EntryKind::ForeignFn(data) => data.decode(self).asyncness,
             _ => bug!("asyncness: expected function kind"),
         }

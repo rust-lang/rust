@@ -1260,7 +1260,7 @@ impl<'a> Parser<'a> {
         };
 
         self.sess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: false })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
@@ -1270,7 +1270,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(2, |t| t.is_ident())
     }
 
-    /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
+    /// Parses a `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
         self.expect_keyword(kw::MacroRules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`
@@ -1280,7 +1280,7 @@ impl<'a> Parser<'a> {
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: true })))
     }
 
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
