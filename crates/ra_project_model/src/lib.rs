@@ -152,7 +152,15 @@ impl ProjectWorkspace {
 
     pub fn out_dirs(&self) -> Vec<PathBuf> {
         match self {
-            ProjectWorkspace::Json { project: _project } => vec![],
+            ProjectWorkspace::Json { project } => {
+                let mut out_dirs = Vec::with_capacity(project.crates.len());
+                for krate in &project.crates {
+                    if let Some(out_dir) = &krate.out_dir {
+                        out_dirs.push(out_dir.to_path_buf());
+                    }
+                }
+                out_dirs
+            }
             ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
                 let mut out_dirs = Vec::with_capacity(cargo.packages().len());
                 for pkg in cargo.packages() {
@@ -202,6 +210,16 @@ impl ProjectWorkspace {
                             opts
                         };
 
+                        let mut env = Env::default();
+                        let mut extern_source = ExternSource::default();
+                        if let Some(out_dir) = &krate.out_dir {
+                            // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
+                            env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                            if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
+                                extern_source.set_extern_path(&out_dir, extern_source_id);
+                            }
+                        }
+
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         crates.insert(
                             crate_id,
@@ -211,8 +229,8 @@ impl ProjectWorkspace {
                                 // FIXME json definitions can store the crate name
                                 None,
                                 cfg_options,
-                                Env::default(),
-                                Default::default(),
+                                env,
+                                extern_source,
                             ),
                         );
                     }

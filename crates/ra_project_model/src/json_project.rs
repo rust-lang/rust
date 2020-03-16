@@ -22,6 +22,7 @@ pub struct Crate {
     pub(crate) deps: Vec<Dep>,
     pub(crate) atom_cfgs: FxHashSet<String>,
     pub(crate) key_value_cfgs: FxHashMap<String, String>,
+    pub(crate) out_dir: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
