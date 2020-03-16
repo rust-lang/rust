@@ -223,7 +223,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         &self.region_obligations
     }
 
-    pub(crate) fn projection_cache(&mut self) -> traits::ProjectionCache<'tcx, '_> {
+    pub fn projection_cache(&mut self) -> traits::ProjectionCache<'tcx, '_> {
         self.projection_cache.with_log(&mut self.undo_log)
     }
 
@@ -1308,19 +1308,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         outlives_env: &OutlivesEnvironment<'tcx>,
         mode: RegionckMode,
     ) {
-        assert!(
-            self.is_tainted_by_errors() || self.inner.borrow().region_obligations.is_empty(),
-            "region_obligations not empty: {:#?}",
-            self.inner.borrow().region_obligations
-        );
-        let (var_infos, data) = self
-            .inner
-            .borrow_mut()
-            .region_constraints
-            .take()
-            .expect("regions already resolved")
-            .with_log(&mut inner.undo_log)
-            .into_infos_and_data();
+        let (var_infos, data) = {
+            let mut inner = self.inner.borrow_mut();
+            let inner = &mut *inner;
+            assert!(
+                self.is_tainted_by_errors() || inner.region_obligations.is_empty(),
+                "region_obligations not empty: {:#?}",
+                inner.region_obligations
+            );
+            inner
+                .region_constraints
+                .take()
+                .expect("regions already resolved")
+                .with_log(&mut inner.undo_log)
+                .into_infos_and_data()
+        };
 
         let region_rels = &RegionRelations::new(
             self.tcx,
@@ -1686,13 +1688,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
     pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
+        let mut inner = self.inner.borrow_mut();
         match infer_var {
             TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
 
                 // If `inlined_probe` returns a `Known` value, it never equals
                 // `ty::Infer(ty::TyVar(v))`.
-                match self.inner.borrow_mut().type_variables().inlined_probe(v) {
+                match inner.type_variables().inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
@@ -1702,7 +1705,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_some()
+                inner.int_unification_table().inlined_probe_value(v).is_some()
             }
 
             TyOrConstInferVar::TyFloat(v) => {
@@ -1710,7 +1713,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
+                inner.float_unification_table().probe_value(v).is_some()
             }
 
             TyOrConstInferVar::Const(v) => {
@@ -1718,7 +1721,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match self.inner.borrow_mut().const_unification_table.probe_value(v).val {
+                match inner.const_unification_table().probe_value(v).val {
                     ConstVariableValue::Unknown { .. } => false,
                     ConstVariableValue::Known { .. } => true,
                 }

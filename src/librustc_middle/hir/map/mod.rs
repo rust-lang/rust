@@ -311,16 +311,19 @@ impl<'hir> Map<'hir> {
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
-        if id.local_id == ItemLocalId::from_u32_const(0) {
-            let owner = self.tcx.hir_owner(id.owner_def_id());
+        if id.local_id == ItemLocalId::from_u32(0) {
+            let owner = self.tcx.hir_owner(id.owner);
             owner.map(|owner| Entry { parent: owner.parent, node: owner.node })
         } else {
-            let owner = self.tcx.hir_owner_items(id.owner_def_id());
+            let owner = self.tcx.hir_owner_nodes(id.owner);
             owner.and_then(|owner| {
-                let item = owner.items[id.local_id].as_ref();
-                item.map(|item| Entry {
-                    parent: HirId { owner: id.owner, local_id: item.parent },
-                    node: item.node,
+                let node = owner.nodes[id.local_id].as_ref();
+                // FIXME(eddyb) use a single generic type insted of having both
+                // `Entry` and `ParentedNode`, which are effectively the same.
+                // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
+                node.map(|node| Entry {
+                    parent: HirId { owner: id.owner, local_id: node.parent },
+                    node: node.node,
                 })
             })
         }
@@ -352,12 +355,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx
-            .hir_owner_items(DefId::local(id.hir_id.owner))
-            .unwrap()
-            .bodies
-            .get(&id.hir_id.local_id)
-            .unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies.get(&id.hir_id.local_id).unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {

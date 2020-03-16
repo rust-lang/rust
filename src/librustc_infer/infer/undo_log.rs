@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
 
-use rustc::ty;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, Snapshots, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_hir as hir;
+use rustc_middle::ty;
 
 use crate::{
     infer::{

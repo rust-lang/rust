@@ -2,8 +2,12 @@
 
 use super::PredicateObligation;
 
-use rustc_data_structures::snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage};
-use rustc_middle::ty::fold::TypeFoldable;
+use crate::infer::InferCtxtUndoLogs;
+
+use rustc_data_structures::{
+    snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},
+    undo_log::Rollback,
+};
 use rustc_middle::ty::{self, Ty};
 
 pub use rustc_middle::traits::Reveal;
