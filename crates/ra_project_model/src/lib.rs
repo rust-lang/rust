@@ -245,7 +245,10 @@ impl ProjectWorkspace {
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
-                            Some(krate.name(&sysroot).to_string()),
+                            Some(
+                                CrateName::new(krate.name(&sysroot))
+                                    .expect("Sysroot crate names should not contain dashes"),
+                            ),
                             cfg_options,
                             env,
                             extern_source,
@@ -296,7 +299,7 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(pkg.name(&cargo).to_string()),
+                                Some(CrateName::normalize_dashes(pkg.name(&cargo))),
                                 cfg_options,
                                 env,
                                 extern_source,

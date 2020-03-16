@@ -177,8 +177,13 @@ pub struct ModuleData {
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
-        let _p = profile("crate_def_map_query")
-            .detail(|| db.crate_graph()[krate].display_name.clone().unwrap_or_default());
+        let _p = profile("crate_def_map_query").detail(|| {
+            db.crate_graph()[krate]
+                .display_name
+                .as_ref()
+                .map(|name| name.get_name())
+                .unwrap_or_default()
+        });
         let def_map = {
             let edition = db.crate_graph()[krate].edition;
             let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();

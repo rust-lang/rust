@@ -83,6 +83,7 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -101,6 +102,10 @@ impl CrateName {
     pub fn normalize_dashes(name: &str) -> CrateName {
         Self(SmolStr::new(name.replace('-', "_")))
     }
+
+    pub fn get_name(&self) -> String {
+        self.0.to_string()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,7 +115,7 @@ pub struct CrateData {
     /// The name to display to the end user.
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
-    pub display_name: Option<String>,
+    pub display_name: Option<CrateName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub extern_source: ExternSource,
@@ -150,7 +155,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<String>,
+        display_name: Option<CrateName>,
         cfg_options: CfgOptions,
         env: Env,
         extern_source: ExternSource,
