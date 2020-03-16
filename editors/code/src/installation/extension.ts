@@ -109,7 +109,7 @@ async function askToDownloadProperExtensionVersion(config: Config, reason = "") 
  * each of them would result in a ton of code (especially accounting for cross-process
  * shared mutable `globalState` access). Enforcing no reentrancy for this is best-effort.
  */
-const tryDownloadNightlyExtension = notReentrant(async function tryDownloadNightlyExtension(
+const tryDownloadNightlyExtension = notReentrant(async (
     config: Config,
     shouldDownload: (releaseInfo: ArtifactReleaseInfo) => boolean = () => true
 ): Promise<never | void> {
