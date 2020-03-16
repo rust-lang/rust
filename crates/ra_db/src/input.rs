@@ -14,6 +14,7 @@ use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
+use fmt::Display;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -83,6 +84,7 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -103,6 +105,12 @@ impl CrateName {
     }
 }
 
+impl Display for CrateName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,
@@ -110,7 +118,7 @@ pub struct CrateData {
     /// The name to display to the end user.
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
-    pub display_name: Option<String>,
+    pub display_name: Option<CrateName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub extern_source: ExternSource,
@@ -150,7 +158,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<String>,
+        display_name: Option<CrateName>,
         cfg_options: CfgOptions,
         env: Env,
         extern_source: ExternSource,

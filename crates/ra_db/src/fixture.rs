@@ -64,7 +64,9 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
         crate_graph.add_crate_root(
             file_id,
             meta.edition,
-            meta.krate,
+            meta.krate.map(|name| {
+                CrateName::new(&name).expect("Fixture crate name should not contain dashes")
+            }),
             meta.cfg,
             meta.env,
             Default::default(),
@@ -124,7 +126,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
             let crate_id = crate_graph.add_crate_root(
                 file_id,
                 meta.edition,
-                Some(krate.clone()),
+                Some(CrateName::new(&krate).unwrap()),
                 meta.cfg,
                 meta.env,
                 Default::default(),
