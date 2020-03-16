@@ -34,8 +34,7 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
                 return ExpandResult::ok(res);
             }
         }
-        // Use the rule if we matched more tokens, or had fewer patterns left,
-        // or had no error
+        // Use the rule if we matched more tokens, or had fewer errors
         if let Some((prev_match, _)) = &match_ {
             if (new_match.unmatched_tts, new_match.err_count)
                 < (prev_match.unmatched_tts, prev_match.err_count)
@@ -176,7 +175,6 @@ mod tests {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        let expanded = expand_rules(&rules.rules, &invocation_tt);
-        expanded
+        expand_rules(&rules.rules, &invocation_tt)
     }
 }
