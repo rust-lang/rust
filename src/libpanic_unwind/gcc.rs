@@ -36,8 +36,6 @@
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
 
-#![allow(private_no_mangle_fns)]
-
 use alloc::boxed::Box;
 use core::any::Any;
 

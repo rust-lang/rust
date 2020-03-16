@@ -3,6 +3,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
+#![feature(try_blocks)]
 
 use rustc_ast::ast;
 use rustc_ast::token::{self, Nonterminal};
@@ -13,7 +14,7 @@ use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str;
 
 use log::info;
@@ -25,24 +26,6 @@ pub mod parser;
 use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
-#[macro_use]
-pub mod config;
-
-#[derive(Clone)]
-pub struct Directory {
-    pub path: PathBuf,
-    pub ownership: DirectoryOwnership,
-}
-
-#[derive(Copy, Clone)]
-pub enum DirectoryOwnership {
-    Owned {
-        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
-        relative: Option<ast::Ident>,
-    },
-    UnownedViaBlock,
-    UnownedViaMod,
-}
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
@@ -119,10 +102,7 @@ pub fn maybe_new_parser_from_source_str(
     name: FileName,
     source: String,
 ) -> Result<Parser<'_>, Vec<Diagnostic>> {
-    let mut parser =
-        maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))?;
-    parser.recurse_into_file_modules = false;
-    Ok(parser)
+    maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))
 }
 
 /// Creates a new parser, handling errors as appropriate if the file doesn't exist.
@@ -146,12 +126,10 @@ pub fn maybe_new_parser_from_file<'a>(
 pub fn new_sub_parser_from_file<'a>(
     sess: &'a ParseSess,
     path: &Path,
-    directory_ownership: DirectoryOwnership,
     module_name: Option<String>,
     sp: Span,
 ) -> Parser<'a> {
     let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
-    p.directory.ownership = directory_ownership;
     p.root_module_name = module_name;
     p
 }
@@ -257,26 +235,7 @@ pub fn stream_to_parser<'a>(
     stream: TokenStream,
     subparser_name: Option<&'static str>,
 ) -> Parser<'a> {
-    Parser::new(sess, stream, None, true, false, subparser_name)
-}
-
-/// Given a stream, the `ParseSess` and the base directory, produces a parser.
-///
-/// Use this function when you are creating a parser from the token stream
-/// and also care about the current working directory of the parser (e.g.,
-/// you are trying to resolve modules defined inside a macro invocation).
-///
-/// # Note
-///
-/// The main usage of this function is outside of rustc, for those who uses
-/// librustc_ast as a library. Please do not remove this function while refactoring
-/// just because it is not used in rustc codebase!
-pub fn stream_to_parser_with_base_dir(
-    sess: &ParseSess,
-    stream: TokenStream,
-    base_dir: Directory,
-) -> Parser<'_> {
-    Parser::new(sess, stream, Some(base_dir), true, false, None)
+    Parser::new(sess, stream, false, subparser_name)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
@@ -286,7 +245,7 @@ pub fn parse_in<'a, T>(
     name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(sess, tts, None, false, false, Some(name));
+    let mut parser = Parser::new(sess, tts, false, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;

@@ -202,7 +202,7 @@ fn generate_test_harness(
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
-    let ext_cx = ExtCtxt::new(sess, econfig, resolver);
+    let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,

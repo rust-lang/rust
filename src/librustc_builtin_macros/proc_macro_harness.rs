@@ -59,7 +59,7 @@ pub fn inject(
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
-    let mut cx = ExtCtxt::new(sess, ecfg, resolver);
+    let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     let mut collect = CollectProcMacros {
         macros: Vec::new(),

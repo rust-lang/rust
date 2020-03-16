@@ -45,7 +45,6 @@
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
 #![allow(nonstandard_style)]
-#![allow(private_no_mangle_fns)]
 
 use alloc::boxed::Box;
 use core::any::Any;
