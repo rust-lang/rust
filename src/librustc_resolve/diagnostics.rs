@@ -1,4 +1,5 @@
 use std::cmp::Reverse;
+use std::ptr;
 
 use log::debug;
 use rustc::bug;
@@ -918,50 +919,81 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
-        let session = &self.session;
-        let mk_struct_span_error = |is_constructor| {
-            let mut descr = binding.res().descr().to_string();
-            if is_constructor {
-                descr += " constructor";
-            }
-            if binding.is_import() {
-                descr += " import";
-            }
-
-            let mut err =
-                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
-
-            err.span_label(ident.span, &format!("this {} is private", descr));
-            err.span_note(
-                session.source_map().def_span(binding.span),
-                &format!("the {} `{}` is defined here", descr, ident),
-            );
-
-            err
-        };
-
-        let mut err = if let NameBindingKind::Res(
+    /// If the binding refers to a tuple struct constructor with fields,
+    /// returns the span of its fields.
+    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+        if let NameBindingKind::Res(
             Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
             _,
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
             if let Some(fields) = self.field_names.get(&def_id) {
-                let mut err = mk_struct_span_error(true);
                 let first_field = fields.first().expect("empty field list in the map");
-                err.span_label(
-                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                    "a constructor is private if any of the fields is private",
-                );
-                err
-            } else {
-                mk_struct_span_error(false)
+                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
             }
-        } else {
-            mk_struct_span_error(false)
-        };
+        }
+        None
+    }
+
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+
+        let res = binding.res();
+        let ctor_fields_span = self.ctor_fields_span(binding);
+        let plain_descr = res.descr().to_string();
+        let nonimport_descr =
+            if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
+        let import_descr = nonimport_descr.clone() + " import";
+        let get_descr =
+            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+
+        // Print the primary message.
+        let descr = get_descr(binding);
+        let mut err =
+            struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
+        err.span_label(ident.span, &format!("this {} is private", descr));
+        if let Some(span) = ctor_fields_span {
+            err.span_label(span, "a constructor is private if any of the fields is private");
+        }
+
+        // Print the whole import chain to make it easier to see what happens.
+        let first_binding = binding;
+        let mut next_binding = Some(binding);
+        let mut next_ident = ident;
+        while let Some(binding) = next_binding {
+            let name = next_ident;
+            next_binding = match binding.kind {
+                _ if res == Res::Err => None,
+                NameBindingKind::Import { binding, import, .. } => match import.kind {
+                    _ if binding.span.is_dummy() => None,
+                    ImportKind::Single { source, .. } => {
+                        next_ident = source;
+                        Some(binding)
+                    }
+                    ImportKind::Glob { .. } | ImportKind::MacroUse => Some(binding),
+                    ImportKind::ExternCrate { .. } => None,
+                },
+                _ => None,
+            };
+
+            let first = ptr::eq(binding, first_binding);
+            let descr = get_descr(binding);
+            let msg = format!(
+                "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
+                and_refers_to = if first { "" } else { "...and refers to " },
+                item = descr,
+                name = name,
+                which = if first { "" } else { " which" },
+                dots = if next_binding.is_some() { "..." } else { "" },
+            );
+            let def_span = self.session.source_map().def_span(binding.span);
+            let mut note_span = MultiSpan::from_span(def_span);
+            if !first && binding.vis == ty::Visibility::Public {
+                note_span.push_span_label(def_span, "consider importing it directly".into());
+            }
+            err.span_note(note_span, &msg);
+        }
 
         err.emit();
     }
