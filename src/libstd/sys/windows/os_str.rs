@@ -77,11 +77,17 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
+        // Safety: Slice is just a wrapper for Wtf8,
+        // and as_slice returns &Wtf8. Therefore,
+        // transmute &Wtf8 to &Slice is safe.
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Slice {
+        // Safety: Slice is just a wrapper for Wtf8,
+        // and as_slice returns &Wtf8. Therefore,
+        // transmute &mut Wtf8 to &mut Slice is safe.
         unsafe { mem::transmute(self.inner.as_mut_slice()) }
     }
 

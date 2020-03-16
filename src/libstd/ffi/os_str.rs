@@ -525,11 +525,15 @@ impl OsStr {
 
     #[inline]
     fn from_inner(inner: &Slice) -> &OsStr {
+        // Safety: OsStr is just a wrapper of Slice,
+        // therefore converting &Slice to &OsStr is safe.
         unsafe { &*(inner as *const Slice as *const OsStr) }
     }
 
     #[inline]
     fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
+        // Safety: OsStr is just a wrapper of Slice,
+        // therefore converting &mut Slice to &mut OsStr is safe.
         unsafe { &mut *(inner as *mut Slice as *mut OsStr) }
     }
 
