@@ -345,6 +345,42 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn add_derive_copy(&mut self, expn_id: ExpnId) {
         self.containers_deriving_copy.insert(expn_id);
     }
+
+    // The function that implements the resolution logic of `#[cfg_accessible(path)]`.
+    // Returns true if the path can certainly be resolved in one of three namespaces,
+    // returns false if the path certainly cannot be resolved in any of the three namespaces.
+    // Returns `Indeterminate` if we cannot give a certain answer yet.
+    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate> {
+        let span = path.span;
+        let path = &Segment::from_path(path);
+        let parent_scope = self.invocation_parent_scopes[&expn_id];
+
+        let mut indeterminate = false;
+        for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
+            match self.resolve_path(path, Some(ns), &parent_scope, false, span, CrateLint::No) {
+                PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
+                PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
+                    return Ok(true);
+                }
+                PathResult::Indeterminate => indeterminate = true,
+                // FIXME: `resolve_path` is not ready to report partially resolved paths
+                // correctly, so we just report an error if the path was reported as unresolved.
+                // This needs to be fixed for `cfg_accessible` to be useful.
+                PathResult::NonModule(..) | PathResult::Failed { .. } => {}
+                PathResult::Module(_) => panic!("unexpected path resolution"),
+            }
+        }
+
+        if indeterminate {
+            return Err(Indeterminate);
+        }
+
+        self.session
+            .struct_span_err(span, "not sure whether the path is accessible or not")
+            .span_note(span, "`cfg_accessible` is not fully implemented")
+            .emit();
+        Ok(false)
+    }
 }
 
 impl<'a> Resolver<'a> {
