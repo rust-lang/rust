@@ -111,9 +111,20 @@ use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 /// [`HashMap`]: struct.HashMap.html
 /// [`PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
 /// [`RefCell`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html
-#[derive(Clone)]
 pub struct HashSet<T, S = DefaultHashBuilder> {
     pub(crate) map: HashMap<T, (), S>,
+}
+
+impl<T: Clone, S: Clone> Clone for HashSet<T, S> {
+    fn clone(&self) -> Self {
+        HashSet {
+            map: self.map.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.map.clone_from(&source.map);
+    }
 }
 
 #[cfg(feature = "ahash")]

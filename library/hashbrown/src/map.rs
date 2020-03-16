@@ -188,10 +188,54 @@ pub enum DefaultHashBuilder {}
 ///  .iter().cloned().collect();
 /// // use the values stored in map
 /// ```
-#[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
     pub(crate) hash_builder: S,
     pub(crate) table: RawTable<(K, V)>,
+}
+
+impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
+    fn clone(&self) -> Self {
+        HashMap {
+            hash_builder: self.hash_builder.clone(),
+            table: self.table.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        // We clone the hash_builder first since this might panic and we don't
+        // want the table to have elements hashed with the wrong hash_builder.
+        let hash_builder = source.hash_builder.clone();
+
+        #[cfg(not(feature = "nightly"))]
+        {
+            self.table.clone_from(&source.table);
+        }
+        #[cfg(feature = "nightly")]
+        {
+            trait HashClone<S> {
+                fn clone_from(&mut self, source: &Self, hash_builder: &S);
+            }
+            impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S> {
+                default fn clone_from(&mut self, source: &Self, _hash_builder: &S) {
+                    self.table.clone_from(&source.table);
+                }
+            }
+            impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S>
+            where
+                K: Eq + Hash,
+                S: BuildHasher,
+            {
+                fn clone_from(&mut self, source: &Self, hash_builder: &S) {
+                    self.table
+                        .clone_from_with_hasher(&source.table, |x| make_hash(hash_builder, &x.0));
+                }
+            }
+            HashClone::clone_from(self, source, &hash_builder);
+        }
+
+        // Update hash_builder only if we successfully cloned all elements.
+        self.hash_builder = hash_builder;
+    }
 }
 
 #[cfg_attr(feature = "inline-more", inline)]
@@ -2815,6 +2859,21 @@ mod test_map {
         assert!(m.insert(2, 4).is_none());
         assert_eq!(m.len(), 2);
         let m2 = m.clone();
+        assert_eq!(*m2.get(&1).unwrap(), 2);
+        assert_eq!(*m2.get(&2).unwrap(), 4);
+        assert_eq!(m2.len(), 2);
+    }
+
+    #[test]
+    fn test_clone_from() {
+        let mut m = HashMap::new();
+        let mut m2 = HashMap::new();
+        assert_eq!(m.len(), 0);
+        assert!(m.insert(1, 2).is_none());
+        assert_eq!(m.len(), 1);
+        assert!(m.insert(2, 4).is_none());
+        assert_eq!(m.len(), 2);
+        m2.clone_from(&m);
         assert_eq!(*m2.get(&1).unwrap(), 2);
         assert_eq!(*m2.get(&2).unwrap(), 4);
         assert_eq!(m2.len(), 2);
