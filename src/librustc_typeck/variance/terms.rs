@@ -170,7 +170,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Method(..) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
         }
     }

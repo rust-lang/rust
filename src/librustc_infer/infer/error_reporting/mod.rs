@@ -275,7 +275,7 @@ fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
 
 fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
     match item.kind {
-        hir::ImplItemKind::Method(..) => "method body",
+        hir::ImplItemKind::Fn(..) => "method body",
         hir::ImplItemKind::Const(..)
         | hir::ImplItemKind::OpaqueTy(..)
         | hir::ImplItemKind::TyAlias(..) => "associated item",

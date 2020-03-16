@@ -715,7 +715,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
             | Node::ImplItem(&hir::ImplItem {
                 span,
-                kind: hir::ImplItemKind::Method(ref sig, _),
+                kind: hir::ImplItemKind::Fn(ref sig, _),
                 ..
             })
             | Node::TraitItem(&hir::TraitItem {
