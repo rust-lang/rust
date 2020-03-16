@@ -343,6 +343,7 @@ struct TraitData {
     paren_sugar: bool,
     has_auto_impl: bool,
     is_marker: bool,
+    specialization_kind: ty::trait_def::TraitSpecializationKind,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

@@ -64,6 +64,7 @@ This API is completely unstable and subject to change.
 #![feature(nll)]
 #![feature(try_blocks)]
 #![feature(never_type)]
+#![feature(slice_partition_dedup)]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -1901,8 +1901,11 @@ fn check_specialization_validity<'tcx>(
         hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
-    let mut ancestor_impls = trait_def
-        .ancestors(tcx, impl_id)
+    let ancestors = match trait_def.ancestors(tcx, impl_id) {
+        Ok(ancestors) => ancestors,
+        Err(_) => return,
+    };
+    let mut ancestor_impls = ancestors
         .skip(1)
         .filter_map(|parent| {
             if parent.is_from_trait() {
@@ -2083,16 +2086,17 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Check for missing items from trait
     let mut missing_items = Vec::new();
-    for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
-        let is_implemented = trait_def
-            .ancestors(tcx, impl_id)
-            .leaf_def(tcx, trait_item.ident, trait_item.kind)
-            .map(|node_item| !node_item.node.is_from_trait())
-            .unwrap_or(false);
+    if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id) {
+        for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
+            let is_implemented = ancestors
+                .leaf_def(tcx, trait_item.ident, trait_item.kind)
+                .map(|node_item| !node_item.node.is_from_trait())
+                .unwrap_or(false);
 
-        if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
-            if !trait_item.defaultness.has_value() {
-                missing_items.push(*trait_item);
+            if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
+                if !trait_item.defaultness.has_value() {
+                    missing_items.push(*trait_item);
+                }
             }
         }
     }

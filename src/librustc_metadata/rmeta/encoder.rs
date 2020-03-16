@@ -1077,12 +1077,13 @@ impl EncodeContext<'tcx> {
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    trait_def.ancestors(self.tcx, def_id).nth(1).and_then(|node| {
-                        match node {
-                            specialization_graph::Node::Impl(parent) => Some(parent),
-                            _ => None,
-                        }
-                    })
+                    trait_def.ancestors(self.tcx, def_id).ok()
+                        .and_then(|mut an| an.nth(1).and_then(|node| {
+                            match node {
+                                specialization_graph::Node::Impl(parent) => Some(parent),
+                                _ => None,
+                            }
+                        }))
                 } else {
                     None
                 };
@@ -1114,6 +1115,7 @@ impl EncodeContext<'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
+                    specialization_kind: trait_def.specialization_kind,
                 };
 
                 EntryKind::Trait(self.lazy(data))

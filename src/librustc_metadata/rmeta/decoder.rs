@@ -651,6 +651,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     data.paren_sugar,
                     data.has_auto_impl,
                     data.is_marker,
+                    data.specialization_kind,
                     self.def_path_table.def_path_hash(item_id),
                 )
             }
@@ -660,6 +661,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 false,
                 false,
                 false,
+                ty::trait_def::TraitSpecializationKind::None,
                 self.def_path_table.def_path_hash(item_id),
             ),
             _ => bug!("def-index does not refer to trait or trait alias"),

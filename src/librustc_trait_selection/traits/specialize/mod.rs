@@ -130,24 +130,27 @@ pub fn find_associated_item<'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
     let trait_def = tcx.trait_def(trait_def_id);
 
-    let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id);
-    match ancestors.leaf_def(tcx, item.ident, item.kind) {
-        Some(node_item) => {
-            let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = param_env.with_reveal_all();
-                let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
-                let substs = translate_substs(
-                    &infcx,
-                    param_env,
-                    impl_data.impl_def_id,
-                    substs,
-                    node_item.node,
-                );
-                infcx.tcx.erase_regions(&substs)
-            });
-            (node_item.item.def_id, substs)
+    if let Ok(ancestors) = trait_def.ancestors(tcx, impl_data.impl_def_id) {
+        match ancestors.leaf_def(tcx, item.ident, item.kind) {
+            Some(node_item) => {
+                let substs = tcx.infer_ctxt().enter(|infcx| {
+                    let param_env = param_env.with_reveal_all();
+                    let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
+                    let substs = translate_substs(
+                        &infcx,
+                        param_env,
+                        impl_data.impl_def_id,
+                        substs,
+                        node_item.node,
+                    );
+                    infcx.tcx.erase_regions(&substs)
+                });
+                (node_item.item.def_id, substs)
+            }
+            None => bug!("{:?} not found in {:?}", item, impl_data.impl_def_id),
         }
-        None => bug!("{:?} not found in {:?}", item, impl_data.impl_def_id),
+    } else {
+        (item.def_id, substs)
     }
 }
 
@@ -161,7 +164,9 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
-    if !tcx.features().specialization && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
+    let features = tcx.features();
+    let specialization_enabled = features.specialization || features.min_specialization;
+    if !specialization_enabled && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }
 
@@ -380,6 +385,7 @@ pub(super) fn specialization_graph_provider(
 
                 match used_to_be_allowed {
                     None => {
+                        sg.has_errored = true;
                         let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
                         decorate(LintDiagnosticBuilder::new(err));
                     }

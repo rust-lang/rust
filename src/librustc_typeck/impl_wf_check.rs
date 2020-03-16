@@ -9,6 +9,8 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use crate::constrained_generic_params as cgp;
+use min_specialization::check_min_specialization;
+
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -16,9 +18,11 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_span::Span;
+
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use rustc_span::Span;
+mod min_specialization;
 
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self type (or are constrained by a
@@ -60,7 +64,9 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
 }
 
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx });
+    let min_specialization = tcx.features().min_specialization;
+    tcx.hir()
+        .visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx, min_specialization });
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -69,6 +75,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 struct ImplWfCheck<'tcx> {
     tcx: TyCtxt<'tcx>,
+    min_specialization: bool,
 }
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
@@ -77,6 +84,9 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
             enforce_impl_items_are_distinct(self.tcx, items);
+            if self.min_specialization {
+                check_min_specialization(self.tcx, impl_def_id, item.span);
+            }
         }
     }
 
