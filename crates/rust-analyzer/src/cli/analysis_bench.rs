@@ -42,12 +42,17 @@ fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
     Ok((&s[..idx], &s[idx + 1..]))
 }
 
-pub fn analysis_bench(verbosity: Verbosity, path: &Path, what: BenchWhat) -> Result<()> {
+pub fn analysis_bench(
+    verbosity: Verbosity,
+    path: &Path,
+    what: BenchWhat,
+    load_output_dirs: bool,
+) -> Result<()> {
     ra_prof::init();
 
     let start = Instant::now();
     eprint!("loading: ");
-    let (mut host, roots) = load_cargo(path)?;
+    let (mut host, roots) = load_cargo(path, load_output_dirs)?;
     let db = host.raw_database();
     eprintln!("{:?}\n", start.elapsed());
 

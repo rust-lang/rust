@@ -19,19 +19,25 @@ fn main() -> Result<()> {
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
-        args::Command::Stats { randomize, memory_usage, only, with_deps, path } => {
-            cli::analysis_stats(
-                args.verbosity,
-                memory_usage,
-                path.as_ref(),
-                only.as_ref().map(String::as_ref),
-                with_deps,
-                randomize,
-            )?
-        }
+        args::Command::Stats {
+            randomize,
+            memory_usage,
+            only,
+            with_deps,
+            path,
+            load_output_dirs,
+        } => cli::analysis_stats(
+            args.verbosity,
+            memory_usage,
+            path.as_ref(),
+            only.as_ref().map(String::as_ref),
+            with_deps,
+            randomize,
+            load_output_dirs,
+        )?,
 
-        args::Command::Bench { path, what } => {
-            cli::analysis_bench(args.verbosity, path.as_ref(), what)?
+        args::Command::Bench { path, what, load_output_dirs } => {
+            cli::analysis_bench(args.verbosity, path.as_ref(), what, load_output_dirs)?
         }
 
         args::Command::RunServer => run_server()?,
