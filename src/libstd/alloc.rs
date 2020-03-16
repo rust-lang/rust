@@ -61,6 +61,7 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
+use core::intrinsics;
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
@@ -133,32 +134,21 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
-// The AllocRef impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
-// which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<(NonNull<u8>, usize), AllocErr> {
+        let new_size = layout.size();
+        if new_size == 0 {
             Ok((layout.dangling(), 0))
         } else {
             unsafe {
-                NonNull::new(GlobalAlloc::alloc(self, layout))
-                    .ok_or(AllocErr)
-                    .map(|p| (p, layout.size()))
-            }
-        }
-    }
-
-    #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
-            Ok((layout.dangling(), 0))
-        } else {
-            unsafe {
-                NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
-                    .ok_or(AllocErr)
-                    .map(|p| (p, layout.size()))
+                let raw_ptr = match init {
+                    AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
+                    AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
+                };
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                Ok((ptr, new_size))
             }
         }
     }
@@ -171,22 +161,79 @@ unsafe impl AllocRef for System {
     }
 
     #[inline]
-    unsafe fn realloc(
+    unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
+        placement: ReallocPlacement,
+        init: AllocInit,
     ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        match (layout.size(), new_size) {
-            (0, 0) => Ok((layout.dangling(), 0)),
-            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
-            (_, 0) => {
-                self.dealloc(ptr, layout);
-                Ok((layout.dangling(), 0))
+        let old_size = layout.size();
+        debug_assert!(
+            new_size >= old_size,
+            "`new_size` must be greater than or equal to `layout.size()`"
+        );
+
+        if old_size == new_size {
+            return Ok((ptr, new_size));
+        }
+
+        match placement {
+            ReallocPlacement::MayMove => {
+                if old_size == 0 {
+                    self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()), init)
+                } else {
+                    // `realloc` probably checks for `new_size > old_size` or something similar.
+                    // `new_size` must be greater than or equal to `old_size` due to the safety constraint,
+                    // and `new_size` == `old_size` was caught before
+                    intrinsics::assume(new_size > old_size);
+                    let ptr =
+                        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
+                            .ok_or(AllocErr)?;
+                    let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                    init.initialize_offset(ptr, new_layout, old_size);
+                    Ok((ptr, new_size))
+                }
             }
-            (_, _) => NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-                .ok_or(AllocErr)
-                .map(|p| (p, new_size)),
+            ReallocPlacement::InPlace => Err(AllocErr),
+        }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        let old_size = layout.size();
+        debug_assert!(
+            new_size <= old_size,
+            "`new_size` must be smaller than or equal to `layout.size()`"
+        );
+
+        if old_size == new_size {
+            return Ok((ptr, new_size));
+        }
+
+        match placement {
+            ReallocPlacement::MayMove => {
+                let ptr = if new_size == 0 {
+                    self.dealloc(ptr, layout);
+                    layout.dangling()
+                } else {
+                    // `realloc` probably checks for `new_size > old_size` or something similar.
+                    // `new_size` must be smaller than or equal to `old_size` due to the safety constraint,
+                    // and `new_size` == `old_size` was caught before
+                    intrinsics::assume(new_size < old_size);
+                    NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
+                        .ok_or(AllocErr)?
+                };
+                Ok((ptr, new_size))
+            }
+            ReallocPlacement::InPlace => Err(AllocErr),
         }
     }
 }
@@ -238,9 +285,7 @@ pub fn rust_oom(layout: Layout) -> ! {
     let hook: fn(Layout) =
         if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
     hook(layout);
-    unsafe {
-        crate::sys::abort_internal();
-    }
+    unsafe { crate::sys::abort_internal() }
 }
 
 #[cfg(not(test))]

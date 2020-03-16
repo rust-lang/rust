@@ -679,7 +679,7 @@ impl<T> Vec<T> {
             self.shrink_to_fit();
             let buf = ptr::read(&self.buf);
             mem::forget(self);
-            buf.into_box()
+            buf.into_box().assume_init()
         }
     }
 
