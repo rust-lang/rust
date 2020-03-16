@@ -314,7 +314,7 @@ only shows the part you care about.
 `should_panic` tells `rustdoc` that the code should compile correctly, but
 not actually pass as a test.
 
-```text
+```rust
 /// ```no_run
 /// loop {
 ///     println!("Hello, world");
